@@ -30,8 +30,11 @@ export const screenOf = (pathname) => SCREENS.find(([, re]) => re.test(pathname)
  * visited routes are captured; each action runs under a trace that is kept
  * only when the action fails.
  */
-export async function openPersonaBrowser({ browser, persona, origin, runDir, requestLog, events, screens, interactions = null }) {
-  const context = await browser.newContext({ baseURL: origin, viewport: { width: 1400, height: 900 }, permissions: ["camera", "microphone"], locale: "nl-NL", timezoneId: "Europe/Amsterdam" });
+export async function openPersonaBrowser({ browser, makeContext = null, persona, origin, runDir, requestLog, events, screens, interactions = null, emulate = null, media = true, device = "desk", browserName = "chrome" }) {
+  // A phone is a Playwright device profile (viewport, touch, user agent); the desk is a Mac-sized window.
+  const { defaultBrowserType: _engine, ...profile } = emulate ?? { viewport: { width: 1400, height: 900 } };
+  const options = { baseURL: origin, ...profile, ...(media ? { permissions: ["camera", "microphone"] } : {}), locale: "nl-NL", timezoneId: "Europe/Amsterdam" };
+  const context = makeContext ? await makeContext(options) : await browser.newContext(options);
   let action = null;
   const attach = (page) => {
     page.on("console", (msg) => {
@@ -117,13 +120,13 @@ export async function openPersonaBrowser({ browser, persona, origin, runDir, req
       const shot = join(runDir, "shots", `${String(n).padStart(3, "0")}-${persona}.jpg`);
       mkdirSync(join(runDir, "shots"), { recursive: true });
       const shotOk = await page.screenshot({ path: shot, type: "jpeg", quality: 45, scale: "css" }).then(() => true, () => false);
-      interactions?.add({ n, persona, ms: Math.round(performance.now() - t), failed, clicks: input?.clicks ?? 0, keys: input?.keys ?? 0, waits: current.waits, screens: current.screens, shot: shotOk ? shot : null });
+      interactions?.add({ n, persona, device, browser: browserName, ms: Math.round(performance.now() - t), failed, clicks: input?.clicks ?? 0, keys: input?.keys ?? 0, waits: current.waits, screens: current.screens, shot: shotOk ? shot : null });
       current = null;
       action = null;
     }
   }
 
-  return { persona, context, page, login, traced, open, wait, close: () => context.close() };
+  return { persona, device, browserName, context, page, login, traced, open, wait, close: () => context.close() };
 }
 
 /**

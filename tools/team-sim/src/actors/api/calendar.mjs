@@ -16,7 +16,7 @@ function participants(ctx, organizer, attendees, external) {
   return p;
 }
 
-async function createEvent(a, ctx, extra = {}) {
+export async function createEvent(a, ctx, extra = {}) {
   const c = ctx.client(a.persona);
   const uid = uuid();
   const event = {

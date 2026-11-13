@@ -105,3 +105,48 @@ test("a failure the harness may have caused is not the persona's trouble", () =>
   assert.equal(upload.failures, 0);
   assert.equal(upload.doubts, 1);
 });
+
+test("since Google: a habit works only without friction or failure; an import that loses content failed", () => {
+  const g = {
+    actions: [
+      { n: 1, persona: "maarten", layer: "api", kind: "habit", app: "calendar", params: { habit: "find-a-time" } },
+      { n: 2, persona: "priya", layer: "api", kind: "habit", app: "calendar", params: { habit: "meet-in-invite" } },
+      { n: 3, persona: "fatima", layer: "ui", kind: "migrate.import", app: "docs", browser: "iphone", device: "phone", params: { type: "docx" } },
+      { n: 4, persona: "joost", layer: "dav", kind: "migrate.import", app: "calendar", client: "apple", device: "desk", params: { type: "ics" } },
+    ],
+  };
+  const out = [
+    { n: 1, status: "ok", ms: 900 },
+    { n: 2, status: "ok", ms: 700 },
+    { n: 3, status: "ok", ms: 6000 },
+    { n: 4, status: "failed", ms: 500, error: "lost the stand-up's weekly recurrence" },
+  ];
+  const fr = [
+    { n: 1, persona: "maarten", what: "Colleagues' free time is hidden", workaround: "asked in chat", source: "habit" },
+    { n: 3, persona: "fatima", what: "Comments are dropped", source: "migration" },
+  ];
+  const ix = [{ n: 3, persona: "fatima", browser: "safari", device: "desk", clicks: 4, keys: 0, waits: [], screens: [{ screen: "/docs", ms: 1500 }] }];
+  const m = measureNight({ plan: g, outcomes: out, friction: fr, interactions: ix });
+  assert.deepEqual([m.google.habits["find-a-time"].worked, m.google.habits["meet-in-invite"].worked], [0, 1]);
+  assert.equal(m.google.imports.docx.worked, 0);
+  assert.equal(m.google.imports.ics.failed, 1);
+  assert.match(m.google.imports.ics.lost[0], /^#4: lost the stand-up/);
+  assert.ok(m.goals["work the Google way"] && m.goals["bring old files over"]);
+  // The browser it really ran in wins over the planned one.
+  assert.ok(m.devices.some((r) => r.device === "Safari on the Mac" && r.app === "docs"));
+  assert.ok(m.devices.some((r) => r.device === "Apple apps on the Mac" && r.failed === 1 && r.failures[0] === 4));
+  const text = voiceLines({ date: "2026-11-18", measure: m }).join("\n");
+  assert.match(text, /### Since Google/);
+  assert.match(text, /\| find-a-time \| Find a time in Calendar \| 1 \| 0 \|/);
+  assert.match(text, /\| ics \| 1 \| 0 \| #4: lost the stand-up's weekly recurrence/);
+  assert.match(text, /### Devices/);
+  assert.doesNotMatch(text, /API \(no screen\)/);
+});
+
+test("the habit trend counts the last 7 nights a habit was tried", () => {
+  const night = (date, worked) => ({ date, goals: {}, items: {}, habits: { "find-a-time": { tries: 1, worked } } });
+  const history = { nights: [night("2026-11-10", 0), night("2026-11-11", 1), night("2026-11-12", 1)] };
+  const { habitTrend, nextHistory } = frictionTrend(history, "2026-11-13", { goals: {}, items: [], google: { habits: { "find-a-time": { tries: 2, worked: 2 } }, imports: {} } });
+  assert.deepEqual(habitTrend["find-a-time"], { nights: 3, tries: 3, worked: 2 });
+  assert.deepEqual(nextHistory.nights.at(-1).habits, { "find-a-time": { tries: 2, worked: 2 } });
+});

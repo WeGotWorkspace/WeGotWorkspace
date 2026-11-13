@@ -43,11 +43,39 @@ const DOING = {
   "contact.create": "added a client contact",
   "contact.edit": "updated a client contact",
   "gap": "needed something the suite does not do",
+  "habit": "tried to do something the way they did in Google Workspace",
+  "migrate.import": "brought something over from their old Google export",
 };
+const HABIT_DOING = {
+  "mention-assign": "@mentioned a colleague in a doc comment to hand them a to-do, as in Google Docs",
+  "suggest-edit": "suggested a change in a doc for the author to accept, as in Google Docs' suggesting mode",
+  "team-share": "shared a file with the whole Team at once, as with a Google shared drive",
+  "find-a-time": "looked at colleagues' free time before inviting them, as in Google Calendar",
+  "meet-in-invite": "put a video-call link in a calendar invite in one step, as with Google Meet",
+  "folder-drop": "dropped a whole folder with subfolders into Drive, as in Google Drive",
+  "expiring-link": "shared a file with a client by a link that expires, as in Google Drive",
+  "sheet-open": "opened a planning sheet (exported from Google Sheets) in the browser",
+};
+const IMPORT_DOING = { docx: "a Google Docs file (.docx)", xlsx: "a Google Sheets file (.xlsx)", ics: "their Google Calendar (.ics)", vcf: "their Google Contacts (.vcf)", folder: "a folder from Google Drive" };
+const DEVICE = { chrome: "Chrome on their Mac", safari: "Safari on their Mac", iphone: "their iPhone", android: "their Android phone" };
+const NATIVE = { "apple/desk": "Apple's app on their Mac", "apple/phone": "Apple's app on their iPhone", "davx5/phone": "their Android phone (DAVx5)" };
+/** The team's background: in every diary, so the voice fits people who left Google on purpose. */
+const BACKGROUND = "The whole studio left Google Workspace together a few weeks ago, on purpose: they wanted control over their own data instead of a big US platform. They accept some gaps because they chose this, and they say what they miss.";
 const VIA = { ui: "in the browser", api: "in the apps (no screen detail recorded)", dav: "from their own calendar/contacts app (CalDAV/CardDAV)", none: "outside the suite" };
 
 const SITUATION = [["offline", "went offline in the middle of it, then back online"], ["reload", "reloaded the page in the middle of it"], ["secondTab", "had the same screen open in a second tab"]];
 const UNCLEAR = "unclear: the simulation could not check this, so it is not something the person noticed";
+
+/** A colleague's name; a client's email address stays as it is. */
+const nameOf = (world, x) => {
+  try {
+    return world.persona(x)?.displayName ?? x;
+  } catch {
+    return x;
+  }
+};
+
+const GOOGLE = /\b(Google|Gmail|Sheets|Takeout)\b/;
 
 const clock = (minute) => `${String(9 + Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 const short = (s, n = 90) => (s == null ? undefined : String(s).replace(/\s+/g, " ").slice(0, n));
@@ -70,10 +98,11 @@ export function personaFacts({ world, date, persona, plan, outcomes, interaction
     return {
       n: a.n,
       time: clock(a.minute),
-      did: DOING[a.kind] ?? a.kind,
+      did: a.kind === "habit" ? HABIT_DOING[pr.habit] ?? DOING.habit : a.kind === "migrate.import" ? `${DOING["migrate.import"]}: ${IMPORT_DOING[pr.type] ?? pr.type}` : DOING[a.kind] ?? a.kind,
       via: VIA[a.layer] ?? a.layer,
+      on: a.layer === "ui" ? DEVICE[i?.browser ?? a.browser] : a.layer === "dav" ? NATIVE[`${a.client ?? "apple"}/${a.device ?? "desk"}`] : undefined,
       about: short(pr.title ?? pr.text ?? pr.name ?? pr.need ?? pr.append),
-      with: [...[pr.partner, pr.mention, pr.to, pr.assignee, ...(pr.attendees ?? [])].filter(Boolean).map((x) => world.persona(x)?.displayName ?? x), ...(pr.guest ? [`${pr.guest} (guest)`] : [])].join(", ") || undefined,
+      with: [...[pr.partner, pr.mention, pr.to, pr.assignee, ...(pr.attendees ?? [])].filter(Boolean).map((x) => nameOf(world, x)), ...(pr.guest ? [`${pr.guest} (guest)`] : [])].join(", ") || undefined,
       result: o.status,
       problem: short(o.error ?? o.reason, 160),
       // Outcome notes are for the morning report (upload parts, harness shortcuts); only what the person lived through goes in.
@@ -87,11 +116,13 @@ export function personaFacts({ world, date, persona, plan, outcomes, interaction
   const chains = (measured?.chains ?? []).filter((c) => c.actions.some((n) => own.has(n)) && c.trouble).map((c) => ({ goal: c.goal, actions: c.actions.filter((n) => own.has(n)), failures: c.failures + c.skipped, retries: c.retries, friction: c.friction }));
   return {
     persona: { id: persona, name: p.displayName, role: p.title ?? p.role, teams: world.teamsOf(persona).map((t) => world.teams.find((x) => x.id === t)?.name ?? t), worksFrom: world.zoneOf?.(persona, date) },
+    team: BACKGROUND,
     date,
     actions,
     friction: friction.filter((f) => own.has(f.n)).map((f) => ({ n: f.n, what: f.what, workaround: f.workaround })),
     troubledGoals: chains,
     actionNumbers: [...own].sort((a, b) => a - b),
+    googleActions: mine.filter((a) => a.kind === "habit" || a.kind === "migrate.import").map((a) => a.n),
   };
 }
 
@@ -114,11 +145,12 @@ export const DIARY_SYSTEM = [
   'Leave out actions whose result starts with "unclear"; they say nothing about this person\'s day. Do not read meaning into technical details such as byte counts, upload parts or how long a step took unless the facts list it as a wait.',
   "Different meetings have different titles; never describe them as one meeting booked several times.",
   "Text the person wrote in chat, notes or docs is their work, not a sign of their mood.",
+  "Mention Google (Workspace, Gmail, Docs, Sheets, Drive, Meet, Takeout) only in a sentence that cites an action where they tried the Google way or brought something over from their Google export.",
   'Write in English, 90 to 160 words, plain and concrete, in this person\'s voice. Return only JSON, no prose around it: {"diary": string, "items": [{"type": "frustration" | "slow" | "went-well" | "wish", "text": string of at most 20 words, "actions": [numbers]}]} with 2 to 6 items.',
 ].join("\n");
 
 export function diaryContent(facts, shots) {
-  const { actionNumbers, ...shown } = facts;
+  const { actionNumbers, googleActions: _google, ...shown } = facts;
   return [
     { type: "text", text: `Facts of ${facts.persona.name}'s day (${facts.date}). Valid action numbers: ${actionNumbers.join(", ")}.\n\n${JSON.stringify(shown, null, 1)}` },
     ...shots.flatMap((s) => [{ type: "text", text: `Screenshot at the end of action #${s.n}:` }, { type: "image", path: s.path }]),
@@ -137,6 +169,12 @@ export function validateDiary(text, facts) {
   const invalid = [...new Set(cited.filter((n) => !valid.has(n)))];
   const sentences = parsed.diary.split(/(?<=[.!?])\s+/).filter((s) => s.trim().split(/\s+/).length >= 5);
   const uncited = sentences.filter((s) => !/#\d+/.test(s)).length;
+  // A comparison with Google must rest on a habit or import action of this persona.
+  const googleActs = new Set(facts.googleActions ?? []);
+  // The citation may sit in the sentence itself or the one right after it ("…the way we did in Google Docs. It didn't assign anything (#43).").
+  const all = parsed.diary.split(/(?<=[.!?])\s+/);
+  const citesGoogle = (x) => [...(x ?? "").matchAll(/#(\d+)/g)].some((m) => googleActs.has(Number(m[1])));
+  const comparisons = all.filter((x, i) => GOOGLE.test(x) && !citesGoogle(x) && !citesGoogle(all[i + 1]));
   const items = [];
   let dropped = 0;
   for (const it of Array.isArray(parsed.items) ? parsed.items : []) {
@@ -147,7 +185,7 @@ export function validateDiary(text, facts) {
     }
     items.push({ type: it.type, text: it.text.slice(0, 200), actions });
   }
-  return { diary: parsed.diary.trim(), items, check: { citations: cited.length, invalid, uncited, sentences: sentences.length, droppedItems: dropped } };
+  return { diary: parsed.diary.trim(), items, check: { citations: cited.length, invalid, uncited, sentences: sentences.length, droppedItems: dropped, invalidComparisons: comparisons.length } };
 }
 
 /**

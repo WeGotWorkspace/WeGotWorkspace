@@ -40,7 +40,7 @@ export async function runReplay({ date, action, minutes = 55, planOnly = false, 
   // 1. The plan from the clone, by the harness at the night's harness commit.
   if (meta.harnessDirty) log(`the night ran an uncommitted harness at ${String(meta.harnessSha).slice(0, 10)}; planning with this checkout's harness instead`);
   const harness = meta.harnessDirty ? currentRoot() : harnessAt(meta.harnessSha, scratch, repoRoot, shell);
-  const plan = JSON.parse(execFileSync("node", [join(harness, "tools", "team-sim", "bin", "sim.mjs"), "plan", "--date", date, "--json", "--data", dataDir], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
+  const plan = JSON.parse(execFileSync("node", [join(harness, "tools", "team-sim", "bin", "sim.mjs"), "plan", "--date", date, "--json", "--data", dataDir, ...(meta.habits ? ["--habits", meta.habits] : [])], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
   const same = plan.hash === meta.actionListHash;
   log(`action list ${plan.hash.slice(0, 12)} ${same ? "matches" : `DIFFERS from ${String(meta.actionListHash).slice(0, 12)}`} the night's (${plan.actions.length} actions)`);
   if (!same || planOnly) {
@@ -67,7 +67,7 @@ export async function runReplay({ date, action, minutes = 55, planOnly = false, 
   const requestLog = createRequestLog(join(runDir, "requests.jsonl"));
   const client = createSessions({ origin, requestLog });
   const registry = openRegistry(dataDir);
-  const ctx = { world: loadWorld(), client, origin, registry, date, expectNotify() {}, expectMail() {}, guestClient: () => client("guest", "guest") };
+  const ctx = { world: loadWorld(), client, origin, registry, date, runDir, friction() {}, expectNotify() {}, expectMail() {}, guestClient: () => client("guest", "guest") };
   const upTo = action ? Number(action) : Infinity;
   const outcomes = await runActions({
     plan,

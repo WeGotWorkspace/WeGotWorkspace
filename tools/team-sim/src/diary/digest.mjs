@@ -52,6 +52,23 @@ export function rankWeekFriction(week) {
     .sort((a, b) => Number(a.source === "scripted-gap") - Number(b.source === "scripted-gap") || b.frequency - a.frequency || b.costMs - a.costMs || (a.what < b.what ? -1 : 1));
 }
 
+/** Since Google across the week: per habit and per import type, tries, how many worked, the friction and evidence. */
+export function weekGoogle(week) {
+  const out = { habits: {}, imports: {} };
+  for (const n of week) {
+    for (const kind of ["habits", "imports"]) {
+      for (const [key, v] of Object.entries(n.measure?.google?.[kind] ?? {})) {
+        const e = (out[kind][key] ??= { tries: 0, worked: 0, friction: [], evidence: [] });
+        e.tries += v.tries;
+        e.worked += v.worked;
+        for (const f of [...v.friction, ...v.lost.map((x) => x.replace(/^#\d+: /, ""))]) if (!e.friction.includes(f)) e.friction.push(f);
+        e.evidence.push(...v.actions.map((a) => `${n.date} #${a}`));
+      }
+    }
+  }
+  return out;
+}
+
 /** Themes from the model, counted and ranked here: frequency = distinct date+persona, cost = goal time behind the cited actions. */
 export function rankThemes(themes, diaryItems, week) {
   const items = new Map(diaryItems.map((i) => [i.id, i]));
@@ -86,7 +103,7 @@ export function rankThemes(themes, diaryItems, week) {
  */
 export async function weeklyDigest({ nights, date, runner, budgetUsd = DIGEST_BUDGET_USD }) {
   const { week, diaryItems } = weekEvidence(nights, date);
-  const digest = { date, nights: week.map((n) => n.date), friction: rankWeekFriction(week), themes: [], skipped: null, costUsd: 0, tokens: 0 };
+  const digest = { date, nights: week.map((n) => n.date), friction: rankWeekFriction(week), google: weekGoogle(week), themes: [], skipped: null, costUsd: 0, tokens: 0 };
   const missing = !diaryItems.length ? "no diary items this week" : runner ? runner.available() : "no runner configured";
   if (missing) {
     digest.skipped = `Themes skipped: ${missing}.`;

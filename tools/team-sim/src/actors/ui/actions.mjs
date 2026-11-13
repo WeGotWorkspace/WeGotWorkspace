@@ -11,6 +11,16 @@ const online = (page) => page.locator('[data-connectivity="online"]').first().wa
 /** Emoji render as images in chat, so match on the text before the first one. */
 const plainPrefix = (text) => text.split(/\p{Extended_Pictographic}/u)[0].trim().slice(0, 60);
 
+/** Polls `fn` every 2 s until it returns something truthy or `ms` runs out; returns the last value. */
+async function pollFor(fn, ms) {
+  const until = Date.now() + ms;
+  for (;;) {
+    const v = await fn().catch(() => null);
+    if (v || Date.now() > until) return v;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+
 /** Types at the end of a ProseMirror editor. */
 async function typeAtEnd(page, editor, text) {
   await editor.click({ timeout: T });
@@ -56,6 +66,29 @@ async function withFlags(b, a, during) {
   return null;
 }
 
+/**
+ * On a phone the app's sidebar is a drawer. Show it to reach New note; when a
+ * link opens with the drawer over the screen, tap beside it (its own Hide
+ * button sits under the drawer's app icon).
+ */
+async function phoneSidebar(b, show, ctx) {
+  if (b.device !== "phone") return;
+  const { page } = b;
+  if (show) {
+    const toggle = page.getByRole("button", { name: /^Show sidebar/ }).first();
+    if (await toggle.isVisible().catch(() => false)) {
+      await toggle.click();
+      await settle(page, 600);
+    }
+    return;
+  }
+  if ((await page.locator("aside.app-sidebar").first().getAttribute("data-open").catch(() => null)) !== "true") return;
+  ctx?.friction?.({ what: "On a phone, a channel link opens with the sidebar over the conversation", workaround: "tap beside the sidebar to close it", source: "device" });
+  const vp = page.viewportSize();
+  await page.mouse.click(vp.width - 20, Math.round(vp.height / 2));
+  await settle(page, 600);
+}
+
 async function chatComposer(page) {
   const composer = page.locator(".meet-workspace__chat-composer .ProseMirror").first();
   await composer.waitFor({ timeout: T });
@@ -71,6 +104,7 @@ export const uiActions = {
       await online(page);
       await chatComposer(page);
     });
+    await phoneSidebar(b, false, ctx);
     const note = await withFlags(b, a, async () => {
       const composer = await chatComposer(page);
       await composer.click();
@@ -83,17 +117,24 @@ export const uiActions = {
       await b.second.close();
       b.second = null;
     }
-    const { list } = await ctx.client(a.persona).get(`/api/v1/chat/channels/${encodeURIComponent(ch.ids.channelId)}/messages?limit=30`);
-    const msg = list.find((m) => m.body?.includes(a.params.text) && m.authorId === a.persona);
-    if (!msg) throw new Error("message shown in the browser is not on the server");
+    // The app shows a message before it is sent; a busy server can take a while. Lost is a failure, late is friction.
+    const t0 = Date.now();
+    const msg = await b.wait("message reached the server", () =>
+      pollFor(async () => {
+        const { list } = await ctx.client(a.persona).get(`/api/v1/chat/channels/${encodeURIComponent(ch.ids.channelId)}/messages?limit=30`);
+        return list.find((m) => m.body?.includes(a.params.text) && m.authorId === a.persona);
+      }, 45000),
+    );
+    if (!msg) throw new Error("message shown in the browser is not on the server after 45 s");
+    if (Date.now() - t0 > 5000) ctx.friction?.({ what: "A chat message shown as sent took more than 5 s to reach the server", workaround: "waited before telling anyone it was posted", source: "detected" });
     return { ids: { channelId: ch.ids.channelId, messageId: msg.id }, extra: { channel: a.params.channel }, note };
   },
 
   async "note.create"(b, a, ctx) {
     const { page } = b;
-    // A note started before the notebooks have loaded lands in a local "Drafts" that never syncs; wait for them.
-    await b.open("/notes", () => page.getByRole("region", { name: "My notebooks" }).getByRole("button", { name: "General", exact: true }).waitFor({ timeout: T }));
-    ctx.friction?.({ what: "A note started before the notebook list has loaded is never saved", workaround: "wait for the notebook list before clicking New note", source: "actor-workaround" });
+    // Starts the note as soon as New note is there, without waiting for the notebooks (#2055 fixed that loss; this keeps it fixed).
+    await b.open("/notes", () => page.getByRole("button", { name: "New note" }).first().waitFor({ state: "attached", timeout: T }));
+    await phoneSidebar(b, true);
     await page.getByRole("button", { name: "New note" }).click({ timeout: T });
     const title = page.getByRole("textbox", { name: "Title" });
     await title.waitFor({ timeout: T });
@@ -116,8 +157,13 @@ export const uiActions = {
     await online(page);
     const note = await withFlags(b, a, () => typeAtEnd(page, editor, a.params.append));
     await settle(page, 4000);
-    const server = await ctx.client(a.persona).get(`/api/v1/notes/items/${encodeURIComponent(n.ids.noteId)}`);
-    if (!String(server.body ?? "").includes(a.params.append.slice(2, 20))) throw new Error("note edit typed in the browser is not on the server");
+    const saved = await b.wait("note saved on the server", () =>
+      pollFor(async () => {
+        const server = await ctx.client(a.persona).get(`/api/v1/notes/items/${encodeURIComponent(n.ids.noteId)}`);
+        return String(server.body ?? "").includes(a.params.append.slice(2, 20));
+      }, 30000),
+    );
+    if (!saved) throw new Error("note edit typed in the browser is not on the server after 30 s");
     return { note };
   },
 
@@ -155,9 +201,7 @@ export const uiActions = {
     const partner = await ctx.extraBrowser(a.params.partner);
     try {
       await Promise.all([openDoc(b, doc.ids.path), openDoc(partner, doc.ids.path)]);
-      // Both join the shared session first: typing in the first seconds after opening can be dropped (a separate scenario).
-      await b.wait("wait until the co-writer has joined", () => settle(b.page, 5000));
-      ctx.friction?.({ what: "Text typed in the first seconds after opening a shared doc can be lost", workaround: "wait until the co-writer has joined before typing", source: "actor-workaround" });
+      // Both type straight after opening (#2056 fixed losing that text; this keeps it fixed).
       const mine = `${ctx.world.persona(a.persona).displayName.split(" ")[0]}: ${a.params.text}`;
       const theirs = `${ctx.world.persona(a.params.partner).displayName.split(" ")[0]}: ${a.params.text.split(" ").reverse().join(" ")}`;
       await Promise.all([
@@ -192,9 +236,14 @@ export const uiActions = {
     await b.wait("event saved", () => dialog.waitFor({ state: "hidden", timeout: T }));
     await settle(page, 2000);
     // The new event is the one that was not there before: an invite with the same title may already be in this calendar.
-    const q = await jmap1(c, USING.calendars, "CalendarEvent/query", { accountId: a.persona });
-    let fresh = (q.ids ?? []).filter((x) => !before.has(x));
-    if (!fresh.length) throw new Error("the event saved in the browser is not on the server");
+    let fresh = (await b.wait("event saved on the server", () =>
+      pollFor(async () => {
+        const q = await jmap1(c, USING.calendars, "CalendarEvent/query", { accountId: a.persona });
+        const ids = (q.ids ?? []).filter((x) => !before.has(x));
+        return ids.length ? ids : null;
+      }, 30000),
+    )) ?? [];
+    if (!fresh.length) throw new Error("the event saved in the browser is not on the server after 30 s");
     // Another persona's invite can land in this calendar while the dialog is open; keep the one with our title
     // (titles are unique within a night, so two with our title is a real duplicate).
     if (fresh.length > 1) {
@@ -237,14 +286,7 @@ export const uiActions = {
   async "drive.upload"(b, a, ctx) {
     const folder = need(ctx, a.params.folder).ids.path;
     const { page } = b;
-    const segments = folder.split("/").filter(Boolean).slice(1);
-    await b.open("/drive", () => online(page));
-    for (const name of segments) {
-      const team = ctx.world.teams.find((t) => t.id === name);
-      const row = page.getByRole("button", { name: team?.name ?? name, exact: true }).or(page.getByRole("button", { name, exact: true }));
-      await row.first().dblclick({ timeout: T });
-      await settle(page, 1200);
-    }
+    await openDriveFolder(b, ctx, folder);
     const bytes = Math.min(a.params.bytes, 20 * 1024 * 1024);
     await page.locator('input[type="file"][aria-label="Upload files"]').setInputFiles({ name: a.params.name, mimeType: "application/octet-stream", buffer: fileBytes(a.params.name, bytes) });
     // Files over the offline limit ask whether to keep a copy on this device first.
@@ -286,6 +328,18 @@ export const uiActions = {
     return { note: `call with guest ${a.params.guest}` };
   },
 };
+
+/** Opens Drive and double-clicks down to a folder, as a person would. */
+async function openDriveFolder(b, ctx, folder) {
+  const { page } = b;
+  await b.open("/drive", () => online(page));
+  for (const name of folder.split("/").filter(Boolean).slice(1)) {
+    const team = ctx.world.teams.find((t) => t.id === name);
+    const row = page.getByRole("button", { name: team?.name ?? name, exact: true }).or(page.getByRole("button", { name, exact: true }));
+    await row.first().dblclick({ timeout: T });
+    await settle(page, 1200);
+  }
+}
 
 async function openDoc(b, path) {
   await b.open(`/docs?file=${encodeURIComponent(path.replace(/^\//, ""))}`, async () => {
@@ -339,3 +393,5 @@ async function findNote(ctx, persona, title, url) {
   }
   return null;
 }
+
+export { T, settle, online, typeAtEnd, openDoc, openDriveFolder, waitSaved, expectDocContains, waitForServerFile };

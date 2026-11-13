@@ -3,8 +3,8 @@
 //   sim up [--dry-run]        create/update ~/.wgw-sim/checkout and start wgw-sim on :9290
 //   sim down                  stop wgw-sim
 //   sim bootstrap [--date D]  reconcile the world for date D (default today)
-//   sim plan [--date D] [--json] [--data DIR]   the night's action list from a data dir
-//   sim night [--date D] [--minutes N] [--ui-only] [--api-only] [--skip-upgrade] [--no-diary]
+//   sim plan [--date D] [--json] [--data DIR] [--habits all]   the night's action list from a data dir
+//   sim night [--date D] [--minutes N] [--ui-only] [--api-only] [--skip-upgrade] [--no-diary] [--habits all]
 //   sim replay <date> [--action N] [--minutes N] [--plan-only] [--keep]
 //   sim status                last completed night; exits 1 after two days without one
 //   sim report <date>         re-render the morning report from a finished run
@@ -64,7 +64,7 @@ async function main() {
     }
     case "plan": {
       const { printPlan } = await import("../src/night/cli.mjs");
-      await printPlan({ date: option("date", today()), json: flag("json"), dataDir: option("data") ?? undefined, log });
+      await printPlan({ date: option("date", today()), json: flag("json"), dataDir: option("data") ?? undefined, habits: option("habits") ?? undefined, log });
       return;
     }
     case "night": {
@@ -76,6 +76,7 @@ async function main() {
         apiOnly: flag("api-only"),
         skipUpgrade: flag("skip-upgrade"),
         noDiary: flag("no-diary"),
+        habits: option("habits") ?? undefined,
         manual: true,
         log,
         repoRoot: repoRoot(),

@@ -4,8 +4,8 @@ import { snapshotSummary } from "../state/registry.mjs";
 import { loadWorld } from "../world/load.mjs";
 
 /** `sim plan`: the night's action list from a data dir (default the live one). `--json` prints the whole plan. */
-export async function printPlan({ date, json = false, dataDir = layout().data, log = console.log }) {
-  const plan = planNight({ world: loadWorld(), date, snapshot: snapshotSummary(dataDir) });
+export async function printPlan({ date, json = false, dataDir = layout().data, habits, log = console.log }) {
+  const plan = planNight({ world: loadWorld(), date, snapshot: snapshotSummary(dataDir), options: habits ? { habits } : {} });
   if (json) {
     process.stdout.write(`${JSON.stringify(plan)}\n`);
     return plan;

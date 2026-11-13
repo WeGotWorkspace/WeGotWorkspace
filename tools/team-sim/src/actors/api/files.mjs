@@ -14,13 +14,13 @@ export function fileBytes(name, bytes) {
   return Buffer.concat([head, randomBytes(Math.max(0, bytes - head.length))]).subarray(0, bytes);
 }
 
-async function davPut(c, origin, path, body, { ifNoneMatch = false, type } = {}) {
+export async function davPut(c, origin, path, body, { ifNoneMatch = false, type } = {}) {
   const headers = { "content-type": type ?? mimeOf(path) };
   if (ifNoneMatch) headers["if-none-match"] = "*";
   return c.raw("PUT", davUrl(origin, path), { auth: "basic", body, headers, timeoutMs: 600000 });
 }
 
-async function davMust(res, what) {
+export async function davMust(res, what) {
   if (res.status >= 200 && res.status < 300) return res;
   const e = new Error(`${what} → HTTP ${res.status}: ${res.text.slice(0, 200)}`);
   e.status = res.status;
@@ -28,7 +28,7 @@ async function davMust(res, what) {
 }
 
 /** Free name in a folder: "x.md", then "x 2.md", "x 3.md" … using If-None-Match on PUT. */
-async function putNew(c, origin, folder, name, body, onTaken = () => {}) {
+export async function putNew(c, origin, folder, name, body, onTaken = () => {}) {
   const dot = name.lastIndexOf(".");
   for (let i = 1; i < 20; i += 1) {
     const candidate = i === 1 ? name : `${name.slice(0, dot)} ${i}${name.slice(dot)}`;

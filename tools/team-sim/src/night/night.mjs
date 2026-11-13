@@ -52,7 +52,7 @@ export function timeBudget(minutes) {
  * stack is stopped at the end. Returns `{ ok, reportFile }`; ok means the
  * night completed, not that every oracle passed.
  */
-export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = false, skipUpgrade = false, noDiary = false, manual = false, log = console.log, repoRoot, headless = true }) {
+export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = false, skipUpgrade = false, noDiary = false, habits, manual = false, log = console.log, repoRoot, headless = true }) {
   try {
     setPriority(10);
   } catch {
@@ -114,8 +114,8 @@ export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = f
     dataDir: paths.data,
     snapshotsDir: paths.snapshots,
     envFile: join(paths.checkout, "packages", "api", ".env"),
-    meta: { sha: night.sha, harnessSha, harnessDirty: gitDirty(HARNESS_DIR), worldVersion: world.meta.version, minutes },
-    planFrom: (clone) => planNight({ world, date, snapshot: snapshotSummary(clone) }),
+    meta: { sha: night.sha, harnessSha, harnessDirty: gitDirty(HARNESS_DIR), worldVersion: world.meta.version, minutes, ...(habits ? { habits } : {}) },
+    planFrom: (clone) => planNight({ world, date, snapshot: snapshotSummary(clone), options: habits ? { habits } : {} }),
   });
   const plan = snap.plan;
   writeJson(join(runDir, "plan.json"), plan);
@@ -139,6 +139,7 @@ export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = f
     origin,
     registry,
     date,
+    runDir,
     expectNotify: (e) => expected.push(e),
     expectMail: (e) => expectedMails.push(e),
     guestClient: () => client("guest", "guest"),
@@ -149,7 +150,7 @@ export async function runNight({ date, minutes = 55, uiOnly = false, apiOnly = f
   const ui = useUi ? await (await import("../actors/ui/index.mjs")).createUiLayer({ origin, runDir, requestLog, interactions, headless }) : null;
   const execute = async (action) => {
     if (action.kind === "gap") return { note: "gap moment (nothing to do in the suite)" };
-    const friction = (f) => frictionLog.add({ n: action.n, persona: action.persona, kind: action.kind, goal: goalOf(action.kind), source: "actor-workaround", ...f });
+    const friction = (f) => frictionLog.add({ n: action.n, persona: action.persona, kind: action.kind, goal: goalOf(action.kind), source: "actor-workaround", device: action.device, browser: action.browser, client: action.client, ...f });
     const actx = { ...ctx, friction };
     try {
       const result = action.layer === "ui" && ui ? await ui.execute(action, actx) : await executeApi(action.layer === "ui" ? { ...action, layer: "api" } : action, actx);

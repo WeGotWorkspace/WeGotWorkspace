@@ -16,6 +16,8 @@ export const GOALS = Object.freeze({
   "keep client contacts": ["contact.create", "contact.edit"],
   "hold a call": ["meet.call"],
   "do something the suite cannot": ["gap"],
+  "work the Google way": ["habit"],
+  "bring old files over": ["migrate.import"],
 });
 
 /** Requests a browser makes on its own while an action runs (presence, polling, CSP reports): not steps of the goal. */
@@ -23,7 +25,7 @@ const BACKGROUND = /^\/api\/v1\/(rooms\/[^/]+\/(events|participants|configuratio
 
 const GOAL_OF = new Map(Object.entries(GOALS).flatMap(([goal, kinds]) => kinds.map((k) => [k, goal])));
 /** Kinds that are a goal of their own even when they build on another persona's work. */
-const OWN_GOAL = new Set(["doc.cowrite", "meet.call", "cal.rsvp", "gap"]);
+const OWN_GOAL = new Set(["doc.cowrite", "meet.call", "cal.rsvp", "gap", "habit", "migrate.import"]);
 
 export const goalOf = (kind) => GOAL_OF.get(kind) ?? "other";
 
@@ -122,7 +124,78 @@ export function measureNight({ plan, outcomes = [], requests = [], interactions 
     const ms = list.map((s) => s.ms);
     screens[screen] = { n: ms.length, p50: percentile(ms, 50), p95: percentile(ms, 95) };
   }
-  return { chains, goals, items, screens };
+  return { chains, goals, items, screens, google: googleSummary({ plan, outcomes, friction }), devices: deviceSummary({ plan, outcomes, interactions, friction }) };
+}
+
+/**
+ * Since Google: per habit, tries, how many worked (ran without friction or
+ * failure) and the friction; per import type, tries, how many arrived complete
+ * and what was lost (the failure message names it).
+ */
+export function googleSummary({ plan, outcomes = [], friction = [] }) {
+  const out = new Map(outcomes.map((o) => [o.n, o]));
+  const frBy = groupBy(friction, (f) => f.n);
+  const habits = {};
+  const imports = {};
+  for (const a of plan.actions) {
+    if (a.kind !== "habit" && a.kind !== "migrate.import") continue;
+    const o = out.get(a.n);
+    if (!o || o.reason === "filtered") continue;
+    const bucket = a.kind === "habit" ? habits : imports;
+    const key = a.kind === "habit" ? a.params.habit : a.params.type;
+    const e = (bucket[key] ??= { tries: 0, worked: 0, failed: 0, skipped: 0, friction: [], workarounds: [], lost: [], actions: [], personas: [], layers: [] });
+    const fr = frBy.get(a.n) ?? [];
+    e.tries += 1;
+    e.actions.push(a.n);
+    if (!e.personas.includes(a.persona)) e.personas.push(a.persona);
+    if (!e.layers.includes(a.layer)) e.layers.push(a.layer);
+    if (o.status === "failed") {
+      e.failed += 1;
+      e.lost.push(`#${a.n}: ${String(o.error ?? "").split("\n")[0]}`);
+    } else if (o.status === "skipped") e.skipped += 1;
+    else if (!fr.some((f) => f.source === "habit" || f.source === "migration")) e.worked += 1;
+    for (const f of fr) {
+      if (!e.friction.includes(f.what)) e.friction.push(f.what);
+      if (f.workaround && !e.workarounds.includes(f.workaround)) e.workarounds.push(f.workaround);
+    }
+  }
+  return { habits, imports };
+}
+
+const BROWSER_LABEL = { chrome: "Chrome on the Mac", safari: "Safari on the Mac", iphone: "Safari on an iPhone", android: "Chrome on Android" };
+const NATIVE_LABEL = { "apple/desk": "Apple apps on the Mac", "apple/phone": "Apple apps on an iPhone", "davx5/phone": "DAVx5 on Android", "davx5/desk": "DAVx5 on Android" };
+
+/** Where an action ran: the browser it really ran in, the native app and device, or the API. */
+export function deviceOf(a, interaction) {
+  if (a.layer === "ui") return BROWSER_LABEL[interaction?.browser ?? a.browser ?? "chrome"] ?? "Chrome on the Mac";
+  if (a.layer === "dav") return NATIVE_LABEL[`${a.client ?? "apple"}/${a.device ?? "desk"}`] ?? "a CalDAV/CardDAV app";
+  return "API (no screen)";
+}
+
+/** Per device and app: actions, failures, friction, median action time and time to interactive. */
+export function deviceSummary({ plan, outcomes = [], interactions = [], friction = [] }) {
+  const out = new Map(outcomes.map((o) => [o.n, o]));
+  const ixBy = new Map(interactions.map((i) => [i.n, i]));
+  const frBy = groupBy(friction, (f) => f.n);
+  const rows = new Map();
+  for (const a of plan.actions) {
+    const o = out.get(a.n);
+    if (!o || o.reason === "filtered" || a.kind === "gap") continue;
+    const device = deviceOf(a, ixBy.get(a.n));
+    const key = `${device}|${a.app ?? "none"}`;
+    const r = rows.get(key) ?? rows.set(key, { device, app: a.app ?? "none", actions: 0, failed: 0, friction: 0, ms: [], tti: [], failures: [] }).get(key);
+    r.actions += 1;
+    if (o.status === "failed") {
+      r.failed += 1;
+      r.failures.push(a.n);
+    }
+    r.friction += (frBy.get(a.n) ?? []).length;
+    if (o.ms != null) r.ms.push(o.ms);
+    for (const sc of ixBy.get(a.n)?.screens ?? []) r.tti.push(sc.ms);
+  }
+  return [...rows.values()]
+    .map(({ ms, tti, ...r }) => ({ ...r, medianMs: ms.length ? median(ms) : null, ttiP50: tti.length ? percentile(tti, 50) : null }))
+    .sort((x, y) => (x.device < y.device ? -1 : x.device > y.device ? 1 : x.app < y.app ? -1 : 1));
 }
 
 /**
@@ -178,8 +251,15 @@ export function frictionTrend(history, date, measured) {
     date,
     goals: Object.fromEntries(Object.entries(measured.goals).map(([g, v]) => [g, { n: v.n, wallMs: v.wallMs, waitMs: v.waitMs, troubleRate: v.troubleRate }])),
     items: Object.fromEntries(measured.items.map((it) => [it.what, it.count])),
+    habits: Object.fromEntries(Object.entries(measured.google?.habits ?? {}).map(([h, v]) => [h, { tries: v.tries, worked: v.worked }])),
   };
-  return { trend, itemNights, nextHistory: { nights: [...(history?.nights ?? []).filter((n) => n.date !== date), entry].slice(-30) } };
+  // Since Google: how often each habit worked over the last 7 nights it was tried.
+  const habitTrend = {};
+  for (const h of Object.keys(measured.google?.habits ?? {})) {
+    const past = prior.map((n) => n.habits?.[h]).filter(Boolean);
+    habitTrend[h] = { nights: past.length, tries: past.reduce((t, x) => t + x.tries, 0), worked: past.reduce((t, x) => t + x.worked, 0) };
+  }
+  return { trend, itemNights, habitTrend, nextHistory: { nights: [...(history?.nights ?? []).filter((n) => n.date !== date), entry].slice(-30) } };
 }
 
 function byCost(a, b) {

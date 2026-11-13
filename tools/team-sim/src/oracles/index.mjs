@@ -60,7 +60,7 @@ export async function runOracles(input) {
     return r;
   });
   await timed("visibility", () => visibilityOracle({ world, date, probes: createVisibilityProbes({ client }), objects }));
-  await timed("dav-parity", () => davParityOracle({ personas: world.personasOn(date), client, origin }));
+  await timed("dav-parity", () => davParityOracle({ personas: world.personasOn(date), client, origin, objects, date }));
   const timing = timingOracle({ requests: nightRequests, requestKind, history, date });
   results.push(timing);
   const cov = coverageOracle({ requests: nightRequests, screensVisited, templates, screens, coverage, date });

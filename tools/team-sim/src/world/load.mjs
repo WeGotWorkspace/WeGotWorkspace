@@ -18,6 +18,7 @@ export function loadWorld(dir = WORLD_DIR) {
     clients: read("clients"),
     projects: read("projects"),
     rhythm: read("rhythm"),
+    habits: read("habits"),
   });
 }
 
@@ -58,8 +59,19 @@ export function createWorld(raw) {
   const email = (id) => `${id}@${raw.meta.internalDomain}`;
   const client = (id) => raw.clients.find((c) => c.id === id);
 
+  const habits = raw.habits ?? [];
+  const habit = (id) => habits.find((h) => h.id === id) ?? null;
+  /** "web" or "native" for calendar, contacts and tasks; native apps sync over CalDAV/CardDAV. */
+  const appMode = (id, app) => persona(id).devices?.[app] ?? (persona(id).traits?.includes("dav-only") && app !== "tasks" ? "native" : "web");
+  /** The native client's dialect: Apple's apps on an iPhone, DAVx5 on Android (the desk is always a Mac). */
+  const nativeClient = (id, device) => (device === "phone" && persona(id).devices?.phone === "android" ? "davx5" : "apple");
+
   return Object.freeze({
     ...raw,
+    habits,
+    habit,
+    appMode,
+    nativeClient,
     phases: PHASES,
     persona,
     teamsOf,

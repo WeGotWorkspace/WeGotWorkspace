@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { personaFacts, validateDiary, writeDiaries } from "./diary.mjs";
+import { diaryContent, personaFacts, validateDiary, writeDiaries } from "./diary.mjs";
 import { rankThemes, rankWeekFriction, weeklyDigest } from "./digest.mjs";
 
 const people = { eva: { displayName: "Eva de Wit", title: "Designer" }, joost: { displayName: "Joost Bakker", title: "PM" } };
@@ -123,4 +123,37 @@ test("facts leave out outcome notes and anything the harness may have caused", (
   assert.match(by.get(5).result, /^unclear/, "a skip behind a doubted failure is unclear too");
   assert.equal(by.get(6).situation, "reloaded the page in the middle of it");
   assert.equal(by.get(7).with, "Remco Dijkstra (guest)", "a guest is not looked up as a persona");
+});
+
+test("a diary may compare with Google only in a sentence that cites a habit or import action", () => {
+  const g = {
+    ...run,
+    plan: { actions: [...run.plan.actions, { n: 4, persona: "eva", layer: "api", kind: "habit", minute: 90, params: { habit: "expiring-link" } }] },
+    outcomes: [...run.outcomes, { n: 4, status: "ok", ms: 400 }],
+  };
+  const f = personaFacts({ world, date: "2026-11-12", persona: "eva", ...g });
+  assert.deepEqual(f.googleActions, [4]);
+  assert.match(f.team, /left Google Workspace/);
+  assert.match(f.actions.find((a) => a.n === 4).did, /link that expires/);
+  const ok = validateDiary(reply({ diary: "In Google I could let a client link expire; here I could not (#4). My upload stalled (#3).", items: [] }), f);
+  assert.equal(ok.check.invalidComparisons, 0);
+  const next = validateDiary(reply({ diary: "I wanted a link that expires, like Google Drive has. Drive could not do it (#4).", items: [] }), f);
+  assert.equal(next.check.invalidComparisons, 0, "the citation may follow in the next sentence");
+  const bad = validateDiary(reply({ diary: "Google Sheets was faster than this upload (#3). The note was fine (#1).", items: [] }), f);
+  assert.equal(bad.check.invalidComparisons, 1);
+  assert.ok(!diaryText(f).includes("googleActions"), "the model never sees the check list");
+});
+
+test("facts name the device an action ran on", () => {
+  const g = { ...run, plan: { actions: run.plan.actions.map((a) => (a.n === 1 ? { ...a, browser: "iphone", device: "phone" } : a)) } };
+  const f = personaFacts({ world, date: "2026-11-12", persona: "eva", ...g });
+  assert.equal(f.actions[0].on, "their iPhone");
+});
+
+const diaryText = (f) => JSON.stringify(diaryContent(f, []));
+
+test("a client's address among the people of an action stays an address", () => {
+  const g = { ...run, plan: { actions: [{ n: 1, persona: "eva", layer: "api", kind: "habit", minute: 5, params: { habit: "expiring-link", to: "anouk.vos@example.org" } }] }, outcomes: [{ n: 1, status: "ok", ms: 300 }], interactions: [], friction: [] };
+  const f = personaFacts({ world, date: "2026-11-12", persona: "eva", ...g });
+  assert.equal(f.actions[0].with, "anouk.vos@example.org");
 });

@@ -10,9 +10,9 @@ const MAX_PRINT_UPLOADS = 2;
 
 /** Before kick-off a project lives with sales: the Business Team's channel and folder. */
 const intake = (project) => project?.phase === "intake";
-const channelFor = (project) => (!project ? "channel:team:studio" : intake(project) ? "channel:team:business" : `channel:project:${project.id}`);
-const folderFor = (project) => (intake(project) ? "folder:team:business" : `folder:project:${project.id}`);
-const scopeFor = (project) => (!project ? "studio" : intake(project) ? "business" : project.team);
+export const channelFor = (project) => (!project ? "channel:team:studio" : intake(project) ? "channel:team:business" : `channel:project:${project.id}`);
+export const folderFor = (project) => (intake(project) ? "folder:team:business" : `folder:project:${project.id}`);
+export const scopeFor = (project) => (!project ? "studio" : intake(project) ? "business" : project.team);
 
 const MEET_TOPICS = ["check-in", "review call", "planning call", "catch-up", "walkthrough"];
 const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Amsterdam" });

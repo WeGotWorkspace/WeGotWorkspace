@@ -25,7 +25,7 @@ export const need = (ctx, key) => {
   return o;
 };
 
-async function postMessage(c, channelId, body, extra = {}) {
+export async function postMessage(c, channelId, body, extra = {}) {
   const id = ulid();
   const msg = await c.post(`/api/v1/chat/channels/${encodeURIComponent(channelId)}/messages`, { id, body, ...extra });
   return { channelId, messageId: msg?.id ?? id };

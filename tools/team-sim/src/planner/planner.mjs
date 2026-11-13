@@ -4,6 +4,7 @@ import { assertIsoDate, isWeekend, weekday } from "./dates.mjs";
 import { KINDS, PHASE_MENU } from "./kinds.mjs";
 import { canonicalJson, createRng, seedFrom, sha256 } from "./prng.mjs";
 import { rosterFor, uiPersonasFor } from "./roster.mjs";
+import { assignDevices, googleActions } from "./google.mjs";
 
 const ALL_APPS = ["chat", "docs", "notes", "tasks", "calendar", "contacts", "drive", "meet"];
 /** A kind per app used to fill a missing app/layer pair. */
@@ -16,7 +17,7 @@ const WORKDAY_MINUTES = 510;
  * `snapshot` is `{ objects: [{ key, type, scope, project, owner, status, ... }], driveBytes }`
  * read from the registry inside the night's snapshot.
  */
-export function planNight({ world, date, snapshot = { objects: [], driveBytes: 0 } }) {
+export function planNight({ world, date, snapshot = { objects: [], driveBytes: 0 }, options = {} }) {
   assertIsoDate(date);
   const rng = createRng(seedFrom(`team-sim:${date}`));
   const { present, absent } = rosterFor(world, date, rng);
@@ -47,9 +48,11 @@ export function planNight({ world, date, snapshot = { objects: [], driveBytes: 0
     traitActions(ctx, present, ui, projects);
     fillCoverage(ctx, present, ui, projects);
   }
+  // Since the move from Google: habits and leftovers from the export. Own stream, so the rest of the plan does not shift.
+  googleActions({ b, world, date, rng: rng.fork("google"), present, ui, projects, light, all: options.habits === "all" });
 
-  const actions = b.finish();
-  const hash = sha256(canonicalJson({ date, worldVersion: world.meta.version, actions }));
+  const actions = assignDevices(b.finish(), { world, rng: rng.fork("devices") });
+  const hash = sha256(canonicalJson({ date, worldVersion: world.meta.version, actions, ...(options.habits ? { options } : {}) }));
   return {
     date,
     worldVersion: world.meta.version,
@@ -61,6 +64,7 @@ export function planNight({ world, date, snapshot = { objects: [], driveBytes: 0
     infra: infraOn(world, date).map((i) => i.key),
     actions,
     hash,
+    ...(options.habits ? { options } : {}),
   };
 }
 
@@ -154,7 +158,7 @@ function fillCoverage(ctx, present, ui, projects) {
       fill(ctx, persona, projectOf(persona), FILL_KIND[app], rng.int(30, 480));
     }
     if (!has(app, "ui") && ui.length) {
-      const persona = app === "contacts" || app === "calendar" ? ui.find((p) => !world.persona(p).traits?.includes("dav-only")) ?? ui[0] : rng.pick(ui);
+      const persona = ["contacts", "calendar", "tasks"].includes(app) ? ui.find((p) => world.appMode(p, app) === "web") ?? ui[0] : rng.pick(ui);
       const kind = UI_FILL_KIND[app];
       if (kind === "meet.call") {
         const project = projectOf(persona);

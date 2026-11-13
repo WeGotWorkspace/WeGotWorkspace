@@ -18,9 +18,9 @@ export function measureRun({ paths, date }) {
   if (!run.plan) throw new Error(`no plan for ${date} under ${runDir}`);
   const measured = measureNight(run);
   const historyFile = join(stateDir(paths.data), "friction.json");
-  const { trend, itemNights, nextHistory } = frictionTrend(readJson(historyFile, { nights: [] }), date, measured);
+  const { trend, itemNights, habitTrend, nextHistory } = frictionTrend(readJson(historyFile, { nights: [] }), date, measured);
   writeJson(historyFile, nextHistory);
-  const measure = { ...measured, trend, itemNights };
+  const measure = { ...measured, trend, itemNights, habitTrend };
   writeJson(join(runDir, "measure.json"), measure);
   return { run, runDir, measure };
 }

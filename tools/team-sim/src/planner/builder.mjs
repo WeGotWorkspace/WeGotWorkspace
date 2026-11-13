@@ -15,8 +15,12 @@ export const UI_KINDS = new Set([
   "doc.cowrite",
 ]);
 
-/** Kinds the "desktop calendar app" persona plays over CalDAV/CardDAV. */
-const DAV_KINDS = new Set(["cal.event", "cal.rsvp", "cal.reschedule", "contact.create", "contact.edit"]);
+/** Kinds a native calendar, contacts or reminders app plays over CalDAV/CardDAV, per app. */
+export const NATIVE_KINDS = {
+  calendar: new Set(["cal.event", "cal.rsvp", "cal.reschedule"]),
+  contacts: new Set(["contact.create", "contact.edit"]),
+  tasks: new Set(["task.create", "task.complete"]),
+};
 
 export const APP_OF = (kind) =>
   ({
@@ -29,6 +33,8 @@ export const APP_OF = (kind) =>
     meet: "meet",
     drive: "drive",
     gap: "none",
+    habit: "none",
+    migrate: "none",
   })[kind.split(".")[0]];
 
 /**
@@ -49,8 +55,8 @@ export function createBuilder({ world, date, rng, snapshot, ui }) {
   const line = (pool, persona) => rng.pick(pool[lang(persona)] ?? pool.en);
 
   function layerFor(persona, kind) {
-    const traits = world.persona(persona).traits ?? [];
-    if (traits.includes("dav-only") && DAV_KINDS.has(kind)) return "dav";
+    const app = APP_OF(kind);
+    if (NATIVE_KINDS[app]?.has(kind) && world.appMode(persona, app) === "native") return "dav";
     if (kind === "meet.call" || kind === "doc.cowrite") return "ui";
     if (ui.includes(persona) && UI_KINDS.has(kind)) return "ui";
     return "api";
@@ -62,7 +68,7 @@ export function createBuilder({ world, date, rng, snapshot, ui }) {
     const action = {
       persona: spec.persona,
       layer: spec.layer ?? layerFor(spec.persona, spec.kind),
-      app: APP_OF(spec.kind),
+      app: spec.app ?? APP_OF(spec.kind),
       kind: spec.kind,
       minute: Math.min(509, Math.max(spec.minute, after)),
       params: spec.params ?? {},
