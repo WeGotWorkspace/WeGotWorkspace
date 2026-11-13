@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchWgwUnifiedSearch, type WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
-import { sortDocsHomeResults } from "@/lib/files/docs-home-listing";
 import type { DriveFile } from "@/lib/files/drive-models";
 import {
   apiPathFromSearchSourceKey,
@@ -13,11 +12,12 @@ import {
   DOCS_HOME_LIST_EXTENSIONS,
   DOCS_HOME_PAGE_SIZE,
   DOCS_HOME_SOURCES,
+  sortDocsHomeResults,
+  type DocsHomeFetcher,
 } from "@/lib/files/docs-home-listing";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { resolveDocsDriveLabel, type DocsHomeGroupRoot } from "@/docs-core/src/docs-home-drives";
 import { useDocsHomeListingLoad } from "@/docs-core/src/use-docs-home-listing-load";
-import { type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { OFFLINE_CACHE_TIMEOUT_MS } from "@/lib/offline/core/offline-cache-guard";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";

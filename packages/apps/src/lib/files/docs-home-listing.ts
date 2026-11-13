@@ -28,7 +28,6 @@ export const DOCS_HOME_LIST_CATEGORIES = [...DOCS_HOME_CATEGORIES, "file"] as co
 /** Page size for offset/limit pagination (matches the Mail `hasMore` pattern). */
 export const DOCS_HOME_PAGE_SIZE = 50;
 
-/** Newest first; ties by search row id, newest first. */
 /** Sort raw browse results newest-first (client-side safety net over server order). */
 export function sortDocsHomeResults(
   results: readonly WgwUnifiedSearchResult[],

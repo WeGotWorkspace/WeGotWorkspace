@@ -3,8 +3,8 @@ import {
   DOCS_HOME_LIST_CATEGORIES,
   DOCS_HOME_LIST_EXTENSIONS,
   DOCS_HOME_SOURCES,
+  sortDocsHomeResults,
 } from "@/lib/files/docs-home-listing";
-import { sortDocsHomeResults } from "@/lib/files/docs-home-listing";
 import { rememberOfflineDocsUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readMeta } from "@/lib/offline/core/meta-store";
