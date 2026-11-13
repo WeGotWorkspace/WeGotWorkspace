@@ -682,10 +682,10 @@ export async function uploadFileNodes(
 
 export async function listFileNodeEntriesByPaths(
   paths: string[],
-  opts?: { signal?: AbortSignal },
+  opts?: { signal?: AbortSignal; username?: string },
 ): Promise<WgwDriveDirectoryEntry[]> {
   const session = await driveJmapSession();
-  const user = await fetchDriveUser(opts);
+  const username = opts?.username ?? (await fetchDriveUser(opts)).username;
   const normalized = Array.from(
     new Set(
       paths.map((path) => normalizePath(path)).filter((path) => path !== "/" && path.length > 1),
@@ -698,7 +698,7 @@ export async function listFileNodeEntriesByPaths(
   await Promise.all(
     parentDirs.map(async (dir) => {
       try {
-        const listing = await listFileNodeEntries(session, dir, user.username, {
+        const listing = await listFileNodeEntries(session, dir, username, {
           signal: opts?.signal,
         });
         for (const entry of listing) entriesByPath.set(normalizePath(entry.path), entry);

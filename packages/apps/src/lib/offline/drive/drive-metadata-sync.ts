@@ -6,8 +6,8 @@ import { stampDocsAvailabilityNodeIds } from "@/lib/offline/docs/docs-availabili
 import { writeDriveBootstrapToCache } from "@/lib/offline/drive/drive-directory-offline-store";
 import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { rememberDriveFolderNodeId } from "@/lib/offline/drive/upload/drive-upload-target";
-import type { DriveAppBootstrap } from "@/lib/files/drive-types";
-import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
+import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
+import { normalizeApiVirtualPath as normalizePath, parentAndName } from "@/lib/files/api-path";
 
 const DRIVE_METADATA_SYNC_META_KEY = "drive:metadata-sync:progress";
 
@@ -152,12 +152,15 @@ export async function syncDriveMetadataTree(
   return progress;
 }
 
+/** The home listing also shows the group roots, which are not its children. */
 export async function refreshDriveDirectoryCache(
   username: string,
-  parentPath: string,
-  signal?: AbortSignal,
+  data: DriveUIData,
 ): Promise<void> {
   if (!getConnectivitySnapshot()) return;
-  const entries = await fetchDirectoryEntries(username, parentPath, signal);
-  await cacheDirectoryEntries(username, parentPath, entries);
+  const parent = normalizePath(data.cwd);
+  const entries = data.directory.files.filter(
+    (entry) => parentAndName(entry.path).destination === parent,
+  );
+  await cacheDirectoryEntries(username, parent, entries);
 }
