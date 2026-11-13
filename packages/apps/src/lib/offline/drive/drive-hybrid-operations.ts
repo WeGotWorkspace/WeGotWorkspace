@@ -179,7 +179,7 @@ export function createHybridDriveOperations(
           cachedBootstrap = nextBootstrap;
           await writeDriveBootstrapToCache(username, nextBootstrap);
           rememberOfflineDriveUsername(username);
-          await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
+          await refreshDriveDirectoryCache(username, data);
           return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -201,7 +201,7 @@ export function createHybridDriveOperations(
             cachedBootstrap = { ...cachedBootstrap, data };
             await writeDriveBootstrapToCache(username, cachedBootstrap);
           }
-          await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
+          await refreshDriveDirectoryCache(username, data);
           return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -223,7 +223,7 @@ export function createHybridDriveOperations(
       if (readBrowserOnline()) {
         try {
           const data = await live.listDirectory(target, opts);
-          await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
+          await refreshDriveDirectoryCache(username, data);
           return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
