@@ -3,6 +3,7 @@
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Services\Calendars\Availability\AvailabilityCachePruner;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
+use App\Services\Calendars\Imip\ImipMailboxPoller;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
@@ -503,6 +504,13 @@ Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobMaintenance $maintenance
 
     return Command::SUCCESS;
 })->purpose('Delete expired, unreferenced JMAP blobs, assemblies, and staged copies, and hash files discovered on disk (domain references are never collected)');
+
+Artisan::command('wgw:calendar:imip-poll', function (ImipMailboxPoller $poller): int {
+    $polled = $poller->pollDue();
+    $this->info(sprintf('Polled %d calendar reply mailbox(es).', $polled));
+
+    return Command::SUCCESS;
+})->purpose('Read invitation replies from the reply mailboxes users connected in Calendar settings (#1589)');
 
 Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler): int {
     $fired = $scheduler->scan();
