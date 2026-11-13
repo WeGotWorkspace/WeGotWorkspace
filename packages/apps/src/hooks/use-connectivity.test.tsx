@@ -7,7 +7,7 @@ import {
   readBrowserOnline,
   resetConnectivityHubForTests,
   subscribeBrowserOnline,
-} from "@/lib/offline/browser-online";
+} from "@/lib/offline/core/browser-online";
 
 describe("readBrowserOnline", () => {
   it("reflects navigator.onLine when available", () => {

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { resetConnectivityHubForTests } from "@/lib/offline/browser-online";
+import { resetConnectivityHubForTests } from "@/lib/offline/core/browser-online";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { resetDocsCollabBackoffForTests } from "./docs-collab-room-backoff";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";

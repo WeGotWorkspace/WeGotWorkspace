@@ -11,7 +11,7 @@ import {
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
 import { calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 
 const username = "alice";
 

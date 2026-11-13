@@ -9,7 +9,7 @@ const persistCollabSave = vi.hoisted(() => vi.fn());
 
 const online = vi.hoisted(() => ({ value: true }));
 
-vi.mock("@/lib/offline/browser-online", () => ({
+vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => online.value,
 }));
 

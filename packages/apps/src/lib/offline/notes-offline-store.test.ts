@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { Note } from "@/lib/models/note";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";

@@ -10,7 +10,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable, notesNotebooksTable } from "@/lib/offline/notes/notes-schema";
 import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
 import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";

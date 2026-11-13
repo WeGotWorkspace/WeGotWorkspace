@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import type * as Y from "yjs";
-import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";

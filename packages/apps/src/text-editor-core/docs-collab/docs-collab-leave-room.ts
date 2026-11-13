@@ -1,5 +1,5 @@
 import type { IndexeddbPersistence } from "y-indexeddb";
-import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import { uploadPendingCollabRooms } from "./docs-collab-pending-upload";
 import type { DocsCollabUrls } from "./docs-collab-types";

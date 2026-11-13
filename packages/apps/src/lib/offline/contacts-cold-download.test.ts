@@ -14,7 +14,7 @@ import {
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
 const username = "alice";
@@ -42,7 +42,7 @@ function card(id: string, full = id): ContactCard {
   } as unknown as ContactCard;
 }
 
-vi.mock("@/lib/offline/browser-online", () => ({
+vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
   isFetchNetworkError: vi.fn(
     (error: unknown) => error instanceof TypeError && error.message.includes("network"),
@@ -84,7 +84,7 @@ import {
   fetchContactCardPages,
   fetchContactsLiveBootstrap,
 } from "@/lib/api/wgw/contacts-bootstrap";
-import { readBrowserOnline } from "@/lib/offline/browser-online";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   fetchContactsHybridBootstrap,
   getContactsSyncRunner,

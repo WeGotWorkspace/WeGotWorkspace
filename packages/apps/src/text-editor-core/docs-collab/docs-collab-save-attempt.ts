@@ -1,5 +1,5 @@
 import type * as Y from "yjs";
-import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
 import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
