@@ -7,12 +7,11 @@ namespace App\Services\Calendars\Imip;
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Models\CalendarObject;
+use App\Services\Calendars\CalendarObjectSearchIndex;
 use App\Services\Calendars\CalendarPrincipalAddresses;
 use App\Services\Calendars\CalendarSchedulingDeliveryPolicy;
 use App\Services\Calendars\CalendarSchedulingObjects;
 use App\Services\Notify\CalendarRsvpNotify;
-use App\Services\Search\BestEffortSearchIndexSync;
-use App\Services\Search\SearchIndexerService;
 use App\Services\VObject\VObjectPayloadGuard;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -67,8 +66,7 @@ final class ImipReplyIngest
         private readonly CalendarSchedulingDeliveryPolicy $deliveryPolicy,
         private readonly ImipReplyRateLimiter $rateLimiter,
         private readonly WgwCalendarBackendFactory $backends,
-        private readonly SearchIndexerService $searchIndexer,
-        private readonly BestEffortSearchIndexSync $searchIndexSync,
+        private readonly CalendarObjectSearchIndex $searchIndex,
         private readonly EventDispatch $eventDispatch,
     ) {}
 
@@ -248,7 +246,7 @@ final class ImipReplyIngest
             (string) $object->uri,
             $updated->serialize(),
         );
-        $this->index((string) $instance->principaluri, (string) $instance->uri, (string) $object->uri);
+        $this->searchIndex->index((string) $instance->principaluri, (string) $instance->uri, (string) $object->uri);
         $this->notify($owner, $sender, $components[0], $updated, $uid);
 
         return ImipReplyOutcome::applied($uid);
@@ -365,20 +363,6 @@ final class ImipReplyIngest
         }
 
         return $statuses;
-    }
-
-    private function index(string $principalUri, string $calendarUri, string $eventUri): void
-    {
-        $username = str_starts_with($principalUri, 'principals/')
-            ? substr($principalUri, strlen('principals/'))
-            : $principalUri;
-        $davPath = 'calendars/'.$username.'/'.$calendarUri.'/'.$eventUri;
-        $this->searchIndexSync->sync(
-            'calendars',
-            fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
-            $davPath,
-            $username,
-        );
     }
 
     /**
