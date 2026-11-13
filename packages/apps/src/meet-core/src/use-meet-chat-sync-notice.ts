@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { getMeetChatSyncRunner } from "@/lib/offline/meet-chat-hybrid-operations";
 import { listFailedMeetChatOutbox } from "@/lib/offline/meet-chat-offline-store";
-import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
+import { useFailedOutboxCount } from "@/lib/offline/core/use-failed-outbox-count";
 import type { ActionNotice } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { meetLabels } from "@/meet-core/src/meet-labels";
