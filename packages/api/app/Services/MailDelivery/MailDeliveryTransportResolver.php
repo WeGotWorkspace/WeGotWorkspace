@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\MailDelivery;
 
+use App\Support\SafePath;
+
 final class MailDeliveryTransportResolver
 {
     /** @var (callable(): bool)|null */
@@ -127,6 +129,6 @@ final class MailDeliveryTransportResolver
         }
         $binary = explode(' ', $path, 2)[0];
 
-        return $binary !== '' && is_executable($binary);
+        return $binary !== '' && SafePath::isAccessible($binary) && is_executable($binary);
     }
 }
