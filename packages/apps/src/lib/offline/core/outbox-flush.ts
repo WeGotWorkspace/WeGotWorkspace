@@ -71,7 +71,7 @@ export type OutboxFlushBinding<TPayload> = {
 export type OutboxFlushCounts = {
   /** Rows the server took (and that left the outbox). */
   flushed: number;
-  /** Rows whose send failed; each keeps its error and status for the notices. */
+  /** Rows whose send failed; unless `onFailure` handled it, each keeps its error and status for the notices. */
   failed: number;
 };
 

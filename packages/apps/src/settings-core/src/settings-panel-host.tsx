@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import type { SettingsReachabilityContext } from "@/settings-core/src/settings-reachability";
 import { slicesFor, type SettingsSliceRenderProps } from "@/settings-core/src/settings-registry";
-import type { SettingsPanelId } from "@/settings-core/src/settings-types";
+import type { SettingsPanelId } from "@/lib/models/settings-types";
 
 const EMPTY_SLICE_PROPS = { memberships: [] } as unknown as SettingsSliceRenderProps;
 

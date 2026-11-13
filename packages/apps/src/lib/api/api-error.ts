@@ -24,3 +24,16 @@ export class ApiError extends Error {
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
+
+/**
+ * The server answered, but the client cannot use the answer: a body that is
+ * not JSON, a response without a field the contract promises (an id, a
+ * `blobId`, a new state, a token), or a record that cannot be read back right
+ * after it was written. There is no HTTP status to classify on, so it carries
+ * none: the offline outbox keeps treating it as transient, as it did when this
+ * was a bare `Error`.
+ *
+ * Like `ApiError`, it sets no `name`, so `String(error)` and the message stay
+ * the same as before.
+ */
+export class UnexpectedApiResponseError extends Error {}

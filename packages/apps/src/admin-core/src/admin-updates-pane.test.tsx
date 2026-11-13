@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";
 import { createMockAdminOperations } from "@/admin-core/src/admin-mock-operations";
-import type { AdminAPIOperations, AdminUpdateState } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations, AdminUpdateState } from "@/lib/models/admin-types";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";

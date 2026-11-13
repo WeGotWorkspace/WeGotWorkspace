@@ -1,4 +1,4 @@
-import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
+import type { ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 
 /** Delay after the last edit before flushing a debounced contact save (ms). */
 export const CONTACTS_AUTOSAVE_DEBOUNCE_MS = 600;

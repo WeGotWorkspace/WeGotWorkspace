@@ -5,7 +5,7 @@ import {
   createDefaultInstallerApiSource,
   type InstallerApiSource,
 } from "@/installer-core/src/installer-api-source";
-import type { InstallerUIData } from "@/installer-core/src/installer-types";
+import type { InstallerUIData } from "@/lib/models/installer-types";
 
 export function useInstallerAPI(source?: InstallerApiSource) {
   const resolvedSource = useMemo(() => source ?? createDefaultInstallerApiSource(), [source]);

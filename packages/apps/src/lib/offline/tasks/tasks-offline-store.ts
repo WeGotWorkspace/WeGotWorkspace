@@ -8,6 +8,7 @@ import {
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
+import { createLocalEntityId, outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   TASKS_DOMAIN,
@@ -160,33 +161,17 @@ export async function listPendingTaskIds(username: string): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
-export function tasksOutboxTaskId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== TASKS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      taskId?: string;
-      tempTaskId?: string;
-      creationId?: string;
-    };
-    return payload.taskId ?? payload.tempTaskId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const tasksOutboxTaskId = outboxEntityIdReader(TASKS_DOMAIN, [
+  "taskId",
+  "tempTaskId",
+  "creationId",
+]);
 
-export function tasksOutboxTaskListId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== TASKS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      taskListId?: string;
-      tempListId?: string;
-      creationId?: string;
-    };
-    return payload.taskListId ?? payload.tempListId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const tasksOutboxTaskListId = outboxEntityIdReader(TASKS_DOMAIN, [
+  "taskListId",
+  "tempListId",
+  "creationId",
+]);
 
 export async function enqueueCoalescedTaskUpdate(
   username: string,
@@ -208,9 +193,9 @@ export async function enqueueCoalescedTaskUpdate(
 }
 
 export function createTempTaskId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId();
 }
 
 export function createTempTaskListId(): string {
-  return `local-list-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId("local-list-");
 }

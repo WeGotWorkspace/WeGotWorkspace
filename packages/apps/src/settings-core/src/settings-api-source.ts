@@ -10,7 +10,7 @@ import {
   revokeSettingsMcpGrant,
   saveSettingsProfile,
 } from "@/lib/api/wgw/settings";
-import type { SettingsAPIOperations } from "@/settings-core/src/settings-types";
+import type { SettingsAPIOperations } from "@/lib/models/settings-types";
 
 export type SettingsApiSource = {
   loadBootstrap: () => Promise<SettingsAppBootstrap>;

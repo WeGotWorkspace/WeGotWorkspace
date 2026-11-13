@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Collab;
 
-use App\Services\Collab\CollabResponseException;
+use App\Exceptions\RealtimeApiException;
 use App\Services\Collab\CollabRoomPolicy;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -100,8 +100,8 @@ final class CollabRoomPolicyTest extends TestCase
 
         try {
             $policy->cleanRoom($room);
-            $this->fail('Expected '.CollabResponseException::class.' for room: '.$room);
-        } catch (CollabResponseException $exception) {
+            $this->fail('Expected '.RealtimeApiException::class.' for room: '.$room);
+        } catch (RealtimeApiException $exception) {
             $this->assertSame(400, $exception->status);
             $this->assertSame('invalid_room', $exception->errorCode);
         }
@@ -111,7 +111,7 @@ final class CollabRoomPolicyTest extends TestCase
     {
         $policy = new CollabRoomPolicy;
 
-        $this->expectException(CollabResponseException::class);
+        $this->expectException(RealtimeApiException::class);
         $policy->cleanRoom(['users/alice/plan.md']);
     }
 
@@ -141,8 +141,8 @@ final class CollabRoomPolicyTest extends TestCase
 
         try {
             $policy->cleanDocumentPath('users/alice/docs/Café notities.png');
-            $this->fail('Expected '.CollabResponseException::class.' for a binary extension.');
-        } catch (CollabResponseException $exception) {
+            $this->fail('Expected '.RealtimeApiException::class.' for a binary extension.');
+        } catch (RealtimeApiException $exception) {
             $this->assertSame(400, $exception->status);
             $this->assertSame('invalid_document_path', $exception->errorCode);
         }

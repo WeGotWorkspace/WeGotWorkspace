@@ -1,6 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEvent, CalendarEventsMap } from "@/lib/calendar-engine";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
+import { TASK_DUE_OVERLAY_KIND, taskDueOverlayKey } from "@/lib/calendar/calendar-render-overlay";
 import {
   isTaskCompleted,
   parseDueDateValue,
@@ -9,8 +10,6 @@ import {
   taskListTitle,
 } from "@/tasks-core/src/tasks-task-utils";
 
-export const TASK_DUE_OVERLAY_KEY_PREFIX = "task:";
-export const TASK_DUE_OVERLAY_KIND = "task" as const;
 export const TASK_DUE_OVERLAY_TIMED_DURATION = Temporal.Duration.from({ minutes: 30 });
 export const TASK_DUE_OVERLAY_ALL_DAY_DURATION = Temporal.Duration.from({ days: 1 });
 
@@ -31,27 +30,6 @@ export type TaskDueOverlayModel = {
   markers: TaskDueOverlayMarker[];
   taskLists: TaskList[];
 };
-
-export function taskDueOverlayKey(taskId: string): string {
-  return `${TASK_DUE_OVERLAY_KEY_PREFIX}${taskId}`;
-}
-
-export function parseTaskDueOverlayKey(key: string | undefined | null): string | null {
-  if (!key?.startsWith(TASK_DUE_OVERLAY_KEY_PREFIX)) return null;
-  const taskId = key.slice(TASK_DUE_OVERLAY_KEY_PREFIX.length);
-  return taskId.length > 0 ? taskId : null;
-}
-
-export function isTaskDueOverlayKey(key: string | undefined | null): boolean {
-  return parseTaskDueOverlayKey(key) !== null;
-}
-
-export function isTaskDueOverlayEvent(
-  event: Pick<CalendarEvent, "overlayKind" | "eventId"> | undefined | null,
-): boolean {
-  if (!event) return false;
-  return event.overlayKind === TASK_DUE_OVERLAY_KIND || isTaskDueOverlayKey(event.eventId);
-}
 
 export function tasksListTaskHref(listId: string, taskId: string): string {
   return `/tasks/lists/${encodeURIComponent(listId)}?task=${encodeURIComponent(taskId)}`;
@@ -159,80 +137,6 @@ export function taskDueOverlapsRange(
     Temporal.PlainDateTime.compare(start, range.end) < 0 &&
     Temporal.PlainDateTime.compare(end, range.start) > 0
   );
-}
-
-/** Any render-only row (task dues, teammates' busy blocks) — they all carry `overlayKind`. */
-function isRenderOnlyRow(key: string, event: CalendarEvent): boolean {
-  return isTaskDueOverlayEvent(event) || isTaskDueOverlayKey(key) || event.overlayKind != null;
-}
-
-export function extractRenderOnlyOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
-  const overlay: CalendarEventsMap = new Map();
-  for (const [key, event] of events) {
-    if (isRenderOnlyRow(key, event)) {
-      overlay.set(key, event);
-    }
-  }
-  return overlay;
-}
-
-export function omitRenderOnlyOverlayEvents(events: CalendarEventsMap): CalendarEventsMap {
-  let changed = false;
-  const next: CalendarEventsMap = new Map();
-  for (const [key, event] of events) {
-    if (isRenderOnlyRow(key, event)) {
-      changed = true;
-      continue;
-    }
-    next.set(key, event);
-  }
-  return changed ? next : events;
-}
-
-export function mergeRenderOnlyOverlayEvents(
-  events: CalendarEventsMap,
-  overlay: CalendarEventsMap,
-): CalendarEventsMap {
-  if (overlay.size === 0) return events;
-  const next: CalendarEventsMap = new Map(omitRenderOnlyOverlayEvents(events));
-  for (const [key, event] of overlay) next.set(key, event);
-  return next;
-}
-
-export function preserveRenderOnlyOverlayEvents(
-  previous: CalendarEventsMap | undefined,
-  next: CalendarEventsMap,
-): CalendarEventsMap {
-  return mergeRenderOnlyOverlayEvents(
-    omitRenderOnlyOverlayEvents(next),
-    extractRenderOnlyOverlayEvents(previous ?? new Map()),
-  );
-}
-
-/**
- * Calendar visibility filter that still paints overlay rows (no calendarId).
- * Empty `visibleCalendarIds` hides every VEVENT but keeps task dues already
- * sitting in `events`. Live Tasks dues are merged separately via
- * `taskDueMarkers` on `wgw-calendar-surface` after this filter.
- */
-export function filterVisibleCalendarEventsKeepingOverlay(
-  events: CalendarEventsMap,
-  visibleCalendarIds?: readonly string[],
-): CalendarEventsMap {
-  if (visibleCalendarIds === undefined) return events;
-  const allowed = new Set(visibleCalendarIds);
-  const filtered: CalendarEventsMap = new Map();
-  for (const [key, event] of events) {
-    if (isRenderOnlyRow(key, event)) {
-      filtered.set(key, event);
-      continue;
-    }
-    if (allowed.size === 0) continue;
-    if (!event.calendarId || allowed.has(event.calendarId)) {
-      filtered.set(key, event);
-    }
-  }
-  return filtered;
 }
 
 export function formatTaskDueOverlayWhen(due: string, allDay: boolean, locale: string): string {

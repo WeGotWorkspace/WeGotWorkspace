@@ -10,7 +10,7 @@ import {
   settingsProfileFormToRequest,
   type SettingsProfileFormValues,
 } from "@/settings-core/src/settings-profile-form-schema";
-import type { SettingsAPIOperations, SettingsUser } from "@/settings-core/src/settings-types";
+import type { SettingsAPIOperations, SettingsUser } from "@/lib/models/settings-types";
 
 export type SettingsProfileUnsyncedDiscard = {
   description: string;

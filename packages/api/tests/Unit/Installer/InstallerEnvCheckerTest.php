@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Installer;
 
 use App\Services\Installer\InstallerEnvChecker;
+use Illuminate\Support\Facades\File;
+use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
 
 /**
@@ -32,5 +34,22 @@ final class InstallerEnvCheckerTest extends TestCase
 
         $this->assertTrue($checker->allPassed([$requiredOk, $optionalMissing]));
         $this->assertFalse($checker->allPassed([$requiredOk, $optionalMissing, $requiredMissing]));
+    }
+
+    public function test_check_all_checks_the_configured_storage_path(): void
+    {
+        $root = sys_get_temp_dir().'/wgw-env-checker-'.uniqid('', true);
+        mkdir($root.'/packages/api/vendor', 0775, true);
+        touch($root.'/packages/api/vendor/autoload.php');
+        WgwInstallFixture::bindInstallRoot($root, $root.'/content');
+        $this->app->useStoragePath($root.'/storage');
+
+        try {
+            $labels = array_column($this->app->make(InstallerEnvChecker::class)->checkAll('sqlite'), 'label');
+        } finally {
+            File::deleteDirectory($root);
+        }
+
+        $this->assertContains('Writable: '.$root.'/storage', $labels);
     }
 }

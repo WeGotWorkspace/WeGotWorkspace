@@ -7,7 +7,7 @@ import type {
 import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 import { useNotesNotebookDelete } from "@/notes-core/src/use-notes-notebook-delete";
-import { notesWithRenamedNotebook } from "@/notes-core/src/notes-note-utils";
+import { notesWithRenamedNotebook } from "@/lib/models/note-list-model";
 import {
   canChangeNotebookOwner,
   canDeleteNotebook,

@@ -12,6 +12,7 @@ import {
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
+import { createLocalEntityId, outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   CALENDARS_DOMAIN,
@@ -267,19 +268,11 @@ export async function listPendingCalendarEventIds(username: string): Promise<str
   return rows.map((row) => row.id);
 }
 
-export function calendarsOutboxEventId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== CALENDARS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      eventId?: string;
-      tempEventId?: string;
-      creationId?: string;
-    };
-    return payload.eventId ?? payload.tempEventId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const calendarsOutboxEventId = outboxEntityIdReader(CALENDARS_DOMAIN, [
+  "eventId",
+  "tempEventId",
+  "creationId",
+]);
 
 export async function enqueueCoalescedCalendarEventUpdate(
   username: string,
@@ -321,9 +314,9 @@ export async function discardUnsentCalendarEvent(
 }
 
 export function createTempCalendarEventId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId();
 }
 
 export function createTempCalendarId(): string {
-  return `local-cal-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId("local-cal-");
 }

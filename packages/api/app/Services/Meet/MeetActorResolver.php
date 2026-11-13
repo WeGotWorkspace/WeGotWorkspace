@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Meet;
 
+use App\Exceptions\RealtimeApiException;
 use Illuminate\Http\Request;
 
 final class MeetActorResolver
@@ -32,7 +33,7 @@ final class MeetActorResolver
             return $this->ownerMarkerForGuestSession($sessionKey);
         }
 
-        throw new MeetResponseException(401, 'auth_required', 'Sign in or re-open the guest join link to start a signaling session.');
+        throw new RealtimeApiException(401, 'auth_required', 'Sign in or re-open the guest join link to start a signaling session.');
     }
 
     /**

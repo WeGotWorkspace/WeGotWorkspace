@@ -4,7 +4,7 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
 import { docsSessionKnown } from "@/docs-core/src/docs-session-known";
@@ -42,7 +42,7 @@ import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
 import { ShareDialog } from "@/share-ui/share-dialog";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));

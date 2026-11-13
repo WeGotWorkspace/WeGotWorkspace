@@ -1,3 +1,4 @@
+import { UnexpectedApiResponseError } from "@/lib/api/api-error";
 import type { ContactCard, ContactCardCreate, ContactCardPatch } from "@/lib/models/contacts-types";
 import { connectedContacts, getCard } from "@/lib/api/wgw/contacts";
 import type { JmapContactCard, SetResponse } from "@/lib/jmap-client";
@@ -22,6 +23,22 @@ export class ContactStateMismatchError extends Error {
   constructor(cardId: string, message = "Contact state mismatch") {
     super(message);
     this.cardId = cardId;
+  }
+}
+
+/**
+ * `Contact/set` refused a card with a JMAP `SetError` other than
+ * `stateMismatch` (which is `ContactStateMismatchError`). A SetError has no
+ * HTTP status, so this carries none and the outbox keeps treating it as it did
+ * when this was a bare `Error`. The message is the server's description, or
+ * the SetError type. Sets no `name`, so `String(error)` is unchanged.
+ */
+export class ContactSetRejectedError extends Error {
+  readonly setErrorType: string | undefined;
+
+  constructor(message: string, setErrorType: string | undefined) {
+    super(message);
+    this.setErrorType = setErrorType;
   }
 }
 
@@ -107,7 +124,7 @@ export function throwOnSetMismatch(
     throw new ContactStateMismatchError(cardId, err.description);
   }
   if (err) {
-    throw new Error(err.description || err.type);
+    throw new ContactSetRejectedError(err.description || err.type, err.type);
   }
 }
 
@@ -127,7 +144,7 @@ export async function patchCardViaSet(
   throwOnSetMismatch(cardId, response, "notUpdated");
   const newState = response.updated[cardId];
   if (!newState) {
-    throw new Error("Contact/set update did not return new state");
+    throw new UnexpectedApiResponseError("Contact/set update did not return new state");
   }
   return { cardId, newState };
 }
@@ -156,7 +173,7 @@ export async function createCardViaSet(
   const serverId = response.created[creationId];
   if (!serverId) {
     const err = response.notCreated[creationId];
-    throw new Error(err?.description ?? "Contact create failed");
+    throw new ContactSetRejectedError(err?.description ?? "Contact create failed", err?.type);
   }
   return getCard(serverId, { signal: opts?.signal });
 }

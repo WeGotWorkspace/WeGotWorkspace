@@ -1,4 +1,4 @@
-import type { AdminUser } from "@/admin-core/src/admin-types";
+import type { AdminUser } from "@/lib/models/admin-types";
 
 export type CreateUserDecision =
   | { ok: true; username: string }

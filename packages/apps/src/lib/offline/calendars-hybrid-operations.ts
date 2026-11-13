@@ -7,7 +7,7 @@ import type {
   CalendarPatch,
   CalendarSubscriptionDraft,
 } from "@/lib/models/calendar-types";
-import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import {
   createCalendarEventLive,
@@ -42,7 +42,7 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
-import { draftToJmapEvent } from "@/calendar-core/src/calendar-wire";
+import { draftToJmapEvent } from "@/lib/calendar/calendar-wire";
 import { applyCalendarEventPatch } from "@/lib/offline/calendars/calendars-patch-merge";
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {

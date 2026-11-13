@@ -7,7 +7,7 @@ import {
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
 import { calendarAvailabilityLabels as labels } from "@/settings-core/src/settings-calendar-availability-labels";
 import { SettingsCalendarAvailabilitySection } from "@/settings-core/src/settings-calendar-availability-section";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved } from "@/lib/settings-slice-saved";
 import { TooltipProvider } from "@/ui/tooltip";
 import type { CalendarAvailabilitySettings } from "@wgw/openapi-types/calendars-types";
 
@@ -17,9 +17,9 @@ vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => ({ showSuccess: toast.success, showError: toast.error }),
 }));
 
-vi.mock("@/settings-core/src/settings-slice-saved", async () => {
-  const actual = await vi.importActual<typeof import("@/settings-core/src/settings-slice-saved")>(
-    "@/settings-core/src/settings-slice-saved",
+vi.mock("@/lib/settings-slice-saved", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/settings-slice-saved")>(
+    "@/lib/settings-slice-saved",
   );
   return { ...actual, notifySettingsSliceSaved: vi.fn() };
 });

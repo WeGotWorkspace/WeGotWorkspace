@@ -126,6 +126,14 @@ export const contactsSyncMatrixSpecPattern = /contacts-sync-matrix\.spec\.ts/;
  */
 export const calendarSyncMatrixSpecPattern = /calendar-sync-matrix\.spec\.ts/;
 
+/**
+ * Meet chat sync matrix (#1565): chat on the shared offline engine (cold
+ * offline open, offline send and reload, second tab, a refused send, changes
+ * through the channel token). Needs the production build for the offline
+ * cases. Its own nightly job, like the Contacts matrix.
+ */
+export const meetChatSyncMatrixSpecPattern = /meet-chat-sync-matrix\.spec\.ts/;
+
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;
 

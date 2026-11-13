@@ -1,8 +1,8 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
-import type { AdminUIData, AdminUpdateCheck } from "@/admin-core/src/admin-types";
-import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
+import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
+import type { AdminUIData, AdminUpdateCheck } from "@/lib/models/admin-types";
+import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 
 const DEFAULT_SERVER_CHECKS: AdminUpdateCheck[] = [
   { ok: true, label: "PHP runtime", detail: "Meets minimum version for this release." },

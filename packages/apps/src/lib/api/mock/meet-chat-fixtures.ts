@@ -1,6 +1,6 @@
 import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
-import { mapChatPreviews } from "@/meet-core/src/meet-chat-urls";
-import { meetDirectMessageChannelId } from "@/meet-core/src/meet-direct-messages";
+import { mapChatPreviews } from "@/lib/meetings/meet-chat-urls";
+import { meetDirectMessageChannelId } from "@/lib/meetings/meet-direct-messages";
 import type {
   ChatMessage,
   ChatMention,

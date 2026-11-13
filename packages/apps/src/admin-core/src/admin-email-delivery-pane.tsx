@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   lastTestSendLabel,
   MAIL_DELIVERY_PLACEHOLDER_FROM,
-} from "@/admin-core/src/admin-mail-delivery";
+} from "@/lib/models/admin-mail-delivery";
 import { MailDeliveryTestDialog } from "@/admin-core/src/mail-delivery-test-dialog";
 import { SECURITY_OPTIONS } from "@/admin-core/src/admin-workspace-utils";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
-import type { AdminMailDeliveryCapability } from "@/admin-core/src/admin-types";
+import type { AdminMailDeliveryCapability } from "@/lib/models/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 const TRANSPORT_OPTIONS = [
