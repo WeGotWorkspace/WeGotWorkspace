@@ -20,10 +20,10 @@ import { newEventFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import {
+  isAvailabilityCalendarId,
   isRenderOnlyOverlayEvent,
   isRenderOnlyOverlayKey,
 } from "@/lib/calendar/calendar-render-overlay";
-import { isAvailabilityCalendarId } from "@/lib/calendar/calendar-render-overlay";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,

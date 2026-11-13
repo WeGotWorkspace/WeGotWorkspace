@@ -41,8 +41,10 @@ import {
   isCalendarEventException,
   isCalendarEventRecurring,
 } from "../types/calendarEventSemantics.js";
-import { preserveRenderOnlyOverlayEvents } from "@/lib/calendar/calendar-render-overlay";
-import { isRenderOnlyOverlayKey } from "@/lib/calendar/calendar-render-overlay";
+import {
+  isRenderOnlyOverlayKey,
+  preserveRenderOnlyOverlayEvents,
+} from "@/lib/calendar/calendar-render-overlay";
 
 type EventsMap = CalendarEventsMap;
 type EventEntry = [string, ApiCalendarEvent];

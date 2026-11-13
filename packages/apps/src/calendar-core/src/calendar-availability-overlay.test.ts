@@ -7,10 +7,10 @@ import {
 import {
   availabilityCalendarId,
   isAvailabilityCalendarId,
+  isRenderOnlyOverlayKey,
   parseAvailabilityOverlayKey,
 } from "@/lib/calendar/calendar-render-overlay";
 import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
-import { isRenderOnlyOverlayKey } from "@/lib/calendar/calendar-render-overlay";
 
 describe("availability overlay", () => {
   it("names a teammate's virtual calendar availability:{username}", () => {
