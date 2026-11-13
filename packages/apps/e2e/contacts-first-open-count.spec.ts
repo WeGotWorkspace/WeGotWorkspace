@@ -3,43 +3,17 @@
 // The All Contacts header must show the number of contacts (groups left out)
 // from the first paint on, not the rows loaded so far.
 import { expect, test, type Page } from "./helpers/live-test";
-
-const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
-const USER = process.env.WGW_E2E_USERNAME ?? "admin";
-const PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
-const USING = ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:contacts"];
+import {
+  CONTACTS_E2E_USER as USER,
+  contactsJmap as jmap,
+  createContactCards,
+  destroyContactCards,
+} from "./helpers/contacts-jmap";
 
 /** More than two card pages, so the header is painted while pages are missing. */
 const SEEDED_CONTACTS = 100;
 /** Slows each JMAP request so every page is painted on its own. */
 const REQUEST_DELAY_MS = 150;
-
-type Invocation = [string, Record<string, unknown>, string];
-
-let accessToken: string | null = null;
-
-async function token(): Promise<string> {
-  if (accessToken) return accessToken;
-  const res = await fetch(`${API}/api/v1/auth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: USER, password: PASSWORD }),
-  });
-  if (!res.ok) throw new Error(`Login ${USER} failed: ${res.status}`);
-  accessToken = ((await res.json()) as { access_token: string }).access_token;
-  return accessToken;
-}
-
-/** The other client: same user, straight to the JMAP API. */
-async function jmap(methodCalls: Invocation[]): Promise<Invocation[]> {
-  const res = await fetch(`${API}/api/v1/jmap`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${await token()}` },
-    body: JSON.stringify({ using: USING, methodCalls }),
-  });
-  if (!res.ok) throw new Error(`JMAP failed: ${res.status}`);
-  return ((await res.json()) as { methodResponses: Invocation[] }).methodResponses;
-}
 
 function card(full: string, kind: "individual" | "group") {
   return {
@@ -52,18 +26,10 @@ function card(full: string, kind: "individual" | "group") {
 }
 
 async function seedContactsAndGroup(stamp: number): Promise<string[]> {
-  const create: Record<string, unknown> = {};
-  for (let index = 0; index < SEEDED_CONTACTS; index += 1) {
-    create[`p${index}`] = card(`e2e-count-${stamp}-${index}`, "individual");
-  }
-  create.group = card(`e2e-count-group-${stamp}`, "group");
-  const [[, result]] = await jmap([["ContactCard/set", { accountId: USER, create }, "s0"]]);
-  const created = (result.created ?? {}) as Record<string, { id: string }>;
-  const ids = Object.values(created).map((entry) => entry.id);
-  if (ids.length !== SEEDED_CONTACTS + 1) {
-    throw new Error(`Seeded ${ids.length} cards: ${JSON.stringify(result.notCreated)}`);
-  }
-  return ids;
+  const cards = Array.from({ length: SEEDED_CONTACTS }, (_, index) =>
+    card(`e2e-count-${stamp}-${index}`, "individual"),
+  );
+  return createContactCards([...cards, card(`e2e-count-group-${stamp}`, "group")]);
 }
 
 /** Every card that is not a group: what All Contacts shows once loaded. */
@@ -96,10 +62,7 @@ test.describe("Contacts first open (live app)", () => {
   const created: string[] = [];
 
   test.afterEach(async () => {
-    const destroy = created.splice(0);
-    if (destroy.length > 0) {
-      await jmap([["ContactCard/set", { accountId: USER, destroy }, "d0"]]).catch(() => undefined);
-    }
+    await destroyContactCards(created.splice(0));
   });
 
   test("the All Contacts header shows the contact total during the whole download", async ({

@@ -44,8 +44,8 @@ Users see no change. The only goal is speed with about 1000 items, and fewer cop
 
 - `renderItem` runs only for mounted rows. Work that a row does (excerpt, date label, lookups) runs only for the rows on screen.
 - A row component is memoized with the shared comparison: `memo(Row, workspaceListRowPropsEqual)`. The comparison is shallow over the row's own props and ignores the props that `react-swipeable-list`'s `SwipeableList` injects into every child on touch, on every render: `actionDelay`, `destructiveCallbackDelay`, `fullSwipe`, `listType`, `optOutMouseEvents`, `scrollStartThreshold`, `swipeStartThreshold`, `threshold`, `clickedCallback`, `id`, `resetState`. The list is in the `SwipeableList` render in `react-swipeable-list@1.10.0` (`dist/react-swipeable-list.esm.js`, `SwipeableList.render`).
-- Each row renders exactly one root element: a `ListItem` button or frame, a swipeable item on touch, or a table row. The window measures rows by their order among the root children.
-- Grouped lists (Contacts' letter sections, Drive's Folders/Files, Chat's days) pass `isHeader(item)`. A header row is kept mounted while any row of its section is mounted, so a sticky header stays visible. A grid passes rows of tiles as items; the binding chunks tiles by the column count it reads from its own container.
+- Each row renders exactly one root element: a `ListItem` button or frame, a swipeable item on touch, or a table row. The window measures rows by their order among the root children (and the children of section elements, below).
+- Grouped lists (Contacts' letter sections, Drive's Folders/Files, Chat's days) pass `isHeader(item)`. A header row is kept mounted while any row of its section is mounted, so a sticky header stays visible. A list whose sections are their own elements also passes `renderSection(header, content)`: each run that starts at a mounted header is wrapped in that element (Contacts' `<section aria-labelledby>`), so a sticky header sticks for exactly its own section and the next header pushes it out, as without windowing. A sticky header reports where it is stuck, so its size is measured from its section's top. A grid passes rows of tiles as items; the binding chunks tiles by the column count it reads from its own container.
 
 ## Windowing
 
@@ -59,9 +59,10 @@ Users see no change. The only goal is speed with about 1000 items, and fewer cop
   - the active row (`activeId`): the open item, the keyboard cursor and its `scrollIntoView`/`focus()` in `useListKeyboardNavigation` keep finding it;
   - the row that holds focus: scrolling away does not drop focus to `<body>`;
   - the row being dragged: HTML5 `dragend` fires on the source element, so it must not unmount mid-drag;
-  - the header of the first mounted section (see above).
+  - the header of the first mounted section, and the header of every pinned row's section (see above).
 - The window reads the scroll container as the nearest scrolling ancestor and the list's own offset inside it, so a quick-add field or padding above the rows does not shift the window.
 - When the viewport has no height yet (hidden pane, jsdom), the first 24 rows render, as Contacts does today.
+- `revealActive` (Contacts): a newly active row is scrolled into view once. A row within the overscan scrolls the least it needs; a far one lands at the top, as Contacts did. Scrolling the list later never pulls it back. Notes and the other lists leave it off: they already scroll on keyboard moves, and do not move the list when a note opens from a link.
 
 ## Keyboard, selection, swipe, drag
 

@@ -75,7 +75,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 
 - [ ] (chunk C) Tasks rows get Enter (open) and F2 (rename) from the suite keymap. Today Tasks has neither. Chunk C keeps today's keys unless this is decided.
 - [ ] (chunk C) Notes, Tasks and Contacts rows become one roving Tab stop, like Drive (the keymap decision says "roving focus"). Today every row is a Tab stop. Windowing already limits Tab to mounted rows. Chunks A–C keep the plain buttons unless this is decided.
-- [ ] (chunk D) Drive's grid shows Folders before Files, but ↑/↓ and shift-click ranges follow the sort order across both. Under the Modified or Size sort the keys jump between sections. This is a bug on `main`, filed separately. Chunk D windows each section without changing the order.
+- [ ] (chunk D) Drive's grid shows Folders before Files, but ↑/↓ and shift-click ranges follow the sort order across both. Under the Modified or Size sort the keys jump between sections. This is a bug on `main`, filed as #2090. Chunk D windows each section without changing the order.
 
 ## Invariants
 
@@ -103,7 +103,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 ### Chunk B: Contacts onto the shared window
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/contacts-core/src/contacts-list-panel.tsx:221`
-- **Done when:** Contacts renders through `WorkspaceList`, with letter headers as header rows and its rem sizes as the estimate. It scrolls a newly opened contact into view (Contacts' behaviour today, through a `revealActive` option). `contacts-list-window.ts` and its test are deleted, and the measurement shows 0 long frames, as on `main`.
+- **Done when:** Contacts renders through `WorkspaceList`, with letter headers as header rows, its `<section>` per letter through `renderSection`, and its rem sizes as the estimate. It scrolls a newly opened contact into view (Contacts' behaviour today, through a `revealActive` option). `contacts-list-window.ts` and its test are deleted, and the measurement shows 0 long frames, as on `main`.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/contacts-core`, `e2e/contacts-first-open-count.spec.ts`, the measurement script
 - **Parallel with:** none
 

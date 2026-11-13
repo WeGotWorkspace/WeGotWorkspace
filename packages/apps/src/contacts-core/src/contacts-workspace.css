@@ -40,9 +40,9 @@
 }
 
 /**
- * Windowed list: fixed row block sizes in rem (see contacts-list-window.ts).
- * Keep md padding equal to py-3. JS converts rem with the live root font
- * size so accessibility font settings stay aligned. Browser zoom scales
+ * Fixed row block sizes in rem: the shared list window's estimate
+ * (see contacts-list-rows.ts). Keep md padding equal to py-3. JS converts rem
+ * with the live root font size so accessibility font settings stay aligned. Browser zoom scales
  * CSS and scroll together. Overflow clips variable subtitle/body lines.
  */
 .contacts-list-panel__list {
@@ -60,14 +60,10 @@
 }
 
 .contacts-list-panel__list .list-sticky-header {
-  /* The frost variant draws it; the virtual list needs a fixed row slot. */
+  /* The frost variant draws it; the list window needs a fixed row slot. */
   block-size: var(--contacts-list-header-row-size);
   max-block-size: var(--contacts-list-header-row-size);
   overflow: hidden;
-}
-
-.contacts-list-panel__spacer {
-  @apply block w-full shrink-0;
 }
 
 .contacts-workspace .collection-list-drop-zone .file-drop-overlay {

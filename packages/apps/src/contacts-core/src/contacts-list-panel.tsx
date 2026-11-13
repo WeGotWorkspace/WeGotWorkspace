@@ -1,48 +1,29 @@
 import {
   useCallback,
-  useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
-  useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
 } from "react";
-import { Circle, Trash2, UserMinus, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import { ListItem } from "@/list-item/src/list-item";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { ContactUserAvatar } from "./contact-user-avatar";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
-import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
-import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
+import { WorkspaceList } from "@/workspace-list/src/workspace-list";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import {
-  contactDisplayName,
-  contactListDetail,
-  contactListSubtitle,
-} from "@/contacts-core/src/contacts-display-utils";
-import {
-  contactListRowOffset,
-  contactsListWindowRange,
-  contactListWindowSlice,
+  contactListBook,
+  contactListRowHeight,
   flattenContactListRows,
   readContactsListRootFontSizePx,
-  type ContactsListWindowRow,
-} from "@/contacts-core/src/contacts-list-window";
+  type ContactsListRowItem,
+} from "@/contacts-core/src/contacts-list-rows";
+import { ContactsListRow } from "@/contacts-core/src/contacts-list-row";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAddressBookSelectBook } from "@/contacts-core/src/contacts-address-book-select";
-import {
-  addressBookDotColor,
-  firstEnabledAddressBookId,
-} from "@/contacts-core/src/contacts-addressbook-color";
-import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
-import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
-import { CollectionColorDot } from "@/ui/collection-color-dot";
 
 type ContactsListPanelProps = {
   L: ContactsUILabels;
@@ -77,34 +58,6 @@ type ContactsListPanelProps = {
   addressBooks?: readonly ContactsAddressBookSelectBook[];
 };
 
-/** The row's address book, when the books are known and the card sits in one. */
-function contactListBook(
-  card: ContactCard,
-  addressBooks?: readonly ContactsAddressBookSelectBook[],
-): ContactsAddressBookSelectBook | undefined {
-  const bookId = firstEnabledAddressBookId(card.addressBookIds);
-  return bookId ? addressBooks?.find((candidate) => candidate.id === bookId) : undefined;
-}
-
-/** A row's meta line: its address book (dot + name), as Notes rows show the notebook. */
-function ContactsListAddressBook({
-  book,
-  personalLabel,
-}: {
-  book: ContactsAddressBookSelectBook;
-  personalLabel: string;
-}) {
-  const overrides = useAddressBookColorOverrides();
-  return (
-    <span className="contacts-list-panel__book">
-      <CollectionColorDot color={addressBookDotColor(book, overrides)} />
-      <span className="contacts-list-panel__book-name">
-        {contactsAddressBookDisplayName(book, personalLabel)}
-      </span>
-    </span>
-  );
-}
-
 export function ContactsListPanel({
   L,
   sidebarOpen,
@@ -134,21 +87,6 @@ export function ContactsListPanel({
   pendingCardIds,
   addressBooks,
 }: ContactsListPanelProps) {
-  const listRef = useRef<HTMLDivElement>(null);
-  const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
-  const {
-    attachList,
-    range: windowRange,
-    rootFontSizePx,
-  } = useContactsListWindow(listRef, rows, activeId);
-  const windowSlice = contactListWindowSlice(rows, windowRange, rootFontSizePx);
-  // Measure against the full visible set. A moving window changes which rows
-  // are mounted, and feeding only those ids looks like a reorder.
-  useListReorderAnimation(
-    listRef,
-    visibleCards.map((card) => card.id),
-  );
-
   const multiSelecting = selectionMode || selectedIds.length > 1;
   const headerCount = multiSelecting ? selectedIds.length : (downloadTotal ?? visibleCards.length);
   const headerCountLabel = multiSelecting
@@ -190,27 +128,23 @@ export function ContactsListPanel({
         <LoadingSpinner size="lg" label={L.listLoading} />
       </div>
     ) : (
-      <div ref={attachList} className="contacts-list-panel__list">
-        <ContactsListRows
-          L={L}
-          rows={windowSlice.rows}
-          paddingTop={windowSlice.paddingTop}
-          paddingBottom={windowSlice.paddingBottom}
-          isTouch={isTouch}
-          activeId={activeId}
-          selectedIds={selectedIds}
-          selectionMode={selectionMode}
-          selectedGroupId={selectedGroupId}
-          isItemDragging={isItemDragging}
-          handleSelect={handleSelect}
-          enterSelectionFor={enterSelectionFor}
-          itemDragHandlers={itemDragHandlers}
-          onSwipeDelete={onSwipeDelete}
-          onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
-          pendingCardIds={pendingCardIds}
-          addressBooks={addressBooks}
-        />
-      </div>
+      <ContactsListRows
+        L={L}
+        visibleCards={visibleCards}
+        isTouch={isTouch}
+        activeId={activeId}
+        selectedIds={selectedIds}
+        selectionMode={selectionMode}
+        selectedGroupId={selectedGroupId}
+        isItemDragging={isItemDragging}
+        handleSelect={handleSelect}
+        enterSelectionFor={enterSelectionFor}
+        itemDragHandlers={itemDragHandlers}
+        onSwipeDelete={onSwipeDelete}
+        onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
+        pendingCardIds={pendingCardIds}
+        addressBooks={addressBooks}
+      />
     ),
     hasItems: listLoading || visibleCards.length > 0,
     emptyLabel: view.startsWith("group:") ? L.emptyGroupMembers : L.emptyList,
@@ -219,110 +153,31 @@ export function ContactsListPanel({
   };
 }
 
-function useContactsListWindow(
-  listRef: RefObject<HTMLDivElement | null>,
-  rows: ContactsListWindowRow[],
-  activeId: string,
-) {
-  const [metrics, setMetrics] = useState({
-    scrollTop: 0,
-    viewportHeight: 0,
-    rootFontSizePx: readContactsListRootFontSizePx(),
-  });
-  // The list mounts (or remounts) after the loading spinner, often with the row
-  // count it had while loading. Track the node so the scroll listener follows it.
-  const [listNode, setListNode] = useState<HTMLDivElement | null>(null);
-  const attachList = useCallback(
-    (node: HTMLDivElement | null) => {
-      listRef.current = node;
-      setListNode(node);
-    },
-    [listRef],
-  );
-
-  useLayoutEffect(() => {
-    const scroller = listNode?.parentElement;
-    if (!scroller) return;
-    const update = () => {
-      setMetrics({
-        scrollTop: scroller.scrollTop,
-        viewportHeight: scroller.clientHeight,
-        rootFontSizePx: readContactsListRootFontSizePx(),
-      });
-    };
-    update();
-    scroller.addEventListener("scroll", update, { passive: true });
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
-    observer?.observe(scroller);
-    return () => {
-      scroller.removeEventListener("scroll", update);
-      observer?.disconnect();
-    };
-  }, [listNode, rows.length]);
-
-  const range = contactsListWindowRange(
-    rows,
-    metrics.scrollTop,
-    metrics.viewportHeight,
-    metrics.rootFontSizePx,
-  );
-  const scrolledForActiveIdRef = useRef<string | null>(null);
-  const pendingScrollIntoViewIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Scrolling changes the window. Only a new selection should move the list.
-    if (scrolledForActiveIdRef.current === activeId) return;
-    if (!activeId) {
-      scrolledForActiveIdRef.current = activeId;
-      pendingScrollIntoViewIdRef.current = null;
-      return;
-    }
-    const index = rows.findIndex((row) => row.kind === "card" && row.card.id === activeId);
-    if (index < 0) return;
-    const scroller = listRef.current?.parentElement;
-    if (!scroller || scroller.clientHeight <= 0) return;
-    scrolledForActiveIdRef.current = activeId;
-    const node = activeRowElement(listRef.current, activeId);
-    if (node && index >= range.start && index < range.end) {
-      node.scrollIntoView({ block: "nearest" });
-      return;
-    }
-    const rootFontSizePx = readContactsListRootFontSizePx();
-    const offset = contactListRowOffset(rows, index, rootFontSizePx);
-    scroller.scrollTop = offset;
-    pendingScrollIntoViewIdRef.current = activeId;
-    setMetrics({
-      scrollTop: offset,
-      viewportHeight: scroller.clientHeight,
-      rootFontSizePx,
-    });
-  }, [activeId, listRef, range.end, range.start, rows]);
-
-  useEffect(() => {
-    const id = pendingScrollIntoViewIdRef.current;
-    if (!id) return;
-    const node = activeRowElement(listRef.current, id);
-    if (!node) return;
-    pendingScrollIntoViewIdRef.current = null;
-    node.scrollIntoView({ block: "nearest" });
-  }, [activeId, listRef, range.end, range.start, rows]);
-
-  return { attachList, range, rootFontSizePx: metrics.rootFontSizePx };
+function contactRowKey(row: ContactsListRowItem): string {
+  return row.key;
 }
 
-function activeRowElement(list: HTMLElement | null, id: string): HTMLElement | null {
-  if (!list) return null;
-  for (const node of list.querySelectorAll<HTMLElement>("[data-list-item-id]")) {
-    if (node.getAttribute("data-list-item-id") === id) return node;
-  }
-  return null;
+function isContactHeaderRow(row: ContactsListRowItem): boolean {
+  return row.kind === "header";
 }
 
+function contactSectionId(letter: string): string {
+  return `contacts-section-${letter || "#"}`;
+}
+
+/** A letter section: the sticky header sticks for exactly its own cards. */
+function renderContactSection(header: ContactsListRowItem, content: ReactNode[]) {
+  const letter = header.kind === "header" ? header.letter : "";
+  return <section aria-labelledby={contactSectionId(letter)}>{content}</section>;
+}
+
+/**
+ * The cards under their letter headers, through the suite's shared list: above
+ * 80 rows only the rows near the scrollport are mounted (#1641 step d).
+ */
 function ContactsListRows({
   L,
-  rows,
-  paddingTop,
-  paddingBottom,
+  visibleCards,
   isTouch,
   activeId,
   selectedIds,
@@ -336,13 +191,10 @@ function ContactsListRows({
   onSwipeRemoveFromGroup,
   pendingCardIds,
   addressBooks,
-}: {
-  rows: ContactsListWindowRow[];
-  paddingTop: number;
-  paddingBottom: number;
-} & Pick<
+}: Pick<
   ContactsListPanelProps,
   | "L"
+  | "visibleCards"
   | "isTouch"
   | "activeId"
   | "selectedIds"
@@ -357,117 +209,61 @@ function ContactsListRows({
   | "pendingCardIds"
   | "addressBooks"
 >) {
-  const rendered = useMemo(() => {
-    const blocks: ReactNode[] = [];
-    let sectionLetter = "";
-    let sectionCards: ContactCard[] = [];
-
-    const flush = () => {
-      if (!sectionLetter && sectionCards.length === 0) return;
-      const letter = sectionLetter || "#";
-      blocks.push(
-        <section key={letter} aria-labelledby={`contacts-section-${letter}`}>
-          <ListStickyHeader id={`contacts-section-${letter}`} emphasis={letter} variant="frost" />
-          {sectionCards.map((card) => {
-            const name = contactDisplayName(card);
-            const isPendingSync = pendingCardIds?.has(card.id) ?? false;
-            const book = contactListBook(card, addressBooks);
-            return (
-              <ListItem
-                key={card.id}
-                id={card.id}
-                title={name}
-                /* Suite list norm: the name, then company (else email, else phone),
-                   then the address book on the quiet meta line. */
-                text={contactListSubtitle(card) || contactListDetail(card) || null}
-                subtitle={
-                  book ? (
-                    <ContactsListAddressBook book={book} personalLabel={L.personalAddressBook} />
-                  ) : null
-                }
-                metaPosition="below"
-                date=""
-                icons={[
-                  isPendingSync ? (
-                    <span
-                      className="contacts-list-panel__pending-dot"
-                      role="img"
-                      aria-label={L.pendingSync}
-                    >
-                      <Circle className="size-2.5" fill="currentColor" strokeWidth={0} />
-                    </span>
-                  ) : null,
-                ].filter(Boolean)}
-                leading={
-                  <ContactUserAvatar
-                    card={card}
-                    compact
-                    size="md"
-                    className="contacts-list-panel__avatar"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                }
-                isActive={false}
-                isSelected={false}
-                selectionMode={false}
-                isTouch={isTouch}
-                isDragging={isItemDragging(card.id)}
-                emptyTitle={L.unknownContact}
-                {...(isTouch
-                  ? selectedGroupId
-                    ? {
-                        swipeRightAction: {
-                          icon: <UserMinus className="size-5" />,
-                          label: L.swipeRemoveFromGroup,
-                          onActivate: () => onSwipeRemoveFromGroup(card.id),
-                        },
-                      }
-                    : {
-                        swipeRightAction: {
-                          icon: <Trash2 className="size-5" />,
-                          tone: "danger",
-                          label: L.swipeDelete,
-                          onActivate: () => onSwipeDelete(card.id),
-                        },
-                      }
-                  : {})}
-              />
-            );
-          })}
-        </section>,
-      );
-      sectionCards = [];
-    };
-
-    for (const row of rows) {
+  const rows = useMemo(() => flattenContactListRows(visibleCards), [visibleCards]);
+  const rootFontSizePx = readContactsListRootFontSizePx();
+  const estimateSize = useCallback(
+    (row: ContactsListRowItem) => contactListRowHeight(row, rootFontSizePx),
+    [rootFontSizePx],
+  );
+  const inGroup = Boolean(selectedGroupId);
+  const renderRow = useCallback(
+    (row: ContactsListRowItem) => {
       if (row.kind === "header") {
-        flush();
-        sectionLetter = row.letter;
-        continue;
+        return (
+          <ListStickyHeader
+            id={contactSectionId(row.letter)}
+            emphasis={row.letter || "#"}
+            variant="frost"
+          />
+        );
       }
-      sectionCards.push(row.card);
-    }
-    flush();
-    return blocks;
-  }, [
-    L.pendingSync,
-    L.personalAddressBook,
-    L.swipeDelete,
-    L.swipeRemoveFromGroup,
-    L.unknownContact,
-    isItemDragging,
-    isTouch,
-    onSwipeDelete,
-    onSwipeRemoveFromGroup,
-    pendingCardIds,
-    addressBooks,
-    rows,
-    selectedGroupId,
-  ]);
+      const { card } = row;
+      return (
+        <ContactsListRow
+          L={L}
+          card={card}
+          book={contactListBook(card, addressBooks)}
+          isPendingSync={pendingCardIds?.has(card.id) ?? false}
+          isTouch={isTouch}
+          isDragging={isItemDragging(card.id)}
+          inGroup={inGroup}
+          onSwipeDelete={onSwipeDelete}
+          onSwipeRemoveFromGroup={onSwipeRemoveFromGroup}
+        />
+      );
+    },
+    [
+      L,
+      addressBooks,
+      inGroup,
+      isItemDragging,
+      isTouch,
+      onSwipeDelete,
+      onSwipeRemoveFromGroup,
+      pendingCardIds,
+    ],
+  );
 
   return (
-    <WorkspaceSwipeList
+    <WorkspaceList
+      className="contacts-list-panel__list"
+      items={rows}
+      getKey={contactRowKey}
+      renderItem={renderRow}
+      estimateSize={estimateSize}
+      isHeader={isContactHeaderRow}
+      renderSection={renderContactSection}
+      revealActive
       isTouch={isTouch}
       activeId={activeId}
       selectedIds={selectedIds}
@@ -475,14 +271,6 @@ function ContactsListRows({
       onItemClick={handleSelect}
       onItemLongPress={enterSelectionFor}
       {...bindItemDragHandlers(itemDragHandlers)}
-    >
-      {paddingTop > 0 ? (
-        <div className="contacts-list-panel__spacer" style={{ height: paddingTop }} />
-      ) : null}
-      {rendered}
-      {paddingBottom > 0 ? (
-        <div className="contacts-list-panel__spacer" style={{ height: paddingBottom }} />
-      ) : null}
-    </WorkspaceSwipeList>
+    />
   );
 }
