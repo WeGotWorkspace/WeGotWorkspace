@@ -17,12 +17,12 @@ import {
   upsertChatMessageInCache,
   type MeetChatReadMarkerOutboxPayload,
   type MeetChatSendOutboxPayload,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { MEET_CHAT_CAUGHT_UP_READ_UID } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import {
   createHybridMeetChatOperations,
   getMeetChatSyncRunner,
-} from "@/lib/offline/meet-chat-hybrid-operations";
+} from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
 
 const username = "alice";
 const author = { id: "alice", displayName: "Alice" };

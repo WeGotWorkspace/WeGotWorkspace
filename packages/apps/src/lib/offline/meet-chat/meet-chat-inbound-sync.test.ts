@@ -14,13 +14,16 @@ import {
   upsertChatChannelInCache,
   writeMeetChatSyncToken,
   MEET_CHAT_CHANNELS_TOKEN_SCOPE,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import {
   backfillChatChannelHistory,
   syncMeetChatInboundFromRest,
-} from "@/lib/offline/meet-chat-inbound-sync";
+} from "@/lib/offline/meet-chat/meet-chat-inbound-sync";
 import { markOutboxError } from "@/lib/offline/core/outbox-store";
-import { enqueueChatEdit, upsertChatMessageInCache } from "@/lib/offline/meet-chat-offline-store";
+import {
+  enqueueChatEdit,
+  upsertChatMessageInCache,
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 vi.mock("@/lib/api/wgw/meet-chat", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/meet-chat")>();

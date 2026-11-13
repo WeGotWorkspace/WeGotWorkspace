@@ -13,7 +13,7 @@ import {
   upsertChatChannelInCache,
   writeMeetChatBootstrapMetaToCache,
   writeMeetChatDirectoryToCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 const username = "alice";
 
@@ -71,17 +71,17 @@ vi.mock("@/lib/api/wgw/meet-chat-directory", () => ({
   fetchMeetChatDirectory: vi.fn(),
 }));
 
-vi.mock("@/lib/offline/meet-chat-inbound-sync", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-inbound-sync", () => ({
   syncMeetChatInboundFromRest: vi.fn(),
 }));
 
 import { fetchMeetLiveBootstrap } from "@/lib/api/wgw/meet";
 import { fetchMeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
-import { syncMeetChatInboundFromRest } from "@/lib/offline/meet-chat-inbound-sync";
+import { syncMeetChatInboundFromRest } from "@/lib/offline/meet-chat/meet-chat-inbound-sync";
 import {
   fetchMeetChatHybridBootstrap,
   meetChatBootstrapFromCached,
-} from "@/lib/offline/meet-chat-hybrid-operations";
+} from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
 
 function neverResolves<T>(): Promise<T> {
   return new Promise(() => undefined);

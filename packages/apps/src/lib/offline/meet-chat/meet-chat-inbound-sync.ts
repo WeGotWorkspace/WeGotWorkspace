@@ -21,7 +21,7 @@ import {
   ingestRemoteChatMessageDestroyed,
   listChatMessageIdsBlockingSyncToken,
   readChatProtectedMessageIds,
-} from "@/lib/offline/meet-chat-jmap-inbound";
+} from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import {
   listCachedChatChannels,
   listCachedChatMessageIdsForChannel,
@@ -32,7 +32,7 @@ import {
   readUiChannelIdMap,
   writeChatChannelMessageCursor,
   writeMeetChatSyncToken,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 const PAGE_SIZE = 200;
 /** Safety cap on paging loops (history, changes drain) inside one sync pass. */

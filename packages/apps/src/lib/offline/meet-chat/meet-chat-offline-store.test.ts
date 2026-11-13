@@ -20,7 +20,7 @@ import {
   upsertChatMessageInCache,
   writeMeetChatBootstrapMetaToCache,
   writeMeetChatDirectoryToCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 const username = "alice";
 

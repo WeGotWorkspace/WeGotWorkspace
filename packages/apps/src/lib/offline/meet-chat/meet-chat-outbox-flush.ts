@@ -23,7 +23,7 @@ import {
   type MeetChatReactOutboxPayload,
   type MeetChatReadMarkerOutboxPayload,
   type MeetChatSendOutboxPayload,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 export type MeetChatOutboxFlushResult = {
   /** Rows replayed and removed. */

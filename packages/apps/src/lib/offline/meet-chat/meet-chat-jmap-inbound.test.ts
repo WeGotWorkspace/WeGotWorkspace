@@ -13,14 +13,14 @@ import {
   ingestRemoteChatMessage,
   ingestRemoteChatMessageDestroyed,
   reconcileMeetChatSnapshot,
-} from "@/lib/offline/meet-chat-jmap-inbound";
+} from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import {
   enqueueChatEdit,
   getCachedChatMessage,
   listCachedChatChannels,
   listCachedChatMessages,
   upsertChatMessageInCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 const username = "alice";
 

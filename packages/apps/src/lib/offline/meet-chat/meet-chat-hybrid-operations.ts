@@ -64,11 +64,11 @@ import {
   writeMeetChatBootstrapMetaToCache,
   writeMeetChatDirectoryToCache,
   type MeetChatCachedBootstrap,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import {
   flushMeetChatOutbox,
   type MeetChatOutboxFlushResult,
-} from "@/lib/offline/meet-chat-outbox-flush";
+} from "@/lib/offline/meet-chat/meet-chat-outbox-flush";
 import { readOfflineMeetChatUsername } from "@/lib/offline/core/offline-session";
 
 export type MeetChatAuthor = {
