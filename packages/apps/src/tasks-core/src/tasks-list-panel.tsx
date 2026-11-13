@@ -15,15 +15,25 @@ import { Input } from "@/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
-import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
-import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
+import { WorkspaceList } from "@/workspace-list/src/workspace-list";
 import { cn } from "@/lib/utils";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { canWriteTaskList } from "@/tasks-core/src/tasks-task-utils";
 import { TasksListRow } from "@/tasks-core/src/tasks-list-row";
 import "@/tasks-core/src/tasks-list-panel.css";
+
+const taskKey = (task: Task) => task.id;
+/**
+ * A row's pitch (row plus gap) before it is measured, at a 16px root: title and
+ * meta lines, plus two lines of notes excerpt when the task has notes. Measured rows
+ * correct the rest (a one-line excerpt, another root size or zoom).
+ */
+const TASKS_ROW_ESTIMATE_PX = 76.875;
+const TASKS_ROW_WITH_NOTES_ESTIMATE_PX = 119.375;
+const taskRowEstimate = (task: Task) =>
+  task.description?.trim() ? TASKS_ROW_WITH_NOTES_ESTIMATE_PX : TASKS_ROW_ESTIMATE_PX;
 
 export type TasksListPanelProps = {
   L: TasksUILabels;
@@ -264,12 +274,6 @@ function TasksListRows({
   | "itemDragHandlers"
   | "isItemDragging"
 >) {
-  const listRef = useRef<HTMLDivElement>(null);
-  useListReorderAnimation(
-    listRef,
-    displayTasks.map((task) => task.id),
-  );
-
   // Rows are memoized per task: hand them handlers that keep their identity.
   const handlersRef = useRef({ onToggleComplete, onDeleteTask, onTaskExitAnimationEnd });
   handlersRef.current = { onToggleComplete, onDeleteTask, onTaskExitAnimationEnd };
@@ -285,31 +289,29 @@ function TasksListRows({
   // As in Notes: only the single open task paints as active.
   const paintActiveId = !multiSelect && selectedIds.includes(activeId) ? activeId : "";
 
-  const rows = useMemo(
-    () =>
-      displayTasks.map((task) => {
-        const taskList = listsById.get(task.taskListId);
-        return (
-          <TasksListRow
-            key={task.id}
-            task={task}
-            L={L}
-            taskList={taskList}
-            taskLists={taskLists}
-            canMutate={canWriteTaskList(taskList)}
-            isTouch={isTouch}
-            isExiting={exitingTaskIds.has(task.id)}
-            dragging={isItemDragging(task.id)}
-            onToggleComplete={toggleComplete}
-            onDeleteTask={deleteTask}
-            onExitAnimationEnd={exitAnimationEnd}
-          />
-        );
-      }),
+  // Called only for the rows the list mounts (#1641 step d).
+  const renderTask = useCallback(
+    (task: Task) => {
+      const taskList = listsById.get(task.taskListId);
+      return (
+        <TasksListRow
+          task={task}
+          L={L}
+          taskList={taskList}
+          taskLists={taskLists}
+          canMutate={canWriteTaskList(taskList)}
+          isTouch={isTouch}
+          isExiting={exitingTaskIds.has(task.id)}
+          dragging={isItemDragging(task.id)}
+          onToggleComplete={toggleComplete}
+          onDeleteTask={deleteTask}
+          onExitAnimationEnd={exitAnimationEnd}
+        />
+      );
+    },
     [
       L,
       deleteTask,
-      displayTasks,
       exitAnimationEnd,
       exitingTaskIds,
       isItemDragging,
@@ -319,20 +321,28 @@ function TasksListRows({
       toggleComplete,
     ],
   );
+  // The keyboard cursor stays mounted, and so does a row on its way out: its exit
+  // animation must end, or the task never leaves the list.
+  const pinnedKeys = useMemo(
+    () => [...(activeId ? [activeId] : []), ...exitingTaskIds],
+    [activeId, exitingTaskIds],
+  );
 
   return (
-    <div ref={listRef} className="tasks-list-panel__list">
-      <WorkspaceSwipeList
-        isTouch={isTouch}
-        activeId={paintActiveId}
-        selectedIds={selectedIds}
-        selectionMode={multiSelect}
-        onItemClick={handleSelect}
-        onItemLongPress={enterSelectionFor}
-        {...bindItemDragHandlers(itemDragHandlers)}
-      >
-        {rows}
-      </WorkspaceSwipeList>
-    </div>
+    <WorkspaceList
+      className="tasks-list-panel__list"
+      items={displayTasks}
+      getKey={taskKey}
+      renderItem={renderTask}
+      estimateSize={taskRowEstimate}
+      pinnedKeys={pinnedKeys}
+      isTouch={isTouch}
+      activeId={paintActiveId}
+      selectedIds={selectedIds}
+      selectionMode={multiSelect}
+      onItemClick={handleSelect}
+      onItemLongPress={enterSelectionFor}
+      {...bindItemDragHandlers(itemDragHandlers)}
+    />
   );
 }

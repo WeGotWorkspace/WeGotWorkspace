@@ -1,7 +1,7 @@
 import type React from "react";
 import { createRef } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TasksListPanel, type TasksListPanelProps } from "@/tasks-core/src/tasks-list-panel";
@@ -10,6 +10,10 @@ import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import { formatTaskDueRelative } from "@/tasks-core/src/tasks-task-utils";
 import type { Task } from "@/lib/models/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
+import {
+  TEST_VIEWPORT_ATTR,
+  installListLayoutStubs,
+} from "@/workspace-list/src/workspace-list-test-layout";
 
 const bootstrap = createTasksAppBootstrap();
 const L = defaultTasksLabels;
@@ -51,8 +55,8 @@ function renderRow(task: Task, overrides: Partial<React.ComponentProps<typeof Ta
   };
 }
 
-function PanelHarness(props: Partial<TasksListPanelProps>) {
-  const panel = TasksListPanel({
+function panelFor(props: Partial<TasksListPanelProps>) {
+  return TasksListPanel({
     L,
     sidebarOpen: false,
     onToggleSidebar: vi.fn(),
@@ -83,7 +87,24 @@ function PanelHarness(props: Partial<TasksListPanelProps>) {
     isItemDragging: () => false,
     ...props,
   });
-  return <TooltipProvider>{panel.listTop}</TooltipProvider>;
+}
+
+function PanelHarness(props: Partial<TasksListPanelProps>) {
+  return <TooltipProvider>{panelFor(props).listTop}</TooltipProvider>;
+}
+
+/** The task rows inside a scrollport that jsdom's layout stubs give a height. */
+function RowsHarness({
+  scrollerRef,
+  ...props
+}: Partial<TasksListPanelProps> & { scrollerRef: (node: HTMLDivElement | null) => void }) {
+  return (
+    <TooltipProvider>
+      <div ref={scrollerRef} style={{ overflowY: "auto" }} {...{ [TEST_VIEWPORT_ATTR]: "" }}>
+        {panelFor(props).listContent}
+      </div>
+    </TooltipProvider>
+  );
 }
 
 beforeEach(() => {
@@ -259,5 +280,92 @@ describe("TasksListPanel quick add", () => {
     render(<PanelHarness canCreate={false} />);
 
     expect(screen.getByLabelText(L.quickAddLabel)).toHaveProperty("disabled", true);
+  });
+});
+
+describe("TasksListPanel window", () => {
+  const tasks: Task[] = Array.from({ length: 120 }, (_, index) => ({
+    ...bootstrap.data.tasks[0]!,
+    id: `task-${index}`,
+    title: `Task ${String(index).padStart(3, "0")}`,
+  }));
+
+  beforeEach(() => {
+    installListLayoutStubs(400);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mount(props: Partial<TasksListPanelProps> = {}) {
+    const holder: { current: HTMLDivElement | null } = { current: null };
+    const view = render(
+      <RowsHarness
+        displayTasks={tasks}
+        scrollerRef={(node) => {
+          holder.current = node;
+        }}
+        {...props}
+      />,
+    );
+    const scroller = holder.current;
+    if (!scroller) throw new Error("scroller missing");
+    return { scroller, ...view };
+  }
+
+  function scrollTo(scroller: HTMLElement, top: number) {
+    act(() => {
+      scroller.scrollTop = top;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+  }
+
+  const mountedIds = (root: ParentNode) =>
+    Array.from(root.querySelectorAll("[data-list-item-id]"), (node) =>
+      node.getAttribute("data-list-item-id"),
+    );
+
+  it("mounts only the rows near the scrollport", () => {
+    const { scroller } = mount();
+    const list = scroller.querySelector("[data-workspace-list-rows]");
+
+    expect(list?.getAttribute("data-workspace-list-rows")).toBe("120");
+    expect(mountedIds(scroller).length).toBeLessThan(40);
+
+    scrollTo(scroller, 4000);
+    const ids = mountedIds(scroller);
+    expect(ids).not.toContain("task-0");
+    expect(ids).toContain("task-50");
+    expect(ids.length).toBeLessThan(40);
+  });
+
+  it("keeps the open task mounted when the list scrolls away from it", () => {
+    const { scroller } = mount({ activeId: "task-2", selectedIds: ["task-2"] });
+
+    scrollTo(scroller, 6000);
+
+    expect(mountedIds(scroller)).toContain("task-2");
+  });
+
+  it("keeps an exiting row mounted until its exit animation ends", () => {
+    const onTaskExitAnimationEnd = vi.fn();
+    const { scroller } = mount({
+      exitingTaskIds: new Set(["task-1"]),
+      onTaskExitAnimationEnd,
+    });
+
+    scrollTo(scroller, 6000);
+    const exiting = scroller
+      .querySelector('[data-list-item-id="task-1"]')
+      ?.closest(".tasks-list-row");
+    expect(exiting?.getAttribute("data-exiting")).toBe("true");
+
+    expect(onTaskExitAnimationEnd).not.toHaveBeenCalled();
+    // jsdom has no AnimationEvent, so React listens for the prefixed event there.
+    const ended = new Event("webkitAnimationEnd", { bubbles: true });
+    Object.defineProperty(ended, "animationName", { value: "tasks-row-exit" });
+    fireEvent(exiting!, ended);
+    expect(onTaskExitAnimationEnd).toHaveBeenCalledWith("task-1");
   });
 });
