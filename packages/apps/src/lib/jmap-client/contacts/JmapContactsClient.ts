@@ -202,8 +202,10 @@ export class JmapContactsClient {
   /**
    * Batched `ContactCard/query` → `ContactCard/get` wired with `#ids`
    * ResultReference — the sequence pinned in JmapContactsClientContractTest.
-   * When the query is larger than maxObjectsInGet, falls back to explicit
-   * id pages instead of a get-all.
+   * When the query is larger than maxObjectsInGet, lists again through
+   * {@link fetchAllByQuery}: explicit-id pages, and the state from before the
+   * listing, so a card changed while the pages load is reported by the next
+   * `ContactCard/changes` (#1871).
    */
   async getContactCardsByQuery(
     accountId: JmapId,
@@ -251,7 +253,13 @@ export class JmapContactsClient {
       (errorInvocation[1] as JmapMethodErrorArgs).type === "requestTooLarge" &&
       queryIds
     ) {
-      return this.#getContactCardsByIds(accountId, queryIds);
+      return fetchAllByQuery<JmapContactCard>(this.client, {
+        accountId,
+        type: CONTACT_CARD_TYPE,
+        using: CONTACTS_USING,
+        ...(filter ? { filter: { ...filter } } : {}),
+        maxIdsPerGet: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+      });
     }
     const detail = errorInvocation ? JSON.stringify(errorInvocation[1]) : "no response";
     throw new Error(`ContactCard query+get failed: ${detail}`);

@@ -430,7 +430,12 @@ describe("JmapContactsClient contract batches", () => {
 
     const got = await contacts.getContactCardsByQuery(ACCOUNT);
     expect(got.list.map((card) => card.id)).toEqual(ids);
-    expect(recorded.slice(1).map((batch) => batch.map(([, args]) => args.ids))).toEqual([
+    // The re-list takes the state first (empty get), then fetches the ids in pages.
+    expect(recorded[1]?.map(([name, args]) => [name, args.ids])).toEqual([
+      ["ContactCard/get", []],
+      ["ContactCard/query", undefined],
+    ]);
+    expect(recorded.slice(2).map((batch) => batch.map(([, args]) => args.ids))).toEqual([
       [["card-1", "card-2"]],
       [["card-3"]],
     ]);
