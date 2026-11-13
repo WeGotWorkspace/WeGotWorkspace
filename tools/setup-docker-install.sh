@@ -606,7 +606,7 @@ cmd_backup() {
 
   stamp=$(date +%Y%m%d-%H%M%S)
   backup_dir="${WGW_INSTALL_DIR}/backups/${stamp}"
-  mkdir -p "$backup_dir"
+  (umask 077 && mkdir -p "$backup_dir")
 
   log "Backing up volumes to ${backup_dir}..."
   cp "${WGW_INSTALL_DIR}/${ENV_FILE}" "${backup_dir}/env.backup" 2>/dev/null || true
