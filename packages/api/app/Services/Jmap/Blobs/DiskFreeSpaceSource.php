@@ -22,7 +22,7 @@ final class DiskFreeSpaceSource implements FreeSpaceSource
             return null;
         }
         $root = $this->local->absolutePath($disk, '');
-        if (! is_dir($root)) {
+        if (! is_dir($root) || ! function_exists('disk_free_space')) {
             return null;
         }
         $free = @disk_free_space($root);

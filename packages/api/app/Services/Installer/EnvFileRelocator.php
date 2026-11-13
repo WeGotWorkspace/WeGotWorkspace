@@ -185,10 +185,10 @@ final class EnvFileRelocator
     {
         $owner = @fileowner($source);
         $group = @filegroup($source);
-        if (is_int($owner) && $owner !== @fileowner($target)) {
+        if (is_int($owner) && $owner !== @fileowner($target) && function_exists('chown')) {
             @chown($target, $owner);
         }
-        if (is_int($group) && $group !== @filegroup($target)) {
+        if (is_int($group) && $group !== @filegroup($target) && function_exists('chgrp')) {
             @chgrp($target, $group);
         }
     }

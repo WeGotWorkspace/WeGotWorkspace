@@ -40,7 +40,9 @@ return new class extends WgwMigration
         }
 
         // The in-app updater reaches this file without a raised time limit.
-        @set_time_limit(0);
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
         // A file that fails is skipped with a notice inside the import and
         // tried again by the next run. Anything that escapes is not about one
         // file (the database, the data directory), so the migration stays
