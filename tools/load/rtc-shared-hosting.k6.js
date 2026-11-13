@@ -180,7 +180,7 @@ const rtcScenarios = {
   },
   call: {
     executor: "constant-vus",
-    vus: 4,
+    vus: 6,
     duration: "2m",
     exec: "call",
   },

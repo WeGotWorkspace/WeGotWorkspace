@@ -57,7 +57,7 @@
     "properties": {
       "maxPeers": {
         "type": "integer",
-        "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15)."
+        "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 6, clamped 2-15)."
       },
       "maxVideoProfile": {
         "type": "string",
