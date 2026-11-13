@@ -114,7 +114,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
   - Tasks renders through `WorkspaceList` with the shared comparison.
   - An exiting row stays pinned until its exit animation ends.
   - Unmeasured rows use an estimate per task: with or without a notes excerpt.
-  - `shownTitles` scrolls a windowed list through, so it does not depend on every row being mounted.
+  - `shownTitles` scrolls a windowed list through, and Tasks specs that find a row by title reveal it first (`revealTask`), so none depends on every row being mounted.
   - The measurement covers open, scroll, keys, tick and type-title at 1000 tasks in one list. Tick and type put the task back over the API after each run.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/tasks-core`, the tasks sync matrix, the measurement script
 - **Parallel with:** none

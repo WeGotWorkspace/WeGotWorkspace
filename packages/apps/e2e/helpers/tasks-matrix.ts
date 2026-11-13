@@ -6,7 +6,7 @@
 // A list shared with the teammate has another id for them than for the owner;
 // a task keeps its id. So every comparison is per user: a tab against the
 // server as its own user sees it.
-import { test, type BrowserContext } from "@playwright/test";
+import { test, type BrowserContext, type Page } from "@playwright/test";
 import { api, OWNER, sleep, TEAMMATE, type Tab } from "./live-matrix";
 
 export { api, openUser, OWNER, setTabOffline, sleep, TEAMMATE, type Tab } from "./live-matrix";
@@ -393,30 +393,45 @@ export async function setStoredToken(tab: Tab, token: string | null): Promise<vo
 }
 
 /**
- * Titles the tab's "All Tasks" view shows (completed tasks are hidden there). A long
- * list mounts only the rows near the viewport (#1641 step d), so this scrolls the list
- * through, collecting titles, and puts the scroll position back.
+ * Reads the task titles of the tab's list. A long list mounts only the rows near the
+ * viewport (#1641 step d), so this scrolls the list through, collecting titles. With
+ * `find`, it stops at the first row whose title matches and scrolls that row into view;
+ * otherwise it puts the scroll position back.
  */
-export async function shownTitles(tab: Tab, caseId: string): Promise<string[]> {
-  const titles = await tab.evaluate(async () => {
-    const read = (into: Set<string>) => {
-      for (const el of document.querySelectorAll(".tasks-list-row .list-item__title")) {
-        into.add((el.textContent ?? "").trim());
-      }
-    };
+async function scanTaskTitles(
+  tab: Page,
+  find?: { text: string; exact: boolean },
+): Promise<{ titles: string[]; found: boolean }> {
+  return tab.evaluate(async (target) => {
     const seen = new Set<string>();
+    const matches = (title: string) =>
+      !!target && (target.exact ? title === target.text : title.includes(target.text));
+    /** Adds the mounted titles; returns the first matching title element. */
+    const read = () => {
+      let hit: Element | null = null;
+      for (const el of document.querySelectorAll(".tasks-list-row .list-item__title")) {
+        const title = (el.textContent ?? "").trim();
+        seen.add(title);
+        if (!hit && matches(title)) hit = el;
+      }
+      return hit;
+    };
+    const done = (hit: Element | null) => {
+      hit?.scrollIntoView({ block: "center" });
+      return { titles: [...seen], found: !!hit };
+    };
+    const first = read();
     const list = document.querySelector<HTMLElement>(
       ".tasks-list-panel__list[data-workspace-list-rows]",
     );
-    read(seen);
-    if (!list || list.dataset.workspaceListRows === list.dataset.workspaceListMounted) {
-      return [...seen];
+    if (first || !list || list.dataset.workspaceListRows === list.dataset.workspaceListMounted) {
+      return done(first);
     }
     let scroller = list.parentElement;
     while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
       scroller = scroller.parentElement;
     }
-    if (!scroller) return [...seen];
+    if (!scroller) return done(null);
     const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     const start = scroller.scrollTop;
     const step = Math.max(200, scroller.clientHeight);
@@ -424,13 +439,28 @@ export async function shownTitles(tab: Tab, caseId: string): Promise<string[]> {
       scroller.scrollTop = top;
       await frame();
       await frame();
-      read(seen);
+      const hit = read();
+      if (hit) return done(hit);
       if (top >= scroller.scrollHeight - scroller.clientHeight) break;
     }
     scroller.scrollTop = start;
-    return [...seen];
-  });
+    return done(null);
+  }, find ?? null);
+}
+
+/** Titles the tab's "All Tasks" view shows (completed tasks are hidden there). */
+export async function shownTitles(tab: Tab, caseId: string): Promise<string[]> {
+  const { titles } = await scanTaskTitles(tab);
   return titles.filter((title) => title.includes(caseId)).sort();
+}
+
+/**
+ * Whether the tab's list holds a task titled `text` (`exact`, or containing it), and if
+ * so, scrolls it into view so a locator finds it. Poll it: `expect.poll(() =>
+ * revealTask(tab, title)).toBe(true)` for "it shows", `.toBe(false)` for "it is gone".
+ */
+export async function revealTask(tab: Page, text: string, exact = true): Promise<boolean> {
+  return (await scanTaskTitles(tab, { text, exact })).found;
 }
 
 /** The sidebar sections that hold lists: the user's own and those shared with them. */

@@ -78,7 +78,7 @@ Known DOM-wide reads that windowing affects, handled per binding:
 
 - `list-item-focus.ts` `adjacentListItem` walks the DOM. Only the Drive folder picker uses it, and its `DriveListView` windows above 80 items. The window keeps the focused row's neighbours mounted too, so the next row in the DOM is always the next item, even after the list scrolled away from the focused row.
 - `refocusListAfterNavigation` looks for the item with `tabindex="0"`. A roving-focus row is the active or first row, and both are mounted (pinned, or at the top).
-- e2e helpers that read every row title: `e2e/helpers/tasks-matrix.ts` `shownTitles`, and Drive's `drive-inbound-many-files.spec.ts`. `shownTitles` scrolls a windowed list through and collects the titles, then puts the scroll position back. Drive's names that must be gone sort to the top, next to an item the spec checks is visible, so they would be mounted if they existed.
+- e2e helpers that read every row title: `e2e/helpers/tasks-matrix.ts` `shownTitles`, and Drive's `drive-inbound-many-files.spec.ts`. `shownTitles` scrolls a windowed list through and collects the titles, then puts the scroll position back. Every Tasks spec that finds a row by its title (`tasks-sync-matrix`, `tasks-inbound-sync`, `tasks-push`) first calls `revealTask`, which scrolls the row in (or reports that no row has that title), so an account with more than 80 tasks in All Tasks does not break them. Drive's names that must be gone sort to the top, next to an item the spec checks is visible, so they would be mounted if they existed.
 
 ## One place to measure
 
