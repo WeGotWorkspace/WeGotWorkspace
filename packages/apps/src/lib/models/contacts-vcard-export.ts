@@ -3,7 +3,7 @@ import {
   contactDisplayName,
   findBirthAnniversary,
   mapEntriesSorted,
-} from "@/contacts-core/src/contacts-display-utils";
+} from "@/lib/models/contacts-display";
 
 /** Escape special vCard 3.0 characters in property values. */
 function vcardEscape(value: string): string {

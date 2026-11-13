@@ -50,6 +50,8 @@ services:
       dockerfile: docker/install/Dockerfile
     image: ${WGW_IMAGE:-ghcr.io/wegotworkspace/wegotworkspace:latest}
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
     environment:
       <<: *wgw-web-environment
       # One-shot headless `wgw:install`. Remove it from .env after the first
@@ -71,6 +73,8 @@ services:
       dockerfile: docker/install/Dockerfile
     image: ${WGW_IMAGE:-ghcr.io/wegotworkspace/wegotworkspace:latest}
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "${WGW_HTTP_PORT:-8080}:80"
     environment: *wgw-web-environment
@@ -101,6 +105,8 @@ services:
       dockerfile: docker/install/Dockerfile
     image: ${WGW_IMAGE:-ghcr.io/wegotworkspace/wegotworkspace:latest}
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment: *wgw-web-environment
     volumes: *wgw-web-volumes
     depends_on:

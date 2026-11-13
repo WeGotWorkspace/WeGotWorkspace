@@ -1,4 +1,4 @@
-import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
+import type { ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 type NameComponent = NonNullable<NonNullable<ContactCard["name"]>["components"]>[number];

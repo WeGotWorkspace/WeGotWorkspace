@@ -3,7 +3,7 @@ import {
   normalizeNotificationNavigate,
   notificationMatchesDocsSharedPath,
   notificationMatchesNavigate,
-} from "@/notifications-core/src/notification-consume-match";
+} from "@/lib/notifications/notification-consume-match";
 
 describe("normalizeNotificationNavigate", () => {
   it("strips trailing slashes and lowercases DM peers", () => {

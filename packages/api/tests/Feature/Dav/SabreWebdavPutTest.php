@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dav;
 
+use App\Http\Support\WgwOversizedPost;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
@@ -52,5 +54,19 @@ final class SabreWebdavPutTest extends WgwDatabaseTestCase
         $disk = Storage::disk('wgw_files');
         $this->assertTrue($disk->exists('users/alice/report.docx'));
         $this->assertSame($payload, $disk->get('users/alice/report.docx'));
+    }
+
+    public function test_put_larger_than_post_max_size_is_stored(): void
+    {
+        $server = [
+            'HTTP_AUTHORIZATION' => 'Basic '.base64_encode('alice:secret'),
+            'CONTENT_TYPE' => 'application/octet-stream',
+            'CONTENT_LENGTH' => (string) (WgwOversizedPost::iniBytes((string) ini_get('post_max_size')) + 1),
+        ];
+
+        $this->assertFalse(WgwOversizedPost::exceedsLimit(Request::create('/files/users/alice/big.bin', 'PUT', server: $server)));
+        $this->assertTrue(WgwOversizedPost::exceedsLimit(Request::create('/api/v1/files/collaboration', 'PUT', server: $server)));
+        $this->call('PUT', '/files/users/alice/big.bin', [], [], [], $server, 'x')->assertSuccessful();
+        $this->assertTrue(Storage::disk('wgw_files')->exists('users/alice/big.bin'));
     }
 }

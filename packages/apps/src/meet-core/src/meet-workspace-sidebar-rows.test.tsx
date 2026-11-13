@@ -7,7 +7,7 @@ import {
   MeetDirectMessageRows,
   MeetSidebarRows,
 } from "@/meet-core/src/meet-workspace-sidebar-rows";
-import type { MeetDirectMessagePerson } from "@/meet-core/src/meet-direct-messages";
+import type { MeetDirectMessagePerson } from "@/lib/meetings/meet-direct-messages";
 import type { MeetChannel } from "@/lib/models/meet-types";
 
 const people: MeetDirectMessagePerson[] = [

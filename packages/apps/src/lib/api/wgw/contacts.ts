@@ -6,7 +6,7 @@ import type {
   ContactCardImportResponse,
 } from "@wgw/openapi-types/contacts-types";
 import type { AddressBookMutationPatch } from "@/lib/models/contacts-types";
-import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
+import { contactCardToVCard } from "@/lib/models/contacts-vcard-export";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   parseApiErrorJson,

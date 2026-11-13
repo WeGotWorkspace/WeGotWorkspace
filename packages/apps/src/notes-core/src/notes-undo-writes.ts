@@ -1,6 +1,9 @@
 import { settleAll, type CompletedWriteKeys } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
-import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
+import {
+  persistNoteKeepingSyncRace,
+  persistNoteOrDropGone,
+} from "@/notes-core/src/notes-persist-access";
 import type { NoteMetadataField, NotesAPIOperations } from "@/lib/models/notes-types";
 
 /**

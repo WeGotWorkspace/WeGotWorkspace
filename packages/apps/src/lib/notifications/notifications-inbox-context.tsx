@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactElement, type ReactNode } from "react";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 export type NotificationsInboxValue = {
   items: readonly NotificationInboxItem[];

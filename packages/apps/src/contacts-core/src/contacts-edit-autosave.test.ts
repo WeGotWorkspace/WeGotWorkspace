@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
+import type { ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import {
   CONTACTS_AUTOSAVE_DEBOUNCE_MS,
   createContactSaveDebouncer,

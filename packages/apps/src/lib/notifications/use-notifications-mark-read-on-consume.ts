@@ -2,11 +2,11 @@ import { useEffect, useRef } from "react";
 import {
   useNotificationsInbox,
   type NotificationsInboxValue,
-} from "@/notifications-core/src/notifications-inbox-context";
+} from "@/lib/notifications/notifications-inbox-context";
 import {
   notificationMatchesDocsSharedPath,
   notificationMatchesNavigate,
-} from "@/notifications-core/src/notification-consume-match";
+} from "@/lib/notifications/notification-consume-match";
 
 export type UseNotificationsMarkReadOnConsumeArgs = {
   /** Meet (or other) inbox navigate for the focused surface. */

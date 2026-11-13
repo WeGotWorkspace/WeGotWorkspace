@@ -10,7 +10,7 @@ import {
   findCachedDmChannelByPeer,
   upsertChatChannelInCache,
 } from "@/lib/offline/meet-chat-offline-store";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 
 /**
  * REST target for a UI channel id. Non-DM ids pass through; `dm:{peer}` ids

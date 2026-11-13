@@ -16,7 +16,7 @@ import {
   deleteCardWithState,
   patchCardWithState,
 } from "@/lib/api/wgw/contacts-mutations";
-import { contactCardToVCard } from "@/contacts-core/src/contacts-vcard-export";
+import { contactCardToVCard } from "@/lib/models/contacts-vcard-export";
 import {
   connectedContacts,
   getCard,

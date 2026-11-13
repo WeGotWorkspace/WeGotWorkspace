@@ -11,7 +11,7 @@ import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
-import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
+import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
 import { canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
