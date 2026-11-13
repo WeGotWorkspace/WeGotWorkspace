@@ -5,7 +5,7 @@ import { shouldRequestRelay } from "@/lib/rtc/session/relay-policy";
 export const DISCONNECT_RESTART_MS = 2_000;
 
 /** Offer/answer or a relay apply that is still not `connected`. */
-export const RECOVERY_TIMEOUT_MS = 2_000;
+export const RECOVERY_TIMEOUT_MS = 8_000;
 
 /** A stable link may try relay again after this, if it later fails. */
 export const RELAY_RESET_STABLE_MS = 60_000;
