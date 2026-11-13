@@ -28,12 +28,12 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/calendars-hybrid-operations", () => ({
+vi.mock("@/lib/offline/calendars/calendars-hybrid-operations", () => ({
   createHybridCalendarOperations: vi.fn(),
   getCalendarsSyncRunner: () => ({ flush: mockFlush }),
 }));
 
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   readCalendarBootstrapFromCache: vi.fn(),
 }));
 
@@ -65,7 +65,7 @@ describe("useCalendarAPI applyBootstrapRefresh", () => {
     mockFlush.mockResolvedValue({ conflicts: [], schedulingConflicts: [], bootstrap: null });
     mockLoadBootstrap.mockResolvedValue(bootstrap);
     const { readCalendarBootstrapFromCache } =
-      await import("@/lib/offline/calendars-offline-store");
+      await import("@/lib/offline/calendars/calendars-offline-store");
     vi.mocked(readCalendarBootstrapFromCache).mockResolvedValue(bootstrap);
   });
 

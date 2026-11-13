@@ -9,7 +9,7 @@ import {
   readCalendarBootstrapFromCache,
   upsertCalendarEventInCache,
   writeCalendarBootstrapToCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import { calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 

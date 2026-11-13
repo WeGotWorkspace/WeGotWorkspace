@@ -5,10 +5,10 @@ import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   createHybridCalendarOperations,
   getCalendarsSyncRunner,
-} from "@/lib/offline/calendars-hybrid-operations";
+} from "@/lib/offline/calendars/calendars-hybrid-operations";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { readCalendarBootstrapFromCache } from "@/lib/offline/calendars-offline-store";
-import { setCalendarsSyncConflictListener } from "@/lib/offline/calendars-sync-conflicts";
+import { readCalendarBootstrapFromCache } from "@/lib/offline/calendars/calendars-offline-store";
+import { setCalendarsSyncConflictListener } from "@/lib/offline/calendars/calendars-sync-conflicts";
 import {
   readOfflineCalendarsUsername,
   resolveCalendarsOfflineUsername,

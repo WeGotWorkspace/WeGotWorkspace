@@ -37,7 +37,7 @@ import {
   removeOutboxMutation,
   upsertCalendarEventInCache,
   writeCalendarBootstrapToCache,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 
 export type CalendarOutboxFlushResult = {
   /** Event ids whose queued write was rejected by the server (deleted/changed remotely). */

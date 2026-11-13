@@ -5,7 +5,7 @@ import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import {
   resolveCalendarsConflictKeepLocal,
   resolveCalendarsConflictUseServer,
-} from "@/lib/offline/calendars-conflict-resolution";
+} from "@/lib/offline/calendars/calendars-conflict-resolution";
 import { CalendarConflictDialog } from "@/calendar-core/src/calendar-conflict-dialog";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarApiSource } from "@/calendar-core/src/calendar-api-source";
