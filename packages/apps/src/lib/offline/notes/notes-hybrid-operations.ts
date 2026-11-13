@@ -55,7 +55,7 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { notifyOtherTabsOnStructuralChanges } from "@/lib/offline/notes/notes-cross-tab-notify";
 import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes/notes-outbox-flush";
 import { reportNotesSyncConflicts } from "@/lib/offline/notes/notes-sync-conflicts";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,

@@ -9,7 +9,7 @@ import {
 } from "@/lib/api/wgw/notes-vjournal";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { readNotesBootstrapFromCache } from "@/lib/offline/notes/notes-offline-store";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
 import { canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";

@@ -18,10 +18,10 @@ import { readNotesBootstrapFromCache } from "@/lib/offline/notes/notes-offline-s
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 import { setNotesSyncConflictListener } from "@/lib/offline/notes/notes-sync-conflicts";
-import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import {
   NOTES_CHANGES_POLL_MS,

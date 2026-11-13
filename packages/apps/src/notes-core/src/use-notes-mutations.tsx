@@ -34,7 +34,7 @@ import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save
 import type { NoteMetadataField } from "@/lib/models/notes-types";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import {
   upsertNoteBodyPreviewInCache,
   upsertNoteInCache,

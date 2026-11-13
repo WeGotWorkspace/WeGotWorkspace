@@ -8,7 +8,7 @@ import {
   docsListingCacheKey,
   type DocsListingBrowseFilters,
 } from "@/lib/offline/docs/docs-listing-cache-key";
-import { readDocsListingFromCache } from "@/lib/offline/docs-listing-offline-store";
+import { readDocsListingFromCache } from "@/lib/offline/docs/docs-listing-offline-store";
 
 export type UseDocsListingCacheRefreshOptions = {
   /** Offline account; null turns the refresh off. */

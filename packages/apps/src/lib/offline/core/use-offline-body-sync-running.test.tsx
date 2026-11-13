@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   useOfflineBodySyncRunning,
   type OfflineBodySyncProgress,
-} from "@/lib/offline/use-offline-body-sync-running";
+} from "@/lib/offline/core/use-offline-body-sync-running";
 
 describe("useOfflineBodySyncRunning", () => {
   beforeEach(() => {

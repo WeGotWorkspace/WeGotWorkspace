@@ -8,7 +8,7 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import {
   readOfflineNotesUsername,
   rememberOfflineNotesUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import {
   listPendingNoteIds,

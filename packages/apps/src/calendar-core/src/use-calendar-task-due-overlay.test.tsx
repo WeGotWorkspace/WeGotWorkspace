@@ -16,7 +16,7 @@ vi.mock("@/lib/offline/tasks/tasks-offline-store", () => ({
   readTasksBootstrapFromCache: (...args: unknown[]) => mockReadCache(...args),
 }));
 
-vi.mock("@/lib/offline/offline-session", () => ({
+vi.mock("@/lib/offline/core/offline-session", () => ({
   readOfflineTasksUsername: () => mockReadUsername(),
 }));
 
@@ -26,7 +26,7 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: () => mockReadOnline(),
 }));
 
-vi.mock("@/lib/offline/use-offline-reconnect-flush", () => ({
+vi.mock("@/lib/offline/core/use-offline-reconnect-flush", () => ({
   useOfflineReconnectFlush: ({
     enabled,
     flush,

@@ -6,7 +6,7 @@ import { createHybridContactsApiSource } from "./contacts-api-source";
 
 const username = "carol";
 
-vi.mock("@/lib/offline/offline-session", () => ({
+vi.mock("@/lib/offline/core/offline-session", () => ({
   rememberOfflineContactsUsername: vi.fn(),
   readOfflineContactsUsername: vi.fn(() => username),
   resolveContactsOfflineUsername: (sessionUsername?: string) => sessionUsername?.trim() || username,

@@ -6,7 +6,7 @@ import { useDocsHomeList } from "@/docs-core/src/use-docs-home-list";
 import { type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { applyDocsInboundChanges } from "@/lib/offline/docs/docs-inbound-sync";
-import { writeDocsListingToCache } from "@/lib/offline/docs-listing-offline-store";
+import { writeDocsListingToCache } from "@/lib/offline/docs/docs-listing-offline-store";
 import { keepLiveNodeIds } from "@/docs-core/src/use-docs-listing-cache-refresh";
 
 vi.mock("@/lib/offline/core/browser-online", () => ({

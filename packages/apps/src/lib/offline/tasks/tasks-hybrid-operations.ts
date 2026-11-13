@@ -49,7 +49,7 @@ import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema"
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
 import { reportTasksSyncConflicts } from "@/lib/offline/tasks/tasks-sync-conflicts";
-import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
+import { readOfflineTasksUsername } from "@/lib/offline/core/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,

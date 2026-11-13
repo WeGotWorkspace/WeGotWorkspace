@@ -1,5 +1,5 @@
 import { listFailedNotesOutbox } from "@/lib/offline/notes/notes-offline-store";
-import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
+import { useFailedOutboxCount } from "@/lib/offline/core/use-failed-outbox-count";
 
 /**
  * Transient outbox failures plus metadata sync conflicts the listener reported.
