@@ -197,7 +197,9 @@ final class InstallerEndpointsTest extends TestCase
         $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.already_installed', true)
-            ->assertJsonPath('state.step', 'installed');
+            ->assertJsonPath('state.step', 'installed')
+            ->assertJsonPath('state.checks', [])
+            ->assertJsonMissingPath('state.data_dir');
     }
 
     public function test_wizard_writes_no_channel_for_monorepo_app_shell(): void
