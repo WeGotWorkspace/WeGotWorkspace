@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   notifyNotesBootstrapUpdated,
   subscribeNotesBootstrapUpdated,
-} from "@/lib/offline/notes-bootstrap-sync";
+} from "@/lib/offline/notes/notes-bootstrap-sync";
 
 const delivered = () => new Promise((resolve) => setTimeout(resolve, 20));
 

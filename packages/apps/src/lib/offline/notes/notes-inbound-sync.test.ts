@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   NOTES_NOTEBOOKS_TOKEN_KEY,
   syncNotesInboundFromRest,
-} from "@/lib/offline/notes-inbound-sync";
+} from "@/lib/offline/notes/notes-inbound-sync";
 
 const listNotebookChanges = vi.fn();
 const listNoteChanges = vi.fn();
@@ -47,7 +47,7 @@ vi.mock("@/lib/api/wgw/notes-vjournal", () => ({
     Boolean(error && typeof error === "object" && (error as { status?: number }).status === 404),
 }));
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   readSyncToken: (...args: unknown[]) => readToken(...args),
   writeSyncToken: (...args: unknown[]) => writeToken(...args),
   readNotesBootstrapFromCache: () => readCache(),
@@ -55,7 +55,7 @@ vi.mock("@/lib/offline/notes-offline-store", () => ({
   listOutboxNoteIds: () => outboxIds(),
 }));
 
-vi.mock("@/lib/offline/notes-jmap-inbound", () => ({
+vi.mock("@/lib/offline/notes/notes-jmap-inbound", () => ({
   ingestRemoteNote: (...args: unknown[]) => ingestNote(...args),
   ingestRemoteNoteDestroyed: (...args: unknown[]) => ingestNoteDestroyed(...args),
   ingestRemoteNotebook: (...args: unknown[]) => ingestNotebook(...args),

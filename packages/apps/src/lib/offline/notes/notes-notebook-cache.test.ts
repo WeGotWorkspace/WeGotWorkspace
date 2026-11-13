@@ -9,11 +9,11 @@ import {
   upsertNoteInCache,
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable, notesNotebooksTable } from "@/lib/offline/notes/notes-schema";
-import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
-import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+import { createHybridNotesOperations } from "@/lib/offline/notes/notes-hybrid-operations";
+import { flushNotesOutbox } from "@/lib/offline/notes/notes-outbox-flush";
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => false),

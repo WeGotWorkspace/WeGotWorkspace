@@ -8,10 +8,10 @@ import {
   listOutboxMutations,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+import { flushNotesOutbox } from "@/lib/offline/notes/notes-outbox-flush";
 
 // #1711: an edit queued while the flush is sending the same note's row.
 

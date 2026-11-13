@@ -8,8 +8,8 @@ import {
   enqueueOutboxMutation,
   getNoteFromCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
-import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+} from "@/lib/offline/notes/notes-offline-store";
+import { flushNotesOutbox } from "@/lib/offline/notes/notes-outbox-flush";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import {
   isNoteArchivedRefusal,

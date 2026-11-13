@@ -7,8 +7,11 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
-import { ingestRemoteNote, ingestRemoteNoteDestroyed } from "@/lib/offline/notes-jmap-inbound";
-import { setNotesSyncConflictListener } from "@/lib/offline/notes-sync-conflicts";
+import {
+  ingestRemoteNote,
+  ingestRemoteNoteDestroyed,
+} from "@/lib/offline/notes/notes-jmap-inbound";
+import { setNotesSyncConflictListener } from "@/lib/offline/notes/notes-sync-conflicts";
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
@@ -27,7 +30,7 @@ import {
   upsertNoteInCache,
   writeNotesBootstrapToCache,
   writeSyncToken,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 
 const username = "bob";
 
@@ -65,7 +68,7 @@ describe("notes offline store", () => {
   });
 
   it("persists notebook color and does not drop sibling collections on upsert", async () => {
-    const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
+    const { upsertNotebookInCache } = await import("@/lib/offline/notes/notes-offline-store");
     await writeNotesBootstrapToCache(
       username,
       {
@@ -126,7 +129,7 @@ describe("notes offline store", () => {
   });
 
   it("rewrites cached note.notebook when a collection is renamed", async () => {
-    const { upsertNotebookInCache } = await import("@/lib/offline/notes-offline-store");
+    const { upsertNotebookInCache } = await import("@/lib/offline/notes/notes-offline-store");
     await writeNotesBootstrapToCache(
       username,
       {

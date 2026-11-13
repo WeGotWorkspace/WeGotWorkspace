@@ -14,14 +14,14 @@ import {
   ingestRemoteNoteDestroyed,
   ingestRemoteNotebook,
   ingestRemoteNotebookDestroyed,
-} from "@/lib/offline/notes-jmap-inbound";
+} from "@/lib/offline/notes/notes-jmap-inbound";
 import {
   listNoteIdsBlockingSyncToken,
   listOutboxNoteIds,
   readNotesBootstrapFromCache,
   readSyncToken,
   writeSyncToken,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { runScopedInbound } from "@/lib/offline/core/inbound-sync";
 
 type NoteRow = Awaited<ReturnType<typeof getNote>>;

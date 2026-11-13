@@ -1,7 +1,10 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import type { Note } from "@/lib/models/note";
-import { dropLocalNoteAfterServerGone, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import {
+  dropLocalNoteAfterServerGone,
+  upsertNoteInCache,
+} from "@/lib/offline/notes/notes-offline-store";
 import { type NoteDropped, subscribeNoteDropped } from "./notes-dropped-events";
 
 const note: Note = {

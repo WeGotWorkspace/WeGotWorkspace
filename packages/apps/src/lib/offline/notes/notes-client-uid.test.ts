@@ -8,14 +8,14 @@ import {
   upsertNoteBodyPreviewInCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotesTable, notesNotebooksTable } from "@/lib/offline/notes/notes-schema";
 import {
   createHybridNotesOperations,
   fetchNotesHybridBootstrap,
   getNotesSyncRunner,
-} from "@/lib/offline/notes-hybrid-operations";
+} from "@/lib/offline/notes/notes-hybrid-operations";
 import { type NoteCreated, subscribeNoteCreated } from "@/lib/offline/notes/notes-created-events";
 import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";

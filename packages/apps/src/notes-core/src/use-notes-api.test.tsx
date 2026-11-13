@@ -37,17 +37,17 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/notes-hybrid-operations", () => ({
+vi.mock("@/lib/offline/notes/notes-hybrid-operations", () => ({
   createHybridNotesOperations: vi.fn(),
   getNotesSyncRunner: () => ({ flush: mockFlush }),
 }));
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   readNotesBootstrapFromCache: vi.fn(),
   listNoteIdsBlockingSyncToken: async () => new Set<string>(),
 }));
 
-vi.mock("@/lib/offline/notes-inbound-sync", () => ({
+vi.mock("@/lib/offline/notes/notes-inbound-sync", () => ({
   syncNotesInboundFromRest: (...args: unknown[]) => mockInbound(...args),
 }));
 
@@ -79,7 +79,7 @@ vi.mock("@/lib/jmap-client", () => ({
 const mockUploadBodies = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("./notes-pending-bodies", () => ({ uploadPendingNoteBodies: mockUploadBodies }));
 
-vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
+vi.mock("@/lib/offline/notes/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
   subscribeNotesBootstrapUpdated: vi.fn(() => () => undefined),
 }));
@@ -118,7 +118,7 @@ describe("useNotesAPI", () => {
     mockFlush.mockResolvedValue({ stateMismatches: [], bootstrap: null });
     mockLoadBootstrap.mockResolvedValue(bootstrap);
     mockInbound.mockResolvedValue({ changed: true, usedFullResync: false });
-    const { readNotesBootstrapFromCache } = await import("@/lib/offline/notes-offline-store");
+    const { readNotesBootstrapFromCache } = await import("@/lib/offline/notes/notes-offline-store");
     vi.mocked(readNotesBootstrapFromCache).mockResolvedValue(bootstrap);
     vi.useRealTimers();
   });
@@ -176,7 +176,8 @@ describe("useNotesAPI", () => {
   });
 
   it("a message from another tab while offline re-reads the cache without a network call", async () => {
-    const { subscribeNotesBootstrapUpdated } = await import("@/lib/offline/notes-bootstrap-sync");
+    const { subscribeNotesBootstrapUpdated } =
+      await import("@/lib/offline/notes/notes-bootstrap-sync");
     let fromOtherTab: () => void = () => undefined;
     vi.mocked(subscribeNotesBootstrapUpdated).mockImplementation((_user, onUpdate) => {
       fromOtherTab = onUpdate;
@@ -196,7 +197,8 @@ describe("useNotesAPI", () => {
   });
 
   it("a message from another tab does not leave a failed refresh uncaught", async () => {
-    const { subscribeNotesBootstrapUpdated } = await import("@/lib/offline/notes-bootstrap-sync");
+    const { subscribeNotesBootstrapUpdated } =
+      await import("@/lib/offline/notes/notes-bootstrap-sync");
     let fromOtherTab: () => void = () => undefined;
     vi.mocked(subscribeNotesBootstrapUpdated).mockImplementation((_user, onUpdate) => {
       fromOtherTab = onUpdate;
@@ -250,7 +252,8 @@ describe("useNotesAPI", () => {
       mockOnReconnect();
     });
 
-    const { notifyNotesBootstrapUpdated } = await import("@/lib/offline/notes-bootstrap-sync");
+    const { notifyNotesBootstrapUpdated } =
+      await import("@/lib/offline/notes/notes-bootstrap-sync");
 
     await waitFor(() => {
       expect(mockFlush).toHaveBeenCalledTimes(1);
@@ -270,7 +273,7 @@ describe("useNotesAPI", () => {
 
     renderHook(() => useNotesAPI(source, { onSyncConflict }));
 
-    const { reportNotesSyncConflicts } = await import("@/lib/offline/notes-sync-conflicts");
+    const { reportNotesSyncConflicts } = await import("@/lib/offline/notes/notes-sync-conflicts");
     reportNotesSyncConflicts(["note-1"]);
 
     expect(onSyncConflict).toHaveBeenCalledWith(["note-1"]);

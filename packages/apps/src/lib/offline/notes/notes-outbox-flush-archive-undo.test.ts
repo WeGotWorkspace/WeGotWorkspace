@@ -7,10 +7,10 @@ import {
   listOutboxMutations,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+import { flushNotesOutbox } from "@/lib/offline/notes/notes-outbox-flush";
 
 // #1854: Undo of an archive turns the queued row around while the flush may be sending it.
 
