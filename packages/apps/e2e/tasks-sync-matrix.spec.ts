@@ -68,6 +68,7 @@ import {
   type Rights,
   type ServerState,
   type Tab,
+  revealTask,
 } from "./helpers/tasks-matrix";
 
 type Tabs = "one" | "same" | "diff";
@@ -169,9 +170,18 @@ function row(tab: Tab, title: string) {
   });
 }
 
+/**
+ * The task's row once the list shows it. A long list mounts only the rows near the
+ * viewport (#1641 step d), so this scrolls the row in first.
+ */
+async function shownRow(tab: Tab, title: string, timeout = 15_000): Promise<Locator> {
+  await expect.poll(() => revealTask(tab, title), { timeout }).toBe(true);
+  return row(tab, title);
+}
+
 /** Opens the task in the detail pane; every change there saves itself. */
 async function openTask(tab: Tab, title: string): Promise<Locator> {
-  await row(tab, title).locator(".list-item__button").click();
+  await (await shownRow(tab, title)).locator(".list-item__button").click();
   const detail = tab.locator(".tasks-detail-view");
   await expect(detail.getByRole("textbox", { name: "Task name" })).toHaveValue(title, {
     timeout: 10_000,
@@ -184,7 +194,7 @@ async function quickAdd(tab: Tab, title: string) {
   const field = tab.getByRole("textbox", { name: "Quick add task" });
   await field.fill(title);
   await field.press("Enter");
-  await row(tab, title).waitFor({ timeout: 15_000 });
+  await shownRow(tab, title);
 }
 
 function sidebarList(tab: Tab, name: string) {
@@ -452,7 +462,7 @@ const ACTIONS = {
     nets: FIELD,
     async run(tab, f) {
       await editTask(tab, f.task, { status: "In progress" });
-      await row(tab, f.task).getByRole("checkbox", { name: "Mark complete" }).click();
+      await (await shownRow(tab, f.task)).getByRole("checkbox", { name: "Mark complete" }).click();
       await sleep(2_500);
     },
     landed: (s, f) => taskT(s, f)?.status === "completed",
@@ -1115,7 +1125,7 @@ test.describe("sharing", () => {
       await showAllTasks(b);
 
       // The UI offers no write on the list.
-      const target = row(b, f.task);
+      const target = await shownRow(b, f.task);
       await expect(target.getByRole("checkbox", { name: "Mark complete" })).toBeDisabled();
       // The open task is read-only: no typing, no picks, no complete or delete.
       const detail = await openTask(b, f.task);
@@ -1439,7 +1449,7 @@ test.describe("a refused offline write is rescued", () => {
       await asking.bringToFront();
       await chooseRescue(asking, f, "revoked", "existing list");
       await expect(rescueEntry(other), "the other tab follows").toHaveCount(0, { timeout: 15_000 });
-      await expect(row(other, title)).toHaveCount(1, { timeout: 15_000 });
+      await expect(await shownRow(other, title)).toHaveCount(1);
       await expectRescued(f, title, "revoked", "existing list");
     } finally {
       await closeTabs(session);
@@ -1835,7 +1845,7 @@ test("sync notice · a held edit shows Retry in every tab and clears once it lan
 
     await hardRefresh([a, b]);
     for (const tab of [a, b]) {
-      await expect(row(tab, `${title} v2`)).toBeVisible({ timeout: 15_000 });
+      await expect(await shownRow(tab, `${title} v2`)).toBeVisible();
       await expect(tab.getByRole("region", { name: "Needs your attention" })).toHaveCount(0);
     }
   } finally {

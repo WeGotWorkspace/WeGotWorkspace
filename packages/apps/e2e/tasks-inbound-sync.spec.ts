@@ -6,6 +6,7 @@
 // The changes are made through the REST API as the same user, which is what
 // tab B, a phone or a CalDAV client does from tab A's point of view.
 import { expect, test, type Page } from "./helpers/live-test";
+import { revealTask } from "./helpers/tasks-matrix";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const USER = process.env.WGW_E2E_USERNAME ?? "admin";
@@ -92,6 +93,7 @@ async function deleteTask(taskId: string): Promise<void> {
   }
 }
 
+/** A mounted task title. Long lists mount only rows near the viewport: reveal it first. */
 function taskTitle(page: Page, title: string) {
   return page.locator(".tasks-list-row .list-item__title", { hasText: title });
 }
@@ -118,16 +120,22 @@ test.describe("Tasks inbound sync (live app)", () => {
     created.push(toDelete.id, toRename.id);
 
     await openTasks(page);
-    await expect(taskTitle(page, toDelete.title)).toBeVisible({ timeout: 30_000 });
-    await expect(taskTitle(page, toRename.title)).toBeVisible();
+    await expect
+      .poll(() => revealTask(page, toDelete.title, false), { timeout: 30_000 })
+      .toBe(true);
+    await expect.poll(() => revealTask(page, toRename.title, false)).toBe(true);
 
     const renamed = `e2e-inbound-renamed-${stamp}`;
     await deleteTask(toDelete.id);
     await renameTask(toRename.id, renamed);
 
-    await expect(taskTitle(page, toDelete.title)).toHaveCount(0, { timeout: FOLLOW_TIMEOUT_MS });
-    await expect(taskTitle(page, renamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
-    await expect(taskTitle(page, toRename.title)).toHaveCount(0);
+    await expect
+      .poll(() => revealTask(page, toDelete.title, false), { timeout: FOLLOW_TIMEOUT_MS })
+      .toBe(false);
+    await expect
+      .poll(() => revealTask(page, renamed, false), { timeout: FOLLOW_TIMEOUT_MS })
+      .toBe(true);
+    await expect.poll(() => revealTask(page, toRename.title, false)).toBe(false);
   });
 
   test("changes made while the tab was offline show up after reconnect", async ({ page }) => {
@@ -138,7 +146,9 @@ test.describe("Tasks inbound sync (live app)", () => {
     created.push(toDelete.id, toRename.id);
 
     await openTasks(page);
-    await expect(taskTitle(page, toDelete.title)).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(() => revealTask(page, toDelete.title, false), { timeout: 30_000 })
+      .toBe(true);
 
     await page.context().setOffline(true);
     await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({ timeout: 15_000 });
@@ -148,12 +158,16 @@ test.describe("Tasks inbound sync (live app)", () => {
     await renameTask(toRename.id, renamed);
     // Offline: nothing can arrive, so the old list stays.
     await page.waitForTimeout(2_000);
-    await expect(taskTitle(page, toDelete.title)).toBeVisible();
+    await expect.poll(() => revealTask(page, toDelete.title, false)).toBe(true);
 
     await page.context().setOffline(false);
     await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 20_000 });
-    await expect(taskTitle(page, toDelete.title)).toHaveCount(0, { timeout: FOLLOW_TIMEOUT_MS });
-    await expect(taskTitle(page, renamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
+    await expect
+      .poll(() => revealTask(page, toDelete.title, false), { timeout: FOLLOW_TIMEOUT_MS })
+      .toBe(false);
+    await expect
+      .poll(() => revealTask(page, renamed, false), { timeout: FOLLOW_TIMEOUT_MS })
+      .toBe(true);
   });
 
   test("an open task keeps what was typed when tasks sync in (#1858)", async ({ page }) => {
@@ -164,7 +178,8 @@ test.describe("Tasks inbound sync (live app)", () => {
     created.push(edited.id, other.id);
 
     await openTasks(page);
-    await taskTitle(page, edited.title).click({ timeout: 30_000 });
+    await expect.poll(() => revealTask(page, edited.title, false), { timeout: 30_000 }).toBe(true);
+    await taskTitle(page, edited.title).click();
     const detail = page.locator(".tasks-detail-view");
     const notes = detail.getByRole("textbox", { name: "Notes" });
     const name = detail.getByRole("textbox", { name: "Task name" });
@@ -176,7 +191,9 @@ test.describe("Tasks inbound sync (live app)", () => {
     // Another task changes elsewhere: the list repaints beside the open task.
     const otherRenamed = `e2e-draft-other-renamed-${stamp}`;
     await renameTask(other.id, otherRenamed);
-    await expect(taskTitle(page, otherRenamed)).toBeVisible({ timeout: FOLLOW_TIMEOUT_MS });
+    await expect
+      .poll(() => revealTask(page, otherRenamed, false), { timeout: FOLLOW_TIMEOUT_MS })
+      .toBe(true);
     await expect(notes).toHaveValue(draft);
 
     // This task's title changes elsewhere: the title follows, the draft stays.

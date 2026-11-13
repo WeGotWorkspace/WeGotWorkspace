@@ -14,6 +14,7 @@ import {
   showAllTasks,
   TEAMMATE,
   type Tab,
+  revealTask,
 } from "./helpers/tasks-matrix";
 
 /**
@@ -59,7 +60,7 @@ test("a teammate's changes to a shared list reach the owner's open tab on push",
     await showAllTasks(tab);
     await connected;
     for (const task of [rename, complete, remove])
-      await expect(title(tab, task.title)).toBeVisible();
+      await expect.poll(() => revealTask(tab, task.title, false)).toBe(true);
 
     const first = await teammateEdits(tab, id, mateList.id, { rename, complete, remove }, "1");
     test.info().annotations.push({ type: "latency", description: `first: ${first} ms` });
@@ -73,7 +74,7 @@ test("a teammate's changes to a shared list reach the owner's open tab on push",
     const created = `after reload ${id}`;
     const sentAt = Date.now();
     await createTask(mateList.id, created, {}, TEAMMATE);
-    await expect(title(tab, created)).toBeVisible({ timeout: PUSH_BOUND_MS });
+    await expect.poll(() => revealTask(tab, created, false), { timeout: PUSH_BOUND_MS }).toBe(true);
     const second = Date.now() - sentAt;
     test.info().annotations.push({ type: "latency", description: `after reload: ${second} ms` });
     expect(second).toBeLessThan(PUSH_BOUND_MS);
@@ -118,17 +119,19 @@ async function teammateEdits(
   expect([200, 204], JSON.stringify(deleted.json)).toContain(deleted.status);
 
   const left = () => Math.max(1, PUSH_BOUND_MS - (Date.now() - sentAt));
-  await expect(title(tab, created)).toBeVisible({ timeout: left() });
-  await expect(title(tab, renamed)).toBeVisible({ timeout: left() });
-  await expect(title(tab, rows.rename.title)).toHaveCount(0, { timeout: left() });
+  await expect.poll(() => revealTask(tab, created, false), { timeout: left() }).toBe(true);
+  await expect.poll(() => revealTask(tab, renamed, false), { timeout: left() }).toBe(true);
+  await expect
+    .poll(() => revealTask(tab, rows.rename.title, false), { timeout: left() })
+    .toBe(false);
   // "All Tasks" hides completed tasks.
-  await expect(title(tab, rows.complete.title)).toHaveCount(0, { timeout: left() });
-  await expect(title(tab, rows.remove.title)).toHaveCount(0, { timeout: left() });
+  await expect
+    .poll(() => revealTask(tab, rows.complete.title, false), { timeout: left() })
+    .toBe(false);
+  await expect
+    .poll(() => revealTask(tab, rows.remove.title, false), { timeout: left() })
+    .toBe(false);
   return Date.now() - sentAt;
-}
-
-function title(tab: Tab, text: string) {
-  return tab.locator(".tasks-list-row .list-item__title", { hasText: text });
 }
 
 /** Resolves once a push request in any tab of the context got an event stream back. */

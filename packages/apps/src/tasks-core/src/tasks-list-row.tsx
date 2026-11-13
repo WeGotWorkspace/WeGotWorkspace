@@ -1,6 +1,7 @@
 import { memo, useEffect } from "react";
 import { Check, Trash2 } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
+import { workspaceListRowPropsEqual } from "@/workspace-list/src/workspace-list-row-props";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -43,25 +44,6 @@ export type TasksListRowProps = {
   /** Must keep its identity across renders, or every row re-renders. */
   onExitAnimationEnd: (taskId: string) => void;
 };
-
-const ROW_PROP_KEYS = [
-  "task",
-  "L",
-  "taskList",
-  "taskLists",
-  "canMutate",
-  "isTouch",
-  "isExiting",
-  "dragging",
-  "onToggleComplete",
-  "onDeleteTask",
-  "onExitAnimationEnd",
-] as const satisfies readonly (keyof TasksListRowProps)[];
-
-/** Same memo rule as `NotesListRow`: compare only the row's own props (#1714). */
-function sameTasksListRowProps(prev: TasksListRowProps, next: TasksListRowProps): boolean {
-  return ROW_PROP_KEYS.every((key) => Object.is(prev[key], next[key]));
-}
 
 /** The row foot: list dot and name, the due day relative to today, and a status other than the default. */
 function TasksListRowMeta({
@@ -115,7 +97,8 @@ function TasksListRowMarks({ task, L }: Pick<TasksListRowProps, "task" | "L">) {
 
 /**
  * One task in the list: the Notes row (`ListItem`, `below` layout) with the complete
- * checkbox in front. Re-renders only when its own task or flags change.
+ * checkbox in front. Memoized with the shared list comparison (#1641 step d): it
+ * re-renders only when its own task or flags change.
  */
 export const TasksListRow = memo(function TasksListRow({
   task,
@@ -210,4 +193,4 @@ export const TasksListRow = memo(function TasksListRow({
       />
     </div>
   );
-}, sameTasksListRowProps);
+}, workspaceListRowPropsEqual);
