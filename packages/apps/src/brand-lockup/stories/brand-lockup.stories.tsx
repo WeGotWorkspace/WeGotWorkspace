@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { BrandLockup } from "../src/brand-lockup";
-import "@/login-core/src/login-screen.css";
+import "@/authentication-page/src/login-screen.css";
 import "@/workspace-shell/src/workspace-shell-header.css";
 
 const meta = {

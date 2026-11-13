@@ -3,7 +3,7 @@ import { Folder, HardDrive } from "lucide-react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { canBrowserPreviewImage, extensionFromFileName } from "@/lib/files/file-name-utils";
 import { extensionAvatarLabel, extensionHue } from "@/drive-core/src/drive-file-avatar-label";
-import { kindIcon } from "@/drive-core/src/drive-icons";
+import { kindIcon } from "@/lib/files/file-kind-icons";
 import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import { isValidNewTag, normalizeTag } from "@/notes-core/src/note-tag";
+import { isValidNewTag, normalizeTag } from "@/lib/models/note-tag";
 import { noteAllowsTagAssignment } from "@/notes-core/src/notes-note-utils";
 
 export type NoteTagRenamePlan = {

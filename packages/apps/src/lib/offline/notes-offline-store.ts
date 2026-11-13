@@ -1,7 +1,7 @@
 import { announceNoteDropped } from "@/lib/offline/notes/notes-dropped-events";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
-import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
+import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
 import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
 import type { EntityTable } from "dexie";
 import {
@@ -35,7 +35,7 @@ import {
   enrichNote,
   noteHasListableBody,
   notesWithRenamedNotebook,
-} from "@/notes-core/src/notes-note-utils";
+} from "@/lib/models/note-list-model";
 
 export {
   enqueueOutboxMutation,

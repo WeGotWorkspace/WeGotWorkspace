@@ -18,7 +18,7 @@ import {
 } from "@/lib/calendar-elements/utils/agenda-days";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { visibleEventsInRange } from "@/lib/calendar-elements/CalendarViewBase/renderedEvents";
-import { filterVisibleCalendarEventsKeepingOverlay } from "@/calendar-core/src/calendar-task-due-overlay";
+import { filterVisibleCalendarEventsKeepingOverlay } from "@/lib/calendar/calendar-render-overlay";
 import { isCalendarEventRecurring } from "@/lib/calendar-elements/types/calendarEventSemantics";
 import "./calendar-event-list.css";
 

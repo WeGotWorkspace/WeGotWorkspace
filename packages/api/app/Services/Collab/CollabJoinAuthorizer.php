@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use App\Services\Notes\NoteArchiveGuard;
@@ -97,6 +98,6 @@ final class CollabJoinAuthorizer
 
     private function deny(): never
     {
-        throw new CollabResponseException(403, 'forbidden', 'You do not have access to this document.');
+        throw new RealtimeApiException(403, 'forbidden', 'You do not have access to this document.');
     }
 }

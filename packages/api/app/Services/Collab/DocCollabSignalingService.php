@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
@@ -81,10 +82,7 @@ final class DocCollabSignalingService
     public function relay(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $principal = $this->actors->requirePrincipal($request);
-            $ownerMarker = $this->actors->ownerMarker($principal['username']);
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
-            $roomKey = $this->rooms->roomKey($room);
+            [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
 
             return $this->relays->issue($this->store, 'collab', $roomKey, $ownerMarker, $body);
@@ -100,11 +98,8 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $principal = $this->actors->requirePrincipal($request);
-            $ownerMarker = $this->actors->ownerMarker($principal['username']);
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $this->joinAuthorizer->assertMayJoin($room, $principal);
-            $roomKey = $this->rooms->roomKey($room);
             $name = mb_substr(trim((string) ($body['name'] ?? '')), 0, 64);
             if ($name === '') {
                 $this->fail('name_required');
@@ -155,10 +150,7 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $principal = $this->actors->requirePrincipal($request);
-            $ownerMarker = $this->actors->ownerMarker($principal['username']);
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
-            $roomKey = $this->rooms->roomKey($room);
+            [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
             $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
@@ -190,10 +182,7 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $principal = $this->actors->requirePrincipal($request);
-            $ownerMarker = $this->actors->ownerMarker($principal['username']);
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
-            $roomKey = $this->rooms->roomKey($room);
+            [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $from = $this->store->readSendFrom($body);
             $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
             $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
@@ -230,14 +219,11 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $principal = $this->actors->requirePrincipal($request);
-            $ownerMarker = $this->actors->ownerMarker($principal['username']);
-            $room = $this->rooms->cleanRoom($body['room'] ?? null);
-            $roomKey = $this->rooms->roomKey($room);
+            [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
             try {
                 $this->joinAuthorizer->assertMayJoin($room, $principal);
-            } catch (CollabResponseException $denied) {
+            } catch (RealtimeApiException $denied) {
                 // Leaving without access only ends the caller's own presence.
                 $this->store->leaveOwnPeerOr($roomKey, $peerId, $ownerMarker, $denied);
 
@@ -248,6 +234,21 @@ final class DocCollabSignalingService
 
             return ['ok' => true];
         });
+    }
+
+    /**
+     * The caller and the room of a peer request. Sign-in is checked before the
+     * room name, so an anonymous caller gets 401 whatever room it names.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array{0: array{username: string, role: string}, 1: string, 2: string, 3: string} principal, owner marker, canonical room, room key
+     */
+    private function peerRequest(Request $request, array $body): array
+    {
+        $principal = $this->actors->requirePrincipal($request);
+        $room = $this->rooms->cleanRoom($body['room'] ?? null);
+
+        return [$principal, $this->actors->ownerMarker($principal['username']), $room, $this->rooms->roomKey($room)];
     }
 
     /**
@@ -263,7 +264,7 @@ final class DocCollabSignalingService
     {
         try {
             $this->joinAuthorizer->assertMayJoin($room, $principal);
-        } catch (CollabResponseException $denied) {
+        } catch (RealtimeApiException $denied) {
             $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
             throw $denied;
         }
@@ -295,12 +296,12 @@ final class DocCollabSignalingService
         try {
             return $action();
         } catch (RtcSignalingException $exception) {
-            throw CollabResponseException::fromSignaling($exception);
+            throw RealtimeApiException::fromSignaling($exception);
         }
     }
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        throw new CollabResponseException($status, $error, $message);
+        throw new RealtimeApiException($status, $error, $message);
     }
 }

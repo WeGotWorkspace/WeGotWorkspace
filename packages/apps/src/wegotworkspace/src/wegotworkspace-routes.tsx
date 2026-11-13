@@ -17,7 +17,7 @@ import { CalendarRsvpPage } from "@/calendar-core/src/calendar-rsvp-page";
 import { validateCalendarRouteSearch } from "@/calendar-core/src/calendar-route-search";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
-import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { validateDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { DriveApp } from "@/drive-core/src/drive-app";
 import { validateDriveRouteSearch } from "@/drive-core/src/drive-route-search";
 import {

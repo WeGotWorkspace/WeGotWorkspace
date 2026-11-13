@@ -13,11 +13,11 @@ import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensur
 import {
   assignNotificationNavigate,
   notificationNavigateFromMessage,
-} from "@/notifications-core/src/notification-click-navigate";
+} from "@/lib/notifications/notification-click-navigate";
 import {
   NotificationsInboxValueProvider,
   type NotificationsInboxValue,
-} from "@/notifications-core/src/notifications-inbox-context";
+} from "@/lib/notifications/notifications-inbox-context";
 import {
   playInboxNotificationSound,
   readNotificationSoundMuted,
@@ -27,7 +27,7 @@ import {
 import type {
   NotificationInboxItem,
   NotificationInboxList,
-} from "@/notifications-core/src/notifications-types";
+} from "@/lib/models/notifications-types";
 import { pushedItemFromMessage } from "@/notifications-core/src/push-delivery";
 import {
   dropPushedItems,
@@ -44,7 +44,7 @@ export {
   NotificationsInboxValueProvider,
   useNotificationsInbox,
   type NotificationsInboxValue,
-} from "@/notifications-core/src/notifications-inbox-context";
+} from "@/lib/notifications/notifications-inbox-context";
 
 /**
  * Inbox poll interval while push is down. Shared-hosting floor for a single

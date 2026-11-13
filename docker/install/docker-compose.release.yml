@@ -29,6 +29,8 @@ services:
   migrator:
     image: ghcr.io/wegotworkspace/wegotworkspace:__WGW_VERSION__
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
     environment: *wgw-web-environment
     volumes:
       - wgw-content:/var/wgw/content
@@ -43,6 +45,8 @@ services:
   web:
     image: ghcr.io/wegotworkspace/wegotworkspace:__WGW_VERSION__
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "${WGW_HTTP_PORT:-8080}:80"
     environment: *wgw-web-environment
@@ -70,6 +74,8 @@ services:
     user: "www-data:www-data"
     image: ghcr.io/wegotworkspace/wegotworkspace:__WGW_VERSION__
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment: *wgw-web-environment
     volumes: *wgw-web-volumes
     depends_on:

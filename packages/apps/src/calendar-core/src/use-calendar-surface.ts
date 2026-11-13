@@ -11,7 +11,7 @@ import {
   persistEventId,
   type CalendarEventsApi,
 } from "@/calendar-core/src/calendar-events-api";
-import { calendarInfoFromJmap } from "@/calendar-core/src/calendar-share";
+import { calendarInfoFromJmap } from "@/lib/calendar/calendar-share";
 import { useCalendarLiveInbound } from "@/calendar-core/src/use-calendar-live-inbound";
 import {
   ingestRemoteCalendar,
