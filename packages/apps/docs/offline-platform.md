@@ -172,7 +172,7 @@ export const notesHybridDomainOperations: OfflineDomainOperations<NotesAPIOperat
   createHybridNotesOperations;
 ```
 
-Domain contract adapters: [`contacts/contacts-domain-contract.ts`](../src/lib/offline/contacts/contacts-domain-contract.ts), [`notes/notes-domain-contract.ts`](../src/lib/offline/notes/notes-domain-contract.ts). Domain-specific helpers (outbox coalescing wrappers, token scopes, etc.) stay on your `*-offline-store.ts` module.
+Every offline domain has one: [`notes`](../src/lib/offline/notes/notes-domain-contract.ts), [`tasks`](../src/lib/offline/tasks/tasks-domain-contract.ts), [`contacts`](../src/lib/offline/contacts/contacts-domain-contract.ts), [`calendars`](../src/lib/offline/calendars/calendars-domain-contract.ts), [`meet-chat`](../src/lib/offline/meet-chat/meet-chat-domain-contract.ts), [`drive`](../src/lib/offline/drive/drive-domain-contract.ts) and [`docs`](../src/lib/offline/docs/docs-domain-contract.ts). Docs binds Drive's store: a Docs file is a Drive `drive_entries` row, and only the operations factory differs. A domain that keeps one token for the account (Tasks, Drive) ignores the token scope; Meet chat scopes a token to one channel. Domain-specific helpers (outbox coalescing wrappers, token scopes, etc.) stay on your `*-offline-store.ts` module.
 
 ## Steps to add offline to a new app
 
