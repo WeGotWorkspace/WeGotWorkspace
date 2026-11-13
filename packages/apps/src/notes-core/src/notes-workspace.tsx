@@ -206,6 +206,7 @@ export function NotesWorkspace({
     assignTagToNotes,
     renameTag,
     createNote,
+    noteCreatePending,
     toggleStar,
     toggleArchive,
     openDeleteConfirm,
@@ -578,6 +579,9 @@ export function NotesWorkspace({
                 actions={selectionBarButtons}
               />
             );
+          }
+          if (noteCreatePending && !active) {
+            return <CollectionState variant="loading">{L.detailCreatingNote}</CollectionState>;
           }
           if (!showSingleNoteDetail || !active) {
             return (

@@ -234,6 +234,17 @@
   @apply flex min-h-0 flex-1 flex-col overflow-hidden;
 }
 
+/* The Doc is joining or its text is on its way: the suite's loading block, on the canvas. */
+.docs-workspace__opening {
+  @apply flex-1;
+  background-color: var(--docs-canvas);
+}
+
+/* The host rule asks for the full pane height; the stats footer below keeps its place. */
+.docs-workspace__editor > .docs-workspace__opening.collection-state-host {
+  min-height: 0;
+}
+
 /* Guest view (#1713): sits where the format bar would, so the sheet does not jump. */
 .docs-workspace__read-only-notice {
   @apply m-0 flex shrink-0 items-center gap-2 text-sm;

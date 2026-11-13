@@ -100,17 +100,25 @@ type EchoSessionOptions = {
   onDocStatus?: (status: string | ((prev: string) => string)) => void;
   updatePendingState?: (pending: boolean, failed?: boolean) => Promise<void>;
   roomNotPersistent?: boolean;
+  roomHeldUntilChecked?: boolean;
 };
 
 function useEchoSession(
   userName: string,
-  { room = ROOM, onDocStatus, updatePendingState, roomNotPersistent }: EchoSessionOptions = {},
+  {
+    room = ROOM,
+    onDocStatus,
+    updatePendingState,
+    roomNotPersistent,
+    roomHeldUntilChecked,
+  }: EchoSessionOptions = {},
 ): {
   refs: DocsCollabSessionRefs;
   handleMeshMessage: (msg: DocsCollabMeshMessage) => void;
   applyServerBootstrap: (generation: number, authToken: string | undefined) => Promise<void>;
   trySeedFromFile: () => void;
   snapshotPreview: string | null;
+  awaitingContent: boolean;
   join: () => Promise<void>;
   teardown: () => void;
 } {
@@ -123,7 +131,7 @@ function useEchoSession(
   const trySeedFromFile = useCallback(() => {
     trySeedFromFileRef.current();
   }, []);
-  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room, roomNotPersistent };
+  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room, roomNotPersistent, roomHeldUntilChecked };
   const mesh = useDocsCollabMesh({
     refs,
     room,
@@ -155,6 +163,7 @@ function useEchoSession(
     applyServerBootstrap: join.applyServerBootstrap,
     trySeedFromFile: join.trySeedFromFile,
     snapshotPreview: join.snapshotPreview,
+    awaitingContent: join.awaitingContent,
     join: join.join,
     teardown: join.teardown,
   };
@@ -438,6 +447,39 @@ describe("useDocsCollabJoin teardown", () => {
 
     expect(closeStore).toHaveBeenCalledTimes(1);
     expect(closeStore.mock.calls[0]?.[2]).toMatchObject({ upload: true });
+    resetDocsCollabMeshLingerForTests();
+  });
+
+  // Every Doc opens held until its path check answers; its text is still on its way (#2056).
+  it("holds typing in an empty room that is held only until a check answers", async () => {
+    const hook = renderHook(
+      ({ checked }: { checked: boolean }) =>
+        useEchoSession("Ada", { roomNotPersistent: true, roomHeldUntilChecked: !checked }),
+      { initialProps: { checked: false } },
+    );
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    expect(hook.result.current.awaitingContent).toBe(true);
+
+    // The check answers that a queued create owns the path: nothing is on its way.
+    hook.rerender({ checked: true });
+    expect(hook.result.current.awaitingContent).toBe(false);
+    act(() => {
+      hook.result.current.teardown();
+    });
+    resetDocsCollabMeshLingerForTests();
+  });
+
+  it("takes typing at once in an empty room whose server copy does not exist yet", async () => {
+    const hook = renderHook(() => useEchoSession("Ada", { roomNotPersistent: true }));
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    expect(hook.result.current.awaitingContent).toBe(false);
+    act(() => {
+      hook.result.current.teardown();
+    });
     resetDocsCollabMeshLingerForTests();
   });
 

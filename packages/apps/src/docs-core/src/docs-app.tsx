@@ -4,9 +4,10 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
+import { docsSessionKnown } from "@/docs-core/src/docs-session-known";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
@@ -41,7 +42,7 @@ import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
 import { ShareDialog } from "@/share-ui/share-dialog";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));
@@ -95,7 +96,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     },
     [fileNodeId, followPath, navigate],
   );
-  const { holdServerSave } = useDocsEditorPathFollow({
+  const { holdServerSave, holdUntilChecked } = useDocsEditorPathFollow({
     username: offlineUsername,
     filePath,
     onFollow: followMovedFile,
@@ -231,6 +232,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       authToken: collabAuthToken,
       // Held on this device while the server does not have this path yet, or may have moved it.
       roomNotPersistent: holdServerSave,
+      roomHeldUntilChecked: holdUntilChecked,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
@@ -242,6 +244,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     fileNodeId,
     filePath,
     holdServerSave,
+    holdUntilChecked,
     relocateRouteDocument,
     showCollab,
     showError,
@@ -285,6 +288,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               onCreateDocument={isGuestSession ? undefined : handleCreateHomeDocument}
               onLogout={handleLogout}
             />
+          ) : showCollab && !docsSessionKnown(phase, session.user.username) ? (
+            // Join the room once, under the person's own name (#2056).
+            <DocsRouteStatus document={{ status: "resolving" }} onRetry={retryRouteDocument} />
           ) : showCollab && collabUrls ? (
             <>
               {phase === "ready" && collabDocumentTitle ? (

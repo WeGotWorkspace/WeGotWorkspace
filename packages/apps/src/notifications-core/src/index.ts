@@ -3,4 +3,4 @@ export { formatNotificationCopy } from "@/notifications-core/src/format-notifica
 export {
   NotificationsInboxValueProvider,
   useNotificationsInbox,
-} from "@/notifications-core/src/notifications-inbox-context";
+} from "@/lib/notifications/notifications-inbox-context";

@@ -141,6 +141,19 @@ describe("useDocsEditorPathFollow", () => {
     expect(result.current.holdServerSave).toBe(false);
   });
 
+  // A hold that only waits for a check still expects the server text (#2056).
+  it("tells a hold until the queue answers from one a queued create owns", async () => {
+    const opened = render("/users/alice/Plan.md");
+    expect(opened.result.current.holdUntilChecked).toBe(true);
+    await settleQueueRead();
+    expect(opened.result.current.holdUntilChecked).toBe(false);
+
+    state.owned = new Set(["users/alice/New.md"]);
+    const created = render("/users/alice/New.md");
+    await waitFor(() => expect(created.result.current.holdUntilChecked).toBe(false));
+    expect(created.result.current.holdServerSave).toBe(true);
+  });
+
   it("keeps holding the save when the queue cannot be read", async () => {
     state.readFails = true;
     const { result } = render("/users/alice/Plan.md");

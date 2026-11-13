@@ -3,9 +3,27 @@ import {
   editDraftToPatch,
   type ContactEditDraft,
   type ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
-import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+} from "@/lib/models/contacts-edit-draft";
 import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
+
+/** The Contacts labels the conflict rows use. Contacts' `ContactsUILabels` has them all. */
+export type ContactConflictLabels = Record<
+  | "channelTypeHome"
+  | "channelTypeMobile"
+  | "channelTypeNone"
+  | "channelTypeSchool"
+  | "channelTypeWork"
+  | "companyContact"
+  | "jobTitle"
+  | "sectionAddresses"
+  | "sectionEmails"
+  | "sectionName"
+  | "sectionNotes"
+  | "sectionOrganization"
+  | "sectionPhones"
+  | "sectionUrls",
+  string
+>;
 
 /** Editable contact sections surfaced in the field-level conflict merge UI. */
 export type ContactConflictFieldKey =
@@ -29,7 +47,7 @@ const EMPTY_PLACEHOLDER = "—";
 
 function channelLabel(
   contextType: ContactEditDraft["emails"][number]["contextType"],
-  L: ContactsUILabels,
+  L: ContactConflictLabels,
 ): string {
   if (contextType === "work") return L.channelTypeWork;
   if (contextType === "home") return L.channelTypeHome;
@@ -37,7 +55,7 @@ function channelLabel(
   return L.channelTypeNone;
 }
 
-function phoneTypeLabel(phoneType: ContactPhoneType, L: ContactsUILabels): string {
+function phoneTypeLabel(phoneType: ContactPhoneType, L: ContactConflictLabels): string {
   if (phoneType === "mobile") return L.channelTypeMobile;
   return channelLabel(phoneType, L);
 }
@@ -49,11 +67,11 @@ function formatNameDraft(draft: ContactEditDraft): string {
   return parts.join(" ") || EMPTY_PLACEHOLDER;
 }
 
-function formatKindDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
+function formatKindDraft(draft: ContactEditDraft, L: ContactConflictLabels): string {
   return draft.showAsCompany ? L.companyContact : "Individual";
 }
 
-function formatKindCard(card: ContactCard, L: ContactsUILabels): string {
+function formatKindCard(card: ContactCard, L: ContactConflictLabels): string {
   if (card.kind === "org") return L.companyContact;
   if (card.kind === "group") return "Group";
   return "Individual";
@@ -61,7 +79,7 @@ function formatKindCard(card: ContactCard, L: ContactsUILabels): string {
 
 function formatChannelRows(
   rows: Array<{ value: string; typeLabel: string }>,
-  L: ContactsUILabels,
+  L: ContactConflictLabels,
 ): string {
   const lines = rows
     .filter((row) => row.value.trim())
@@ -73,7 +91,7 @@ function formatChannelRows(
   return lines.length > 0 ? lines.join("\n") : EMPTY_PLACEHOLDER;
 }
 
-function formatPhoneDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
+function formatPhoneDraft(draft: ContactEditDraft, L: ContactConflictLabels): string {
   return formatChannelRows(
     draft.phones.map((row) => ({
       value: row.number,
@@ -83,7 +101,7 @@ function formatPhoneDraft(draft: ContactEditDraft, L: ContactsUILabels): string 
   );
 }
 
-function formatEmailDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
+function formatEmailDraft(draft: ContactEditDraft, L: ContactConflictLabels): string {
   return formatChannelRows(
     draft.emails.map((row) => ({
       value: row.address,
@@ -93,7 +111,7 @@ function formatEmailDraft(draft: ContactEditDraft, L: ContactsUILabels): string 
   );
 }
 
-function formatUrlDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
+function formatUrlDraft(draft: ContactEditDraft, L: ContactConflictLabels): string {
   return formatChannelRows(
     draft.urls.map((row) => ({
       value: row.uri,
@@ -103,7 +121,7 @@ function formatUrlDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
   );
 }
 
-function formatAddressDraft(draft: ContactEditDraft, L: ContactsUILabels): string {
+function formatAddressDraft(draft: ContactEditDraft, L: ContactConflictLabels): string {
   const lines = draft.addresses
     .filter((row) =>
       [row.street, row.locality, row.region, row.postalCode, row.country].some((part) =>
@@ -273,7 +291,7 @@ const FIELD_ORDER: ContactConflictFieldKey[] = [
   "urls",
 ];
 
-function fieldLabel(key: ContactConflictFieldKey, L: ContactsUILabels): string {
+function fieldLabel(key: ContactConflictFieldKey, L: ContactConflictLabels): string {
   switch (key) {
     case "name":
       return L.sectionName;
@@ -301,7 +319,7 @@ function fieldValues(
   localDraft: ContactEditDraft,
   serverDraft: ContactEditDraft,
   serverCard: ContactCard,
-  L: ContactsUILabels,
+  L: ContactConflictLabels,
 ): { localValue: string; serverValue: string } {
   switch (key) {
     case "name":
@@ -356,7 +374,7 @@ function fieldValues(
 export function buildContactConflictFieldRows(
   serverCard: ContactCard,
   localCard: ContactCard,
-  labels: ContactsUILabels,
+  labels: ContactConflictLabels,
 ): ContactConflictFieldRow[] {
   const localDraft = contactCardToEditDraft(localCard);
   const serverDraft = contactCardToEditDraft(serverCard);

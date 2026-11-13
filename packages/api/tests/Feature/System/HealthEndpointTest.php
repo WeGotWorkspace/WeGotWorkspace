@@ -17,4 +17,13 @@ final class HealthEndpointTest extends TestCase
             ->assertJsonPath('status', 'ok')
             ->assertJsonPath('apiVersion', 'v1');
     }
+
+    public function test_up_fails_while_the_data_directory_is_not_writable(): void
+    {
+        $this->get('/up')->assertOk();
+
+        config(['wgw.data_dir' => '/nonexistent/wgw-content']);
+
+        $this->get('/up')->assertServerError();
+    }
 }

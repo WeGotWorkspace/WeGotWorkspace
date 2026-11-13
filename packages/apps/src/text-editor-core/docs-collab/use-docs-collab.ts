@@ -191,6 +191,7 @@ export function useDocsCollab({
     pendingSync,
     failedSync,
     snapshotPreview,
+    awaitingContent: joinHook.awaitingContent,
     join,
     connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,

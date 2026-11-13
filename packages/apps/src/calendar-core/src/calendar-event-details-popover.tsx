@@ -31,7 +31,7 @@ import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
-import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
 import { getLocaleDirection } from "@/lib/calendar-elements/utils/Locale";
 import {

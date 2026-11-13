@@ -15,6 +15,7 @@ use App\Dav\Server\CalendarImipDeliveryPlugin;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
 use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
+use App\Dav\Server\CalendarScheduleNotifyPlugin;
 use App\Dav\Server\CollectionReportReadPlugin;
 use App\Dav\Server\DocYjsStateDavPlugin;
 use App\Dav\Server\EventDispatchPlugin;
@@ -35,7 +36,6 @@ use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Teams\TeamColleagues;
-use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
 use Psr\Log\NullLogger;
@@ -48,7 +48,6 @@ use Sabre\DAVACL;
 final class SabreServerFactory
 {
     public function __construct(
-        private WgwInstallConfig $install,
         private SearchIndexerService $searchIndexer,
         private CalendarMeetLinkWriteHook $meetLinkHook,
         private EventDispatch $eventDispatch,
@@ -117,8 +116,7 @@ final class SabreServerFactory
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(app(FileNodeIndexPlugin::class));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
-        $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
-        $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));
+        $server->addPlugin(new Locks\Plugin(new Locks\Backend\PDO($pdo)));
         if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? false)) {
             $server->addPlugin(new DAV\Browser\Plugin);
         }
@@ -138,6 +136,7 @@ final class SabreServerFactory
             $server->addPlugin(new RecurrenceCapExceptionPlugin);
             $server->addPlugin(app(WgwSchedulePlugin::class));
             $server->addPlugin(app(CalendarScheduleDeliveryGuardPlugin::class));
+            $server->addPlugin(app(CalendarScheduleNotifyPlugin::class));
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Principal;
 
+use App\Exceptions\RealtimeApiException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Meet\MeetRequestAuth;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ final class PrincipalActorResolver
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
         if ($username === null) {
-            throw new PrincipalResponseException(401, 'auth_required', 'Sign in to join the workspace presence room.');
+            throw new RealtimeApiException(401, 'auth_required', 'Sign in to join the workspace presence room.');
         }
 
         return $username;

@@ -3,7 +3,7 @@ import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import {
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
-} from "@/calendar-core/src/calendar-share";
+} from "@/lib/calendar/calendar-share";
 import type { CalendarAPIOperations, CalendarUIData } from "@/lib/models/calendar-types";
 import { calendarDirectoryGroupsFromBootstrap } from "@/calendar-core/src/calendar-workspace-props";
 import { viewerHasNoTeam } from "@/lib/sharing/collection-share";

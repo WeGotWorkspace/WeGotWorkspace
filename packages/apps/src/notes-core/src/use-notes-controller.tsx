@@ -4,6 +4,7 @@ import type { NotesUILabels } from "./notes-labels";
 import type { NotesAPIOperations, NotesUIData } from "@/lib/models/notes-types";
 import { useArchivedNoteFollowsView } from "./use-archived-note-follows-view";
 import { useNoteArchivedElsewhere } from "./use-note-archived-elsewhere";
+import { useNoteCreateWhenReady } from "./use-note-create-when-ready";
 import { useNoteCreated } from "./use-note-created";
 import { useNoteDropped } from "./use-note-dropped";
 import { useNotesList } from "./use-notes-list";
@@ -89,6 +90,12 @@ export function useNotesController({
     onUndoQueuedAction: list.undoLatest,
   });
 
+  // Every account has a default notebook: an empty list has not loaded yet (#2055).
+  const { createNote, pending: noteCreatePending } = useNoteCreateWhenReady(
+    mutations.createNote,
+    shell.notebookCollections.length > 0,
+  );
+
   return {
     L: shell.L,
     notes: shell.notes,
@@ -147,7 +154,8 @@ export function useNotesController({
     moveActiveNoteToNotebook: mutations.moveActiveNoteToNotebook,
     assignTagToNotes: mutations.assignTagToNotes,
     renameTag,
-    createNote: mutations.createNote,
+    createNote,
+    noteCreatePending,
     toggleStar: mutations.toggleStar,
     toggleArchive: mutations.toggleArchive,
     requestDeleteSelected: mutations.requestDeleteSelected,

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { AuthenticationPage } from "@/authentication-page/src/authentication-page";
 import { installerCopy } from "@/installer-core/src/installer-copy";
 import { StepDots } from "@/step-dots/src/step-dots";
 

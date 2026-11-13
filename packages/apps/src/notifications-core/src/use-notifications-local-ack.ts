@@ -8,7 +8,7 @@ import {
   browserLocalAckedStore,
   type LocalAckedStore,
 } from "@/notifications-core/src/local-acked-store";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /** Same cap as `POST /notifications/local-ack` (and the inbox page size). */
 export const LOCAL_ACK_BATCH_MAX = 100;

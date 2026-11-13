@@ -7,7 +7,7 @@ import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
 import type { MeetChannelSections } from "@/meet-core/src/meet-channel-partition";
-import type { MeetDirectMessagePerson } from "@/meet-core/src/meet-direct-messages";
+import type { MeetDirectMessagePerson } from "@/lib/meetings/meet-direct-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
 import type { MeetChannel } from "@/lib/models/meet-types";

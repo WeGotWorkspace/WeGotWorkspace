@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 import { Button } from "@/button/src/button";
-import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { AuthenticationPage } from "@/authentication-page/src/authentication-page";
 import { shareLabels } from "@/share-ui/share-labels";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
