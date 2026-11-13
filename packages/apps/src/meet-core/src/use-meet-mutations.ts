@@ -12,6 +12,7 @@ import { buildLocalMeetChatLine } from "@/meet-core/src/meet-chat-line";
 import {
   buildMeetControlMessage,
   encodeMeetKnockerName,
+  isMeetRoomFullError,
 } from "@/meet-core/src/meet-control-messages";
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
@@ -155,6 +156,10 @@ export function useMeetMutations({
           const message = e instanceof Error ? e.message : "Could not join meeting.";
           debugRtc("join-room-failed", { room: target, peerId, message });
           room.setStatus("failed");
+          if (isMeetRoomFullError(e)) {
+            room.setError(meetLabels.callFull);
+            throw new Error(meetLabels.callFull, { cause: e });
+          }
           room.setError(message);
           throw e;
         }
@@ -216,8 +221,12 @@ export function useMeetMutations({
         } catch (e) {
           const message = e instanceof Error ? e.message : "Could not request to join.";
           room.setStatus("failed");
-          room.setError(message);
           room.setWaitingForAdmission(false);
+          if (isMeetRoomFullError(e)) {
+            room.setError(meetLabels.callFull);
+            throw new Error(meetLabels.callFull, { cause: e });
+          }
+          room.setError(message);
           throw e;
         }
       });
