@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPwaNavigateFallbackDenied } from "@/lib/offline/pwa-navigate-fallback-denylist";
+import { isPwaNavigateFallbackDenied } from "@/lib/offline/core/pwa-navigate-fallback-denylist";
 
 describe("isPwaNavigateFallbackDenied", () => {
   it("lets SPA routes use the index.html navigation fallback", () => {

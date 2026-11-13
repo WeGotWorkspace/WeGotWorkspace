@@ -1,7 +1,7 @@
 import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 import type { Note } from "@/lib/models/note";
 import { subscribeNoteArchivedElsewhere } from "@/lib/offline/notes/notes-archived-elsewhere";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 
 /**
  * A note archived elsewhere refused this device's change (#1535). Archive

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
+import { useOfflineSyncToast } from "@/lib/offline/core/use-offline-sync-toast";
 import type { NotesApiSource } from "@/notes-core/src/notes-api-source";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { NotesWorkspace } from "@/notes-core/src/notes-workspace";

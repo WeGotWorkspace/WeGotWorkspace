@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { Tag } from "lucide-react";
 import type { QueueMutation } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 import { normalizeTag } from "@/lib/models/note-tag";
 import { persistBestEffort } from "@/notes-core/src/notes-note-utils";

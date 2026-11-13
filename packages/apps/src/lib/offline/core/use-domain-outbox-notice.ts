@@ -4,7 +4,7 @@ import {
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
-import { useOfflineConflictQueue } from "@/lib/offline/use-offline-conflict-queue";
+import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
 
 type SetConflictListener = (listener: ((ids: string[]) => void) | undefined) => void;
 

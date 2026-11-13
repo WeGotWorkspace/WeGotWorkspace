@@ -1,7 +1,7 @@
 import { parentAndName } from "@/lib/files/api-path";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import { docsPathAfterMove, moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
-import { renameDocsListingResult } from "@/lib/offline/docs-listing-offline-store";
+import { renameDocsListingResult } from "@/lib/offline/docs/docs-listing-offline-store";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
 
 /** An offline-created Doc whose name was taken on the server, and the path it got. */
