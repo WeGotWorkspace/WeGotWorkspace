@@ -108,6 +108,16 @@ VAPID keys are created on first use into `wgw-content/keys/` (`php artisan wgw:v
 
 The Docker install stack includes a `scheduler` sidecar that loops `schedule:run` every 60 seconds (same contract as cron, not a queue worker). See [docs/architecture/suite-notify.md](docs/architecture/suite-notify.md).
 
+### SQLite database files
+
+An SQLite install keeps its database in write-ahead log (WAL) mode, so people who read and save at the same time do not wait for each other. While the site is in use you will see `db.sqlite-wal` and `db.sqlite-shm` next to `db.sqlite`. They are part of the database:
+
+- The web-server user needs write access to the directory that holds `db.sqlite` (it already did).
+- Copy or back up the three files together, or take a snapshot with `sqlite3 db.sqlite ".backup backup.sqlite"`. A copy of `db.sqlite` alone, taken while the site runs, can miss the latest changes. The backup that **Admin → Updates** takes before an update is a complete snapshot.
+- WAL needs a local disk. On a network share (NFS, SMB), set `WGW_DB_SQLITE_JOURNAL_MODE=delete` in `packages/api/.env`.
+
+Existing installs switch to WAL on the first request after the update. Nothing to do. The setting is stored in the database file, so an older release keeps working with it.
+
 ### MCP / OAuth discovery (origin root)
 
 Assistants discover this instance at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource` on the **same origin** users open in the browser. The ZIP layout already rewrites those paths to Laravel via `index.php`. If you only expose Laravel under `Alias /api` (or another prefix) and the document root is not this install shell, add rewrite or alias rules so those two `.well-known` paths (and `/.well-known/oauth-protected-resource/<path>`) still reach Laravel. Do not tell clients to use `/api/.well-known/…`. Details: [docs/mcp-connect.md](docs/mcp-connect.md).
@@ -144,7 +154,7 @@ A fresh install puts the database, signing keys, and backups in a `wgw-content` 
 
 Do these steps in this order:
 
-1. Turn on maintenance mode. SQLite must not be moved while a connection is open.
+1. Turn on maintenance mode. SQLite must not be moved while a connection is open. Move `db.sqlite-wal` and `db.sqlite-shm` along with `db.sqlite` if they are there.
 2. Create the target directory outside the published folder and confirm the web-server user can write to it. Two installs that share a parent must not share one `wgw-content` directory; pick a separate target for the second install.
 3. Copy the directory. Do not move it yet. Check that the copy is complete. A rename is atomic only on the same filesystem. Across filesystems the copy needs room for both copies at once.
 4. Update **both** of these keys in `packages/api/.env`:
