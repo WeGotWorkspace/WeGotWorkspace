@@ -7,6 +7,7 @@ import {
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
+import { createLocalEntityId, outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   CONTACTS_DOMAIN,
@@ -359,19 +360,11 @@ export async function replaceAllAddressBooksInCache(
 }
 
 /** Card id targeted by an outbox row (update/delete `cardId`, or create `tempCardId`). */
-export function contactsOutboxCardId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== CONTACTS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      cardId?: string;
-      tempCardId?: string;
-      creationId?: string;
-    };
-    return payload.cardId ?? payload.tempCardId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const contactsOutboxCardId = outboxEntityIdReader(CONTACTS_DOMAIN, [
+  "cardId",
+  "tempCardId",
+  "creationId",
+]);
 
 /** Merges pending update rows for the same card so flush sends one patch with the original ifInState. */
 export async function enqueueCoalescedContactUpdate(
@@ -394,5 +387,5 @@ export async function enqueueCoalescedContactUpdate(
 }
 
 export function createTempContactId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId();
 }
