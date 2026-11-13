@@ -198,8 +198,9 @@ class ImipMailboxPoller
     }
 
     /**
-     * The authserv-id of the topmost Authentication-Results header, when the
-     * newest messages that carry one all agree on it.
+     * The authserv-id of the topmost Authentication-Results header, when every
+     * sampled message carries one and they all agree. A message without one
+     * shows that the server does not stamp mail, so nothing can be trusted.
      */
     private function learnTrustedServerId(ImapClient $client, int $highest): string
     {
@@ -211,9 +212,10 @@ class ImipMailboxPoller
         foreach ($client->summaries($uids) as $summary) {
             $top = $summary->headers->first('authentication-results');
             $parsed = $top !== null ? AuthenticationResults::parse($top) : null;
-            if ($parsed !== null) {
-                $ids[$parsed->serverId] = true;
+            if ($parsed === null) {
+                return '';
             }
+            $ids[$parsed->serverId] = true;
         }
 
         return count($ids) === 1 ? (string) array_key_first($ids) : '';

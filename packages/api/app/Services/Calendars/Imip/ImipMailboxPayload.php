@@ -68,6 +68,9 @@ final class ImipMailboxPayload
         if ($password === null && $existing === null) {
             throw new ApiHttpException(400, 'password is required.', 'bad_request');
         }
+        if ($password === null && ($existing->host !== $fields['host'] || (int) $existing->port !== $fields['port'])) {
+            throw new ApiHttpException(400, 'password is required when the host or port changes.', 'bad_request');
+        }
         $loginPassword = $password ?? $this->settings->password($existing);
 
         $test = $this->connectionTest($username, $fields, $loginPassword);
