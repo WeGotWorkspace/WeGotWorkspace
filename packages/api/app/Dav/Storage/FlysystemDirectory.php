@@ -100,18 +100,17 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
     }
 
     /**
-     * @return array{0: int|float, 1: int|float}
+     * Null leaves the quota properties unreported; 0 available reads as a full disk to sync clients.
+     *
+     * @return array{0: int|float|null, 1: int|float|null}
      */
     public function getQuotaInfo(): array
     {
-        if (! function_exists('disk_total_space') || ! function_exists('disk_free_space')) {
-            return [0, 0];
-        }
         $root = $this->filesystem->path($this->key === '' ? '.' : $this->key);
-        $total = disk_total_space($root);
-        $free = disk_free_space($root);
+        $total = function_exists('disk_total_space') ? disk_total_space($root) : false;
+        $free = function_exists('disk_free_space') ? disk_free_space($root) : false;
         if ($total === false || $free === false) {
-            return [0, 0];
+            return [null, null];
         }
 
         return [$total - $free, $free];
