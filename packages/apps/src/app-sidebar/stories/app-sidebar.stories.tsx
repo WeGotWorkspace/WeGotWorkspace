@@ -6,7 +6,6 @@ import { Button } from "@/button/src/button";
 import { NotificationsInboxValueProvider } from "@/lib/notifications/notifications-inbox-context";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceUserFooter } from "@/workspace-shell/src/workspace-app-layout";
-import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { AppSidebar } from "../src/app-sidebar";
@@ -107,7 +106,6 @@ export const Default: Story = {
 export const WithAppSettings: Story = {
   tags: ["vitest-ci"],
   render: () => {
-    registerBuiltinSettings();
     return (
       <AppSidebarHarness
         settingsAppId="notes"
