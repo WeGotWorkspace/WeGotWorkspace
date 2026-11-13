@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { listFailedCalendarOutbox } from "@/lib/offline/calendars/calendars-offline-store";
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
-import { listFailedContactOutbox } from "@/lib/offline/contacts-offline-store";
+import { listFailedContactOutbox } from "@/lib/offline/contacts/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {

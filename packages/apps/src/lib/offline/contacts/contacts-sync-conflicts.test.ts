@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   reportContactsSyncConflicts,
   setContactsSyncConflictListener,
-} from "@/lib/offline/contacts-sync-conflicts";
+} from "@/lib/offline/contacts/contacts-sync-conflicts";
 
 describe("contacts sync conflicts", () => {
   it("notifies the registered listener with card ids", () => {

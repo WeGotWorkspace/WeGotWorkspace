@@ -22,7 +22,7 @@ import {
   upsertAddressBookInCache,
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 
 function isNotFoundSetType(type: string | undefined): boolean {
   return type === "notFound";
