@@ -13,7 +13,7 @@ import {
   rememberLaunchPath,
   rememberPushScope,
   resetPushScopeLaunchForTests,
-} from "./push-scope";
+} from "@/lib/notifications/push-scope";
 
 describe("pushScopeForLaunch", () => {
   it("uses the suite scope where installed apps share one subscription", () => {

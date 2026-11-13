@@ -1,5 +1,5 @@
 import { WORKSPACE_APP_IDS, type WorkspaceAppId } from "@/lib/workspace-app-icons";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 const DOMAIN_APP: Record<string, WorkspaceAppId> = {
   chat: "meet",

@@ -34,7 +34,7 @@ import {
   meetSelectionFromRouteParams,
   type MeetChatRouteParams,
 } from "@/meet-core/src/meet-chat-route";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 import {
   meetChannelIdsEqual,
   meetCollectionIdFromPublic,

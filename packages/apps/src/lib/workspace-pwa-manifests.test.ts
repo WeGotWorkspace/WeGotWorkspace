@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/theme-preference";
 import { WORKSPACE_PWA_ICON_CACHE_VERSION } from "@/lib/workspace-pwa-head";
-import { PWA_MANIFEST_IDS } from "@/notifications-core/src/push-scope";
+import { PWA_MANIFEST_IDS } from "@/lib/notifications/push-scope";
 
 const manifestsDir = join(import.meta.dirname, "../../public/manifests");
 

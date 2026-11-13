@@ -21,9 +21,9 @@ vi.mock("@/notifications-core/src/ensure-push-subscription", () => ({
   ensurePushPermissionAndSubscribe: vi.fn(async () => false),
 }));
 
-vi.mock("@/notifications-core/src/notification-click-navigate", async (importOriginal) => {
+vi.mock("@/lib/notifications/notification-click-navigate", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/notifications-core/src/notification-click-navigate")>();
+    await importOriginal<typeof import("@/lib/notifications/notification-click-navigate")>();
   return {
     ...actual,
     assignNotificationNavigate: vi.fn(),
@@ -40,7 +40,7 @@ import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensur
 import {
   assignNotificationNavigate,
   WGW_NOTIFICATION_NAVIGATE_MESSAGE,
-} from "@/notifications-core/src/notification-click-navigate";
+} from "@/lib/notifications/notification-click-navigate";
 import { WGW_NOTIFICATION_PUSHED_MESSAGE } from "@/notifications-core/src/push-delivery";
 import {
   NotificationsHost,
