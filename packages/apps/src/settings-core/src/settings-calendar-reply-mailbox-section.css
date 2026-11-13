@@ -1,0 +1,24 @@
+@import "../../styles.css" reference;
+
+/* Invitation replies section in Settings → Calendar. Rows are inline `FieldLabelRow`s. */
+
+.settings-reply-mailbox {
+  @apply flex flex-col;
+}
+
+.settings-reply-mailbox__intro,
+.settings-reply-mailbox__status {
+  @apply m-0 text-sm text-muted-foreground;
+}
+
+.settings-reply-mailbox__intro {
+  @apply pb-2;
+}
+
+.settings-reply-mailbox__actions {
+  @apply flex flex-wrap items-center gap-3 pt-3;
+}
+
+.settings-reply-mailbox__failure {
+  @apply m-0 pt-2 text-sm text-destructive;
+}
