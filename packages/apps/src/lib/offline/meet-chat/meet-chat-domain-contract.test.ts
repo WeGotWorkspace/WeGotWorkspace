@@ -9,7 +9,10 @@ import {
   meetChatOfflineDomainStore,
   type MeetChatOperationsForAuthor,
 } from "@/lib/offline/meet-chat/meet-chat-domain-contract";
-import type { MeetChatCachedBootstrap } from "@/lib/offline/meet-chat-offline-store";
+import {
+  listPendingChatMessageIds,
+  type MeetChatCachedBootstrap,
+} from "@/lib/offline/meet-chat-offline-store";
 
 const username = "grace";
 const live = createMeetAppBootstrap();
@@ -44,6 +47,19 @@ describe("meet chat domain contract", () => {
     expect(cached?.messages.map((message) => [message.id, message.body])).toEqual([
       [first.id, "Edited offline"],
     ]);
+  });
+
+  it("replaces the message set and keeps a message with an unsynced local write", async () => {
+    await store.writeBootstrap(username, bootstrap);
+    await store.upsertEntity(username, { ...first, body: "Edited offline" }, true);
+    // A snapshot from before the edit, which also no longer has `second`.
+    await store.writeBootstrap(username, { ...bootstrap, messages: [first] });
+
+    const cached = await store.readBootstrap(username);
+    expect(cached?.messages.map((message) => [message.id, message.body])).toEqual([
+      [first.id, "Edited offline"],
+    ]);
+    await expect(listPendingChatMessageIds(username)).resolves.toEqual([first.id]);
   });
 
   it("keeps one token per channel", async () => {
