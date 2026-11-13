@@ -73,8 +73,8 @@ Considered: the existing Contacts windowing (`contacts-list-window.ts`), `@tanst
 
 None for chunk A. These were found while writing the spec. Each is a behaviour difference between apps, so it goes to the overview session (and Wouter) before the chunk that would change it:
 
-- [ ] (chunk C) Tasks rows get Enter (open) and F2 (rename) from the suite keymap. Today Tasks has neither. Chunk C keeps today's keys unless this is decided.
-- [ ] (chunk C) Notes, Tasks and Contacts rows become one roving Tab stop, like Drive (the keymap decision says "roving focus"). Today every row is a Tab stop. Windowing already limits Tab to mounted rows. Chunks A–C keep the plain buttons unless this is decided.
+- [x] (chunk C) Tasks rows get Enter (open) and F2 (rename) from the suite keymap. Today Tasks has neither. Decided 2026-11-13: yes. Built in its own PR after chunk C, which keeps today's keys.
+- [x] (chunk C) Notes, Tasks and Contacts rows become one roving Tab stop, like Drive (the keymap decision says "roving focus"). Today every row is a Tab stop. Windowing already limits Tab to mounted rows. Decided 2026-11-13: yes. Built in its own PR after chunk C; chunks A–C keep the plain buttons.
 - [ ] (chunk D) Drive's grid shows Folders before Files, but ↑/↓ and shift-click ranges follow the sort order across both. Under the Modified or Size sort the keys jump between sections. This is a bug on `main`, filed as #2090. Chunk D windows each section without changing the order.
 
 ## Invariants
@@ -113,8 +113,9 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Done when:**
   - Tasks renders through `WorkspaceList` with the shared comparison.
   - An exiting row stays pinned until its exit animation ends.
-  - `shownTitles` reads the list without depending on every row being mounted.
-  - The measurement covers open, tick and type-title at 1000 tasks in one list.
+  - Unmeasured rows use an estimate per task: with or without a notes excerpt.
+  - `shownTitles` scrolls a windowed list through, so it does not depend on every row being mounted.
+  - The measurement covers open, scroll, keys, tick and type-title at 1000 tasks in one list. Tick and type put the task back over the API after each run.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/tasks-core`, the tasks sync matrix, the measurement script
 - **Parallel with:** none
 

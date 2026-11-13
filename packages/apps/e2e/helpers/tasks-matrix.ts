@@ -392,11 +392,44 @@ export async function setStoredToken(tab: Tab, token: string | null): Promise<vo
   }, token);
 }
 
-/** Titles the tab's "All Tasks" view shows (completed tasks are hidden there). */
+/**
+ * Titles the tab's "All Tasks" view shows (completed tasks are hidden there). A long
+ * list mounts only the rows near the viewport (#1641 step d), so this scrolls the list
+ * through, collecting titles, and puts the scroll position back.
+ */
 export async function shownTitles(tab: Tab, caseId: string): Promise<string[]> {
-  const titles = await tab
-    .locator(".tasks-list-row .list-item__title")
-    .evaluateAll((els) => els.map((el) => (el.textContent ?? "").trim()));
+  const titles = await tab.evaluate(async () => {
+    const read = (into: Set<string>) => {
+      for (const el of document.querySelectorAll(".tasks-list-row .list-item__title")) {
+        into.add((el.textContent ?? "").trim());
+      }
+    };
+    const seen = new Set<string>();
+    const list = document.querySelector<HTMLElement>(
+      ".tasks-list-panel__list[data-workspace-list-rows]",
+    );
+    read(seen);
+    if (!list || list.dataset.workspaceListRows === list.dataset.workspaceListMounted) {
+      return [...seen];
+    }
+    let scroller = list.parentElement;
+    while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
+      scroller = scroller.parentElement;
+    }
+    if (!scroller) return [...seen];
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    const start = scroller.scrollTop;
+    const step = Math.max(200, scroller.clientHeight);
+    for (let top = 0; ; top += step) {
+      scroller.scrollTop = top;
+      await frame();
+      await frame();
+      read(seen);
+      if (top >= scroller.scrollHeight - scroller.clientHeight) break;
+    }
+    scroller.scrollTop = start;
+    return [...seen];
+  });
   return titles.filter((title) => title.includes(caseId)).sort();
 }
 

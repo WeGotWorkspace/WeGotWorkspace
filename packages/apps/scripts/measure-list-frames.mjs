@@ -11,7 +11,8 @@
  *   node scripts/measure-list-frames.mjs --app notes --base-url http://127.0.0.1:4461 \
  *     --api-url http://127.0.0.1:9461 [--scenario all|open|scroll|keys|…] [--runs 3] [--cpu 4]
  *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search),
- *   drive (open, scroll, keys, rename, search; `--drive-view grid|list`, `--drive-path "My Drive/…"`).
+ *   drive (open, scroll, keys, rename, search; `--drive-view grid|list`, `--drive-path "My Drive/…"`),
+ *   tasks (open, scroll, keys, tick, type; `--tasks-list <list id>`).
  *
  * Each run uses a fresh browser context (no cache, no IndexedDB): a cold first visit.
  * Scenarios find rows by position on screen, never by DOM index, so the numbers
@@ -38,6 +39,7 @@ const { values } = parseArgs({
     json: { type: "boolean", default: false },
     "drive-view": { type: "string", default: "list" },
     "drive-path": { type: "string", default: "My Drive/List bench" },
+    "tasks-list": { type: "string", default: "list-bench" },
   },
 });
 
@@ -285,6 +287,91 @@ const APPS = {
       },
     },
   },
+  tasks: {
+    get path() {
+      return `/tasks/lists/${encodeURIComponent(values["tasks-list"])}`;
+    },
+    /** The list has painted and its row count stopped changing (the sync settled). */
+    async ready(page) {
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      const total = () =>
+        page.evaluate(() => {
+          const list = document.querySelector("[data-workspace-list-rows]");
+          return Number(
+            list?.getAttribute("data-workspace-list-rows") ??
+              document.querySelectorAll(".tasks-list-row").length,
+          );
+        });
+      let last = -1;
+      for (let stable = 0; stable < 3;) {
+        const count = await total();
+        stable = count === last ? stable + 1 : 0;
+        last = count;
+        await page.waitForTimeout(400);
+      }
+    },
+    scenarios: {
+      /** Cold open of a long list: from navigation until the tasks have painted. */
+      async open(page) {
+        await APPS.tasks.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /** Scroll the whole list in 20 steps. */
+      async scroll(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        return scrollThrough(page);
+      },
+      /** Select a task, then ArrowDown 30 times: each step opens that task. */
+      async keys(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
+      },
+      /**
+       * Tick the second task's circle: it plays its exit animation and leaves the
+       * list. The task is reopened over the API after the run.
+       */
+      async tick(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        const row = page.locator(".tasks-list-row").nth(1);
+        const id = await row.locator(ROW_SELECTOR).getAttribute("data-list-item-id");
+        const start = await now(page);
+        await row.getByRole("checkbox").click();
+        await page
+          .locator(`${ROW_SELECTOR}[data-list-item-id="${id}"]`)
+          .waitFor({ state: "detached", timeout: 15_000 });
+        return {
+          start,
+          interactions: 1,
+          restore: { id, patch: { workflowStatus: "needs-action" } },
+        };
+      },
+      /** Open a task about 40 rows down and type 40 characters into its name. */
+      async type(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        await scrollList(page, 3000);
+        await page.waitForTimeout(500);
+        await clickRowInMiddle(page);
+        const name = page.getByPlaceholder("Task name");
+        await name.waitFor({ timeout: 15_000 });
+        const title = await name.inputValue();
+        const id = await page
+          .locator(`${ROW_SELECTOR}[data-active="true"]`)
+          .getAttribute("data-list-item-id");
+        await name.click();
+        await page.keyboard.press("End");
+        await page.waitForTimeout(1500);
+        const start = await now(page);
+        await page.keyboard.type(" typing in a long list stays smooth ok", {
+          delay: KEY_DELAY_MS,
+        });
+        return { start, interactions: 40, restore: id ? { id, patch: { title } } : undefined };
+      },
+    },
+  },
   notes: {
     path: "/notes",
     async ready(page) {
@@ -332,6 +419,21 @@ const APPS = {
   },
 };
 
+/** Puts a task the scenario changed back, so every run starts from the same list. */
+async function restoreTask({ id, patch }, accessToken) {
+  const url = `${values["api-url"]}/api/v1/tasks/items/${encodeURIComponent(id)}`;
+  const headers = { Accept: "application/json", Authorization: `Bearer ${accessToken}` };
+  const current = await fetch(url, { headers });
+  if (!current.ok) throw new Error(`restore task ${id}: ${current.status}`);
+  const { etag } = await current.json();
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json", "If-Match": etag ?? "*" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`restore task ${id}: ${res.status} ${await res.text()}`);
+}
+
 async function runOnce(browser, app, scenarioName, accessToken) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await context.addInitScript(installFrameObserver);
@@ -349,12 +451,13 @@ async function runOnce(browser, app, scenarioName, accessToken) {
     await session.send("Emulation.setCPUThrottlingRate", { rate: cpu });
   }
   await page.goto(new URL(app.path, values["base-url"]).toString());
-  const { start } = await app.scenarios[scenarioName](page, {});
+  const { start, restore } = await app.scenarios[scenarioName](page, {});
   const end = (await now(page)) + TAIL_MS;
   await page.waitForTimeout(TAIL_MS);
   const frames = await framesBetween(page, start, end);
   const shape = await pageShape(page);
   await context.close();
+  if (restore) await restoreTask(restore, accessToken);
   const durations = frames.map((frame) => Math.round(frame.duration));
   return {
     longFrames: durations.length,

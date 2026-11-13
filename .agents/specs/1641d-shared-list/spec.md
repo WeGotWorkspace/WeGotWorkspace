@@ -78,7 +78,7 @@ Known DOM-wide reads that windowing affects, handled per binding:
 
 - `list-item-focus.ts` `adjacentListItem` walks the DOM. Only the Drive folder picker uses it, and its `DriveListView` windows above 80 items. The window keeps the focused row's neighbours mounted too, so the next row in the DOM is always the next item, even after the list scrolled away from the focused row.
 - `refocusListAfterNavigation` looks for the item with `tabindex="0"`. A roving-focus row is the active or first row, and both are mounted (pinned, or at the top).
-- e2e helpers that read every row title: `e2e/helpers/tasks-matrix.ts` `shownTitles`, and Drive's `drive-inbound-many-files.spec.ts`. They move to searching or scrolling in the Tasks and Drive PRs. Drive's names that must be gone sort to the top, next to an item the spec checks is visible, so they would be mounted if they existed.
+- e2e helpers that read every row title: `e2e/helpers/tasks-matrix.ts` `shownTitles`, and Drive's `drive-inbound-many-files.spec.ts`. `shownTitles` scrolls a windowed list through and collects the titles, then puts the scroll position back. Drive's names that must be gone sort to the top, next to an item the spec checks is visible, so they would be mounted if they existed.
 
 ## One place to measure
 
@@ -90,6 +90,6 @@ Known DOM-wide reads that windowing affects, handled per binding:
 
 - **Browser find-in-page (⌘F)** finds only mounted rows. Contacts already behaves this way. The app's own search is the way to find a row.
 - **Swipe destructive actions** collapse the row before the data changes. The resize is measured, and the window follows.
-- **Exit animations** (Tasks `tasks-row-exit`) call back from `onAnimationEnd`. An exiting row must stay pinned until its callback runs, or the id stays in `exitingTaskIds`. This is handled in the Tasks binding.
+- **Exit animations** (Tasks `tasks-row-exit`) call back from `onAnimationEnd`. An exiting row must stay pinned until its callback runs, or the id stays in `exitingTaskIds`. The Tasks binding passes every exiting id in `pinnedKeys`, next to the active row.
 - **Root font size and zoom** change row sizes. Measurement handles both; the estimate is only a start value.
 - **Lists of 80 items or fewer** render exactly as today (no spacers, no pinning).
