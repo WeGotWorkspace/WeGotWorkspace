@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { AppSidebarPrimaryProvider } from "@/app-sidebar/src/app-sidebar-primary";
-import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 
 const meta: Meta<typeof SidebarSegmentedNewMenu> = {
@@ -49,7 +48,6 @@ export const MainOnly: Story = {
 export const WithAppSettings: Story = {
   tags: ["vitest-ci"],
   render: (args) => {
-    registerBuiltinSettings();
     return (
       <div className="max-w-xs p-6">
         <AppSidebarPrimaryProvider settingsAppId="notes">
@@ -82,7 +80,6 @@ export const SettingsOnly: Story = {
   tags: ["vitest-ci"],
   args: { items: [] },
   render: (args) => {
-    registerBuiltinSettings();
     return (
       <div className="max-w-xs p-6">
         <AppSidebarPrimaryProvider settingsAppId="notes">
