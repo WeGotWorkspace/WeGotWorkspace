@@ -42,6 +42,11 @@ export type OutboxFlushContext = {
 export type OutboxFlushBinding<TPayload> = {
   domain: string;
   /**
+   * Puts the listed rows (oldest first) in the order to send them, e.g.
+   * creates first so later rows can follow their server ids.
+   */
+  order?: (rows: OfflineOutboxRow[]) => OfflineOutboxRow[];
+  /**
    * Runs before the row is read. Answers the row to send (it may rewrite it),
    * or null to leave the row as it is for a later flush.
    */
@@ -79,7 +84,8 @@ export async function runOutboxFlush<TPayload>(
   username: string,
   binding: OutboxFlushBinding<TPayload>,
 ): Promise<OutboxFlushCounts> {
-  const rows = await listOutboxMutationsForDomain(username, binding.domain);
+  const listed = await listOutboxMutationsForDomain(username, binding.domain);
+  const rows = binding.order ? binding.order(listed) : listed;
   const counts: OutboxFlushCounts = { flushed: 0, failed: 0 };
   const resends = new Map<string, number>();
   const context: OutboxFlushContext = {
@@ -87,8 +93,8 @@ export async function runOutboxFlush<TPayload>(
   };
 
   // `resend` appends to `rows`, so the loop reaches a row sent again.
-  for (const listed of rows) {
-    const row = binding.prepare ? await binding.prepare(listed) : listed;
+  for (const next of rows) {
+    const row = binding.prepare ? await binding.prepare(next) : next;
     if (!row) continue;
 
     try {

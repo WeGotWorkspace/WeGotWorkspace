@@ -384,4 +384,27 @@ describe("flushCalendarsOutbox", () => {
     const cached = await readCalendarBootstrapFromCache(username);
     expect(cached?.data.events.some((event) => event.id === "ev-undone")).toBe(false);
   });
+
+  it("records a row it cannot read and still sends the rows after it", async () => {
+    deleteCalendarEventLive.mockResolvedValue(undefined);
+    await enqueueOutboxMutation(username, {
+      id: "corrupt",
+      domain: CALENDARS_DOMAIN,
+      op: "delete",
+      payload: "{not json",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "after",
+      domain: CALENDARS_DOMAIN,
+      op: "delete",
+      payload: JSON.stringify({ eventId: "ev-1" }),
+    });
+
+    await flushCalendarsOutbox(username);
+
+    expect(deleteCalendarEventLive).toHaveBeenCalledWith("ev-1");
+    const rows = await listOutboxMutations(username);
+    expect(rows.map((row) => row.id)).toEqual(["corrupt"]);
+    expect(rows[0].lastError).toBeTruthy();
+  });
 });

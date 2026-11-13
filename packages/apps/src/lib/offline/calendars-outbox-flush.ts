@@ -23,13 +23,14 @@ import { JmapSetItemError } from "@/lib/jmap-client";
 import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
-  getOutboxMutation,
-  sendChangedRowAgain,
-  settleSentOutboxMutation,
-} from "@/lib/offline/core/outbox-store";
+  runOutboxFlush,
+  type OutboxFlushContext,
+  type OutboxSendOutcome,
+} from "@/lib/offline/core/outbox-flush";
+import { getOutboxMutation, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
 import {
-  listOutboxMutations,
   markOutboxError,
   readCalendarBootstrapFromCache,
   removeCalendarEventFromCache,
@@ -79,165 +80,149 @@ function cacheWindow() {
   return { window: calendarBootstrapWindow() };
 }
 
+function isCreateRow(row: OfflineOutboxRow): boolean {
+  return row.op === "create" || row.op === "calendarCreate";
+}
+
+/** The row's payload, or an empty one when it cannot be read. */
+function payloadOf(row: OfflineOutboxRow): Record<string, unknown> {
+  try {
+    return JSON.parse(row.payload) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/** Writes the calendars list `edit` returns over the latest cached bootstrap. */
+async function rewriteCachedCalendars(
+  username: string,
+  edit: (data: CalendarAppBootstrap["data"]) => Partial<CalendarAppBootstrap["data"]>,
+): Promise<void> {
+  const latest = await readCalendarBootstrapFromCache(username);
+  if (!latest) return;
+  await writeCalendarBootstrapToCache(
+    username,
+    { ...latest, data: { ...latest.data, ...edit(latest.data) } },
+    cacheWindow(),
+  );
+}
+
+type CalendarsFlushState = {
+  username: string;
+  tempToServerId: Map<string, string>;
+};
+
+/** Sends one Calendars row; resolving plainly lets the runner remove it. */
+async function sendCalendarsRow(
+  state: CalendarsFlushState,
+  payload: Record<string, unknown>,
+  row: OfflineOutboxRow,
+  context: OutboxFlushContext,
+): Promise<OutboxSendOutcome> {
+  const { username, tempToServerId } = state;
+  const resolveEventId = (eventId: string) => tempToServerId.get(eventId) ?? eventId;
+  if (row.op === "create") {
+    const draft = payload.draft as CalendarEventDraft;
+    const tempId = String(payload.tempEventId ?? "");
+    const event = await createCalendarEventLive(draft);
+    if (event.id && !(await getOutboxMutation(username, row.id))) {
+      // Undone while it was sent (`discardUnsentCalendarEvent`): take it back.
+      await deleteCalendarEventLive(event.id);
+      return "handled";
+    }
+    if (tempId) {
+      await removeCalendarEventFromCache(username, tempId);
+      if (event.id) tempToServerId.set(tempId, event.id);
+    }
+    await upsertCalendarEventInCache(username, event, false);
+  } else if (row.op === "update") {
+    const eventId = resolveEventId(String(payload.eventId ?? ""));
+    const patch = payload.patch as CalendarEventPatch;
+    const event = await patchCalendarEventLive(eventId, patch);
+    // A patch merged in while this one was sent stays queued.
+    const settlement = await settleSentOutboxMutation(username, row, {
+      cacheTables: (db) => [calendarsEventsTable(db)],
+      onRemoved: () => upsertCalendarEventInCache(username, event, false),
+    });
+    context.resend(settlement);
+    return "handled";
+  } else if (row.op === "delete") {
+    const eventId = resolveEventId(String(payload.eventId ?? ""));
+    await deleteCalendarEventLive(eventId);
+    await removeCalendarEventFromCache(username, eventId);
+  } else if (row.op === "calendarCreate") {
+    const draft = payload.draft as CalendarDraft;
+    const tempId = String(payload.tempCalendarId ?? "");
+    const created = await createCalendarLive(draft);
+    await rewriteCachedCalendars(username, (data) => ({
+      calendars: [...data.calendars.filter((calendar) => calendar.id !== tempId), created],
+    }));
+  } else if (row.op === "calendarUpdate") {
+    const calendarId = String(payload.calendarId ?? "");
+    const patch = payload.patch as CalendarPatch;
+    const updated = await patchCalendarLive(calendarId, patch);
+    await rewriteCachedCalendars(username, (data) => ({
+      calendars: data.calendars.map((calendar) =>
+        calendar.id === calendarId ? updated : calendar,
+      ),
+    }));
+  } else if (row.op === "calendarDelete") {
+    const calendarId = String(payload.calendarId ?? "");
+    await deleteCalendarLive(calendarId);
+    await rewriteCachedCalendars(username, (data) => ({
+      calendars: data.calendars.filter((calendar) => calendar.id !== calendarId),
+      events: data.events.filter((event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId),
+    }));
+  } else if (row.op === "respond-scheduling") {
+    await respondCalendarSchedulingNotification(
+      String(payload.notificationId ?? ""),
+      payload.participationStatus as CalendarSchedulingRespondStatus,
+      {
+        ...(typeof payload.calendarId === "string" ? { calendarId: payload.calendarId } : {}),
+        ...(typeof payload.recurrenceId === "string" ? { recurrenceId: payload.recurrenceId } : {}),
+        ...(payload.scope === "this" || payload.scope === "future" ? { scope: payload.scope } : {}),
+      },
+    );
+  } else if (row.op === "dismiss-scheduling") {
+    await dismissCalendarSchedulingNotification(String(payload.notificationId ?? ""));
+  }
+}
+
 export async function flushCalendarsOutbox(username: string): Promise<CalendarOutboxFlushResult> {
   const cached = await readCalendarBootstrapFromCache(username);
   if (!cached) {
     return { conflicts: [], schedulingConflicts: [], bootstrap: null };
   }
 
-  const rows = await listOutboxMutations(username);
-  const calendarRows = rows.filter((row) => row.domain === CALENDARS_DOMAIN);
-  // Creates first so temp→server remaps exist even when createdAt ties invert FIFO.
-  const orderedRows = [
-    ...calendarRows.filter((row) => row.op === "create" || row.op === "calendarCreate"),
-    ...calendarRows.filter((row) => row.op !== "create" && row.op !== "calendarCreate"),
-  ];
   const conflicts: string[] = [];
   const schedulingConflicts: string[] = [];
-  const tempToServerId = new Map<string, string>();
-  const resolveEventId = (eventId: string) => tempToServerId.get(eventId) ?? eventId;
-  // Rows sent again in this flush (`sendChangedRowAgain` appends to `orderedRows`).
-  const resends = new Map<string, number>();
+  const state: CalendarsFlushState = { username, tempToServerId: new Map() };
 
-  for (const row of orderedRows) {
-    try {
-      const payload = JSON.parse(row.payload) as Record<string, unknown>;
-      if (row.op === "create") {
-        const draft = payload.draft as CalendarEventDraft;
-        const tempId = String(payload.tempEventId ?? "");
-        const event = await createCalendarEventLive(draft);
-        if (event.id && !(await getOutboxMutation(username, row.id))) {
-          // Undone while it was sent (`discardUnsentCalendarEvent`): take it back.
-          await deleteCalendarEventLive(event.id);
-          continue;
-        }
-        if (tempId) {
-          await removeCalendarEventFromCache(username, tempId);
-          if (event.id) tempToServerId.set(tempId, event.id);
-        }
-        await upsertCalendarEventInCache(username, event, false);
-      } else if (row.op === "update") {
-        const eventId = resolveEventId(String(payload.eventId ?? ""));
-        const patch = payload.patch as CalendarEventPatch;
-        const event = await patchCalendarEventLive(eventId, patch);
-        // A patch merged in while this one was sent stays queued.
-        const settlement = await settleSentOutboxMutation(username, row, {
-          cacheTables: (db) => [calendarsEventsTable(db)],
-          onRemoved: () => upsertCalendarEventInCache(username, event, false),
-        });
-        sendChangedRowAgain(orderedRows, resends, settlement);
-        continue;
-      } else if (row.op === "delete") {
-        const eventId = resolveEventId(String(payload.eventId ?? ""));
-        await deleteCalendarEventLive(eventId);
-        await removeCalendarEventFromCache(username, eventId);
-      } else if (row.op === "calendarCreate") {
-        const draft = payload.draft as CalendarDraft;
-        const tempId = String(payload.tempCalendarId ?? "");
-        const created = await createCalendarLive(draft);
-        const latest = await readCalendarBootstrapFromCache(username);
-        if (latest) {
-          await writeCalendarBootstrapToCache(
-            username,
-            {
-              ...latest,
-              data: {
-                ...latest.data,
-                calendars: [
-                  ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
-                  created,
-                ],
-              },
-            },
-            cacheWindow(),
-          );
-        }
-      } else if (row.op === "calendarUpdate") {
-        const calendarId = String(payload.calendarId ?? "");
-        const patch = payload.patch as CalendarPatch;
-        const updated = await patchCalendarLive(calendarId, patch);
-        const latest = await readCalendarBootstrapFromCache(username);
-        if (latest) {
-          await writeCalendarBootstrapToCache(
-            username,
-            {
-              ...latest,
-              data: {
-                ...latest.data,
-                calendars: latest.data.calendars.map((calendar) =>
-                  calendar.id === calendarId ? updated : calendar,
-                ),
-              },
-            },
-            cacheWindow(),
-          );
-        }
-      } else if (row.op === "calendarDelete") {
-        const calendarId = String(payload.calendarId ?? "");
-        await deleteCalendarLive(calendarId);
-        const latest = await readCalendarBootstrapFromCache(username);
-        if (latest) {
-          await writeCalendarBootstrapToCache(
-            username,
-            {
-              ...latest,
-              data: {
-                ...latest.data,
-                calendars: latest.data.calendars.filter((calendar) => calendar.id !== calendarId),
-                events: latest.data.events.filter(
-                  (event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId,
-                ),
-              },
-            },
-            cacheWindow(),
-          );
-        }
-      } else if (row.op === "respond-scheduling") {
-        await respondCalendarSchedulingNotification(
-          String(payload.notificationId ?? ""),
-          payload.participationStatus as CalendarSchedulingRespondStatus,
-          {
-            ...(typeof payload.calendarId === "string" ? { calendarId: payload.calendarId } : {}),
-            ...(typeof payload.recurrenceId === "string"
-              ? { recurrenceId: payload.recurrenceId }
-              : {}),
-            ...(payload.scope === "this" || payload.scope === "future"
-              ? { scope: payload.scope }
-              : {}),
-          },
-        );
-      } else if (row.op === "dismiss-scheduling") {
-        await dismissCalendarSchedulingNotification(String(payload.notificationId ?? ""));
+  await runOutboxFlush<Record<string, unknown>>(username, {
+    domain: CALENDARS_DOMAIN,
+    // Creates first so temp→server remaps exist even when createdAt ties invert FIFO.
+    order: (rows) => [...rows.filter(isCreateRow), ...rows.filter((row) => !isCreateRow(row))],
+    parse: (row) => JSON.parse(row.payload) as Record<string, unknown>,
+    send: (payload, row, context) => sendCalendarsRow(state, payload, row, context),
+    onFailure: async ({ row, error }) => {
+      if (!isOutboxConflict(error, row.op)) return false;
+      const conflictId = outboxConflictId(row.op, payloadOf(row));
+      if (isSchedulingOutboxOp(row.op)) {
+        if (conflictId) schedulingConflicts.push(conflictId);
+        await removeOutboxMutation(username, row.id);
+        return true;
       }
-      await removeOutboxMutation(username, row.id);
-    } catch (error) {
-      const payload = JSON.parse(row.payload) as Record<string, unknown>;
-      if (isOutboxConflict(error, row.op)) {
-        const conflictId = outboxConflictId(row.op, payload);
-        if (isSchedulingOutboxOp(row.op)) {
-          if (conflictId) schedulingConflicts.push(conflictId);
-          await removeOutboxMutation(username, row.id);
-        } else {
-          if (conflictId) conflicts.push(conflictId);
-          const notFound = error instanceof JmapSetItemError && error.setError.type === "notFound";
-          await markOutboxError(
-            username,
-            row.id,
-            "conflict",
-            notFound ? httpStatusFromFlushError(error) : undefined,
-          );
-        }
-        continue;
-      }
-      const status = httpStatusFromFlushError(error);
+      if (conflictId) conflicts.push(conflictId);
+      const notFound = error instanceof JmapSetItemError && error.setError.type === "notFound";
       await markOutboxError(
         username,
         row.id,
-        error instanceof Error ? error.message : String(error),
-        status,
+        "conflict",
+        notFound ? httpStatusFromFlushError(error) : undefined,
       );
-    }
-  }
+      return true;
+    },
+  });
 
   const bootstrap = await readCalendarBootstrapFromCache(username);
   return { conflicts, schedulingConflicts, bootstrap };
