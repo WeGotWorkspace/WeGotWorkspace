@@ -53,8 +53,8 @@ import {
   restoreDocsListingResult,
   removeDocsListingResult,
   renameDocsListingResult,
-} from "@/lib/offline/docs-listing-offline-store";
-import { readOfflineDocsUsername } from "@/lib/offline/offline-session";
+} from "@/lib/offline/docs/docs-listing-offline-store";
+import { readOfflineDocsUsername } from "@/lib/offline/core/offline-session";
 import {
   downloadOfflineDocsFile,
   readOfflineDocsFileBlob,

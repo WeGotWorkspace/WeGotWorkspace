@@ -13,7 +13,7 @@ import {
   createHybridTasksOperations,
   loadTasksBootstrapHybrid,
 } from "@/lib/offline/tasks/tasks-hybrid-operations";
-import { resolveTasksOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveTasksOfflineUsername } from "@/lib/offline/core/offline-session";
 
 function taskListAfterSharePatch(list: TaskList, patch: TaskListPatch): TaskList {
   const { shareWith, ...rest } = patch;

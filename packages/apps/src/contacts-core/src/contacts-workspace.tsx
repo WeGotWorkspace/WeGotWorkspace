@@ -61,7 +61,7 @@ import { useContactsFailedSync } from "@/contacts-core/src/use-contacts-failed-s
 import { useContactsPendingSync } from "@/contacts-core/src/use-contacts-pending-sync";
 import { useContactsSidebarModel } from "@/contacts-core/src/use-contacts-sidebar-model";
 import { getContactsSyncRunner } from "@/lib/offline/contacts-hybrid-operations";
-import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveContactsOfflineUsername } from "@/lib/offline/core/offline-session";
 import "react-swipeable-list/dist/styles.css";
 import "@/contacts-core/src/contacts-workspace.css";
 

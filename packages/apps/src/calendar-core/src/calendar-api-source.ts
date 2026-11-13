@@ -21,7 +21,7 @@ import {
   loadCalendarRangeHybrid,
 } from "@/lib/offline/calendars-hybrid-operations";
 import type { CalendarUtcRange } from "@/lib/calendar-load-window";
-import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveCalendarsOfflineUsername } from "@/lib/offline/core/offline-session";
 import {
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,

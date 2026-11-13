@@ -1,5 +1,5 @@
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { rememberOfflineContactsUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineContactsUsername } from "@/lib/offline/core/offline-session";
 import type { AddressBook, ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {

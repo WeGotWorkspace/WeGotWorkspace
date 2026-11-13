@@ -20,7 +20,7 @@ import {
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 import {
   keepLiveNodeIds,
   useDocsListingCacheRefresh,
