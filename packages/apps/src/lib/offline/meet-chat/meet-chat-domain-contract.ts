@@ -6,7 +6,7 @@ import { meetChatMessagesTable } from "@/lib/offline/meet-chat/meet-chat-schema"
 import {
   createHybridMeetChatOperations,
   type MeetChatAuthor,
-} from "@/lib/offline/meet-chat-hybrid-operations";
+} from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
 import {
   readMeetChatBootstrapFromCache,
   readMeetChatSyncToken,
@@ -16,7 +16,7 @@ import {
   writeMeetChatDirectoryToCache,
   writeMeetChatSyncToken,
   type MeetChatCachedBootstrap,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 /**
  * Writes the parts of a cached bootstrap that the bootstrap owns: session,
