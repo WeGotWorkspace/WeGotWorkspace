@@ -76,7 +76,7 @@ services:
     security_opt:
       - no-new-privileges:true
     ports:
-      - "${WGW_HTTP_PORT:-8080}:80"
+      - "${WGW_HTTP_BIND:-127.0.0.1}:${WGW_HTTP_PORT:-8080}:80"
     environment: *wgw-web-environment
     volumes: *wgw-web-volumes
     depends_on:
