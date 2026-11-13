@@ -70,7 +70,12 @@ See spec.md, Non-goals.
 
 ## Open decisions
 
-None — the product choices (per-user mailbox; skip inbound REQUEST/CANCEL; read-only mailbox; skipped replies only logged) were put to the overview session on 2026-11-13 with these defaults.
+None open. Four product choices were chosen overnight on 2026-11-13 by the overview session (A, the safest option), to confirm with Wouter:
+
+1. One reply mailbox per user, not one shared mailbox for the instance.
+2. Inbound `REQUEST` and `CANCEL` from outside organizers are skipped and logged, never applied.
+3. The mailbox is opened read-only: nothing is marked read, moved or deleted.
+4. A reply that is not applied is skipped silently with a log line; Calendar settings show the last check time and the last error.
 
 ## Invariants
 
