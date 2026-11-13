@@ -13,6 +13,7 @@ import {
   meshLinked,
   subscribeMeshLinked,
 } from "@/lib/jmap-client/push/mesh-check-now";
+import { meetCallAwake } from "@/lib/jmap-client/push/meet-call-awake";
 import { browserWebLocks } from "@/lib/jmap-client/push/web-locks-leader";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
@@ -107,6 +108,7 @@ function createHub(): JmapPushHub {
     topic: crossTabTopic<PushMessage>(CHANNEL, isPushMessage),
     locks: browserWebLocks(),
     visibility: documentVisibility(),
+    awake: meetCallAwake,
     focus: windowFocus(),
     onPageHide: (listener) => {
       window.addEventListener("pagehide", listener);
