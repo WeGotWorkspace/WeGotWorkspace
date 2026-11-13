@@ -291,7 +291,7 @@ cd wegotworkspace
 bash setup.sh backup
 ```
 
-This archives named volumes and (when using MySQL) dumps the database to `wegotworkspace/backups/<timestamp>/`.
+This archives named volumes and (when using MySQL) dumps the database to `wegotworkspace/backups/<timestamp>/`. Only your user can open that folder, since it holds the database and `APP_KEY`.
 
 Manual MySQL dump:
 
