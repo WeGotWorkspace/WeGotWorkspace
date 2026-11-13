@@ -5,14 +5,14 @@ const steps: string[] = [];
 const flush = vi.fn(async () => {
   steps.push("flush");
 });
-vi.mock("@/lib/offline/meet-chat-offline-store", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-offline-store", () => ({
   listFailedMeetChatOutbox: vi.fn(),
 }));
-vi.mock("@/lib/offline/meet-chat-hybrid-operations", () => ({
+vi.mock("@/lib/offline/meet-chat/meet-chat-hybrid-operations", () => ({
   getMeetChatSyncRunner: () => ({ flush }),
 }));
 
-import { listFailedMeetChatOutbox } from "@/lib/offline/meet-chat-offline-store";
+import { listFailedMeetChatOutbox } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { useMeetChatSyncNotice } from "@/meet-core/src/use-meet-chat-sync-notice";
 
