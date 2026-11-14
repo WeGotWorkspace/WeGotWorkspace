@@ -291,7 +291,7 @@ cd wegotworkspace
 bash setup.sh backup
 ```
 
-This archives named volumes and (when using MySQL) dumps the database to `wegotworkspace/backups/<timestamp>/`.
+This archives named volumes and (when using MySQL) dumps the database to `wegotworkspace/backups/<timestamp>/`. Only your user can open that folder, since it holds the database and `APP_KEY`.
 
 With SQLite, the `wgw-content` archive holds `db.sqlite` together with its `db.sqlite-wal` and `db.sqlite-shm` files. Restore the whole volume, not `db.sqlite` on its own ([INSTALL.md § SQLite database files](../INSTALL.md#sqlite-database-files)).
 
