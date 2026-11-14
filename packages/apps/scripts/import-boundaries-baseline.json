@@ -8,19 +8,16 @@
     "calendar-core -> tasks-core": 2,
     "chat-ui -> docs-core": 1,
     "chat-ui -> text-editor-core": 2,
-    "drive-core -> docs-core": 2,
     "file-preview -> docs-core": 1,
     "lib -> collection-state": 1,
     "lib -> hooks": 4,
     "lib -> list-sticky-header": 1,
-    "lib -> notes-core": 2,
     "lib -> share-ui": 1,
     "lib -> text-editor-core": 14,
     "lib -> ui": 1,
     "meet-core -> calendar-core": 6,
     "meet-core -> tasks-core": 1,
-    "note-detail-view -> notes-core": 5,
-    "note-detail-view -> text-editor-core": 7,
+    "note-detail-view -> text-editor-core": 5,
     "notes-core -> tasks-core": 4,
     "notifications-core -> meet-core": 1,
     "rescue-ui -> notes-core": 2,
@@ -29,9 +26,7 @@
   },
   "twoWayPairs": [
     "calendar-core <-> tasks-core",
-    "docs-core <-> drive-core",
     "docs-core <-> file-preview",
-    "note-detail-view <-> notes-core",
     "notes-core <-> tasks-core"
   ]
 }

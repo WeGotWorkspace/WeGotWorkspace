@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { NoteTextEditorBody } from "../src/note-text-editor-body";
+import { NoteTextEditorBody } from "@/note-detail-view/src/note-text-editor-body";
 
 import "@/notes-core/src/notes-workspace.css";
 

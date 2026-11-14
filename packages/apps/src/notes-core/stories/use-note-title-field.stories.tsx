@@ -3,8 +3,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor, within } from "storybook/test";
 import * as Y from "yjs";
 import { TooltipProvider } from "@/ui/tooltip";
-import { NoteDetailView } from "../src/note-detail-view";
-import { NoteCollabYDocProvider } from "../src/use-note-title-field";
+import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
+import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
 
 import "@/notes-core/src/notes-workspace.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
@@ -32,6 +32,7 @@ function TitleBoundToDoc() {
   );
 }
 
+/** `useNoteTitleField` (note-detail-view surface UseNoteTitleField) in a Notes-framed detail view. */
 const meta: Meta<typeof TitleBoundToDoc> = {
   title: "Features/Notes/Note Title In Document",
   component: TitleBoundToDoc,
