@@ -78,6 +78,7 @@ export const liveTierSpecs = [
   "notes-undo-two-users",
   "notifications-hidden-call",
   "notifications-inbox-push",
+  "notifications-read-batch",
   "notifications-toast",
   "presence-offline-start",
   "presence-team-rooms",

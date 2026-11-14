@@ -7,10 +7,12 @@ namespace App\Http\Requests\Api\V1;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Body of `POST /notifications/local-ack`: the unread rows a visible window
- * showed. The inbox returns at most 100 rows, so one batch holds them all.
+ * Body of the batch acks, `POST /notifications/ack` (mark read, #2154) and
+ * `POST /notifications/local-ack` (a visible window showed them, #1826): the
+ * inbox rows to ack. The inbox returns at most 100 rows, so one batch holds
+ * them all.
  */
-final class NotificationLocalAckBatchRequest extends FormRequest
+final class NotificationIdBatchRequest extends FormRequest
 {
     public const MAX_IDS = 100;
 

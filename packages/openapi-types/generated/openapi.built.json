@@ -12335,6 +12335,26 @@
                         "maxLength": 255
                     }
                 }
+            },
+            "NotificationAckBatchRequest": {
+                "type": "object",
+                "required": [
+                    "ids"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 100,
+                        "uniqueItems": true,
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                        }
+                    }
+                }
             }
         },
         "responses": {
@@ -21978,6 +21998,48 @@
                                 }
                             }
                         }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/notifications/ack": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark many notifications read at once (and ack their local delivery). One request whatever the number of rows. Ids that are not the caller's rows are ignored.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NotificationAckBatchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Notifications marked read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationOkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
                     }
                 },
                 "x-wgw-access": "user"

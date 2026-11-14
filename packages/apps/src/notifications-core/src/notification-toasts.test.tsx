@@ -21,7 +21,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 }));
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(),
-  ackNotification: vi.fn(),
+  ackNotifications: vi.fn(),
   ackLocalNotifications: vi.fn(),
 }));
 vi.mock("@/lib/api/wgw/jmap-push", () => ({ defaultJmapPushHub: () => hub.value }));
@@ -33,7 +33,7 @@ vi.mock("@/lib/notifications/notification-click-navigate", async (importOriginal
   assignNotificationNavigate: vi.fn(),
 }));
 
-import { ackNotification, listNotifications } from "@/lib/api/wgw/notifications";
+import { ackNotifications, listNotifications } from "@/lib/api/wgw/notifications";
 import { assignNotificationNavigate } from "@/lib/notifications/notification-click-navigate";
 import { NOTIFICATION_INBOX_SOUND_MUTED_KEY } from "@/notifications-core/src/notification-inbox-sound";
 import {
@@ -95,7 +95,7 @@ describe("in-app toasts", () => {
     // No chime in jsdom.
     localStorage.setItem(NOTIFICATION_INBOX_SOUND_MUTED_KEY, "1");
     vi.mocked(listNotifications).mockReset();
-    vi.mocked(ackNotification).mockReset().mockResolvedValue(undefined);
+    vi.mocked(ackNotifications).mockReset().mockResolvedValue(undefined);
     vi.mocked(assignNotificationNavigate).mockReset();
     hub.front = front(true, "/drive");
   });
@@ -119,7 +119,7 @@ describe("in-app toasts", () => {
   it("opens the row and marks it read on click", async () => {
     await arrive([dm]);
     fireEvent.click(screen.getByRole("button", { name: /Admin/ }));
-    await waitFor(() => expect(ackNotification).toHaveBeenCalledWith("n1"));
+    await waitFor(() => expect(ackNotifications).toHaveBeenCalledWith(["n1"]));
     await waitFor(() =>
       expect(assignNotificationNavigate).toHaveBeenCalledWith(
         "/meet/dms/admin",
