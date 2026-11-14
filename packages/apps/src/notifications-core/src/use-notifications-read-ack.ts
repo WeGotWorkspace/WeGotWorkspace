@@ -52,6 +52,10 @@ function isPermanent(error: unknown): boolean {
  * in one `POST /notifications/ack`, a failure stays queued and is retried with
  * a backoff and on the next inbox refresh, and until the server confirms it
  * the row stays out of the tray, so it does not pop back as unread.
+ *
+ * The queue lives in memory only: a row whose ack still fails when the user
+ * reloads shows as unread again, and the next open or "Mark all read" sends
+ * it again.
  */
 export function useNotificationsReadAck(deps: ReadAckDeps = defaultDeps): NotificationsReadAck {
   const depsRef = useRef(deps);
@@ -64,6 +68,8 @@ export function useNotificationsReadAck(deps: ReadAckDeps = defaultDeps): Notifi
   const againRef = useRef(false);
   const failuresRef = useRef(0);
   const retryTimerRef = useRef<number | null>(null);
+  /** False once the provider unmounted: a request still in flight schedules no retry. */
+  const mountedRef = useRef(true);
 
   const clearRetry = () => {
     if (retryTimerRef.current !== null) {
@@ -116,7 +122,7 @@ export function useNotificationsReadAck(deps: ReadAckDeps = defaultDeps): Notifi
       }
       const delay = READ_ACK_RETRY_MS[failuresRef.current];
       failuresRef.current += 1;
-      if (delay !== undefined) {
+      if (delay !== undefined && mountedRef.current) {
         retryTimerRef.current = window.setTimeout(() => {
           retryTimerRef.current = null;
           void flush();
@@ -168,7 +174,13 @@ export function useNotificationsReadAck(deps: ReadAckDeps = defaultDeps): Notifi
     void flush();
   }, [flush]);
 
-  useEffect(() => clearRetry, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearRetry();
+    };
+  }, []);
 
   return useMemo(
     () => ({ markRead, hideMarkedRead, retryUnconfirmed }),

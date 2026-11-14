@@ -118,6 +118,28 @@ describe("useNotificationsReadAck", () => {
     expect(send.mock.calls[1]?.[0]).toEqual(["n1", "n2"]);
   });
 
+  it("schedules no retry once the provider unmounted mid-request", async () => {
+    let fail: (error: Error) => void = () => undefined;
+    send.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          fail = reject;
+        }),
+    );
+    const deps: ReadAckDeps = { send, now: () => now };
+    const hook = renderHook(() => useNotificationsReadAck(deps));
+
+    const pending = hook.result.current.markRead(["n1"]);
+    hook.unmount();
+    await act(async () => {
+      fail(new WgwRequestError("POST /notifications/ack failed (503)", 503));
+      await pending;
+      await vi.advanceTimersByTimeAsync(READ_ACK_RETRY_MS.reduce((sum, ms) => sum + ms, 0));
+    });
+
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it("after the backoff runs out, the next inbox refresh retries", async () => {
     send.mockRejectedValue(new TypeError("Failed to fetch"));
     const result = mount();
