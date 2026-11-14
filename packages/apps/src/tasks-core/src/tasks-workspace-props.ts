@@ -28,11 +28,3 @@ export type TasksWorkspaceProps = {
 export function taskProjectGroupsFromBootstrap(data: TasksUIData): TaskProjectGroupOption[] {
   return data.groups ?? [];
 }
-
-export function personalOwnerLabel(session: WorkspaceSession): string {
-  const displayName = session.user.displayName?.trim();
-  if (displayName) return displayName;
-  const username = session.user.username?.trim();
-  if (username) return username;
-  return "Me";
-}

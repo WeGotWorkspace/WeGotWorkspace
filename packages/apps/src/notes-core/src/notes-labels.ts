@@ -5,7 +5,7 @@ import {
   type WorkspaceDestructiveDialogLabels,
 } from "@/lib/workspace/destructive-dialog";
 import { sharePrincipalCopy } from "@/share-ui/share-labels";
-import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
+import type { ProjectDialogLabels } from "@/project-dialog/src/project-dialog";
 import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 import {
   defaultNotesImportLabels,
@@ -297,7 +297,7 @@ export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILab
   return mergeWorkspaceLabels(defaultNotesLabels, overrides);
 }
 
-export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): TaskProjectDialogLabels {
+export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): ProjectDialogLabels {
   return {
     createTitle: labels.newNotebookTitle,
     editTitle: labels.editNotebookTitle,

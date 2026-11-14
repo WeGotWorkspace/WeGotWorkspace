@@ -11,7 +11,7 @@ import {
   viewerHasNoTeam,
 } from "@/lib/sharing/collection-share";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
-import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
+import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
 import {
   meetChannelComposerPlaceholder,
   meetChannelTitle,

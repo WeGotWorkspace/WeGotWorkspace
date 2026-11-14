@@ -1,10 +1,8 @@
 import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  TaskProjectDialog,
-  taskProjectDialogLabelsFrom,
-} from "@/tasks-core/src/task-project-dialog";
+import { ProjectDialog } from "@/project-dialog/src/project-dialog";
+import { taskProjectDialogLabelsFrom } from "@/tasks-core/src/tasks-project-dialog-labels";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/lib/models/task-lists";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -24,7 +22,7 @@ function openColorPicker() {
   fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.projectColorLabel }));
 }
 
-describe("TaskProjectDialog", () => {
+describe("ProjectDialog", () => {
   beforeEach(() => {
     cleanup();
     Object.defineProperty(window, "matchMedia", {
@@ -47,7 +45,7 @@ describe("TaskProjectDialog", () => {
     const onClose = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{ mode: "create" }}
         groups={groups}
         personalOwnerLabel="Demo User"
@@ -75,7 +73,7 @@ describe("TaskProjectDialog", () => {
     const onConfirm = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{ mode: "create" }}
         groups={groups}
         personalOwnerLabel="Demo User"
@@ -103,7 +101,7 @@ describe("TaskProjectDialog", () => {
 
   it("disables create until a name is entered", () => {
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{ mode: "create" }}
         groups={groups}
         personalOwnerLabel="Demo User"
@@ -126,7 +124,7 @@ describe("TaskProjectDialog", () => {
     const onConfirm = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "work",
@@ -173,7 +171,7 @@ describe("TaskProjectDialog", () => {
     const onConfirm = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "work",
@@ -211,7 +209,7 @@ describe("TaskProjectDialog", () => {
 
   it("shows project name label aligned with owner field", () => {
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "work",
@@ -248,7 +246,7 @@ describe("TaskProjectDialog", () => {
     const referenceColor = probe.style.backgroundColor;
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId,
@@ -273,7 +271,7 @@ describe("TaskProjectDialog", () => {
 
   it("does not show owner helper text on create", () => {
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{ mode: "create" }}
         groups={groups}
         personalOwnerLabel="Demo User"
@@ -294,7 +292,7 @@ describe("TaskProjectDialog", () => {
     const onClose = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{ mode: "create" }}
         groups={groups}
         personalOwnerLabel="Demo User"
@@ -311,7 +309,7 @@ describe("TaskProjectDialog", () => {
 
   it("hosts list share copy when mayShare is set", () => {
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "inbox",
@@ -345,7 +343,7 @@ describe("TaskProjectDialog", () => {
     const onConfirm = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "shared-inbox",
@@ -386,7 +384,7 @@ describe("TaskProjectDialog", () => {
     const onDelete = vi.fn();
 
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "work",
@@ -412,7 +410,7 @@ describe("TaskProjectDialog", () => {
 
   it("hides owner delete when mayDelete is false even if onDelete is set", () => {
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "inbox",
@@ -436,7 +434,7 @@ describe("TaskProjectDialog", () => {
 
   it("hides owner delete without mayDelete or onDelete", () => {
     render(
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={{
           mode: "edit",
           listId: "work",

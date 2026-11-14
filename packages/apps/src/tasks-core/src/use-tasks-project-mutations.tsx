@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { Tag } from "lucide-react";
 import type { CollectionShareWith } from "@/lib/sharing/collection-share";
-import type { TaskProjectDialogConfirmInput } from "@/tasks-core/src/task-project-dialog";
-import type { TaskProjectDialogState } from "@/tasks-core/src/task-project-dialog";
+import type { ProjectDialogConfirmInput } from "@/project-dialog/src/project-dialog";
+import type { ProjectDialogState } from "@/project-dialog/src/project-dialog";
 import { DEFAULT_TASKS_VIEW } from "@/tasks-core/src/tasks-route-search";
 import {
   canChangeTaskListOwner,
@@ -30,12 +30,12 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
     show,
     showMutationError,
   } = shell;
-  const [projectDialog, setProjectDialog] = useState<TaskProjectDialogState>(null);
+  const [projectDialog, setProjectDialog] = useState<ProjectDialogState>(null);
 
   const canManageProjects = Boolean(operations?.createTaskList && operations?.patchTaskList);
 
   const createProject = useCallback(
-    async ({ name, color, groupSlug }: TaskProjectDialogConfirmInput) => {
+    async ({ name, color, groupSlug }: ProjectDialogConfirmInput) => {
       if (!operations?.createTaskList) return;
       const trimmed = name.trim();
       if (!trimmed) return;
@@ -58,7 +58,7 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
   );
 
   const updateProject = useCallback(
-    async (listId: string, { name, color, groupSlug }: TaskProjectDialogConfirmInput) => {
+    async (listId: string, { name, color, groupSlug }: ProjectDialogConfirmInput) => {
       if (!operations?.patchTaskList) return;
       const trimmed = name.trim();
       const list = taskLists.find((entry) => entry.id === listId);

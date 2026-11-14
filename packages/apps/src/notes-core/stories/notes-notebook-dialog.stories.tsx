@@ -3,26 +3,19 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen } from "storybook/test";
 import { notesNotebookDialogLabelsFrom, defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
-import {
-  TaskProjectDialog,
-  type TaskProjectDialogState,
-} from "@/tasks-core/src/task-project-dialog";
+import { ProjectDialog, type ProjectDialogState } from "@/project-dialog/src/project-dialog";
 
 const PRINCIPALS: CollectionSharePrincipal[] = [
   { id: "alice", displayName: "Alice", principalType: "user" },
 ];
 
-function NotesNotebookDialogHarness({
-  initial,
-}: {
-  initial: Exclude<TaskProjectDialogState, null>;
-}) {
-  const [dialog, setDialog] = useState<TaskProjectDialogState>(initial);
+function NotesNotebookDialogHarness({ initial }: { initial: Exclude<ProjectDialogState, null> }) {
+  const [dialog, setDialog] = useState<ProjectDialogState>(initial);
   const [shareWith, setShareWith] = useState<CollectionShareWith | null>(
     initial.mode === "edit" ? (initial.shareWith ?? null) : null,
   );
   return (
-    <TaskProjectDialog
+    <ProjectDialog
       dialog={dialog?.mode === "edit" ? { ...dialog, shareWith } : dialog}
       groups={[
         { slug: "eng", displayName: "Engineering" },

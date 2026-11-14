@@ -25,9 +25,7 @@ When an import breaks the direction, move the shared code down: a type or helper
 
 ### Two-way pairs
 
-| Pair                        | The import that closes the loop                                                                         | Why it stays for now                                                                                  | Follow-up                                |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `notes-core` ↔ `tasks-core` | Notes uses `TaskProjectDialog` for notebooks; Tasks uses the notebook select and change-notebook dialog | Notebooks and task lists share one "project" dialog. Merging them into one primitive is a UI decision | Shared project/notebook dialog primitive |
+None. The baseline has no two-way pairs left, so `pnpm check:import-boundaries` fails on any new one.
 
 ### `lib/` importing an app package
 

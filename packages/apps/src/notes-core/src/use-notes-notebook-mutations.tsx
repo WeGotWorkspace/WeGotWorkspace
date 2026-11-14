@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import type {
-  TaskProjectDialogConfirmInput,
-  TaskProjectDialogState,
-} from "@/tasks-core/src/task-project-dialog";
+  ProjectDialogConfirmInput,
+  ProjectDialogState,
+} from "@/project-dialog/src/project-dialog";
 import { taskListDotColor } from "@/lib/models/task-lists";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 import { useNotesNotebookDelete } from "@/notes-core/src/use-notes-notebook-delete";
@@ -18,7 +18,7 @@ import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 
 function notebookPatchFromDialog(
   current: NotesNotebookCollection,
-  { name, color, groupSlug }: TaskProjectDialogConfirmInput,
+  { name, color, groupSlug }: ProjectDialogConfirmInput,
 ): {
   name?: string;
   color?: string | null;
@@ -63,7 +63,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     show,
     showMutationError,
   } = shell;
-  const [notebookDialog, setNotebookDialog] = useState<TaskProjectDialogState>(null);
+  const [notebookDialog, setNotebookDialog] = useState<ProjectDialogState>(null);
   const notebookDelete = useNotesNotebookDelete({
     shell,
     onCreateNotebook: () => setNotebookDialog({ mode: "create" }),
@@ -75,7 +75,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
 
   const createNotebook = useCallback(
     async (
-      { name, color, groupSlug }: TaskProjectDialogConfirmInput,
+      { name, color, groupSlug }: ProjectDialogConfirmInput,
       opts?: { requireServer?: boolean },
     ): Promise<NotesNotebookCollection | undefined> => {
       if (!operations?.createNotebook) return undefined;
@@ -128,7 +128,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
   );
 
   const updateNotebook = useCallback(
-    async (notebookId: string, input: TaskProjectDialogConfirmInput) => {
+    async (notebookId: string, input: ProjectDialogConfirmInput) => {
       if (!operations?.patchNotebook) return;
       const trimmed = input.name.trim();
       if (!trimmed) return;

@@ -1,18 +1,15 @@
 import type { Note } from "@/lib/models/note";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
-import {
-  NotesNotebookSelect,
-  type NotesNotebookSelectItem,
-} from "@/notes-core/src/notes-notebook-select";
+import { NotebookSelect, type NotebookSelectItem } from "@/project-dialog/src/notebook-select";
 import { notebookDisplayName } from "@/notes-core/src/notes-note-utils";
-import { notebookDisplayColor } from "@/notes-core/src/notes-notebook-color";
+import { notebookDisplayColor } from "@/lib/models/notebook-color";
 
 type NotesDetailNotebookSelectProps = {
   active: Note;
   labels: NotesUILabels;
   archived: Record<string, boolean>;
-  notebooks: NotesNotebookSelectItem[];
-  onMoveToNotebook: (notebook: NotesNotebookSelectItem) => void;
+  notebooks: NotebookSelectItem[];
+  onMoveToNotebook: (notebook: NotebookSelectItem) => void;
   onCreateNotebook?: () => void;
   /** Notebook `calendarcolor` (same colour as the list dot and the sidebar). */
   notebookColor?: string | null;
@@ -47,7 +44,7 @@ export function NotesDetailNotebookSelect({
     : notebookDisplayName(active, notebooks).trim() || labels.toolbarMoveToNotebook;
 
   return (
-    <NotesNotebookSelect
+    <NotebookSelect
       notebooks={notebooks}
       value={{
         id: active.notebookId,

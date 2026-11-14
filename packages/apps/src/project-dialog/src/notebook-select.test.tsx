@@ -2,14 +2,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 import {
-  NOTES_CREATE_NOTEBOOK_VALUE,
-  NotesNotebookSelect,
+  CREATE_NOTEBOOK_VALUE,
+  NotebookSelect,
   notebookSelectValueForNotes,
   notebookSelectionEquals,
   notebooksWithCurrent,
   pendingMoveAfterNotebookCreate,
   resolveNotebookSelectValue,
-} from "@/notes-core/src/notes-notebook-select";
+} from "@/project-dialog/src/notebook-select";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -39,7 +39,7 @@ function renderSelect(ui: ReactElement) {
   return render(<TooltipProvider delayDuration={0}>{ui}</TooltipProvider>);
 }
 
-describe("NotesNotebookSelect helpers", () => {
+describe("NotebookSelect helpers", () => {
   it("keeps the current notebook in the menu when it is missing from the list", () => {
     expect(
       notebooksWithCurrent(notebooks, { id: "shared", name: "TeamPad", color: "#8b5cf6" }).map(
@@ -117,7 +117,7 @@ describe("NotesNotebookSelect helpers", () => {
   });
 });
 
-describe("NotesNotebookSelect", () => {
+describe("NotebookSelect", () => {
   beforeEach(stubSelectEnv);
   afterEach(() => {
     cleanup();
@@ -127,7 +127,7 @@ describe("NotesNotebookSelect", () => {
     const onNotebookChange = vi.fn();
     const onCreateNotebook = vi.fn();
     const { container } = renderSelect(
-      <NotesNotebookSelect
+      <NotebookSelect
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
         labels={defaultNotesLabels}
@@ -159,13 +159,13 @@ describe("NotesNotebookSelect", () => {
     fireEvent.click(screen.getByRole("option", { name: defaultNotesLabels.addNotebook }));
     expect(onCreateNotebook).toHaveBeenCalledTimes(1);
     expect(onNotebookChange).not.toHaveBeenCalled();
-    expect(NOTES_CREATE_NOTEBOOK_VALUE).toBe("__create_collection__");
+    expect(CREATE_NOTEBOOK_VALUE).toBe("__create_collection__");
   });
 
   it("moves when choosing another notebook", () => {
     const onNotebookChange = vi.fn();
     renderSelect(
-      <NotesNotebookSelect
+      <NotebookSelect
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts" }}
         labels={defaultNotesLabels}
@@ -181,7 +181,7 @@ describe("NotesNotebookSelect", () => {
 
   it("hides the trigger tooltip while the list is open, so it cannot cover an option", () => {
     renderSelect(
-      <NotesNotebookSelect
+      <NotebookSelect
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts" }}
         labels={defaultNotesLabels}
@@ -203,7 +203,7 @@ describe("NotesNotebookSelect", () => {
 
   it("reuses ColorSwatchTrigger for the swatch variant (icon + chevron, no caption)", () => {
     const { container } = renderSelect(
-      <NotesNotebookSelect
+      <NotebookSelect
         notebooks={notebooks}
         value={{ id: "nb-drafts", name: "Drafts", color: "#f59e0b" }}
         labels={defaultNotesLabels}

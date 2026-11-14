@@ -83,7 +83,7 @@ Product sheets below now use `--color-success`, `--color-error`, `--color-warnin
 | File                            | Hex                                                                 | Recommendation                              |
 | ------------------------------- | ------------------------------------------------------------------- | ------------------------------------------- |
 | `tasks-priority.tsx`            | `#ef4444`, `#eab308`, `#3b82f6` (low fill is `--workspace-surface`) | **semantic alias** → error / warning / info |
-| `notes-notebook-color.ts`       | `#14b8a6` default                                                   | **keep** (notebook default swatch)          |
+| `notebook-color.ts`             | `#14b8a6` default                                                   | **keep** (notebook default swatch)          |
 | `docs-collab-sidebar-panel.css` | `#0f172a` in strong mix                                             | **semantic alias** → `--color-we-got-dark`  |
 | `workspace-split-app.css`       | `#2f302c` primary bg                                                | **brand primitive** → `--color-we-got-dark` |
 | `workspace-app-layout.css`      | comment `#2563eb`                                                   | docs only — ignore                          |
