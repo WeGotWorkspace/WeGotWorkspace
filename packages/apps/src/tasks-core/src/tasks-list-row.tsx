@@ -8,13 +8,12 @@ import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formatTaskDueRelative,
-  isTaskCompleted,
   taskDueSeverity,
-  taskListDotColor,
   taskListName,
-  taskListTitle,
   type TaskWorkflowStatus,
 } from "@/tasks-core/src/tasks-task-utils";
+import { isTaskCompleted, taskListTitle } from "@/lib/models/task-fields";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
 import { PriorityMark } from "@/tasks-core/src/tasks-priority";
 import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";

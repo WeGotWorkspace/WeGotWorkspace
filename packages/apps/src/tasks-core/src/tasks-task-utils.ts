@@ -1,5 +1,11 @@
 import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import type { Task, TaskAlert } from "@/lib/models/tasks-types";
+import { isTaskCompleted, parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
+import {
+  INBOX_TASK_LIST_ID,
+  isInboxTaskList,
+  type TaskListIdentity,
+} from "@/lib/models/task-lists";
 import {
   isTaskPriorityNone,
   normalizeTaskPriority,
@@ -17,11 +23,6 @@ export type TaskWorkflowStatus = (typeof TASK_WORKFLOW_STATUSES)[number];
 
 export function normalizeTag(tag: string): string {
   return tag.trim();
-}
-
-export function taskListTitle(task: Task, fallback: string): string {
-  const title = task.title?.trim();
-  return title || fallback;
 }
 
 /** Preserve optimistic fields when the create API response omits them. */
@@ -44,28 +45,6 @@ function parseDueDate(task: Task): Date | null {
   return parseDueDateValue(task.due) ?? null;
 }
 
-export function parseDueDateValue(raw: string | null | undefined): Date | undefined {
-  const trimmed = raw?.trim();
-  if (!trimmed) return undefined;
-  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-  if (dateOnly) {
-    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
-  }
-  const dateTime = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(trimmed);
-  if (dateTime) {
-    return new Date(
-      Number(dateTime[1]),
-      Number(dateTime[2]) - 1,
-      Number(dateTime[3]),
-      Number(dateTime[4]),
-      Number(dateTime[5]),
-      Number(dateTime[6] ?? 0),
-    );
-  }
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
 function padDuePart(value: number): string {
   return String(value).padStart(2, "0");
 }
@@ -76,16 +55,6 @@ export function dueDateToApiValue(date: Date): string {
 
 export function dueDateTimeToApiValue(date: Date): string {
   return `${dueDateToApiValue(date)}T${padDuePart(date.getHours())}:${padDuePart(date.getMinutes())}:${padDuePart(date.getSeconds())}`;
-}
-
-export function taskDueIsDateOnly(
-  due: string | null | undefined,
-  showWithoutTime?: boolean | null,
-): boolean {
-  if (!due?.trim()) return true;
-  if (showWithoutTime === true) return true;
-  if (showWithoutTime === false) return false;
-  return !/T\d{2}:\d{2}/.test(due);
 }
 
 /**
@@ -298,23 +267,6 @@ export function collectTaskTags(tasks: Task[]): string[] {
   return [...tags].sort((a, b) => a.localeCompare(b));
 }
 
-export const INBOX_TASK_LIST_ID = "inbox";
-export const INBOX_TASK_LIST_URI = "tasks-inbox";
-
-type TaskListIdentity = {
-  id: string;
-  role?: string | null;
-  isSharee?: boolean;
-  isDefault?: boolean;
-};
-
-/** Owned personal Inbox only — never display name, never an inbound shared Inbox. */
-export function isInboxTaskList(list: TaskListIdentity): boolean {
-  if (list.isSharee) return false;
-  if (list.role === "inbox") return true;
-  return list.id === INBOX_TASK_LIST_ID || list.id === INBOX_TASK_LIST_URI;
-}
-
 export function isProtectedTaskList(list: TaskListIdentity): boolean {
   return isInboxTaskList(list);
 }
@@ -365,10 +317,6 @@ export function canDeleteTaskList(list?: TaskListWriteInfo): boolean {
   return true;
 }
 
-export function canWriteTaskList(list?: { myRights?: { mayWriteAll?: boolean } | null }): boolean {
-  return list?.myRights?.mayWriteAll !== false;
-}
-
 export function canShareTaskList(list?: { myRights?: { mayShare?: boolean } | null }): boolean {
   return list?.myRights?.mayShare === true;
 }
@@ -409,51 +357,12 @@ export function defaultTaskListId(taskLists: TaskListIdentity[], preferredId?: s
   return owned.find((list) => list.isDefault)?.id ?? owned[0]?.id ?? INBOX_TASK_LIST_ID;
 }
 
-export const TASK_LIST_DOT_COLORS = [
-  "#ea8c72",
-  "#6366f1",
-  "#f59e0b",
-  "#ec4899",
-  "#22c55e",
-  "#3b82f6",
-] as const;
-
-export const DEFAULT_TASK_LIST_COLOR = TASK_LIST_DOT_COLORS[1];
-
-type TaskListColorSource = {
-  id: string;
-  color?: string | null;
-};
-
-function hashTaskListColor(seed: string): string {
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-  }
-  return TASK_LIST_DOT_COLORS[hash % TASK_LIST_DOT_COLORS.length] ?? TASK_LIST_DOT_COLORS[0];
-}
-
-export function taskListDotColor(list: string | TaskListColorSource): string {
-  if (typeof list === "string") {
-    return hashTaskListColor(list);
-  }
-
-  const explicitColor = list.color?.trim();
-  if (explicitColor) return explicitColor;
-
-  return hashTaskListColor(list.id);
-}
-
 export function taskListName(
   listId: string | null | undefined,
   taskLists: { id: string; name: string }[],
 ): string {
   if (!listId) return "";
   return taskLists.find((list) => list.id === listId)?.name ?? listId;
-}
-
-export function isTaskCompleted(task: Task): boolean {
-  return task.workflowStatus === "completed" || task.workflowStatus === "cancelled";
 }
 
 /** Views where the header toggle can hide completed tasks from the list. */

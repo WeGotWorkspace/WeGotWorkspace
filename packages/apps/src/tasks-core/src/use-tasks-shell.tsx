@@ -7,13 +7,13 @@ import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-lab
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
 import { useLeaveRemovedListView } from "@/tasks-core/src/use-leave-removed-list-view";
 import {
-  canWriteTaskList,
   defaultTaskListId,
   filterHiddenCompletedTasks,
   filterTasksByHiddenLists,
   filterTasksByView,
   shouldApplyCompletedTaskFilter,
 } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList } from "@/lib/models/task-lists";
 import type { Task, TasksAPIOperations, TasksUIData } from "@/lib/models/tasks-types";
 import { useTasksHiddenIds } from "@/tasks-core/src/use-tasks-hidden-ids";
 

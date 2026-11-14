@@ -47,7 +47,7 @@ import {
 } from "@/calendar-core/src/calendar-collection-write";
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending-create";
-import { alertsFromWire, freeBusyStatusFromWire } from "@/calendar-core/src/calendar-alerts";
+import { alertsFromWire, freeBusyStatusFromWire } from "@/lib/calendar/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import {
   defaultCalendarLabels,

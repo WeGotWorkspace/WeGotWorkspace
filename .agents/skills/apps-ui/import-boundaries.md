@@ -25,10 +25,9 @@ When an import breaks the direction, move the shared code down: a type or helper
 
 ### Two-way pairs
 
-| Pair                           | The import that closes the loop                                                                                                                                 | Why it stays for now                                                                                                  | Follow-up                                               |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `calendar-core` ↔ `tasks-core` | Calendar's task-due overlay and sidebar use task-list helpers and the Tasks sidebar model; Tasks' remind picker uses the Calendar alarms card and alert mapping | Both apps share the reminder model and its card. Moving the alarm card down makes it a primitive with Calendar labels | Shared reminder primitive + task-list helpers in `lib/` |
-| `notes-core` ↔ `tasks-core`    | Notes uses `TaskProjectDialog` for notebooks; Tasks uses the notebook select and change-notebook dialog                                                         | Notebooks and task lists share one "project" dialog. Merging them into one primitive is a UI decision                 | Shared project/notebook dialog primitive                |
+| Pair                        | The import that closes the loop                                                                         | Why it stays for now                                                                                  | Follow-up                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `notes-core` ↔ `tasks-core` | Notes uses `TaskProjectDialog` for notebooks; Tasks uses the notebook select and change-notebook dialog | Notebooks and task lists share one "project" dialog. Merging them into one primitive is a UI decision | Shared project/notebook dialog primitive |
 
 ### `lib/` importing an app package
 

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 import { List } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import "@/tasks-core/src/tasks-list-icon.css";
 
 type TaskListIconSource = {

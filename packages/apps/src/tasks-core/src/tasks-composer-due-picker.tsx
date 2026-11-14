@@ -16,11 +16,10 @@ import {
   dueDateToApiValue,
   dueTimeInputValue,
   formatDueDateShort,
-  parseDueDateValue,
-  taskDueIsDateOnly,
   taskDueSeverity,
   type TaskDueFields,
 } from "@/tasks-core/src/tasks-task-utils";
+import { parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
 
 type TasksDueFieldProps = {
   labels: TasksUILabels;

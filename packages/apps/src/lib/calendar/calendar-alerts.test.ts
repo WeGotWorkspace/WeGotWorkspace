@@ -10,7 +10,7 @@ import {
   formatUnmatchedAlertOffset,
   freeBusyStatusFromWire,
   matchAlertOffsetPreset,
-} from "@/calendar-core/src/calendar-alerts";
+} from "@/lib/calendar/calendar-alerts";
 
 describe("freeBusyStatusFromWire", () => {
   it("defaults missing and leftover tentative values to busy", () => {

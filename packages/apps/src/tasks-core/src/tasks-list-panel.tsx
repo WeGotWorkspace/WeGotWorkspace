@@ -21,7 +21,7 @@ import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-l
 import { cn } from "@/lib/utils";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { canWriteTaskList } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList } from "@/lib/models/task-lists";
 import { TasksListRow } from "@/tasks-core/src/tasks-list-row";
 import "@/tasks-core/src/tasks-list-panel.css";
 

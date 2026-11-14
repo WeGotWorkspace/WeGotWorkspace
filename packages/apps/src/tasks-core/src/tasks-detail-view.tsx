@@ -9,7 +9,9 @@ import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { isTaskCompleted, taskListDotColor, taskListName } from "@/tasks-core/src/tasks-task-utils";
+import { taskListName } from "@/tasks-core/src/tasks-task-utils";
+import { isTaskCompleted } from "@/lib/models/task-fields";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import { taskFieldControls, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { useTaskEditForm } from "@/tasks-core/src/use-task-edit-form";
 // The done box shares the list row's mark styles.

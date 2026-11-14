@@ -1,6 +1,6 @@
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
-import { TASK_LIST_DOT_COLORS } from "@/tasks-core/src/tasks-task-utils";
+import { TASK_LIST_DOT_COLORS } from "@/lib/models/task-lists";
 
 type TaskProjectColorPickerProps = {
   value: string;
