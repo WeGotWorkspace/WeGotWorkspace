@@ -422,6 +422,85 @@ test.describe("contacts inbound", () => {
     }
   });
 
+  test("full list · a card edited elsewhere while the book is still listing is not skipped", async ({
+    browser,
+  }) => {
+    const id = caseId();
+    const context = await openUser(browser, OWNER);
+    let moved: { id: string; name: unknown } | null = null;
+    try {
+      await seed(id, ["Ann"]);
+      const tab = await openContactsTab(context);
+      await pollCache(tab, id, (c) => c.cards.length, "the tab loads").toBe(1);
+      await setStoredToken(tab, "expired");
+
+      // Let the first explicit-id page through, hold the second.
+      let firstIds: string[] | null = null;
+      let held: (() => void) | null = null;
+      const release = new Promise<void>((resolve) => (held = resolve));
+      let isHeld = false;
+      const handler = async (route: Route) => {
+        const get = methodCalls(route.request()).find(
+          ([name, args]) =>
+            name === "ContactCard/get" && Array.isArray(args.ids) && args.ids.length > 0,
+        );
+        if (!get) return route.fallback();
+        if (!firstIds) {
+          firstIds = get[1].ids as string[];
+          return route.fallback();
+        }
+        isHeld = true;
+        await release;
+        return route.fallback();
+      };
+      await tab.route("**/api/v1/jmap", handler);
+
+      await tab.reload();
+      await expect.poll(() => isHeld, { message: "a page is held", timeout: 60_000 }).toBe(true);
+
+      // Rename a card from the page that already went through.
+      const target = firstIds![0]!;
+      const [[, got]] = await jmap([
+        [
+          "ContactCard/get",
+          { accountId: await contactsAccount(), ids: [target], properties: ["name"] },
+          "g",
+        ],
+      ]);
+      moved = { id: target, name: (got.list as { name: unknown }[])[0]!.name };
+      await renameElsewhere(target, "Moved", id);
+
+      held!();
+      await waitForContacts(tab);
+      await tab.unroute("**/api/v1/jmap", handler);
+      await reconnect(tab);
+
+      await pollCache(
+        tab,
+        id,
+        (c) => c.cards.map((card) => card.name),
+        "the tab shows the new name",
+      ).toContain(`Moved ${id}`);
+      await reload(tab);
+      await expect
+        .poll(() => shownNames(tab, id), { message: "the list shows it", timeout: MIRROR_MS })
+        .toContain(`Moved ${id}`);
+    } finally {
+      await context.close();
+      if (moved) {
+        const { id: movedId, name } = moved as { id: string; name: unknown };
+        await jmap([
+          [
+            "ContactCard/set",
+            { accountId: await contactsAccount(), update: { [movedId]: { name } } },
+            "u",
+          ],
+        ]).catch(() => undefined);
+      }
+      await cleanUp(id);
+    }
+  });
+
   test("conflict · a queued edit and an edit elsewhere since", async ({ browser }) => {
     const id = caseId();
     const context = await openUser(browser, OWNER);

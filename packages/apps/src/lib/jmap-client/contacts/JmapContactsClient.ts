@@ -253,6 +253,8 @@ export class JmapContactsClient {
       (errorInvocation[1] as JmapMethodErrorArgs).type === "requestTooLarge" &&
       queryIds
     ) {
+      // The ids above are unused on purpose: listing again records the state
+      // from before the listing, so a card changed meanwhile is not skipped.
       return fetchAllByQuery<JmapContactCard>(this.client, {
         accountId,
         type: CONTACT_CARD_TYPE,
