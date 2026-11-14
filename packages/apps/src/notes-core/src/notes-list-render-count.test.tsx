@@ -41,7 +41,13 @@ function makeNotes(): Note[] {
 let setNotesFromTest: (update: (prev: Note[]) => Note[]) => void = () => {};
 
 /** The workspace's list wiring: notes state → flags → visible notes → panel. */
-function NotesListHarness({ initialNotes }: { initialNotes: Note[] }) {
+function NotesListHarness({
+  initialNotes,
+  activeId = "",
+}: {
+  initialNotes: Note[];
+  activeId?: string;
+}) {
   const [notes, setNotes] = useState(initialNotes);
   setNotesFromTest = setNotes;
   const [starred, setStarred] = useState<NoteFlagMap>({});
@@ -68,7 +74,7 @@ function NotesListHarness({ initialNotes }: { initialNotes: Note[] }) {
     isTouch: false,
     starred,
     archived,
-    activeId: "",
+    activeId,
     isItemDragging: () => false,
     handleSelect: () => {},
     enterSelectionFor: () => {},
@@ -90,6 +96,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -133,6 +140,30 @@ describe("notes list with 1000 notes", () => {
       );
     });
 
+    expect(renderedRowIds).toEqual(["n-500"]);
+  });
+
+  // #1641 step d: in a scroller the list mounts a window, plus the open note.
+  it("mounts a window and renders only the open note when it changes", () => {
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.hasAttribute("data-test-viewport") ? 800 : 0;
+    });
+    render(
+      <div data-test-viewport="" style={{ overflowY: "auto" }}>
+        <NotesListHarness initialNotes={makeNotes()} activeId="n-500" />
+      </div>,
+    );
+    expect(new Set(renderedRowIds).size).toBeLessThan(40);
+    expect(renderedRowIds).toContain("n-500");
+
+    renderedRowIds.length = 0;
+    act(() => {
+      setNotesFromTest(
+        (prev) => mapNotesWithBodyMarkdown(prev, "n-500", "Typed text", { bumpDate: false }).notes,
+      );
+    });
     expect(renderedRowIds).toEqual(["n-500"]);
   });
 });
