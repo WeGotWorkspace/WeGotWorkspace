@@ -85,6 +85,7 @@ export const liveTierSpecs = [
   "queued-write-reload",
   "settings-calendar-availability",
   "sync-notice-bar",
+  "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",
   "tasks-push",
