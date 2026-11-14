@@ -89,7 +89,7 @@ final class RtcSettingsServiceTest extends WgwDatabaseTestCase
         $service = new RtcSettingsService;
 
         $this->setAppSettings([SettingKeys::MEET_MAX_PEERS => '']);
-        $this->assertSame(4, $service->meetMaxPeers());
+        $this->assertSame(6, $service->meetMaxPeers());
 
         $this->setAppSettings([SettingKeys::MEET_MAX_PEERS => '8']);
         $this->assertSame(8, $service->meetMaxPeers());

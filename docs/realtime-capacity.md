@@ -20,7 +20,7 @@ Presence has one room per own Team (#1921). With more than two Teams, each room'
 
 - N presence peers in one Team room `p_groups.capacity` (default N = 8). Presence has one room per Team (#1921); a user in several Teams polls each of their rooms.
 - two Docs rooms, two peers each
-- one 4-person call
+- one 6-person call (the default Meet cap)
 - a join burst of 10 peers
 - a later iteration where a 10th participant joins the call
 
@@ -38,14 +38,14 @@ Rates below are the polls that mix produces. They come from the cadence above, n
 | --- | --- | --- | --- |
 | Presence, steady | 8 | 1.2 s | 400 |
 | Two Docs rooms, steady | 4 | 15 s | 16 |
-| 4-person call, steady | 4 | 4 s | 60 |
-| **Reference mix, steady** | **16** |  | **476** |
+| 6-person call, steady | 6 | 4 s | 90 |
+| **Reference mix, steady** | **18** |  | **506** |
 | Join burst, or the 10th participant while peers are still connecting | 10 | 400 ms | 1500 |
 
-| If one signaling poll takes | Polls per minute with 5 children | Reference mix (476/min) | Connecting burst (1500/min) |
+| If one signaling poll takes | Polls per minute with 5 children | Reference mix (506/min) | Connecting burst (1500/min) |
 | --- | --- | --- | --- |
 | 50 ms | 6000 | about 8% of the pool | about 25% of the pool |
-| 200 ms | 1500 | about 32% of the pool | the pool is full for that short window |
+| 200 ms | 1500 | about 34% of the pool | the pool is full for that short window |
 
 The burst is the constraint. It lasts until ICE settles and Meet drops back to a 4-second poll. A poll that stays under 200 ms fits the reference mix on this profile, including the 10th joiner, as long as that connecting window is brief. A poll slower than 200 ms fills all five children for the whole burst.
 

@@ -12564,7 +12564,7 @@ export interface components {
         };
         /** @description Server-side ceilings for the room, advertised on the meeting join response. */
         RtcRoomLimits: {
-            /** @description Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15). */
+            /** @description Peers allowed in the room (`MEET_MAX_PEERS`, default 6, clamped 2-15). */
             maxPeers: number;
             /**
              * @description Highest camera profile Meet may select. Clients still pick the profile automatically.
