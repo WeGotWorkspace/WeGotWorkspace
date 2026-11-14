@@ -133,6 +133,10 @@ async function queueDocsOutbox(username: string, payload: DocsOutboxPayload): Pr
     op: payload.op,
     payload: JSON.stringify(payload),
   });
+  // The connection may be back already: the write raced the reconnect (whose
+  // flush found nothing yet), or a flaky network failed it while the browser
+  // said online. No reconnect follows then, so send it now (#2104).
+  if (readBrowserOnline()) void runnerFor(username).flushAfterWrite();
 }
 
 async function applyOfflineTrashSideEffects(username: string, from: string): Promise<void> {
