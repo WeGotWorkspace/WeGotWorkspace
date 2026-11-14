@@ -9,7 +9,7 @@ import {
   resolveDocsCollabFormatBarMode,
   resolveDocsCollabPermissions,
 } from "@/docs-core/src/docs-collab-permissions";
-import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
+import { docsEditorFormatFromFileName } from "@/text-editor-core/docs-collab/docs-editor-format";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { DocsOpening } from "@/docs-core/src/docs-opening";

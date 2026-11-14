@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Notify;
 
-use App\Events\EventDispatch;
-use App\Events\WorkspaceEvent;
 use App\Models\Notification;
-use App\Models\NotificationDelivery;
 use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\SeedsInboxNotifications;
 use Tests\Support\WgwDatabaseTestCase;
 
 /** `POST /notifications/local-ack`: one request acks every unread row a window showed (#1826). */
 final class NotificationLocalAckBatchTest extends WgwDatabaseTestCase
 {
+    use SeedsInboxNotifications;
+
     private const URL = '/api/v1/notifications/local-ack';
 
     protected function setUp(): void
@@ -143,40 +143,5 @@ final class NotificationLocalAckBatchTest extends WgwDatabaseTestCase
             ->assertNotFound();
 
         $this->assertNull($this->localDelivery($bobs)->acked_at);
-    }
-
-    private function seedNotification(string $principal, string $file): string
-    {
-        $before = Notification::query()->where('principal', $principal)->pluck('id')->all();
-        app(EventDispatch::class)->fire(WorkspaceEvent::make(
-            actor: $principal === 'bob' ? 'alice' : 'bob',
-            domain: 'docs',
-            action: 'shared',
-            target: '/users/someone/'.$file.'.md',
-            data: [
-                'recipients' => [$principal],
-                'title' => $file.'.md was shared with you',
-                'navigate' => '/docs',
-                'tag' => 'docs.shared:'.$file,
-            ],
-        ));
-        $row = Notification::query()
-            ->where('principal', $principal)
-            ->whereNotIn('id', $before)
-            ->first();
-        $this->assertNotNull($row);
-
-        return (string) $row->id;
-    }
-
-    private function localDelivery(string $notificationId): NotificationDelivery
-    {
-        $delivery = NotificationDelivery::query()
-            ->where('notification_id', $notificationId)
-            ->where('channel', NotificationDelivery::CHANNEL_LOCAL)
-            ->first();
-        $this->assertNotNull($delivery);
-
-        return $delivery;
     }
 }

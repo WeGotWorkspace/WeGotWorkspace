@@ -135,6 +135,9 @@ return [
             // SQLite only (MySQL ignores it). See the sqlite connection above.
             'transaction_mode' => 'IMMEDIATE',
             'busy_timeout' => 5000,
+            // SQLite only: readers and one writer at the same time (#2157).
+            // Stored in the database file; see App\Database\WgwSqliteConnector.
+            'journal_mode' => env('WGW_DB_SQLITE_JOURNAL_MODE', 'wal'),
         ],
 
     ],

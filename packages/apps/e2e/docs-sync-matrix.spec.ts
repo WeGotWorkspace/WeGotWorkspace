@@ -456,7 +456,8 @@ const ACTIONS = {
       await editor.click();
       await a.keyboard.press("ControlOrMeta+A");
       await a.keyboard.press("Backspace");
-      await expect(editor).toHaveText("");
+      // The other tab of the same person shows its caret label inside the editor (#2104).
+      await expect.poll(() => editorText(a)).toBe("");
       await typedTextHeld(a, async () => startPath(c), "");
     },
     landed: async (_s, _m, c) => ((await readDoc(OWNER, startPath(c))) ?? "x").trim() === "",

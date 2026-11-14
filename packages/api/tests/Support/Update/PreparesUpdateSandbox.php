@@ -229,6 +229,11 @@ trait PreparesUpdateSandbox
         $filePdo = new \PDO('sqlite:'.$path, null, null, [
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
         ]);
+        // Like a live install (#2157): WAL, and no automatic checkpoint, so the
+        // rows written here stay in the -wal file. A backup that copied only
+        // the database file would miss them.
+        $filePdo->exec('PRAGMA journal_mode = WAL');
+        $filePdo->exec('PRAGMA wal_autocheckpoint = 0');
         $this->seedSqliteBackupDatabase($filePdo);
         $connection->setPdo($filePdo);
         $connection->setReadPdo($filePdo);

@@ -238,12 +238,7 @@ final class UpdateRunnerPackageIo
                 throw new \RuntimeException('Could not locate SQLite database file for backup.');
             }
             $dest = $backupRoot.'/database.sqlite';
-            if (! @copy($sqlitePath, $dest)) {
-                $reason = $this->files->lastFilesystemError();
-                throw new \RuntimeException(
-                    'Could not create SQLite backup: '.$sqlitePath.' -> '.$dest.($reason !== '' ? ' ('.$reason.')' : '')
-                );
-            }
+            $this->snapshotSqlite($pdo, $sqlitePath, $dest);
             $this->runner()->writePhaseProgress('backing_up', $fromVersion, $toVersion, 1, 1);
 
             return;
@@ -256,6 +251,40 @@ final class UpdateRunnerPackageIo
             return;
         }
         throw new \RuntimeException('Database backup is not supported for PDO driver: '.$driver);
+    }
+
+    /**
+     * A consistent copy of the live database. In WAL mode the newest commits
+     * sit in the `-wal` file next to the database (#2157), so copying the
+     * database file alone could miss them. `VACUUM INTO` writes one complete
+     * file from a single read snapshot while others keep working.
+     */
+    private function snapshotSqlite(\PDO $pdo, string $sqlitePath, string $dest): void
+    {
+        if (is_file($dest)) {
+            @unlink($dest);
+        }
+        try {
+            $pdo->prepare('VACUUM INTO ?')->execute([$dest]);
+
+            return;
+        } catch (\Throwable) {
+            // Older SQLite, or a transaction is open: fall back to a file copy.
+            @unlink($dest);
+        }
+
+        try {
+            // Move the WAL's commits into the database file first.
+            $pdo->exec('PRAGMA wal_checkpoint(TRUNCATE)');
+        } catch (\Throwable) {
+            // Not in WAL mode, or busy: the copy below is still the best we have.
+        }
+        if (! @copy($sqlitePath, $dest)) {
+            $reason = $this->files->lastFilesystemError();
+            throw new \RuntimeException(
+                'Could not create SQLite backup: '.$sqlitePath.' -> '.$dest.($reason !== '' ? ' ('.$reason.')' : '')
+            );
+        }
     }
 
     public function wgwDriver(): string

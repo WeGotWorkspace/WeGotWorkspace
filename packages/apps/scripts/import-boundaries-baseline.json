@@ -7,11 +7,9 @@
     "calendar-core -> contacts-core": 1,
     "chat-ui -> docs-core": 1,
     "chat-ui -> text-editor-core": 2,
-    "file-preview -> docs-core": 1,
     "lib -> collection-state": 1,
     "lib -> hooks": 4,
     "lib -> list-sticky-header": 1,
-    "lib -> notes-core": 2,
     "lib -> share-ui": 1,
     "lib -> text-editor-core": 14,
     "lib -> ui": 1,
@@ -22,11 +20,10 @@
     "notifications-core -> meet-core": 1,
     "rescue-ui -> notes-core": 2,
     "tasks-core -> notes-core": 2,
-    "text-editor-core -> docs-core": 35,
+    "text-editor-core -> docs-core": 29,
     "text-editor-core -> drive-core": 2
   },
   "twoWayPairs": [
-    "docs-core <-> file-preview",
     "docs-core <-> text-editor-core",
     "drive-core <-> text-editor-core",
     "notes-core <-> tasks-core"
