@@ -1,6 +1,6 @@
 # Collab / text-editor hook layout
 
-Expected module layout for hooks under `packages/apps/src/text-editor-core/docs-collab/` (and similar Yjs + TipTap features). Load this when adding or refactoring collab hooks — not when touching workspace shell controllers ([feature-blueprint.md](feature-blueprint.md) covers `use*Shell` / `use*Controller` only).
+Expected module layout for hooks under `packages/apps/src/text-editor-core/docs-collab/` (the shared engine) and `packages/apps/src/docs-core/src/collab/` (Docs' comments, suggestions and workspace) (and similar Yjs + TipTap features). Load this when adding or refactoring collab hooks — not when touching workspace shell controllers ([feature-blueprint.md](feature-blueprint.md) covers `use*Shell` / `use*Controller` only).
 
 ## Target shape
 
