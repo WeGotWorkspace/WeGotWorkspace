@@ -11,6 +11,8 @@ import {
   sanitizeWgwReturnPath,
 } from "@/lib/api/wgw/route-guard";
 import { LiveBootstrapErrorPanel } from "@/lib/live/live-bootstrap-error-panel";
+import { OfflineNotCachedPanel } from "@/lib/live/offline-not-cached-panel";
+import { isOfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 type WorkspaceLiveAppShellProps = {
   phase: "loading" | "ready" | "error";
@@ -73,6 +75,9 @@ export function WorkspaceLiveAppShell({
     }
     if (isSessionGone && !import.meta.env.DEV) {
       return null;
+    }
+    if (isOfflineNotCachedError(error)) {
+      return <OfflineNotCachedPanel onRetry={retry} />;
     }
     return <LiveBootstrapErrorPanel title={errorTitle} error={message || null} onRetry={retry} />;
   }

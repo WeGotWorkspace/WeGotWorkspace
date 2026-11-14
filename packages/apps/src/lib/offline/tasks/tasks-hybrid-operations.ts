@@ -56,6 +56,7 @@ import {
   withOutboxLock,
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { isCrossTabLockTimeout } from "@/lib/offline/core/cross-tab-lock";
+import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 function concurrencyEtag(task: Task, opts?: TasksMutationOpts): string | undefined {
   return opts?.ifMatch ?? taskEtag(task);
@@ -534,7 +535,7 @@ export async function loadTasksBootstrapHybrid(): Promise<
       const cached = await readTasksBootstrapFromCache(username);
       if (cached) return cached;
     }
-    throw new Error("No cached tasks available offline");
+    throw new OfflineNotCachedError("tasks");
   }
 
   return fetchTasksHybridBootstrap();

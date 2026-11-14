@@ -64,6 +64,7 @@ import {
   isNoteArchivedRefusal,
   settleNoteArchivedElsewhere,
 } from "@/lib/offline/notes/notes-archived-elsewhere";
+import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 /** A notebook create that must reach the server (an import) found no connection. */
 export const NOTES_NOTEBOOK_OFFLINE_MESSAGE =
@@ -698,7 +699,7 @@ export async function loadNotesBootstrapHybrid(): Promise<
         return cached;
       }
     }
-    throw new Error("No cached notes available offline");
+    throw new OfflineNotCachedError("notes");
   }
 
   return fetchNotesHybridBootstrap();

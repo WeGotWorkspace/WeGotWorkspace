@@ -64,6 +64,7 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
+import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 function concurrencyToken(card: ContactCard, opts?: ContactsMutationOpts): string | undefined {
   const state = (card as ContactCard & { state?: string }).state;
@@ -478,7 +479,7 @@ export async function loadContactsBootstrapHybrid(
   const saved = username ? await readContactsBootstrapFromCache(username) : null;
   if (!readBrowserOnline()) {
     if (saved) return saved;
-    throw new Error("No cached contacts available offline");
+    throw new OfflineNotCachedError("contacts");
   }
   if (username && saved && (await readContactsColdDownload(username))) {
     return finishContactsDownload(username, saved, reportProgress);
