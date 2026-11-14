@@ -32,6 +32,35 @@ describe("ConnectivitySyncRunner", () => {
     await expect(second).resolves.toBe("done");
   });
 
+  it("runs once more for a write queued while a flush runs (#2104)", async () => {
+    // The running flush listed its rows already: a row queued since then
+    // (a write that raced the reconnect) needs one more run.
+    const releases: Array<() => void> = [];
+    let runs = 0;
+    const flushTask = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          runs += 1;
+          const run = runs;
+          releases.push(() => resolve(`run ${run}`));
+        }),
+    );
+    const runner = new ConnectivitySyncRunner(flushTask);
+
+    const first = runner.flush();
+    const second = runner.flushAfterWrite();
+    const third = runner.flushAfterWrite();
+    expect(flushTask).toHaveBeenCalledTimes(1);
+
+    releases[0]!();
+    await expect(first).resolves.toBe("run 1");
+    await vi.waitFor(() => expect(flushTask).toHaveBeenCalledTimes(2));
+    releases[1]!();
+    await expect(second).resolves.toBe("run 2");
+    await expect(third).resolves.toBe("run 2");
+    expect(flushTask).toHaveBeenCalledTimes(2);
+  });
+
   it("allows a new flush after the previous one completes", async () => {
     const flushTask = vi.fn(async () => "done" as const);
     const runner = new ConnectivitySyncRunner(flushTask);
