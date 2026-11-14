@@ -5,6 +5,7 @@ import {
   clearDocsOfflineStore,
   docTokenOnServer,
   E2E_GROUP_ROOT,
+  E2E_USERNAME,
   docsHomeRow,
   docsUrlForFile,
   expectEditorContains,
@@ -23,7 +24,6 @@ import {
   waitForDocSaved,
 } from "./helpers/docs-live";
 import { readDoc } from "./helpers/docs-matrix";
-import { E2E_USERNAME } from "./helpers/notes-live";
 
 test.describe("Docs offline sync (live app)", () => {
   test("My Drive .md: offline edit reconnects and persists to server", async ({ page }) => {
