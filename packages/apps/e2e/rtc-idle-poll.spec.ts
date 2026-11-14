@@ -5,8 +5,7 @@
 // not linked within 20 s no longer counts, and a newcomer is still found
 // within the 2 s empty-room poll. Run alone: playwright test
 // --config playwright.live.config.mjs e2e/rtc-idle-poll.spec.ts
-import type { Page } from "@playwright/test";
-import { expect, test } from "./helpers/live-test";
+import { expect, type Page, test } from "./helpers/live-test";
 import {
   api,
   ensureTeamNotebook,
