@@ -8,8 +8,20 @@
 // line at the end as soon as their editor takes input. Both lines must end up in
 // both editors and in the file, and the document must stay in order: an editor
 // that took typing while still empty put the line before the title.
-import { expect, test, type BrowserContext, type Page } from "./helpers/live-test";
-import { openUser, OWNER, putDoc, readDoc, removeQuietly, TEAMMATE } from "./helpers/docs-matrix";
+//
+// The second case lets only the teammate type (#2061). The owner, who only
+// watches, must still see the line: a typing owner would itself trigger the
+// exchange that brings its screen up to date and so hide a dead live link.
+import { devices, expect, test, webkit, type BrowserContext, type Page } from "./helpers/live-test";
+import {
+  api,
+  openUser,
+  OWNER,
+  putDoc,
+  readDoc,
+  removeQuietly,
+  TEAMMATE,
+} from "./helpers/docs-matrix";
 import { docsUrlForFile } from "./helpers/docs-live";
 
 const ROUNDS = Number(process.env.WGW_E2E_RACE_ROUNDS ?? 3);
@@ -162,6 +174,67 @@ test.describe("Docs: two people open one document and type at once", () => {
     } finally {
       await removeQuietly(OWNER, paths);
       await Promise.all(contexts.map((context) => context.close()));
+    }
+  });
+});
+
+/** A second Team for both users: two workspace rooms, as on a real install (#2061). */
+const SECOND_TEAM = "e2e-racing-team";
+
+async function ensureSecondTeam(): Promise<void> {
+  await api(OWNER, "POST", "/admin/groups", { slug: SECOND_TEAM, displayName: "E2E Racing Team" });
+  await api(OWNER, "PUT", `/admin/groups/${SECOND_TEAM}/members/${OWNER}`);
+  await api(OWNER, "PUT", `/admin/groups/${SECOND_TEAM}/members/${TEAMMATE}`);
+}
+
+test.describe("Docs: two people open one document, only one types", () => {
+  test("the person who only watches sees the other's line (#2061)", async ({ browser }) => {
+    // `WGW_E2E_RACE_OWNER_ENGINE=webkit` runs the owner as a phone-sized WebKit,
+    // the pairing that found #2061; the default stays Chromium.
+    const phone = process.env.WGW_E2E_RACE_OWNER_ENGINE === "webkit" ? await webkit.launch() : null;
+    const paths: string[] = [];
+    try {
+      await ensureSecondTeam();
+      for (let round = 1; round <= ROUNDS; round += 1) {
+        const stamp = `${Date.now()}-${round}`;
+        const apiPath = `/groups/team/e2e-racing-watch-${stamp}.md`;
+        paths.push(apiPath);
+        await putDoc(OWNER, apiPath, `# Racing watch ${round}\n\nShared intro.\n`);
+        const theirs = `Teammate line ${stamp}`;
+
+        // Cold start every round: no tab of either person is open yet.
+        const owner = await openUser(phone ?? browser, OWNER);
+        const teammate = await openUser(browser, TEAMMATE);
+        try {
+          const a = await owner.newPage();
+          if (phone) await a.setViewportSize(devices["iPhone 13"].viewport);
+          await a.goto(docsUrlForFile(apiPath));
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          const b = await teammate.newPage();
+          await b.goto(docsUrlForFile(apiPath));
+          await typeAsSoonAsEditable(b, theirs);
+
+          await expect
+            .poll(async () => (await readDoc(OWNER, apiPath)) ?? "", {
+              timeout: 30_000,
+              message: `round ${round}: the file holds the teammate's line`,
+            })
+            .toContain(theirs);
+          await expect
+            .poll(() => editorText(a), {
+              timeout: 20_000,
+              message: `round ${round}: the owner, who does not type, sees the teammate's line`,
+            })
+            .toContain(theirs);
+        } finally {
+          await Promise.all([owner.close(), teammate.close()]);
+        }
+      }
+    } finally {
+      await removeQuietly(OWNER, paths);
+      // Later specs on this server expect only the default Team between the two.
+      await api(OWNER, "DELETE", `/admin/groups/${SECOND_TEAM}`);
+      await phone?.close();
     }
   });
 });

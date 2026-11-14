@@ -8,7 +8,6 @@
     "calendar-core -> tasks-core": 2,
     "chat-ui -> docs-core": 1,
     "chat-ui -> text-editor-core": 2,
-    "file-preview -> docs-core": 1,
     "lib -> collection-state": 1,
     "lib -> hooks": 4,
     "lib -> list-sticky-header": 1,
@@ -24,9 +23,5 @@
     "tasks-core -> calendar-core": 2,
     "tasks-core -> notes-core": 2
   },
-  "twoWayPairs": [
-    "calendar-core <-> tasks-core",
-    "docs-core <-> file-preview",
-    "notes-core <-> tasks-core"
-  ]
+  "twoWayPairs": ["calendar-core <-> tasks-core", "notes-core <-> tasks-core"]
 }

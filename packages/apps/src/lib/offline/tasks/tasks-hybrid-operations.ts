@@ -96,6 +96,15 @@ async function resolveCachedTask(
   }
 }
 
+/**
+ * The UID a create keeps on every send (#2155). Safari reports a create that a
+ * reload cut off as failed although the server stored it; the outbox resend
+ * then carries the same UID, and the server answers with the stored task.
+ */
+function withClientUid(body: TaskCreate): TaskCreate {
+  return body.uid ? body : { ...body, uid: `urn:uuid:${crypto.randomUUID()}` };
+}
+
 async function queueOfflineCreate(username: string, body: TaskCreate): Promise<Task> {
   const tempId = createTempTaskId();
   const listId = Object.keys(body.taskListIds).find((id) => body.taskListIds[id]) ?? "default";
@@ -285,7 +294,8 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
   const runner = runnerFor(username);
 
   return {
-    createTask: async (body, opts) => {
+    createTask: async (input, opts) => {
+      const body = withClientUid(input);
       if (!readBrowserOnline()) {
         return queueOfflineCreate(username, body);
       }

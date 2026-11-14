@@ -8,6 +8,7 @@ export type NotificationsPaths = {
 };
 
 export type Notification = components["schemas"]["Notification"];
+export type NotificationAckBatchRequest = components["schemas"]["NotificationAckBatchRequest"];
 export type NotificationListResponse = components["schemas"]["NotificationListResponse"];
 export type NotificationLocalAckBatchRequest = components["schemas"]["NotificationLocalAckBatchRequest"];
 export type NotificationOkResponse = components["schemas"]["NotificationOkResponse"];

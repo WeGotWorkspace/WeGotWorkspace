@@ -138,6 +138,8 @@ A write that fails for lack of space — including a host refusing it because th
 
 `wgw:jmap:blobs-gc` is not in the schedule. Besides it, a share of `/jmap/upload` and `Blob/upload` requests (`WGW_JMAP_MAINTENANCE_SHARE`, 0.05) runs one bounded round: expired assemblies (releasing their claims), expired blobs, staged copies nobody resumed, orphaned temp files, expired download tickets, and a slice of pending content hashes.
 
+The command itself clears every expired item, then hashes pending files step by step for at most `--max-seconds` (default: the step time limit, 60 s on the CLI). It stops sooner when nothing is left, or when a step moves no job on: a file that vanished from disk keeps its job until the next listing or `wgw:jmap:filenodes-reindex` tombstones it. Whatever is left waits for the next run, and the summary line says how many hashes are still pending (#1873).
+
 After an append, each consumed part is deleted at once unless the same `blobId` comes back later in that call, another upload of the same bytes still holds it (`upload_count` is counted down by one instead; an append consumes each part once), or a reference checker vetoes it. The GC re-checks a blob's expiry under its row lock right before deleting it, and the assembly expiry re-checks under the assembly's lease, so a re-upload, an append, or a part claim that renewed one meanwhile keeps it. The checkers (`JmapBlobGarbageCollector::CHECKERS`, also used by the GC) are:
 
 - `BlobAssemblyClaimChecker`: another open assembly claimed the part (uploaded with `Wgw-Assembly-Id`);
