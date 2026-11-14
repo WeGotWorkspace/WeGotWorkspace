@@ -116,9 +116,6 @@ export class DocsCollabPrincipalReuse {
 
   private readonly failedUsernames = new Set<string>();
 
-  /** Usernames whose reused link went silent: refuse their `open` until a new principal link. */
-  private readonly silentUsernames = new Set<string>();
-
   private readonly loggedMiss = new Set<string>();
 
   private readonly reopenSentAt = new Map<string, number>();
@@ -299,7 +296,7 @@ export class DocsCollabPrincipalReuse {
     const myId = this.ports.getMyCollabPeerId();
     if (!myId || !username) return;
     this.failedUsernames.delete(username);
-    this.silentUsernames.delete(username);
+    this.liveness.forgetSilent(username);
     this.cancelDeferFreshIce(username);
     for (const peer of this.lastRosterPeers) {
       if (peer.id === myId || peer.user !== username) continue;
@@ -612,7 +609,7 @@ export class DocsCollabPrincipalReuse {
       this.logMiss(collabPeerId, "multi-peer-user", fromUsername);
       return false;
     }
-    if (this.silentUsernames.has(fromUsername)) {
+    if (this.liveness.isSilent(fromUsername)) {
       this.logMiss(collabPeerId, "silent-link", fromUsername);
       return false;
     }
@@ -659,13 +656,9 @@ export class DocsCollabPrincipalReuse {
   private replaceSilentLink(collabPeerId: string): void {
     const entry = this.reused.get(collabPeerId);
     if (!entry || this.disposed) return;
-    this.log("reuse-miss", {
-      remoteId: collabPeerId,
-      username: entry.username,
-      reason: "silent-link",
-    });
+    this.logMiss(collabPeerId, "silent-link", entry.username);
     this.failedUsernames.add(entry.username);
-    this.silentUsernames.add(entry.username);
+    this.liveness.markSilent(entry.username);
     this.dropPeer(collabPeerId, true);
   }
 

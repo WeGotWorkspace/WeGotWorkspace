@@ -16,6 +16,9 @@ type LivenessPorts = {
 export class DocsCollabReuseLiveness {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
 
+  /** Usernames whose reused link went silent: their `open` is refused until a new principal link. */
+  private readonly silentUsernames = new Set<string>();
+
   constructor(private readonly ports: LivenessPorts) {}
 
   /** Start (or restart) the silence window for a peer that just attached. */
@@ -34,6 +37,19 @@ export class DocsCollabReuseLiveness {
     if (timer === undefined) return;
     this.ports.clearTimeoutFn(timer);
     this.timers.delete(collabPeerId);
+  }
+
+  markSilent(username: string): void {
+    this.silentUsernames.add(username);
+  }
+
+  isSilent(username: string): boolean {
+    return this.silentUsernames.has(username);
+  }
+
+  /** A new principal link to this user opened: it may be reused again. */
+  forgetSilent(username: string): void {
+    this.silentUsernames.delete(username);
   }
 
   dispose(): void {
