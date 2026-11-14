@@ -8,12 +8,12 @@ import {
   persistNoteKeepingSyncRace,
   persistNoteOrDropGone,
   resolveNotesPersistAccess,
-} from "@/notes-core/src/notes-persist-access";
+} from "@/lib/offline/notes/notes-persist-access";
 
 describe("persistHttpStatus", () => {
-  it("reads a numeric status and a parenthesized status in the message", () => {
+  it("reads the numeric status and never the message text", () => {
     expect(persistHttpStatus({ status: 412 })).toBe(412);
-    expect(persistHttpStatus(new Error("PATCH /notes/items/uid failed (403)"))).toBe(403);
+    expect(persistHttpStatus(new Error("PATCH /notes/items/uid failed (403)"))).toBeUndefined();
   });
 
   it("maps a JMAP forbidden set error through the shared helper", () => {
@@ -29,8 +29,8 @@ describe("notes persist 403", () => {
     expect(resolveNotesPersistAccess({ status: 403 })).toBe("leave-room");
   });
 
-  it("treats a (403) message as access lost", () => {
-    expect(isNotesPersistForbidden(new Error("PATCH /notes/items/uid failed (403)"))).toBe(true);
+  it("does not read 403 out of the message text", () => {
+    expect(isNotesPersistForbidden(new Error("PATCH /notes/items/uid failed (403)"))).toBe(false);
   });
 
   it("does not leave the room for 412 or network errors", () => {
@@ -47,7 +47,7 @@ describe("notes persist 403", () => {
 describe("notes persist 404", () => {
   it("treats status 404 as gone on the server", () => {
     expect(isNotesPersistGone({ status: 404 })).toBe(true);
-    expect(isNotesPersistGone(new Error("Note not found (404)"))).toBe(true);
+    expect(isNotesPersistGone(new Error("Note not found (404)"))).toBe(false);
   });
 
   it("does not treat 401/403/412/5xx as gone", () => {
