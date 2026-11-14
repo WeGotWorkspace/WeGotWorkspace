@@ -3,7 +3,6 @@ import {
   appendToActiveDocBody,
   blockReachabilityAndApi,
   clearDocsOfflineStore,
-  currentEditorText,
   docTokenOnServer,
   E2E_GROUP_ROOT,
   docsHomeRow,
@@ -23,6 +22,8 @@ import {
   waitForDocsBodySynced,
   waitForDocSaved,
 } from "./helpers/docs-live";
+import { readDoc } from "./helpers/docs-matrix";
+import { E2E_USERNAME } from "./helpers/notes-live";
 
 test.describe("Docs offline sync (live app)", () => {
   test("My Drive .md: offline edit reconnects and persists to server", async ({ page }) => {
@@ -64,7 +65,9 @@ test.describe("Docs offline sync (live app)", () => {
     await expect(page.locator(".ProseMirror")).toContainText(token);
   });
 
-  test("multi-tab same user: reconnect sync appears in other tab", async ({ browser }) => {
+  test("multi-tab same user: an offline edit shows in the other tab and saves on reconnect", async ({
+    browser,
+  }) => {
     const token = `e2e-tab-${Date.now()}`;
     const fileName = `e2e-tab-${Date.now()}.md`;
     const authFile = "e2e/.auth/admin.json";
@@ -83,10 +86,13 @@ test.describe("Docs offline sync (live app)", () => {
 
       await appendToActiveDocBody(tabA, token);
       await expectPendingDotVisible(tabA);
-      expect(await currentEditorText(tabB)).not.toContain(token);
+      // Tabs of one browser share a Doc locally, so tab B shows the edit without the network (#1879).
+      await expectEditorContains(tabB, token);
+      expect((await readDoc(E2E_USERNAME, apiPath)) ?? "").not.toContain(token);
 
       await context.setOffline(false);
       await expectSyncCompleted(tabA);
+      await waitForDocSaved(tabA, apiPath, token);
       await expectEditorContains(tabB, token);
     } finally {
       await context.close();
