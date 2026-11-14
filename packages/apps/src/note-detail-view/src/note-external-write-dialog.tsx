@@ -1,5 +1,5 @@
 import { Button } from "@/button/src/button";
-import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import type { NoteBodyLabels } from "@/note-detail-view/src/note-body-labels";
 import {
   Dialog,
   DialogContent,
@@ -9,13 +9,13 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 
-export type NotesExternalWriteDialogProps = {
+export type NoteExternalWriteDialogProps = {
   open: boolean;
   noteTitle: string;
   busy?: boolean;
   /** Set once the outside version replaced the local note in this question. */
   keepLocalDisabled?: boolean;
-  labels: NotesUILabels;
+  labels: NoteBodyLabels;
   onKeepLocal: () => void;
   onUseOutside: () => void;
 };
@@ -25,7 +25,7 @@ export type NotesExternalWriteDialogProps = {
  * has unsaved work. It stays until the person chooses, so a dismiss cannot
  * write either version.
  */
-export function NotesExternalWriteDialog({
+export function NoteExternalWriteDialog({
   open,
   noteTitle,
   busy = false,
@@ -33,7 +33,7 @@ export function NotesExternalWriteDialog({
   labels: L,
   onKeepLocal,
   onUseOutside,
-}: NotesExternalWriteDialogProps) {
+}: NoteExternalWriteDialogProps) {
   return (
     <Dialog open={open}>
       <DialogContent
