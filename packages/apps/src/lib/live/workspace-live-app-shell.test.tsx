@@ -7,6 +7,7 @@ import {
   wgwRedirectGuestShareReauth,
 } from "@/lib/api/wgw/http";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
+import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwHasAuthenticatedSession: vi.fn(() => true),
@@ -37,6 +38,34 @@ function renderBootstrapError(message: string) {
 }
 
 describe("WorkspaceLiveAppShell", () => {
+  it("shows the not-cached state without the developer hint when offline before the first visit (#2100)", () => {
+    const retry = vi.fn();
+    render(
+      <WorkspaceLiveAppShell
+        phase="error"
+        error={new OfflineNotCachedError("chat")}
+        retry={retry}
+        errorTitle="Could not load live meet"
+        successVersion={0}
+        render={() => <div>should not render</div>}
+      />,
+    );
+
+    expect(screen.getByText("Not available offline yet")).toBeTruthy();
+    expect(screen.queryByText("Could not load live meet")).toBeNull();
+    expect(screen.queryByText(/\.env\.local/)).toBeNull();
+    screen.getByRole("button", { name: "Retry" }).click();
+    expect(retry).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new Event("online"));
+    expect(retry).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the error panel for a load failure whose text only looks like the offline one", () => {
+    renderBootstrapError("No cached notes available offline");
+    expect(screen.getByText("Could not load admin")).toBeTruthy();
+    expect(screen.queryByText("Not available offline yet")).toBeNull();
+  });
+
   it("mounts workspace UI during loading without a full-page spinner", () => {
     render(
       <WorkspaceLiveAppShell

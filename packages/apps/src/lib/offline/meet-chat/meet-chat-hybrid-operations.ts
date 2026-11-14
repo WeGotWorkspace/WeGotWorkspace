@@ -70,6 +70,7 @@ import {
   type MeetChatOutboxFlushResult,
 } from "@/lib/offline/meet-chat/meet-chat-outbox-flush";
 import { readOfflineMeetChatUsername } from "@/lib/offline/core/offline-session";
+import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 export type MeetChatAuthor = {
   id: string;
@@ -525,7 +526,7 @@ export async function loadMeetChatBootstrapHybrid(): Promise<MeetAppBootstrap> {
       const cached = await readMeetChatBootstrapFromCache(username);
       if (cached) return meetChatBootstrapFromCached(cached);
     }
-    throw new Error("No cached chat available offline");
+    throw new OfflineNotCachedError("chat");
   }
   return fetchMeetChatHybridBootstrap();
 }
