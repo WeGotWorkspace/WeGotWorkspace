@@ -194,6 +194,30 @@ describe("PresenceRtcSession unlinked peers (#2156)", () => {
     expect(captured.pollIntervals?.steadyMs).toBe(4_000);
     vi.useRealTimers();
   });
+
+  it("polls at once when a link drops and keeps the fast poll from the drop on", () => {
+    new PresenceRtcSession({ room: "workspace", rtcSettings: DEFAULT_RTC_SETTINGS });
+    const bea = { id: "prin-bea", name: "Bea", user: "bea" };
+    captured.mesh.getRoomPeers.mockReturnValue([bea]);
+    captured.onPollData?.({ peers: [bea] });
+    captured.mesh.getDataChannel.mockReturnValue({ readyState: "open" });
+    captured.bindingOptions?.onOpen("prin-bea");
+    expect(captured.pollIntervals?.steadyMs).toBe(20_000);
+
+    // The link drops long after the last poll: the wait starts at the drop.
+    vi.setSystemTime(100_000);
+    captured.mesh.getDataChannel.mockReturnValue(null);
+    captured.bindingOptions?.onClose();
+    expect(captured.mesh.kickPoll).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(119_999);
+    expect(captured.pollIntervals?.steadyMs).toBe(1_200);
+    vi.setSystemTime(120_000);
+    expect(captured.pollIntervals?.steadyMs).toBe(4_000);
+    // A close that drops no link does not poll again.
+    captured.bindingOptions?.onClose();
+    expect(captured.mesh.kickPoll).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });
 
 describe("PresenceRtcSession principal wake", () => {

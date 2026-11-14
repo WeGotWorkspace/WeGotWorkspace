@@ -117,6 +117,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
         if (envelope) this.emit({ type: "envelope", peerId: remoteId, envelope });
       },
       onClose: () => {
+        this.noteLinkChange();
         this.syncPrincipalLinks();
         this.emit({ type: "roster" });
       },
@@ -132,6 +133,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
         sendFromField: "peerId",
       },
       onLinkChange: () => {
+        this.noteLinkChange();
         this.syncPrincipalLinks();
         this.emit({ type: "roster" });
       },
@@ -150,6 +152,12 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   private emit(event: PresenceMeshEvent): void {
     for (const listener of this.listeners) listener(event);
+  }
+
+  /** A dropped link polls at once and keeps the fast cadence for the dial window. */
+  private noteLinkChange(): void {
+    const ids = this.mesh.getRoomPeers().map((peer) => peer.id);
+    if (this.rosterClock.noteLinks(ids, (id) => this.isLinked(id))) this.mesh.kickPoll();
   }
 
   private steadyPollMs(): number {

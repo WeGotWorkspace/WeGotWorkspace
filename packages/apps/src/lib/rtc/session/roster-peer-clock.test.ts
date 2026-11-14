@@ -25,6 +25,18 @@ describe("RosterPeerClock", () => {
     expect(clock.isDialing("bea", false)).toBe(false);
   });
 
+  it("dates a drop from when the links are noted, not from the next poll", () => {
+    let now = 0;
+    const clock = new RosterPeerClock(() => now);
+    clock.noteRoster(["bea", "cas"]);
+    expect(clock.noteLinks(["bea", "cas"], () => true)).toBe(false);
+    now = 50_000;
+    expect(clock.noteLinks(["bea", "cas"], (id) => id === "cas")).toBe(true);
+    expect(clock.noteLinks(["bea", "cas"], (id) => id === "cas")).toBe(false);
+    now = 50_000 + UNLINKED_PEER_FAST_WINDOW_MS;
+    expect(clock.isDialing("bea", false)).toBe(false);
+  });
+
   it("forgets a peer that left the roster", () => {
     let now = 0;
     const clock = new RosterPeerClock(() => now);

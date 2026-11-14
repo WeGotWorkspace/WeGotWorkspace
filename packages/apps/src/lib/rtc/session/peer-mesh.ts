@@ -272,6 +272,10 @@ export class RtcPeerMesh {
   }
 
   private notifyLinkChange(): void {
+    const linked = (id: string) =>
+      this.peers.linkStateOf(id) === "connected" || this.options.linkedElsewhere?.(id) === true;
+    const ids = this.lastRoomPeers.map((peer) => peer.id);
+    if (this.rosterClock.noteLinks(ids, linked)) this.schedulePoll(false);
     this.options.onLinkChange?.();
   }
 

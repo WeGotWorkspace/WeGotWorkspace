@@ -57,6 +57,20 @@ export class RosterPeerClock {
     return this.unlinkedForMs(peerId, false) < UNLINKED_PEER_FAST_WINDOW_MS;
   }
 
+  /**
+   * Records the links as they change, so a drop starts its wait now and not
+   * at the next poll, which may be 40 s away. True when a link dropped.
+   */
+  noteLinks(peerIds: readonly string[], isLinked: (peerId: string) => boolean): boolean {
+    let dropped = false;
+    for (const id of peerIds) {
+      const linkedNow = isLinked(id);
+      if (!linkedNow && this.linked.has(id)) dropped = true;
+      this.isDialing(id, linkedNow);
+    }
+    return dropped;
+  }
+
   reset(): void {
     this.pendingSince.clear();
     this.linked.clear();
