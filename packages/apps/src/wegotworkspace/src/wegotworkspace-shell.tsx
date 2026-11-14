@@ -1,4 +1,6 @@
 import { HeadContent, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
+import { FilePreviewMarkdownRendererProvider } from "@/lib/file-preview/file-preview-markdown-renderer";
 import { useReportRouteToPushHub } from "@/lib/api/wgw/use-jmap-state-change";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
 import { MeetKnockChime } from "@/meet-core/src/meet-knock-chime";
@@ -25,15 +27,18 @@ export function WeGotWorkspaceShell() {
     <TooltipProvider delayDuration={300}>
       <SettingsReachabilityProvider value={reachabilityFromShell({})}>
         <SettingsDialogProvider>
-          <NotificationsProvider>
-            <HeadContent />
-            <PushHubRouteReporter />
-            <Outlet />
-            {/* Active-call card outside /meet; renders nothing without the suite call store. */}
-            <MeetCallMiniPlayer />
-            <MeetKnockChime />
-            <AppToaster />
-          </NotificationsProvider>
+          {/* File previews render Markdown with Docs' read-only editor. */}
+          <FilePreviewMarkdownRendererProvider renderer={DocsFilePreview}>
+            <NotificationsProvider>
+              <HeadContent />
+              <PushHubRouteReporter />
+              <Outlet />
+              {/* Active-call card outside /meet; renders nothing without the suite call store. */}
+              <MeetCallMiniPlayer />
+              <MeetKnockChime />
+              <AppToaster />
+            </NotificationsProvider>
+          </FilePreviewMarkdownRendererProvider>
         </SettingsDialogProvider>
       </SettingsReachabilityProvider>
     </TooltipProvider>
