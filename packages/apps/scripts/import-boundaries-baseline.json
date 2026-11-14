@@ -23,7 +23,7 @@
     "rescue-ui -> notes-core": 2,
     "tasks-core -> calendar-core": 2,
     "tasks-core -> notes-core": 2,
-    "text-editor-core -> docs-core": 35,
+    "text-editor-core -> docs-core": 29,
     "text-editor-core -> drive-core": 2
   },
   "twoWayPairs": [
