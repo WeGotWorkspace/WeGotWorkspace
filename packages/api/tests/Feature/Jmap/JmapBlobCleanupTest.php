@@ -6,6 +6,7 @@ namespace Tests\Feature\Jmap;
 
 use App\Models\JmapAttachStaging;
 use App\Models\JmapBlob;
+use App\Models\JmapContentHashJob;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\Assembly\BlobAssemblyService;
 use App\Services\Jmap\Assembly\BlobClaimService;
@@ -186,19 +187,66 @@ final class JmapBlobCleanupTest extends WgwDatabaseTestCase
 
     public function test_the_gc_command_hashes_pending_discovered_files(): void
     {
-        config(['wgw.jmap.discovery_hash_max_bytes' => 10]);
         $bytes = random_bytes(5000);
-        Storage::disk('wgw_files')->put('users/bob/restored.bin', $bytes);
+        $key = $this->pendingDiscoveredFile('users/bob/restored.bin', $bytes);
+
+        $this->assertSame(0, Artisan::call('wgw:jmap:blobs-gc'));
+
+        $row = JmapFileNode::query()->where('storage_key', $key)->firstOrFail();
+        $this->assertFalse($row->hash_pending);
+        $this->assertSame(hash('sha256', $bytes), $row->content_sha256);
+    }
+
+    public function test_a_pending_file_that_vanished_from_disk_does_not_keep_the_gc_command_busy(): void
+    {
+        $key = $this->pendingDiscoveredFile('users/bob/gone.bin', random_bytes(5000));
+        // Removed out of band before anything listed the folder again (#1873).
+        Storage::disk('wgw_files')->delete($key);
+
+        $started = microtime(true);
+        $this->assertSame(0, Artisan::call('wgw:jmap:blobs-gc'));
+
+        $this->assertLessThan(5, microtime(true) - $started, 'the hash loop stops once a round makes no progress');
+        // The job stays for the next listing of the folder to tombstone.
+        $this->assertSame(1, JmapContentHashJob::query()->count());
+    }
+
+    public function test_the_gc_command_hashes_for_a_bounded_time_and_leaves_the_rest_for_the_next_run(): void
+    {
+        config(['wgw.jmap.step_throughput_bytes' => 1, 'wgw.jmap.step_unlimited_seconds' => 1]);
+        $key = $this->pendingDiscoveredFile('users/bob/large.iso', random_bytes(3 * 1024 * 1024));
+
+        // No time left after the first round: one step budget (1 MiB), then stop.
+        $this->assertSame(0, Artisan::call('wgw:jmap:blobs-gc', ['--max-seconds' => 0]));
+
+        $this->assertSame(1024 * 1024, JmapContentHashJob::query()->value('hashed_bytes'));
+        $this->assertStringContainsString('still pending', Artisan::output());
+
+        $this->assertSame(0, Artisan::call('wgw:jmap:blobs-gc'));
+        $this->assertFalse((bool) JmapFileNode::query()->where('storage_key', $key)->value('hash_pending'));
+        $this->assertSame(0, JmapContentHashJob::query()->count());
+    }
+
+    public function test_the_gc_command_refuses_a_bad_time_limit(): void
+    {
+        $this->assertSame(2, Artisan::call('wgw:jmap:blobs-gc', ['--max-seconds' => '-1']));
+        $this->assertSame(2, Artisan::call('wgw:jmap:blobs-gc', ['--max-seconds' => 'soon']));
+    }
+
+    /**
+     * Writes `$key` straight to disk and lists bob's files, so it is indexed
+     * as a discovered, hash-pending file.
+     */
+    private function pendingDiscoveredFile(string $key, string $bytes): string
+    {
+        config(['wgw.jmap.discovery_hash_max_bytes' => 10]);
+        Storage::disk('wgw_files')->put($key, $bytes);
         $this->withBearer($this->token)->postJson('/api/v1/jmap', [
             'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
             'methodCalls' => [['FileNode/get', ['accountId' => 'bob', 'ids' => null], 'g']],
         ])->assertOk();
-        $this->assertTrue((bool) JmapFileNode::query()->where('storage_key', 'users/bob/restored.bin')->value('hash_pending'));
+        $this->assertTrue((bool) JmapFileNode::query()->where('storage_key', $key)->value('hash_pending'));
 
-        $this->assertSame(0, Artisan::call('wgw:jmap:blobs-gc'));
-
-        $row = JmapFileNode::query()->where('storage_key', 'users/bob/restored.bin')->firstOrFail();
-        $this->assertFalse($row->hash_pending);
-        $this->assertSame(hash('sha256', $bytes), $row->content_sha256);
+        return $key;
     }
 }
