@@ -1,0 +1,22 @@
+[
+  {
+    "id": "vos", "name": "Bakkerij Vos rebrand", "client": "vos", "team": "studio", "pm": "sanne",
+    "members": ["sanne", "lotte", "fatima", "eva", "daan"],
+    "phases": { "intake": "2026-11-02", "kickoff": "2026-11-09", "strategy": "2026-11-12", "design": "2026-11-23", "production": "2026-12-14", "close": "2027-01-11" }
+  },
+  {
+    "id": "haven", "name": "Havenfestival 2027 campagne", "client": "haven", "team": "studio", "pm": "sanne",
+    "members": ["sanne", "bas", "daan", "eva", "tom"],
+    "phases": { "intake": "2026-11-12", "kickoff": "2026-11-19", "strategy": "2026-11-26", "design": "2026-12-07", "production": "2027-01-04", "close": "2027-02-01" }
+  },
+  {
+    "id": "noordlicht", "name": "Noordlicht launch", "client": "noordlicht", "team": "noordlicht", "pm": "joost",
+    "members": ["joost", "lotte", "fatima", "eva"],
+    "phases": { "intake": "2026-11-05", "kickoff": "2026-11-12", "strategy": "2026-11-16", "design": "2026-12-01", "production": "2026-12-21", "close": "2027-01-18" }
+  },
+  {
+    "id": "fiets", "name": "Fietsfabriek website", "client": "fiets", "team": "studio", "pm": "joost",
+    "members": ["joost", "bas", "daan", "tom"],
+    "phases": { "intake": "2026-11-23", "kickoff": "2026-11-30", "strategy": "2026-12-03", "design": "2026-12-10", "production": "2027-01-11", "close": "2027-02-08" }
+  }
+]
