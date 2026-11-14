@@ -6852,6 +6852,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "The task a repeated create with the same `uid` in the same list already made",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created task",
             "content": {
@@ -6867,6 +6877,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
           },
           "413": {
             "$ref": "#/components/responses/JmapPayloadTooLarge"
