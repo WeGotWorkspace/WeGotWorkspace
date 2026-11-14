@@ -25,7 +25,7 @@ import { fileNameToBrowserTitle, useDocumentTitle } from "@/lib/document-title";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import { DocxImportReportForDoc } from "@/docs-core/src/docx-import/docx-import-dialogs";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
-import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/text-editor-core/docs-collab";
+import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/docs-core/src/collab";
 import { useDocsFileRename } from "@/docs-core/src/use-docs-file-rename";
 import { createWgwDocsCollabWire } from "@/docs-core/src/docs-collab-wgw-wire";
 import { useDocsAPI } from "@/docs-core/src/use-docs-api";

@@ -1,6 +1,0 @@
-@import "../../../styles.css" reference;
-@import "../docs-collab-card/docs-collab-sidebar-panel.css";
-
-.docs-suggestions-panel__list {
-  @apply space-y-4;
-}

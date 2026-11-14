@@ -16,9 +16,7 @@
     "meet-core -> calendar-core": 6,
     "note-detail-view -> text-editor-core": 5,
     "notifications-core -> meet-core": 1,
-    "rescue-ui -> notes-core": 1,
-    "text-editor-core -> docs-core": 29,
-    "text-editor-core -> drive-core": 2
+    "rescue-ui -> notes-core": 1
   },
-  "twoWayPairs": ["docs-core <-> text-editor-core", "drive-core <-> text-editor-core"]
+  "twoWayPairs": []
 }
