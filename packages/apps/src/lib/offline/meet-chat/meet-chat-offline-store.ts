@@ -94,6 +94,12 @@ export async function listMeetChatOutbox(username: string): Promise<OfflineOutbo
   return listOutboxMutationsForDomain(username, MEET_CHAT_DOMAIN);
 }
 
+/** Queued chat writes the sync notice counts: failed to send, waiting for a retry. */
+export async function listFailedMeetChatOutbox(username: string): Promise<OfflineOutboxRow[]> {
+  const rows = await listMeetChatOutbox(username);
+  return rows.filter(isSyncNoticeOutboxRow);
+}
+
 /** True while the message's send is queued: the server has never seen it. */
 export async function hasQueuedChatSend(username: string, messageId: string): Promise<boolean> {
   const rows = await listMeetChatOutbox(username);

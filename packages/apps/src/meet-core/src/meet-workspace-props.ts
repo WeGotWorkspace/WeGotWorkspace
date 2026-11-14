@@ -33,6 +33,8 @@ export type MeetWorkspaceProps = {
   operations?: MeetChatOperations;
   onLogout?: () => void;
   className?: string;
+  /** Above the conversation, below the header (the sync notice bar). */
+  mainNotice?: ReactNode;
   initialChannelId?: string;
   initialCallLayout?: MeetCallStageLayout;
   initialThreadId?: string | null;
