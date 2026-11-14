@@ -105,7 +105,7 @@ export function useNotificationsReadAck(deps: ReadAckDeps = defaultDeps): Notifi
     }
     clearRetry();
     const run = (async () => {
-      let ok = true;
+      let ok: boolean;
       do {
         againRef.current = false;
         ok = await sendOnce();
