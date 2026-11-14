@@ -4,7 +4,10 @@ import {
   type CollabReuseEnvelope,
 } from "@/lib/rtc/session/collab-reuse-envelope";
 import { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
-import { DocsCollabPrincipalReuse } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
+import {
+  COLLAB_REUSE_ACK_TIMEOUT_MS,
+  DocsCollabPrincipalReuse,
+} from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
 import { COLLAB_REUSE_SILENT_LINK_MS } from "@/text-editor-core/docs-collab/docs-collab-reuse-liveness";
 import type { DocsCollabMeshMessage } from "@/text-editor-core/docs-collab/docs-collab-types";
 
@@ -145,9 +148,15 @@ describe("DocsCollabPrincipalReuse when both open a document at once (#2061)", (
     // The close reaches the member, which leaves reuse as well.
     expect(member.fallbacks).toEqual([ADMIN]);
     expect(member.reuse.shouldSkipIce({ id: ADMIN, name: "Admin", user: "admin" })).toBe(false);
-    // The next roster poll does not attach the silent link again.
+    // Neither side's next roster poll attaches the silent link again.
+    member.reuse.considerRoster([{ id: ADMIN, name: "Admin", user: "admin" }], MEMBER);
     admin.reuse.considerRoster([{ id: MEMBER, name: "Member", user: "member" }], ADMIN);
+    expect(admin.reuse.reusedLinkCount()).toBe(0);
+    expect(member.reuse.reusedLinkCount()).toBe(0);
     expect(admin.reuse.shouldSkipIce({ id: MEMBER, name: "Member", user: "member" })).toBe(false);
+    // The member's refused `open` goes unanswered, then it falls back to ICE.
+    member.runTimers(COLLAB_REUSE_ACK_TIMEOUT_MS);
+    expect(member.reuse.shouldSkipIce({ id: ADMIN, name: "Admin", user: "admin" })).toBe(false);
   });
 
   it("keeps a reused link that delivered a message", () => {
