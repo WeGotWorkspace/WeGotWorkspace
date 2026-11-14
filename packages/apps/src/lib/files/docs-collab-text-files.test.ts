@@ -6,7 +6,7 @@ import {
 import {
   docsEditorFormatFromFileName,
   isDocsPlainTextFile,
-} from "@/docs-core/src/docs-editor-format";
+} from "@/text-editor-core/docs-collab/docs-editor-format";
 
 describe("isDocsCollabEditablePath", () => {
   it("allows My Drive and group paths for allowlisted extensions", () => {

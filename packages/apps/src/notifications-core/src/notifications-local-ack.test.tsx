@@ -10,7 +10,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(async () => ({ list: [], unreadCount: 0 })),
-  ackNotification: vi.fn(),
+  ackNotifications: vi.fn(),
   ackLocalNotifications: vi.fn(),
   fetchVapidPublicKey: vi.fn(),
   subscribePush: vi.fn(),

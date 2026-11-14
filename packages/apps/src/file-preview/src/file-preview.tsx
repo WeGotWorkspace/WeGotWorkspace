@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FileKind } from "@/lib/files/drive-models";
 import { canBrowserPreviewImage } from "@/lib/files/file-name-utils";
 import { kindIconLg } from "@/lib/files/file-kind-icons";
-import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
+import { useFilePreviewMarkdownRenderer } from "@/lib/file-preview/file-preview-markdown-renderer";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import { stripPreviewText } from "@/lib/file-preview/file-preview-utils";
 import {
@@ -71,6 +71,7 @@ function LazyTileDocsPreview({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useLazyInView(rootRef);
+  const MarkdownRenderer = useFilePreviewMarkdownRenderer();
 
   const fallbackText = stripPreviewText(content, fileName);
   const fallback = fallbackText ? (
@@ -88,8 +89,8 @@ function LazyTileDocsPreview({
       data-testid="file-preview-tile-docs-lazy"
       data-mounted={inView ? "true" : "false"}
     >
-      {inView ? (
-        <DocsFilePreview
+      {inView && MarkdownRenderer ? (
+        <MarkdownRenderer
           fileName={fileName}
           fileApiPath={fileApiPath}
           content={content}
@@ -116,6 +117,7 @@ export function FilePreview({
   videoControls = false,
 }: FilePreviewProps) {
   const [failed, setFailed] = useState(false);
+  const MarkdownRenderer = useFilePreviewMarkdownRenderer();
 
   useEffect(() => {
     setFailed(false);
@@ -150,23 +152,19 @@ export function FilePreview({
     }
 
     const fallbackText = stripPreviewText(preview.content, fileName);
+    const fallback = fallbackText ? (
+      <FilePreviewTextPane content={fallbackText} mode={textMode} className={mediaClassName} />
+    ) : (
+      kindIconFallback
+    );
+    if (!MarkdownRenderer) return fallback;
     return (
-      <DocsFilePreview
+      <MarkdownRenderer
         fileName={fileName}
         fileApiPath={fileApiPath}
         content={preview.content}
         className={mediaClassName}
-        fallback={
-          fallbackText ? (
-            <FilePreviewTextPane
-              content={fallbackText}
-              mode={textMode}
-              className={mediaClassName}
-            />
-          ) : (
-            kindIconFallback
-          )
-        }
+        fallback={fallback}
       />
     );
   }

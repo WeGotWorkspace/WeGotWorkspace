@@ -12,6 +12,8 @@ import {
 import "../src/styles.css";
 // Scoped to Chromatic capture + Storybook Vitest — see chromatic-reduced-motion.css
 import "./chromatic-reduced-motion.css";
+import { DocsFilePreview } from "../src/docs-core/src/docs-file-preview";
+import { FilePreviewMarkdownRendererProvider } from "../src/lib/file-preview/file-preview-markdown-renderer";
 import { NotificationsInboxValueProvider } from "../src/lib/notifications/notifications-inbox-context";
 import { registerBuiltinSettings } from "../src/settings-core/src/register-builtin-settings";
 import { SettingsDialogProvider } from "../src/settings-core/src/settings-dialog-provider";
@@ -127,7 +129,12 @@ const preview: Preview = {
         createElement(
           NotificationsInboxValueProvider,
           { value: STORYBOOK_INBOX },
-          createElement(Story),
+          // Same Markdown renderer for file previews as the shell provides.
+          createElement(
+            FilePreviewMarkdownRendererProvider,
+            { renderer: DocsFilePreview },
+            createElement(Story),
+          ),
         ),
       ),
   ],

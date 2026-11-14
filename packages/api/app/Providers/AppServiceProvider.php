@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Database\WgwSqliteConnection;
+use App\Database\WgwSqliteConnector;
 use App\Events\EventDispatch;
 use App\Events\NotifyListener;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
@@ -39,6 +40,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Immediate SQLite transactions on PHP 8.3 too (see WgwSqliteConnection).
         Connection::resolverFor('sqlite', static fn ($pdo, $database, $prefix, $config) => new WgwSqliteConnection($pdo, $database, $prefix, $config));
+        // WAL journal mode that never fails a request (see WgwSqliteConnector).
+        $this->app->bind('db.connector.sqlite', WgwSqliteConnector::class);
         $this->app->singleton(CspNonce::class);
         $this->app->singleton(CspFormActions::class);
         $this->app->singleton(EventDispatch::class, function ($app): EventDispatch {

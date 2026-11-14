@@ -7,15 +7,14 @@ import {
   driveViewFromSearch,
   parseDriveRouteSearch,
 } from "@/drive-core/src/drive-route-search";
-import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
-import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
 import { driveCurrentUsername } from "@/drive-core/src/use-drive-shell";
 import type { ViewKey } from "@/lib/files/drive-models";
 import { useDriveAPI } from "@/drive-core/src/use-drive-api";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import type { DriveAppProps } from "@/drive-core/src/drive-app-props";
+import { useNoDocsHandoff } from "@/drive-core/src/drive-docs-handoff";
 
-export function DriveApp({ apiSource }: DriveAppProps = {}) {
+export function DriveApp({ apiSource, useDocsHandoff = useNoDocsHandoff }: DriveAppProps = {}) {
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
   const {
@@ -46,12 +45,10 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
     [navigate],
   );
 
-  const handleOpenDocsFile = useOpenDocsFile();
-  // Docs' Save as Markdown, wired here so the workspace does not import Docs.
-  // The workspace adds its own "can create files here" gate.
-  const saveAsMarkdown = useSaveAsMarkdownAction({
+  // Docs fills this slot (open in Docs, Save as Markdown), so Drive does not
+  // import Docs. The workspace adds its own "can create files here" gate.
+  const { onOpenDocsFile, saveAsMarkdown } = useDocsHandoff({
     enabled: !wgwIsGuestSession(),
-    onOpenDocsFile: handleOpenDocsFile,
     username: driveCurrentUsername(data, session),
     dialogSurfaceClassName: "drive-dialog-surface",
   });
@@ -74,7 +71,7 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
           offlineUsername={offlineUsername}
           view={routeView}
           onViewChange={handleViewChange}
-          onOpenDocsFile={handleOpenDocsFile}
+          onOpenDocsFile={onOpenDocsFile}
           saveAsMarkdown={saveAsMarkdown}
           onLogout={() => {
             if (wgwIsGuestSession()) {

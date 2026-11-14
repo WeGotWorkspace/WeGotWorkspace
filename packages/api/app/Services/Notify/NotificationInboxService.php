@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 
 final class NotificationInboxService
 {
+    public function __construct(private readonly NotificationInboxMarkers $markers) {}
+
     /**
      * @return array{list: list<array<string, mixed>>, unreadCount: int}
      */
@@ -62,6 +64,33 @@ final class NotificationInboxService
     }
 
     /**
+     * {@see ack} for many rows in one request (#2154): marks them read and
+     * acks their local delivery. Ids that are not this user's rows, or that
+     * do not exist, are skipped, so the reply says nothing about them.
+     *
+     * One UPDATE for all rows, then one inbox-marker bump (the `Notification`
+     * push state) instead of one per row: a mass update skips the model
+     * event that {@see ack} relies on.
+     *
+     * @param  list<string>  $ids
+     */
+    public function ackMany(string $username, array $ids): void
+    {
+        $owned = $this->ownedIds($username, $ids);
+        if ($owned === []) {
+            return;
+        }
+        $read = Notification::query()
+            ->whereIn('id', $owned)
+            ->whereNull('read_at')
+            ->update(['read_at' => Carbon::now()]);
+        $this->markLocalDeliveriesAcked($owned);
+        if ($read > 0) {
+            $this->markers->bump($username);
+        }
+    }
+
+    /**
      * Record that a visible window, or one in a Meet call, has shown this row,
      * so the VAPID sweep skips push for it on every device.
      */
@@ -85,13 +114,23 @@ final class NotificationInboxService
      */
     public function ackLocalDeliveries(string $username, array $ids): void
     {
-        $owned = Notification::query()
+        $this->markLocalDeliveriesAcked($this->ownedIds($username, $ids));
+    }
+
+    /**
+     * The ids among $ids that are this user's rows.
+     *
+     * @param  list<string>  $ids
+     * @return list<string>
+     */
+    private function ownedIds(string $username, array $ids): array
+    {
+        return array_values(Notification::query()
             ->where('principal', strtolower($username))
             ->whereIn('id', $ids)
             ->pluck('id')
             ->map(fn (mixed $id): string => (string) $id)
-            ->all();
-        $this->markLocalDeliveriesAcked(array_values($owned));
+            ->all());
     }
 
     /**

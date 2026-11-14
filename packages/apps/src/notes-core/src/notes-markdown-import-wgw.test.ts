@@ -12,8 +12,10 @@ vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
     deleteNote: vi.fn(),
   };
 });
-vi.mock("@/lib/offline/notes-offline-store", () => ({ upsertNoteInCache: vi.fn() }));
-vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({ notifyNotesBootstrapUpdated: vi.fn() }));
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({ upsertNoteInCache: vi.fn() }));
+vi.mock("@/lib/offline/notes/notes-bootstrap-sync", () => ({
+  notifyNotesBootstrapUpdated: vi.fn(),
+}));
 vi.mock("@/text-editor-core/docs-collab/docs-image-upload", () => ({
   uploadNoteAttachmentImage: vi.fn(),
 }));

@@ -8,16 +8,16 @@ import { createMeetChatJmapClient } from "@/lib/api/wgw/meet-chat-jmap";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import { JmapChatAdapter, type JmapChatChannel, type JmapChatMessage } from "@/lib/jmap-client";
-import { backfillChatChannelHistory } from "@/lib/offline/meet-chat-inbound-sync";
+import { backfillChatChannelHistory } from "@/lib/offline/meet-chat/meet-chat-inbound-sync";
 import {
   ingestRemoteChatChannel,
   ingestRemoteChatChannelDestroyed,
   ingestRemoteChatMessage,
   ingestRemoteChatMessageDestroyed,
   reconcileMeetChatSnapshot,
-} from "@/lib/offline/meet-chat-jmap-inbound";
+} from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
-import { isChatChannelBackfilled } from "@/lib/offline/meet-chat-offline-store";
+import { isChatChannelBackfilled } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 /** Inbound `/changes` poll while push is down: chat cadence (Notes polls every 10 s). */
 export const CHAT_CHANGES_POLL_MS = 4_000;

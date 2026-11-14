@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { getCalendarsSyncRunner } from "@/lib/offline/calendars-hybrid-operations";
-import { listFailedCalendarOutbox } from "@/lib/offline/calendars-offline-store";
+import { getCalendarsSyncRunner } from "@/lib/offline/calendars/calendars-hybrid-operations";
+import { listFailedCalendarOutbox } from "@/lib/offline/calendars/calendars-offline-store";
 import { useFailedOutboxCount } from "@/lib/offline/core/use-failed-outbox-count";
 import type { ActionNotice } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";

@@ -3945,6 +3945,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description The task a repeated create with the same `uid` in the same list already made */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Task"];
+                    };
+                };
                 /** @description Created task */
                 201: {
                     headers: {
@@ -3956,6 +3965,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
         };
@@ -8823,6 +8833,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark many notifications read at once (and ack their local delivery). One request whatever the number of rows. Ids that are not the caller's rows are ignored. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationAckBatchRequest"];
+                };
+            };
+            responses: {
+                /** @description Notifications marked read */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationOkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -12882,6 +12934,9 @@ export interface components {
             /** @description Required on the first save. Left out or null keeps the stored password. */
             password?: string | null;
             folder?: string | null;
+        };
+        NotificationAckBatchRequest: {
+            ids: string[];
         };
     };
     responses: {

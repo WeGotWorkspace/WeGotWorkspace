@@ -1,8 +1,22 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, render, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
+import { act, cleanup, render as rtlRender, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { FilePreview } from "@/file-preview/src/file-preview";
+import { FilePreviewMarkdownRendererProvider } from "@/lib/file-preview/file-preview-markdown-renderer";
 import "@/file-preview/src/file-preview.css";
+
+/** Docs' renderer in the slot, as the shell provides it. */
+function WithDocsRenderer({ children }: { children: ReactNode }) {
+  return (
+    <FilePreviewMarkdownRendererProvider renderer={DocsFilePreview}>
+      {children}
+    </FilePreviewMarkdownRendererProvider>
+  );
+}
+
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: WithDocsRenderer });
 
 vi.mock("@/text-editor-core/src", () => ({
   TextEditor: ({ content, editable }: { content?: string; editable?: boolean }) => (
@@ -87,5 +101,19 @@ describe("FilePreview tile variant", () => {
 
     expect(screen.queryByTestId("text-editor")).toBeNull();
     expect(container.querySelector(".file-preview__fallback")).toBeTruthy();
+  });
+
+  it("shows the plain-text fallback when no Markdown renderer is provided", () => {
+    rtlRender(
+      <FilePreview
+        variant="detail"
+        fileKind="doc"
+        fileName="Spec.md"
+        preview={{ kind: "docs", content: "# Title\n\nBody" }}
+      />,
+    );
+
+    expect(screen.queryByTestId("text-editor")).toBeNull();
+    expect(screen.getByText(/Body/)).toBeTruthy();
   });
 });
