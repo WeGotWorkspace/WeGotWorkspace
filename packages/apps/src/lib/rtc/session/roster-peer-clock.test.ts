@@ -25,18 +25,14 @@ describe("RosterPeerClock", () => {
     expect(clock.isDialing("bea", false)).toBe(false);
   });
 
-  it("measures quiet time from the last roster change", () => {
+  it("forgets a peer that left the roster", () => {
     let now = 0;
     const clock = new RosterPeerClock(() => now);
-    now = 5_000;
-    clock.noteRoster([]);
-    expect(clock.quietForMs()).toBe(5_000);
     clock.noteRoster(["bea"]);
-    expect(clock.quietForMs()).toBe(0);
-    now = 9_000;
-    clock.noteRoster(["bea"]);
-    expect(clock.quietForMs()).toBe(4_000);
+    now += UNLINKED_PEER_FAST_WINDOW_MS;
+    expect(clock.isDialing("bea", false)).toBe(false);
     clock.noteRoster([]);
-    expect(clock.quietForMs()).toBe(0);
+    clock.noteRoster(["bea"]);
+    expect(clock.isDialing("bea", false)).toBe(true);
   });
 });

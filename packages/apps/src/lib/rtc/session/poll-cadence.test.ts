@@ -69,16 +69,11 @@ describe("collab idle cadence (#2156)", () => {
     };
   }
 
-  it("keeps the 2s alone poll for a minute after the roster changed, then waits 15s", () => {
-    expect(steadyPollDelayMs(intervals, collab({ quietForMs: 59_999 }))).toBe(2_000);
-    expect(steadyPollDelayMs(intervals, collab({ quietForMs: 60_000 }))).toBe(15_000);
-  });
-
   it("polls fast while a new peer is dialled, and stops once it is past the window", () => {
-    const dialing = collab({ roomPeers: [peer], isDialing: () => true, quietForMs: 90_000 });
+    const dialing = collab({ roomPeers: [peer], isDialing: () => true });
     expect(steadyPollDelayMs(intervals, dialing)).toBe(1_200);
-    const ghost = collab({ roomPeers: [peer], isDialing: () => false, quietForMs: 90_000 });
-    expect(steadyPollDelayMs(intervals, ghost)).toBe(15_000);
+    const ghost = collab({ roomPeers: [peer], isDialing: () => false });
+    expect(steadyPollDelayMs(intervals, ghost)).toBe(2_000);
   });
 
   it("counts a peer linked through collab reuse as linked", () => {
@@ -91,8 +86,9 @@ describe("collab idle cadence (#2156)", () => {
     expect(steadyPollDelayMs(intervals, reused)).toBe(5_000);
   });
 
-  it("lets the HTTP fallback cap the idle backoff", () => {
-    const capped: RtcPollIntervals = { connectingMs: 400, steadyMs: 3_000, maxDelayMs: 3_000 };
-    expect(steadyPollDelayMs(capped, collab({ quietForMs: 90_000 }))).toBe(3_000);
+  it("caps even a linked room at the HTTP fallback's idle poll", () => {
+    const capped: RtcPollIntervals = { connectingMs: 400, steadyMs: 2_000, maxDelayMs: 2_000 };
+    const linked = collab({ roomPeers: [peer], linkStateOf: () => "connected" });
+    expect(steadyPollDelayMs(capped, linked)).toBe(2_000);
   });
 });

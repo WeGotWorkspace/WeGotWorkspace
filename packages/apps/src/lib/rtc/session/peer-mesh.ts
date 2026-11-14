@@ -507,7 +507,6 @@ export class RtcPeerMesh {
       hidden: this.visibility?.getState() === "hidden",
       peerConnectionCount: this.peers.size,
       isDialing: (peerId, linkedNow) => this.rosterClock.isDialing(peerId, linkedNow),
-      quietForMs: this.rosterClock.quietForMs(),
       linkedElsewhere: this.options.linkedElsewhere,
     };
   }

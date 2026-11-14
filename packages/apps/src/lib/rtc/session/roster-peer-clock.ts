@@ -7,37 +7,29 @@
 export const UNLINKED_PEER_FAST_WINDOW_MS = 20_000;
 
 /**
- * Remembers when each rostered peer appeared, when a link to it last dropped,
- * and when the roster last changed. The poll cadence reads it to tell a peer
- * that is still being dialled from one that is not going to link.
+ * Remembers when each rostered peer appeared and when a link to it last
+ * dropped. The poll cadence reads it to tell a peer that is still being
+ * dialled from one that is not going to link.
  */
 export class RosterPeerClock {
   private readonly pendingSince = new Map<string, number>();
 
   private readonly linked = new Set<string>();
 
-  private quietSince: number;
-
-  constructor(private readonly now: () => number = Date.now) {
-    this.quietSince = now();
-  }
+  constructor(private readonly now: () => number = Date.now) {}
 
   /** The roster a poll or join returned, without this peer itself. */
   noteRoster(peerIds: readonly string[]): void {
     const now = this.now();
     const next = new Set(peerIds);
-    let changed = next.size !== this.pendingSince.size;
     for (const id of next) {
-      if (this.pendingSince.has(id)) continue;
-      this.pendingSince.set(id, now);
-      changed = true;
+      if (!this.pendingSince.has(id)) this.pendingSince.set(id, now);
     }
     for (const id of [...this.pendingSince.keys()]) {
       if (next.has(id)) continue;
       this.pendingSince.delete(id);
       this.linked.delete(id);
     }
-    if (changed) this.quietSince = now;
   }
 
   /**
@@ -65,14 +57,8 @@ export class RosterPeerClock {
     return this.unlinkedForMs(peerId, false) < UNLINKED_PEER_FAST_WINDOW_MS;
   }
 
-  /** Milliseconds since the roster last changed, or since the clock started. */
-  quietForMs(): number {
-    return this.now() - this.quietSince;
-  }
-
   reset(): void {
     this.pendingSince.clear();
     this.linked.clear();
-    this.quietSince = this.now();
   }
 }

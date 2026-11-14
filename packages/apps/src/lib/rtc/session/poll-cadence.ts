@@ -6,17 +6,12 @@ import type {
   SignalingChannel,
 } from "@/lib/rtc/types";
 
-/** Collab room with nobody else on the roster, during its first minute. Empty `.every()` is not "stable". */
-const COLLAB_ALONE_POLL_INTERVAL_MS = 2_000;
 /**
- * How long an empty collab room keeps the 2 s poll after its roster last
- * changed. A colleague who opens the same document right away is found within
- * 2 s; one linked on the presence mesh wakes the poll at once through collab
- * reuse, whatever the interval (#2156).
+ * Collab room with nobody reachable on the roster. Empty `.every()` is not
+ * "stable". This is also how long a newcomer who is not linked yet waits to be
+ * found, so it stays short (#2156).
  */
-export const COLLAB_ALONE_FAST_WINDOW_MS = 60_000;
-/** Collab room that has been empty (or held only peers that never linked) for a minute. */
-const COLLAB_ALONE_IDLE_POLL_INTERVAL_MS = 15_000;
+const COLLAB_ALONE_POLL_INTERVAL_MS = 2_000;
 /** Every reachable collab peer already has a data channel. */
 const COLLAB_STABLE_POLL_INTERVAL_MS = 5_000;
 /** Meet idle backoff when connected with no knockers — shorter than collab for chat/control UX. */
@@ -40,8 +35,6 @@ export type MeshPollCadenceSnapshot = {
    * poll (`RosterPeerClock`). Without it every unlinked peer counts as dialling.
    */
   isDialing?: (peerId: string, linkedNow: boolean) => boolean;
-  /** Milliseconds since the roster last changed. */
-  quietForMs?: number;
   /** A collab peer linked through another channel (collab reuse over the presence mesh). */
   linkedElsewhere?: (peerId: string) => boolean;
 };
@@ -86,12 +79,8 @@ function collabDelayMs(intervals: RtcPollIntervals, snapshot: MeshPollCadenceSna
     if (snapshot.isDialing ? snapshot.isDialing(peer.id, isLinked) : !isLinked) dialing = true;
   }
   if (dialing) return intervals.steadyMs;
-  if (linked > 0) return Math.max(intervals.steadyMs, COLLAB_STABLE_POLL_INTERVAL_MS);
-  const alone =
-    (snapshot.quietForMs ?? 0) < COLLAB_ALONE_FAST_WINDOW_MS
-      ? COLLAB_ALONE_POLL_INTERVAL_MS
-      : COLLAB_ALONE_IDLE_POLL_INTERVAL_MS;
-  return Math.max(intervals.steadyMs, alone);
+  const idle = linked > 0 ? COLLAB_STABLE_POLL_INTERVAL_MS : COLLAB_ALONE_POLL_INTERVAL_MS;
+  return Math.max(intervals.steadyMs, idle);
 }
 
 export function hasKnockersInRoster(peers: readonly RtcPeerDescriptor[]): boolean {

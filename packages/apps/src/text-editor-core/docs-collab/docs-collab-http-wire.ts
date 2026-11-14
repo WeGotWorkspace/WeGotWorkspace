@@ -20,10 +20,11 @@ export const YJS_HTTP_POLL_MS = 1_000;
 
 /**
  * Steady poll while a peer is on the HTTP path but nothing changed for
- * `YJS_HTTP_ACTIVE_WINDOW_MS`. A remote edit after a quiet spell arrives within
+ * `YJS_HTTP_ACTIVE_WINDOW_MS`: the same as an empty collab room, so a newcomer
+ * is found as fast as before. A remote edit after a quiet spell arrives within
  * this, then the poll is fast again (#2156).
  */
-export const YJS_HTTP_IDLE_POLL_MS = 3_000;
+export const YJS_HTTP_IDLE_POLL_MS = 2_000;
 
 /** How long a local or remote edit, or a peer joining the HTTP path, keeps the fast poll. */
 export const YJS_HTTP_ACTIVE_WINDOW_MS = 30_000;
