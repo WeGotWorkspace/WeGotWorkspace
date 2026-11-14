@@ -12,15 +12,7 @@
 // The second case lets only the teammate type (#2061). The owner, who only
 // watches, must still see the line: a typing owner would itself trigger the
 // exchange that brings its screen up to date and so hide a dead live link.
-import {
-  devices,
-  expect,
-  test,
-  webkit,
-  type Browser,
-  type BrowserContext,
-  type Page,
-} from "./helpers/live-test";
+import { devices, expect, test, webkit, type BrowserContext, type Page } from "./helpers/live-test";
 import {
   api,
   openUser,
@@ -195,16 +187,10 @@ async function ensureSecondTeam(): Promise<void> {
   await api(OWNER, "PUT", `/admin/groups/${SECOND_TEAM}/members/${TEAMMATE}`);
 }
 
-/**
- * The owner's browser. `WGW_E2E_RACE_OWNER_ENGINE=webkit` runs the owner as a
- * phone-sized WebKit, the pairing that found #2061; the default stays Chromium.
- */
-async function ownerContext(chromium: Browser, phone: Browser | null): Promise<BrowserContext> {
-  return openUser(phone ?? chromium, OWNER);
-}
-
 test.describe("Docs: two people open one document, only one types", () => {
   test("the person who only watches sees the other's line (#2061)", async ({ browser }) => {
+    // `WGW_E2E_RACE_OWNER_ENGINE=webkit` runs the owner as a phone-sized WebKit,
+    // the pairing that found #2061; the default stays Chromium.
     const phone = process.env.WGW_E2E_RACE_OWNER_ENGINE === "webkit" ? await webkit.launch() : null;
     const paths: string[] = [];
     try {
@@ -217,7 +203,7 @@ test.describe("Docs: two people open one document, only one types", () => {
         const theirs = `Teammate line ${stamp}`;
 
         // Cold start every round: no tab of either person is open yet.
-        const owner = await ownerContext(browser, phone);
+        const owner = await openUser(phone ?? browser, OWNER);
         const teammate = await openUser(browser, TEAMMATE);
         try {
           const a = await owner.newPage();
@@ -246,6 +232,8 @@ test.describe("Docs: two people open one document, only one types", () => {
       }
     } finally {
       await removeQuietly(OWNER, paths);
+      // Later specs on this server expect only the default Team between the two.
+      await api(OWNER, "DELETE", `/admin/groups/${SECOND_TEAM}`);
       await phone?.close();
     }
   });
