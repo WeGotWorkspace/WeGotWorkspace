@@ -15,6 +15,7 @@ import {
   openUser,
   OWNER,
   serverState,
+  tabCache,
   waitForTasks,
 } from "./helpers/tasks-matrix";
 
@@ -46,25 +47,32 @@ test("a create the page saw fail although the server stored it is stored once", 
     const field = tab.getByRole("textbox", { name: "Quick add task" });
     await field.fill(title);
     await field.press("Enter");
-    await expect.poll(() => sentUids.length).toBeGreaterThan(0);
+    const rows = tab.locator(".list-item__title").getByText(title, { exact: true });
+    await expect(rows).toHaveCount(1);
+    // The page queued the create it saw fail; reload once it is in the outbox.
+    await expect
+      .poll(async () => (await tabCache(tab, id)).outbox, { message: "the create is queued" })
+      .toEqual(["create"]);
     await tab.reload();
     await waitForTasks(tab);
 
     await expect
       .poll(() => sentUids.length, { message: "the outbox sends the create again" })
       .toBeGreaterThan(1);
-    expect(sentUids[0]).toMatch(/^urn:uuid:[0-9a-f-]{36}$/);
-    expect(new Set(sentUids)).toEqual(new Set([sentUids[0]]));
-    const rows = tab.locator(".list-item__title").getByText(title, { exact: true });
-    await expect(rows).toHaveCount(1);
-    // Past a fallback poll: still one task on the server and one row.
+    // Past a fallback poll: one task on the server and one row.
     await tab.waitForTimeout(3_000);
     const stored = (await serverState(id)).tasks.filter((task) => task.title === title);
     expect(stored, "tasks on the server").toHaveLength(1);
     await expect(rows).toHaveCount(1);
-    expect(
-      events.filter((event) => !event.includes("request failed: POST /api/v1/tasks/items")),
-    ).toEqual([]);
+    // Both sends carried the UID the app picked before the first one.
+    expect(sentUids[0]).toMatch(/^urn:uuid:[0-9a-f-]{36}$/);
+    expect(new Set(sentUids)).toEqual(new Set([sentUids[0]]));
+    // The aborted POST and the requests the reload cut off are expected.
+    const unexpected = events.filter(
+      (event) => !event.includes("request failed:") && !event.includes("net::ERR_FAILED"),
+    );
+    expect(unexpected).toEqual([]);
+    expect((await tabCache(tab, id)).outbox).toEqual([]);
   } finally {
     await context.close().catch(() => undefined);
     await cleanUpCase(id).catch(() => undefined);
