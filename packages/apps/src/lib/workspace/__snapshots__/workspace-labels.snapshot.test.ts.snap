@@ -1674,6 +1674,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: meet 1`]
     "Call ended by Alpha.",
   ],
   "callEndedTitle": "Call ended",
+  "callFull": "This call is full. Try again when someone leaves.",
   "cameraDisabledByAdmin": "Camera is off for this workspace",
   "cameraLabel": "Camera",
   "cameraOff": "Camera is off",

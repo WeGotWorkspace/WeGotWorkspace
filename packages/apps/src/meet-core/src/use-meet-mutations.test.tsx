@@ -162,6 +162,33 @@ describe("useMeetMutations joinRoom", () => {
     await Promise.all([first, second]);
     expect(session.meetRtc.join).toHaveBeenCalledTimes(1);
   });
+
+  it.each(["joinRoom", "requestJoin"] as const)(
+    "%s says the call is full in plain words when the server answers room_full (#1626)",
+    async (action) => {
+      const session = createSessionStub();
+      session.meetRtc.join = vi.fn().mockRejectedValue(new Error("room_full"));
+      const room = createRoomStub();
+      room.status = "idle";
+      room.statusRef.current = "idle";
+      room.roomCodeRef.current = "";
+      const leaveRef = { current: null as null | (() => Promise<void>) };
+
+      const { result } = renderHook(() =>
+        useMeetMutations({
+          room,
+          session,
+          canModerateKnocks: false,
+          leaveRef,
+          persistentCall: true,
+        }),
+      );
+
+      await expect(result.current[action]("chat-full")).rejects.toThrow(meetLabels.callFull);
+      expect(room.setError).toHaveBeenLastCalledWith(meetLabels.callFull);
+      expect(room.setStatus).toHaveBeenLastCalledWith("failed");
+    },
+  );
 });
 
 describe("useMeetMutations requestJoin", () => {
