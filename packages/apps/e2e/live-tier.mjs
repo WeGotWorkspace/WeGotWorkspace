@@ -84,6 +84,7 @@ export const liveTierSpecs = [
   "presence-team-rooms",
   "push-mesh-interval",
   "queued-write-reload",
+  "rtc-idle-poll",
   "settings-calendar-availability",
   "sync-notice-bar",
   "tasks-ics-import",
