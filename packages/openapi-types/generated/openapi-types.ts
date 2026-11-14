@@ -3945,6 +3945,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description The task a repeated create with the same `uid` in the same list already made */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Task"];
+                    };
+                };
                 /** @description Created task */
                 201: {
                     headers: {
@@ -3956,6 +3965,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
         };
