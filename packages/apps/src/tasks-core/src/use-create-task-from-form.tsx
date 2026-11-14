@@ -3,7 +3,8 @@ import { Plus } from "lucide-react";
 import type { Task } from "@/lib/models/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
-import { canWriteTaskList, mergeCreatedTask } from "@/tasks-core/src/tasks-task-utils";
+import { mergeCreatedTask } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList } from "@/lib/models/task-lists";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 
 type UseCreateTaskFromFormArgs = Pick<

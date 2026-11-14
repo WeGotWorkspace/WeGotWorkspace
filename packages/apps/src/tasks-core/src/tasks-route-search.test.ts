@@ -8,7 +8,7 @@ import {
   tasksViewFromLocation,
   validateTasksRouteSearch,
 } from "@/tasks-core/src/tasks-route-search";
-import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
+import { INBOX_TASK_LIST_ID } from "@/lib/models/task-lists";
 
 describe("tasks-route-search", () => {
   it("recognizes only the tasks app prefix", () => {

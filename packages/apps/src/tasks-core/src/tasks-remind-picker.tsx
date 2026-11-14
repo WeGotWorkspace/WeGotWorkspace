@@ -4,11 +4,8 @@ import {
   AlarmOffsetMenuItems,
   alarmOffsetLabel,
   alarmOffsetSelectValue,
-} from "@/calendar-core/src/calendar-alarms-card";
-import {
-  alertsAfterOffsetChange,
-  isAlertOffsetSelectValue,
-} from "@/calendar-core/src/calendar-alerts";
+} from "@/alarms-card/src/alarms-card";
+import { alertsAfterOffsetChange, isAlertOffsetSelectValue } from "@/lib/calendar/calendar-alerts";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { Select, SelectContent } from "@/ui/select";
 import {

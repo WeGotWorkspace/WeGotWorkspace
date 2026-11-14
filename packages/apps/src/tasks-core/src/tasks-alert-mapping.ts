@@ -3,9 +3,8 @@ import {
   alertActionFromWire,
   formatAlertOffsetQuantity,
   type CalendarEventAlertFormValue,
-} from "@/calendar-core/src/calendar-alerts";
-import type { CalendarAlarmsCardLabels } from "@/calendar-core/src/calendar-alarms-card";
-import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+} from "@/lib/calendar/calendar-alerts";
+import { defaultAlarmsCardLabels, type AlarmsCardLabels } from "@/alarms-card/src/alarms-card";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { Task, TaskAlert, TaskPatch } from "@/lib/models/tasks-types";
 
@@ -161,18 +160,18 @@ export function remindButtonLabel(
 /** Tasks dialog copy + shared calendar offset presets (intentional DRY). */
 export function tasksAlarmRowLabels(
   labels: Pick<TasksUILabels, "remindMe" | "remindAtTimeOfTask">,
-): CalendarAlarmsCardLabels {
+): AlarmsCardLabels {
   return {
     eventAlarmsLabel: labels.remindMe,
-    eventAlarmRemove: defaultCalendarLabels.eventAlarmRemove,
-    eventAlarmOffset: defaultCalendarLabels.eventAlarmOffset,
-    eventAlarmNone: defaultCalendarLabels.eventAlarmNone,
+    eventAlarmRemove: defaultAlarmsCardLabels.eventAlarmRemove,
+    eventAlarmOffset: defaultAlarmsCardLabels.eventAlarmOffset,
+    eventAlarmNone: defaultAlarmsCardLabels.eventAlarmNone,
     eventAlarmAtStart: labels.remindAtTimeOfTask,
-    eventAlarm5Min: defaultCalendarLabels.eventAlarm5Min,
-    eventAlarm10Min: defaultCalendarLabels.eventAlarm10Min,
-    eventAlarm15Min: defaultCalendarLabels.eventAlarm15Min,
-    eventAlarm30Min: defaultCalendarLabels.eventAlarm30Min,
-    eventAlarm1Hour: defaultCalendarLabels.eventAlarm1Hour,
-    eventAlarm1Day: defaultCalendarLabels.eventAlarm1Day,
+    eventAlarm5Min: defaultAlarmsCardLabels.eventAlarm5Min,
+    eventAlarm10Min: defaultAlarmsCardLabels.eventAlarm10Min,
+    eventAlarm15Min: defaultAlarmsCardLabels.eventAlarm15Min,
+    eventAlarm30Min: defaultAlarmsCardLabels.eventAlarm30Min,
+    eventAlarm1Hour: defaultAlarmsCardLabels.eventAlarm1Hour,
+    eventAlarm1Day: defaultAlarmsCardLabels.eventAlarm1Day,
   };
 }

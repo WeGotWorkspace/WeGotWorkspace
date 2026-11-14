@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import { newEventFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
+import { newEventFreeBusyStatus } from "@/lib/calendar/calendar-alerts";
 import {
   calendarEventToForm,
   createIntentToForm,
