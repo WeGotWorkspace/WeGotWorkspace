@@ -7,6 +7,7 @@ namespace App\Database;
 use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\SQLiteConnection;
+use PDO;
 use PDOException;
 use Throwable;
 
@@ -131,7 +132,7 @@ final class WgwSqliteConnection extends SQLiteConnection
     {
         $statement = $this->getPdo()->query('PRAGMA user_version');
         // fetchAll finishes the statement, so it holds no read lock afterwards.
-        $rows = $statement === false ? [] : $statement->fetchAll(\PDO::FETCH_COLUMN);
+        $rows = $statement === false ? [] : $statement->fetchAll(PDO::FETCH_COLUMN);
 
         return (int) ($rows[0] ?? 0);
     }
