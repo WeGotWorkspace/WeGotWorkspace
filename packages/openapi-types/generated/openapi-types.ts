@@ -4321,6 +4321,7 @@ export interface paths {
                         "application/json": components["schemas"]["DriveSharedWithMeDataResponse"];
                     };
                 };
+                400: components["responses"]["JmapBadRequest"];
             };
         };
         put?: never;
@@ -7365,6 +7366,7 @@ export interface paths {
                         "application/json": components["schemas"]["NotificationListResponse"];
                     };
                 };
+                400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
             };
         };
