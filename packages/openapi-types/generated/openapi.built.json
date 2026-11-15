@@ -16505,6 +16505,9 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
                     }
                 },
                 "x-wgw-access": "user"
@@ -20326,6 +20329,9 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
