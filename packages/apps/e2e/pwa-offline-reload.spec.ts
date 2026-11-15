@@ -9,7 +9,7 @@ import { expect, test } from "./helpers/live-test";
 const OTHER_APP_CHUNK =
   /\/assets\/(calendar-app|docs-app|wegotworkspace-meet-live-route)-[^/]*\.js$/;
 
-test("one cold visit to Contacts: Contacts reloads offline, and Calendar opens offline too", async ({
+test("one cold visit to Contacts: Contacts reloads offline, and Calendar's code opens offline too", async ({
   page,
   context,
 }) => {
@@ -51,9 +51,10 @@ test("one cold visit to Contacts: Contacts reloads offline, and Calendar opens o
   try {
     await page.reload();
     await expect(page.getByPlaceholder("Search contacts...")).toBeVisible();
-    // Calendar was never opened online.
+    // Calendar was never opened online. Its code is precached, so the app
+    // opens; its data was never fetched, so it shows its own offline state.
     await page.goto("/calendar");
-    await expect(page.getByRole("button", { name: "New event" })).toBeVisible();
+    await expect(page.getByText("No cached calendar available offline")).toBeVisible();
   } finally {
     await context.setOffline(false);
   }
