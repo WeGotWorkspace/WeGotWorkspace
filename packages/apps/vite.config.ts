@@ -3,13 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { VitePWA } from "vite-plugin-pwa";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import {
-  isShellPrecacheEntry,
-  LAZY_ASSETS_LIST,
-  shellAssetUrls,
-} from "./src/lib/offline/precache-shell";
 import { fileURLToPath } from "node:url";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
 
@@ -84,28 +78,6 @@ export default defineConfig(({ command, mode }) => {
           // so an unversioned precache entry would never match.
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-          // Precache the shell only (#1628): what index.html loads. Lazy app
-          // chunks are cached by src/sw.ts when their route first requests them.
-          manifestTransforms: [
-            (entries) => {
-              const indexPath = path.join(__dirname, "dist", "index.html");
-              // Keeping every entry would quietly bring back precache-all (#1628).
-              if (!existsSync(indexPath)) {
-                throw new Error(`Shell precache needs ${indexPath}: build wrote no index.html.`);
-              }
-              const shell = shellAssetUrls(readFileSync(indexPath, "utf8"));
-              // The worker reads this list to keep unchanged lazy chunks across a deploy.
-              const lazy = entries.filter((entry) => !isShellPrecacheEntry(entry.url, shell));
-              writeFileSync(
-                path.join(__dirname, "dist", LAZY_ASSETS_LIST),
-                JSON.stringify(lazy.map((entry) => `/${entry.url.replace(/^\/+/, "")}`).sort()),
-              );
-              return {
-                manifest: entries.filter((entry) => isShellPrecacheEntry(entry.url, shell)),
-                warnings: [],
-              };
-            },
-          ],
         },
         manifest: false,
       }),

@@ -11,8 +11,8 @@ const baseURL = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:4173";
 process.env.WGW_APPS_E2E_BASE_URL = baseURL;
 
 /**
- * Production-build tier (#1628): the service worker only runs its precache and
- * lazy-chunk cache in a built app, so this serves `vite build` with
+ * Production-build tier (#1628): the service worker only runs its precache in a
+ * built app, so this serves `vite build` with
  * `vite preview` against the same PHP API as the live tier.
  */
 export default defineConfig({
