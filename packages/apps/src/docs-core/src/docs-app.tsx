@@ -32,6 +32,7 @@ import { useDocsAPI } from "@/docs-core/src/use-docs-api";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
+import { mocksInBuild } from "@/lib/api/create-workspace-source";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
@@ -139,7 +140,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
 
   const shareOperations = useMemo(
     () =>
-      wgwLiveApiEnabled() ? createWgwDriveShareOperations() : createMockDriveShareOperations(),
+      mocksInBuild && !wgwLiveApiEnabled()
+        ? createMockDriveShareOperations()
+        : createWgwDriveShareOperations(),
     [],
   );
 
