@@ -69,6 +69,19 @@ final class CalDavCollections
     }
 
     /**
+     * Any collection on this principal under this uri, whatever app owns it.
+     * A new collection may not be minted on top of another app's, and the
+     * kind-scoped finders deliberately cannot see those.
+     */
+    public function uriTaken(string $principalUri, string $uri): bool
+    {
+        return CalendarInstance::query()
+            ->where('principaluri', $principalUri)
+            ->where('uri', $uri)
+            ->exists();
+    }
+
+    /**
      * @param  \Closure(Builder<Calendar>): mixed  $calendarScope
      */
     public function findInstance(string $principalUri, string $uri, \Closure $calendarScope): ?CalendarInstance

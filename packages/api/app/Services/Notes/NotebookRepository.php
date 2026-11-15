@@ -422,7 +422,7 @@ final class NotebookRepository
             }
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedNoteUriSlugs(), true)
-                || $this->collectionUriTaken($principalUri, $requestedId)
+                || $this->collections->uriTaken($principalUri, $requestedId)
             ) {
                 throw new ApiHttpException(409, 'Notebook id already exists.', 'alreadyExists');
             }
@@ -441,7 +441,7 @@ final class NotebookRepository
         }
         $candidate = $base;
         $suffix = 2;
-        while ($this->collectionUriTaken($principalUri, $candidate)) {
+        while ($this->collections->uriTaken($principalUri, $candidate)) {
             $candidate = $base.'-'.$suffix;
             $suffix++;
         }
@@ -582,19 +582,6 @@ final class NotebookRepository
         }
 
         return null;
-    }
-
-    /**
-     * Any collection on this principal under this uri, whatever app owns it.
-     * A notebook may not be minted on top of a chat channel or a docs thread
-     * pool, and the kind-scoped finders deliberately cannot see those.
-     */
-    private function collectionUriTaken(string $principalUri, string $uri): bool
-    {
-        return CalendarInstance::query()
-            ->where('principaluri', $principalUri)
-            ->where('uri', $uri)
-            ->exists();
     }
 
     private function ensureGroupNotebookInstance(string $groupSlug): ?CalendarInstance
