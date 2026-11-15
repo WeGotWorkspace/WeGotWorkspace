@@ -24,9 +24,12 @@ import { TooltipProvider } from "@/ui/tooltip";
  * The service worker precaches the chunk, so this also works offline.
  */
 const DocsFilePreviewChunk = lazy(() =>
-  import("@/docs-core/src/docs-file-preview").then((module) => ({
-    default: module.DocsFilePreview,
-  })),
+  import("@/docs-core/src/docs-file-preview")
+    .then((module) => ({ default: module.DocsFilePreview }))
+    // A chunk that fails to load (no service worker, offline, stale hash) keeps the plain-text preview.
+    .catch(() => ({
+      default: (props: FilePreviewMarkdownRendererProps) => <>{props.fallback ?? null}</>,
+    })),
 );
 
 export function LazyDocsFilePreview(props: FilePreviewMarkdownRendererProps) {
