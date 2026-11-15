@@ -1,6 +1,9 @@
 import { HeadContent, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
-import { FilePreviewMarkdownRendererProvider } from "@/lib/file-preview/file-preview-markdown-renderer";
+import { lazy, Suspense } from "react";
+import {
+  FilePreviewMarkdownRendererProvider,
+  type FilePreviewMarkdownRendererProps,
+} from "@/lib/file-preview/file-preview-markdown-renderer";
 import { useReportRouteToPushHub } from "@/lib/api/wgw/use-jmap-state-change";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
 import { MeetKnockChime } from "@/meet-core/src/meet-knock-chime";
@@ -13,6 +16,26 @@ import {
 } from "@/settings-core/src/settings-reachability";
 import { AppToaster } from "@/ui/sonner";
 import { TooltipProvider } from "@/ui/tooltip";
+
+/*
+ * Docs' read-only editor (tiptap, yjs, ProseMirror) loads with the first file
+ * preview that renders Markdown, not with the entry chunk (#1628). Until then
+ * the preview shows its own plain-text fallback, as it does before it mounts.
+ * The service worker precaches the chunk, so this also works offline.
+ */
+const DocsFilePreviewChunk = lazy(() =>
+  import("@/docs-core/src/docs-file-preview").then((module) => ({
+    default: module.DocsFilePreview,
+  })),
+);
+
+export function LazyDocsFilePreview(props: FilePreviewMarkdownRendererProps) {
+  return (
+    <Suspense fallback={props.fallback ?? null}>
+      <DocsFilePreviewChunk {...props} />
+    </Suspense>
+  );
+}
 
 /** Reports each navigation to the push hub, apart from the shell so it does not re-render it. */
 function PushHubRouteReporter() {
@@ -28,7 +51,7 @@ export function WeGotWorkspaceShell() {
       <SettingsReachabilityProvider value={reachabilityFromShell({})}>
         <SettingsDialogProvider>
           {/* File previews render Markdown with Docs' read-only editor. */}
-          <FilePreviewMarkdownRendererProvider renderer={DocsFilePreview}>
+          <FilePreviewMarkdownRendererProvider renderer={LazyDocsFilePreview}>
             <NotificationsProvider>
               <HeadContent />
               <PushHubRouteReporter />
