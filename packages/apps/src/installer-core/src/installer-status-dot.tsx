@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, CircleDashed } from "lucide-react";
-import type { InstallerCheckStatus } from "@/installer-core/src/installer-types";
+import type { InstallerCheckStatus } from "@/lib/models/installer-types";
 
 export function InstallerStatusDot({ status }: { status: InstallerCheckStatus }) {
   const map: Record<InstallerCheckStatus, { color: string; Icon: typeof CircleCheck }> = {

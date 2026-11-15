@@ -70,7 +70,7 @@ final class InstallerEnvChecker
             ];
         }
 
-        $checks[] = $this->writable($apiRoot.'/storage');
+        $checks[] = $this->writable(storage_path());
         $checks[] = $this->writable($apiRoot.'/bootstrap/cache');
 
         return $checks;

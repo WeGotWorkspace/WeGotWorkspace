@@ -177,9 +177,9 @@ export const driveLabels = {
   offlineAvailable: "Available offline",
   offlinePendingSync: workspaceLabels.sync.pending,
   toastSynced: workspaceLabels.sync.changesSynced,
-  syncFailedTitle: workspaceLabels.sync.failedTitle,
-  syncFailedMessage:
-    "Your edits are saved on this device. Retry temporary failures. Changes the server rejected stay listed.",
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  /** Retry fixes temporary failures; a 403/404 row counts until it is resolved. */
+  syncFailedNotice: `${workspaceLabels.sync.failedNotice} Changes the server rejected stay listed.`,
   retrySync: "Retry sync",
   accessTitle: "Access",
   accessScopesTitle: "Scopes",

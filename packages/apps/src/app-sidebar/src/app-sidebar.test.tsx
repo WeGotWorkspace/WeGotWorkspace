@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { MenuItem } from "@/menu-item/src/menu-item";
-import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
+import { NotificationsInboxValueProvider } from "@/lib/notifications/notifications-inbox-context";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import { TooltipProvider } from "@/ui/tooltip";
 

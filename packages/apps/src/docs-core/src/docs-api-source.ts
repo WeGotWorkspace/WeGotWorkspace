@@ -6,7 +6,7 @@ import {
 import { wgwFetchPrincipal, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createWgwDocsDriveOperations } from "@/lib/offline/docs/docs-drive-operations";
-import type { DocsAPIOperations, DocsAppBootstrap } from "@/docs-core/src/docs-types";
+import type { DocsAPIOperations, DocsAppBootstrap } from "@/lib/models/docs-types";
 
 export type DocsApiSource = {
   loadBootstrap: () => Promise<DocsAppBootstrap>;

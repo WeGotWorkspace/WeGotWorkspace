@@ -1,3 +1,4 @@
+import { defaultAlarmsCardLabels } from "@/alarms-card/src/alarms-card";
 import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import { CALENDAR_LIST_EMPTY_LABEL } from "@/lib/calendar-elements/CalendarListView/calendar-list-empty-label";
 import type { CalendarViewId } from "@/lib/models/calendar-types";
@@ -320,7 +321,11 @@ export type CalendarUILabels = {
   teamAvailabilityIncomplete: string;
   teamAvailabilityShowAll: string;
   teamAvailabilityHideAll: string;
-  calendarNoticeBarLabel: string;
+  /** The notice bar's accessible name, the same in every app. */
+  noticeBarLabel: string;
+  /** The notice bar row while calendar changes fail to sync (#1895). */
+  syncFailedNotice: string;
+  retrySync: string;
   teamAvailabilityOfflineUpdated: (age: string) => string;
   teamAvailabilityOfflineUncached: string;
   teamAvailabilityOfflineNone: string;
@@ -533,20 +538,20 @@ export const defaultCalendarLabels: CalendarUILabels = {
   eventShowAs: "Show as",
   eventShowAsBusy: "Busy",
   eventShowAsFree: "Free",
-  eventAlarmsLabel: "Alarms",
+  eventAlarmsLabel: defaultAlarmsCardLabels.eventAlarmsLabel,
   eventAlarmsNone: "No alarms",
   eventAlarmAdd: "Add alert",
-  eventAlarmRemove: "Remove alert",
+  eventAlarmRemove: defaultAlarmsCardLabels.eventAlarmRemove,
   eventAlarmRow: "Alert",
-  eventAlarmNone: "None",
-  eventAlarmOffset: "Alert time",
-  eventAlarmAtStart: "At time of event",
-  eventAlarm5Min: "5 minutes before",
-  eventAlarm10Min: "10 minutes before",
-  eventAlarm15Min: "15 minutes before",
-  eventAlarm30Min: "30 minutes before",
-  eventAlarm1Hour: "1 hour before",
-  eventAlarm1Day: "1 day before",
+  eventAlarmNone: defaultAlarmsCardLabels.eventAlarmNone,
+  eventAlarmOffset: defaultAlarmsCardLabels.eventAlarmOffset,
+  eventAlarmAtStart: defaultAlarmsCardLabels.eventAlarmAtStart,
+  eventAlarm5Min: defaultAlarmsCardLabels.eventAlarm5Min,
+  eventAlarm10Min: defaultAlarmsCardLabels.eventAlarm10Min,
+  eventAlarm15Min: defaultAlarmsCardLabels.eventAlarm15Min,
+  eventAlarm30Min: defaultAlarmsCardLabels.eventAlarm30Min,
+  eventAlarm1Hour: defaultAlarmsCardLabels.eventAlarm1Hour,
+  eventAlarm1Day: defaultAlarmsCardLabels.eventAlarm1Day,
   eventRepeatLabel: "Repeat",
   eventRecurrenceEndsLabel: "Ends",
   eventRecurrenceEndsNever: "Ends never",
@@ -633,7 +638,9 @@ export const defaultCalendarLabels: CalendarUILabels = {
   teamAvailabilityIncomplete: "Some busy times could not be loaded.",
   teamAvailabilityShowAll: "Show all teammates' availability",
   teamAvailabilityHideAll: "Hide all teammates' availability",
-  calendarNoticeBarLabel: "Calendar notices",
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  syncFailedNotice: workspaceLabels.sync.failedNotice,
+  retrySync: workspaceLabels.dialog.retry,
   teamAvailabilityOfflineUpdated: (age) => `Offline · teammates' availability updated ${age}.`,
   teamAvailabilityOfflineUncached: "Some weeks in view are not available offline.",
   teamAvailabilityOfflineNone:

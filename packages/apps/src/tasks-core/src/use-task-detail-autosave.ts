@@ -3,11 +3,8 @@ import type { Task, TaskPatch } from "@/lib/models/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { taskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
-import {
-  canWriteTaskList,
-  dueEditSendsShowWithoutTime,
-  taskAlertsEqual,
-} from "@/tasks-core/src/tasks-task-utils";
+import { dueEditSendsShowWithoutTime, taskAlertsEqual } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList } from "@/lib/models/task-lists";
 import type { TasksShellState } from "@/tasks-core/src/use-tasks-shell";
 
 function taskEditValues(input: TasksTaskFormValue) {

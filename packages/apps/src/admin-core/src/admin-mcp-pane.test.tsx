@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
+import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { createMockAdminOperations } from "@/admin-core/src/admin-mock-operations";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
-import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations } from "@/lib/models/admin-types";
 import { shareLabels } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 

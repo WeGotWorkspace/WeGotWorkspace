@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { showNotificationToast } from "@/notifications-core/src/use-notification-toasts";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 import { AppToaster } from "@/ui/sonner";
 
 const now = () => new Date().toISOString();

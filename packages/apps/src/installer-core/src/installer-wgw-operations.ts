@@ -7,7 +7,7 @@ import {
   installerSiteNext,
   installerWelcomeNext,
 } from "@/lib/api/wgw/installer";
-import type { InstallerAPIOperations } from "@/installer-core/src/installer-types";
+import type { InstallerAPIOperations } from "@/lib/models/installer-types";
 
 export const wgwInstallerOperations: InstallerAPIOperations = {
   welcomeNext: () => installerWelcomeNext(),

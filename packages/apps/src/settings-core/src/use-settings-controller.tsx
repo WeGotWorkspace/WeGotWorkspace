@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
-import type { SettingsPanelId } from "@/settings-core/src/settings-types";
+import type { SettingsPanelId } from "@/lib/models/settings-types";
 import {
   resolveSettingsSection,
   SETTINGS_DEFAULT_SECTION,

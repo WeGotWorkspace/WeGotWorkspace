@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
+import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import { McpEndpointUrlRow } from "@/settings-core/src/mcp-endpoint-url-row";
 import { shareLabels } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";

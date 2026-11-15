@@ -4,9 +4,10 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
+import { docsSessionKnown } from "@/docs-core/src/docs-session-known";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
@@ -24,7 +25,7 @@ import { fileNameToBrowserTitle, useDocumentTitle } from "@/lib/document-title";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import { DocxImportReportForDoc } from "@/docs-core/src/docx-import/docx-import-dialogs";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
-import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/text-editor-core/docs-collab";
+import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/docs-core/src/collab";
 import { useDocsFileRename } from "@/docs-core/src/use-docs-file-rename";
 import { createWgwDocsCollabWire } from "@/docs-core/src/docs-collab-wgw-wire";
 import { useDocsAPI } from "@/docs-core/src/use-docs-api";
@@ -36,13 +37,13 @@ import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
-import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
-import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
+import { resolveDocsOfflineUsername } from "@/lib/offline/core/offline-session";
+import { useOfflinePendingToast } from "@/lib/offline/core/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
 import { ShareDialog } from "@/share-ui/share-dialog";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 
 function DocsCollabDocumentTitle({ fileName }: { fileName: string }) {
   useDocumentTitle(fileNameToBrowserTitle(fileName));
@@ -96,7 +97,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     },
     [fileNodeId, followPath, navigate],
   );
-  const { holdServerSave } = useDocsEditorPathFollow({
+  const { holdServerSave, holdUntilChecked } = useDocsEditorPathFollow({
     username: offlineUsername,
     filePath,
     onFollow: followMovedFile,
@@ -234,6 +235,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       authToken: collabAuthToken,
       // Held on this device while the server does not have this path yet, or may have moved it.
       roomNotPersistent: holdServerSave,
+      roomHeldUntilChecked: holdUntilChecked,
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
@@ -245,6 +247,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     fileNodeId,
     filePath,
     holdServerSave,
+    holdUntilChecked,
     relocateRouteDocument,
     showCollab,
     showError,
@@ -288,6 +291,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
               onCreateDocument={isGuestSession ? undefined : handleCreateHomeDocument}
               onLogout={handleLogout}
             />
+          ) : showCollab && !docsSessionKnown(phase, session.user.username) ? (
+            // Join the room once, under the person's own name (#2056).
+            <DocsRouteStatus document={{ status: "resolving" }} onRetry={retryRouteDocument} />
           ) : showCollab && collabUrls ? (
             <>
               {phase === "ready" && collabDocumentTitle ? (

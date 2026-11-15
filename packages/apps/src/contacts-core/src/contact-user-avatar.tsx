@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 
 import type { ContactCard } from "@/lib/models/contacts-types";
-import { contactDisplayName, isContactOrgCard } from "./contacts-display-utils";
+import { isContactOrgCard } from "./contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import { ContactsGroupIcon } from "./contacts-group-icon";
 import { ContactsOrgIcon } from "./contacts-org-icon";
 import { isContactGroupCard } from "./contacts-group-utils";

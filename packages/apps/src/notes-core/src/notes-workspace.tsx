@@ -20,7 +20,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
-import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { ChangeNotebookDialog } from "@/project-dialog/src/change-notebook-dialog";
 import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
@@ -51,7 +51,8 @@ import {
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import { resolveNotesEditorEditable } from "@/notes-core/src/notes-collab-permissions";
 import { DOCUMENT_TITLE_DEBOUNCE_MS, useDocumentTitle } from "@/lib/document-title";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
 import {
@@ -62,8 +63,8 @@ import {
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { Note } from "@/lib/models/note";
-import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
-import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
+import { getNotesSyncRunner } from "@/lib/offline/notes/notes-hybrid-operations";
+import { resolveNotesOfflineUsername } from "@/lib/offline/core/offline-session";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import { useNoteBodyCollab } from "@/notes-core/src/use-note-body-collab";
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
@@ -76,14 +77,14 @@ import {
   notebookDisplayColor,
   notebookDotColor,
   notesDetailTintStyle,
-} from "@/notes-core/src/notes-notebook-color";
+} from "@/lib/models/notebook-color";
 import {
   notebookSelectValueForNotes,
   pendingMoveAfterNotebookCreate,
-  type NotesNotebookSelectItem,
-} from "@/notes-core/src/notes-notebook-select";
-import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
-import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
+  type NotebookSelectItem,
+} from "@/project-dialog/src/notebook-select";
+import { ProjectDialog } from "@/project-dialog/src/project-dialog";
+import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
 import { Callout } from "@/callout/src/callout";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import "@/notes-core/src/notes-workspace.css";
@@ -205,6 +206,7 @@ export function NotesWorkspace({
     assignTagToNotes,
     renameTag,
     createNote,
+    noteCreatePending,
     toggleStar,
     toggleArchive,
     openDeleteConfirm,
@@ -313,7 +315,7 @@ export function NotesWorkspace({
     [selectViewClearingTitleFocus, setNotes],
   );
   const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
-  const [createdMoveDraft, setCreatedMoveDraft] = useState<NotesNotebookSelectItem | null>(null);
+  const [createdMoveDraft, setCreatedMoveDraft] = useState<NotebookSelectItem | null>(null);
   const openCreateNotebook = useCallback(
     (moveNoteIds?: string[]) => {
       pendingMoveAfterCreateRef.current = moveNoteIds?.length ? moveNoteIds : null;
@@ -390,18 +392,18 @@ export function NotesWorkspace({
     [active, applyLocalBodyMarkdown, collabSessionActive, L.titlePlaceholder, noteBodyCollab],
   );
 
-  const handleRetrySync = useCallback(() => {
+  const handleRetrySync = useCallback(async () => {
     onClearSyncConflicts?.();
     if (!offlineUsername) return;
-    void getNotesSyncRunner(offlineUsername)
+    await getNotesSyncRunner(offlineUsername)
       .flush()
       .finally(() => onRefreshList?.());
   }, [offlineUsername, onClearSyncConflicts, onRefreshList]);
 
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:notes",
     active: failedSyncCount > 0,
-    title: L.syncFailedTitle,
-    message: L.syncFailedMessage,
+    title: L.syncFailedNotice,
     retryLabel: L.retrySync,
     onRetry: handleRetrySync,
   });
@@ -514,8 +516,8 @@ export function NotesWorkspace({
             ) : null}
           </AppSidebar>
         )}
-        list={(c) =>
-          NotesListPanel({
+        list={(c) => ({
+          ...NotesListPanel({
             L,
             sidebarOpen: c.sidebarOpen,
             onToggleSidebar: c.toggleSidebar,
@@ -545,8 +547,9 @@ export function NotesWorkspace({
             onEditTag: selectedTag ? () => openRenameTagDialog(selectedTag) : undefined,
             pendingNoteIds,
             notebookCollections,
-          })
-        }
+          }),
+          listTop: <NoticeBar label={L.noticeBarLabel} notices={[syncNotice]} />,
+        })}
         detailWrapper={(children) => wrapDetailWithCollab(children)}
         actionBar={(c) =>
           showSingleNoteDetail ? (
@@ -576,6 +579,9 @@ export function NotesWorkspace({
                 actions={selectionBarButtons}
               />
             );
+          }
+          if (noteCreatePending && !active) {
+            return <CollectionState variant="loading">{L.detailCreatingNote}</CollectionState>;
           }
           if (!showSingleNoteDetail || !active) {
             return (
@@ -651,7 +657,7 @@ export function NotesWorkspace({
         }}
       />
 
-      <NotesChangeNotebookDialog
+      <ChangeNotebookDialog
         open={!!moveDialog}
         notebooks={selectNotebooks}
         value={notebookSelectValueForNotes(notes, moveDialog?.ids, selectNotebooks)}
@@ -668,7 +674,7 @@ export function NotesWorkspace({
         onCreateNotebook={canManageNotebooks && moveDialog ? () => openCreateNotebook() : undefined}
       />
 
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={notebookDialog}
         groups={groups}
         personalOwnerLabel={personalOwnerLabel(session)}

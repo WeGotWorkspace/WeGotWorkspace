@@ -6,10 +6,7 @@ import {
   type MeetUpcomingMeeting,
 } from "@/meet-core/src/meet-calendar-meeting";
 import type { MeetChannelDialogState } from "@/meet-core/src/meet-channel-dialog";
-import {
-  canChangeMeetChannelOwner,
-  canDeleteMeetChannel,
-} from "@/meet-core/src/meet-channel-write";
+import { canChangeMeetChannelOwner, canDeleteMeetChannel } from "@/lib/meetings/meet-channel-write";
 import type { MeetChannel, MeetChannelKind, MeetChatOperations } from "@/lib/models/meet-types";
 import type { MeetCalendarSlice } from "@/meet-core/src/meet-workspace-props";
 

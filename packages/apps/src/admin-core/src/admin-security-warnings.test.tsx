@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminSecurityWarnings } from "@/admin-core/src/admin-workspace";
-import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
+import type { AdminSecurityWarning } from "@/lib/models/admin-types";
 import { isLoopbackOrigin } from "@/admin-core/src/admin-workspace-utils";
 
 const APP_URL_WARNING: AdminSecurityWarning = {

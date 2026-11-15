@@ -93,7 +93,7 @@ import {
   canWriteCalendarCollection,
   isCalendarEventFormReadOnly,
 } from "@/calendar-core/src/calendar-collection-write";
-import type { CalendarShareWith } from "@/calendar-core/src/calendar-share";
+import type { CalendarShareWith } from "@/lib/calendar/calendar-share";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
 import { SideDrawer } from "@/ui/side-drawer";

@@ -1,4 +1,4 @@
-import type { AdminUpdateState } from "@/admin-core/src/admin-types";
+import type { AdminUpdateState } from "@/lib/models/admin-types";
 
 export function optimisticUpdateRun(
   prev: AdminUpdateState,

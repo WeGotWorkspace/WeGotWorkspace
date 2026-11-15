@@ -1,10 +1,11 @@
 import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
+import { defaultNoteBodyLabels } from "@/note-detail-view/src/note-body-labels";
 import {
   workspaceDestructiveDialogLabels,
   type WorkspaceDestructiveDialogLabels,
 } from "@/lib/workspace/destructive-dialog";
 import { sharePrincipalCopy } from "@/share-ui/share-labels";
-import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
+import type { ProjectDialogLabels } from "@/project-dialog/src/project-dialog";
 import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 import {
   defaultNotesImportLabels,
@@ -59,6 +60,8 @@ export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   emptyList: string;
   /** Detail pane when no note is selected (CollectionState empty). */
   emptyDetail: string;
+  /** Detail pane while a new note waits for the notebooks to load (CollectionState loading). */
+  detailCreatingNote: string;
   newNote: string;
   /** Chevron menu on the sidebar segmented New control. */
   newNoteMenu: string;
@@ -105,7 +108,10 @@ export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   externalWriteDescription: (title: string) => string;
   externalWriteKeepMine: string;
   externalWriteUseOutside: string;
-  syncFailedTitle: string;
+  /** Accessible name of the notice bar above the list. */
+  noticeBarLabel: string;
+  /** The notice bar row while notes fail to sync. */
+  syncFailedNotice: string;
   syncFailedMessage: string;
   retrySync: string;
   /** Visible prefix before the last-edited date above the note title ("Edited 17:42"). */
@@ -168,7 +174,7 @@ export const defaultNotesLabels: NotesUILabels = {
   sectionSharedNotebooks: workspaceLabels.sharing.sharedWithMe,
   sectionTags: "Tags",
   share: "Share",
-  titlePlaceholder: "Title",
+  titlePlaceholder: defaultNoteBodyLabels.titlePlaceholder,
   addNotebook: "Create notebook",
   addTag: "New tag",
   tagCharsetHint: "Use letters a–z and -",
@@ -187,6 +193,7 @@ export const defaultNotesLabels: NotesUILabels = {
   listItems: (count) => `${count} Items`,
   emptyList: "No items",
   emptyDetail: "Select a note",
+  detailCreatingNote: "Creating note…",
   newNote: "New note",
   newNoteMenu: workspaceLabels.list.moreCreateOptions,
   edit: workspaceLabels.dialog.edit,
@@ -226,12 +233,12 @@ export const defaultNotesLabels: NotesUILabels = {
   tagViewTitle: (tag) => tag,
   newNoteCategory: "Note",
   pendingSync: workspaceLabels.sync.pending,
-  externalWriteTitle: "Changed outside the app",
-  externalWriteDescription: (title) =>
-    `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,
-  externalWriteKeepMine: "Keep my edits",
-  externalWriteUseOutside: "Use the outside version",
-  syncFailedTitle: workspaceLabels.sync.failedTitle,
+  externalWriteTitle: defaultNoteBodyLabels.externalWriteTitle,
+  externalWriteDescription: defaultNoteBodyLabels.externalWriteDescription,
+  externalWriteKeepMine: defaultNoteBodyLabels.externalWriteKeepMine,
+  externalWriteUseOutside: defaultNoteBodyLabels.externalWriteUseOutside,
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  syncFailedNotice: workspaceLabels.sync.failedNotice,
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: workspaceLabels.dialog.retry,
   editedLabel: "Edited",
@@ -290,7 +297,7 @@ export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILab
   return mergeWorkspaceLabels(defaultNotesLabels, overrides);
 }
 
-export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): TaskProjectDialogLabels {
+export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): ProjectDialogLabels {
   return {
     createTitle: labels.newNotebookTitle,
     editTitle: labels.editNotebookTitle,

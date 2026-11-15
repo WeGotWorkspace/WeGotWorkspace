@@ -11,12 +11,8 @@ import {
 import { ContactsDetailView } from "./contacts-detail-view";
 import { addressBookDotColor } from "./contacts-addressbook-color";
 import { defaultContactsLabels as L } from "./contacts-labels";
-import {
-  CONTACT_CHANNEL_DEFAULT_CONTEXT,
-  contactCardToEditDraft,
-  emptyContactEditDraft,
-  type ContactEditDraft,
-} from "./contacts-edit-utils";
+import { CONTACT_CHANNEL_DEFAULT_CONTEXT, emptyContactEditDraft } from "./contacts-edit-utils";
+import { contactCardToEditDraft, type ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 beforeAll(() => {

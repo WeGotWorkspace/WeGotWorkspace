@@ -9,7 +9,6 @@ use App\Services\Calendars\CalendarSchedulingDeliveryPolicy;
 use App\Services\Calendars\CalendarSchedulingObjects;
 use App\Services\Calendars\CalendarSchedulingReach;
 use Sabre\CalDAV\Schedule\Plugin;
-use Sabre\DAV\Auth\Plugin as AuthPlugin;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\DAVACL\Plugin as AclPlugin;
@@ -73,7 +72,7 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         if (! is_string($principalUri) || $principalUri === '') {
             return null;
         }
-        $sender = $this->currentUsername();
+        $sender = DavCurrentUsername::of($this->server);
         if ($sender !== null && ! $this->reachesLocally($sender, $message, $principalUri)) {
             $message->scheduleStatus = self::EXTERNAL_ADDRESS_STATUS;
             $this->imip->deliver($sender, $message);
@@ -108,18 +107,5 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
             substr($recipientUri, strlen('principals/')),
             (string) $message->method,
         );
-    }
-
-    /** The signed-in DAV user, who sends the message and whose iMIP caps count. */
-    private function currentUsername(): ?string
-    {
-        $auth = $this->server?->getPlugin('auth');
-        $principal = $auth instanceof AuthPlugin ? $auth->getCurrentPrincipal() : null;
-        if (! is_string($principal) || ! str_starts_with($principal, 'principals/')) {
-            return null;
-        }
-        $username = substr($principal, strlen('principals/'));
-
-        return $username === '' || str_contains($username, '/') ? null : $username;
     }
 }

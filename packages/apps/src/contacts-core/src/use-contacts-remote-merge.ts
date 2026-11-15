@@ -10,10 +10,7 @@ import {
   withBlankRowsFrom,
   type ContactSending,
 } from "@/contacts-core/src/contacts-draft-rows";
-import {
-  contactCardToEditDraft,
-  type ContactEditDraft,
-} from "@/contacts-core/src/contacts-edit-utils";
+import { contactCardToEditDraft, type ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 /** What a contact's card is known to hold: the draft it matches, and the card it came from. */

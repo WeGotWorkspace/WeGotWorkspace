@@ -159,8 +159,11 @@ export type ScopedInboundBinding<Row, Cached extends { id: string; scope?: strin
   /** The state to resume from after a full list. */
   currentState(scope: string): Promise<string>;
   rowId(row: Row): string;
-  /** One changed row, for ids a full list did not already return. */
-  fetch(id: string): Promise<Row>;
+  /**
+   * One changed row, for ids a full list did not already return. Null when
+   * the item is gone by the time it is fetched: it counts as destroyed.
+   */
+  fetch(id: string): Promise<Row | null>;
   /** The cache and the queued ids, read once before the run, for full-list removals. */
   readCached(): Promise<{ items: readonly Cached[]; keep: (item: Cached) => boolean }>;
   /** A scope the server no longer has. Handled scopes count as changed. */
@@ -247,17 +250,22 @@ export async function runScopedInbound<
   const destroyIds = [...destroyed].filter((id) => !upserted.has(id));
 
   const skipped = new Set<string>();
+  const destroy = async (id: string) => {
+    const result = await applier.ingestDestroyed(id);
+    if (result === "skipped-pending" && applier.blocksToken.has(id)) skipped.add(id);
+    if (result === "removed") changed = true;
+  };
   for (const id of upserted) {
     const row = listedRows.get(id) ?? (await binding.fetch(id));
+    if (row === null) {
+      await destroy(id);
+      continue;
+    }
     const result = await applier.ingest(row);
     if (result === "upserted" || result === "merged-pending") changed = true;
     if (result === "skipped-pending" && applier.blocksToken.has(id)) skipped.add(id);
   }
-  for (const id of destroyIds) {
-    const result = await applier.ingestDestroyed(id);
-    if (result === "skipped-pending" && applier.blocksToken.has(id)) skipped.add(id);
-    if (result === "removed") changed = true;
-  }
+  for (const id of destroyIds) await destroy(id);
   // A full list's delta names no removals, so a skipped one holds no token.
   for (const { id, scope } of listedAway ? removed : []) {
     if (destroyed.has(id) || upserted.has(id)) continue;

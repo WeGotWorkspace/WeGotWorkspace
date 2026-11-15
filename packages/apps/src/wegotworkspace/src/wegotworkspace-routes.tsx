@@ -9,7 +9,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { validateCalendarRouteSearch } from "@/calendar-core/src/calendar-route-search";
-import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { validateDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { validateDriveRouteSearch } from "@/drive-core/src/drive-route-search";
 import {
   meetRoomFromSearch,
@@ -53,7 +53,10 @@ const ContactsApp = lazyRouteComponent(
   "ContactsApp",
 );
 const DocsApp = lazyRouteComponent(() => import("@/docs-core/src/docs-app"), "DocsApp");
-const DriveApp = lazyRouteComponent(() => import("@/drive-core/src/drive-app"), "DriveApp");
+const DriveApp = lazyRouteComponent(
+  () => import("@/docs-core/src/drive-app-with-docs"),
+  "DriveAppWithDocs",
+);
 const InstallerApp = lazyRouteComponent(
   () => import("@/installer-core/src/installer-app"),
   "InstallerApp",

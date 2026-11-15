@@ -7,7 +7,7 @@ import {
   TOAST_DECIDED_STORAGE_KEY,
   type ToastDecisionDeps,
 } from "./notification-toast-decision";
-import type { NotificationInboxItem } from "./notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 function row(id: string, navigate: string): NotificationInboxItem {
   return {

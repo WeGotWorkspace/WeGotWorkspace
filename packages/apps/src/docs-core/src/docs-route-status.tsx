@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
+import { CollectionState } from "@/collection-state/src/collection-state";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import type { DocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import "@/docs-core/src/docs-route-status.css";
@@ -15,9 +16,9 @@ export function DocsRouteStatus({ document, onRetry }: DocsRouteStatusProps) {
 
   if (document.status === "resolving") {
     return (
-      <p className="docs-route-status docs-route-status--loading" role="status">
-        {docsLabels.documentOpening}
-      </p>
+      <div className="docs-route-status docs-route-status--loading">
+        <CollectionState variant="loading">{docsLabels.documentOpening}</CollectionState>
+      </div>
     );
   }
 

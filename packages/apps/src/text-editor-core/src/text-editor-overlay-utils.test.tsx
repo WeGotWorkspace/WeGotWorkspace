@@ -47,8 +47,14 @@ describe("forwardOverlayWheelToEditorScroll", () => {
       preventDefault: vi.fn(),
     } as unknown as WheelEvent;
 
-    expect(forwardOverlayWheelToEditorScroll(event, editorAnchor, overlayRoot)).toBe(true);
-    expect(event.preventDefault).toHaveBeenCalled();
-    expect(scroller.scrollTop).toBe(48);
+    // Computed style (overflow-y) only applies to connected elements.
+    document.body.append(scroller);
+    try {
+      expect(forwardOverlayWheelToEditorScroll(event, editorAnchor, overlayRoot)).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(scroller.scrollTop).toBe(48);
+    } finally {
+      scroller.remove();
+    }
   });
 });

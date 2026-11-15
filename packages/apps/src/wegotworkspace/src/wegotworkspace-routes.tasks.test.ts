@@ -1,7 +1,7 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
 import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
-import { INBOX_TASK_LIST_ID } from "@/tasks-core/src/tasks-task-utils";
+import { INBOX_TASK_LIST_ID } from "@/lib/models/task-lists";
 
 describe("wegotworkspace tasks routes", () => {
   it("matches listId on direct /tasks/lists/:listId loads", async () => {

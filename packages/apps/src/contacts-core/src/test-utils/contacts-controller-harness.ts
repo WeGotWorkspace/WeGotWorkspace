@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { vi, type Mock } from "vitest";
 import type { AppToastShowOptions } from "@/hooks/use-app-toast";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
+import { mergeContactFromPatch } from "@/lib/models/contacts-patch-merge";
 import type {
   ContactCard,
   ContactCardCreate,

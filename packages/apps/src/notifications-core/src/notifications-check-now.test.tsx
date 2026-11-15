@@ -30,7 +30,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 }));
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(),
-  ackNotification: vi.fn(),
+  ackNotifications: vi.fn(),
   ackLocalNotifications: vi.fn(),
 }));
 vi.mock("@/notifications-core/src/ensure-push-subscription", () => ({

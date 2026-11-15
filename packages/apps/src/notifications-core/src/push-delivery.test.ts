@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { NotificationInboxItem } from "./notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 import {
   browserMaySkipPushNotification,
   pushDeliveryPlan,

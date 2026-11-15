@@ -4,11 +4,8 @@ export { CalendarConflictDialog } from "./calendar-conflict-dialog";
 export type { CalendarConflictDialogProps } from "./calendar-conflict-dialog";
 export { CalendarWorkspace } from "./calendar-workspace";
 export type { CalendarWorkspaceProps } from "./calendar-workspace-props";
-export {
-  calendarInfoFromJmap,
-  calendarRightsAllowWrite,
-  isSharedWithMeCalendar,
-} from "./calendar-share";
+export { calendarInfoFromJmap, calendarRightsAllowWrite } from "@/lib/calendar/calendar-share";
+export { isSharedWithMeCalendar } from "./calendar-sidebar-order";
 export type {
   CalendarSharePrincipal,
   CalendarShareRights,

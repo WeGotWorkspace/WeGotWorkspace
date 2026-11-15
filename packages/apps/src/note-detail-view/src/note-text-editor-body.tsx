@@ -17,8 +17,8 @@ import {
   useDocsExternalWritePrompt,
   useDocsExternalWriteRequest,
 } from "@/text-editor-core/docs-collab/use-docs-external-write-prompt";
-import { NotesExternalWriteDialog } from "@/notes-core/src/notes-external-write-dialog";
-import { defaultNotesLabels, type NotesUILabels } from "@/notes-core/src/notes-labels";
+import { NoteExternalWriteDialog } from "@/note-detail-view/src/note-external-write-dialog";
+import { defaultNoteBodyLabels } from "@/note-detail-view/src/note-body-labels";
 
 import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
 import {
@@ -103,7 +103,7 @@ export function NoteCollabSession({
   wire,
   initialMarkdown,
   localDisplayName,
-  documentTitle = defaultNotesLabels.titlePlaceholder,
+  documentTitle = defaultNoteBodyLabels.titlePlaceholder,
   onBodyMarkdownChange,
   children,
 }: NoteCollabSessionProps) {
@@ -174,12 +174,12 @@ export function NoteCollabSession({
     >
       <NoteCollabContext.Provider value={value}>
         {children}
-        <NotesExternalWriteDialog
+        <NoteExternalWriteDialog
           open={externalWrite.open}
           noteTitle={documentTitle}
           busy={externalWrite.busy}
           keepLocalDisabled={externalWrite.keepLocalDisabled}
-          labels={defaultNotesLabels satisfies NotesUILabels}
+          labels={defaultNoteBodyLabels}
           onKeepLocal={externalWrite.keepLocal}
           onUseOutside={externalWrite.useOutside}
         />
@@ -235,8 +235,13 @@ export function NoteCollabEditorSurface({
   /** Override TipTap mount focus. Omit to focus end without scrolling the caret into view. */
   autofocus?: UseEditorOptions["autofocus"];
 }) {
-  const { session, trackChangesUserKey, onMarkdownChange, registerMarkdownGetter } =
-    useNoteCollabContext();
+  const {
+    session,
+    awaitingContent,
+    trackChangesUserKey,
+    onMarkdownChange,
+    registerMarkdownGetter,
+  } = useNoteCollabContext();
 
   const handleEditorReady = useCallback(
     (editor: Editor | null) => {
@@ -257,7 +262,7 @@ export function NoteCollabEditorSurface({
       trackChangesUserKey={trackChangesUserKey}
       format="markdown"
       formatBar={false}
-      editable={editable}
+      editable={editable && !awaitingContent}
       ariaLabel={NOTE_EDITOR_ARIA_LABEL}
       autofocus={autofocus}
       className={cn("note-text-editor-body", className)}

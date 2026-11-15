@@ -154,6 +154,12 @@ final class ApiRuntimeEnvService
      */
     private function updateEnvFile(string $envPath, callable $mutator): bool
     {
+        // Runs on every request: a healthy .env is only read, the lock is taken to change it.
+        $content = @file_get_contents($envPath);
+        if (is_string($content) && $mutator($content) === null && (fileperms($envPath) & 0777) === 0600) {
+            return false;
+        }
+
         return $this->envFiles->update($envPath, $mutator);
     }
 }

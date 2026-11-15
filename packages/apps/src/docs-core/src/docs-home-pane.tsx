@@ -54,6 +54,8 @@ export type DocsHomePaneProps = {
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  /** Between the header and the list, e.g. the `NoticeBar` for stuck sync (#1895). */
+  notice?: ReactNode;
   /** Row ids with pending offline sync (collab save, outbox, or body hydration). */
   offlinePendingSyncIds?: ReadonlySet<string>;
   offlineLabels?: {
@@ -126,6 +128,7 @@ export function DocsHomePane({
   loadingMore,
   hasMore,
   error,
+  notice,
   offlinePendingSyncIds,
   offlineLabels,
   query,
@@ -386,6 +389,7 @@ export function DocsHomePane({
           }
         />
       </div>
+      {notice}
 
       <div className="docs-home-pane__body drive-workspace">
         <div

@@ -8,7 +8,7 @@ import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
-} from "@/lib/offline/browser-online";
+} from "@/lib/offline/core/browser-online";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { roomServerAllowed } from "./docs-collab-room-backoff";

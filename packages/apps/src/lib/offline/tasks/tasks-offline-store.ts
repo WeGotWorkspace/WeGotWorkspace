@@ -1,13 +1,20 @@
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import { rememberOfflineTasksUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineTasksUsername } from "@/lib/offline/core/offline-session";
 import type { Task, TaskList, TaskPatch } from "@/lib/models/tasks-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import {
+  parseMirrorRows,
+  readMirrorSession,
+  replaceMirrorRows,
+  writeMirrorSession,
+} from "@/lib/offline/core/mirror-cache";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import {
   isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
+import { createLocalEntityId, outboxEntityIdReader } from "@/lib/offline/core/outbox-entity-id";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   TASKS_DOMAIN,
@@ -43,16 +50,15 @@ export async function readTasksBootstrapFromCache(
   username: string,
 ): Promise<TasksAppBootstrap | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const sessionRow = await db.meta.get(META_SESSION);
-  if (!sessionRow?.value) return null;
+  const session = await readMirrorSession<TasksAppBootstrap["session"]>(db, META_SESSION);
+  if (!session) return null;
 
   const lists = await tasksListsTable(db).toArray();
   const items = await tasksItemsTable(db).toArray();
   if (lists.length === 0 && items.length === 0) return null;
 
-  const session = JSON.parse(sessionRow.value) as TasksAppBootstrap["session"];
-  const taskLists = lists.map((row) => JSON.parse(row.data) as TaskList);
-  const tasks = items.map((row) => JSON.parse(row.data) as Task);
+  const taskLists = parseMirrorRows<TaskList>(lists);
+  const tasks = parseMirrorRows<Task>(items);
   const groupsRow = await db.meta.get(META_GROUPS);
   const groups = groupsRow?.value
     ? (JSON.parse(groupsRow.value) as TasksAppBootstrap["data"]["groups"])
@@ -69,27 +75,23 @@ export async function writeTasksBootstrapToCache(
   bootstrap: TasksAppBootstrap,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const items = tasksItemsTable(db);
-  const lists = tasksListsTable(db);
-  const pendingRows = await items.filter((row) => row.pendingSync).toArray();
-  await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+  await writeMirrorSession(db, META_SESSION, bootstrap.session);
   // Unknown Teams (failed load) keep the cached list instead of reading as "no Team".
   if (bootstrap.data.groups) {
     await db.meta.put({ key: META_GROUPS, value: JSON.stringify(bootstrap.data.groups) });
   }
   rememberOfflineTasksUsername(username);
-  await lists.clear();
-  await lists.bulkPut(
+  await replaceMirrorRows(
+    tasksListsTable(db),
     bootstrap.data.taskLists.map((list) => ({
       id: list.id,
       data: JSON.stringify(list),
     })),
   );
-  await items.clear();
-  await items.bulkPut(bootstrap.data.tasks.map((task) => taskRow(task, false)));
-  if (pendingRows.length > 0) {
-    await items.bulkPut(pendingRows);
-  }
+  await replaceMirrorRows(
+    tasksItemsTable(db),
+    bootstrap.data.tasks.map((task) => taskRow(task, false)),
+  );
 }
 
 export async function upsertTaskInCache(
@@ -160,33 +162,17 @@ export async function listPendingTaskIds(username: string): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
-export function tasksOutboxTaskId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== TASKS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      taskId?: string;
-      tempTaskId?: string;
-      creationId?: string;
-    };
-    return payload.taskId ?? payload.tempTaskId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const tasksOutboxTaskId = outboxEntityIdReader(TASKS_DOMAIN, [
+  "taskId",
+  "tempTaskId",
+  "creationId",
+]);
 
-export function tasksOutboxTaskListId(row: OfflineOutboxRow): string | null {
-  if (row.domain !== TASKS_DOMAIN) return null;
-  try {
-    const payload = JSON.parse(row.payload) as {
-      taskListId?: string;
-      tempListId?: string;
-      creationId?: string;
-    };
-    return payload.taskListId ?? payload.tempListId ?? payload.creationId ?? null;
-  } catch {
-    return null;
-  }
-}
+export const tasksOutboxTaskListId = outboxEntityIdReader(TASKS_DOMAIN, [
+  "taskListId",
+  "tempListId",
+  "creationId",
+]);
 
 export async function enqueueCoalescedTaskUpdate(
   username: string,
@@ -208,9 +194,9 @@ export async function enqueueCoalescedTaskUpdate(
 }
 
 export function createTempTaskId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId();
 }
 
 export function createTempTaskListId(): string {
-  return `local-list-${crypto.randomUUID().replace(/-/g, "")}`;
+  return createLocalEntityId("local-list-");
 }
