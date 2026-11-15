@@ -11,10 +11,11 @@ import {
   type SidebarSectionToggleAll,
 } from "@/sidebar-section/src/section-toggle-all";
 import {
+  canWriteTaskList,
   sortSidebarTaskLists,
+  taskListDotColor,
   type TaskListSidebarEntry,
-} from "@/tasks-core/src/use-tasks-sidebar-model";
-import { canWriteTaskList, taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+} from "@/lib/models/task-lists";
 import type { TaskList } from "@/lib/models/tasks-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
@@ -104,8 +105,6 @@ type RemindersLabels = Pick<
   | "tasksSection"
   | "tasksSectionShowAll"
   | "tasksSectionHideAll"
-  | "tasksSectionCollapse"
-  | "tasksSectionExpand"
   | "sharedTaskListsSection"
   | "viewOnlyCalendarBadge"
 >;
@@ -142,8 +141,6 @@ export function CalendarRemindersSidebar({
           title={labels.tasksSection}
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
-          collapseLabel={labels.tasksSectionCollapse}
-          expandLabel={labels.tasksSectionExpand}
           toggleAll={taskListsToggleAll({
             lists,
             hiddenListIds,

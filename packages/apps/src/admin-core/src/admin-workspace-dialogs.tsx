@@ -21,9 +21,9 @@ import {
 } from "@/ui/dialog";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { Label } from "@/ui/label";
 import { Switch } from "@/ui/switch";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 type UserDialogPayload = { username: string; displayName: string; email: string; isAdmin: boolean };
 
@@ -57,6 +57,9 @@ export function UserDialog({
   const [displayName, setDisplayName] = useState(initial?.displayName ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
   const [isAdmin, setIsAdmin] = useState(initial?.isAdmin ?? false);
+  const usernameId = useId();
+  const displayNameId = useId();
+  const emailId = useId();
   const adminSwitchId = useId();
   const adminHintId = useId();
   const adminLockedOn = isSelf && (initial?.isAdmin ?? false);
@@ -90,71 +93,74 @@ export function UserDialog({
                 : "Create a new user account."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <FormField label="Username" readOnly={Boolean(initial)}>
-              <Input
-                size="sm"
-                value={username}
-                readOnly={Boolean(initial)}
-                onChange={(event) => setUsername(event.currentTarget.value)}
-                placeholder="jane.doe"
-              />
-            </FormField>
-            <FormField label="Display name">
-              <Input
-                size="sm"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.currentTarget.value)}
-              />
-            </FormField>
-            <FormField label="Email">
-              <Input
-                type="email"
-                size="sm"
-                value={email}
-                onChange={(event) => setEmail(event.currentTarget.value)}
-              />
-            </FormField>
-            <div className="admin-user-dialog__role-row">
-              <div className="admin-user-dialog__role-text">
-                <Label htmlFor={adminSwitchId}>Administrator</Label>
-                <p id={adminHintId} className="admin-user-dialog__role-hint">
-                  {adminRoleHint(adminLockedOn)}
-                </p>
-              </div>
-              <Switch
-                id={adminSwitchId}
-                checked={isAdmin}
-                disabled={adminLockedOn}
-                aria-describedby={adminHintId}
-                onCheckedChange={(next) => setIsAdmin(next === true)}
-              />
-            </div>
-          </div>
-          <DialogFooter className="admin-user-dialog__footer">
-            {canDelete ? (
-              <IconButton
-                type="button"
-                variant="outline"
-                severity="danger"
-                size="md"
-                className="admin-user-dialog__delete"
-                icon={<Trash2 className="size-3.5" aria-hidden />}
-                label="Delete user"
-                onClick={() => setConfirmDeleteOpen(true)}
-              />
-            ) : null}
-            <div className="admin-user-dialog__footer-end">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => onSubmit({ username, displayName, email, isAdmin })}
-                disabled={!username.trim() || !displayName.trim() || !email.trim()}
-              >
-                Save
-              </Button>
-            </div>
+          <FormField
+            layout="inline"
+            fill
+            label="Username"
+            htmlFor={usernameId}
+            readOnly={Boolean(initial)}
+          >
+            <Input
+              id={usernameId}
+              value={username}
+              readOnly={Boolean(initial)}
+              onChange={(event) => setUsername(event.currentTarget.value)}
+              placeholder="jane.doe"
+            />
+          </FormField>
+          <FormField layout="inline" fill label="Display name" htmlFor={displayNameId}>
+            <Input
+              id={displayNameId}
+              value={displayName}
+              onChange={(event) => setDisplayName(event.currentTarget.value)}
+            />
+          </FormField>
+          <FormField layout="inline" fill label="Email" htmlFor={emailId}>
+            <Input
+              id={emailId}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.currentTarget.value)}
+            />
+          </FormField>
+          <FormField
+            layout="inline"
+            label="Administrator"
+            htmlFor={adminSwitchId}
+            description={<span id={adminHintId}>{adminRoleHint(adminLockedOn)}</span>}
+          >
+            <Switch
+              id={adminSwitchId}
+              checked={isAdmin}
+              disabled={adminLockedOn}
+              aria-describedby={adminHintId}
+              onCheckedChange={(next) => setIsAdmin(next === true)}
+            />
+          </FormField>
+          <DialogFooter
+            start={
+              canDelete ? (
+                <IconButton
+                  type="button"
+                  variant="outline"
+                  severity="danger"
+                  size="md"
+                  icon={<Trash2 className="size-3.5" aria-hidden />}
+                  label="Delete user"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                />
+              ) : null
+            }
+          >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => onSubmit({ username, displayName, email, isAdmin })}
+              disabled={!username.trim() || !displayName.trim() || !email.trim()}
+            >
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -207,6 +213,8 @@ type PasswordDialogProps = {
 export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordDialogProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const passwordId = useId();
+  const confirmPasswordId = useId();
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!open) {
@@ -228,24 +236,22 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
             {user ? `Set a new password for ${user.displayName}.` : "Set a new password."}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <FormField label="New password">
-            <Input
-              variant="password"
-              size="sm"
-              value={password}
-              onChange={(event) => setPassword(event.currentTarget.value)}
-            />
-          </FormField>
-          <FormField label="Confirm password">
-            <Input
-              variant="password"
-              size="sm"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.currentTarget.value)}
-            />
-          </FormField>
-        </div>
+        <FormField layout="inline" fill label="New password" htmlFor={passwordId}>
+          <Input
+            id={passwordId}
+            variant="password"
+            value={password}
+            onChange={(event) => setPassword(event.currentTarget.value)}
+          />
+        </FormField>
+        <FormField layout="inline" fill label="Confirm password" htmlFor={confirmPasswordId}>
+          <Input
+            id={confirmPasswordId}
+            variant="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.currentTarget.value)}
+          />
+        </FormField>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -280,6 +286,7 @@ export function GroupDialog({
   onSubmit,
 }: GroupDialogProps) {
   const [name, setName] = useState(initial?.displayName ?? "");
+  const nameId = useId();
   const [memberUserIds, setMemberUserIds] = useState<string[]>(
     initial ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id) : [],
   );
@@ -312,36 +319,35 @@ export function GroupDialog({
             {initial ? "Rename and assign members." : "Create a new team."}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <FormField label="Team name">
-            <Input
-              size="sm"
-              value={name}
-              onChange={(event) => setName(event.currentTarget.value)}
-            />
+        <FormField layout="inline" fill label="Team name" htmlFor={nameId}>
+          <Input
+            id={nameId}
+            {...NO_AUTOFILL}
+            value={name}
+            onChange={(event) => setName(event.currentTarget.value)}
+          />
+        </FormField>
+        {initial ? (
+          <FormField label="Members">
+            <ul className="admin-group-member-list">
+              {users.map((user) => (
+                <li key={user.id} className="admin-group-member-row">
+                  <UserAvatar
+                    displayName={user.displayName}
+                    subtitle={user.username}
+                    size="md"
+                    className="flex-1"
+                  />
+                  <Switch
+                    checked={memberUserIds.includes(user.id)}
+                    onCheckedChange={() => toggleMember(user.id)}
+                    aria-label={`${user.displayName} team member`}
+                  />
+                </li>
+              ))}
+            </ul>
           </FormField>
-          {initial ? (
-            <FormField label="Members">
-              <ul className="admin-group-member-list">
-                {users.map((user) => (
-                  <li key={user.id} className="admin-group-member-row">
-                    <UserAvatar
-                      displayName={user.displayName}
-                      subtitle={user.username}
-                      size="md"
-                      className="flex-1"
-                    />
-                    <Switch
-                      checked={memberUserIds.includes(user.id)}
-                      onCheckedChange={() => toggleMember(user.id)}
-                      aria-label={`${user.displayName} team member`}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </FormField>
-          ) : null}
-        </div>
+        ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel

@@ -10,7 +10,8 @@ import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint"
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
-import { useDocsHomeList, type DocsHomeFetcher } from "@/docs-core/src/use-docs-home-list";
+import { useDocsHomeList } from "@/docs-core/src/use-docs-home-list";
+import { type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
 import { useDocsHomeSharedList } from "@/docs-core/src/use-docs-home-shared-list";
 import { useDocsHomeStarredList } from "@/docs-core/src/use-docs-home-starred-list";
 import { useDocsHomeTrashList } from "@/docs-core/src/use-docs-home-trash-list";
@@ -51,16 +52,17 @@ import {
   getDocsSyncRunner,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { readDocsBodySyncProgress } from "@/lib/offline/docs/docs-body-sync";
-import { useOfflineBodySyncRunning } from "@/lib/offline/use-offline-body-sync-running";
+import { useOfflineBodySyncRunning } from "@/lib/offline/core/use-offline-body-sync-running";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
-import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { useDomainOutboxNotice } from "@/lib/offline/core/use-domain-outbox-notice";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
-import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { useOfflineSyncToast } from "@/lib/offline/core/use-offline-sync-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";
 import { WordFilePickerInput } from "@/docs-core/src/docx-import/word-file-picker-input";
 import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
@@ -268,17 +270,17 @@ export function DocsHomeWorkspace({
     setConflictListener: setDocsSyncConflictListener,
     refreshKey: outboxNoticeKey,
   });
-  const retryFailedOutbox = useCallback(() => {
+  const retryFailedOutbox = useCallback(async () => {
     clearConflicts();
     if (!offlineUsername) return;
-    void getDocsSyncRunner(offlineUsername)
+    await getDocsSyncRunner(offlineUsername)
       .flush()
       .finally(() => setOutboxNoticeKey((key) => key + 1));
   }, [clearConflicts, offlineUsername]);
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:docs",
     active: Boolean(offlineUsername) && outboxNoticeActive,
-    title: labels.syncFailedTitle,
-    message: labels.syncFailedMessage,
+    title: labels.syncFailedNotice,
     retryLabel: labels.retrySync,
     onRetry: retryFailedOutbox,
   });
@@ -473,6 +475,7 @@ export function DocsHomeWorkspace({
             loadingMore={listing.loadingMore}
             hasMore={listing.hasMore}
             error={listing.error}
+            notice={<NoticeBar label={labels.noticeBarLabel} notices={[syncNotice]} />}
             offlinePendingSyncIds={offlineBadgePendingIds}
             offlineLabels={docsHomePaneOfflineLabels(labels, docsBodySyncRunning)}
             query={query}

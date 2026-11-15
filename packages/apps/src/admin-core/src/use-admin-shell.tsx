@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AdminSection } from "@/admin-core/src/admin-types";
+import type { AdminSection } from "@/lib/models/admin-types";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 import { ADMIN_DEFAULT_SECTION, resolveAdminSection } from "@/admin-core/src/admin-section";
 import {

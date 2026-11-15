@@ -18,6 +18,12 @@ export type WorkspaceLabels = {
     move: string;
     done: string;
     retry: string;
+    /** Save state tag of an autosaving dialog: everything stored. */
+    saved: string;
+    /** Save state tag of an autosaving dialog: a change is on its way. */
+    saving: string;
+    /** Save state tag of an autosaving dialog: a change could not be stored. */
+    unsaved: string;
     /** Follows a permanent-delete description: "… This action cannot be undone." */
     deleteConfirmSuffix: string;
     /** Starts a permanent-delete description: "This will permanently delete …". */
@@ -46,9 +52,13 @@ export type WorkspaceLabels = {
     pending: string;
     changesSynced: string;
     failedTitle: string;
+    /** The notice bar row while changes are stuck in the outbox (#1894, #1895). */
+    failedNotice: string;
     conflictTitle: string;
     keepMine: string;
   };
+  /** Accessible name of an app's `NoticeBar` region. */
+  noticeBarLabel: string;
   /** List and sidebar chrome. */
   list: {
     moreCreateOptions: string;
@@ -67,6 +77,9 @@ export const workspaceLabels = {
     move: "Move",
     done: "Done",
     retry: "Retry",
+    saved: "Saved",
+    saving: "Saving",
+    unsaved: "Unsaved",
     deleteConfirmSuffix: "This action cannot be undone.",
     permanentDeleteLeadIn: "This will permanently delete ",
     nameField: "Name",
@@ -86,9 +99,11 @@ export const workspaceLabels = {
     pending: "Pending sync",
     changesSynced: "Changes synced",
     failedTitle: "Some changes could not sync",
+    failedNotice: "Some changes could not sync. They are saved on this device.",
     conflictTitle: "Sync conflict",
     keepMine: "Keep mine",
   },
+  noticeBarLabel: "Needs your attention",
   list: {
     moreCreateOptions: "More create options",
     listUpdated: "List updated",

@@ -1,6 +1,7 @@
 /vendor
 /node_modules
 .env
+.env.path
 .env.lock
 .env.tmp.*
 .env.backup

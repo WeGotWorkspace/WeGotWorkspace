@@ -1,8 +1,8 @@
 import { useId, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { MenuItem, type MenuItemProps } from "@/menu-item/src/menu-item";
-import { VisibilityDot } from "@/collection-sidebar/src/visibility-dot";
+import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import type { SidebarSectionToggleAll } from "@/sidebar-section/src/section-toggle-all";
 import { cn } from "@/lib/utils";
 import "@/ui/field-label-row.css";
@@ -17,13 +17,11 @@ type SidebarSectionProps = {
   className?: string;
   /** Fold state; the list is not rendered while collapsed. Needs {@link onToggleCollapsed}. */
   collapsed?: boolean;
-  /** Shows a fold toggle in the heading. */
+  /** Makes the title a button that folds the section (a chevron after it, like a dropdown). */
   onToggleCollapsed?: () => void;
-  collapseLabel?: string;
-  expandLabel?: string;
   /** Under the heading, above the list (e.g. a filter input). Hidden while collapsed. */
   beforeList?: ReactNode;
-  /** Shows a neutral show/hide-all dot before the title. */
+  /** An "All" row first in the list: a neutral dot that shows or hides every row. */
   toggleAll?: SidebarSectionToggleAll;
 };
 
@@ -42,8 +40,6 @@ export function SidebarSection({
   className,
   collapsed = false,
   onToggleCollapsed,
-  collapseLabel,
-  expandLabel,
   beforeList,
   toggleAll,
 }: SidebarSectionProps) {
@@ -57,43 +53,23 @@ export function SidebarSection({
       aria-labelledby={title ? titleId : undefined}
     >
       {title ? (
-        <div
-          className={cn(
-            "sidebar-section__heading",
-            toggleAll && "sidebar-section__heading--toggle-all",
-          )}
-        >
-          {toggleAll ? (
-            <VisibilityDot
-              checked={toggleAll.checked}
-              label={toggleAll.label}
-              onToggle={toggleAll.onToggle}
-              className="sidebar-section__toggle-all"
-            />
-          ) : null}
+        <div className="sidebar-section__heading">
           <h4 id={titleId} className={cn("field-label-row__label", "sidebar-section__title")}>
-            {title}
+            {onToggleCollapsed ? (
+              <button
+                type="button"
+                className="sidebar-section__fold"
+                aria-expanded={!folded}
+                aria-controls={listId}
+                onClick={onToggleCollapsed}
+              >
+                <span className="sidebar-section__title-text">{title}</span>
+                <ChevronDown className="sidebar-section__chevron" aria-hidden />
+              </button>
+            ) : (
+              title
+            )}
           </h4>
-          {onToggleCollapsed ? (
-            <IconButton
-              label={
-                folded ? (expandLabel ?? `Expand ${title}`) : (collapseLabel ?? `Collapse ${title}`)
-              }
-              icon={
-                folded ? (
-                  <ChevronRight className="size-3.5" aria-hidden />
-                ) : (
-                  <ChevronDown className="size-3.5" aria-hidden />
-                )
-              }
-              size="xs"
-              variant="ghost"
-              aria-expanded={!folded}
-              aria-controls={listId}
-              onClick={onToggleCollapsed}
-              className="sidebar-section__fold"
-            />
-          ) : null}
           {onAdd ? (
             <IconButton
               label={addLabel}
@@ -108,6 +84,17 @@ export function SidebarSection({
       ) : null}
       {folded ? null : beforeList}
       <ul className="sidebar-section__list" id={listId} hidden={folded}>
+        {folded || !toggleAll ? null : (
+          <CollectionSidebarRow
+            className="sidebar-section__all"
+            name={toggleAll.name ?? "All"}
+            color="var(--workspace-foreground)"
+            visible={toggleAll.checked}
+            visibilityLabel={toggleAll.label}
+            onToggleVisibility={toggleAll.onToggle}
+            onSelect={toggleAll.onToggle}
+          />
+        )}
         {folded
           ? null
           : items

@@ -1,0 +1,26 @@
+@import "../styles.css" reference;
+
+/* While the tag glides to a new width the label is clipped at its edge, not cut with
+ * an ellipsis. */
+.autosave-status > .tag {
+  overflow: hidden;
+}
+
+.autosave-status .tag__label {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.autosave-status {
+  transition: opacity 300ms ease;
+}
+
+.autosave-status--faded {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .autosave-status {
+    transition: none;
+  }
+}

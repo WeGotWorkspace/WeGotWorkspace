@@ -25,7 +25,7 @@ import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/
 import {
   docsListingRows,
   readDocsListingFromCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 import { nextPathAfterRename } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { documentHasUnsavedLocalWork } from "@/lib/offline/drive/drive-local-document";
 

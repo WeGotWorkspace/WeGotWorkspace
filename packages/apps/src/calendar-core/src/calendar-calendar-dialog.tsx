@@ -33,26 +33,14 @@ import type {
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarPublishSection } from "@/calendar-core/src/calendar-publish-section";
 import { CalendarShareSection } from "@/calendar-core/src/calendar-share-section";
-import type { CalendarSharePrincipal, CalendarShareWith } from "@/calendar-core/src/calendar-share";
+import type { CalendarSharePrincipal, CalendarShareWith } from "@/lib/calendar/calendar-share";
 import {
   inferCalendarNameFromUrl,
   isLikelyCalendarFeedUrl,
 } from "@/calendar-core/src/calendar-subscription";
 import "@/share-ui/share-ui.css";
-import "./calendar-calendar-dialog.css";
-
-export const CALENDAR_COLOR_SWATCHES = [
-  "#6366f1",
-  "#0ea5e9",
-  "#22c55e",
-  "#f59e0b",
-  "#ec4899",
-  "#ef4444",
-  "#8b5cf6",
-  "#14b8a6",
-] as const;
-
-export const DEFAULT_CALENDAR_COLOR = CALENDAR_COLOR_SWATCHES[0];
+import { NO_AUTOFILL } from "@/ui/no-autofill";
+import { CALENDAR_COLOR_SWATCHES, DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 
 export type CalendarCalendarDialogState =
   | null
@@ -261,7 +249,12 @@ export function CalendarCalendarDialog({
             }}
           >
             {isSubscribe || isSubscriptionEdit ? (
-              <FieldLabelRow label={labels.subscribeUrlLabel} htmlFor="calendar-subscribe-url">
+              <FieldLabelRow
+                layout="inline"
+                fill
+                label={labels.subscribeUrlLabel}
+                htmlFor="calendar-subscribe-url"
+              >
                 <ShareDialogInput
                   id="calendar-subscribe-url"
                   type="url"
@@ -281,12 +274,17 @@ export function CalendarCalendarDialog({
               </FieldLabelRow>
             ) : null}
 
-            <FieldLabelRow label={labels.calendarNameLabel} htmlFor="calendar-calendar-name">
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.calendarNameLabel}
+              htmlFor="calendar-calendar-name"
+            >
               <NameColorRow>
                 <Input
                   id="calendar-calendar-name"
+                  {...NO_AUTOFILL}
                   className={NAME_COLOR_ROW_INPUT_CLASS}
-                  size="sm"
                   autoFocus={!isSubscribe && !nameReadOnly}
                   value={name}
                   disabled={busy || nameReadOnly}
@@ -305,7 +303,6 @@ export function CalendarCalendarDialog({
                   <ColorSwatchTrigger
                     color={selectedColor}
                     label={labels.calendarColorLabel}
-                    size="sm"
                     aria-haspopup="dialog"
                   />
                 </SwatchColorPicker>
@@ -334,42 +331,40 @@ export function CalendarCalendarDialog({
             ) : null}
 
             {showShare && share ? (
-              <div className="calendar-calendar-dialog__share">
-                <CalendarShareSection
-                  calendar={share.calendar}
-                  labels={labels}
-                  knownPrincipals={share.knownPrincipals}
-                  disabled={busy}
-                  online={share.online}
-                  noTeam={share.noTeam}
-                  onSearchPrincipals={share.onSearchPrincipals}
-                  onPatchShareWith={share.onPatchShareWith}
-                />
-              </div>
+              <CalendarShareSection
+                calendar={share.calendar}
+                labels={labels}
+                knownPrincipals={share.knownPrincipals}
+                disabled={busy}
+                online={share.online}
+                noTeam={share.noTeam}
+                onSearchPrincipals={share.onSearchPrincipals}
+                onPatchShareWith={share.onPatchShareWith}
+              />
             ) : null}
 
-            <DialogFooter className="calendar-calendar-dialog__footer">
-              {canRemove ? (
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  severity="danger"
-                  size="md"
-                  className="calendar-calendar-dialog__delete"
-                  icon={<Trash2 className="size-3.5" aria-hidden />}
-                  label={removeLabel}
-                  disabled={busy}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                />
-              ) : null}
-              <div className="calendar-calendar-dialog__footer-end">
-                <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-                  {labels.cancel}
-                </Button>
-                <Button type="submit" disabled={!canSubmit}>
-                  {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
-                </Button>
-              </div>
+            <DialogFooter
+              start={
+                canRemove ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={removeLabel}
+                    disabled={busy}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -122,11 +122,11 @@ describe("Calendar Reminders section", () => {
 
   it("folds and remembers the fold", () => {
     renderSection([]);
-    fireEvent.click(screen.getByRole("button", { name: "Collapse Reminders" }));
+    const fold = screen.getByRole("button", { name: "Reminders" });
+    expect(fold.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(fold);
     expect(screen.queryByText("Personal")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Expand Reminders" }).getAttribute("aria-expanded"),
-    ).toBe("false");
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
     cleanup();
     renderSection([]);
     expect(screen.queryByText("Personal")).toBeNull();

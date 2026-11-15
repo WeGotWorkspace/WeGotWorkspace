@@ -39,10 +39,7 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarSectionCollapsed } from "@/calendar-core/src/use-calendar-section-collapsed";
 import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import type { TeamAvailabilityCoverage } from "@/calendar-core/src/calendar-availability-notice";
-import {
-  patchCalendarViewPrefs,
-  readCalendarViewPrefs,
-} from "@/calendar-core/src/calendar-view-prefs";
+import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 
 /** Availability does not need the 10-second calendar poll (`calendar-refresh.ts`). */
 export const TEAM_AVAILABILITY_TICK_MS = 60_000;
@@ -138,7 +135,7 @@ export function orderTeamMembers(list: readonly JmapTeamMember[]): JmapTeamMembe
 }
 
 function readShownIds(): Set<string> {
-  return new Set(readCalendarViewPrefs()?.shownAvailabilityIds ?? []);
+  return new Set(calendarViewPrefs.read()?.shownAvailabilityIds ?? []);
 }
 
 function summarize(
@@ -175,7 +172,7 @@ function useTeamAvailabilityPrefs(presetShownIds: readonly string[] | undefined)
   const updateShown = useCallback((change: (current: ReadonlySet<string>) => Set<string>) => {
     setShownIds((current) => {
       const next = change(current);
-      patchCalendarViewPrefs({ shownAvailabilityIds: [...next] });
+      calendarViewPrefs.patch({ shownAvailabilityIds: [...next] });
       return next;
     });
   }, []);

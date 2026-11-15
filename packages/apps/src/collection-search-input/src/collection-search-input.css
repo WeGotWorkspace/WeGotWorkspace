@@ -9,12 +9,3 @@
   background-color: var(--input-background);
   color: var(--collection-search-input-color, var(--workspace-foreground));
 }
-
-/*
- * Docs, Contacts, and Drive: hover matches outline icon-button hover.
- * Focus keeps the resting fill and the shared control hairline.
- */
-:is(.docs-workspace, .contacts-workspace, .drive-workspace) .collection-search-input {
-  --input-background-hover: var(--button-outline-hover-background);
-  --input-border-hover: var(--button-outline-border-color, var(--control-border-color));
-}

@@ -65,7 +65,7 @@ import {
 import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;

@@ -7,6 +7,8 @@ namespace Tests\Unit\Installer;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwInstallEnv;
 use App\Support\AppPaths;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
 
@@ -157,6 +159,13 @@ final class WgwInstallEnvTest extends TestCase
         $this->assertIsArray($plan);
         $this->assertSame('sqlite', $plan['state']['db_driver'] ?? null);
         $this->assertSame('admin', $plan['payload']['username'] ?? null);
+    }
+
+    public function test_install_command_fails_when_the_headless_env_is_incomplete(): void
+    {
+        $this->setInstallConfig(['headless' => true, 'db_driver' => 'sqlite', 'base_uri' => '/']);
+
+        $this->assertSame(Command::FAILURE, Artisan::call('wgw:install'));
     }
 
     public function test_headless_plan_defaults_the_browser_off_unless_opted_in(): void

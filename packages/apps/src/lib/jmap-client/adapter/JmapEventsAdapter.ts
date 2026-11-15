@@ -17,6 +17,12 @@ export type JmapEventsAdapterOptions = {
   onChange?: () => void;
   /** Called when inbound sync fails. */
   onSyncError?: (error: unknown) => void;
+  /**
+   * Pulls CalendarEvent `/changes` itself, through the offline engine (#1565).
+   * Without it, the adapter pulls them and forwards each to `onRemoteEvent` /
+   * `onRemoteEventDestroyed`, and an expired state re-lists the window.
+   */
+  syncEvents?: () => Promise<void>;
   /** Inbound `/changes` ingest: write Dexie, skip pending outbox rows. */
   onRemoteEvent?: (event: JmapCalendarEvent) => void;
   onRemoteEventDestroyed?: (eventId: JmapId) => void;
@@ -119,6 +125,11 @@ export class JmapEventsAdapter extends JmapInboundAdapter {
       }
     }
 
+    if (this.#options.syncEvents) {
+      await this.#options.syncEvents();
+      this.#notify();
+      return;
+    }
     const eventState = client.getState(this.accountId, CALENDAR_EVENT_TYPE);
     if (eventState) {
       const changes = await this.#calendars.calendarEventChanges(this.accountId, eventState);
@@ -134,6 +145,11 @@ export class JmapEventsAdapter extends JmapInboundAdapter {
       }
     }
     this.#notify();
+  }
+
+  /** The window `loadRange` loaded last. */
+  get loadedRange(): DateRange | undefined {
+    return this.#lastRange;
   }
 
   // ---- calendar list (inbound bookkeeping; not the grid paint source) ----

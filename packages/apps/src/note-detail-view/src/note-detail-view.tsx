@@ -1,11 +1,4 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  type FocusEvent,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useLayoutEffect, useRef, type FocusEvent, type ReactNode } from "react";
 import { TagGroup } from "@/tag/src/tag";
 import { cn } from "@/lib/utils";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
@@ -17,24 +10,9 @@ import {
 import { NoteTitleCaretsLayer } from "@/note-detail-view/src/note-title-carets";
 import { useNoteTitleCarets } from "@/note-detail-view/src/use-note-title-carets";
 import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
-import { TextareaAutosize } from "@/ui/textarea-autosize";
-import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
+import { NoteDetailTitle } from "@/note-detail-view/src/note-detail-title";
 import "@/note-detail-view/src/note-detail-view.css";
 import "@/note-detail-view/src/note-detail-desk.css";
-
-function focusNoteBodyFromTitle(titleEl: HTMLTextAreaElement): void {
-  const root = titleEl.closest(".note-detail-view");
-  const body = root?.querySelector<HTMLElement>(
-    ".note-text-editor-body [contenteditable='true'], .note-detail-view__body-start",
-  );
-  body?.focus();
-}
-
-function handleTitleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-  if (event.key !== "Enter" || event.shiftKey) return;
-  event.preventDefault();
-  focusNoteBodyFromTitle(event.currentTarget);
-}
 
 export type NoteDetailViewProps = {
   /** Used for React keys on editors when switching notes. */
@@ -140,7 +118,6 @@ export function NoteDetailView({
     onTitleEdit,
   });
   const titleReadOnly = titleField.onChange == null;
-  const titleFieldId = useId();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const leftTitleRef = useRef(false);
   const remoteTitleCarets = useNoteTitleCarets(titleRef, { publish: !titleReadOnly });
@@ -161,45 +138,26 @@ export function NoteDetailView({
     onAutoFocusTitleConsumed?.();
   }
 
-  const titleInput = (
-    <div className="note-detail-view__title-field">
-      <TextareaAutosize
-        ref={titleRef}
-        id={titleFieldId}
-        className="note-detail-view__title"
+  return (
+    <article className={cn("note-detail-view paper-sheet", className)}>
+      <NoteDetailTitle
+        textareaRef={titleRef}
         value={titleField.value}
         placeholder={titlePlaceholder}
         readOnly={titleReadOnly}
-        autoFocus={autoFocusTitle && !titleReadOnly}
-        minRows={1}
-        maxRows={12}
-        wrap="soft"
-        onChange={titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)}
-        onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
-        onBlur={titleReadOnly ? undefined : handleTitleBlur}
+        autoFocus={autoFocusTitle}
+        onChange={titleField.onChange}
+        onBlur={handleTitleBlur}
+        eyebrow={eyebrow}
+        leading={titleLeading}
+        overlay={
+          <NoteTitleCaretsLayer
+            textareaRef={titleRef}
+            carets={remoteTitleCarets}
+            value={titleField.value}
+          />
+        }
       />
-      <NoteTitleCaretsLayer
-        textareaRef={titleRef}
-        carets={remoteTitleCarets}
-        value={titleField.value}
-      />
-    </div>
-  );
-
-  return (
-    <article className={cn("note-detail-view paper-sheet", className)}>
-      <NoteDetailEyebrow>{eyebrow}</NoteDetailEyebrow>
-      <label className="note-detail-view__title-label" htmlFor={titleFieldId}>
-        {titlePlaceholder}
-      </label>
-      {titleLeading ? (
-        <div className="note-detail-view__title-row">
-          <div className="note-detail-view__title-leading">{titleLeading}</div>
-          {titleInput}
-        </div>
-      ) : (
-        titleInput
-      )}
       {showTags ? (
         <TagGroup
           className="note-detail-view__tag-group"

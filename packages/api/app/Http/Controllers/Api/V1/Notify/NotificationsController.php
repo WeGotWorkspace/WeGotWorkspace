@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Notify;
 
 use App\Http\Middleware\AuthenticateWgwApi;
-use App\Http\Requests\Api\V1\NotificationLocalAckBatchRequest;
+use App\Http\Requests\Api\V1\NotificationIdBatchRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Services\Notify\NotificationInboxService;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +36,15 @@ final class NotificationsController
         ))->response();
     }
 
+    /** Mark many rows read in one request (#2154); see {@see NotificationInboxService::ackMany}. */
+    public function ackBatch(NotificationIdBatchRequest $request): JsonResponse
+    {
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $this->inbox->ackMany($principal['username'], $request->ids());
+
+        return response()->json(['ok' => true]);
+    }
+
     public function ackLocal(Request $request, string $id): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
@@ -44,7 +53,7 @@ final class NotificationsController
         return response()->json(['ok' => true]);
     }
 
-    public function ackLocalBatch(NotificationLocalAckBatchRequest $request): JsonResponse
+    public function ackLocalBatch(NotificationIdBatchRequest $request): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $this->inbox->ackLocalDeliveries($principal['username'], $request->ids());

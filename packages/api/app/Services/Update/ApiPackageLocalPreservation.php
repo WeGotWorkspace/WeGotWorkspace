@@ -12,6 +12,8 @@ final class ApiPackageLocalPreservation
     /** @var list<string> */
     private const PRESERVE_FILES = [
         '.env',
+        // Names the .env kept outside the published tree (#1484).
+        '.env.path',
     ];
 
     /** @var list<string> */

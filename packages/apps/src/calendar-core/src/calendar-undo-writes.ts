@@ -15,6 +15,8 @@ type EventWrites = Pick<CalendarAPIOperations, "createEvent" | "patchEvent" | "d
 export type CalendarEventMutation = {
   key: string;
   successToast: string;
+  /** No toast (autosave in list mode's detail pane). */
+  silent?: boolean;
   /** Sends the write. A write in several steps marks each step the server applied. */
   mutation: (markCompleted: (step: string) => void) => Promise<void>;
   /** Compensating write for the steps the server applied (`null`: all of them). */
@@ -31,6 +33,7 @@ export function calendarEventWrite(
   return {
     key: args.key,
     toastMessage: args.successToast,
+    ...(args.silent ? { silent: true } : {}),
     icon: createElement(Check, { className: "size-4" }),
     execute: async (_signal, markCompleted) => {
       await args.mutation(markCompleted);

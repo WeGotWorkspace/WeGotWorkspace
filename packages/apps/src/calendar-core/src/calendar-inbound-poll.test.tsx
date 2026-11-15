@@ -33,12 +33,12 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
-vi.mock("@/lib/offline/calendars-hybrid-operations", () => ({
+vi.mock("@/lib/offline/calendars/calendars-hybrid-operations", () => ({
   createHybridCalendarOperations: vi.fn(),
   getCalendarsSyncRunner: () => ({ flush: mockFlush }),
 }));
 
-vi.mock("@/lib/offline/calendars-offline-store", () => ({
+vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   readCalendarBootstrapFromCache: vi.fn(),
 }));
 
@@ -119,6 +119,8 @@ describe("calendar inbound poll call-count", () => {
       const api = useCalendarAPI(source);
       useCalendarSurface(api.jmapClient, data, "ada@example.com", {
         operations: operationsStub(),
+        // Event changes are pulled for a known user only (#1565).
+        username: "demo@example.com",
       });
       return api;
     });

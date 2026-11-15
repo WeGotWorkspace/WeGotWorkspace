@@ -308,10 +308,6 @@
   border-color: var(--meet-call-border) !important;
 }
 
-.meet-call-dialog .ui-modal-title {
-  color: var(--modal-title-foreground);
-}
-
 .meet-call-dialog .meet-call-dialog__header {
   @apply text-center sm:text-center;
 }

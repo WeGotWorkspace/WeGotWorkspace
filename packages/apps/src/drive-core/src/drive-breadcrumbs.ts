@@ -6,6 +6,21 @@ import { DRIVE_GROUPS_UI_ROOT as GROUPS_ROOT } from "@/lib/files/drive-path-util
 /** Virtual root in the move-to folder picker (lists My Drive and shared drives). */
 export const DRIVE_FOLDER_PICKER_ROOT = "";
 
+/** A crumb for a whole drive, Trash, or the list of drives, rather than a folder in one. */
+export function isDriveRootPath(path: string | null | undefined): boolean {
+  if (path == null) return false;
+  if (path === DRIVE_FOLDER_PICKER_ROOT || path === "My Drive" || path === "Trash") return true;
+  if (path === GROUPS_ROOT) return true;
+  return path.startsWith(`${GROUPS_ROOT}/`) && !path.slice(GROUPS_ROOT.length + 1).includes("/");
+}
+
+/** The folder one level up (Alt+↑), or null at the top of a drive. */
+export function driveParentFolderPath(view: ViewKey): string | null {
+  if (view.type !== "folder" || isDriveRootPath(view.path)) return null;
+  const cut = view.path.lastIndexOf("/");
+  return cut > 0 ? view.path.slice(0, cut) : null;
+}
+
 export function isDriveSharedGroupPath(path: string): boolean {
   return path === GROUPS_ROOT || path.startsWith(`${GROUPS_ROOT}/`);
 }

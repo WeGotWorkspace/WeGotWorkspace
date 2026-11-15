@@ -9,7 +9,7 @@ import { DOC_STATUS_ACCESS_LOST, DOC_STATUS_DOCUMENT_GONE } from "./docs-collab-
 
 const persistCollabSave = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/offline/browser-online", () => ({
+vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => true,
 }));
 

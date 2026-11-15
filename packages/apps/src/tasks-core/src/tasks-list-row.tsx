@@ -1,20 +1,19 @@
 import { memo, useEffect } from "react";
 import { Check, Trash2 } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
-import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
   formatTaskDueRelative,
-  isTaskCompleted,
   taskDueSeverity,
-  taskListDotColor,
   taskListName,
-  taskListTitle,
   type TaskWorkflowStatus,
 } from "@/tasks-core/src/tasks-task-utils";
+import { isTaskCompleted, taskListTitle } from "@/lib/models/task-fields";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-workflow-status";
 import { PriorityMark } from "@/tasks-core/src/tasks-priority";
 import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";
@@ -78,7 +77,7 @@ function TasksListRowMeta({
   return (
     <span className="tasks-list-row__meta">
       <span className="tasks-list-row__meta-item list-item__meta-segment">
-        <NotesNotebookColorDot color={taskListDotColor(taskList ?? task.taskListId)} />
+        <CollectionColorDot color={taskListDotColor(taskList ?? task.taskListId)} />
         <span className="tasks-list-row__meta-text">{listName}</span>
       </span>
       {dueRelative ? (

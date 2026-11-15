@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import {
-  detailsPopoverAnchorOrigin,
-  detailsPopoverShouldDock,
+  detailsPopoverPlacement,
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
 import { getLocaleDirection } from "@/lib/calendar-elements/utils/Locale";
@@ -44,21 +43,10 @@ export function CalendarOverlayPopoverShell({
   children,
 }: CalendarOverlayPopoverShellProps) {
   const isMobile = useIsMobile();
-  const docked = !isMobile && detailsPopoverShouldDock(origin);
-  const placementOrigin =
-    origin && !docked ? detailsPopoverAnchorOrigin(origin, getLocaleDirection(locale)) : origin;
-  const fallbackLeft = Math.round(globalThis.innerWidth / 2);
-  const fallbackTop = Math.round(globalThis.innerHeight * 0.28);
-  const anchorStyle = docked
-    ? { left: 0, top: 0, width: 0, height: 0 }
-    : placementOrigin
-      ? {
-          left: placementOrigin.left,
-          top: placementOrigin.top,
-          width: placementOrigin.width,
-          height: placementOrigin.height,
-        }
-      : { left: fallbackLeft, top: fallbackTop, width: 0, height: 0 };
+  const { docked, anchorStyle } = detailsPopoverPlacement(origin, {
+    isMobile,
+    dir: getLocaleDirection(locale),
+  });
 
   if (isMobile) {
     return (

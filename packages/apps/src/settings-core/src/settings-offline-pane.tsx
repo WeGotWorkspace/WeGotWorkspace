@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Switch } from "@/ui/switch";
-import { Label } from "@/ui/label";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import {
   mbToOfflineFileSizeBytes,
@@ -33,48 +33,44 @@ export function SettingsOfflinePane() {
 
   return (
     <SettingsPaneCard>
-      <div className="settings-offline-pane space-y-8 max-w-lg">
-        <p className="text-sm text-muted-foreground">
-          Folder and file names sync automatically for Drive and Docs. These settings control
-          whether file contents are saved on this device for offline use.
-        </p>
-
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <Label htmlFor="offline-content-sync">Make files available offline</Label>
-            <p className="text-sm text-muted-foreground">
-              Automatically save file contents up to the max size below.
-            </p>
-          </div>
-          <Switch
-            id="offline-content-sync"
-            checked={contentSyncEnabled}
-            onCheckedChange={(checked) => persist({ contentSyncEnabled: checked })}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="offline-max-size">Max file size (MB)</Label>
-          <Input
-            id="offline-max-size"
-            type="number"
-            min={1}
-            max={100}
-            step={1}
-            value={maxFileSizeMb}
-            disabled={!contentSyncEnabled}
-            onChange={(event) => {
-              const parsed = Number.parseInt(event.target.value, 10);
-              if (Number.isNaN(parsed)) return;
-              persist({ maxFileSizeMb: Math.min(100, Math.max(1, parsed)) });
-            }}
-          />
-          <p className="text-sm text-muted-foreground">
-            Files larger than this limit are not synced automatically. You can pin them manually
-            from Drive while online.
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Folder and file names sync automatically for Drive and Docs. These settings control whether
+        file contents are saved on this device for offline use.
+      </p>
+      <FieldLabelRow
+        layout="inline"
+        label="Make files available offline"
+        description="Automatically save file contents up to the max size below."
+        htmlFor="offline-content-sync"
+      >
+        <Switch
+          id="offline-content-sync"
+          checked={contentSyncEnabled}
+          onCheckedChange={(checked) => persist({ contentSyncEnabled: checked })}
+        />
+      </FieldLabelRow>
+      <FieldLabelRow
+        layout="inline"
+        label="Max file size (MB)"
+        description="Files larger than this limit are not synced automatically. You can pin them manually from Drive while online."
+        htmlFor="offline-max-size"
+      >
+        <Input
+          id="offline-max-size"
+          className="w-20"
+          type="number"
+          min={1}
+          max={100}
+          step={1}
+          value={maxFileSizeMb}
+          disabled={!contentSyncEnabled}
+          onChange={(event) => {
+            const parsed = Number.parseInt(event.target.value, 10);
+            if (Number.isNaN(parsed)) return;
+            persist({ maxFileSizeMb: Math.min(100, Math.max(1, parsed)) });
+          }}
+        />
+      </FieldLabelRow>
     </SettingsPaneCard>
   );
 }

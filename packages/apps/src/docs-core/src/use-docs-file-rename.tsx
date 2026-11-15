@@ -1,15 +1,6 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { Pencil } from "lucide-react";
-import { Button } from "@/button/src/button";
-import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { RenameFileDialog } from "@/dialogs/src/rename-file-dialog";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -72,34 +63,22 @@ export function useDocsFileRename({ apiPath, operations, onRenamed }: UseDocsFil
     }
   }, [apiPath, baseName, currentName, extension, onRenamed, operations, show, showError]);
 
-  const canSubmit = baseName.trim().length > 0;
-
   const dialog = (
-    <Dialog open={isOpen} onOpenChange={(next) => !next && close()}>
-      <DialogContent className="docs-dialog-surface sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{docsLabels.renameDialogTitle}</DialogTitle>
-          <DialogDescription>{docsLabels.renameDialogDescription}</DialogDescription>
-        </DialogHeader>
-        <RenameFilenameField
-          autoFocus
-          placeholder={docsLabels.rename}
-          baseName={baseName}
-          extension={extension || undefined}
-          disabled={pending}
-          onBaseNameChange={setBaseName}
-          onEnter={() => void submit()}
-        />
-        <DialogFooter>
-          <Button variant="outline" onClick={close} disabled={pending}>
-            {docsLabels.cancel}
-          </Button>
-          <Button variant="primary" onClick={() => void submit()} disabled={pending || !canSubmit}>
-            {docsLabels.renameAction}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <RenameFileDialog
+      open={isOpen}
+      title={docsLabels.renameDialogTitle}
+      description={docsLabels.renameDialogDescription}
+      placeholder={docsLabels.rename}
+      cancelLabel={docsLabels.cancel}
+      confirmLabel={docsLabels.renameAction}
+      baseName={baseName}
+      extension={extension}
+      busy={pending}
+      surfaceClassName="docs-dialog-surface"
+      onBaseNameChange={setBaseName}
+      onClose={close}
+      onSubmit={() => void submit()}
+    />
   );
 
   return { open: apiPath && operations ? open : undefined, dialog };

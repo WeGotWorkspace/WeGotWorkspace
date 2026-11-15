@@ -226,7 +226,11 @@ describe("TagGroup inline add", () => {
     try {
       renderTagGroup(<TagGroup tags={[]} readonly={false} onAddTag={() => {}} size="lg" />);
       const button = screen.getByRole("button", { name: "Add tag" });
-      const buttonStyle = getComputedStyle(button);
+      // Copy the values: the live computed style empties once the click
+      // swaps the button out of the document.
+      const { fontSize, fontFamily, fontWeight, lineHeight, letterSpacing } =
+        getComputedStyle(button);
+      const buttonStyle = { fontSize, fontFamily, fontWeight, lineHeight, letterSpacing };
 
       fireEvent.click(button);
       const input = screen.getByRole("combobox", { name: "Add tag" });

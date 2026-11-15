@@ -7,7 +7,7 @@ import { Switch } from "@/ui/switch";
 export type DocsFooterSourceToggle = {
   checked: boolean;
   disabled?: boolean;
-  /** Visible switch label ("Markdown"). */
+  /** Visible switch label ("Source"). */
   label: string;
   /** Action / disabled reason for assistive tech and the tooltip. */
   ariaLabel: string;
@@ -16,6 +16,7 @@ export type DocsFooterSourceToggle = {
 
 export type DocsFooterToolsProps = {
   pageSetup?: DocsPageSetupMenuProps;
+  /** Left out for plain text: the document already is its source. */
   source?: DocsFooterSourceToggle;
 };
 

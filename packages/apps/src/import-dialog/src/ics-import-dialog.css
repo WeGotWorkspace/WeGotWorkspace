@@ -1,17 +1,6 @@
 @import "../../styles.css" reference;
 
-.ics-import-dialog {
-  @apply flex min-w-0 max-w-full flex-col gap-4;
-}
-
-.ics-import-dialog__destination {
-  @apply w-full;
-}
-
+/* The ghost trigger is narrow: the list keeps room for long names. */
 .ics-import-dialog__destination-menu {
-  @apply min-w-[var(--radix-dropdown-menu-trigger-width)];
-}
-
-.ics-import-dialog__create-fields {
-  @apply flex flex-col gap-3;
+  min-width: max(var(--radix-dropdown-menu-trigger-width), 13rem);
 }

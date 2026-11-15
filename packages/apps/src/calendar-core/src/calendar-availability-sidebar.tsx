@@ -27,8 +27,6 @@ type SidebarLabels = Pick<
   | "teamAvailabilityFilter"
   | "teamAvailabilityNoMatch"
   | "teamAvailabilityIncomplete"
-  | "teamAvailabilityCollapse"
-  | "teamAvailabilityExpand"
   | "teamAvailabilityShowAll"
   | "teamAvailabilityHideAll"
 >;
@@ -98,8 +96,6 @@ export function CalendarAvailabilitySidebar({
       className="calendar-availability-sidebar"
       collapsed={collapsed}
       onToggleCollapsed={availability.toggleCollapsed}
-      collapseLabel={labels.teamAvailabilityCollapse}
-      expandLabel={labels.teamAvailabilityExpand}
       toggleAll={sectionToggleAll({
         ids: memberIds,
         isOn: (id) => shownIds.has(id),

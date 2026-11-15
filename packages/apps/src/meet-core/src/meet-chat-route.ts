@@ -2,7 +2,7 @@ import { isMeetRoomCode } from "@/lib/meetings/calendar-meet-link";
 import {
   meetDirectMessageChannelId,
   meetDirectMessagePrincipalId,
-} from "@/meet-core/src/meet-direct-messages";
+} from "@/lib/meetings/meet-direct-messages";
 import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/lib/meetings/meet-public-id";
 
 /**

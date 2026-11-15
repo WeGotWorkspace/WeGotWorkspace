@@ -5,3 +5,8 @@
   inset-inline-end: var(--modal-inset, 1rem);
   inset-block-start: var(--modal-inset, 1rem);
 }
+
+/* A dialog with a footer closes there (Done, Cancel): no second close in the corner. */
+.ui-modal-surface:has(.ui-modal-footer) > .dialog-close-button {
+  display: none;
+}

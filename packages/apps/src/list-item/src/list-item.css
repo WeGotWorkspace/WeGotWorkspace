@@ -187,7 +187,19 @@ html:not([data-modality="pointer"])
 }
 
 .list-item__title-row .list-item__date {
-  @apply shrink-0 text-[0.8125rem];
+  @apply relative shrink-0 text-[0.8125rem];
+}
+
+/* Under the date, on the next line's free end (e.g. an event's end time). */
+.list-item__date-below {
+  @apply absolute end-0 top-full mt-1.5 whitespace-nowrap leading-tight;
+}
+
+/* The line under the title leaves room for it. */
+.list-item__button[data-date-below="true"]
+  .list-item__title-row
+  + :is(.list-item__body, .list-item__meta) {
+  margin-inline-end: var(--list-item-preview-end-gap, 3.5rem);
 }
 
 /* Preview under the title: two lines at most. */

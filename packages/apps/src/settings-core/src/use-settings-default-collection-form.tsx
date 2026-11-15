@@ -21,7 +21,7 @@ export function useSettingsDefaultCollectionForm(app: DefaultCollectionApp) {
     read: () => defaultCollectionPrefsToForm(app),
     write: (values) => writeDefaultCollectionPrefs(app, defaultCollectionFormToPrefs(values)),
     saved: { panelId: app, sliceId: `${app}-default-collection` },
-    messages: { success: meta.savedMessage, error: meta.saveError },
+    saveError: meta.saveError,
   });
   return { ...controller, meta };
 }

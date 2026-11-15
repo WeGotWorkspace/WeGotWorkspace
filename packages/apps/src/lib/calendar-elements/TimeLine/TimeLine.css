@@ -22,7 +22,6 @@
   isolation: isolate;
   width: 100%;
   min-height: 100%;
-  border: var(--_lc-timeline-border);
   /* Consumers composing the timeline into a scroll/swipe context can relax this (e.g. pan-y);
      active gestures still block native panning via a touchmove blocker while they run. */
   touch-action: var(--time-line-touch-action, none);
@@ -34,10 +33,13 @@
   pointer-events: none;
 }
 
-/* cells container */
+/* cells container. No outer frame: each cell's half-pixel outline makes the lines between
+   cells, and the outer halves are clipped (`overflow: clip` makes no stacking context, so
+   the event / marker z-order is unchanged). */
 .cells {
   width: 100%;
   flex: 1;
+  overflow: clip;
   display: grid;
   grid-auto-flow: row;
   grid-auto-rows: 1fr;

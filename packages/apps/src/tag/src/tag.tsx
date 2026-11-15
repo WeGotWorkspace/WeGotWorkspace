@@ -17,6 +17,9 @@ import "./tag.css";
 /** `md` matches the compact chip used in footers/stats; `lg` is 28px for interactive editors. */
 export type TagSize = "md" | "lg";
 
+/** Status wash: the chip in the status hue instead of the neutral wash. */
+export type TagTone = "success" | "warning" | "pending";
+
 export type TagProps = {
   label: string;
   icon?: ReactNode;
@@ -32,6 +35,9 @@ export type TagProps = {
   className?: string;
   /** Trailing mark inside the chip (for example a presence pip beside the label). */
   end?: ReactNode;
+  tone?: TagTone;
+  /** Leading dot in the tone's colour (a status, like "Saved"). */
+  dot?: boolean;
 };
 
 /** Identity + optional per-chip chrome for {@link TagGroup}. Strings stay valid. */
@@ -58,6 +64,8 @@ export function Tag({
   colors,
   className,
   end,
+  tone,
+  dot = false,
 }: TagProps) {
   const tagStyle: CSSProperties | undefined = colors
     ? ({
@@ -69,7 +77,16 @@ export function Tag({
     : undefined;
 
   return (
-    <span className={cn("tag group", size === "lg" && "tag--size-lg", className)} style={tagStyle}>
+    <span
+      className={cn(
+        "tag group",
+        size === "lg" && "tag--size-lg",
+        tone && `tag--tone-${tone}`,
+        className,
+      )}
+      style={tagStyle}
+    >
+      {dot ? <span className="tag__dot" aria-hidden /> : null}
       {icon ? <span className="tag__icon">{icon}</span> : null}
       <span className="tag__label truncate">{label}</span>
       {end}

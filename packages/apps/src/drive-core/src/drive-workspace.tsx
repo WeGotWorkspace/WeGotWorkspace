@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -15,6 +16,7 @@ import {
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
+import { withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import { cn } from "@/lib/utils";
@@ -54,10 +56,10 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
 import { setDriveSyncConflictListener } from "@/lib/offline/drive/drive-sync-conflicts";
-import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { useDomainOutboxNotice } from "@/lib/offline/core/use-domain-outbox-notice";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
-import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
-import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
+import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
+import { useOfflineSyncToast } from "@/lib/offline/core/use-offline-sync-toast";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { isTopLevelDriveApiPath } from "@/lib/files/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
@@ -213,17 +215,17 @@ export function DriveWorkspace({
     setConflictListener: setDriveSyncConflictListener,
     refreshKey: outboxNoticeKey,
   });
-  const retryFailedOutbox = useCallback(() => {
+  const retryFailedOutbox = useCallback(async () => {
     clearConflicts();
     if (!offlineUsername) return;
-    void getDriveSyncRunner(offlineUsername)
+    await getDriveSyncRunner(offlineUsername)
       .flush()
       .finally(() => setOutboxNoticeKey((key) => key + 1));
   }, [clearConflicts, offlineUsername]);
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:drive",
     active: offlineEnabled && outboxNoticeActive,
-    title: driveLabels.syncFailedTitle,
-    message: driveLabels.syncFailedMessage,
+    title: driveLabels.syncFailedNotice,
     retryLabel: driveLabels.retrySync,
     onRetry: retryFailedOutbox,
   });
@@ -395,6 +397,7 @@ export function DriveWorkspace({
               />
             }
             mainHeader={<DriveMainHeader controller={controller} searchEnabled={searchEnabled} />}
+            mainNotice={<NoticeBar label={driveLabels.noticeBarLabel} notices={[syncNotice]} />}
             main={
               <DriveMainPane
                 controller={controller}
@@ -585,7 +588,7 @@ function DriveMainHeader({
         trail.length > 0 ? (
           <span className="drive-main-header__trail">
             <PathBreadcrumb
-              items={trail}
+              items={withDriveRootIcons(trail)}
               currentPath={view.type === "folder" ? view.path : undefined}
               onNavigate={(path) => selectView({ type: "folder", path })}
             />

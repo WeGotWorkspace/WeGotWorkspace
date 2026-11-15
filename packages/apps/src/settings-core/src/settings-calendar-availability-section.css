@@ -1,10 +1,6 @@
 @import "../../styles.css" reference;
 
-/* Availability section in Settings → Calendar. Colors come from the shared tokens only. */
-
-.settings-availability__switch-row {
-  @apply flex items-center justify-between gap-4;
-}
+/* Availability section in Settings → Calendar. Rows are inline `FieldLabelRow`s. */
 
 .settings-availability__hint,
 .settings-availability__status {
@@ -16,49 +12,13 @@
 }
 
 .settings-availability__group {
-  @apply flex flex-col gap-2;
+  @apply flex flex-col pt-2;
 }
 
 .settings-availability__heading {
-  @apply m-0 text-sm font-medium;
-  color: var(--workspace-foreground);
+  @apply m-0 text-sm font-medium text-muted-foreground;
 }
 
-.settings-availability__calendars {
-  @apply m-0 list-none p-0;
-}
-
-.settings-availability__calendar {
-  @apply flex flex-col gap-1.5 py-3;
-  border-top: 1px solid var(--control-border-color);
-}
-
-.settings-availability__calendar:last-child {
-  border-bottom: 1px solid var(--control-border-color);
-}
-
-.settings-availability__calendar-main {
-  @apply flex flex-wrap items-center gap-x-6 gap-y-2;
-}
-
-.settings-availability__calendar-name {
-  @apply flex min-w-0 items-center gap-2 text-sm font-medium;
-  flex: 1 1 9rem;
-  color: var(--workspace-foreground);
-}
-
-.settings-availability__calendar-label {
-  @apply min-w-0 truncate;
-}
-
-.settings-availability__dot {
-  @apply size-2.5 shrink-0 rounded-full;
-}
-
-.settings-availability__detail-select {
-  @apply w-44;
-}
-
-.settings-availability__calendar[data-included="false"] .settings-availability__calendar-name {
+.settings-availability__excluded {
   @apply text-muted-foreground;
 }

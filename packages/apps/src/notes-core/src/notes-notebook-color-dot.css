@@ -1,7 +1,0 @@
-@import "../../styles.css" reference;
-
-/* A notebook (or address book) in its own colour: the same dot as the sidebar. */
-.notes-notebook-color-dot {
-  @apply block size-2 shrink-0 rounded-full;
-  background-color: var(--collection-row-color, var(--workspace-foreground));
-}

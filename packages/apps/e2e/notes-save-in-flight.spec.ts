@@ -14,6 +14,7 @@ import {
   converge,
   ensureTeamNotebook,
   listTitles,
+  moveOpenNote,
   notebookKey,
   openNotesTab,
   openUser,
@@ -101,20 +102,6 @@ async function addTag(tab: Tab, tag: string) {
   await tab.keyboard.press("Enter");
   await tab.getByRole("button", { name: `Remove tag ${tag}` }).waitFor({ timeout: 5_000 });
   await tab.keyboard.press("Escape");
-}
-
-async function moveTo(tab: Tab, notebook: string) {
-  await tab.locator(".color-swatch-trigger").first().click();
-  await sleep(400);
-  await tab
-    .locator("[role='menuitem'], [role='option'], [role='menuitemradio']", { hasText: notebook })
-    .first()
-    .click();
-  await sleep(500);
-  const dialog = tab.getByRole("alertdialog").or(tab.getByRole("dialog"));
-  if (await dialog.count())
-    await dialog.first().getByRole("button", { name: /move/i }).first().click();
-  await sleep(800);
 }
 
 async function reloadNotes(tab: Tab) {
@@ -235,13 +222,13 @@ test("update in flight: a move back while the first move is saved wins", async (
     );
     // Saved while offline, so it waits in the outbox; held once it is sent.
     await setTabOffline(a, true);
-    await moveTo(a, TEAM_NOTEBOOK_NAME);
+    await moveOpenNote(a, PRIVATE_NOTEBOOK_NAME, TEAM_NOTEBOOK_NAME);
     await sleep(MOVE_UNDO_MS + 1_000);
     await setTabOffline(a, false);
     await save.seen("the queued move to the team notebook");
 
     // Moved back while that save is held: this is where it must end up.
-    await moveTo(a, PRIVATE_NOTEBOOK_NAME);
+    await moveOpenNote(a, TEAM_NOTEBOOK_NAME, PRIVATE_NOTEBOOK_NAME);
     await sleep(MOVE_UNDO_MS + 1_000);
     save.release();
 

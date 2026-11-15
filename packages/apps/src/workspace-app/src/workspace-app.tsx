@@ -86,6 +86,8 @@ export type WorkspaceAppProps = {
    * View Transition captures the right new snapshot.
    */
   initialDetailOpenMobile?: boolean;
+  /** A side panel after the detail pane (e.g. Calendar invitations). */
+  panel?: ReactNode;
 };
 
 /**
@@ -107,6 +109,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
     detailScrollClassName,
     detailScrollResetKey,
     initialDetailOpenMobile = false,
+    panel,
   },
   ref,
 ) {
@@ -216,6 +219,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
         >
           {detailWrapper ? detailWrapper(detailChrome, chrome) : detailChrome}
         </main>
+        {panel}
       </WorkspaceAppLayout>
     </TooltipProvider>
   );

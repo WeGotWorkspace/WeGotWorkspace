@@ -2,16 +2,19 @@
 /**
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
- * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`,
+ * `--input-placeholder-color`, `--input-shadow`, `--input-border-color` (rest; the suite sets
+ * transparent, fields are a fill), `--input-border-focus`,
  * `--input-background-hover`, `--input-border-hover` (search hover; unset keeps the resting fill).
  * Size (`xs` … `xl`) changes height, padding, and font-size only.
+ * Fields (inputs, selects, date and time pickers) sit `--input-height-step` above the
+ * control of the same size, with roomier padding: the text keeps its size, the box grows.
  * Default `md` = 36px — action bar / view header / event form density.
  * Spacious forms use `lg` (40px); hero CTAs use `xl` (44px).
  * xs/sm/md stay below 1rem on every screen: phones keep the desktop size (the
  * iOS focus zoom is stopped once, by the viewport tag in `index.html`). Do not
  * re-set font-size here or at product callsites.
- * Radius stays global `--control-radius` on the shared surface — do not remap
- * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
+ * Radius is the control corner `--control-radius-button`, shared with buttons — do not
+ * remap soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
  * Password variant: trailing show/hide toggle (wrapper + field + control).
  * Ghost variant: no chrome at rest, an ink wash on hover/typing (detail-sheet values).
@@ -23,8 +26,8 @@
   @apply flex w-full appearance-none border text-foreground transition-colors;
   @apply outline-none focus:outline-none focus-visible:outline-none;
   @apply disabled:cursor-not-allowed;
-  border-color: var(--control-border-color);
-  border-radius: var(--control-radius);
+  border-color: var(--input-border-color, var(--control-border-color));
+  border-radius: var(--control-radius-button);
   /* Transparent fallback — `none` cannot compose with other shadows. */
   box-shadow: var(--input-shadow, 0 0 transparent);
   font-size: var(--input-font-size, 1rem);
@@ -40,7 +43,7 @@
 .textarea:focus-visible,
 .input:has(> .input__field:focus-visible) {
   @apply ring-1 ring-ring;
-  border-color: var(--input-border-focus, var(--control-border-color));
+  border-color: var(--input-border-focus, var(--input-border-color, var(--control-border-color)));
 }
 
 html[data-modality="pointer"]
@@ -51,7 +54,7 @@ html[data-modality="pointer"]
     .textarea:focus-visible,
     .input:has(> .input__field:focus-visible)
   ) {
-  border-color: var(--control-border-color);
+  border-color: var(--input-border-color, var(--control-border-color));
   box-shadow: var(--input-shadow, 0 0 transparent);
 }
 
@@ -59,8 +62,8 @@ html[data-modality="pointer"]
 .input,
 .select-trigger {
   @apply items-center px-[var(--input-padding-x,0.75rem)] py-1;
-  min-height: var(--control-height-md, 2.25rem);
-  height: var(--control-height-md, 2.25rem);
+  min-height: calc(var(--control-height-md, 2.25rem) + var(--input-height-step, 0px));
+  height: calc(var(--control-height-md, 2.25rem) + var(--input-height-step, 0px));
 }
 
 .input {
@@ -159,88 +162,96 @@ html[data-modality="pointer"]
 .select-trigger--size-xs,
 .input--size-xs,
 .control-surface--size-xs {
-  --input-padding-x: 0.5rem; /* px-2 */
-  min-height: var(--control-height-xs, 1.75rem);
-  height: var(--control-height-xs, 1.75rem);
+  --input-padding-x: 0.625rem;
+  min-height: calc(var(--control-height-xs, 1.75rem) + var(--input-height-step, 0px));
+  height: calc(var(--control-height-xs, 1.75rem) + var(--input-height-step, 0px));
   font-size: var(--input-font-size-xs, 0.75rem);
 }
 
 .select-trigger--size-sm,
 .input--size-sm,
 .control-surface--size-sm {
-  --input-padding-x: 0.625rem; /* px-2.5 */
-  min-height: var(--control-height-sm, 2rem);
-  height: var(--control-height-sm, 2rem);
+  --input-padding-x: 0.75rem;
+  min-height: calc(var(--control-height-sm, 2rem) + var(--input-height-step, 0px));
+  height: calc(var(--control-height-sm, 2rem) + var(--input-height-step, 0px));
   font-size: var(--input-font-size-sm, 0.875rem);
 }
 
 .select-trigger--size-md,
 .input--size-md,
 .control-surface--size-md {
-  --input-padding-x: 0.75rem; /* px-3 */
-  min-height: var(--control-height-md, 2.25rem);
-  height: var(--control-height-md, 2.25rem);
+  --input-padding-x: 0.875rem;
+  min-height: calc(var(--control-height-md, 2.25rem) + var(--input-height-step, 0px));
+  height: calc(var(--control-height-md, 2.25rem) + var(--input-height-step, 0px));
   font-size: var(--input-font-size-md, 0.875rem);
 }
 
 .select-trigger--size-lg,
 .input--size-lg,
 .control-surface--size-lg {
-  --input-padding-x: 0.75rem;
-  min-height: var(--control-height-lg, 2.5rem);
-  height: var(--control-height-lg, 2.5rem);
+  --input-padding-x: 1rem;
+  min-height: calc(var(--control-height-lg, 2.5rem) + var(--input-height-step, 0px));
+  height: calc(var(--control-height-lg, 2.5rem) + var(--input-height-step, 0px));
   font-size: var(--input-font-size-lg, 1rem);
 }
 
 .select-trigger--size-xl,
 .input--size-xl,
 .control-surface--size-xl {
-  --input-padding-x: 0.75rem;
-  min-height: var(--control-height-xl, 2.75rem);
-  height: var(--control-height-xl, 2.75rem);
+  --input-padding-x: 1rem;
+  min-height: calc(var(--control-height-xl, 2.75rem) + var(--input-height-step, 0px));
+  height: calc(var(--control-height-xl, 2.75rem) + var(--input-height-step, 0px));
   font-size: var(--input-font-size-xl, 1rem);
 }
 
 /* Textarea: size affects padding + font only; height stays auto. */
 .textarea--size-xs {
-  @apply px-2 py-1;
+  @apply px-2.5 py-1.5;
   font-size: var(--input-font-size-xs, 0.75rem);
 }
 
 .textarea--size-sm {
-  @apply px-2.5 py-1.5;
+  @apply px-3 py-2;
   font-size: var(--input-font-size-sm, 0.875rem);
 }
 
 .textarea--size-md {
-  @apply px-3 py-2;
+  @apply px-3.5 py-2.5;
   font-size: var(--input-font-size-md, 0.875rem);
 }
 
 .textarea--size-lg {
-  @apply px-3 py-2;
+  @apply px-4 py-2.5;
   font-size: var(--input-font-size-lg, 1rem);
 }
 
 .textarea--size-xl {
-  @apply px-3 py-2;
+  @apply px-4 py-2.5;
   font-size: var(--input-font-size-xl, 1rem);
 }
 
 .input--search,
-.input--password {
+.input--password,
+.input--suffix {
   @apply gap-2;
 }
 
 /* Hover wash/border are parent tokens. Unset, this stays the idle field. */
 .input--search:hover:not(:focus-within):not(:has(.input__field:read-only)) {
   background-color: var(--input-background-hover, var(--input-background));
-  border-color: var(--input-border-hover, var(--control-border-color));
+  border-color: var(--input-border-hover, var(--input-border-color, var(--control-border-color)));
 }
 
 .input--search:focus-within:not(:has(.input__field:read-only)),
-.input--password:focus-within:not(:has(.input__field:read-only)) {
+.input--password:focus-within:not(:has(.input__field:read-only)),
+.input--suffix:focus-within:not(:has(.input__field:read-only)) {
   background-color: var(--input-background-focus, var(--input-background, transparent));
+}
+
+/* A fixed tail inside the field (a file extension): quiet ink, not part of the value. */
+.input__suffix {
+  @apply shrink-0 select-none;
+  color: color-mix(in oklab, var(--color-foreground) 60%, transparent);
 }
 
 .input__field {
@@ -359,7 +370,7 @@ input.input:focus-visible:not(:read-only),
 .control-surface[data-state="open"]:not(:disabled),
 .select-trigger[data-state="open"]:not(:disabled) {
   background-color: var(--input-background-focus, var(--input-background, transparent));
-  border-color: var(--input-border-focus, var(--control-border-color));
+  border-color: var(--input-border-focus, var(--input-border-color, var(--control-border-color)));
 }
 
 /**
@@ -483,4 +494,31 @@ html[data-modality="pointer"] .textarea.textarea--ghost:focus-visible,
 .textarea.textarea--ghost {
   @apply min-h-0 resize-none;
   line-height: 1.5;
+}
+
+/* A ghost time field reads like the ghost dropdowns: their weight, padding and the
+ * same chevron (the native picker button keeps working, painted as the chevron). */
+.input.input--ghost[type="time"] {
+  @apply font-medium;
+  min-height: var(--control-height-sm, 2rem);
+  height: var(--control-height-sm, 2rem);
+  padding-inline: 0.625rem;
+}
+
+.input.input--ghost[type="time"]::-webkit-calendar-picker-indicator {
+  @apply size-4;
+  /* The UA pads the picker button and the mask fills that box, so padding grows the glyph. */
+  box-sizing: border-box;
+  padding: 0;
+  inset-inline-end: 0.625rem;
+  /* Lucide chevron-down, as `.collection-ghost-select__chevron`. */
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.input.input--ghost[type="time"]::-webkit-datetime-edit {
+  padding-inline-end: 1.5rem;
 }

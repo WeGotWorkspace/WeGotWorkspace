@@ -14,8 +14,6 @@
 
 .agenda-shell {
   @apply box-border w-full min-h-full;
-  /* Workspace floating search overlays the bottom; inherit scroll-end room. */
-  padding-bottom: var(--_lc-list-end-pad, 0px);
   /* Embedded host is height:auto. The search scroller stretches it and sets
      --_lc-list-shell-flex so this shell fills the host. */
   flex: var(--_lc-list-shell-flex, 0 0 auto);

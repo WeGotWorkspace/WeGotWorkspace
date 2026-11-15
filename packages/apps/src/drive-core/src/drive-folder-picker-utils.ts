@@ -105,3 +105,8 @@ export function browsePathForDrivePickerFile(file: DriveFile): string | null {
   if (file.kind === "folder") return driveFolderUiPath(file);
   return null;
 }
+
+/** Docs dialogs paint the Drive list in Docs chrome (their surface class says which app). */
+export function drivePickerListingTheme(surfaceClassName: string): "docs" | undefined {
+  return surfaceClassName.includes("docs-dialog-surface") ? "docs" : undefined;
+}

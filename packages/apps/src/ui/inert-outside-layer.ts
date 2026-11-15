@@ -52,17 +52,21 @@ export function inertOutsideLayer(layer: Element): () => void {
 }
 
 /**
- * Callback ref for modal Radix content. Portaled content mounts a commit after
- * its wrapper, so this runs on attach rather than in the wrapper's effect.
+ * Callback ref that attaches `attach` to a modal Radix content node (and runs its
+ * cleanup when the node goes). Portaled content mounts a commit after its wrapper,
+ * so this runs on attach rather than in the wrapper's effect.
  *
- * The outside is snapshotted once per layer node. Radix composes the content
- * ref anew on every render, so React detaches (`null`) and re-attaches the same
- * node each commit; walking again then would make a popover opened from inside
- * the layer inert (#1699). The release waits a microtask, and a re-attach of the
- * same node in the meantime keeps the first snapshot.
+ * Attached once per layer node. Radix composes the content ref anew on every
+ * render, so React detaches (`null`) and re-attaches the same node each commit;
+ * attaching again then would, for the inert outside, make a popover opened from
+ * inside the layer inert (#1699). The release waits a microtask, and a re-attach
+ * of the same node in the meantime keeps the first attachment.
+ *
+ * `attach` must be stable (module scope).
  */
-export function useInertOutsideLayerRef<T extends Element>(
+export function useLayerAttachRef<T extends Element>(
   forwardedRef: React.ForwardedRef<T>,
+  attach: (node: T) => () => void,
 ): React.RefCallback<T> {
   const attached = React.useRef<{ node: T; release: () => void } | null>(null);
   const pendingDetach = React.useRef(0);
@@ -73,7 +77,7 @@ export function useInertOutsideLayerRef<T extends Element>(
         pendingDetach.current += 1; // Cancels a release scheduled by a detach.
         if (attached.current?.node !== node) {
           attached.current?.release();
-          attached.current = { node, release: inertOutsideLayer(node) };
+          attached.current = { node, release: attach(node) };
         }
       } else if (attached.current) {
         const ticket = ++pendingDetach.current;
@@ -86,6 +90,13 @@ export function useInertOutsideLayerRef<T extends Element>(
       if (typeof forwardedRef === "function") forwardedRef(node);
       else if (forwardedRef) forwardedRef.current = node;
     },
-    [forwardedRef],
+    [attach, forwardedRef],
   );
+}
+
+/** Callback ref for modal Radix content: its outside is inert while it is attached. */
+export function useInertOutsideLayerRef<T extends Element>(
+  forwardedRef: React.ForwardedRef<T>,
+): React.RefCallback<T> {
+  return useLayerAttachRef(forwardedRef, inertOutsideLayer);
 }

@@ -16,8 +16,6 @@ import { accessLabelForReadOnly } from "@/share-ui/use-share-mutations";
 type SharePrincipalRowProps = {
   principalType: SharePrincipalKind;
   displayName: string;
-  /** Stable identity key for per-user palette (user principals only). */
-  principalId?: string;
   subtitle?: string;
   inheritedFromPath?: string;
   pending?: boolean;
@@ -33,7 +31,6 @@ type SharePrincipalRowProps = {
 export function SharePrincipalRow({
   principalType,
   displayName,
-  principalId,
   subtitle,
   inheritedFromPath,
   pending = false,
@@ -84,7 +81,6 @@ export function SharePrincipalRow({
         <SharePrincipalMark
           principalType={principalType}
           displayName={displayName}
-          principalId={principalId}
           subtitle={subtitle}
           size="sm"
           labeled

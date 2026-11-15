@@ -6,7 +6,7 @@ import { CardPanel } from "@/card/src/card-panel";
 import { IconButton } from "@/button/src/icon-button";
 import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { accessToUIPermission, type ShareUIPermission } from "@/lib/sharing/share-access-map";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -59,7 +59,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
                   displayName={grant.principal}
                   compact
                   size="sm"
-                  color={avatarColorForUserId(grant.principal)}
+                  variant="tint"
                   className="share-dialog__guest-mark"
                 />
               }

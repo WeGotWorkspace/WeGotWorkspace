@@ -27,12 +27,14 @@ use App\Http\Support\WgwOversizedPost;
 use App\Services\Auth\RefreshCookie;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Support\PublicAppUrl;
+use App\Support\WgwEnvLocation;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Http\Middleware\ValidatePostSize;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
@@ -55,6 +57,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('wgw:notify:due-alarms')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:notify:vapid-sweep')->everyMinute()->withoutOverlapping();
+        $schedule->command('wgw:calendar:imip-poll')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:rtc:prune')->hourly()->withoutOverlapping();
         $schedule->command('wgw:availability:prune-cache')->hourly()->withoutOverlapping();
     })
@@ -92,6 +95,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->trimStrings(except: [
             'payload.sdp',
         ]);
+        // public/index.php refuses an oversized body before Laravel starts, with the
+        // WebDAV PUT exception; this copy of the check would refuse that PUT again.
+        $middleware->remove(ValidatePostSize::class);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         // An older release's updater can swap the files and then fail to run
@@ -116,8 +122,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // The one render hook for API errors (#1646): ApiHttpException and the
-        // realtime DomainResponseException family. Contract: .agents/skills/api/rest-design.md.
+        // The one render hook for API errors (#1646): ApiHttpException and
+        // RealtimeApiException. Contract: .agents/skills/api/rest-design.md.
         $exceptions->render(function (RendersApiError $e) {
             return response()->json($e->apiErrorBody(), $e->apiErrorStatus(), $e->apiErrorHeaders());
         });
@@ -195,6 +201,15 @@ $app = Application::configure(basePath: dirname(__DIR__))
         GuestUploadRateLimiters::register();
     })
     ->create();
+
+// A fresh install whose data directory is outside the published tree keeps
+// its .env there too (#1484). Web, artisan, the queue and the scheduler all
+// boot through this file, so they all read the same one.
+$relocatedEnv = WgwEnvLocation::relocatedForBoot($app->basePath());
+if ($relocatedEnv !== null) {
+    $app->useEnvironmentPath(dirname($relocatedEnv));
+    $app->loadEnvironmentFrom(basename($relocatedEnv));
+}
 
 $storagePath = getenv('WGW_STORAGE_PATH');
 if (! is_string($storagePath) || $storagePath === '') {

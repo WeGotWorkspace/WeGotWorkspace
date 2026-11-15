@@ -6,9 +6,10 @@ import {
 import { isTextEditorPageOrientation, isTextEditorPaperChoice } from "@/lib/page-format";
 import { useSettingsDocsForm } from "@/settings-core/src/use-settings-docs-form";
 import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { FormField } from "@/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 
 /**
  * Docs default page setup: the paper and orientation new documents start with. Stored on
@@ -24,17 +25,22 @@ export function SettingsDocsPane() {
         control={form.control}
         name="format"
         render={({ field }) => (
-          <FieldLabelRow label={labels.settingsPaper}>
+          <FieldLabelRow
+            layout="inline"
+            label={labels.settingsPaper}
+            description={labels.settingsPaperDescription}
+          >
             <Select
               value={field.value}
               onValueChange={(value) => {
                 if (isTextEditorPaperChoice(value)) field.onChange(value);
               }}
             >
-              <SelectTrigger aria-label={labels.settingsPaper}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+              <CollectionGhostSelectTrigger
+                aria-label={labels.settingsPaper}
+                label={<SelectValue />}
+              />
+              <SelectContent align="end">
                 {DOCS_PAPER_CHOICES.map((choice) => (
                   <SelectItem key={choice} value={choice}>
                     {docsPaperLabel(choice)}
@@ -49,7 +55,11 @@ export function SettingsDocsPane() {
         control={form.control}
         name="orientation"
         render={({ field }) => (
-          <FieldLabelRow label={labels.settingsOrientation}>
+          <FieldLabelRow
+            layout="inline"
+            label={labels.settingsOrientation}
+            description={labels.settingsOrientationDescription}
+          >
             <Select
               value={field.value}
               disabled={format === "none"}
@@ -57,10 +67,12 @@ export function SettingsDocsPane() {
                 if (isTextEditorPageOrientation(value)) field.onChange(value);
               }}
             >
-              <SelectTrigger aria-label={labels.settingsOrientation}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+              <CollectionGhostSelectTrigger
+                aria-label={labels.settingsOrientation}
+                label={<SelectValue />}
+                disabled={format === "none"}
+              />
+              <SelectContent align="end">
                 <SelectItem value="portrait">{labels.pageOrientationPortrait}</SelectItem>
                 <SelectItem value="landscape">{labels.pageOrientationLandscape}</SelectItem>
               </SelectContent>

@@ -33,7 +33,11 @@ describe("CalendarMeetChannelEmailDialog", () => {
     expect(dialog.textContent).toContain(defaultCalendarLabels.eventMeetChannelEmailTitle);
     expect(dialog.textContent).toContain(defaultCalendarLabels.eventMeetChannelEmailDescription);
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
-    expect(dialog.querySelector(".calendar-meet-channel-email-dialog__footer")).toBeTruthy();
+    // The actions sit in the dialog's own footer (the suite norm), named for the choice.
+    const footer = screen.getByRole("group", {
+      name: defaultCalendarLabels.eventMeetChannelEmailTitle,
+    });
+    expect(dialog.contains(footer)).toBe(true);
     fireEvent.click(
       screen.getByRole("button", { name: defaultCalendarLabels.eventMeetChannelEmailKeepBoth }),
     );

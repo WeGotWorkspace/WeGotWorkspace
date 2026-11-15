@@ -199,33 +199,6 @@ function maxDateTimeString(left: string, right: string): string {
   return left >= right ? left : right;
 }
 
-/** Month+year bounds of the searched window (snapped bootstrap / union range). */
-export function formatCalendarSearchScopeRange(
-  range: CalendarSearchDateRange,
-  locale: string,
-): { start: string; end: string } {
-  const start = Temporal.PlainDateTime.from(range.start);
-  const end = Temporal.PlainDateTime.from(range.end);
-  const formatter = new Intl.DateTimeFormat(locale, {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-  return {
-    start: formatter.format(new Date(Date.UTC(start.year, start.month - 1, 1))),
-    end: formatter.format(new Date(Date.UTC(end.year, end.month - 1, 1))),
-  };
-}
-
-export function formatCalendarSearchScopeLabel(
-  template: string,
-  range: CalendarSearchDateRange,
-  locale: string,
-): string {
-  const { start, end } = formatCalendarSearchScopeRange(range, locale);
-  return template.replaceAll("{start}", start).replaceAll("{end}", end);
-}
-
 /** First paint and each auto-append for the unified search agenda. */
 export const CALENDAR_SEARCH_PAGE_SIZE = 100;
 

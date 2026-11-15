@@ -63,6 +63,12 @@ export type DocsCollabUrls = {
    */
   roomNotPersistent?: boolean;
   /**
+   * Held off the server only until a check answers (Docs: is a queued write
+   * the owner of this path?). The server copy most likely exists, so an empty
+   * room still waits for its content before it takes typing (#2056).
+   */
+  roomHeldUntilChecked?: boolean;
+  /**
    * How the text is seeded and rebuilt. Without it the room's file name
    * decides, which fits a Drive path but not an id such as a note UID.
    */

@@ -578,14 +578,16 @@ describe("CalendarEventDetailsPopover", () => {
     });
     const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
     expect(join.className).toContain("button--variant-primary");
-    const primary = join.closest(".calendar-event-details-popover__footer-primary");
+    // The dialog footer norm: Join (and RSVP) at the start, Delete at the end.
+    const primary = join.closest(".ui-modal-footer__start");
     const actions = screen
       .getByRole("button", { name: defaultCalendarLabels.delete })
-      .closest(".calendar-event-details-popover__footer-actions");
+      .closest(".ui-modal-footer__end");
     expect(primary).toBeTruthy();
     expect(actions).toBeTruthy();
-    const footer = join.closest(".calendar-event-details-popover__footer");
+    const footer = join.closest(".ui-modal-footer");
     expect(footer).toBeTruthy();
+    expect(footer!.contains(actions)).toBe(true);
     expect(
       primary!.compareDocumentPosition(actions!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -625,11 +627,10 @@ describe("CalendarEventDetailsPopover", () => {
     });
     const join = screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
     const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });
-    const primary = join.closest(".calendar-event-details-popover__footer-primary");
-    expect(accept.closest(".calendar-event-details-popover__footer-primary")).toBe(primary);
-    expect(
-      primary!.compareDocumentPosition(accept) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    const primary = join.closest(".ui-modal-footer__start");
+    expect(primary).toBeTruthy();
+    expect(accept.closest(".ui-modal-footer__start")).toBe(primary);
+    expect(join.compareDocumentPosition(accept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows alarms with a bell row on the event card", { timeout: 10_000 }, () => {
@@ -701,10 +702,11 @@ describe("CalendarEventDetailsPopover", () => {
       expect(screen.queryByRole("button", { name: defaultCalendarLabels.saveChanges })).toBeNull();
       expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
       expect(screen.queryByText(defaultCalendarLabels.rsvpSeriesHint)).toBeNull();
-      const rsvpCluster = document.querySelector(".calendar-event-dialog__invitation-rsvp");
-      expect(rsvpCluster).toBeTruthy();
-      expect(rsvpCluster?.className).toContain("calendar-event-dialog__invitation-rsvp");
-      const rsvpActions = rsvpCluster?.querySelector(".calendar-rsvp-actions");
+      // The invitation answers sit in the dialog footer, where Save would be.
+      const footer = popover.querySelector(".ui-modal-footer");
+      expect(footer).toBeTruthy();
+      const rsvpActions = footer?.querySelector(".calendar-rsvp-actions");
+      expect(rsvpActions).toBeTruthy();
       expect(rsvpActions?.className).toContain("calendar-rsvp-actions--sm");
       expect(rsvpActions?.className).not.toContain("calendar-rsvp-actions--xs");
       const accept = screen.getByRole("button", { name: defaultCalendarLabels.rsvpAccept });

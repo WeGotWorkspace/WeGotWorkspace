@@ -3,14 +3,16 @@
 // The teammate edits a shared card offline. While they are offline, the owner
 // makes the share view-only. On reconnect the server answers `forbidden`: the
 // edit must stay in the outbox as a permanent failure, not be replaced by the
-// server copy. The tab keeps the offline name, the failed-sync notice lists it,
-// and a reload keeps both. The server card is unchanged.
+// server copy. The tab keeps the offline name, the notice bar shows the
+// failed-sync row with Retry, and a reload keeps both. The server card is
+// unchanged.
 //
 // Two cases: an edit of a shared card, and a new contact made in the shared
 // book itself (`canCreateContactInView` allows New contact on a `book:` view
 // while `myRights.mayWrite` is not false). Both stay as permanent failures.
 import { expect, test } from "./helpers/live-test";
 import { api, openUser, OWNER, setTabOffline, TEAMMATE, type Tab } from "./helpers/live-matrix";
+import { syncNoticeRow } from "./helpers/sync-notice";
 
 const RUN = Date.now().toString(36);
 const GIVEN = `Ro${RUN}`;
@@ -142,8 +144,10 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       await shareBook(false);
       await setTabOffline(tab, false);
 
-      const notice = tab.getByText("Some changes couldn’t sync").first();
+      const notice = syncNoticeRow(tab);
+      const retry = notice.getByRole("button", { name: "Retry" });
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(retry).toBeEnabled();
       await expect(tab.getByText(OFFLINE, { exact: true }).first()).toBeVisible();
       await expect(tab.getByLabel(/conflict resolution/)).toHaveCount(0);
       expect(await serverName(), "the refused edit did not land").toBe(ORIGINAL);
@@ -155,6 +159,7 @@ test.describe("Contacts edit refused because the book became read-only", () => {
         timeout: 30_000,
       });
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(retry).toBeEnabled();
       expect(await serverName()).toBe(ORIGINAL);
     } finally {
       await context.close();
@@ -240,8 +245,10 @@ test.describe("Contacts edit refused because the book became read-only", () => {
       createSets = 0;
       await setTabOffline(tab, false);
 
-      const notice = tab.getByText("Some changes couldn’t sync").first();
+      const notice = syncNoticeRow(tab);
+      const retry = notice.getByRole("button", { name: "Retry" });
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(retry).toBeEnabled();
       await expect(tab.getByText(CREATED, { exact: true }).first()).toBeVisible();
       await expect(tab.getByLabel(/conflict resolution/)).toHaveCount(0);
       expect(await serverHasCreated(), "the refused create did not land").toBe(false);
@@ -259,6 +266,7 @@ test.describe("Contacts edit refused because the book became read-only", () => {
         timeout: 30_000,
       });
       await expect(notice).toBeVisible({ timeout: 60_000 });
+      await expect(retry).toBeEnabled();
       expect(await serverHasCreated()).toBe(false);
     } finally {
       await context.close();

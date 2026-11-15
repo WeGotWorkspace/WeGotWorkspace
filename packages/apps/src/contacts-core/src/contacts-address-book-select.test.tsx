@@ -76,7 +76,7 @@ describe("ContactsAddressBookSelect", () => {
     expect(trigger.className).toContain("color-swatch-trigger");
     expect(trigger.className).toContain("contacts-address-book-select--swatch");
     expect(trigger.querySelector(".color-swatch-trigger__chevron")).toBeTruthy();
-    expect(trigger.querySelector(".notes-notebook-color-dot")).toBeTruthy();
+    expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
     expect(trigger.querySelector(".color-swatch-trigger__caption")).toBeNull();
     expect(trigger.querySelector(".collection-select__name")).toBeNull();
     expect(container.querySelector(".select-trigger__icon")).toBeNull();

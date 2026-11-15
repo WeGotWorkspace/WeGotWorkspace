@@ -64,12 +64,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
             autoComplete="current-password"
           />
         ) : null}
-        <FormSaveActionRow
-          className={settingsWorkspacePaneClasses.saveActionRow}
-          label="Save changes"
-          disabled={identityDisabled}
-          onSave={saveProfile}
-        />
+        <FormSaveActionRow label="Save changes" disabled={identityDisabled} onSave={saveProfile} />
       </Card>
 
       <Card title="Password">
@@ -86,12 +81,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           label="Confirm password"
           variant="password"
         />
-        <FormSaveActionRow
-          className={settingsWorkspacePaneClasses.saveActionRow}
-          label="Set password"
-          disabled={passwordDisabled}
-          onSave={saveProfile}
-        />
+        <FormSaveActionRow label="Set password" disabled={passwordDisabled} onSave={saveProfile} />
       </Card>
       <AlertDialog
         open={unsyncedDiscard !== null}

@@ -17,6 +17,16 @@
   );
 }
 
+/* A destructive action (Delete) wears its danger wash at rest, a touch stronger on hover. */
+.action-bar .button.button--variant-outline.button--severity-danger {
+  background-color: var(--button-severity-hover-background);
+}
+
+.action-bar .button.button--variant-outline.button--severity-danger:hover,
+.action-bar .button.button--variant-outline.button--severity-danger:focus-visible {
+  background-color: color-mix(in oklab, var(--button-severity-color) 22%, transparent);
+}
+
 .action-bar__back {
   /* Soft radius from `.button` (`--control-radius`); do not force a capsule. */
   @apply max-w-[12rem] shrink min-w-0 transition-colors;

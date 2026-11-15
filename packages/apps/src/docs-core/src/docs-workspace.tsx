@@ -195,17 +195,21 @@ function DocsWorkspaceShell({
             controller.hasFile ? (
               <DocsFooterTools
                 pageSetup={{ ...pageSetup, labels: controller.labels }}
-                source={{
-                  checked: viewSource,
-                  disabled: !editor,
-                  label: controller.labels.sourceSwitch,
-                  ariaLabel: viewSource
-                    ? controller.labels.hideSource
-                    : guestView
-                      ? controller.labels.viewSourceReadOnly
-                      : controller.labels.viewSource,
-                  onToggle: () => setViewSource((on) => !on),
-                }}
+                source={
+                  controller.editorFormat === "text"
+                    ? undefined
+                    : {
+                        checked: viewSource,
+                        disabled: !editor,
+                        label: controller.labels.sourceSwitch,
+                        ariaLabel: viewSource
+                          ? controller.labels.hideSource
+                          : guestView
+                            ? controller.labels.viewSourceReadOnly
+                            : controller.labels.viewSource,
+                        onToggle: () => setViewSource((on) => !on),
+                      }
+                }
               />
             ) : null
           }

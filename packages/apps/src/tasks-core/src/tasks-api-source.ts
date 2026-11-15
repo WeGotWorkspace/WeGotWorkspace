@@ -3,7 +3,7 @@ import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { Task, TaskList, TaskListPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
-import { applyTaskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
+import { applyTaskAlertsPatch } from "@/lib/models/task-alerts";
 import {
   filterSharePrincipals,
   mergeShareWith,
@@ -13,7 +13,7 @@ import {
   createHybridTasksOperations,
   loadTasksBootstrapHybrid,
 } from "@/lib/offline/tasks/tasks-hybrid-operations";
-import { resolveTasksOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveTasksOfflineUsername } from "@/lib/offline/core/offline-session";
 
 function taskListAfterSharePatch(list: TaskList, patch: TaskListPatch): TaskList {
   const { shareWith, ...rest } = patch;

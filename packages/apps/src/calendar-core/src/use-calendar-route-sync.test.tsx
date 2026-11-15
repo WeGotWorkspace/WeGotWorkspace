@@ -48,10 +48,7 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 import { todayISODate } from "@/calendar-core/src/calendar-event-model";
-import {
-  persistCalendarRoutePrefs,
-  readCalendarViewPrefs,
-} from "@/calendar-core/src/calendar-view-prefs";
+import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
 
 describe("useCalendarRouteSync", () => {
@@ -175,7 +172,7 @@ describe("useCalendarRouteSync", () => {
   });
 
   it("hydrates a bare /calendar path from stored view prefs", () => {
-    persistCalendarRoutePrefs("week", "list");
+    calendarViewPrefs.patch({ view: "week", presentation: "list" });
     mockPathname = "/calendar";
     livePathname = "/calendar";
     mockParams = {};
@@ -192,7 +189,7 @@ describe("useCalendarRouteSync", () => {
   });
 
   it("lets an explicit path win over stored prefs and then stores that view", () => {
-    persistCalendarRoutePrefs("year", "list");
+    calendarViewPrefs.patch({ view: "year", presentation: "list" });
     mockPathname = "/calendar/day/2026-08-17";
     livePathname = "/calendar/day/2026-08-17";
     mockParams = { view: "day", date: "2026-08-17" };
@@ -200,7 +197,7 @@ describe("useCalendarRouteSync", () => {
 
     expect(result.current.initialView).toBe("day");
     expect(result.current.initialPresentation).toBe("grid");
-    expect(readCalendarViewPrefs()).toMatchObject({
+    expect(calendarViewPrefs.read()).toMatchObject({
       view: "day",
       presentation: "grid",
     });

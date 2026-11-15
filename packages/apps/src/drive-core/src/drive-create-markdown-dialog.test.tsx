@@ -36,7 +36,10 @@ function confirmButton() {
 }
 
 function pickFirstFolder() {
-  const row = document.querySelector(".destination-list-row");
+  // The folder picker is the Drive list; files are dimmed rows, folders can be chosen.
+  const row = document.querySelector(
+    '.drive-list-table tr[data-list-item-id]:not([aria-disabled="true"])',
+  );
   if (!row) throw new Error("no folder row");
   fireEvent.click(row);
 }

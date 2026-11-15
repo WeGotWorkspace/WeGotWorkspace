@@ -217,7 +217,7 @@ describe("workspace token core", () => {
     expect(sst).toContain("--list-sticky-header-color: var(--workspace-foreground)");
   });
 
-  it("paints switch tracks from text ink, with one shared off tint", () => {
+  it("paints switch tracks with the selection mark when on, one shared ink tint when off", () => {
     const css = readFileSync(join(srcRoot, "ui/switch.css"), "utf8");
     const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
     expect(css).toContain("appearance: none");
@@ -225,9 +225,10 @@ describe("workspace token core", () => {
     expect(css).toContain(
       "background-color: var(--switch-on-thumb-bg, var(--workspace-accent-foreground))",
     );
-    expect(derive).toContain("--switch-on-bg: var(--workspace-foreground)");
+    // On: the selection mark (sky), like a selected row; a white thumb.
+    expect(derive).toContain("--switch-on-bg: var(--workspace-selected-mark-background)");
     expect(derive).not.toContain("--switch-on-bg: var(--workspace-accent)");
-    expect(derive).toContain("--switch-on-thumb-bg: var(--workspace-accent-foreground)");
+    expect(derive).toContain("--switch-on-thumb-bg: oklch(1 0 0)");
     expect(derive).toContain("oklch(from var(--workspace-surface) l 0 none)");
 
     const offenders: string[] = [];

@@ -4,7 +4,7 @@ import { CollectionSelect } from "@/ui/collection-select";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
-import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { cn } from "@/lib/utils";
 
 /** Closed Radix Select typeahead prefix-matches labels ("Admin" vs "Administrators"). */
@@ -32,7 +32,7 @@ export type ContactsAddressBookSelectProps = {
   variant?: "field" | "toolbar";
   /**
    * `swatch` reuses ColorSwatchTrigger (icon + chevron, no caption) — same chrome as
-   * NotesNotebookSelect / CalendarEventCalendarPicker. `labeled` keeps the Select trigger
+   * NotebookSelect / CalendarEventCalendarPicker. `labeled` keeps the Select trigger
    * with visible name. `ghost` is the detail-pane switcher above the contact's
    * name: dot + name in the book's colour, no chrome (same as Notes' notebook).
    */
@@ -90,7 +90,7 @@ export function ContactsAddressBookSelect({
         color: addressBookDotColor(book, overrides),
       }))}
       value={value}
-      dot={<NotesNotebookColorDot />}
+      dot={<CollectionColorDot />}
       color={selectedColor}
       triggerLabel={bookName || label}
       accessibleName={accessibleName}

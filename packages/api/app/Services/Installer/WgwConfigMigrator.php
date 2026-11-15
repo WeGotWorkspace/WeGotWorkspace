@@ -8,6 +8,7 @@ use App\Support\AppPaths;
 use App\Support\UpdateFeedDefaults;
 use App\Support\WgwApiEnvFile;
 use App\Support\WgwDatabaseProbe;
+use App\Support\WgwEnvLocation;
 use App\Support\WgwInstallConfig;
 use Illuminate\Support\Facades\Artisan;
 
@@ -24,7 +25,7 @@ final class WgwConfigMigrator
         $installRoot = rtrim($installRoot, '/');
         $apiEnv = new ApiRuntimeEnvService;
         $apiEnv->seedEnvFromExampleIfMissing($apiPackageRoot);
-        $envPath = $apiPackageRoot.'/.env';
+        $envPath = WgwEnvLocation::envFile($apiPackageRoot);
         self::relocateLegacyBackups($installRoot, $envPath);
 
         $legacyPath = self::resolveLegacySourcePath($installRoot, $envPath);
@@ -54,7 +55,7 @@ final class WgwConfigMigrator
             return false;
         }
 
-        $envPath = $apiRoot.'/.env';
+        $envPath = WgwEnvLocation::envFile($apiRoot);
         self::relocateLegacyBackups($installRoot, $envPath);
 
         $legacyPath = self::resolveLegacySourcePath($installRoot, $envPath);

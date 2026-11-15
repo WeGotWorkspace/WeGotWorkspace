@@ -7,6 +7,8 @@ import { onPageExit } from "@/lib/page-exit";
 type UndoableWriteBase = {
   key: string;
   toastMessage: string;
+  /** No toast (and so no Undo), e.g. for an autosave; the write still reverts on failure. */
+  silent?: boolean;
   /** Puts the screen back. Runs on Undo, and on failure unless `onError` is given. */
   undo: () => void;
   onError?: () => void;
@@ -198,7 +200,14 @@ function irreversibleRunner(args: IrreversibleWriteArgs, onMutationError: () => 
  * drops the write nor takes away Undo.
  */
 export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueuedMutationOptions) {
-  const { show, dismiss } = useAppToast();
+  const { show, dismiss: dismissToast } = useAppToast();
+  // Sonner dismisses every toast for an empty id; a silent write has none.
+  const dismiss = useCallback(
+    (toastId: string | number) => {
+      if (toastId !== "") dismissToast(toastId);
+    },
+    [dismissToast],
+  );
   const pendingByKeyRef = useRef<Map<string, PendingMutation>>(new Map());
   const orderRef = useRef<string[]>([]);
 
@@ -264,17 +273,18 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
         });
       }
 
-      entry.toastId =
-        show(args.toastMessage, {
-          duration: undoWindowMs,
-          severity: "success",
-          canUndo: true,
-          undoLabel: "Undo",
-          icon: args.icon,
-          onUndo: () => {
-            undoPending(entry);
-          },
-        }) ?? "";
+      entry.toastId = args.silent
+        ? ""
+        : (show(args.toastMessage, {
+            duration: undoWindowMs,
+            severity: "success",
+            canUndo: true,
+            undoLabel: "Undo",
+            icon: args.icon,
+            onUndo: () => {
+              undoPending(entry);
+            },
+          }) ?? "");
 
       pendingByKeyRef.current.set(args.key, entry);
       orderRef.current = [...orderRef.current.filter((item) => item !== args.key), args.key];

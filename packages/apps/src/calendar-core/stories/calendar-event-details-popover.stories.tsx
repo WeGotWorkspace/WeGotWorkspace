@@ -77,13 +77,14 @@ export const InteractiveEdit: Story = {
     await expect(popover.querySelector(".calendar-event-dialog__fields")).toBeTruthy();
     await expect(popover.querySelector(".field-label-row--icon")).toBeTruthy();
     await expect(canvas.getByDisplayValue("Lunch")).toBeTruthy();
-    // Shared control chrome: Input / Select / Textarea / LocaleDatePicker / Button (sm).
+    // Dialog norm: sm inputs, ghost dropdowns and dates, a growing notes field.
     await expect(popover.querySelector(".input")).toBeTruthy();
     await expect(popover.querySelector(".input--size-sm")).toBeTruthy();
-    await expect(popover.querySelector(".select-trigger")).toBeTruthy();
-    await expect(popover.querySelector(".select-trigger--size-sm")).toBeTruthy();
-    await expect(popover.querySelector(".textarea")).toBeTruthy();
-    await expect(popover.querySelector(".control-surface.locale-date-picker")).toBeTruthy();
+    await expect(popover.querySelector(".collection-ghost-select")).toBeTruthy();
+    await expect(
+      popover.querySelector(".collection-ghost-select.locale-date-picker--ghost"),
+    ).toBeTruthy();
+    await expect(popover.querySelector("textarea.calendar-event-dialog__notes")).toBeTruthy();
     await expect(popover.querySelector(".control-surface--size-sm")).toBeTruthy();
     const remove = canvas.getByRole("button", { name: defaultCalendarLabels.delete });
     await expect(remove.className).toContain("button--severity-danger");
@@ -158,8 +159,9 @@ export const MeetJoin: Story = {
     const join = canvas.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin });
     const remove = canvas.getByRole("button", { name: defaultCalendarLabels.delete });
     await expect(join.className).toContain("button--variant-primary");
-    const primary = join.closest(".calendar-event-details-popover__footer-primary");
-    const actions = remove.closest(".calendar-event-details-popover__footer-actions");
+    // Join leads the footer row; Delete sits at its end.
+    const primary = join.closest(".ui-modal-footer__start");
+    const actions = remove.closest(".ui-modal-footer__end");
     await expect(primary).toBeTruthy();
     await expect(actions).toBeTruthy();
     await expect(

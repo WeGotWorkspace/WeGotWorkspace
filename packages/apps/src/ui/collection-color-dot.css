@@ -1,0 +1,7 @@
+@import "../styles.css" reference;
+
+/* A collection (notebook, address book, list, calendar) in its own colour, as in the sidebar. */
+.collection-color-dot {
+  @apply block size-2 shrink-0 rounded-full;
+  background-color: var(--collection-row-color, var(--workspace-foreground));
+}

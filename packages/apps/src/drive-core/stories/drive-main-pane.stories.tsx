@@ -103,7 +103,7 @@ export const ListView: Story = {
   args: { preset: "default", viewMode: "list" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("table")).toBeInTheDocument();
+    await expect(canvas.getByRole("grid")).toBeInTheDocument();
     const studioAssets = canvas.getByText("Studio Assets");
     await userEvent.click(studioAssets);
     await expect(studioAssets.closest("tr")).toHaveClass(/drive-list-row--selected/);

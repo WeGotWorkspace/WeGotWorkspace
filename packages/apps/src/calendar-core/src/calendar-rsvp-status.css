@@ -1,7 +1,5 @@
 /*
- * RSVP / participant chip tones. Sets `--tag-*` (legacy marks) and
- * `--user-chip-*` (UserChip fill + border) so the whole chip washes, not only
- * the avatar circle.
+ * RSVP tones: `--tag-bg` / `--tag-fg` on the tag (participant rows, RSVP select).
  */
 .calendar-rsvp-status--accepted,
 .calendar-invitees-rsvp-tag--accepted,
@@ -11,9 +9,6 @@
   /* Ink mixed toward the foreground so labels clear AA on the green wash. */
   --tag-fg: color-mix(in oklab, var(--color-success) 55%, var(--workspace-foreground));
   --tag-bg: color-mix(in oklab, var(--color-success) 18%, var(--workspace-surface));
-  --user-chip-fg: color-mix(in oklab, var(--color-success) 55%, var(--workspace-foreground));
-  --user-chip-bg: color-mix(in oklab, var(--color-success) 18%, var(--workspace-surface));
-  --user-chip-border: color-mix(in oklab, var(--color-success) 42%, transparent);
 }
 
 .calendar-rsvp-status--tentative,
@@ -22,9 +17,6 @@
   /* Maybe / tentative = app accent wash (same purple as selected Maybe RSVP thumb). */
   --tag-fg: var(--workspace-accent-strong, var(--workspace-accent));
   --tag-bg: color-mix(in oklab, var(--workspace-accent) 18%, var(--workspace-surface));
-  --user-chip-fg: var(--workspace-accent-strong, var(--workspace-accent));
-  --user-chip-bg: color-mix(in oklab, var(--workspace-accent) 18%, var(--workspace-surface));
-  --user-chip-border: color-mix(in oklab, var(--workspace-accent) 42%, transparent);
 }
 
 .calendar-rsvp-status--declined,
@@ -32,20 +24,10 @@
 .calendar-rsvp-select--decline.calendar-rsvp-select--selected {
   --tag-fg: color-mix(in oklab, var(--color-error) 75%, var(--workspace-foreground));
   --tag-bg: color-mix(in oklab, var(--color-error) 18%, var(--workspace-surface));
-  --user-chip-fg: color-mix(in oklab, var(--color-error) 75%, var(--workspace-foreground));
-  --user-chip-bg: color-mix(in oklab, var(--color-error) 18%, var(--workspace-surface));
-  --user-chip-border: color-mix(in oklab, var(--color-error) 42%, transparent);
 }
 
 .calendar-invitees-status-mark--pending,
 .calendar-invitees-status-mark--delegated {
-  /* Dark on white/transparent — no gray wash. */
+  /* No answer yet: the neutral tag wash (no hue). */
   --tag-fg: var(--workspace-foreground);
-  --tag-bg: transparent;
-  --user-chip-fg: var(--workspace-foreground);
-  --user-chip-bg: transparent;
-  --user-chip-border: var(
-    --control-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 22%, transparent)
-  );
 }

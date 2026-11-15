@@ -14,7 +14,6 @@ import {
   CALENDAR_SEARCH_PAGE_SIZE,
   calendarSearchPageStart,
   calendarSearchRange,
-  formatCalendarSearchScopeLabel,
   expandSearchOccurrences,
   matchCalendarOccurrences,
   searchCalendarEvents,
@@ -696,17 +695,5 @@ describe("searchOccurrencesToEngineMap", () => {
     expect(map.get("design-review::2026-08-26")?.data.summary).toBe("Design review");
     expect(map.get("design-review::2026-08-26")?.data.location).toBe("Room 4");
     expect(map.get("design-review::2026-08-26")?.data.end?.toString()).toBe("2026-08-26T11:00:00");
-  });
-});
-
-describe("formatCalendarSearchScopeLabel", () => {
-  it("formats the searched window as month+year bounds", () => {
-    expect(
-      formatCalendarSearchScopeLabel(
-        "{start} – {end}",
-        { start: "2025-08-01T00:00:00", end: "2028-08-01T00:00:00" },
-        "en-US",
-      ),
-    ).toBe("Aug 2025 – Aug 2028");
   });
 });

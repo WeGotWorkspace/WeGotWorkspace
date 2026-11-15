@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
@@ -67,8 +67,20 @@ async function renderCalendarApp(initialPath: string) {
   const router = createWeGotWorkspaceRouter({ mode: "mock", history });
   await router.load();
   render(<RouterProvider router={router} />);
-  await screen.findByRole("combobox", { name: "Calendar view" });
+  await screen.findByRole("button", { name: /^View mode:/ });
   return { history, router };
+}
+
+/** The range title's menu (period views, then Today). */
+function titleMenuTrigger(): HTMLElement {
+  return within(screen.getByRole("heading", { level: 2 })).getByRole("button");
+}
+
+/** Opens a header dropdown and picks `name` from it. */
+async function pickFromMenu(trigger: HTMLElement, name: string) {
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  fireEvent.click(within(await screen.findByRole("menu")).getByText(name));
 }
 
 describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
@@ -77,43 +89,40 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     mockDomApis();
   });
 
-  it("changes the router path when the user picks Week in the ViewHeader select", async () => {
+  it("changes the router path when the user picks Week in the range title's menu", async () => {
     const { history } = await renderCalendarApp("/calendar/month/2026-08-17");
     expect(history.location.pathname).toBe("/calendar/month/2026-08-17");
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Calendar view" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Week" }));
+    await pickFromMenu(titleMenuTrigger(), "Week");
 
     await waitFor(() => {
       expect(history.location.pathname).toBe("/calendar/week/2026-08-17");
     });
   });
 
-  it("stays interactive after switching from day to week in the ViewHeader select", async () => {
+  it("stays interactive after switching from day to week in the range title's menu", async () => {
     const { history } = await renderCalendarApp("/calendar/day/2026-08-17");
     expect(history.location.pathname).toBe("/calendar/day/2026-08-17");
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Calendar view" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Week" }));
+    await pickFromMenu(titleMenuTrigger(), "Week");
 
     await waitFor(() => {
       expect(history.location.pathname).toBe("/calendar/week/2026-08-17");
     });
 
-    const viewSelect = screen.getByRole("combobox", { name: "Calendar view" });
-    expect(viewSelect.getAttribute("aria-disabled")).not.toBe("true");
-    fireEvent.click(viewSelect);
-    fireEvent.click(await screen.findByRole("option", { name: "Month" }));
+    const trigger = titleMenuTrigger();
+    expect(trigger.hasAttribute("disabled")).toBe(false);
+    await pickFromMenu(trigger, "Month");
 
     await waitFor(() => {
       expect(history.location.pathname).toBe("/calendar/month/2026-08-17");
     });
   });
 
-  it("changes the router path when the user clicks List, Next, and Today", async () => {
+  it("changes the router path when the user picks List, then Next, Previous and Today", async () => {
     const { history } = await renderCalendarApp("/calendar/month/2026-08-17");
 
-    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+    await pickFromMenu(screen.getByRole("button", { name: /^View mode:/ }), "List view");
     await waitFor(() => {
       expect(history.location.pathname).toBe("/calendar/list/month/2026-08-17");
     });
@@ -128,7 +137,8 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Today" }).at(-1)!);
+    // Today sits in the range title's menu.
+    await pickFromMenu(titleMenuTrigger(), "Today");
     // "Today" anchors on the real current date (local), which may coincide with
     // the 2026-09-01 anchor reached via "Next" — assert the exact target instead.
     const now = new Date();
@@ -154,18 +164,19 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     });
   });
 
-  it("writes ?q= after the ViewHeader debounce and hydrates it on load", async () => {
-    const { history } = await renderCalendarApp("/calendar/week/2026-08-17");
+  it("writes ?q= after the ViewHeader debounce and hydrates it on load (list mode)", async () => {
+    // Search lives in list mode; the grid has no search field.
+    const { history } = await renderCalendarApp("/calendar/list/week/2026-08-17");
     fireEvent.change(screen.getByPlaceholderText(defaultCalendarLabels.searchPlaceholder), {
       target: { value: "standup" },
     });
     await waitFor(() => {
-      expect(history.location.pathname).toBe("/calendar/week/2026-08-17");
+      expect(history.location.pathname).toBe("/calendar/list/week/2026-08-17");
       expect(history.location.search).toBe("?q=standup");
     });
 
     cleanup();
-    const reloaded = await renderCalendarApp("/calendar/week/2026-08-17?q=standup");
+    const reloaded = await renderCalendarApp("/calendar/list/week/2026-08-17?q=standup");
     expect(reloaded.history.location.search).toBe("?q=standup");
     expect(screen.getByRole("heading", { name: defaultCalendarLabels.searchTitle })).toBeTruthy();
     expect(

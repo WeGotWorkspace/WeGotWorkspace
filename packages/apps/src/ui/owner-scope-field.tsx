@@ -1,13 +1,12 @@
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
   defaultOwnerScopeLabels,
   PERSONAL_SCOPE_VALUE,
   type OwnerScopeFieldLabels,
   type OwnerScopeGroupOption,
 } from "@/ui/owner-scope-labels";
-
-import "./owner-scope-field.css";
 
 export {
   defaultOwnerScopeLabels,
@@ -40,12 +39,10 @@ export function OwnerScopeField({
   const labels = labelsProp ?? defaultOwnerScopeLabels;
 
   return (
-    <FieldLabelRow label={labels.label} htmlFor={id}>
+    <FieldLabelRow layout="inline" label={labels.label} htmlFor={id}>
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger id={id} size="sm" className="owner-scope-field__trigger" disabled={disabled}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
+        <CollectionGhostSelectTrigger id={id} label={<SelectValue />} disabled={disabled} />
+        <SelectContent align="end">
           <SelectItem value={PERSONAL_SCOPE_VALUE}>
             {labels.personal(personalOwnerLabel)}
           </SelectItem>

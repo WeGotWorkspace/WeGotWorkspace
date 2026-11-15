@@ -1,0 +1,6 @@
+@import "../../styles.css" reference;
+
+/* Without a row caption the labeled picker spans the dialog. */
+.notes-change-notebook-dialog__picker.notes-notebook-select {
+  @apply w-full;
+}

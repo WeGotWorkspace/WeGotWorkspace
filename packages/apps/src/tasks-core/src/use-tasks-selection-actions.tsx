@@ -5,7 +5,8 @@ import type { WorkspaceActionButton } from "@/hooks/workspace-list-controller-ty
 import type { ConfirmDialogRequest } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { canWriteTaskList, isTaskCompleted } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList } from "@/lib/models/task-lists";
+import { isTaskCompleted } from "@/lib/models/task-fields";
 import type { TasksListState } from "@/tasks-core/src/use-tasks-list";
 
 type UseTasksSelectionActionsArgs = {

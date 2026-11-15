@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/button/src/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/ui/dialog";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import type { RecurrenceScopeChoice } from "@/calendar-core/src/calendar-recurrence-scope";
 import "./calendar-event-dialog.css";
@@ -124,15 +131,12 @@ export function CalendarRecurrenceScopeDialog({
               {labels.recurrenceScopeAllInstances}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            className="calendar-recurrence-scope__action"
-            onClick={() => close(null)}
-          >
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => close(null)}>
             {labels.cancel}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -14,10 +14,9 @@ import { listContactGroups } from "@/contacts-core/src/contacts-group-utils";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import {
   CONTACT_CHANNEL_DEFAULT_CONTEXT,
-  contactCardToEditDraft,
   emptyContactEditDraft,
-  newContactMapId,
 } from "@/contacts-core/src/contacts-edit-utils";
+import { contactCardToEditDraft, newContactMapId } from "@/lib/models/contacts-edit-draft";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
 function ContactsDetailPaneHarness({

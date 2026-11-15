@@ -89,6 +89,25 @@ export async function openNotesTab(
 }
 
 /**
+ * Opens the notebook dropdown above the open note's title (#1945) and picks `notebook`.
+ * The dropdown is named after the notebook the note is in now (`from`).
+ */
+export async function pickNotebook(tab: Tab, from: string, notebook: string): Promise<void> {
+  await tab.getByRole("combobox", { name: from, exact: true }).click();
+  await tab.getByRole("option", { name: notebook, exact: true }).click();
+}
+
+/** Moves the open note to `notebook`, confirming the move when the app asks. */
+export async function moveOpenNote(tab: Tab, from: string, notebook: string): Promise<void> {
+  await pickNotebook(tab, from, notebook);
+  await sleep(500);
+  const dialog = tab.getByRole("alertdialog").or(tab.getByRole("dialog"));
+  if (await dialog.count())
+    await dialog.first().getByRole("button", { name: /move/i }).first().click();
+  await sleep(800);
+}
+
+/**
  * Load Notes and open a note's editor once before the first case. A cold Vite
  * dev server compiles each module on its first request and may re-bundle deps
  * and reload the page, so without this the first case pays for that mid-action.

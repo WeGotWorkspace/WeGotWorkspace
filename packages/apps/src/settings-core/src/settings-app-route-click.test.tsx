@@ -145,23 +145,25 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
   it("opens Tasks default-collection settings from a deep link", async () => {
     await renderSettingsApp("/settings/tasks");
     expect(screen.getByRole("button", { name: "Tasks" })).toBeTruthy();
-    expect(await screen.findByRole("button", { name: /Default list: Inbox/i })).toBeTruthy();
+    expect((await screen.findByRole("combobox", { name: "Default list" })).textContent).toContain(
+      "Inbox",
+    );
   });
 
   it("opens Contacts default-collection settings from a deep link", async () => {
     await renderSettingsApp("/settings/contacts");
     expect(screen.getByRole("button", { name: "Contacts" })).toBeTruthy();
     expect(
-      await screen.findByRole("button", { name: /Default address book: Personal/i }),
-    ).toBeTruthy();
+      (await screen.findByRole("combobox", { name: "Default address book" })).textContent,
+    ).toContain("Personal");
   });
 
   it("opens Notes default-collection settings from a deep link", async () => {
     await renderSettingsApp("/settings/notes");
     expect(screen.getByRole("button", { name: "Notes" })).toBeTruthy();
     expect(
-      await screen.findByRole("button", { name: /Default notebook: The Journal/i }),
-    ).toBeTruthy();
+      (await screen.findByRole("combobox", { name: "Default notebook" })).textContent,
+    ).toContain("The Journal");
   });
 
   it("does not snap back to Settings after navigating to another app", async () => {

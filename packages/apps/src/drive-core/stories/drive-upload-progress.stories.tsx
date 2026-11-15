@@ -220,7 +220,7 @@ export const ListView: Story = {
   render: () => <FolderHarness viewMode="list" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole("table")).toBeInTheDocument();
+    await expect(await canvas.findByRole("grid")).toBeInTheDocument();
     await expectRings(canvasElement, 6);
     await expect(canvas.getByText(/Waiting for your answer/)).toBeInTheDocument();
     await expect(canvas.getByText(/Not saved on this device/)).toBeInTheDocument();

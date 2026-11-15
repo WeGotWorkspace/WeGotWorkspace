@@ -1,6 +1,6 @@
 import { useCallback, type MutableRefObject } from "react";
 import type { createContactSaveDebouncer } from "@/contacts-core/src/contacts-edit-autosave";
-import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
+import type { ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import type { ContactSynced } from "@/contacts-core/src/use-contacts-remote-merge";
 
 type UseContactsAutosaveLifecycleArgs = {

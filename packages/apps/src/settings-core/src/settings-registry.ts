@@ -5,7 +5,7 @@ import type {
   SettingsGroup,
   SettingsPanelGroup,
   SettingsPanelId,
-} from "@/settings-core/src/settings-types";
+} from "@/lib/models/settings-types";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import type { SettingsProfileFormController } from "@/settings-core/src/use-settings-profile-form";
 

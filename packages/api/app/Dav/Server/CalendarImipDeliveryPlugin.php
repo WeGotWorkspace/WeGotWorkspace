@@ -7,7 +7,6 @@ namespace App\Dav\Server;
 use App\Services\Calendars\CalendarDavImipDelivery;
 use App\Services\Calendars\CalendarPrincipalAddresses;
 use Sabre\CalDAV\Schedule\IMipPlugin;
-use Sabre\DAV\Auth\Plugin as AuthPlugin;
 use Sabre\DAV\Server;
 use Sabre\VObject\ITip\Message;
 
@@ -52,7 +51,7 @@ final class CalendarImipDeliveryPlugin extends IMipPlugin
         if ($this->deliveredLocally($iTipMessage) || ! $this->isExternalRecipient($iTipMessage)) {
             return;
         }
-        $username = $this->currentUsername();
+        $username = DavCurrentUsername::of($this->davServer);
         if ($username === null) {
             return;
         }
@@ -70,21 +69,5 @@ final class CalendarImipDeliveryPlugin extends IMipPlugin
 
         return strtolower((string) parse_url($recipient, PHP_URL_SCHEME)) === 'mailto'
             && $this->addresses->principalForMailto($recipient) === null;
-    }
-
-    /** The signed-in DAV user: the iMIP caps count against them, as on the web app. */
-    private function currentUsername(): ?string
-    {
-        $auth = $this->davServer?->getPlugin('auth');
-        if (! $auth instanceof AuthPlugin) {
-            return null;
-        }
-        $principal = (string) $auth->getCurrentPrincipal();
-        if (! str_starts_with($principal, 'principals/')) {
-            return null;
-        }
-        $username = substr($principal, strlen('principals/'));
-
-        return $username === '' || str_contains($username, '/') ? null : $username;
     }
 }

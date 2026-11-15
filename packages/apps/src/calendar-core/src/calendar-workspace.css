@@ -35,8 +35,6 @@
   /* Now-line, time label, and today day-number pills (day, week, month, year). */
   --lc-higlight-color: var(--color-error);
   --lc-today-on-color: var(--workspace-accent-foreground);
-  /* Grid chrome follows the workspace pair — not light-dark() slate. */
-  --lc-grid-base-color: var(--workspace-foreground);
   --lc-weekend-day-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-surface-bg: var(--workspace-surface);
 
@@ -50,93 +48,40 @@
   --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
-/* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */
-.calendar-workspace .calendar-header-nav,
-.calendar-workspace .calendar-header-actions {
-  @apply flex items-center gap-1;
+/* List: the grid/list menu + prev/next are the header's actions (end of the row). Grid:
+ * they follow the title (titleSuffix), the inbox last. The period views and Today are in
+ * the title's menu. One row on every width; narrow headers show the short range. */
+.calendar-workspace .calendar-header-nav {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+/* Grid: the title fills its column, so the controls after it sit at the column's end. */
+.calendar-workspace .workspace-app-layout__main-header .view-header__title-block {
+  @apply flex-1;
+}
+
+.calendar-workspace .workspace-app-layout__main-header .view-header__title-suffix {
+  margin-inline-start: auto;
 }
 
 /*
- * Small viewports: two-row header matching the calendar mock.
- *   [☰] [Week] [grid|list]              [inbox]
- *   [1–7 Feb 2027]                      [<] [>] [today]
- * Search leaves the actions row (CSS FAB, bottom-right) at the sidebar
- * overlay floor (1159px / `--breakpoint-sidebar`), not this stacked-header
- * 40rem floor. Viewport media (not a container query): flattening `__main`
- * with `display: contents` would otherwise drop the query container.
+ * Wide grid header: the title column is as wide as list mode's header (list column -
+ * its padding - sidebar toggle - gap), so ‹ › land where they do in list mode and
+ * switching between grid and list moves nothing. The inbox stays at the far end.
  */
-@media (max-width: 40rem) {
-  .calendar-workspace .view-header {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "toggle actions trailing"
-      "title title leading";
-    align-items: center;
-    column-gap: 0.25rem;
-    row-gap: 0.75rem;
+@media (width >= 48rem) {
+  .calendar-workspace .workspace-app-layout__main-header .view-header__title-row {
+    grid-template-columns:
+      calc(
+        var(--workspace-list-pane-width) - 2 * 1.5rem - var(--workspace-header-control-height) -
+          0.75rem
+      )
+      minmax(0, 1fr);
   }
 
-  .calendar-workspace .view-header__sidebar-toggle {
-    grid-area: toggle;
-  }
-
-  .calendar-workspace .view-header__main,
-  .calendar-workspace .view-header__title-row,
-  .calendar-workspace .view-header__title-cluster,
-  .calendar-workspace .view-header__end {
-    display: contents;
-  }
-
-  .calendar-workspace .view-header__actions {
-    grid-area: actions;
-    justify-self: start;
-  }
-
-  .calendar-workspace .view-header__title-block {
-    grid-area: title;
-    @apply min-w-0;
-  }
-
-  .calendar-workspace .view-header__title {
-    @apply overflow-visible whitespace-normal text-xl leading-tight;
-    text-overflow: unset;
-  }
-
-  .calendar-workspace .view-header__title-leading {
-    grid-area: leading;
+  .calendar-workspace .workspace-app-layout__main-header .view-header__end {
     justify-self: end;
   }
-
-  .calendar-workspace .view-header__title-trailing {
-    grid-area: trailing;
-    justify-self: end;
-  }
-
-  /* Keep Week select shrinkable; height stays control md (36px) like IconButton
-   * / ViewModeToggle. Do not compact a subset of header chrome below md. */
-  .calendar-workspace .calendar-header-actions .calendar-view-select {
-    @apply min-w-0;
-  }
-
-  .calendar-workspace
-    .view-header__title:has(.view-header__title-compact)
-    .view-header__title-full {
-    @apply hidden;
-  }
-
-  .calendar-workspace .view-header__title-compact {
-    @apply inline;
-  }
-}
-
-/* Actions cluster ↔ inbox: same gap as sidebar toggle ↔ title/nav (`.view-header`). */
-.calendar-workspace .view-header__end {
-  @apply gap-3;
-}
-
-.calendar-workspace .calendar-header-nav {
-  @apply shrink-0;
 }
 
 .calendar-workspace .workspace-app-layout__main {
@@ -159,12 +104,6 @@
 
 .calendar-workspace .calendar-invitations-trigger:not([data-count])::after {
   display: none;
-}
-
-.calendar-workspace .calendar-header-actions .calendar-view-select {
-  width: auto;
-  min-width: 7rem;
-  background-color: var(--input-background);
 }
 
 .calendar-workspace .calendar-sidebar-dot {
@@ -207,12 +146,19 @@
 .calendar-workspace .calendar-main {
   /* Horizontal inset matches `.workspace-app-layout__main-header` (`p-4 md:p-6`,
      `p-3` below 40rem) so grid edges line up with the sidebar toggle and actions.
+     The end and bottom insets are padding inside each view's scroller instead
+     (`--lc-view-inset-*`), so the scrollbar sits at the pane edge, not in the gutter.
      overflow-hidden clips the range-change zoom so scale does not spill into the header.
      min-w-0 keeps the invitations dock from overflowing the flex row. */
-  @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-2 md:px-6;
-  /* Same token the list shadow uses for sticky day headings so the
-     compact FAB can stack above them (`calc(var(--_lc-z-sticky) + 10)`). */
-  --_lc-z-sticky: 30;
+  @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ps-4 pt-2 md:ps-6;
+  --lc-view-inset-inline-end: 1rem;
+  --lc-view-inset-block-end: 1rem;
+}
+
+@media (width >= 48rem) {
+  .calendar-workspace .calendar-main {
+    --lc-view-inset-inline-end: 1.5rem;
+  }
 }
 
 @media (max-width: 40rem) {
@@ -224,25 +170,25 @@
     );
   }
 
-  .calendar-workspace .workspace-app-layout__main-header {
+  /* Grid and list headers alike, so switching modes moves nothing. Tighter gaps keep the
+     one-row header (☰, range, view menu, ‹ ›, inbox) fitting a phone. */
+  .calendar-workspace :is(.workspace-app-layout__main-header, .collection-header) {
     @apply px-3;
   }
 
+  .calendar-workspace :is(.view-header, .view-header__title-row, .view-header__end) {
+    @apply gap-2;
+  }
+
   .calendar-workspace .calendar-main {
-    @apply px-3;
+    @apply ps-3;
+    --lc-view-inset-inline-end: 0.75rem;
   }
 }
 
-/* FAB clearance (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY). */
-@media (max-width: 1159px) {
-  .calendar-workspace .calendar-main {
-    --_lc-list-end-pad: 4.5rem;
-  }
-}
-
-/* Portaled view dropdown sits over the grid; ignore hits so choosing Week
+/* The title's view menu sits over the grid; ignore hits so choosing Week
    cannot click-through onto a weekday header (day-selection → day bounce). */
-.calendar-workspace .calendar-main[data-view-select-open="true"] {
+.calendar-workspace .calendar-main[data-view-menu-open="true"] {
   @apply pointer-events-none;
 }
 
@@ -259,159 +205,13 @@
   min-height: 0;
 }
 
-.calendar-workspace .calendar-main--search {
-  @apply min-h-0;
-}
-
+/* Search results in the list column: the suite list. */
 .calendar-workspace .calendar-search-results {
-  @apply flex min-h-0 flex-1 flex-col;
+  @apply flex min-h-full flex-col;
 }
 
-.calendar-workspace .calendar-search-results--empty {
-  @apply h-full min-h-0;
-}
-
-.calendar-workspace .calendar-search-results__scope {
-  /* Same inline inset as `.agenda-day-heading` (`px-1.5`) so tags line up with
-     day headings / event cards. `.calendar-main` already supplies the pane gutter. */
-  @apply flex shrink-0 flex-wrap items-center gap-1.5 px-1.5 pb-1 pt-3;
-}
-
-.calendar-workspace .calendar-search-results__scroller {
-  /* Parent owns the scrollport (Mail collection-list pattern) so the shared
-     `CollectionListEnd` sentinel sits in the same overflow as the agenda. */
-  @apply min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto;
-}
-
-.calendar-workspace .calendar-search-results--empty .calendar-search-results__scroller {
-  @apply flex flex-col;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.calendar-workspace .calendar-search-results__agenda {
-  @apply block w-full;
-}
-
-/* Embedded host is height:auto. Stretch it so --_lc-list-shell-flex can fill the shell.
-   Plain flex mirrors @apply: Storybook play does not load the Vite Tailwind plugin. */
-.calendar-workspace .calendar-search-results--empty .calendar-search-results__agenda {
-  @apply flex min-h-0 w-full flex-1 flex-col;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  width: 100%;
-  --_lc-list-shell-flex: 1 1 auto;
-}
-
-/*
- * One CollectionSearchInput, two placements (never two tabbable fields):
- * desktop / wide (≥ sidebar dock) = in-flow header field immediately left
- * of the view select; max-width 1159px (SIDEBAR_OVERLAY_MEDIA_QUERY /
- * `--breakpoint-sidebar`) = CSS-repositioned as a bottom-right FAB over
- * `.workspace-app-layout__main`. No footer slab. Height comes from the
- * shared Input search size-md (`--control-height-md` = 36px), matching the view
- * dropdown — no calendar-only height hack.
- */
-.calendar-workspace .calendar-search-host {
-  @apply contents;
-}
-
-.calendar-workspace .calendar-search-dismiss {
-  @apply pointer-events-none invisible;
-}
-
-.calendar-workspace .calendar-search-field {
-  @apply mt-0 w-44 shrink-0;
-}
-
-@media (max-width: 1159px) {
-  .calendar-workspace .calendar-search-field {
-    /* Gutter tokens match `.calendar-main` (`px-4` / `md:px-6` / `px-3` < 40rem).
-       Keep `left: auto` and animate `width` — `width: auto` / `left: auto → length`
-       cannot interpolate, which dropped the expand motion. */
-    --calendar-search-fab-inline-start: max(1rem, env(safe-area-inset-left, 0px));
-    --calendar-search-fab-inline-end: max(1rem, env(safe-area-inset-right, 0px));
-    @apply pointer-events-auto absolute mt-0 size-9 w-9 overflow-hidden rounded-full border shadow-xl backdrop-blur-md;
-    right: var(--calendar-search-fab-inline-end);
-    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
-    left: auto;
-    z-index: calc(var(--_lc-z-sticky, 30) + 10);
-    /* Floating over the grid on a blur; stronger than the shared hairline so the circle still reads. */
-    border-color: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
-    box-shadow:
-      0 1px 2px color-mix(in oklch, var(--workspace-foreground) 10%, transparent),
-      0 10px 28px color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
-    --collection-search-input-color: var(--workspace-foreground);
-  }
-
-  .calendar-workspace .calendar-search-field--expanded {
-    @apply h-9;
-    width: calc(
-      100% - var(--calendar-search-fab-inline-start) - var(--calendar-search-fab-inline-end)
-    );
-  }
-
-  .calendar-workspace .calendar-search-field:not(.calendar-search-field--expanded) {
-    @apply min-w-0 justify-center gap-0 px-0;
-  }
-
-  .calendar-workspace .calendar-search-field:not(.calendar-search-field--expanded) input {
-    @apply absolute inset-0 size-full cursor-pointer opacity-0;
-  }
-
-  .calendar-workspace:has(.calendar-search-field--expanded) .calendar-search-dismiss {
-    @apply pointer-events-auto visible fixed inset-0;
-    z-index: calc(var(--_lc-z-sticky, 30) + 9);
-  }
-
-  .calendar-workspace .calendar-search-field:focus-within {
-    @apply shadow-xl;
-  }
-
-  .calendar-workspace .calendar-search-field:focus-within:has(:focus-visible) {
-    outline: 2px solid color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
-    outline-offset: 1px;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1159px) {
-  .calendar-workspace .calendar-search-field {
-    --calendar-search-fab-inline-start: max(1.5rem, env(safe-area-inset-left, 0px));
-    --calendar-search-fab-inline-end: max(1.5rem, env(safe-area-inset-right, 0px));
-  }
-}
-
-@media (max-width: 40rem) {
-  .calendar-workspace .calendar-search-field {
-    --calendar-search-fab-inline-start: max(0.75rem, env(safe-area-inset-left, 0px));
-    --calendar-search-fab-inline-end: max(0.75rem, env(safe-area-inset-right, 0px));
-  }
-}
-
-@media (max-width: 1159px) and (prefers-reduced-motion: no-preference) {
-  .calendar-workspace .calendar-search-field {
-    @apply duration-300 ease-out transition-[width,padding,box-shadow,background-color];
-  }
-}
-
-/*
- * Compact FAB only: hide while overlay chrome is open so it cannot sit on
- * the sidebar, scrim, or invitations dock/drawer. Same 1159px floor as
- * SIDEBAR_OVERLAY_MEDIA_QUERY; `--panel-open` covers the dock and the
- * portaled SideDrawer (sibling of this root). Isolation keeps leftover
- * z-index below sidebar z-40 / scrim z-30 / Sheet z-50.
- */
-@media (max-width: 1159px) {
-  .calendar-workspace:has(.app-sidebar[data-open="true"]) .calendar-search-field,
-  .calendar-workspace:has(.app-sidebar[data-open="true"]) .calendar-search-dismiss,
-  .calendar-workspace--panel-open .calendar-search-field,
-  .calendar-workspace--panel-open .calendar-search-dismiss {
-    @apply pointer-events-none invisible;
-  }
+.calendar-workspace .calendar-search-results--empty .calendar-event-list {
+  @apply flex-1;
 }
 
 /* Overlay sidebar only (same 1159px floor as SIDEBAR_OVERLAY_MEDIA_QUERY).

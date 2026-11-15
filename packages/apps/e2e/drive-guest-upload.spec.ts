@@ -42,8 +42,8 @@ test.describe("Drive guest upload (live app)", () => {
     await makeDriveFolder(folder);
 
     const dialog = await openFolderShareDialog(page, folder);
-    await dialog.getByRole("switch", { name: "Enable public access" }).click();
-    const linkInput = dialog.getByRole("textbox", { name: "Anyone with the link" });
+    await dialog.getByRole("switch", { name: "Public link" }).click();
+    const linkInput = dialog.getByRole("textbox", { name: "Link" });
     await expect(linkInput).toHaveValue(/\/share\/[^/]+$/, { timeout: 30_000 });
     const url = await linkInput.inputValue();
     const token = url.split("/share/")[1];

@@ -99,7 +99,6 @@ export function SharePrincipalSearchDropdown({
                   <SharePrincipalMark
                     principalType={entry.principalType}
                     displayName={entry.displayName}
-                    principalId={entry.id}
                     size="md"
                     className={
                       entry.principalType === "group"

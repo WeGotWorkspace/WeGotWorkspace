@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   applyPhpTraitLineCounts,
-  baselineGrowthErrors,
+  approvalMarkers,
+  classifyBaselineGrowth,
   classifyGitShowBaselineStderr,
   countLines,
   evaluate,
@@ -11,6 +12,7 @@ import {
   FILE_SIZE_RULE,
   growthBaseRefFromArgs,
   nextBaseline,
+  rebaselineReason,
   rebaselineRows,
 } from "./file-size-ratchet.mjs";
 
@@ -224,34 +226,84 @@ test("evaluate with an explicit ceiling still enforces that ceiling", () => {
   assert.match(errors[0], /100 lines and not on the baseline/);
 });
 
-test("baselineGrowthErrors rejects a higher count", () => {
+test("growth without a marker is blocked", () => {
   const base = [row("packages/apps/src/big.ts", 900)];
   const head = [row("packages/apps/src/big.ts", 910)];
-  const errors = baselineGrowthErrors(base, head);
-  assert.equal(errors.length, 1);
-  assert.match(errors[0], /baseline grew from 900 to 910/);
+  const { blocked, approved } = classifyBaselineGrowth(base, head);
+  assert.deepEqual(approved, []);
+  assert.equal(blocked.length, 1);
+  assert.match(blocked[0], /baseline grew from 900 to 910/);
 });
 
-test("baselineGrowthErrors rejects a new path", () => {
-  const errors = baselineGrowthErrors([], [row("packages/apps/src/new.ts", 900)]);
-  assert.equal(errors.length, 1);
-  assert.match(errors[0], /new baseline row/);
+test("a new row without a marker is blocked", () => {
+  const { blocked, approved } = classifyBaselineGrowth([], [row("packages/apps/src/new.ts", 900)]);
+  assert.deepEqual(approved, []);
+  assert.equal(blocked.length, 1);
+  assert.match(blocked[0], /new baseline row/);
 });
 
-test("baselineGrowthErrors allows a lower count", () => {
+test("growth whose reason gains approved #<issue> passes", () => {
   const base = [row("packages/apps/src/big.ts", 900)];
-  const head = [row("packages/apps/src/big.ts", 850)];
-  assert.deepEqual(baselineGrowthErrors(base, head), []);
+  const head = [row("packages/apps/src/big.ts", 910, "grandfathered; approved #1631")];
+  const { blocked, approved } = classifyBaselineGrowth(base, head);
+  assert.deepEqual(blocked, []);
+  assert.equal(approved.length, 1);
+  assert.match(approved[0], /approved #1631/);
 });
 
-test("baselineGrowthErrors allows a deleted row", () => {
-  const base = [row("packages/apps/src/gone.ts", 900)];
-  assert.deepEqual(baselineGrowthErrors(base, []), []);
+test("a new row with approved #<issue> passes", () => {
+  const head = [row("packages/apps/src/new.ts", 900, "approved #42 split after the beta")];
+  assert.deepEqual(classifyBaselineGrowth([], head).blocked, []);
 });
 
-test("baselineGrowthErrors allows identical rows", () => {
-  const rows = [row("packages/apps/src/big.ts", 900)];
-  assert.deepEqual(baselineGrowthErrors(rows, rows), []);
+test("a marker already on the base row does not approve new growth", () => {
+  const base = [row("packages/apps/src/big.ts", 900, "grandfathered; approved #1631")];
+  const head = [row("packages/apps/src/big.ts", 950, "grandfathered; approved #1631")];
+  const { blocked } = classifyBaselineGrowth(base, head);
+  assert.equal(blocked.length, 1);
+});
+
+test("a marker that only mentions an issue without approval does not count", () => {
+  const base = [row("packages/apps/src/big.ts", 900)];
+  const head = [row("packages/apps/src/big.ts", 910, "see #1631")];
+  assert.equal(classifyBaselineGrowth(base, head).blocked.length, 1);
+});
+
+test("lowered, deleted, and unchanged rows pass", () => {
+  const base = [
+    row("packages/apps/src/lower.ts", 900),
+    row("packages/apps/src/gone.ts", 900),
+    row("packages/apps/src/same.ts", 900),
+  ];
+  const head = [row("packages/apps/src/lower.ts", 850), row("packages/apps/src/same.ts", 900)];
+  assert.deepEqual(classifyBaselineGrowth(base, head), { blocked: [], approved: [] });
+});
+
+test("rebaseline stamps raised rows with a marker check-growth accepts", () => {
+  const counts = new Map([
+    ["packages/apps/src/grew.ts", 920],
+    ["packages/apps/src/shrunk.ts", 850],
+  ]);
+  const rows = [row("packages/apps/src/grew.ts", 900), row("packages/apps/src/shrunk.ts", 900)];
+  const { rows: next } = rebaselineRows(counts, rows, {
+    ceiling,
+    why: "class lines counted; tabs\tand;semicolons",
+    date: "2026-11-12",
+  });
+  assert.deepEqual(next, [
+    row("packages/apps/src/grew.ts", 920, "grandfathered; rebaseline 2026-11-12 class lines counted tabs and semicolons"),
+    row("packages/apps/src/shrunk.ts", 850),
+  ]);
+  assert.deepEqual(classifyBaselineGrowth(rows, next).blocked, []);
+});
+
+test("approvalMarkers finds both marker kinds and stops at a semicolon", () => {
+  assert.deepEqual(approvalMarkers("grandfathered; approved #12; rebaseline 2026-11-12 rule change"), [
+    "approved #12",
+    "rebaseline 2026-11-12 rule change",
+  ]);
+  assert.deepEqual(approvalMarkers("grandfathered"), []);
+  assert.equal(rebaselineReason("", "x", "2026-11-12"), "rebaseline 2026-11-12 x");
 });
 
 test("growthBaseRefFromArgs skips a leading pnpm double-dash", () => {

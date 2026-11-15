@@ -3,7 +3,7 @@ import { installerCopy as copy } from "@/installer-core/src/installer-copy";
 import { InstallerHeadline } from "@/installer-core/src/installer-headline";
 import { InstallerLayout } from "@/installer-core/src/installer-layout";
 import { InstallerStatusDot } from "@/installer-core/src/installer-status-dot";
-import type { InstallerServerCheck } from "@/installer-core/src/installer-types";
+import type { InstallerServerCheck } from "@/lib/models/installer-types";
 
 export type InstallerAttentionPageProps = {
   checks: InstallerServerCheck[];

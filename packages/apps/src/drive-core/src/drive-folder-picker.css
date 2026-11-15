@@ -10,20 +10,32 @@
 }
 
 .destination-picker__view-toggle {
-  @apply shrink-0 pr-3;
+  @apply shrink-0;
 }
 
-.destination-picker--file-select .destination-picker__body {
+/* `.drive-workspace` clips sideways for the app; here the list reaches past the frame. */
+.destination-picker.drive-workspace {
+  overflow: visible;
+}
+
+.destination-picker.drive-workspace .destination-picker__body {
   @apply overflow-y-auto;
 }
 
-/* Compact listing padding in the dialog — do not retouch tile/grid chrome. No sidebar
- * button to line up with here: the top takes the same inset as the sides. */
-.destination-picker--file-select
+/* In a dialog the listing runs to the panel's edges: no side padding of its own.
+ * Tile/grid chrome stays as is. */
+.destination-picker.drive-workspace
   .destination-picker__body
   :is(.drive-grid-layout, .drive-list-view) {
-  --drive-browser-inset: 0.75rem;
-  --drive-browser-inset-top: var(--drive-browser-inset);
+  /* A length, not a bare 0: the header's frost layer adds it to `100cqw`. */
+  --drive-browser-inset: 0px;
+  --drive-browser-inset-top: 0.75rem;
+}
+
+/* The header row brings its own room: the list starts at the panel's top edge (the
+ * table's 2px row spacing is taken back too). */
+.destination-picker.drive-workspace .destination-picker__body .drive-list-view {
+  --drive-browser-inset-top: 0.125rem;
 }
 
 /*

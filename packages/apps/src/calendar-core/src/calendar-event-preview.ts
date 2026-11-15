@@ -16,10 +16,7 @@ import {
   type CalendarEventFormValue,
 } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
-import {
-  formatUnmatchedAlertOffset,
-  matchAlertOffsetPreset,
-} from "@/calendar-core/src/calendar-alerts";
+import { formatUnmatchedAlertOffset, matchAlertOffsetPreset } from "@/lib/calendar/calendar-alerts";
 import {
   formAnchoredToOccurrence,
   splitOccurrenceKey,
@@ -455,6 +452,25 @@ export function detailsPopoverAnchorOrigin(
  */
 export function detailsPopoverShouldDock(origin?: CalendarEventSelectionOrigin): boolean {
   return origin != null && originLooksLikeMonthCell(origin);
+}
+
+/**
+ * Where the details popover sits: docked on a compact-month cell (wide layouts),
+ * otherwise anchored to the card's clamped box, or mid-screen without a card.
+ */
+export function detailsPopoverPlacement(
+  origin: CalendarEventSelectionOrigin | undefined,
+  { isMobile, dir }: { isMobile: boolean; dir: "ltr" | "rtl" },
+): { docked: boolean; anchorStyle: { left: number; top: number; width: number; height: number } } {
+  const docked = !isMobile && detailsPopoverShouldDock(origin);
+  if (docked) return { docked, anchorStyle: { left: 0, top: 0, width: 0, height: 0 } };
+  if (!origin) {
+    const left = Math.round(globalThis.innerWidth / 2);
+    const top = Math.round(globalThis.innerHeight * 0.28);
+    return { docked, anchorStyle: { left, top, width: 0, height: 0 } };
+  }
+  const { left, top, width, height } = detailsPopoverAnchorOrigin(origin, dir);
+  return { docked, anchorStyle: { left, top, width, height } };
 }
 
 /** Shared `event-selected` decode for CalendarSurface and search list hosts. */

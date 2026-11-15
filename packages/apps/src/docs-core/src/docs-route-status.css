@@ -8,8 +8,6 @@
 
 /* Most lookups answer at once: only show the notice when one is slow. */
 .docs-route-status--loading {
-  @apply text-sm;
-  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   animation: docs-route-status-appear 0s linear 400ms both;
 }
 

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { CalendarDays, Globe, Sun } from "lucide-react";
+import { CalendarDays, Sun } from "lucide-react";
+import { useId, useMemo, useState, type ComponentProps } from "react";
 import type { CalendarEventFormValue } from "@/calendar-core/src/calendar-editor-model";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import {
@@ -8,10 +8,11 @@ import {
   eventTimeZoneSelectValue,
 } from "@/calendar-core/src/calendar-timezones";
 import type { ControlSize } from "@/ui/control-size";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import { FieldLabelRow, useFieldLabelMode } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
 
 export type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
@@ -28,6 +29,39 @@ export type CalendarEventFormWhenProps = {
   onFieldChange: CalendarEventFormFieldChange;
 };
 
+/**
+ * A time field that applies what you type when you leave it (or press Enter). The form
+ * keeps the end after the start, so applying every keystroke would fight the typing:
+ * "16:45" passes through "01:45" and the end would be pushed back each time.
+ */
+function EventTimeInput({
+  value,
+  onCommit,
+  ...props
+}: Omit<ComponentProps<typeof Input>, "type" | "value" | "onChange" | "onBlur"> & {
+  value: string;
+  onCommit: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft !== null && draft !== value && draft !== "") onCommit(draft);
+    setDraft(null);
+  };
+  return (
+    <Input
+      {...props}
+      type="time"
+      variant="ghost"
+      value={draft ?? value}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") commit();
+      }}
+    />
+  );
+}
+
 /** Start, end, all-day, and time zone rows for the shared event form. */
 export function CalendarEventFormWhen({
   form,
@@ -37,124 +71,113 @@ export function CalendarEventFormWhen({
   disabled,
   onFieldChange,
 }: CalendarEventFormWhenProps) {
+  const allDayId = useId();
+  const timeZoneId = useId();
   const timeZoneOptions = useMemo(
     () => eventTimeZoneOptions(locale, labels.eventTimeZoneLocalLabel, form.timeZone),
     [form.timeZone, labels.eventTimeZoneLocalLabel, locale],
   );
 
+  // Icon rows (the popover): the time zone sits in the All day row, after the switch.
+  const iconRows = useFieldLabelMode() === "icon";
+  const allDaySwitch = (
+    <Switch
+      id={allDayId}
+      checked={form.allDay}
+      onCheckedChange={(checked) => onFieldChange("allDay", checked === true)}
+      disabled={disabled}
+    />
+  );
+  const timeZoneSelect = (
+    <Select
+      value={eventTimeZoneSelectValue(form.timeZone)}
+      onValueChange={(value) => onFieldChange("timeZone", eventTimeZoneFromSelectValue(value))}
+      disabled={disabled}
+    >
+      <CollectionGhostSelectTrigger
+        id={timeZoneId}
+        aria-label={iconRows ? labels.eventTimeZoneLabel : undefined}
+        label={<SelectValue />}
+      />
+      <SelectContent align={iconRows ? "start" : "end"} className="max-h-72">
+        {timeZoneOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  /** The Starts or Ends row: a date, then the time unless the event is all day. */
+  const dateTimeRow = (edge: "start" | "end") => {
+    const label = edge === "start" ? labels.eventStartLabel : labels.eventEndLabel;
+    const dateField = edge === "start" ? "startDate" : "endDate";
+    const timeField = edge === "start" ? "startTime" : "endTime";
+    return (
+      <FieldLabelRow
+        className={`calendar-event-dialog__field calendar-event-dialog__field--${edge}s`}
+        layout="inline"
+        label={label}
+        labelIcon={<CalendarDays aria-hidden />}
+      >
+        <div className="calendar-event-dialog__datetime">
+          <LocaleDatePicker
+            variant="ghost"
+            value={form[dateField]}
+            locale={locale}
+            size={controlSize}
+            label={label}
+            onChange={(next) => onFieldChange(dateField, next)}
+            disabled={disabled}
+          />
+          <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
+            {!form.allDay ? (
+              <EventTimeInput
+                size={controlSize}
+                lang={locale}
+                value={form[timeField]}
+                aria-label={`${label} time`}
+                disabled={disabled}
+                onCommit={(next) => onFieldChange(timeField, next)}
+              />
+            ) : null}
+          </div>
+        </div>
+      </FieldLabelRow>
+    );
+  };
+
   return (
     <div className="calendar-event-dialog__field-group calendar-event-dialog__field-group--when">
+      {dateTimeRow("start")}
+      {dateTimeRow("end")}
       <FieldLabelRow
-        className="calendar-event-dialog__field calendar-event-dialog__field--starts"
-        label={labels.eventStartLabel}
-        labelMode="icon"
-        icon={<CalendarDays className="size-3.5" aria-hidden />}
+        className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
+        layout="inline"
+        label={labels.eventAllDayLabel}
+        labelIcon={<Sun aria-hidden />}
+        htmlFor={allDayId}
       >
-        <div className="calendar-event-dialog__datetime">
-          <LocaleDatePicker
-            value={form.startDate}
-            locale={locale}
-            size={controlSize}
-            label={labels.eventStartLabel}
-            onChange={(next) => onFieldChange("startDate", next)}
-            disabled={disabled}
-          />
-          <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
-            {!form.allDay ? (
-              <Input
-                type="time"
-                size={controlSize}
-                lang={locale}
-                value={form.startTime}
-                aria-label={`${labels.eventStartLabel} time`}
-                disabled={disabled}
-                onChange={(event) => onFieldChange("startTime", event.target.value)}
-              />
-            ) : null}
-          </div>
-        </div>
-      </FieldLabelRow>
-      <FieldLabelRow
-        className="calendar-event-dialog__field calendar-event-dialog__field--ends"
-        label={labels.eventEndLabel}
-        labelMode="icon"
-        icon={<CalendarDays className="size-3.5" aria-hidden />}
-      >
-        <div className="calendar-event-dialog__datetime">
-          <LocaleDatePicker
-            value={form.endDate}
-            locale={locale}
-            size={controlSize}
-            label={labels.eventEndLabel}
-            onChange={(next) => onFieldChange("endDate", next)}
-            disabled={disabled}
-          />
-          <div className="calendar-event-dialog__time-slot" aria-hidden={form.allDay || undefined}>
-            {!form.allDay ? (
-              <Input
-                type="time"
-                size={controlSize}
-                lang={locale}
-                value={form.endTime}
-                aria-label={`${labels.eventEndLabel} time`}
-                disabled={disabled}
-                onChange={(event) => onFieldChange("endTime", event.target.value)}
-              />
-            ) : null}
-          </div>
-        </div>
-      </FieldLabelRow>
-      <div className="calendar-event-dialog__when-meta">
-        <FieldLabelRow
-          className="calendar-event-dialog__field calendar-event-dialog__field--all-day"
-          label={labels.eventAllDayLabel}
-          labelMode="icon"
-          icon={<Sun className="size-3.5" aria-hidden />}
-        >
+        {iconRows ? (
           <div className="calendar-event-dialog__all-day">
-            <Switch
-              checked={form.allDay}
-              onCheckedChange={(checked) => onFieldChange("allDay", checked === true)}
-              aria-label={labels.eventAllDayLabel}
-              disabled={disabled}
-            />
-            <span className="calendar-event-dialog__all-day-caption" aria-hidden>
-              {labels.eventAllDayLabel}
-            </span>
+            {allDaySwitch}
+            {form.allDay ? null : timeZoneSelect}
           </div>
+        ) : (
+          allDaySwitch
+        )}
+      </FieldLabelRow>
+      {!form.allDay && !iconRows ? (
+        <FieldLabelRow
+          className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
+          layout="inline"
+          label={labels.eventTimeZoneLabel}
+          htmlFor={timeZoneId}
+        >
+          {timeZoneSelect}
         </FieldLabelRow>
-        {!form.allDay ? (
-          <FieldLabelRow
-            className="calendar-event-dialog__field calendar-event-dialog__field--timezone"
-            label={labels.eventTimeZoneLabel}
-            labelMode="icon"
-            icon={<Globe className="size-3.5" aria-hidden />}
-          >
-            <Select
-              value={eventTimeZoneSelectValue(form.timeZone)}
-              onValueChange={(value) =>
-                onFieldChange("timeZone", eventTimeZoneFromSelectValue(value))
-              }
-              disabled={disabled}
-            >
-              <SelectTrigger
-                size={controlSize}
-                className="calendar-event-dialog__timezone-trigger"
-                aria-label={labels.eventTimeZoneLabel}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {timeZoneOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldLabelRow>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }

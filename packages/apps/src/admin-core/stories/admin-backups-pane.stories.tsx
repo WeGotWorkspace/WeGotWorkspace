@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { AdminUpdateBackupItem } from "@/admin-core/src/admin-types";
+import type { AdminUpdateBackupItem } from "@/lib/models/admin-types";
 import type { AdminStoryDataOverride } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminBackupsPane } from "@/admin-core/src/admin-backups-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";

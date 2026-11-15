@@ -1,0 +1,60 @@
+import { Button } from "@/button/src/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/ui/dialog";
+
+/** The four strings the dialog renders. Docs and Notes both supply them. */
+export type DocsConflictDialogLabels = {
+  conflictTitle: string;
+  conflictDescription: (title: string) => string;
+  conflictKeepMine: string;
+  conflictUseServer: string;
+};
+
+export type DocsConflictDialogProps = {
+  open: boolean;
+  documentTitle: string;
+  busy?: boolean;
+  /** Set once the local version can no longer be kept. */
+  keepLocalDisabled?: boolean;
+  labels: DocsConflictDialogLabels;
+  onKeepLocal: () => void;
+  onUseServer: () => void;
+  onOpenChange?: (open: boolean) => void;
+};
+
+/** Binary Keep mine / Use server resolver for collab save conflicts. */
+export function DocsConflictDialog({
+  open,
+  documentTitle,
+  busy = false,
+  keepLocalDisabled = false,
+  labels,
+  onKeepLocal,
+  onUseServer,
+  onOpenChange,
+}: DocsConflictDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="docs-dialog-surface">
+        <DialogHeader>
+          <DialogTitle>{labels.conflictTitle}</DialogTitle>
+          <DialogDescription>{labels.conflictDescription(documentTitle)}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onUseServer} disabled={busy}>
+            {labels.conflictUseServer}
+          </Button>
+          <Button variant="primary" onClick={onKeepLocal} disabled={busy || keepLocalDisabled}>
+            {labels.conflictKeepMine}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

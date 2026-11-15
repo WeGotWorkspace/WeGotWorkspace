@@ -166,7 +166,11 @@ export function CollectionSelect({
       ) : (
         trigger
       )}
-      <SelectContent className={menuClassName} onCloseAutoFocus={onCloseAutoFocus}>
+      <SelectContent
+        className={menuClassName}
+        align={ghost ? "end" : undefined}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         {items.map((item) => (
           <SelectItem key={item.id} value={item.id} textValue={item.name}>
             <span className="collection-select__option" style={rowColor(item.color)}>

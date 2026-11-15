@@ -62,9 +62,14 @@
     var(--workspace-foreground)
   );
 
-  --input-background: transparent;
-  --input-background-focus: var(--input-background);
+  /*
+   * Text fields and selects have no border, only a faint fill: the header icon
+   * button's hover wash at rest, its selected-under-the-pointer wash while focused.
+   */
+  --input-background: var(--button-hover-background);
+  --input-background-focus: var(--button-outline-active-hover-background);
   --input-background-disabled: var(--input-background);
+  --input-border-color: transparent;
 
   --button-outline-color: var(--workspace-foreground);
   --button-outline-hover-color: var(--workspace-accent);
@@ -183,15 +188,16 @@
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);
 
-  /* Track follows text ink. Off is a lighter tint of that same hue.
-     Surface lightness, chroma stripped, hue omitted so paper does not pull it. */
+  /* Off: a light tint of the text ink (surface lightness, chroma stripped, hue omitted
+     so paper does not pull it). On: the selection mark (bright sky), like a selected
+     row or a checked task. */
   --switch-off-bg: color-mix(
     in oklch,
     var(--workspace-foreground) 32%,
     oklch(from var(--workspace-surface) l 0 none)
   );
-  --switch-on-bg: var(--workspace-foreground);
-  --switch-on-thumb-bg: var(--workspace-accent-foreground);
+  --switch-on-bg: var(--workspace-selected-mark-background);
+  --switch-on-thumb-bg: oklch(1 0 0);
   --list-sticky-header-color: var(--workspace-foreground);
   /* Selected sidebar count: default fill is foreground, so ink is the surface. */
   --sidebar-badge-fg: var(--workspace-surface);

@@ -1,0 +1,14 @@
+@import "../../styles.css" reference;
+
+/* The form on the suite detail measure, without a sheet of its own (fill and shadow
+ * off, like Contacts). */
+.calendar-event-pane.paper-sheet {
+  @apply relative;
+  --paper-sheet-bg: transparent;
+  --paper-sheet-shadow: none;
+}
+
+.calendar-event-pane__pending-sync {
+  @apply absolute end-2 top-2 inline-flex size-2.5 items-center justify-center;
+  color: var(--color-sync-pending);
+}

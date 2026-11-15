@@ -15,6 +15,8 @@ Upload the deploy package contents to your website folder so these files are in 
 
 Configure runtime bootstrap in **`packages/api/.env`** (`WGW_DATA_DIR`, `WGW_DB_*`). The web installer writes these keys on success. Upgrades from older installs auto-migrate legacy `wgw-config.php` into `.env` (backup kept).
 
+When a fresh install puts the data directory outside the published folder, it moves this `.env` there too, as `api.env` inside the data directory, and leaves `packages/api/.env.path`, which holds only that path. Edit the file the pointer names. Where this guide says `packages/api/.env`, that file is meant. A server variable `WGW_ENV_FILE` (an absolute path) takes precedence over the pointer. See [Move `.env` out of the web root](#move-env-out-of-the-web-root) for an existing install.
+
 Your site document root must point to this folder.
 
 Upload with **SFTP** (binary-safe). After upload, confirm the installer UI is present:
@@ -37,6 +39,8 @@ location ~ ^/(wgw-content|wgw-plugins|packages)(/|$) { deny all; }
 location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
 location ~ ^/wgw-config\.php\.bak(?:\.|$) { deny all; }
 ```
+
+If your install is in a subfolder, put that subfolder after the leading `^/` in all three lines, for example `^/office/(wgw-content|wgw-plugins|packages)(/|$)`. As written they only match at the site root, so a subfolder install stays exposed.
 
 ## 2) First request bootstrap
 
@@ -106,6 +110,16 @@ VAPID keys are created on first use into `wgw-content/keys/` (`php artisan wgw:v
 
 The Docker install stack includes a `scheduler` sidecar that loops `schedule:run` every 60 seconds (same contract as cron, not a queue worker). See [docs/architecture/suite-notify.md](docs/architecture/suite-notify.md).
 
+### SQLite database files
+
+An SQLite install keeps its database in write-ahead log (WAL) mode, so people who read and save at the same time do not wait for each other. While the site is in use you will see `db.sqlite-wal` and `db.sqlite-shm` next to `db.sqlite`. They are part of the database:
+
+- The web-server user needs write access to the directory that holds `db.sqlite` (it already did).
+- Copy or back up the three files together, or take a snapshot with `sqlite3 db.sqlite ".backup backup.sqlite"`. A copy of `db.sqlite` alone, taken while the site runs, can miss the latest changes. The backup that **Admin → Updates** takes before an update is a complete snapshot.
+- WAL needs a local disk. On a network share (NFS, SMB), set `WGW_DB_SQLITE_JOURNAL_MODE=delete` in `packages/api/.env`.
+
+Existing installs switch to WAL on the first request after the update. Nothing to do. The setting is stored in the database file, so an older release keeps working with it.
+
 ### MCP / OAuth discovery (origin root)
 
 Assistants discover this instance at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource` on the **same origin** users open in the browser. The ZIP layout already rewrites those paths to Laravel via `index.php`. If you only expose Laravel under `Alias /api` (or another prefix) and the document root is not this install shell, add rewrite or alias rules so those two `.well-known` paths (and `/.well-known/oauth-protected-resource/<path>`) still reach Laravel. Do not tell clients to use `/api/.well-known/…`. Details: [docs/mcp-connect.md](docs/mcp-connect.md).
@@ -142,7 +156,7 @@ A fresh install puts the database, signing keys, and backups in a `wgw-content` 
 
 Do these steps in this order:
 
-1. Turn on maintenance mode. SQLite must not be moved while a connection is open.
+1. Turn on maintenance mode. SQLite must not be moved while a connection is open. Move `db.sqlite-wal` and `db.sqlite-shm` along with `db.sqlite` if they are there.
 2. Create the target directory outside the published folder and confirm the web-server user can write to it. Two installs that share a parent must not share one `wgw-content` directory; pick a separate target for the second install.
 3. Copy the directory. Do not move it yet. Check that the copy is complete. A rename is atomic only on the same filesystem. Across filesystems the copy needs room for both copies at once.
 4. Update **both** of these keys in `packages/api/.env`:
@@ -153,3 +167,15 @@ Do these steps in this order:
 ### Docker
 
 New Docker installs mount content at `/var/wgw/content` (`WGW_DATA_DIR`) and Laravel storage at `/var/wgw/storage` (`WGW_STORAGE_PATH`). An existing stack keeps its current mounts until you change the compose file. Use the same five steps: maintenance mode, a writable target, copy and verify, then set both `WGW_DATA_DIR` and `WGW_DB_DATABASE` (and point the storage volume at `/var/wgw/storage`) before deleting the old directory. Do not expect the new image to move the volumes for you.
+
+## Move `.env` out of the web root
+
+`packages/api/.env` holds `APP_KEY` and the database password. A fresh install whose data directory is outside the published folder already keeps it there (see above). Older installs keep it in `packages/api/`, where only the web server's deny rules protect it. Nothing moves it automatically. Move the data directory first (previous section), then:
+
+1. Turn on maintenance mode.
+2. Copy `packages/api/.env` to `api.env` inside the data directory. Keep it readable by the web-server user and nobody else (for example `chmod 600`, owned by that user).
+3. Create `packages/api/.env.path` holding one line: the absolute path of that file, for example `/home/you/wgw-content/api.env`. Lines that start with `#` are ignored.
+4. Run `php artisan about --only=environment` from `packages/api` as the web-server user, and load the site. Both must show your normal settings. If the pointer names a file that is missing or unreadable, the site and `artisan` stop with an error that names the path. They do not fall back to the old file.
+5. Only then delete `packages/api/.env`.
+
+Updates keep `packages/api/.env.path`. To undo, copy the file back to `packages/api/.env` and delete the pointer. Docker installs keep `.env` on their config volume; skip this section.

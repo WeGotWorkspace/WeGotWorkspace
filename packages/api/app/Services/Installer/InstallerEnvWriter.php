@@ -7,6 +7,7 @@ namespace App\Services\Installer;
 use App\Support\AppPaths;
 use App\Support\UpdateFeedDefaults;
 use App\Support\WgwApiEnvFile;
+use App\Support\WgwEnvLocation;
 use Illuminate\Support\Facades\Artisan;
 
 final class InstallerEnvWriter
@@ -75,7 +76,7 @@ final class InstallerEnvWriter
         }
         $this->apiEnv->seedEnvFromExampleIfMissing($apiRoot);
 
-        return $apiRoot.'/.env';
+        return WgwEnvLocation::envFile($apiRoot);
     }
 
     /**

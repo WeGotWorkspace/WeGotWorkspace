@@ -5,12 +5,12 @@ import type { Note } from "@/lib/models/note";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 import { useNotesMutations } from "./use-notes-mutations";
-import { writeNotesBootstrapToCache } from "@/lib/offline/notes-offline-store";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { writeNotesBootstrapToCache } from "@/lib/offline/notes/notes-offline-store";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 import {
   createHybridNotesOperations,
   fetchNotesHybridBootstrap,
-} from "@/lib/offline/notes-hybrid-operations";
+} from "@/lib/offline/notes/notes-hybrid-operations";
 import { createNoteItem, fetchNotesLiveBootstrap } from "@/lib/api/wgw/notes";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 
@@ -28,8 +28,8 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));
 
-vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+vi.mock("@/lib/offline/core/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/offline-session")>()),
   readOfflineNotesUsername: vi.fn(() => null),
 }));
 

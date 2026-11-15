@@ -127,26 +127,26 @@ async function settle() {
   }
 }
 
+/** A participant tag: named "<name>, <RSVP status>". */
 function chipFor(name: string): HTMLElement {
-  return screen.getByRole("group", { name: new RegExp(`^${name},`) });
+  return screen.getByLabelText(new RegExp(`^${name},`));
 }
 
-/** Busy = the participant tag itself carries the warning wash, icon and status. */
+/** Busy = the participant tag carries the warning wash. */
 function isBusy(name: string): boolean {
+  return chipFor(name).querySelector(".calendar-invitees-card__tag--busy") != null;
+}
+
+/** The tag's tooltip (RSVP status, then any busy time), shown while it has focus. */
+async function tooltipOf(name: string): Promise<string> {
   const chip = chipFor(name);
-  const busy = chip.classList.contains("calendar-invitees-card__chip--busy");
-  const named = /, busy at this time$/.test(chip.getAttribute("aria-label") ?? "");
-  const icon = chip.querySelector(".user-chip__adornment svg") != null;
-  if (busy !== named || busy !== icon) throw new Error(`${name}: inconsistent busy state`);
-  return busy;
+  fireEvent.focus(chip);
+  const text = (await screen.findByRole("tooltip")).textContent ?? "";
+  fireEvent.blur(chip);
+  return text;
 }
 
-function descriptionOf(name: string): string {
-  const id = chipFor(name).getAttribute("aria-describedby");
-  return id ? (document.getElementById(id)?.textContent ?? "") : "";
-}
-
-const busyChips = () => document.querySelectorAll(".calendar-invitees-card__chip--busy");
+const busyChips = () => document.querySelectorAll(".calendar-invitees-card__tag--busy");
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -165,15 +165,18 @@ describe("busy invitee participant tags (#1614)", () => {
     await settle();
 
     expect(isBusy("Ann")).toBe(true);
+    // The clash is in the accessible name too, not only in the tooltip.
     expect(chipFor("Ann").getAttribute("aria-label")).toBe(
-      "Ann, Needs response, busy at this time",
+      "Ann, Needs response, Busy at this time",
     );
+    expect(chipFor("Cy").getAttribute("aria-label")).toBe("Cy, Needs response");
     expect(isBusy("Cy")).toBe(false); // free: no label at all
     expect(isBusy("Dee")).toBe(false); // complete: false
     expect(isBusy("Bob")).toBe(false); // not a teammate sharing availability
     expect(isBusy("Guest")).toBe(false); // external guest
     expect(busyChips()).toHaveLength(1);
-    expect(document.querySelector(".tag__label")).toBeNull(); // no separate Free/Busy tags
+    // No separate Free/Busy tags: one tag per participant.
+    expect(document.querySelectorAll(".calendar-invitees-card__tag")).toHaveLength(5);
     expect(source.availability).toHaveBeenCalledWith({
       ids: ["ann", "cy", "dee"],
       utcStart: "2030-01-07T00:00:00Z",
@@ -184,13 +187,13 @@ describe("busy invitee participant tags (#1614)", () => {
   it("explains Busy with the overlapping time and title", async () => {
     renderSecondary(fakeSource(), baseForm());
     await settle();
-    expect(descriptionOf("Ann")).toMatch(/10:30.*11:30 · Design review/);
-    expect(descriptionOf("Cy")).toBe("");
-    fireEvent.pointerMove(chipFor("Ann"));
-    const tooltip = await screen.findByRole("tooltip");
-    expect(tooltip.textContent).toMatch(
+    expect(await tooltipOf("Ann")).toMatch(
       /Needs response.*Busy at this time.*10:30.*11:30 · Design review/,
     );
+    cleanup();
+    renderSecondary(fakeSource(), baseForm());
+    await settle();
+    expect(await tooltipOf("Cy")).toBe("Needs response");
   });
 
   it("passes the saved event as excludeEventId when editing", async () => {
@@ -239,7 +242,7 @@ describe("busy invitee participant tags (#1614)", () => {
     renderSecondary(source, baseForm());
     await settle();
     expect(isBusy("Cy")).toBe(true);
-    expect(descriptionOf("Cy")).toMatch(/All day · Busy/);
+    expect(await tooltipOf("Cy")).toMatch(/All day · Busy/);
   });
 
   it("asks nothing and shows nothing offline", async () => {

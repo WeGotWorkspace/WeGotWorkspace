@@ -29,13 +29,18 @@ function phoneBlocks(css: string): string {
 }
 
 describe("control height tokens", () => {
-  it("defines a fixed xs…xl scale and aliases --input-height to md", () => {
+  it("defines a fixed xs…xl scale and sets --input-height a step above md", () => {
     expect(styles).toMatch(/--control-height-xs:\s*1\.75rem/);
     expect(styles).toMatch(/--control-height-sm:\s*2rem/);
     expect(styles).toMatch(/--control-height-md:\s*2\.25rem/);
     expect(styles).toMatch(/--control-height-lg:\s*2\.5rem/);
     expect(styles).toMatch(/--control-height-xl:\s*2\.75rem/);
-    expect(styles).toMatch(/--input-height:\s*var\(--control-height-md\)/);
+    // Fields are a step roomier than buttons; header bars drop the step (0px).
+    expect(styles).toMatch(/--input-height-step:\s*0\.25rem/);
+    expect(styles).toMatch(
+      /--input-height:\s*calc\(var\(--control-height-md\) \+ var\(--input-height-step\)\)/,
+    );
+    expect(styles).toMatch(/--input-height-step:\s*0px/);
     expect(styles).not.toMatch(/@media \(min-width:\s*768px\) \{[\s\S]*--input-height:\s*2\.5rem/);
   });
 
@@ -89,6 +94,11 @@ describe("form control type and inset", () => {
       /\.control-surface\.color-swatch-trigger:not\(\.color-swatch-trigger--labeled\)\s*\{([^}]*)\}/,
     );
     expect(iconOnly).toMatch(/@apply px-2;/);
-    expect(swatchCss).not.toMatch(/\.control-surface\.color-swatch-trigger\s*\{/);
+
+    // The base rule is a ghost (no chrome at rest), not size or padding.
+    const ghost = ruleBody(swatchCss, /\.control-surface\.color-swatch-trigger\s*\{([^}]*)\}/);
+    expect(ghost).toMatch(/border-color:\s*transparent/);
+    expect(ghost).toMatch(/background-color:\s*transparent/);
+    expect(ghost).not.toMatch(/padding/);
   });
 });

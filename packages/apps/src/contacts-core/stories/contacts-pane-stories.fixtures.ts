@@ -1,5 +1,5 @@
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { contactCardToEditDraft } from "@/contacts-core/src/contacts-edit-utils";
+import { contactCardToEditDraft } from "@/lib/models/contacts-edit-draft";
 
 export function getContactsDetailStoryCard() {
   return createContactsAppBootstrap().data.cards[0];

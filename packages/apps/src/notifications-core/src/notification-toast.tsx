@@ -4,7 +4,7 @@ import {
   notificationInboxAppId,
   notificationInboxDomainLabel,
 } from "@/notifications-core/src/notification-inbox-row-meta";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 import { AppToastCallout } from "@/ui/app-toast-callout";
 import "@/notifications-core/src/notification-toast.css";
 

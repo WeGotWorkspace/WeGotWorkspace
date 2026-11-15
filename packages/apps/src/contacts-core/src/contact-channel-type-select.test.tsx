@@ -32,7 +32,7 @@ describe("ContactContextTypeSelect", () => {
     expect(document.querySelector(".contacts-detail-view__context-select-item")).toBeNull();
   });
 
-  it("drops the chevron and disables the trigger when read-only", () => {
+  it("keeps the chevron (dimmed) and disables the trigger when read-only", () => {
     render(
       <ContactContextTypeSelect
         labels={defaultContactsLabels}
@@ -46,7 +46,8 @@ describe("ContactContextTypeSelect", () => {
     const trigger = screen.getByRole("combobox", { name: addressTypeLabel }) as HTMLButtonElement;
     expect(trigger.disabled).toBe(true);
     expect(trigger.textContent).toBe(defaultContactsLabels.channelTypeWork);
-    expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeNull();
+    // The value still reads as a choice, only dimmed.
+    expect(trigger.querySelector(".collection-ghost-select__chevron")).not.toBeNull();
   });
 });
 

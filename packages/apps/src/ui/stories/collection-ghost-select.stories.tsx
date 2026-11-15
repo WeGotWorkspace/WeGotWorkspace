@@ -70,14 +70,14 @@ export const Default: Story = {
   },
 };
 
-/** Read-only: the value without a chevron, not clickable. */
+/** Read-only: dimmed, the chevron kept, not clickable. */
 export const Disabled: Story = {
   render: () => <GhostSelectHarness disabled />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const trigger = canvas.getByRole("combobox", { name: "Notebook" });
     await expect(trigger).toBeDisabled();
-    await expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeNull();
+    await expect(trigger.querySelector(".collection-ghost-select__chevron")).toBeTruthy();
   },
 };
 

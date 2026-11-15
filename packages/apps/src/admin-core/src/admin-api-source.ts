@@ -3,7 +3,7 @@ import { createAdminAppBootstrap, type AdminAppBootstrap } from "@/lib/api/mock/
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createWgwAdminOperations, fetchAdminLiveBootstrap } from "@/lib/api/wgw/admin";
 import { createMockAdminOperations } from "@/admin-core/src/admin-mock-operations";
-import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations } from "@/lib/models/admin-types";
 
 export type AdminApiSource = {
   loadBootstrap: () => Promise<AdminAppBootstrap>;

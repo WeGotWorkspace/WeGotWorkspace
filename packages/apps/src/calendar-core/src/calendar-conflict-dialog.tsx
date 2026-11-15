@@ -44,7 +44,7 @@ export function CalendarConflictDialog({
             {L.conflictRemaining(remainingCount)}
           </p>
         ) : null}
-        <DialogFooter className="calendar-conflict-dialog__actions">
+        <DialogFooter>
           <Button variant="outline" onClick={onUseServer} disabled={busy}>
             {L.conflictUseServer}
           </Button>

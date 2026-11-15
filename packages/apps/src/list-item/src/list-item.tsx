@@ -65,6 +65,8 @@ type ListItemProps = {
    */
   metaPosition?: ListItemMetaPosition;
   date: string;
+  /** A second line right under the date, e.g. an event's end (`below` only). */
+  dateBelow?: string;
   /** Marks right before the date in the top-right corner, e.g. a star (`below` only). */
   dateLeading?: ReactNode;
   icons?: ReactNode[];
@@ -129,6 +131,7 @@ export function ListItem({
   subtitle,
   metaPosition = "above",
   date,
+  dateBelow,
   dateLeading,
   icons = [],
   text,
@@ -204,6 +207,7 @@ export function ListItem({
       data-selected={highlight.isSelected ? "true" : "false"}
       {...(hasSelectionStore ? {} : { "data-selection-mode": selectionMode ? "true" : "false" })}
       data-dragging={isDragging ? "true" : "false"}
+      data-date-below={metaPosition === "below" && date && dateBelow ? "true" : undefined}
       onClick={
         delegated
           ? undefined
@@ -278,7 +282,14 @@ export function ListItem({
                   {dateLeading ? (
                     <span className="list-item__date-leading">{dateLeading}</span>
                   ) : null}
-                  {date ? <span className="list-item__date">{date}</span> : null}
+                  {date ? (
+                    <span className="list-item__date">
+                      {date}
+                      {dateBelow ? (
+                        <span className="list-item__date-below">{dateBelow}</span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
             </div>

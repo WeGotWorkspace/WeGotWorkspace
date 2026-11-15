@@ -1,13 +1,4 @@
-import { Button } from "@/button/src/button";
-import { RenameFilenameField } from "@/dialogs/src/rename-filename-field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { RenameFileDialog } from "@/dialogs/src/rename-file-dialog";
 import type { DriveShareOperations } from "@/lib/files/drive-types";
 import type { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import type { useDocsController } from "@/docs-core/src/use-docs-controller";
@@ -38,44 +29,23 @@ export function DocsWorkspaceModals({
     submitRename,
   } = controller;
 
-  const canSubmitRename = renameName.trim().length > 0;
-
   return (
     <>
-      <Dialog
+      <RenameFileDialog
         open={renameDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) closeRenameDialog();
-        }}
-      >
-        <DialogContent className="docs-dialog-surface sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{labels.renameDialogTitle}</DialogTitle>
-            <DialogDescription>{labels.renameDialogDescription}</DialogDescription>
-          </DialogHeader>
-          <RenameFilenameField
-            autoFocus
-            placeholder={labels.rename}
-            baseName={renameName}
-            extension={renameExtension || undefined}
-            disabled={renamePending}
-            onBaseNameChange={setRenameName}
-            onEnter={() => void submitRename()}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={closeRenameDialog} disabled={renamePending}>
-              {labels.cancel}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => void submitRename()}
-              disabled={renamePending || !canSubmitRename}
-            >
-              {labels.renameAction}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={labels.renameDialogTitle}
+        description={labels.renameDialogDescription}
+        placeholder={labels.rename}
+        cancelLabel={labels.cancel}
+        confirmLabel={labels.renameAction}
+        baseName={renameName}
+        extension={renameExtension}
+        busy={renamePending}
+        surfaceClassName="docs-dialog-surface"
+        onBaseNameChange={setRenameName}
+        onClose={closeRenameDialog}
+        onSubmit={() => void submitRename()}
+      />
 
       {shareOperations ? (
         <ShareDialog

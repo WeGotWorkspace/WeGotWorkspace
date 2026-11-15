@@ -7,7 +7,8 @@ import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
 import "@/ui/overlay-paper.css";
 import { buttonVariants } from "@/button/src/button";
-import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
+import { useLayerAttachRef } from "@/ui/inert-outside-layer";
+import { attachCenteredModal } from "@/ui/modal-layer";
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
@@ -34,7 +35,9 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContentLayer = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->((props, ref) => <AlertDialogPrimitive.Content ref={useInertOutsideLayerRef(ref)} {...props} />);
+>((props, ref) => (
+  <AlertDialogPrimitive.Content ref={useLayerAttachRef(ref, attachCenteredModal)} {...props} />
+));
 AlertDialogContentLayer.displayName = "AlertDialogContentLayer";
 
 const AlertDialogContent = React.forwardRef<
@@ -46,7 +49,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogContentLayer
       ref={ref}
       className={cn(
-        "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
+        "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -59,10 +62,7 @@ AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = markUiModalSlot(
   ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div
-      className={cn("ui-modal-header flex flex-col space-y-2 text-center sm:text-left", className)}
-      {...props}
-    />
+    <div className={cn("ui-modal-header", className)} {...props} />
   ),
   "header",
   "AlertDialogHeader",
@@ -70,7 +70,10 @@ const AlertDialogHeader = markUiModalSlot(
 
 const AlertDialogFooter = markUiModalSlot(
   ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div className={cn("ui-modal-footer flex flex-row justify-end gap-2", className)} {...props} />
+    <div
+      className={cn("ui-modal-footer flex flex-row flex-wrap justify-end gap-2", className)}
+      {...props}
+    />
   ),
   "footer",
   "AlertDialogFooter",

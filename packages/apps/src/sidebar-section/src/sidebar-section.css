@@ -38,26 +38,48 @@ h4.sidebar-section__title {
   min-height: var(--control-height-xs, 1.75rem);
 }
 
-.sidebar-section .sidebar-section__fold {
-  @apply shrink-0;
-  margin-inline-start: auto;
+/**
+ * A foldable title is a button, like the ghost dropdowns: the chevron after the label,
+ * the hover wash around both. Pulled back by its padding so the label keeps its x.
+ */
+.sidebar-section__fold {
+  @apply inline-flex min-w-0 max-w-full items-center gap-1 outline-none;
+  margin-inline-start: -0.375rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--control-radius-button);
+  font: inherit;
+  color: inherit;
 }
 
-/* Show/hide-all dot: sits in the rows' leading column, in the full neutral ink. */
-.sidebar-section__heading--toggle-all {
-  justify-content: flex-start;
+/* The button truncates its own label; the heading must not clip its wash. */
+h4.sidebar-section__title:has(> .sidebar-section__fold) {
+  @apply flex-1 overflow-visible;
 }
 
-.sidebar-section__heading--toggle-all .sidebar-section__title {
-  flex: 1 1 auto;
+.sidebar-section__fold:hover {
+  background-color: var(--workspace-ghost-hover-background);
 }
 
-.sidebar-section__heading .sidebar-section__toggle-all {
-  /* Rows carry a 1px transparent border; match it so the dots share one x. */
-  margin-inline-start: 1px;
+.sidebar-section__fold:focus-visible {
+  @apply ring-2 ring-ring;
+}
+
+.sidebar-section__title-text {
+  @apply truncate;
+}
+
+.sidebar-section__chevron {
+  @apply size-4 shrink-0 opacity-60;
+  transition: transform 150ms ease;
+}
+
+.sidebar-section__fold[aria-expanded="false"] .sidebar-section__chevron {
+  transform: rotate(-90deg);
+}
+
+/* The "All" row's dot: the full neutral ink, not a collection color. */
+.sidebar-section__all {
   --visibility-dot-color: var(--workspace-foreground);
-  /* As tall as the heading, so it never reaches into the rows around it. */
-  --visibility-dot-hit-size: var(--control-height-xs, 1.75rem);
 }
 
 /* A short note in place of a section's rows (for example "not in a Team yet"). */

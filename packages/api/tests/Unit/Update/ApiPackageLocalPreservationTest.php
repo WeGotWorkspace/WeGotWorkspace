@@ -42,6 +42,19 @@ final class ApiPackageLocalPreservationTest extends TestCase
         $this->assertSame("APP_KEY=secret\nSESSION_DRIVER=file\n", file_get_contents($this->apiRoot.'/.env'));
     }
 
+    public function test_an_update_keeps_the_env_pointer(): void
+    {
+        file_put_contents($this->apiRoot.'/.env.path', "/srv/wgw-content/api.env\n");
+
+        $preservation = new ApiPackageLocalPreservation;
+        $snap = $preservation->snapshot($this->apiRoot);
+        unlink($this->apiRoot.'/.env.path');
+        $preservation->restore($this->apiRoot, $snap);
+
+        $this->assertSame("/srv/wgw-content/api.env\n", file_get_contents($this->apiRoot.'/.env.path'));
+        $this->assertFileDoesNotExist($this->apiRoot.'/.env');
+    }
+
     public function test_snapshot_and_restore_preserves_session_files(): void
     {
         $sessionDir = $this->apiRoot.'/storage/framework/sessions';

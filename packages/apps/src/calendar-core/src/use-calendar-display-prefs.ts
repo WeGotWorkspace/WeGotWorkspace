@@ -9,7 +9,7 @@ import {
   type CalendarDisplayPrefs,
 } from "@/lib/calendar-display-prefs";
 import { defaultTimedEventTimeZone } from "@/calendar-core/src/calendar-timezones";
-import { subscribeSettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { subscribeSettingsSliceSaved } from "@/lib/settings-slice-saved";
 
 export type CalendarDisplayResolved = {
   locale: string;

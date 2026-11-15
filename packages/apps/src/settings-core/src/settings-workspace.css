@@ -25,22 +25,6 @@
 /* Descendant classes — only use inside `SettingsWorkspace` (`.settings-workspace`). */
 /* Display rows: `FieldLabelRow` + `Input readOnly` — disabled fill from `@/ui/input`. */
 
-.settings-workspace .settings-form-actions {
-  @apply flex justify-end pt-2;
-}
-
-.settings-workspace .settings-pane-stack {
-  @apply flex flex-col gap-4;
-}
-
-.ui-modal-surface.settings-workspace .settings-form-actions {
-  display: none;
-}
-
-.ui-modal-surface.settings-workspace .settings-dialog-footer__open {
-  @apply me-auto;
-}
-
 /* Catalog panes sit on Card chrome. The dialog is already a surface — strip it. */
 .ui-modal-surface.settings-workspace .settings-pane-card {
   border: none;
@@ -52,10 +36,6 @@
 
 .settings-workspace .settings-form-field {
   @apply space-y-1.5 mb-4 last:mb-0;
-}
-
-.settings-workspace .settings-grid-2 {
-  @apply grid grid-cols-2 gap-3;
 }
 
 .settings-workspace .settings-group-list {
@@ -177,4 +157,9 @@
 .settings-story-scope {
   min-height: 100dvh;
   background-color: var(--workspace-root-bg, var(--workspace-surface));
+}
+
+/* A second section in the dialog (Calendar → Availability) starts after a pause. */
+.ui-modal-surface.settings-workspace .settings-pane-card + .settings-pane-card {
+  margin-top: 1.5rem;
 }

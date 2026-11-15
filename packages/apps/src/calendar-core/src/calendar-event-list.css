@@ -1,0 +1,14 @@
+@import "../../styles.css" reference;
+
+/* The calendar on the row's meta line: dot + name, like a task's list. */
+.calendar-event-list__calendar {
+  @apply inline-flex min-w-0 items-center gap-1.5;
+}
+
+.calendar-event-list__calendar-name {
+  @apply truncate;
+}
+
+.calendar-event-list--empty {
+  @apply h-full;
+}

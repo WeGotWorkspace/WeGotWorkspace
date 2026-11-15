@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  persistHiddenOverlayTaskListIds,
-  readHiddenOverlayTaskListIds,
-} from "@/calendar-core/src/calendar-view-prefs";
+import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 
 /** Calendar-local hide set for task-list overlay rows. Default: all shown. */
 export function useCalendarOverlayHiddenIds() {
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(
-    () => new Set(readHiddenOverlayTaskListIds()),
+    () => new Set(calendarViewPrefs.read()?.hiddenOverlayTaskListIds),
   );
   const skipHydrationPersist = useRef(true);
 
@@ -16,7 +13,8 @@ export function useCalendarOverlayHiddenIds() {
       skipHydrationPersist.current = false;
       return;
     }
-    persistHiddenOverlayTaskListIds(hiddenIds);
+    // Calendar-local overlay hide. Does not write Tasks `hiddenTaskListIds`.
+    calendarViewPrefs.patch({ hiddenOverlayTaskListIds: [...hiddenIds] });
   }, [hiddenIds]);
 
   const setHiddenOverlayTaskListIds = useCallback((next: ReadonlySet<string>) => {

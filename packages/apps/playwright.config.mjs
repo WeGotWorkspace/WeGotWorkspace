@@ -2,9 +2,12 @@ import { defineConfig } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  calendarSyncMatrixSpecPattern,
   chaosTierSpecPattern,
+  contactsSyncMatrixSpecPattern,
   docsSyncMatrixSpecPattern,
   liveTierSpecPattern,
+  meetChatSyncMatrixSpecPattern,
   notesSyncMatrixSpecPattern,
   relayTierSpecPattern,
   tasksSyncMatrixSpecPattern,
@@ -59,6 +62,9 @@ export default defineConfig({
     notesSyncMatrixSpecPattern,
     tasksSyncMatrixSpecPattern,
     docsSyncMatrixSpecPattern,
+    contactsSyncMatrixSpecPattern,
+    calendarSyncMatrixSpecPattern,
+    meetChatSyncMatrixSpecPattern,
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

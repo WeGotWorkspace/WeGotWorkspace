@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
+import { NotificationsInboxValueProvider } from "@/lib/notifications/notifications-inbox-context";
 import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceSidebarToggle } from "@/workspace-shell/src/workspace-app-layout";
 

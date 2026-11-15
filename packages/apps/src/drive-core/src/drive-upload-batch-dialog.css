@@ -1,9 +1,5 @@
 @import "../../styles.css" reference;
 
-.drive-upload-batch-dialog.drive-dialog-surface {
-  max-width: min(32rem, calc(100vw - 2rem));
-}
-
 .drive-upload-batch-dialog__names {
   @apply m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0;
 }

@@ -7,7 +7,7 @@ import { createMockInstallerOperations } from "@/lib/api/mock/installer-mock-ope
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { fetchInstallerBootstrap } from "@/lib/api/wgw/installer";
-import type { InstallerAPIOperations } from "@/installer-core/src/installer-types";
+import type { InstallerAPIOperations } from "@/lib/models/installer-types";
 import { wgwInstallerOperations } from "@/installer-core/src/installer-wgw-operations";
 
 export type InstallerApiSource = {

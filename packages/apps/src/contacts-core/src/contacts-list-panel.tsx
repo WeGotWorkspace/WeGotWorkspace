@@ -21,11 +21,8 @@ import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import type { ContactCard } from "@/lib/models/contacts-types";
-import {
-  contactDisplayName,
-  contactListDetail,
-  contactListSubtitle,
-} from "@/contacts-core/src/contacts-display-utils";
+import { contactListDetail, contactListSubtitle } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import {
   contactListRowOffset,
   contactsListWindowRange,
@@ -42,7 +39,7 @@ import {
 } from "@/contacts-core/src/contacts-addressbook-color";
 import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
 import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
-import { NotesNotebookColorDot } from "@/notes-core/src/notes-notebook-color-dot";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 
 type ContactsListPanelProps = {
   L: ContactsUILabels;
@@ -97,7 +94,7 @@ function ContactsListAddressBook({
   const overrides = useAddressBookColorOverrides();
   return (
     <span className="contacts-list-panel__book">
-      <NotesNotebookColorDot color={addressBookDotColor(book, overrides)} />
+      <CollectionColorDot color={addressBookDotColor(book, overrides)} />
       <span className="contacts-list-panel__book-name">
         {contactsAddressBookDisplayName(book, personalLabel)}
       </span>

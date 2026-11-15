@@ -31,7 +31,9 @@ describe("DriveMoveToDialog", () => {
     expect(screen.getByRole("heading", { name: driveLabels.moveDialogTitle })).toBeTruthy();
     expect(screen.getByRole("button", { name: driveLabels.moveDialogConfirm })).toBeTruthy();
     expect(screen.queryByRole("button", { name: driveLabels.fileSelectDialogInsert })).toBeNull();
-    expect(document.querySelector(".destination-list-row")).toBeTruthy();
+    // Folder destinations are picked on the Drive list (not the image grid).
+    expect(document.querySelector(".drive-list-table tr[data-list-item-id]")).toBeTruthy();
+    expect(document.querySelector(".drive-grid")).toBeNull();
     expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeNull();
   });
 

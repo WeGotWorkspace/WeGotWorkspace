@@ -12,7 +12,7 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { useDocumentTitle } from "@/lib/document-title";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
-import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
+import type { AdminSecurityWarning } from "@/lib/models/admin-types";
 import { AdminBackupsPane } from "@/admin-core/src/admin-backups-pane";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";

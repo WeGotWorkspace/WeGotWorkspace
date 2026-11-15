@@ -5,7 +5,7 @@ import {
   panelsForNav,
   type SettingsPanel,
 } from "@/settings-core/src/settings-registry";
-import type { SettingsPanelId } from "@/settings-core/src/settings-types";
+import type { SettingsPanelId } from "@/lib/models/settings-types";
 
 const FALLBACK_PROFILE_PANEL: SettingsPanel = {
   id: "profile",

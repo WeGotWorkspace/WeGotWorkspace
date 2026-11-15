@@ -6,7 +6,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { DialogCloseButton } from "@/ui/dialog-close-button";
 import { withNestedLayerDismissGuard } from "@/ui/dialog-nested-layer";
-import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
+import { useLayerAttachRef } from "@/ui/inert-outside-layer";
+import { attachCenteredModal } from "@/ui/modal-layer";
 import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-children";
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
@@ -39,7 +40,9 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContentLayer = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->((props, ref) => <DialogPrimitive.Content ref={useInertOutsideLayerRef(ref)} {...props} />);
+>((props, ref) => (
+  <DialogPrimitive.Content ref={useLayerAttachRef(ref, attachCenteredModal)} {...props} />
+));
 DialogContentLayer.displayName = "DialogContentLayer";
 
 const DialogContent = React.forwardRef<
@@ -55,7 +58,7 @@ const DialogContent = React.forwardRef<
       <DialogContentLayer
         ref={ref}
         className={cn(
-          "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
+          "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}
         {...props}
@@ -73,24 +76,56 @@ const DialogContent = React.forwardRef<
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+type DialogHeaderProps = React.HTMLAttributes<HTMLDivElement> & {
+  /** Pinned to the end of the title row: a status, such as the autosave tag. */
+  end?: React.ReactNode;
+};
+
 const DialogHeader = markUiModalSlot(
-  ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div className={cn("ui-modal-header", className)} {...props} />
-  ),
+  ({ className, end, children, ...props }: DialogHeaderProps) =>
+    end == null ? (
+      <div className={cn("ui-modal-header", className)} {...props}>
+        {children}
+      </div>
+    ) : (
+      <div className={cn("ui-modal-header ui-modal-header--split", className)} {...props}>
+        <div className="ui-modal-header__text">{children}</div>
+        <div className="ui-modal-header__end">{end}</div>
+      </div>
+    ),
   "header",
   "DialogHeader",
 );
 
+type DialogFooterProps = React.HTMLAttributes<HTMLDivElement> & {
+  /**
+   * Pinned to the start of the row: a destructive side action (icon-only `IconButton`,
+   * `variant="outline"` + `severity="danger"`, Trash2) or a quiet ghost link ("Open in
+   * Settings"). The children stay at the end.
+   */
+  start?: React.ReactNode;
+};
+
 /**
- * Dialog action row. Convention: Cancel / dismiss = `variant="outline"`; primary
- * submit = default primary. Destructive side actions (delete / remove) =
- * icon-only `IconButton` with `variant="outline"` + `severity="danger"` (Trash2),
- * pinned start via `me-auto` — same as Calendar event/calendar dialogs.
+ * Dialog action row (suite norm). A dialog that creates or edits a record ends in
+ * Cancel (`variant="outline"`) and Save (primary). A dialog of preferences saves as the
+ * user goes and ends in one primary Done.
  */
 const DialogFooter = markUiModalSlot(
-  ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div className={cn("ui-modal-footer flex flex-row justify-end gap-2", className)} {...props} />
-  ),
+  ({ className, start, children, ...props }: DialogFooterProps) =>
+    start ? (
+      <div className={cn("ui-modal-footer ui-modal-footer--split", className)} {...props}>
+        <div className="ui-modal-footer__start">{start}</div>
+        <div className="ui-modal-footer__end">{children}</div>
+      </div>
+    ) : (
+      <div
+        className={cn("ui-modal-footer flex flex-row flex-wrap justify-end gap-2", className)}
+        {...props}
+      >
+        {children}
+      </div>
+    ),
   "footer",
   "DialogFooter",
 );

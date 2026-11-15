@@ -1,47 +1,7 @@
 @import "../styles.css" reference;
 
-/* Same cap as the apps' conflict dialogs; the app's surface class brings the theme. */
-.rescue-dialog.ui-modal-surface {
-  max-width: min(42rem, calc(100vw - 2rem));
-}
-
 /* Same type as a sidebar section title (`field-label-row__label`), in the AA-safe muted tone. */
 .rescue-dialog__step {
   @apply m-0;
   --field-label-color: var(--muted-foreground);
-}
-
-/* Space between the explanation and where the items go; the rows keep their own spacing. */
-.rescue-dialog__destination {
-  @apply mt-6 flex min-w-0 flex-col;
-}
-
-.rescue-dialog__destination-trigger {
-  @apply w-full;
-}
-
-/*
- * Wide: Discard on the left, Later and Move on the right.
- * Phone: full-width stack, Move on top and Discard last, apart from the rest.
- */
-.rescue-dialog__actions {
-  @apply mt-8 flex-col-reverse gap-3 sm:flex-row sm:gap-2;
-}
-
-.rescue-dialog__choices {
-  @apply flex flex-col-reverse gap-2 sm:ml-auto sm:flex-row;
-}
-
-.rescue-dialog__actions .button {
-  @apply w-full sm:w-auto;
-}
-
-/* The only action that loses work: danger colour with its wash at rest. */
-.rescue-dialog__discard {
-  @apply sm:mr-auto;
-}
-
-/* 10% at rest keeps 14px text above 4.5:1; hover deepens to the canonical wash. */
-.button.rescue-dialog__discard.button--severity-danger:not(:hover, :focus-visible) {
-  background-color: color-mix(in oklab, var(--button-severity-color) 10%, transparent);
 }

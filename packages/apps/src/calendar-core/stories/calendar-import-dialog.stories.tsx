@@ -34,8 +34,9 @@ function destinationTrigger(destinationName: string) {
 export const ExistingDestination: Story = {
   tags: ["vitest-ci"],
   play: async () => {
+    // The destination is a ghost dropdown: the calendar's dot, name and chevron.
     const trigger = destinationTrigger("Personal");
-    await expect(trigger.querySelector(".color-swatch-trigger__dot")).toBeTruthy();
+    await expect(trigger.querySelector(".collection-color-dot")).toBeTruthy();
     await expect(screen.queryByLabelText(defaultCalendarLabels.calendarNameLabel)).toBeNull();
     await expect(
       screen.getByRole("button", { name: defaultCalendarLabels.importSubmit }),
@@ -59,9 +60,7 @@ export const ExistingDestination: Story = {
       );
     });
     await expect(
-      destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(
-        ".color-swatch-trigger__dot",
-      ),
+      destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(".collection-color-dot"),
     ).toBeNull();
   },
 };
@@ -73,9 +72,7 @@ export const NewCalendar: Story = {
   },
   play: async () => {
     await expect(
-      destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(
-        ".color-swatch-trigger__dot",
-      ),
+      destinationTrigger(defaultCalendarLabels.newCalendar).querySelector(".collection-color-dot"),
     ).toBeNull();
     const name = screen.getByLabelText(defaultCalendarLabels.calendarNameLabel);
     await expect(name).toHaveValue("team-offsite");

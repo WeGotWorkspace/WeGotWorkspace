@@ -6,6 +6,7 @@ import { emptyCalendarEventForm } from "@/calendar-core/src/calendar-editor-mode
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
 import { TooltipProvider } from "@/ui/tooltip";
+import { FieldLabelRowIconLabels } from "@/ui/field-label-row";
 
 const showSuccess = vi.fn();
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -29,26 +30,32 @@ function stubMeet(overrides: Partial<CalendarMeetOperations> = {}): CalendarMeet
   };
 }
 
-function renderCard(
-  overrides: Partial<React.ComponentProps<typeof CalendarMeetCard>> & {
-    meetOperations?: CalendarMeetOperations;
-  } = {},
-) {
+function renderCard({
+  iconLabels = false,
+  ...overrides
+}: Partial<React.ComponentProps<typeof CalendarMeetCard>> & {
+  meetOperations?: CalendarMeetOperations;
+  /** Inside the event popover's icon-labelled rows. */
+  iconLabels?: boolean;
+} = {}) {
   const onChange = vi.fn();
   const form = overrides.form ?? emptyCalendarEventForm("default", "2033-01-12");
   const meetOperations = overrides.meetOperations ?? stubMeet();
+  const card = (
+    <CalendarMeetCard
+      form={form}
+      labels={defaultCalendarLabels}
+      calendar={{ id: "default", name: "Personal", color: "#6366f1", scope: "personal" }}
+      username="bob"
+      workspaceOrigin={ORIGIN}
+      meetOperations={meetOperations}
+      onChange={onChange}
+      {...overrides}
+    />
+  );
   render(
     <TooltipProvider delayDuration={0}>
-      <CalendarMeetCard
-        form={form}
-        labels={defaultCalendarLabels}
-        calendar={{ id: "default", name: "Personal", color: "#6366f1", scope: "personal" }}
-        username="bob"
-        workspaceOrigin={ORIGIN}
-        meetOperations={meetOperations}
-        onChange={onChange}
-        {...overrides}
-      />
+      {iconLabels ? <FieldLabelRowIconLabels>{card}</FieldLabelRowIconLabels> : card}
     </TooltipProvider>,
   );
   return { onChange, meetOperations };
@@ -260,19 +267,17 @@ describe("CalendarMeetCard", () => {
     renderCard();
     expect(screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel)).toBeTruthy();
     expect(generateMeetButton()).toHaveProperty("disabled", false);
-    expect(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toHaveProperty(
-      "disabled",
-      true,
-    );
+    // The link is selectable in its field; there is no separate copy button.
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.copyHttpsUrl })).toBeNull();
     clickGenerateMeet();
     expect(screen.queryByText(defaultCalendarLabels.eventMeetReplaceTitle)).toBeNull();
   });
 
-  it("shows an editable URL and copies the displayed href when Meet is on", async () => {
+  it("shows an editable URL and joins it from the Meet menu when Meet is on", () => {
     const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    const onJoin = vi.fn();
     renderCard({
+      onJoin,
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
     });
     const input = screen.getByLabelText(
@@ -280,15 +285,15 @@ describe("CalendarMeetCard", () => {
     ) as HTMLInputElement;
     expect(input.value).toBe(href);
     expect(input.readOnly).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
-    expect(showSuccess).toHaveBeenCalledWith(defaultCalendarLabels.toastFeedCopied);
+    const trigger = generateMeetButton();
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: defaultCalendarLabels.eventMeetJoin }));
+    expect(onJoin).toHaveBeenCalledWith(href);
   });
 
-  it("shows the stored href for invitees and copies it", async () => {
+  it("shows the stored href read-only for invitees, without the Meet menu", () => {
     const href = `${ORIGIN}/meet/guest?room=${ROOM}`;
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
     renderCard({
       readOnly: true,
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
@@ -299,9 +304,6 @@ describe("CalendarMeetCard", () => {
     expect(input.value).toBe(href);
     expect(input.readOnly).toBe(true);
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(href));
-    expect(showSuccess).toHaveBeenCalledWith(defaultCalendarLabels.toastFeedCopied);
   });
 
   it("keeps compact Join inline on the Meet URL row in read-only mode", async () => {
@@ -313,13 +315,11 @@ describe("CalendarMeetCard", () => {
       form: { ...emptyCalendarEventForm("default", "2033-01-12"), meetingUrl: href },
     });
     const input = screen.getByLabelText(defaultCalendarLabels.eventMeetUrlLabel);
-    const copy = screen.getByRole("button", { name: defaultCalendarLabels.copyHttpsUrl });
     const join = await screen.findByRole("button", {
       name: defaultCalendarLabels.eventMeetJoin,
     });
     const row = input.closest(".calendar-event-dialog__meet-row");
     expect(row).toBeTruthy();
-    expect(row!.contains(copy)).toBe(true);
     expect(row!.contains(join)).toBe(true);
     expect(join.className).toContain("calendar-meet-join--icon");
     expect(join.className).toContain("icon-button");
@@ -331,6 +331,7 @@ describe("CalendarMeetCard", () => {
   it("renders FieldLabelRow leading icon in field presentation (editable)", () => {
     renderCard({
       presentation: "field",
+      iconLabels: true,
       form: {
         ...emptyCalendarEventForm("default", "2033-01-12"),
         meetingUrl: `${ORIGIN}/meet/guest?room=${ROOM}`,
@@ -339,7 +340,7 @@ describe("CalendarMeetCard", () => {
     const iconLabel = document.querySelector(".field-label-row__icon-label");
     expect(iconLabel).toBeTruthy();
     expect(iconLabel!.querySelector("svg")).toBeTruthy();
-    expect(iconLabel!.textContent).toContain(defaultCalendarLabels.eventMeetSectionTitle);
+    expect(iconLabel!.textContent).toContain(defaultCalendarLabels.eventMeetLinkLabel);
     expect(document.querySelector(".field-label-row--icon")).toBeTruthy();
   });
 
@@ -348,6 +349,7 @@ describe("CalendarMeetCard", () => {
     const onJoin = vi.fn();
     renderCard({
       presentation: "field",
+      iconLabels: true,
       readOnly: true,
       copyOnly: true,
       onJoin,
@@ -357,7 +359,7 @@ describe("CalendarMeetCard", () => {
     const iconLabel = document.querySelector(".field-label-row__icon-label");
     expect(iconLabel).toBeTruthy();
     expect(iconLabel!.querySelector("svg")).toBeTruthy();
-    expect(iconLabel!.textContent).toContain(defaultCalendarLabels.eventMeetSectionTitle);
+    expect(iconLabel!.textContent).toContain(defaultCalendarLabels.eventMeetLinkLabel);
     const fieldRow = document.querySelector(
       ".calendar-event-dialog__field--meet.field-label-row--icon",
     );

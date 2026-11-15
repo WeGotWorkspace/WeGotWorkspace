@@ -2,47 +2,54 @@
 
 .icon-button--size-xs {
   @apply shrink-0;
-  width: var(--control-height-xs, 1.75rem);
-  height: var(--control-height-xs, 1.75rem);
-  min-width: var(--control-height-xs, 1.75rem);
-  min-height: var(--control-height-xs, 1.75rem);
+  width: calc(var(--control-height-xs, 1.75rem) + var(--icon-button-height-step, 0px));
+  height: calc(var(--control-height-xs, 1.75rem) + var(--icon-button-height-step, 0px));
+  min-width: calc(var(--control-height-xs, 1.75rem) + var(--icon-button-height-step, 0px));
+  min-height: calc(var(--control-height-xs, 1.75rem) + var(--icon-button-height-step, 0px));
   --button-icon-size: 0.75rem;
 }
 
 .icon-button--size-sm {
   @apply shrink-0;
-  width: var(--control-height-sm, 2rem);
-  height: var(--control-height-sm, 2rem);
-  min-width: var(--control-height-sm, 2rem);
-  min-height: var(--control-height-sm, 2rem);
+  width: calc(var(--control-height-sm, 2rem) + var(--icon-button-height-step, 0px));
+  height: calc(var(--control-height-sm, 2rem) + var(--icon-button-height-step, 0px));
+  min-width: calc(var(--control-height-sm, 2rem) + var(--icon-button-height-step, 0px));
+  min-height: calc(var(--control-height-sm, 2rem) + var(--icon-button-height-step, 0px));
   --button-icon-size: 0.875rem;
 }
 
 .icon-button--size-md {
   @apply shrink-0;
-  width: var(--control-height-md, 2.25rem);
-  height: var(--control-height-md, 2.25rem);
-  min-width: var(--control-height-md, 2.25rem);
-  min-height: var(--control-height-md, 2.25rem);
+  width: calc(var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px));
+  height: calc(var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px));
+  min-width: calc(var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px));
+  min-height: calc(var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px));
   --button-icon-size: 0.875rem;
 }
 
 .icon-button--size-lg {
   @apply shrink-0;
-  width: var(--control-height-lg, 2.5rem);
-  height: var(--control-height-lg, 2.5rem);
-  min-width: var(--control-height-lg, 2.5rem);
-  min-height: var(--control-height-lg, 2.5rem);
+  width: calc(var(--control-height-lg, 2.5rem) + var(--icon-button-height-step, 0px));
+  height: calc(var(--control-height-lg, 2.5rem) + var(--icon-button-height-step, 0px));
+  min-width: calc(var(--control-height-lg, 2.5rem) + var(--icon-button-height-step, 0px));
+  min-height: calc(var(--control-height-lg, 2.5rem) + var(--icon-button-height-step, 0px));
   --button-icon-size: 1rem;
 }
 
 .icon-button--size-xl {
   @apply shrink-0;
-  width: var(--control-height-xl, 2.75rem);
-  height: var(--control-height-xl, 2.75rem);
-  min-width: var(--control-height-xl, 2.75rem);
-  min-height: var(--control-height-xl, 2.75rem);
+  width: calc(var(--control-height-xl, 2.75rem) + var(--icon-button-height-step, 0px));
+  height: calc(var(--control-height-xl, 2.75rem) + var(--icon-button-height-step, 0px));
+  min-width: calc(var(--control-height-xl, 2.75rem) + var(--icon-button-height-step, 0px));
+  min-height: calc(var(--control-height-xl, 2.75rem) + var(--icon-button-height-step, 0px));
   --button-icon-size: 1.25rem;
+}
+
+/* Beside a field (copy, generate, clear) an icon button is as tall as the field: it takes
+ * the field step, so it stays square at the field's height. */
+.input ~ [class*="icon-button--size-"],
+[class*="icon-button--size-"]:has(~ .input) {
+  --icon-button-height-step: var(--input-height-step, 0px);
 }
 
 /* Beat `.button--variant-*` color (equal single-class specificity / unstable CSS order). */

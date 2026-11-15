@@ -11,7 +11,7 @@ import {
   pushScopesToPost,
   readPushScopes,
   rememberPushScope,
-} from "./push-scope";
+} from "@/lib/notifications/push-scope";
 import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;

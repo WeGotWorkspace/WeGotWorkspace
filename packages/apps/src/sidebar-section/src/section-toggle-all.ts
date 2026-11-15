@@ -1,9 +1,11 @@
 import type { VisibilityDotChecked } from "@/collection-sidebar/src/visibility-dot";
 
-/** A neutral dot before a section title that shows or hides every row of the section. */
+/** The "All" row first in a section: a neutral dot that shows or hides every row of it. */
 export type SidebarSectionToggleAll = {
   /** All rows on, none on, or `"mixed"`. */
   checked: VisibilityDotChecked;
+  /** The row's name; default "All". */
+  name?: string;
   /** Accessible name for what a click does, e.g. "Show all reminders". */
   label: string;
   onToggle: () => void;
@@ -21,8 +23,8 @@ export function visibilityOfAll(
 }
 
 /**
- * The show/hide-all dot for a section's rows: shows all while some or none are
- * on, hides all while all are on. No dot (undefined) when there are no rows.
+ * The "All" row for a section's rows: shows all while some or none are on, hides
+ * all while all are on. No row (undefined) when there are no rows.
  */
 export function sectionToggleAll({
   ids,

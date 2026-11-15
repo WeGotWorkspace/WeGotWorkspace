@@ -6,7 +6,6 @@ import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarSearchResultsList } from "@/calendar-core/src/calendar-search-results";
 import { CALENDAR_SEARCH_PAGE_SIZE } from "@/calendar-core/src/calendar-search";
 import type { CalendarOccurrence } from "@/calendar-core/src/calendar-event-model";
-import type { CalendarListView } from "@/lib/calendar-elements/CalendarListView/CalendarListView";
 
 function mockDomApis() {
   if (!window.ResizeObserver) {
@@ -17,6 +16,20 @@ function mockDomApis() {
     } as unknown as typeof ResizeObserver;
   }
   Element.prototype.scrollIntoView = vi.fn();
+  // The list asks whether this is a touch screen.
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
 }
 
 class MockIntersectionObserver {
@@ -69,33 +82,26 @@ describe("CalendarSearchResultsList paging", () => {
     render(
       <CalendarSearchResultsList
         results={{ upcoming, past: [] }}
-        searchRange={{ start: "2025-08-01T00:00:00", end: "2028-08-01T00:00:00" }}
-        visibleCalendars={[{ id: "work", name: "Work", color: "#6366F1" }]}
+        calendars={[{ id: "work", name: "Work", color: "#6366F1" }]}
         labels={defaultCalendarLabels}
         locale="en-US"
-        onEventSelected={() => {}}
+        selection={{ selectedIds: [], selectionMode: false, onItemClick: () => {} }}
       />,
     );
 
-    const list = document.querySelector("calendar-list-view") as CalendarListView | null;
-    expect(list).toBeTruthy();
-    await list?.updateComplete;
-    expect(list?.events?.size).toBe(CALENDAR_SEARCH_PAGE_SIZE);
-    expect(list?.showYearInHeadings).toBe(true);
-    expect(list?.shadowRoot?.querySelector(".list-sticky-header__rest")?.textContent).toMatch(
-      /2026/,
-    );
-
-    const scope = document.querySelector(".calendar-search-results__scope");
-    const tags = [...(scope?.querySelectorAll(".tag") ?? [])].map((tag) => tag.textContent?.trim());
-    expect(tags[0]).toMatch(/Aug 2025/);
-    expect(tags.slice(1)).toContain("Work");
+    const rows = () => document.querySelectorAll(".calendar-search-results [data-list-item-id]");
+    expect(rows()).toHaveLength(CALENDAR_SEARCH_PAGE_SIZE);
+    // Results span years: the day headings carry the year.
+    expect(document.querySelector(".calendar-search-results")?.textContent).toMatch(/2026/);
+    // No scope tags above the results.
+    expect(document.querySelector(".calendar-search-results__scope")).toBeNull();
+    expect(document.querySelector(".calendar-search-results .tag")).toBeNull();
 
     expect(document.querySelector(".collection-list-end")).toBeTruthy();
     MockIntersectionObserver.last?.emit(true);
 
     await waitFor(() => {
-      expect(list?.events?.size).toBe(150);
+      expect(rows()).toHaveLength(150);
     });
     expect(document.querySelector(".collection-list-end")).toBeNull();
   });

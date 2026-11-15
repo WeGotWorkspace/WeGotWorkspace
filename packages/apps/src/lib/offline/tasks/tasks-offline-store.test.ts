@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { Task } from "@/lib/models/tasks-types";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import {
   enqueueCoalescedTaskUpdate,

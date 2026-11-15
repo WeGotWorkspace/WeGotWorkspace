@@ -8,13 +8,13 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import {
   readOfflineNotesUsername,
   rememberOfflineNotesUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import {
   listPendingNoteIds,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import type { NotesUIData } from "@/lib/models/notes-types";
 import { useNotesController } from "./use-notes-controller";
 

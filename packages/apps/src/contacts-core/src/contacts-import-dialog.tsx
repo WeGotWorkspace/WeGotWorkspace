@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/button/src/button";
 import { ImportDialog } from "@/import-dialog/src/import-dialog";
 import { DialogFooter } from "@/ui/dialog";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import {
   ContactsAddressBookSelect,
   suppressClosedSelectTypeahead,
@@ -13,7 +14,6 @@ import {
 } from "@/contacts-core/src/contacts-addressbook-write";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import type { VcardImportProgress } from "@/contacts-core/src/contacts-vcard-import";
-import "@/contacts-core/src/contacts-import-dialog.css";
 
 export type ContactsImportDialogLabels = Pick<
   ContactsUILabels,
@@ -117,14 +117,17 @@ export function ContactsImportDialog({
       className={contentClassName}
     >
       <form
-        className="contacts-import-dialog__form"
         onSubmit={(event) => {
           event.preventDefault();
           if (!canSubmit) return;
           onImport(files, addressBookId);
         }}
       >
-        <div className="contacts-import-dialog__fields">
+        <FieldLabelRow
+          layout="inline"
+          label={labels.importDestinationLegend}
+          htmlFor="contacts-import-book"
+        >
           <ContactsAddressBookSelect
             id="contacts-import-book"
             label={labels.importDestinationLegend}
@@ -132,11 +135,13 @@ export function ContactsImportDialog({
             books={writable}
             value={addressBookId}
             disabled={busy}
+            variant="toolbar"
+            triggerVariant="ghost"
             onValueChange={selectAddressBookById}
             onTriggerKeyDown={suppressClosedSelectTypeahead}
           />
-        </div>
-        <DialogFooter className="contacts-import-dialog__footer">
+        </FieldLabelRow>
+        <DialogFooter>
           <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
             {labels.cancel}
           </Button>

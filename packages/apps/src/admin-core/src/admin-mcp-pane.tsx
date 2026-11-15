@@ -13,7 +13,7 @@ import {
 import { buttonVariants } from "@/button/src/button";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
-import { buildMcpEndpointUrl } from "@/settings-core/src/mcp-endpoint";
+import { buildMcpEndpointUrl } from "@/lib/mcp-endpoint";
 import { McpEndpointUrlRow } from "@/settings-core/src/mcp-endpoint-url-row";
 
 export type AdminMcpPaneProps = {

@@ -4,7 +4,10 @@ import {
   hasNoteCollabPendingServerSave,
   noteCollabRoomKey,
 } from "@/lib/offline/notes/notes-collab-rooms";
-import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import {
+  listPendingNoteIds,
+  readNotesBootstrapFromCache,
+} from "@/lib/offline/notes/notes-offline-store";
 import {
   getCollabRoomPendingRevision,
   readCollabPendingRooms,

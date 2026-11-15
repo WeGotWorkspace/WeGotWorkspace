@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Clock, Crown, TriangleAlert, Users, type LucideIcon } from "lucide-react";
-import { calendarRsvpStatusIcon } from "@/calendar-core/src/calendar-rsvp-actions";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Users } from "lucide-react";
 import {
   attendeesReferToSamePerson,
+  inviteeForAttendee,
   listedInviteeAttendees,
   normalizeParticipantAddress,
   organizerAttendeeForList,
@@ -31,8 +31,8 @@ import {
   SharePrincipalSearchDropdown,
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
-import { UserChip } from "@/user-avatar/src/user-chip";
-import { FieldLabelRow } from "@/ui/field-label-row";
+import { Tag } from "@/tag/src/tag";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { ControlSize } from "@/ui/control-size";
 import { cn } from "@/lib/utils";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
@@ -49,6 +49,8 @@ export type CalendarInviteesCardProps = {
   busy?: boolean;
   canSubmitEmail?: boolean;
   sessionEmail?: string;
+  /** The viewer: their own row shows their name and username, like a teammate's. */
+  self?: CalendarInvitee;
   contactCards?: ContactCard[];
   /** Invitee view: hide add/remove. */
   readOnly?: boolean;
@@ -59,7 +61,6 @@ export type CalendarInviteesCardProps = {
   /** `field` matches the flat event-form FieldLabelRow chrome. */
   presentation?: "card" | "field";
   className?: string;
-  fieldIcon?: ReactNode;
   /** Shared control height for the add-invitee input. Default `md`. */
   controlSize?: ControlSize;
   onChange: (attendees: CalendarAttendee[]) => void;
@@ -129,55 +130,66 @@ function rsvpToneClass(status: CalendarParticipationStatus): string | undefined 
   }
 }
 
-function ParticipantChip({
-  title,
-  statusLabel,
-  icon: Icon,
-  toneClass,
-  size,
-  removable,
-  removeLabel,
-  onRemove,
-  busyRows,
-  labels,
-}: {
-  title: string;
+type ParticipantTagProps = {
+  attendee: Pick<CalendarAttendee, "email" | "name">;
+  invitees: CalendarInvitee[];
   statusLabel: string;
-  icon: LucideIcon;
   toneClass?: string;
-  size: ControlSize;
-  removable?: boolean;
   removeLabel: string;
   onRemove?: () => void;
   /** Overlapping periods when this teammate is busy at the event's time (#1614). */
   busyRows?: string[] | null;
   labels: CalendarUILabels;
-}) {
-  const busy = busyRows != null;
+};
+
+/**
+ * A participant as a tag: the name (an outside guest's email), the RSVP as the tag's dot
+ * and wash and as its tooltip, with any busy time under it.
+ */
+function ParticipantTag({
+  attendee,
+  invitees,
+  statusLabel,
+  toneClass,
+  removeLabel,
+  onRemove,
+  busyRows,
+  labels,
+}: ParticipantTagProps) {
+  const teammate = inviteeForAttendee(attendee, invitees);
+  const name = teammate?.name || attendee.name;
+  const handle = teammate ? teammate.username : attendee.email;
+  const label = name || handle;
   return (
-    <UserChip
-      label={title}
-      statusLabel={
-        busy ? `${statusLabel}, ${labels.eventAttendeesAvailabilityBusyStatus}` : statusLabel
-      }
-      tooltipContent={
-        busy ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="calendar-invitees-card__tag"
+          tabIndex={0}
+          // A screen reader hears the clash too, not only the tooltip's sighted users.
+          aria-label={[label, statusLabel, busyRows && labels.eventAttendeesAvailabilityBusyWith]
+            .filter(Boolean)
+            .join(", ")}
+        >
+          <Tag
+            label={label}
+            className={cn(toneClass, busyRows && "calendar-invitees-card__tag--busy")}
+            dot
+            size="lg"
+            removable={Boolean(onRemove)}
+            onRemove={onRemove}
+            removeAriaLabel={`${removeLabel}: ${label}`}
+          />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        {busyRows ? (
           <CalendarInviteeBusyTooltip rsvpLabel={statusLabel} rows={busyRows} labels={labels} />
-        ) : undefined
-      }
-      description={busy ? busyRows.join("; ") : undefined}
-      adornment={busy ? <TriangleAlert /> : undefined}
-      markIcon={<Icon aria-hidden />}
-      size={size}
-      className={cn(
-        "calendar-invitees-card__chip",
-        toneClass,
-        busy && "calendar-invitees-card__chip--busy",
-      )}
-      removable={removable && !!onRemove}
-      onRemove={onRemove}
-      removeAriaLabel={removeLabel}
-    />
+        ) : (
+          statusLabel
+        )}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -188,23 +200,25 @@ export function CalendarInviteesCard({
   busy = false,
   canSubmitEmail = true,
   sessionEmail,
+  self,
   contactCards = [],
   readOnly = false,
   noTeam = false,
   meetEmailGuestHint,
   presentation = "card",
   className,
-  fieldIcon,
   controlSize = "sm",
   onChange,
   onRefreshContactCards,
   availability,
 }: CalendarInviteesCardProps) {
   const locked = busy || readOnly;
+  const addFieldId = useId();
   const { locale, timeZone } = useCalendarDisplayPrefs();
   const [query, setQuery] = useState("");
   const organizer = organizerAttendeeForList(attendees, invitees, sessionEmail);
   const listed = listedInviteeAttendees(attendees, invitees);
+  const people = useMemo(() => (self ? [...invitees, self] : invitees), [invitees, self]);
 
   useEffect(() => {
     if (readOnly || !onRefreshContactCards || !query.trim()) return;
@@ -269,6 +283,7 @@ export function CalendarInviteesCard({
       onSelect={selectSearchOption}
     >
       <ShareDialogInput
+        id={addFieldId}
         value={query}
         size={controlSize}
         disabled={locked}
@@ -302,45 +317,37 @@ export function CalendarInviteesCard({
       </>
     ) : null;
 
-  const chips = (
-    <div className="calendar-invitees-card__chips">
+  const participants = (
+    <>
       {organizer ? (
-        <ParticipantChip
+        <ParticipantTag
           key={`organizer:${organizer.email}`}
-          title={organizer.name || organizer.email}
+          attendee={organizer}
+          invitees={people}
           statusLabel={labels.eventAttendeesOrganizer}
-          icon={Crown}
           toneClass="calendar-invitees-status-mark--organizer"
-          size={controlSize}
-          removable={false}
           removeLabel={labels.eventAttendeesRemove}
           labels={labels}
         />
       ) : null}
       {listed.map((attendee) => {
-        const title = attendee.name || attendee.email;
         const status =
           rsvpLabel(attendee.participationStatus, labels) ?? labels.eventAttendeesRsvpNeedsAction;
-        const toneClass = rsvpToneClass(attendee.participationStatus);
-        const StatusIcon = calendarRsvpStatusIcon(attendee.participationStatus) ?? Clock;
-
         const busyRows = inviteeBusyRows(
           availability?.get(normalizeParticipantAddress(attendee.email)),
           { labels, locale, timeZone },
         );
 
         return (
-          <ParticipantChip
+          <ParticipantTag
             key={attendee.email}
-            title={title}
+            attendee={attendee}
+            invitees={people}
             statusLabel={status}
-            icon={StatusIcon}
-            toneClass={toneClass}
-            size={controlSize}
-            removable={!locked}
+            toneClass={rsvpToneClass(attendee.participationStatus)}
             removeLabel={labels.eventAttendeesRemove}
             onRemove={
-              readOnly
+              locked
                 ? undefined
                 : () =>
                     onChange(
@@ -354,38 +361,31 @@ export function CalendarInviteesCard({
           />
         );
       })}
-    </div>
+    </>
   );
 
-  if (presentation === "field") {
-    return (
-      <FieldLabelRow
-        className={cn("calendar-invitees-card calendar-invitees-card--field", className)}
-        label={labels.eventAttendeesLabel}
-        labelMode="icon"
-        icon={fieldIcon ?? <Users className="size-3.5" aria-hidden />}
-      >
-        <div className="calendar-invitees-card__field-body">
-          {chips}
-          {addControl != null ? (
-            <div className="calendar-invitees-card__add">{addControl}</div>
-          ) : null}
-          {footer}
-        </div>
-      </FieldLabelRow>
-    );
-  }
-
+  // A section like Team access in the Share dialog: the add field first, then the people.
   return (
     <ShareAccessCard
-      className={cn("calendar-event-dialog__card calendar-invitees-card", className)}
-      titleIcon={<Users className="size-4" />}
+      icon={<Users aria-hidden />}
+      htmlFor={addControl != null ? addFieldId : undefined}
+      className={cn(
+        "calendar-invitees-card",
+        presentation === "field" ? "calendar-invitees-card--field" : "calendar-event-dialog__card",
+        className,
+      )}
       title={labels.eventAttendeesLabel}
-      description={showNoTeam ? noTeamYetCopy : labels.eventAttendeesHint}
+      description={
+        presentation === "field"
+          ? undefined
+          : showNoTeam
+            ? noTeamYetCopy
+            : labels.eventAttendeesHint
+      }
       footer={footer}
       addControl={addControl}
     >
-      {chips}
+      <div className="calendar-invitees-card__tags">{participants}</div>
     </ShareAccessCard>
   );
 }

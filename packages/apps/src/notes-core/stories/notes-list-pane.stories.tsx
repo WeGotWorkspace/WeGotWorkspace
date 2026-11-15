@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { tagForNotesView } from "@/notes-core/src/use-notes-sidebar-model";
-import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
+import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useNotesPaneStoryController } from "./notes-pane-stories.harness";
 import { NotesStoryScope } from "./notes-story-scope";
 
@@ -34,10 +35,10 @@ export function NotesListPaneHarness({
 
   const firstNotebook = controller.notes[0]?.notebook ?? "";
 
-  useSyncRetryToast({
+  const syncNotice = useSyncRetryNotice({
+    id: "sync:notes",
     active: (failedSyncCount ?? 0) > 0,
-    title: controller.L.syncFailedTitle,
-    message: controller.L.syncFailedMessage,
+    title: controller.L.syncFailedNotice,
     retryLabel: controller.L.retrySync,
     onRetry: () => {},
   });
@@ -83,7 +84,10 @@ export function NotesListPaneHarness({
 
   return (
     <NotesStoryScope variant="list-column">
-      <CollectionListWorkspace {...listProps} />
+      <CollectionListWorkspace
+        {...listProps}
+        listTop={<NoticeBar label={controller.L.noticeBarLabel} notices={[syncNotice]} />}
+      />
       {controller.confirmDialog}
     </NotesStoryScope>
   );
@@ -120,7 +124,7 @@ export const Default: Story = {
     await expect(canvas.queryByText("essay")).toBeNull();
     // Suite list norm: title + date top right, a two-line preview, the notebook with its dot.
     const row = canvasElement.querySelector(".list-item__button") as HTMLElement;
-    await expect(row.querySelector(".list-item__meta .notes-notebook-color-dot")).toBeTruthy();
+    await expect(row.querySelector(".list-item__meta .collection-color-dot")).toBeTruthy();
     await expect(row.querySelector(".list-item__title-row .list-item__date")).toBeTruthy();
     await expect(row.querySelector(".list-item__body--preview")).toBeTruthy();
     await expect(canvasElement.querySelector(".collection-sidebar-row__dot")).toBeNull();
@@ -142,12 +146,13 @@ export const PendingSync: Story = {
 export const RetrySync: Story = {
   tags: ["vitest-ci"],
   args: { preset: "default", failedSyncCount: 2 },
-  play: async () => {
-    await waitFor(() => {
-      expect(document.body.textContent).toContain("Some changes could not sync");
-    });
-    const body = within(document.body);
-    await expect(body.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByRole("region", { name: "Needs your attention" });
+    await expect(bar).toHaveTextContent(
+      "Some changes could not sync. They are saved on this device.",
+    );
+    await expect(within(bar).getByRole("button", { name: "Retry" })).toBeEnabled();
   },
 };
 

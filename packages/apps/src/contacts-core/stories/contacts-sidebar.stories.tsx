@@ -5,7 +5,7 @@ import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsSidebarBookRows } from "@/contacts-core/src/contacts-sidebar-book-rows";
 import { ContactsSidebarGroupRows } from "@/contacts-core/src/contacts-sidebar-group-rows";
-import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactsAddressBookRow } from "@/contacts-core/src/contacts-addressbook-write";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import { sortOwnedSidebarAddressBooks } from "@/contacts-core/src/use-contacts-sidebar-model";

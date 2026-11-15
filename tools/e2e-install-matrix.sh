@@ -234,7 +234,31 @@ if [[ "$CHANNEL" == "zip" ]]; then
   # directory outside it. The health checks above ran before the install,
   # so nothing they wrote may be left under the document root either.
   TREE_REAL="$(cd "$WORK/tree" && pwd -P)"
-  DATA_DIR="$(sed -n 's/^WGW_DATA_DIR=//p' "$WORK/tree/packages/api/.env" | tail -1)"
+  # The .env follows the data directory out of the tree (#1484); the pointer
+  # in packages/api names it.
+  POINTER="$WORK/tree/packages/api/.env.path"
+  if [[ ! -f "$POINTER" ]]; then
+    echo "No packages/api/.env.path: the .env stayed inside the document root" >&2
+    exit 1
+  fi
+  if [[ -e "$WORK/tree/packages/api/.env" ]]; then
+    echo "packages/api/.env still exists inside the document root" >&2
+    exit 1
+  fi
+  ENV_FILE="$(grep -v '^[[:space:]]*#' "$POINTER" | grep -v '^[[:space:]]*$' | head -1)"
+  ENV_REAL="$(cd "$(dirname "$ENV_FILE")" && pwd -P)/$(basename "$ENV_FILE")"
+  if [[ ! -f "$ENV_REAL" || "$ENV_REAL" == "$TREE_REAL"/* ]]; then
+    echo ".env.path names ${ENV_FILE}, which is missing or inside ${TREE_REAL}" >&2
+    exit 1
+  fi
+  # The front controller may answer any path (SPA shell, 404), so check what
+  # comes back rather than the status alone.
+  ENV_STATUS="$(curl -s -o "$WORK/env-probe.txt" -w '%{http_code}' "${BASE}/packages/api/.env")"
+  if grep -q '^APP_KEY=' "$WORK/env-probe.txt"; then
+    echo "/packages/api/.env is served (HTTP ${ENV_STATUS})" >&2
+    exit 1
+  fi
+  DATA_DIR="$(sed -n 's/^WGW_DATA_DIR=//p' "$ENV_REAL" | tail -1)"
   if [[ "$DATA_DIR" != /* ]]; then
     echo "WGW_DATA_DIR is not an absolute path outside the tree: '${DATA_DIR}'" >&2
     exit 1
@@ -254,4 +278,5 @@ if [[ "$CHANNEL" == "zip" ]]; then
     exit 1
   fi
   echo "Data directory resolved outside the document root: ${DATA_REAL}"
+  echo ".env outside the document root: ${ENV_REAL} (GET /packages/api/.env: ${ENV_STATUS})"
 fi

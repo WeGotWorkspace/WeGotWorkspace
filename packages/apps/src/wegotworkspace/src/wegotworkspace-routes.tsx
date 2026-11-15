@@ -17,8 +17,8 @@ import { CalendarRsvpPage } from "@/calendar-core/src/calendar-rsvp-page";
 import { validateCalendarRouteSearch } from "@/calendar-core/src/calendar-route-search";
 import { ContactsApp } from "@/contacts-core/src/contacts-app";
 import { DocsApp } from "@/docs-core/src/docs-app";
-import { validateDocsRouteSearch } from "@/docs-core/src/docs-route-search";
-import { DriveApp } from "@/drive-core/src/drive-app";
+import { validateDocsRouteSearch } from "@/lib/files/docs-route-search";
+import { DriveAppWithDocs } from "@/docs-core/src/drive-app-with-docs";
 import { validateDriveRouteSearch } from "@/drive-core/src/drive-route-search";
 import {
   meetRoomFromSearch,
@@ -472,7 +472,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
     path: "/drive",
     head: drivePwaHead,
     validateSearch: validateDriveRouteSearch,
-    component: isLive ? withWeGotWorkspaceAuth(DriveApp) : MockDriveRoute,
+    component: isLive ? withWeGotWorkspaceAuth(DriveAppWithDocs) : MockDriveRoute,
   });
 
   const docsRoute = createRoute({

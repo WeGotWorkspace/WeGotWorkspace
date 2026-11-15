@@ -7,6 +7,7 @@ import type {
   DriveShareOperations,
   DriveUIData,
 } from "@/lib/files/drive-types";
+import { driveParentFolderPath } from "@/drive-core/src/drive-breadcrumbs";
 import { useDriveList } from "@/drive-core/src/use-drive-list";
 import { useDriveMutations } from "@/drive-core/src/use-drive-mutations";
 import { useDriveShell } from "@/drive-core/src/use-drive-shell";
@@ -93,33 +94,26 @@ export function useDriveController({
     shell.searchInputRef,
   ]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (isKeyboardFieldTarget(e.target)) return;
-
-      if (
-        e.key === "Enter" &&
-        !e.repeat &&
-        list.active &&
-        list.selectedIds.length <= 1 &&
-        !mutations.renameDialog
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        mutations.requestRenameItem(list.active);
-        return;
-      }
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, [list.active, list.selectedIds.length, mutations.renameDialog, mutations.requestRenameItem]);
-
   useWorkspaceListKeyboardShortcuts({
     searchInputRef: shell.searchInputRef,
     selectedCount: list.selectedIds.length,
     onRequestDeleteSelection: mutations.requestDeleteSelected,
     onNavigateList: list.navigateListByKeyboard,
     onUndoQueuedAction: list.undoLatest,
+    onOpenActive: (focusedId) => {
+      const item = focusedId ? list.fileById(focusedId) : list.active;
+      if (item && (focusedId || list.selectedIds.length <= 1)) list.openFile(item);
+    },
+    onRenameActive: (focusedId) => {
+      const item = focusedId ? list.fileById(focusedId) : list.active;
+      if (item && (focusedId || list.selectedIds.length <= 1) && !mutations.renameDialog) {
+        mutations.requestRenameItem(item);
+      }
+    },
+    onNavigateUp: () => {
+      const parent = driveParentFolderPath(shell.view);
+      if (parent) shell.selectView({ type: "folder", path: parent });
+    },
   });
 
   return {

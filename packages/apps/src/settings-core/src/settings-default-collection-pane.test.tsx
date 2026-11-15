@@ -1,6 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
+import {
+  readDefaultCollectionId,
+  writeDefaultCollectionPrefs,
+} from "@/lib/default-collection-prefs";
 import {
   SettingsContactsPane,
   SettingsNotesPane,
@@ -35,26 +38,26 @@ afterEach(() => {
 describe("SettingsDefaultCollectionPane", () => {
   it("renders Default list with the Inbox name on the closed trigger", () => {
     render(<SettingsTasksPane />);
-    const trigger = screen.getByRole("button", { name: /Default list: Inbox/i });
+    const trigger = screen.getByRole("combobox", { name: "Default list" });
     expect(trigger.textContent).toContain("Inbox");
     expect(screen.queryByText(/coming soon/i)).toBeNull();
   });
 
   it("renders Default address book with Personal on the closed trigger", () => {
     render(<SettingsContactsPane />);
-    expect(
-      screen.getByRole("button", { name: /Default address book: Personal/i }).textContent,
-    ).toContain("Personal");
+    expect(screen.getByRole("combobox", { name: "Default address book" }).textContent).toContain(
+      "Personal",
+    );
   });
 
   it("renders Default notebook with The Journal on the closed trigger", () => {
     render(<SettingsNotesPane />);
-    expect(
-      screen.getByRole("button", { name: /Default notebook: The Journal/i }).textContent,
-    ).toContain("The Journal");
+    expect(screen.getByRole("combobox", { name: "Default notebook" }).textContent).toContain(
+      "The Journal",
+    );
   });
 
-  it("shows the owned task default before the live list returns without marking the form dirty", async () => {
+  it("shows the owned task default before the live list returns without storing it", async () => {
     let resolveLists!: (lists: unknown[]) => void;
     taskLists.current = new Promise((resolve) => {
       resolveLists = resolve;
@@ -63,9 +66,9 @@ describe("SettingsDefaultCollectionPane", () => {
 
     render(<SettingsTasksPane />);
 
-    const beforeLoad = screen.getByRole("button", { name: /Default list: Inbox/i });
+    const beforeLoad = screen.getByRole("combobox", { name: "Default list" });
     expect(beforeLoad.textContent).toContain("Inbox");
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 
     resolveLists([
       {
@@ -85,10 +88,10 @@ describe("SettingsDefaultCollectionPane", () => {
       },
     ]);
 
-    const trigger = await screen.findByRole("button", { name: /Default list: Inbox/i });
+    const trigger = await screen.findByRole("combobox", { name: "Default list" });
     expect(trigger.textContent).toContain("Inbox");
-    expect(screen.queryByRole("button", { name: /Default list: Work/i })).toBeNull();
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(trigger.textContent).not.toContain("Work");
+    expect(readDefaultCollectionId("tasks")).toBeUndefined();
   });
 
   it("keeps a saved task list while the live list is in flight and after it resolves", async () => {
@@ -101,8 +104,7 @@ describe("SettingsDefaultCollectionPane", () => {
 
     render(<SettingsTasksPane />);
 
-    expect(screen.queryByRole("button", { name: /Default list:/i })).toBeNull();
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("combobox", { name: "Default list" })).toBeNull();
 
     resolveLists([
       {
@@ -121,9 +123,9 @@ describe("SettingsDefaultCollectionPane", () => {
       },
     ]);
 
-    const trigger = await screen.findByRole("button", { name: /Default list: Work/i });
+    const trigger = await screen.findByRole("combobox", { name: "Default list" });
     expect(trigger.textContent).toContain("Work");
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(readDefaultCollectionId("tasks")).toBe("tasks-work");
   });
 
   it("hides the task picker when the live list fails", async () => {
@@ -133,8 +135,8 @@ describe("SettingsDefaultCollectionPane", () => {
     render(<SettingsTasksPane />);
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /Default list:/i })).toBeNull();
+      expect(screen.queryByRole("combobox", { name: "Default list" })).toBeNull();
     });
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(readDefaultCollectionId("tasks")).toBeUndefined();
   });
 });

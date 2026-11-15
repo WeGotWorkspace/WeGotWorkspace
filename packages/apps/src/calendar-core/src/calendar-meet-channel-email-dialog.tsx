@@ -59,11 +59,7 @@ export function CalendarMeetChannelEmailDialog({
           <AlertDialogTitle>{labels.eventMeetChannelEmailTitle}</AlertDialogTitle>
           <AlertDialogDescription>{labels.eventMeetChannelEmailDescription}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter
-          className="calendar-meet-channel-email-dialog__footer"
-          role="group"
-          aria-label={labels.eventMeetChannelEmailTitle}
-        >
+        <AlertDialogFooter role="group" aria-label={labels.eventMeetChannelEmailTitle}>
           {CHOICES.map((choice) => (
             <Button
               key={choice.id}

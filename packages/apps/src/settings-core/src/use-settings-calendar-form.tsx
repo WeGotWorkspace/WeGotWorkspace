@@ -16,10 +16,7 @@ export function useSettingsCalendarForm() {
     read: () => calendarDisplayPrefsToForm(readCalendarDisplayPrefs()),
     write: (values) => writeCalendarDisplayPrefs(calendarDisplayFormToPrefs(values)),
     saved: { panelId: "calendar", sliceId: "calendar-display" },
-    messages: {
-      success: "Calendar settings saved",
-      error: "Could not save Calendar settings",
-    },
+    saveError: "Could not save Calendar settings",
   });
 }
 
