@@ -226,6 +226,52 @@ final class ImipMailboxDkimTest extends WgwDatabaseTestCase
         $this->assertSame([2, 3], array_values(array_map(static fn (array $line): int => $line['context']['imap_uid'], $skipped)));
     }
 
+    public function test_a_truncated_batch_keeps_the_mailbox_dns_clock(): void
+    {
+        $mailbox = $this->connect();
+        $this->server->messages[2] = $this->withSelector($this->signed('reply-rsa-relaxed.eml'), 'bad1');
+        for ($uid = 3; $uid <= 51; $uid++) {
+            $this->server->messages[$uid] = $this->plainMessage();
+        }
+        $this->server->messages[52] = $this->withSelector($this->signed('reply-rsa-simple-length.eml'), 'bad2');
+        $this->server->messages[53] = $this->signed('reply-ed25519.eml');
+        $this->dns->records['bad1._domainkey.elsewhere.test'] = FakeDnsTxtResolver::FAIL;
+        $this->dns->records['bad2._domainkey.elsewhere.test'] = FakeDnsTxtResolver::FAIL;
+
+        $this->poller()->poll($mailbox, self::NOW);
+        $this->assertSame(1, $mailbox->fresh()?->last_uid);
+
+        $this->poller()->poll($mailbox->refresh(), self::NOW + ImipMailboxPoller::DNS_RETRY_SECONDS);
+        $this->assertSame(51, $mailbox->fresh()?->last_uid);
+
+        $this->recordLogs();
+        $this->poller()->poll($mailbox->refresh(), self::NOW + ImipMailboxPoller::DNS_RETRY_SECONDS + ImipMailboxPoller::MIN_INTERVAL_SECONDS);
+
+        $this->assertSame(53, $mailbox->fresh()?->last_uid);
+        $this->assertSame('ACCEPTED', $this->guestStatus());
+        $skipped = array_filter($this->logged, static fn (array $line): bool => $line['message'] === ImipReplyIngest::LOG_SKIPPED
+            && ($line['context']['detail'] ?? null) === DkimResult::DNS_UNAVAILABLE);
+        $this->assertSame([52], array_values(array_map(static fn (array $line): int => $line['context']['imap_uid'], $skipped)));
+    }
+
+    public function test_a_dropped_connection_after_the_dkim_check_does_not_burn_the_signature(): void
+    {
+        $mailbox = $this->connect();
+        $this->server->messages[2] = $this->signed('reply-rsa-relaxed.eml');
+        $this->server->byeOnSections = 1;
+
+        $this->poller()->poll($mailbox, self::NOW);
+
+        $fresh = $mailbox->fresh();
+        $this->assertSame('NEEDS-ACTION', $this->guestStatus());
+        $this->assertSame(1, $fresh?->last_uid);
+
+        $this->poller()->poll($mailbox->refresh(), self::NOW + ImipMailboxPoller::MIN_INTERVAL_SECONDS);
+
+        $this->assertSame('ACCEPTED', $this->guestStatus());
+        $this->assertSame(2, $mailbox->fresh()?->last_uid);
+    }
+
     public function test_trusted_server_refusal_is_not_overridden_by_dkim(): void
     {
         $mailbox = $this->connect(trusted: 'mx.receiver.test');

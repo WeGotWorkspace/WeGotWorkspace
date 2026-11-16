@@ -26,6 +26,9 @@ final class FakeImapServer implements ImapTransport
 
     public bool $tls = false;
 
+    /** How many body section fetches are answered with `* BYE` (a dropped connection). */
+    public int $byeOnSections = 0;
+
     private string $output = '';
 
     private string $pendingLiteralCommand = '';
@@ -187,6 +190,11 @@ final class FakeImapServer implements ImapTransport
                 $parts[] = 'BODY[] {'.strlen($raw)."}\r\n".$raw;
             }
             if (preg_match('/BODY\.PEEK\[([\d.]+)\]/', $items, $section) === 1) {
+                if ($this->byeOnSections > 0) {
+                    $this->byeOnSections--;
+
+                    return "* BYE Connection dropped\r\n";
+                }
                 $body = $message['sections'][$section[1]] ?? '';
                 $parts[] = 'BODY['.$section[1].'] {'.strlen($body)."}\r\n".$body;
             }

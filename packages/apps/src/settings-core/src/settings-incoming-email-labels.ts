@@ -37,8 +37,7 @@ export const incomingEmailLabels = {
     protocol_error: "The mail server gave an answer that could not be read.",
     dns_unavailable:
       "A reply is waiting because its sender's DNS did not answer. It is tried again on the next check.",
-    untrusted_server_unknown:
-      "Connected, not reading yet. Press Check now once a message has arrived.",
+    untrusted_server_unknown: "Connected.",
   } as Record<string, string>,
   required: "Fill in the mail server, username and password.",
   passwordAgain: "Enter the password again for the new mail server or port.",

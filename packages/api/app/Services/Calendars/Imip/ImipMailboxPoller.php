@@ -158,7 +158,8 @@ class ImipMailboxPoller
             $mailbox->last_uid = $highest;
         }
 
-        $uids = array_slice($client->uidsAfter((int) $mailbox->last_uid), 0, self::BATCH_SIZE);
+        $pending = $client->uidsAfter((int) $mailbox->last_uid);
+        $uids = array_slice($pending, 0, self::BATCH_SIZE);
         $summaries = $client->summaries($uids);
         foreach ($uids as $uid) {
             $summary = $summaries[$uid] ?? null;
@@ -167,7 +168,9 @@ class ImipMailboxPoller
             }
             $mailbox->last_uid = $uid;
         }
-        $this->cache->forget($this->deferKey($mailbox));
+        if (count($pending) <= self::BATCH_SIZE) {
+            $this->cache->forget($this->deferKey($mailbox));
+        }
 
         return null;
     }
@@ -214,6 +217,8 @@ class ImipMailboxPoller
             $raw = $client->section($summary->uid, $part->section);
         } catch (ImapException $exception) {
             if ($exception->errorCode !== ImapException::PROTOCOL_ERROR) {
+                $this->senders->release($sender);
+
                 throw $exception;
             }
             $raw = null;
@@ -260,14 +265,14 @@ class ImipMailboxPoller
      * whose key lookup fails, so each such message must not wait for itself.
      * The first deferral starts the clock; once it has run out, every
      * deferred message is skipped at once. A poll that ends without a
-     * deferral clears it.
+     * deferral and reached the end of the folder clears it.
      */
     private function retryExpired(CalendarReplyMailbox $mailbox, int $now): bool
     {
         $key = $this->deferKey($mailbox);
         $first = $this->cache->get($key);
         if (! is_int($first)) {
-            $this->cache->put($key, $now, self::DNS_RETRY_SECONDS * 2);
+            $this->cache->forever($key, $now);
 
             return false;
         }
