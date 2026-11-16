@@ -66,6 +66,8 @@ bash setup.sh upgrade        # latest from manifest.json (confirms interactively
 bash setup.sh upgrade 1.2.0  # explicit version — backup → pull → migrator → web
 ```
 
+Every service logs through Docker's `json-file` driver with rotation (`x-wgw-logging` in `docker-compose.yml`), which overrides a daemon-wide log driver such as journald or Loki for this stack.
+
 Check for updates (read-only — does not apply):
 
 ```bash
