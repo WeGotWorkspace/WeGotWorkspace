@@ -1,4 +1,4 @@
-Source: #2172 (body-hash: 658e4631)
+Source: #2172 (body-hash: 868f59a5)
 Goal: WeGotWorkspace/Product#60
 
 # Assign people to a task
@@ -18,7 +18,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
   - every visible sharee, whether shared directly with a person or with a Team (expanded to its members).
 
   The resolver backs three things: the assignee picker endpoint, assignee validation and notification recipients. Epic #2173 reuses it for mentions.
-- **Who can be assigned.** Only people in the list audience **with write access**, so an assignee can tick the task off. Over REST and MCP the server rejects a **newly added** assignee outside that set with 422; attendees the task already has are never re-checked (see Technical constraints, Validation). Over CalDAV the server never rejects an `ATTENDEE`, so third-party clients keep working. Such an attendee is simply never notified (see Edge cases).
+- **Who can be assigned.** Only people in the list audience **with write access**, so an assignee can tick the task off. The product owner confirmed this on 2026-11-16: someone who can only view the list cannot be assigned. Over REST and MCP the server rejects a **newly added** assignee outside that set with 422; attendees the task already has are never re-checked (see Technical constraints, Validation). Over CalDAV the server never rejects an `ATTENDEE`, so third-party clients keep working. Such an attendee is simply never notified (see Edge cases).
 - **Task change set.** A pure diff of a task before and after a write. The input is two JMAP-shaped task arrays from `TaskMapper`. The output is a list of field changes, with assignees added and removed as person ids.
   - REST and MCP writes compute it in `TaskRepository`.
   - CalDAV `PUT`s compute it in a new DAV plugin: it reads the stored object before the write and the new one after a successful write.
@@ -142,12 +142,14 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 
 ### UI
 
-- **Detail view.** A new field row after Priority, in the existing `DetailFieldList`, using the `TasksDetailField` pattern.
+- **Detail view.** A new field row in the existing `DetailFieldList`, using the `TasksDetailField` pattern. The product owner's mockup (`.agents/specs/2173-task-threads/mockup-task-detail.webp`, added in PR #2178) puts it first, above Status:
+  - The row has a person icon and the label "Assignee". With one assignee the value is their avatar and name with a chevron; with two or more it is up to three stacked avatars and "{N} people". Clicking the value opens the picker.
+  - With nobody assigned the value reads "Unassigned".
   - The picker is a popover listing the audience with a search box.
   - It reuses `UserAvatar` and the list/row primitives from `packages/apps/src/ui`. It does not reuse the share dialog's principal search, which searches every colleague, not the list audience.
   - Read-only people are shown disabled with "Can only view this list".
   - Saving goes through the existing detail autosave as a `participants` patch.
-- **List row.** Avatars only. No names, which are too wide in narrow lists. Hovering shows each name.
+- **List row.** Avatars only, at the right end of the row's meta line after the alarm and priority icons, as in the mockup. No names, which are too wide in narrow lists. Hovering shows each name.
 - **Sidebar.** `state:assigned-to-me` is a new view in `filterTasksByView`.
   - A task matches when one of its participants has the id `u:<me>`, or role `attendee` and the current user's email.
   - Done and cancelled tasks are left out, like Today.

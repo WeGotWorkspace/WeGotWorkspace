@@ -62,7 +62,7 @@ See spec.md, Non-goals.
 - **The existing component.** `participants`, already mapped to ATTENDEE, is the storage. A new `X-WGW-ASSIGNEE` property was rejected: native clients that show task attendees (Thunderbird, jtx Board) would not see it, and the converter already round-trips ATTENDEE.
 - **Writing an ORGANIZER with the first assignment** was rejected. In clients that treat an organised item as an invitation, a non-organiser could not edit the task. And the server has no iTIP for VTODO to make the organiser mean anything.
 - **Reusing `listAclOwnerUsernames` as the audience** was rejected. It leaves out sharees, and changing it would change #798's recipients. A new resolver is added. #798 keeps its function.
-- **Allowing read-only viewers as assignees** was rejected. They cannot tick the task off. The Goal's "people who can see the list" is narrowed to "can edit the list" (decision to review, see Open decisions).
+- **Allowing read-only viewers as assignees** was rejected. They cannot tick the task off. The Epic's "people who can see the list" is narrowed to "can edit the list". The product owner confirmed this on 2026-11-16, and the Epic now says so.
 - **Notifying from `EventDispatchPlugin`** was rejected, because it has no before/after content. A separate observer plugin computes the change set. `EventDispatchPlugin` stays as it is.
 - **A server-side "assigned to me" query** was rejected for now. The client already holds the cross-list task set that the Today and Overdue views use.
 
@@ -82,7 +82,7 @@ See spec.md, Non-goals.
 
 ## Open decisions
 
-- [x] Assignees need write access to the list. Taken tonight without the product owner, so it is listed under "Decisions to review" in the PR; it only changes chunk A's validation and C's picker state.
+- [x] Assignees need write access to the list. Confirmed by the product owner on 2026-11-16 (read-only viewers cannot be assigned); it only changes chunk A's validation and C's picker state.
 - [x] No ORGANIZER is written. Also listed under "Decisions to review".
 - [x] The members endpoint answers writers only and filters by the caller's Teams (#1915). This came from the review loop (2026-11-14): otherwise a person sharee would see the names and emails of a Team they are not in. It is the conservative choice and is listed for the product owner; it only changes chunk A.
 
