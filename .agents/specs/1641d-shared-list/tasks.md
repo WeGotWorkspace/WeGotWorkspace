@@ -12,7 +12,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | id | owner / agent | skill | key paths | verify command |
 |----|---------------|-------|-----------|----------------|
 | `chunk-a-shared-list-notes` | builder | workspace | `packages/apps/src/workspace-list/src/`, `packages/apps/src/notes-core/src/notes-list-panel.tsx`, `notes-list-row.tsx`, `packages/apps/scripts/measure-list-frames.mjs`, `packages/apps/e2e/notes-list-windowed.spec.ts` | `pnpm --dir packages/apps exec vitest run src/workspace-list src/notes-core` |
-| `chunk-b-contacts` | builder | workspace | `packages/apps/src/contacts-core/src/contacts-list-panel.tsx` (delete `contacts-list-window.ts`) | `pnpm --dir packages/apps exec vitest run src/contacts-core` |
+| `chunk-b-contacts` | builder | workspace | `packages/apps/src/contacts-core/src/contacts-list-panel.tsx`, `contacts-list-row.tsx`, `contacts-list-rows.ts` (delete `contacts-list-window.ts`) | `pnpm --dir packages/apps exec vitest run src/contacts-core` |
 | `chunk-c-tasks` | builder | workspace | `packages/apps/src/tasks-core/src/tasks-list-panel.tsx`, `tasks-list-row.tsx`, `packages/apps/e2e/helpers/tasks-matrix.ts` | `pnpm --dir packages/apps exec vitest run src/tasks-core` |
 | `chunk-d-drive` | builder | workspace | `packages/apps/src/drive-core/src/drive-browser.tsx`, `use-drive-tiles-in-view.ts` | `pnpm --dir packages/apps exec vitest run src/drive-core` |
 | `chunk-e-docs-home` | builder | workspace | `packages/apps/src/docs-core/src/docs-home-pane.tsx` | `pnpm --dir packages/apps exec vitest run src/docs-core` |

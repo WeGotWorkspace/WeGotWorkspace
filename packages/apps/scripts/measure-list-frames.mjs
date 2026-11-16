@@ -9,7 +9,8 @@
  *
  * Usage (against a production build: `vite build && vite preview`, live API):
  *   node scripts/measure-list-frames.mjs --app notes --base-url http://127.0.0.1:4461 \
- *     --api-url http://127.0.0.1:9461 [--scenario all|open|scroll|keys|type] [--runs 3] [--cpu 4]
+ *     --api-url http://127.0.0.1:9461 [--scenario all|open|scroll|keys|…] [--runs 3] [--cpu 4]
+ *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search).
  *
  * Each run uses a fresh browser context (no cache, no IndexedDB): a cold first visit.
  * Scenarios find rows by position on screen, never by DOM index, so the numbers
@@ -129,7 +130,76 @@ async function clickRowInMiddle(page) {
   await page.mouse.click(point.x, point.y);
 }
 
+/** Scroll the list through its whole height in 20 steps. */
+async function scrollThrough(page) {
+  const start = await now(page);
+  const total = await page.evaluate((rowSelector) => {
+    const row = document.querySelector(rowSelector);
+    let node = row?.parentElement ?? null;
+    while (node && !(node.scrollHeight > node.clientHeight + 1)) node = node.parentElement;
+    return node?.scrollHeight ?? 0;
+  }, ROW_SELECTOR);
+  for (let step = 1; step <= 20; step += 1) {
+    await scrollList(page, (total * step) / 20);
+    await page.waitForTimeout(100);
+  }
+  return { start, interactions: 20 };
+}
+
+/** Click the first row, then ArrowDown 30 times at typing speed. */
+async function arrowDownThrough(page) {
+  await page.locator(ROW_SELECTOR).first().click();
+  await page.waitForTimeout(1000);
+  const start = await now(page);
+  for (let i = 0; i < 30; i += 1) {
+    await page.keyboard.press("ArrowDown");
+    await page.waitForTimeout(KEY_DELAY_MS);
+  }
+  return { start, interactions: 30 };
+}
+
 const APPS = {
+  contacts: {
+    path: "/contacts",
+    async ready(page) {
+      await page.getByRole("button", { name: "New contact" }).first().waitFor({ timeout: 60_000 });
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      await page.getByLabel("Loading contacts…").waitFor({ state: "detached", timeout: 60_000 });
+    },
+    scenarios: {
+      /** Cold open: from navigation until the list has painted and settled. */
+      async open(page) {
+        await APPS.contacts.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /** Scroll the whole book in 20 steps. */
+      async scroll(page) {
+        await APPS.contacts.ready(page);
+        await page.waitForTimeout(1500);
+        return scrollThrough(page);
+      },
+      /** Select a contact, then ArrowDown 30 times: each step opens that contact. */
+      async keys(page) {
+        await APPS.contacts.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
+      },
+      /** Type a search one letter at a time, then clear it: the list re-filters each time. */
+      async search(page) {
+        await APPS.contacts.ready(page);
+        await page.waitForTimeout(1500);
+        const search = page.getByPlaceholder("Search contacts...");
+        await search.click();
+        const start = await now(page);
+        await search.pressSequentially("son", { delay: KEY_DELAY_MS * 3 });
+        for (let i = 0; i < 3; i += 1) {
+          await page.keyboard.press("Backspace");
+          await page.waitForTimeout(KEY_DELAY_MS * 3);
+        }
+        return { start, interactions: 6 };
+      },
+    },
+  },
   notes: {
     path: "/notes",
     async ready(page) {
@@ -147,31 +217,13 @@ const APPS = {
       async scroll(page) {
         await APPS.notes.ready(page);
         await page.waitForTimeout(1500);
-        const start = await now(page);
-        const total = await page.evaluate((rowSelector) => {
-          const row = document.querySelector(rowSelector);
-          let node = row?.parentElement ?? null;
-          while (node && !(node.scrollHeight > node.clientHeight + 1)) node = node.parentElement;
-          return node?.scrollHeight ?? 0;
-        }, ROW_SELECTOR);
-        for (let step = 1; step <= 20; step += 1) {
-          await scrollList(page, (total * step) / 20);
-          await page.waitForTimeout(100);
-        }
-        return { start, interactions: 20 };
+        return scrollThrough(page);
       },
       /** Select a row, then ArrowDown 30 times at typing speed. */
       async keys(page) {
         await APPS.notes.ready(page);
         await page.waitForTimeout(1500);
-        await page.locator(ROW_SELECTOR).first().click();
-        await page.waitForTimeout(1000);
-        const start = await now(page);
-        for (let i = 0; i < 30; i += 1) {
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(KEY_DELAY_MS);
-        }
-        return { start, interactions: 30 };
+        return arrowDownThrough(page);
       },
       /** Open a note about 40 rows down and type 40 characters in its body (#1714). */
       async type(page) {

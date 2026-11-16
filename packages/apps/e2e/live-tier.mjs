@@ -18,6 +18,7 @@ export const liveTierSpecs = [
   "calendar-team-availability-offline",
   "contacts-first-download",
   "contacts-first-open-count",
+  "contacts-list-windowed",
   "contacts-offline-read-only",
   "contacts-open-draft-merge",
   "contacts-push",

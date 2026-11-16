@@ -60,7 +60,7 @@ Structural refactors must still compose **existing** UI from `packages/apps/src/
 
 ## Item lists
 
-- Render a list pane through **`WorkspaceList`** ([`workspace-list/src/workspace-list.tsx`](../../../packages/apps/src/workspace-list/src/workspace-list.tsx)). Pass the items in display order (sorting and filtering stay in the controller, because keyboard ranges read the same order), `getKey`, `renderItem` and a row-height `estimateSize`. Above 80 items it mounts only the rows near the viewport, keeps the active, focused and dragged rows mounted, and runs the reorder animation. Reference: `NotesListRows` in `notes-list-panel.tsx`.
+- Render a list pane through **`WorkspaceList`** ([`workspace-list/src/workspace-list.tsx`](../../../packages/apps/src/workspace-list/src/workspace-list.tsx)). Pass the items in display order (sorting and filtering stay in the controller, because keyboard ranges read the same order), `getKey`, `renderItem` and a row-height `estimateSize`. Above 80 items it mounts only the rows near the viewport, keeps the active, focused and dragged rows mounted, and runs the reorder animation. Reference: `NotesListRows` in `notes-list-panel.tsx`. Grouped lists pass `isHeader` (and `renderSection` when each section is its own element, so sticky headers stick per section); reference: `ContactsListRows` in `contacts-list-panel.tsx`.
 - Memoize the row with **`memo(Row, workspaceListRowPropsEqual)`** and give it handlers that keep their identity. Do not write a per-app props comparison.
 - Measure list performance with `packages/apps/scripts/measure-list-frames.mjs` (add the app's scenarios there). Design and remaining bindings: [`.agents/specs/1641d-shared-list/`](../../specs/1641d-shared-list/spec.md).
 
