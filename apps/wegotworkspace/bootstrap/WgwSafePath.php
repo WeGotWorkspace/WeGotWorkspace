@@ -21,10 +21,10 @@ final class WgwSafePath
         }
 
         foreach (explode(PATH_SEPARATOR, $openBasedir) as $allowed) {
-            $allowed = self::normalize($allowed);
             if ($allowed === '') {
                 continue;
             }
+            $allowed = self::normalize($allowed);
             if ($path === $allowed || str_starts_with($path.'/', $allowed.'/')) {
                 return true;
             }
