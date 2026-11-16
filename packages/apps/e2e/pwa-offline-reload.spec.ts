@@ -54,7 +54,14 @@ test("one cold visit to Contacts: Contacts reloads offline, and Calendar's code 
     // Calendar was never opened online. Its code is precached, so the app
     // opens; its data was never fetched, so it shows its own offline state.
     await page.goto("/calendar");
-    await expect(page.getByText("No cached calendar available offline")).toBeVisible();
+    await expect(page.getByText("Not available offline yet")).toBeVisible();
+    await expect(page.getByText("Could not load live calendar")).toHaveCount(0);
+    await expect(page.getByText(/\.env\.local/)).toHaveCount(0);
+
+    // Back online, without clicking Retry: the panel retries on its own.
+    await context.setOffline(false);
+    await expect(page.getByText("Not available offline yet")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "More calendar actions" })).toBeVisible();
   } finally {
     await context.setOffline(false);
   }

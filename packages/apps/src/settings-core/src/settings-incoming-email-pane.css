@@ -1,0 +1,26 @@
+@import "../../styles.css" reference;
+
+/*
+ * Settings → Incoming email, and the folder card in Settings → Calendar.
+ * Rows are inline `FieldLabelRow`s.
+ */
+
+.settings-incoming-email {
+  @apply flex flex-col;
+}
+
+.settings-incoming-email__note {
+  @apply m-0 text-sm text-muted-foreground;
+}
+
+.settings-incoming-email__status {
+  @apply m-0 mt-3 mb-1 rounded-md bg-muted px-3 py-2 text-sm text-foreground;
+}
+
+.settings-incoming-email__actions {
+  @apply flex flex-wrap items-center gap-3 pt-3;
+}
+
+.settings-incoming-email__failure {
+  @apply m-0 pt-2 text-sm text-destructive;
+}

@@ -80,7 +80,24 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
     });
   }, [closeDialog, panel, router]);
 
-  const api = useMemo(() => ({ openPanel, openRegisteredPanel }), [openPanel, openRegisteredPanel]);
+  const dialogOpen = panel !== null;
+  const showPanel = useCallback(
+    (id: BuiltinPanelId) => {
+      const next = getSettingsPanel(id);
+      if (!next) return;
+      if (dialogOpen) {
+        setPanel(next);
+        return;
+      }
+      void router.navigate({ ...settingsNavigateTarget(next.id) });
+    },
+    [dialogOpen, router],
+  );
+
+  const api = useMemo(
+    () => ({ openPanel, openRegisteredPanel, showPanel }),
+    [openPanel, openRegisteredPanel, showPanel],
+  );
   const onCloseAutoFocus = useCallback((event: Event) => {
     event.preventDefault();
     if (restoreFocusRef.current) {

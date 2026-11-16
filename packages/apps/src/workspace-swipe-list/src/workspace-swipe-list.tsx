@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { SwipeableList, Type as SwipeListType } from "react-swipeable-list";
+import "react-swipeable-list/dist/styles.css";
 import { ListItemEventDelegationContext } from "@/list-item/src/list-item-delegation";
 import { ListSelectionProvider } from "@/list-item/src/list-item-selection";
 import {

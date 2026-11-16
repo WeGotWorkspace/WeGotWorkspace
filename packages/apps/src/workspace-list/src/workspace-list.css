@@ -1,0 +1,6 @@
+/* Spacers stand in for rows out of view. The browser must not anchor the scroll
+   position on one: rows are the anchors, as without windowing. */
+.workspace-list__spacer {
+  overflow-anchor: none;
+  pointer-events: none;
+}

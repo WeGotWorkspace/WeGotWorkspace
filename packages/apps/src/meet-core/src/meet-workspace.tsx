@@ -100,6 +100,7 @@ export function MeetWorkspace({
   operations,
   onLogout,
   className,
+  mainNotice,
   initialChannelId,
   initialCallLayout,
   initialThreadId = null,
@@ -647,6 +648,7 @@ export function MeetWorkspace({
             onEditChannel={dialogs.openEdit}
           />
         }
+        mainNotice={mainNotice}
         main={
           <MeetWorkspaceMainSurfaces
             open={conversationOpen || visitEngaged}
