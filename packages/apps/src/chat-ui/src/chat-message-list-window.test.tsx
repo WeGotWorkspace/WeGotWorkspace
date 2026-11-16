@@ -2,11 +2,12 @@
 // of 1,000 messages mounts only the messages near the viewport, and only those
 // create a text editor.
 import { createElement } from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatMessage } from "@/lib/models/chat-types";
 import { installListLayoutStubs } from "@/workspace-list/src/workspace-list-test-layout";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const renders: string[] = [];
 
@@ -188,6 +189,40 @@ describe("ChatMessageList with 1,000 messages", () => {
   });
 });
 
+describe("ChatMessageList hover actions", () => {
+  it("runs the latest handler on a row that did not re-render", () => {
+    const messages = channel(1000);
+    const first = vi.fn();
+    const latest = vi.fn();
+    const actionsWith = (onDelete: () => void) => () => [
+      { id: "delete" as const, onClick: onDelete },
+    ];
+    const { rerender } = render(
+      <ChatMessageList
+        messages={messages}
+        currentUserId={CURRENT_USER}
+        actionsForMessage={actionsWith(first)}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    renders.length = 0;
+
+    rerender(
+      <ChatMessageList
+        messages={messages}
+        currentUserId={CURRENT_USER}
+        actionsForMessage={actionsWith(latest)}
+      />,
+    );
+    expect(renders).toEqual([]);
+    const newest = document.querySelector('[data-list-item-id="m-1000"]') as HTMLElement;
+    fireEvent.click(within(newest).getByRole("button", { name: chatUiLabels.delete }));
+
+    expect(latest).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+  });
+});
+
 describe("ChatMessageList screen reader", () => {
   it("announces an arriving message once, and nothing for messages that scroll in", async () => {
     const messages = channel(1000);
@@ -210,6 +245,35 @@ describe("ChatMessageList screen reader", () => {
     };
     rerender(<ChatMessageList messages={[...messages, arriving]} currentUserId={CURRENT_USER} />);
     expect(announcer.textContent).toBe("bob: Lunch at noon?");
+  });
+
+  it("announces nothing when the newest message is removed", () => {
+    const messages = channel(1000);
+    const { rerender } = render(
+      <ChatMessageList messages={messages} currentUserId={CURRENT_USER} />,
+    );
+    rerender(<ChatMessageList messages={messages.slice(0, -1)} currentUserId={CURRENT_USER} />);
+
+    expect(document.querySelector(".chat-message-list__announcer")?.textContent).toBe("");
+  });
+
+  it("announces every message of a catch-up, also more than five", () => {
+    const messages = channel(1000);
+    const { rerender } = render(
+      <ChatMessageList messages={messages} currentUserId={CURRENT_USER} />,
+    );
+    const catchUp = Array.from({ length: 6 }, (_, index) => ({
+      ...messages.at(-1)!,
+      id: `m-late-${index}`,
+      body: `Late ${index + 1}`,
+    }));
+    rerender(<ChatMessageList messages={[...messages, ...catchUp]} currentUserId={CURRENT_USER} />);
+
+    const read = Array.from(
+      document.querySelectorAll(".chat-message-list__announcer p"),
+      (line) => line.textContent,
+    );
+    expect(read).toEqual(catchUp.map((message) => `${message.authorName}: ${message.body}`));
   });
 });
 

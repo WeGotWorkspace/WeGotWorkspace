@@ -37,8 +37,9 @@ export type ChatMessageListProps = {
   currentUserId: string;
   emptyLabel?: string;
   /**
-   * The hover actions of a message. Rows are memoized: the actions may depend on the
-   * message and `currentUserId` only. Their handlers may change; a click calls the latest.
+   * The hover actions of a message. Rows are memoized: which actions show may depend on
+   * the message and `currentUserId` only. Their handlers may change: a click runs the
+   * handler from the latest `actionsForMessage`.
    */
   actionsForMessage?: (message: ChatMessageModel) => ChatMessageAction[] | undefined;
   onToggleReaction?: (messageId: string, emoji: string) => void;
@@ -52,7 +53,7 @@ export type ChatMessageListProps = {
 };
 
 const STICK_THRESHOLD_PX = 48;
-/** Announcements kept in the live region; older ones were read already. */
+/** Earlier announcements kept in the live region; older ones were read already. */
 const ANNOUNCEMENTS_KEPT = 5;
 
 type Announcement = { id: string; text: string };
@@ -70,7 +71,10 @@ function scrollToBottom(el: HTMLDivElement, ignoreScrollRef: { current: boolean 
   });
 }
 
-/** The messages after `previousId`: what arrived since the last render. */
+/**
+ * The messages after `previousId`: what arrived since the last render. None when
+ * that message is gone (deleted, or replaced): the new last one is not news.
+ */
 function messagesAfter(
   messages: readonly ChatMessageModel[],
   previousId: string,
@@ -117,6 +121,7 @@ export function ChatMessageList({
   // Rows keep stable handlers, so they skip re-rendering; a click calls the latest prop.
   const latest = useRef({ actionsForMessage, onToggleReaction, onOpenThread });
   latest.current = { actionsForMessage, onToggleReaction, onOpenThread };
+  // A row builds its actions when it renders; each click looks its action up again.
   const actionsFor = useCallback(
     (message: ChatMessageModel) =>
       latest.current.actionsForMessage?.(message)?.map((action) => ({
@@ -124,7 +129,7 @@ export function ChatMessageList({
         onClick: () =>
           latest.current
             .actionsForMessage?.(message)
-            ?.find((candidate) => candidate.id === action.id)
+            ?.find((next) => next.id === action.id)
             ?.onClick(),
       })),
     [],
@@ -246,7 +251,10 @@ export function ChatMessageList({
 
     if (appended && previousId !== undefined) {
       const arrived = messagesAfter(messages, previousId).map(announcementFor);
-      setAnnouncements((previous) => [...previous.slice(-ANNOUNCEMENTS_KEPT), ...arrived]);
+      // Every arrival of this commit is read; the cap trims only what was read before.
+      if (arrived.length > 0) {
+        setAnnouncements((previous) => [...previous.slice(-ANNOUNCEMENTS_KEPT), ...arrived]);
+      }
     }
     if (ownSend) {
       stickRef.current = true;
