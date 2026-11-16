@@ -14,12 +14,14 @@ import {
   useSettingsController,
   type SettingsControllerState,
 } from "@/settings-core/src/use-settings-controller";
+import { useState } from "react";
 import { useDocumentTitle } from "@/lib/document-title";
 import { reachabilityFromSettingsData } from "@/settings-core/src/settings-reachability";
 import { SettingsPanelHost } from "@/settings-core/src/settings-panel-host";
 import type { SettingsWorkspaceProps } from "@/settings-core/src/settings-workspace-props";
 import { cn } from "@/lib/utils";
 import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
+import { SettingsPageStatusSlotContext } from "@/settings-core/src/settings-page-status";
 import "@/settings-core/src/settings-workspace.css";
 
 /** Sidebar section titles; also the header title (Settings › Device). */
@@ -134,25 +136,32 @@ function pageTitle(panel: SettingsControllerState["currentSection"]): string {
 
 function MainContent({ controller }: { controller: SettingsControllerState }) {
   const panel = controller.currentSection;
+  // A pane may show its own state tag here (`SettingsPageStatus`).
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   return (
     <>
       <header className="settings-page-header">
         <div className="settings-page-header__title-row">
           <h1 className="settings-page-header__title">{pageTitle(panel)}</h1>
-          {/* Keyed by pane: a Saved from the previous pane does not show on the next one. */}
-          <AutosaveStatusTag key={panel.id} />
+          <div className="settings-page-header__status">
+            {/* Keyed by pane: a Saved from the previous pane does not show on the next one. */}
+            <AutosaveStatusTag key={panel.id} />
+            <span ref={setStatusSlot} className="settings-page-header__slot" />
+          </div>
         </div>
         <p className="settings-page-header__description">{panel.description}</p>
       </header>
-      <SettingsPanelHost
-        panelId={controller.section}
-        ctx={reachabilityFromSettingsData({ mcpEnabled: controller.mcpEnabled })}
-        slices={{
-          profile: controller.profile,
-          assistants: controller.assistants,
-          memberships: controller.memberships,
-        }}
-      />
+      <SettingsPageStatusSlotContext.Provider value={statusSlot}>
+        <SettingsPanelHost
+          panelId={controller.section}
+          ctx={reachabilityFromSettingsData({ mcpEnabled: controller.mcpEnabled })}
+          slices={{
+            profile: controller.profile,
+            assistants: controller.assistants,
+            memberships: controller.memberships,
+          }}
+        />
+      </SettingsPageStatusSlotContext.Provider>
     </>
   );
 }

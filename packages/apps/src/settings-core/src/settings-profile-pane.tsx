@@ -71,7 +71,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           description="For account mail and invitations"
           htmlFor={emailId}
         >
-          <div className="settings-profile-pane__control">
+          <div className="settings-value-control">
             <Input id={emailId} value={profile.email} readOnly />
             <Button variant="outline" onClick={profile.openEmailDialog}>
               Change
@@ -88,7 +88,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           description="Changing it signs you out on this device"
           htmlFor={passwordId}
         >
-          <div className="settings-profile-pane__control">
+          <div className="settings-value-control">
             {/* Plain text, not type=password: there is nothing to reveal. */}
             <Input id={passwordId} value={PASSWORD_MASK} readOnly aria-label="Password (hidden)" />
             <Button variant="outline" onClick={profile.openPasswordDialog}>

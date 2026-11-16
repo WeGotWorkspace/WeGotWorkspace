@@ -57,6 +57,21 @@
   @apply flex items-center justify-between gap-4;
 }
 
+.settings-workspace .settings-page-header__status {
+  @apply flex shrink-0 items-center gap-2;
+}
+
+/* A pane's own state tag takes the place of the save tag. */
+.settings-workspace
+  .settings-page-header__status:has(.settings-page-header__slot:not(:empty))
+  .autosave-status {
+  display: none;
+}
+
+.settings-workspace .settings-page-header__slot:empty {
+  display: none;
+}
+
 .settings-workspace .settings-page-header__title {
   @apply m-0 font-serif text-4xl font-normal leading-tight md:text-5xl;
   color: var(--workspace-foreground);
@@ -76,12 +91,12 @@
   border-radius: 0;
 }
 
-/* Profile: a read-only value with its Change button (email, password). */
-.settings-workspace .settings-profile-pane__control {
+/* A read-only value with its Change button (Profile email and password, mailbox password). */
+.settings-workspace .settings-value-control {
   @apply flex w-full min-w-0 items-center gap-2;
 }
 
-.settings-workspace .settings-profile-pane__control > .input {
+.settings-workspace .settings-value-control > .input {
   @apply min-w-0 flex-1;
 }
 

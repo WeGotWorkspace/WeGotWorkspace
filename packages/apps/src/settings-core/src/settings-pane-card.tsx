@@ -8,15 +8,18 @@ import { Card } from "@/card/src/card";
 export function SettingsPaneCard({
   title,
   icon,
+  action,
   children,
 }: {
   title?: string;
   /** Marks the section, like the section rows in dialogs (Team access, Public link). */
   icon?: ReactNode;
+  /** End of the title row, such as a status tag. */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <Card className="settings-pane-card" title={title} titleIcon={icon}>
+    <Card className="settings-pane-card" title={title} titleIcon={icon} action={action}>
       {children}
     </Card>
   );
