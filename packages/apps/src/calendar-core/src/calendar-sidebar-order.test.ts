@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isSharedWithMeCalendar,
   ownedAndTeamCalendarsForSidebar,
   sharedWithMeCalendarsForSidebar,
   sortCalendarsForSidebar,
@@ -130,5 +131,17 @@ describe("team availability calendars", () => {
       "default",
     ]);
     expect(sharedWithMeCalendarsForSidebar(calendars)).toEqual([]);
+  });
+});
+
+describe("isSharedWithMeCalendar", () => {
+  it("marks personal sharees and not group or owned collections", () => {
+    expect(isSharedWithMeCalendar({ mayShare: false })).toBe(true);
+    expect(isSharedWithMeCalendar({ mayShare: true })).toBe(false);
+    expect(isSharedWithMeCalendar({ scope: "group", groupSlug: "eng", mayShare: false })).toBe(
+      false,
+    );
+    expect(isSharedWithMeCalendar({ mayShare: undefined })).toBe(false);
+    expect(isSharedWithMeCalendar({ mayShare: false, subscriptionId: "sub-1" })).toBe(false);
   });
 });

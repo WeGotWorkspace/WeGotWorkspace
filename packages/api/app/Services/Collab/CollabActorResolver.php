@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Exceptions\RealtimeApiException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Meet\MeetRequestAuth;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ final class CollabActorResolver
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
         if ($username === null) {
-            throw new CollabResponseException(401, 'auth_required', 'Sign in to join document collaboration.');
+            throw new RealtimeApiException(401, 'auth_required', 'Sign in to join document collaboration.');
         }
 
         return [

@@ -4,7 +4,7 @@ import {
   CONTACT_PHONE_TYPES,
   type ContactChannelContext,
   type ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
+} from "@/lib/models/contacts-edit-draft";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 
 /** Radix Select cannot use an empty string value; map UI "none" to this sentinel. */

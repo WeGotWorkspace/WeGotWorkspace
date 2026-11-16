@@ -1,7 +1,7 @@
 import { ApiError } from "@/lib/api/api-error";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
+import { docsEditorFormatFromFileName } from "@/text-editor-core/docs-collab/docs-editor-format";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { BC_TAB_ORIGIN } from "./docs-collab-tab-sync";
 import type { DocsCollabUrls } from "./docs-collab-types";

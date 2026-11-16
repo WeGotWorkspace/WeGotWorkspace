@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, CircleX, type LucideIcon } from "lucide-react";
-import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
+import type { AdminSecurityWarning } from "@/lib/models/admin-types";
 
 /** Browser origin plus the install base path, for the APP_URL warning button. */
 export function appUrlFromBrowserLocation(origin: string, baseUri: string): string {

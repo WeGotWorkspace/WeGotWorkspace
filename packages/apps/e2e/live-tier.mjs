@@ -59,6 +59,8 @@ export const liveTierSpecs = [
   "meet-guest-chat",
   "meet-guest-video-mirror",
   "meet-mesh-channel-roster",
+  "meet-opus-dtx",
+  "meet-video-mirror",
   "mesh-check-now",
   "notes-collab-access-lost",
   "notes-collab-missed-tail",
@@ -74,14 +76,18 @@ export const liveTierSpecs = [
   "notes-save-in-flight",
   "notes-sharee-star",
   "notes-undo-two-users",
+  "notifications-hidden-call",
   "notifications-inbox-push",
+  "notifications-read-batch",
   "notifications-toast",
   "presence-offline-start",
   "presence-team-rooms",
   "push-mesh-interval",
   "queued-write-reload",
+  "rtc-idle-poll",
   "settings-calendar-availability",
   "sync-notice-bar",
+  "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",
   "tasks-push",
@@ -126,8 +132,23 @@ export const contactsSyncMatrixSpecPattern = /contacts-sync-matrix\.spec\.ts/;
  */
 export const calendarSyncMatrixSpecPattern = /calendar-sync-matrix\.spec\.ts/;
 
+/**
+ * Meet chat sync matrix (#1565): chat on the shared offline engine (cold
+ * offline open, offline send and reload, second tab, a refused send, changes
+ * through the channel token). Needs the production build for the offline
+ * cases. Its own nightly job, like the Contacts matrix.
+ */
+export const meetChatSyncMatrixSpecPattern = /meet-chat-sync-matrix\.spec\.ts/;
+
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;
 
 /** Local coturn relay tier. One worker, and not part of pull-request CI. */
 export const relayTierSpecPattern = /rtc-relay\.spec\.ts/;
+
+/**
+ * Production-build PWA tier: `vite build` plus `vite preview`, where the
+ * service worker precaches every chunk, lazy app chunks included (#1628).
+ * `playwright.pwa.config.mjs` runs it. Not part of the Storybook or live tier.
+ */
+export const pwaTierSpecPattern = /pwa-offline-reload\.spec\.ts/;

@@ -1,5 +1,5 @@
 import type { MeetChannel } from "@/lib/models/meet-types";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import { shareGrantEntries } from "@/lib/sharing/collection-share";
 
 function normalize(username: string | null | undefined): string {

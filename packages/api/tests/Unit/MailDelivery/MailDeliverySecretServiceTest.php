@@ -6,6 +6,7 @@ namespace Tests\Unit\MailDelivery;
 
 use App\Services\MailDelivery\MailDeliverySecretFile;
 use App\Services\MailDelivery\MailDeliverySecretService;
+use App\Support\DataDirSecretBox;
 use App\Support\WgwInstallConfig;
 use Tests\Support\UiDistFixture;
 use Tests\TestCase;
@@ -91,6 +92,6 @@ final class MailDeliverySecretServiceTest extends TestCase
 
     private function service(): MailDeliverySecretService
     {
-        return new MailDeliverySecretService(new MailDeliverySecretFile(app(WgwInstallConfig::class)));
+        return new MailDeliverySecretService(new DataDirSecretBox(new MailDeliverySecretFile(app(WgwInstallConfig::class))));
     }
 }

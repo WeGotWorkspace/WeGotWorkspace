@@ -26,9 +26,14 @@ concurrency:
 
 jobs:
   review:
+    # Runs Dependabot starts get no Actions secrets, so the gate cannot get the
+    # loop's app token and would fail. Skip them. To review a Dependabot PR, a
+    # person marks it draft and then ready: that event is theirs, so the run
+    # gets the secrets.
     if: >-
       !github.event.pull_request.draft &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     permissions:
       contents: read
     uses: WeGotWorkspace/WeGotWorkspace/.github/workflows/review-loop-review-job.yml@main

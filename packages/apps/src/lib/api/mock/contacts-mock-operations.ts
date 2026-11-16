@@ -10,8 +10,8 @@ import {
   contactCardToEditDraft,
   editDraftToPatch,
   newContactMapId,
-} from "@/contacts-core/src/contacts-edit-utils";
-import { mergeContactFromPatch } from "@/contacts-core/src/contacts-patch-merge";
+} from "@/lib/models/contacts-edit-draft";
+import { mergeContactFromPatch } from "@/lib/models/contacts-patch-merge";
 
 type ContactsMockStore = {
   addressBooks: AddressBook[];

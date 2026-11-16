@@ -4,7 +4,7 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useFormAutosave } from "@/hooks/use-form-autosave";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
-import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import {
   calendarAvailabilityToForm,
   calendarAvailabilityUpdateFromForm,
@@ -15,7 +15,7 @@ import {
   calendarAvailabilitySavedTopic,
   defaultCalendarAvailabilitySettingsOperations,
 } from "@/settings-core/src/settings-calendar-availability-source";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved } from "@/lib/settings-slice-saved";
 import type { CalendarAvailabilitySettings } from "@wgw/openapi-types/calendars-types";
 
 export const CALENDAR_AVAILABILITY_SLICE = {

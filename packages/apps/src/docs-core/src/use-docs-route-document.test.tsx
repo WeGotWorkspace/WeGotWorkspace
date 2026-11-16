@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type { DocsLocatorDeps } from "@/docs-core/src/docs-document-locator";
 import { forgetDocsLocationsForTest } from "@/docs-core/src/docs-document-locator";
-import type { DocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import type { DocsRouteSearch } from "@/lib/files/docs-route-search";
 
 const navigate = vi.fn();
 

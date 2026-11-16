@@ -1,9 +1,13 @@
 import { createTasksAppBootstrap, type TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { Task, TaskList, TaskListPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
-import { applyTaskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
+import { applyTaskAlertsPatch } from "@/lib/models/task-alerts";
 import {
   filterSharePrincipals,
   mergeShareWith,
@@ -13,7 +17,7 @@ import {
   createHybridTasksOperations,
   loadTasksBootstrapHybrid,
 } from "@/lib/offline/tasks/tasks-hybrid-operations";
-import { resolveTasksOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveTasksOfflineUsername } from "@/lib/offline/core/offline-session";
 
 function taskListAfterSharePatch(list: TaskList, patch: TaskListPatch): TaskList {
   const { shareWith, ...rest } = patch;
@@ -188,24 +192,27 @@ export function createHybridTasksApiSource(): TasksApiSource {
   };
 }
 
-export function createDefaultTasksApiSource(): TasksApiSource {
+function createMockTasksApiSource(): TasksApiSource {
   let mockBootstrap = createTasksAppBootstrap();
+  return {
+    loadBootstrap: () => Promise.resolve(mockBootstrap),
+    createOperations: (bootstrap) => {
+      const username = resolveTasksOfflineUsername(bootstrap?.session.user.username);
+      if (username) return createHybridTasksOperations(username);
+      return createMockTasksOperations(
+        () => mockBootstrap,
+        (next) => {
+          mockBootstrap = next;
+        },
+      );
+    },
+  };
+}
 
+export function createDefaultTasksApiSource(): TasksApiSource {
   return createWorkspaceSource<TasksApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(mockBootstrap),
-      createOperations: (bootstrap) => {
-        const username = resolveTasksOfflineUsername(bootstrap?.session.user.username);
-        if (username) return createHybridTasksOperations(username);
-        return createMockTasksOperations(
-          () => mockBootstrap,
-          (next) => {
-            mockBootstrap = next;
-          },
-        );
-      },
-    }),
+    createMockSource: mocksInBuild ? createMockTasksApiSource : mocksNotInBuild,
     createLiveSource: createHybridTasksApiSource,
   });
 }

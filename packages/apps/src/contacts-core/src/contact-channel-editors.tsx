@@ -8,7 +8,7 @@ import type {
   ContactAddressDraft,
   ContactChannelContext,
   ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
+} from "@/lib/models/contacts-edit-draft";
 import {
   phoneToTelHref,
   safeContactExternalHref,

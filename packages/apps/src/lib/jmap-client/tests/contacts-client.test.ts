@@ -430,10 +430,54 @@ describe("JmapContactsClient contract batches", () => {
 
     const got = await contacts.getContactCardsByQuery(ACCOUNT);
     expect(got.list.map((card) => card.id)).toEqual(ids);
-    expect(recorded.slice(1).map((batch) => batch.map(([, args]) => args.ids))).toEqual([
+    // The re-list takes the state first (empty get), then fetches the ids in pages.
+    expect(recorded[1]?.map(([name, args]) => [name, args.ids])).toEqual([
+      ["ContactCard/get", []],
+      ["ContactCard/query", undefined],
+    ]);
+    expect(recorded.slice(2).map((batch) => batch.map(([, args]) => args.ids))).toEqual([
       [["card-1", "card-2"]],
       [["card-3"]],
     ]);
+  });
+
+  it("records the state from before a re-list above maxObjectsInGet (#1871)", async () => {
+    // Another device edits card-1 after its page was fetched: the server
+    // state moves on while the later pages are still being read.
+    let state = 10;
+    const ids = ["card-1", "card-2", "card-3"];
+    const { client, contacts } = await makeClient(
+      (calls) =>
+        calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids, queryState: "q1" }, id);
+          }
+          if ("#ids" in args) {
+            return methodResponse("error", { type: "requestTooLarge" }, id);
+          }
+          const pageIds = (args.ids as string[]) ?? [];
+          const response = methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: `${state}:`,
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+          if (pageIds.includes("card-1")) state += 1;
+          return response;
+        }),
+      { maxObjectsInGet: 2 },
+    );
+
+    const got = await contacts.getContactCardsByQuery(ACCOUNT, { inAddressBook: "default" });
+
+    expect(got.list.map((card) => card.id)).toEqual(ids);
+    // The state before the listing, so the next ContactCard/changes still reports card-1.
+    expect(got.state).toBe("10:");
+    expect(client.getState(ACCOUNT, "ContactCard")).toBe("10:");
   });
 
   it("per-book list only sends the inAddressBook filter", async () => {

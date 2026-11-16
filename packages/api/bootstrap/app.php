@@ -57,6 +57,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('wgw:notify:due-alarms')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:notify:vapid-sweep')->everyMinute()->withoutOverlapping();
+        $schedule->command('wgw:calendar:imip-poll')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:rtc:prune')->hourly()->withoutOverlapping();
         $schedule->command('wgw:availability:prune-cache')->hourly()->withoutOverlapping();
     })
@@ -121,8 +122,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // The one render hook for API errors (#1646): ApiHttpException and the
-        // realtime DomainResponseException family. Contract: .agents/skills/api/rest-design.md.
+        // The one render hook for API errors (#1646): ApiHttpException and
+        // RealtimeApiException. Contract: .agents/skills/api/rest-design.md.
         $exceptions->render(function (RendersApiError $e) {
             return response()->json($e->apiErrorBody(), $e->apiErrorStatus(), $e->apiErrorHeaders());
         });
@@ -152,7 +153,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'error' => 'Method not allowed.',
                 'code' => 'method_not_allowed',
-            ], 405);
+            ], 405, $e->getHeaders());
         });
         $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->is('api/*')) {

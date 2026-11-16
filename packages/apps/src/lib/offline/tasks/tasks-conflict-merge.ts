@@ -1,6 +1,23 @@
 import type { Task, TaskPatch } from "@/lib/models/tasks-types";
-import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { applyTaskPatch } from "@/lib/offline/tasks/tasks-patch-merge";
+
+/** The Tasks labels the conflict rows use. Tasks' `TasksUILabels` has them all. */
+export type TaskConflictLabels = Record<
+  | "addTaskPriority"
+  | "addTaskStatus"
+  | "descriptionLabel"
+  | "dueLabel"
+  | "editTaskTitle"
+  | "priorityHigh"
+  | "priorityLow"
+  | "priorityMedium"
+  | "priorityNone"
+  | "statusCancelled"
+  | "statusCompleted"
+  | "statusInProcess"
+  | "statusNeedsAction",
+  string
+>;
 
 export type TaskConflictFieldKey =
   "title" | "description" | "due" | "workflowStatus" | "priority" | "categories";
@@ -28,14 +45,14 @@ function formatCategories(categories: string[] | undefined): string {
   return categories.join(", ");
 }
 
-function formatPriority(priority: number | null | undefined, L: TasksUILabels): string {
+function formatPriority(priority: number | null | undefined, L: TaskConflictLabels): string {
   if (priority === 1) return L.priorityHigh;
   if (priority === 5) return L.priorityMedium;
   if (priority === 9) return L.priorityLow;
   return L.priorityNone;
 }
 
-function formatStatus(status: string | null | undefined, L: TasksUILabels): string {
+function formatStatus(status: string | null | undefined, L: TaskConflictLabels): string {
   if (status === "completed") return L.statusCompleted;
   if (status === "in-process") return L.statusInProcess;
   if (status === "cancelled") return L.statusCancelled;
@@ -49,7 +66,7 @@ function fieldDiffers(localValue: string, serverValue: string): boolean {
 export function buildTaskConflictFieldRows(
   serverTask: Task,
   localTask: Task,
-  L: TasksUILabels,
+  L: TaskConflictLabels,
 ): TaskConflictFieldRow[] {
   const rows: TaskConflictFieldRow[] = [
     {

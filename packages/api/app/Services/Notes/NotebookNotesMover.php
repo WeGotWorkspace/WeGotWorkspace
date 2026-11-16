@@ -33,7 +33,7 @@ final class NotebookNotesMover
             return 0;
         }
 
-        $destinationToken = (int) Calendar::query()->whereKey($destinationCalendarId)->value('synctoken');
+        $destinationToken = (int) Calendar::query()->whereKey($destinationCalendarId)->lockForUpdate()->value('synctoken');
         foreach ($objects as $object) {
             $this->moveHelper->moveWithoutTokenBump($object, $destinationCalendarId, $destinationToken);
         }

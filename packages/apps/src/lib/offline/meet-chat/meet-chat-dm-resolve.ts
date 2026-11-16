@@ -9,8 +9,8 @@ import { openChatDm } from "@/lib/api/wgw/meet-chat";
 import {
   findCachedDmChannelByPeer,
   upsertChatChannelInCache,
-} from "@/lib/offline/meet-chat-offline-store";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 
 /**
  * REST target for a UI channel id. Non-DM ids pass through; `dm:{peer}` ids

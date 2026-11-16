@@ -13,7 +13,7 @@ import type {
   WgwSettingsUserGroup,
   WgwSettingsUserProfile,
 } from "@/lib/api/wgw/types";
-import type { SettingsUIData, SettingsMcpGrant } from "@/settings-core/src/settings-types";
+import type { SettingsUIData, SettingsMcpGrant } from "@/lib/models/settings-types";
 
 function toUser(raw: WgwSettingsUserProfile): SettingsUIData["user"] {
   return {

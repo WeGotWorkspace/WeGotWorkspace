@@ -7,12 +7,12 @@ import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
 import {
-  enrichNote,
   mergeBootstrapNotesPreservingOptimistic,
   normalizeTag,
   notesCanCreateInView,
   noteShowsTags,
 } from "./notes-note-utils";
+import { enrichNote } from "@/lib/models/note-list-model";
 import type {
   NotesAPIOperations,
   NotesNotebookCollection,

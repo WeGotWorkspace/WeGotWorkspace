@@ -33,26 +33,14 @@ import type {
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarPublishSection } from "@/calendar-core/src/calendar-publish-section";
 import { CalendarShareSection } from "@/calendar-core/src/calendar-share-section";
-import type { CalendarSharePrincipal, CalendarShareWith } from "@/calendar-core/src/calendar-share";
+import type { CalendarSharePrincipal, CalendarShareWith } from "@/lib/calendar/calendar-share";
 import {
   inferCalendarNameFromUrl,
   isLikelyCalendarFeedUrl,
 } from "@/calendar-core/src/calendar-subscription";
 import "@/share-ui/share-ui.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
-
-export const CALENDAR_COLOR_SWATCHES = [
-  "#6366f1",
-  "#0ea5e9",
-  "#22c55e",
-  "#f59e0b",
-  "#ec4899",
-  "#ef4444",
-  "#8b5cf6",
-  "#14b8a6",
-] as const;
-
-export const DEFAULT_CALENDAR_COLOR = CALENDAR_COLOR_SWATCHES[0];
+import { CALENDAR_COLOR_SWATCHES, DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 
 export type CalendarCalendarDialogState =
   | null

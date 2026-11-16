@@ -1,4 +1,4 @@
-import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes-bootstrap-sync";
+import { notifyNotesBootstrapUpdated } from "@/lib/offline/notes/notes-bootstrap-sync";
 import type { NotesAPIOperations } from "@/lib/models/notes-types";
 
 /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Blobs;
 
+use App\Models\JmapContentHashJob;
 use App\Services\Jmap\Assembly\BlobAssemblyService;
 use App\Services\Jmap\Download\DownloadTicketService;
 use App\Services\Jmap\FileNodes\FileNodeBlobAttacher;
@@ -13,8 +14,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * Cleanup that does not assume a scheduler (#1500). `wgw:jmap:blobs-gc`
- * (not in the schedule) runs it in full; besides that, a small share of
- * /jmap/upload and Blob/upload requests run one bounded round:
+ * (not in the schedule) runs it in full, with hashing capped in time (#1873);
+ * besides that, a small share of /jmap/upload and Blob/upload requests run
+ * one bounded round:
  *
  *  - expired assemblies (their file and part claims; finished ones only
  *    their row) — first, so their parts become ordinary expired blobs,
@@ -61,48 +63,50 @@ final class JmapBlobMaintenance
     }
 
     /**
-     * @return array{assembliesExpired: int, blobsDeleted: int, blobsRetained: int, stagingExpired: int, tempFilesDeleted: int, hashesStored: int}
+     * @return array{assembliesExpired: int, blobsDeleted: int, blobsRetained: int, stagingExpired: int, tempFilesDeleted: int, hashesStored: int, hashesPending: int}
      */
     public function runBounded(): array
     {
+        $hashBudget = intdiv(JmapBlobLimits::stepBudgetBytes(), self::HASH_SHARE_OF_BUDGET);
+
         return $this->run(
             self::ASSEMBLIES_PER_ROUND,
             self::BLOBS_PER_ROUND,
             self::TEMP_FILES_PER_ROUND,
-            intdiv(JmapBlobLimits::stepBudgetBytes(), self::HASH_SHARE_OF_BUDGET),
+            $hashBudget,
+            0,
         );
     }
 
     /**
-     * Everything at once, for the console command (no request time limit).
+     * Every expired item at once, for the console command. Pending hashes
+     * get step after step until none is left, a step moves nothing on, or
+     * `$maxSeconds` (default: one step time limit, 60 s on the CLI) has
+     * passed; the rest waits for the next run (#1873). A run can overshoot
+     * by at most the step that was under way.
      *
-     * @return array{assembliesExpired: int, blobsDeleted: int, blobsRetained: int, stagingExpired: int, tempFilesDeleted: int, hashesStored: int}
+     * @return array{assembliesExpired: int, blobsDeleted: int, blobsRetained: int, stagingExpired: int, tempFilesDeleted: int, hashesStored: int, hashesPending: int}
      */
-    public function runFull(int $hashBudgetBytes = PHP_INT_MAX): array
+    public function runFull(?int $maxSeconds = null): array
     {
-        return $this->run(PHP_INT_MAX, null, PHP_INT_MAX, $hashBudgetBytes);
+        $maxSeconds = max(0, $maxSeconds ?? JmapBlobLimits::timeLimitSeconds());
+
+        return $this->run(PHP_INT_MAX, null, PHP_INT_MAX, JmapBlobLimits::stepBudgetBytes(), $maxSeconds);
     }
 
     /**
-     * @return array{assembliesExpired: int, blobsDeleted: int, blobsRetained: int, stagingExpired: int, tempFilesDeleted: int, hashesStored: int}
+     * @param  int  $stepBudget  bytes to hash per step
+     * @param  int  $hashSeconds  keep taking steps for this long (0: one step)
+     * @return array{assembliesExpired: int, blobsDeleted: int, blobsRetained: int, stagingExpired: int, tempFilesDeleted: int, hashesStored: int, hashesPending: int}
      */
-    private function run(int $assemblyLimit, ?int $blobLimit, int $tempLimit, int $hashBudget): array
+    private function run(int $assemblyLimit, ?int $blobLimit, int $tempLimit, int $stepBudget, int $hashSeconds): array
     {
         $assemblies = $this->assemblies->expire($assemblyLimit);
         $blobs = $this->collector->collect(limit: $blobLimit);
         $staging = $this->attacher->expireStaging($tempLimit);
         $temp = $this->sweepTempFiles($tempLimit);
         $this->tickets->pruneExpired();
-        $hashed = 0;
-        while ($hashBudget > 0) {
-            $budget = min($hashBudget, JmapBlobLimits::stepBudgetBytes());
-            $round = $this->hashJobs->advance($budget);
-            $hashed += $round['hashed'];
-            $hashBudget -= $budget;
-            if ($round['advanced'] === 0) {
-                break;
-            }
-        }
+        $hashed = $this->hashPending($stepBudget, $hashSeconds);
 
         return [
             'assembliesExpired' => $assemblies,
@@ -111,7 +115,20 @@ final class JmapBlobMaintenance
             'stagingExpired' => $staging,
             'tempFilesDeleted' => $temp,
             'hashesStored' => $hashed,
+            'hashesPending' => JmapContentHashJob::query()->count(),
         ];
+    }
+
+    private function hashPending(int $stepBudget, int $seconds): int
+    {
+        $deadline = hrtime(true) + $seconds * 1_000_000_000;
+        $hashed = 0;
+        do {
+            $round = $this->hashJobs->advance($stepBudget);
+            $hashed += $round['hashed'];
+        } while ($round['advanced'] > 0 && hrtime(true) < $deadline);
+
+        return $hashed;
     }
 
     /**

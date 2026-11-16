@@ -66,6 +66,7 @@ final class SabreWebdavPutTest extends WgwDatabaseTestCase
 
         $this->assertFalse(WgwOversizedPost::exceedsLimit(Request::create('/files/users/alice/big.bin', 'PUT', server: $server)));
         $this->assertTrue(WgwOversizedPost::exceedsLimit(Request::create('/api/v1/files/collaboration', 'PUT', server: $server)));
+        $this->assertTrue(WgwOversizedPost::exceedsLimit(Request::create('/calendars/alice/default/big.ics', 'PUT', server: $server)));
         $this->call('PUT', '/files/users/alice/big.bin', [], [], [], $server, 'x')->assertSuccessful();
         $this->assertTrue(Storage::disk('wgw_files')->exists('users/alice/big.bin'));
     }

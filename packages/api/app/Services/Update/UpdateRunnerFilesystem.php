@@ -6,6 +6,8 @@ namespace App\Services\Update;
 
 final class UpdateRunnerFilesystem
 {
+    public function __construct(private readonly HostingQuotaProbe $quota) {}
+
     /** @param list<string> $paths */
     public function assertApplyCapacity(string $sourceRoot, string $targetRoot, array $paths): void
     {
@@ -20,7 +22,8 @@ final class UpdateRunnerFilesystem
         $requiredInodes = $inodeGrowth + $inodeSafetyBuffer;
 
         $filesystemFreeBytes = self::readFilesystemFreeBytes($targetRoot);
-        $quotaFreeBytes = self::detectQuotaFreeBytes();
+        // Applying is rare and must see the current quota.
+        $quotaFreeBytes = $this->quota->freeBytes();
         $effectiveFreeBytes = self::minKnownInt($filesystemFreeBytes, $quotaFreeBytes);
         if (is_int($effectiveFreeBytes)) {
             if ($effectiveFreeBytes < $requiredBytes) {
@@ -137,12 +140,16 @@ final class UpdateRunnerFilesystem
     }
 
     /**
+     * The checks the admin update page polls. The hosting quota comes from the
+     * cache (one `quota` shell per few minutes, #2150), and not at all when
+     * `$readQuota` is false (Docker: the container has no hosting quota).
+     *
      * @return list<array{ok: bool, label: string, detail: string, status?: string}>
      */
-    public function capacityChecks(string $path): array
+    public function capacityChecks(string $path, bool $readQuota = true): array
     {
         $freeBytes = self::readFilesystemFreeBytes($path);
-        $quotaFreeBytes = self::detectQuotaFreeBytes();
+        $quotaFreeBytes = $readQuota ? $this->quota->cachedFreeBytes() : null;
 
         $freeInodes = null;
         if (function_exists('statvfs')) {
@@ -214,70 +221,6 @@ final class UpdateRunnerFilesystem
         }
 
         return null;
-    }
-
-    private function detectQuotaFreeBytes(): ?int
-    {
-        if (! function_exists('shell_exec')) {
-            return null;
-        }
-        $output = @shell_exec('quota -s 2>/dev/null');
-        if (! is_string($output) || trim($output) === '') {
-            return null;
-        }
-        $lines = preg_split('/\R/', $output) ?: [];
-        foreach ($lines as $line) {
-            $trimmed = trim((string) $line);
-            if ($trimmed === '' || $trimmed[0] !== '/') {
-                continue;
-            }
-            $parts = preg_split('/\s+/', $trimmed) ?: [];
-            if (count($parts) < 4) {
-                continue;
-            }
-            $used = self::parseQuotaSizeToken($parts[1]);
-            $quota = self::parseQuotaSizeToken($parts[2]);
-            $limit = self::parseQuotaSizeToken($parts[3]);
-            if (! is_int($used)) {
-                continue;
-            }
-            $cap = max((int) ($limit ?? 0), (int) ($quota ?? 0));
-            if ($cap <= 0) {
-                continue;
-            }
-
-            return max(0, $cap - $used);
-        }
-
-        return null;
-    }
-
-    private function parseQuotaSizeToken(string $token): ?int
-    {
-        $clean = rtrim(trim($token), '*');
-        if ($clean === '' || $clean === '-' || strcasecmp($clean, 'none') === 0) {
-            return null;
-        }
-        if (preg_match('/^([0-9]+(?:\.[0-9]+)?)([KMGTP]?)(?:i?B)?$/i', $clean, $m) !== 1) {
-            if (preg_match('/^[0-9]+$/', $clean) === 1) {
-                return (int) $clean * 1024;
-            }
-
-            return null;
-        }
-        $value = (float) $m[1];
-        $unit = strtoupper($m[2]);
-        $power = match ($unit) {
-            'K' => 1,
-            'M' => 2,
-            'G' => 3,
-            'T' => 4,
-            'P' => 5,
-            default => 0,
-        };
-        $bytes = (int) round($value * (1024 ** $power));
-
-        return max(0, $bytes);
     }
 
     public function lastFilesystemError(): string

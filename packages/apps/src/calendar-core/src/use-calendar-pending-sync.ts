@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { splitOccurrenceKey, type CalendarEventsMap } from "@/lib/calendar-engine";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { listPendingCalendarEventIds } from "@/lib/offline/calendars-offline-store";
+import { listPendingCalendarEventIds } from "@/lib/offline/calendars/calendars-offline-store";
 
 const POLL_INTERVAL_MS = 4000;
 

@@ -28,6 +28,11 @@ final class FileNodeHashJobRunner
     ) {}
 
     /**
+     * `advanced` counts the jobs this call moved on: bytes read, a hash
+     * stored, or a job dropped. A job whose file is missing from disk is not
+     * one of them, so a caller looping until nothing advances does stop
+     * (#1873).
+     *
      * @return array{hashed: int, advanced: int}
      */
     public function advance(?int $budget = null): array
@@ -53,12 +58,14 @@ final class FileNodeHashJobRunner
                 continue;
             }
             try {
-                [$spent, $done] = $this->step($job, $budget);
+                [$spent, $done, $moved] = $this->step($job, $budget);
             } finally {
                 JmapContentHashJob::query()->where('id', $job->id)->update(['locked_until' => null]);
             }
             $budget -= $spent;
-            $advanced++;
+            if ($moved) {
+                $advanced++;
+            }
             if ($done) {
                 $hashed++;
             }
@@ -68,7 +75,7 @@ final class FileNodeHashJobRunner
     }
 
     /**
-     * @return array{0: int, 1: bool} bytes read, job finished
+     * @return array{0: int, 1: bool, 2: bool} bytes read, job finished, job moved on
      */
     private function step(JmapContentHashJob $job, int $budget): array
     {
@@ -76,13 +83,13 @@ final class FileNodeHashJobRunner
         if ($node === null || ! $node->hash_pending || $node->is_dir) {
             $job->delete();
 
-            return [0, false];
+            return [0, false, true];
         }
         $key = (string) $node->storage_key;
         $basis = $this->hasher->basis($key);
         if ($basis === null) {
             // Vanished out of band; the next reconcile tombstones the node.
-            return [0, false];
+            return [0, false, false];
         }
         [$size] = array_map(intval(...), explode(':', $basis));
 
@@ -99,11 +106,11 @@ final class FileNodeHashJobRunner
             if ($this->hasher->basis($key) !== $basis) {
                 $this->restart($job, $basis);
 
-                return [$spent, false];
+                return [$spent, false, true];
             }
             $this->claims->recordHashResolved($node, hash_final($context), $size);
 
-            return [$spent, true];
+            return [$spent, true, true];
         }
 
         $encoded = HashStateCodec::encode($context);
@@ -112,7 +119,7 @@ final class FileNodeHashJobRunner
         $job->hash_build = $encoded['build'];
         $job->save();
 
-        return [$spent, false];
+        return [$spent, false, true];
     }
 
     private function restart(JmapContentHashJob $job, string $basis): void

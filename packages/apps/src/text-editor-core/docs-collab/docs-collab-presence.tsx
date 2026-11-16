@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { docsLabels } from "@/docs-core/src/docs-labels";
+import { docsCollabLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import type { DocsCollabMeshPeer } from "./docs-collab-types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -24,12 +24,12 @@ export function DocsCollabPresence({
   const warningNames = warningPeers.map((peer) => peer.name).join(", ");
   const connectingSummary =
     connectingPeers.length === 1
-      ? docsLabels.presenceConnectingOne
-      : docsLabels.presenceConnectingMany(connectingPeers.length);
+      ? docsCollabLabels.presenceConnectingOne
+      : docsCollabLabels.presenceConnectingMany(connectingPeers.length);
   const unreachableSummary =
     warningPeers.length === 1
-      ? docsLabels.presenceUnreachableOne
-      : docsLabels.presenceUnreachableMany(warningPeers.length);
+      ? docsCollabLabels.presenceUnreachableOne
+      : docsCollabLabels.presenceUnreachableMany(warningPeers.length);
   return (
     <div className={cn("docs-collab-presence", className)} aria-label="Connected editors">
       <Tooltip>
@@ -67,7 +67,7 @@ export function DocsCollabPresence({
           <TooltipTrigger asChild>
             <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
               <UserAvatar
-                displayName={docsLabels.presenceConnectingAvatar}
+                displayName={docsCollabLabels.presenceConnectingAvatar}
                 compact
                 size="xs"
                 fallback="..."
@@ -79,7 +79,7 @@ export function DocsCollabPresence({
           </TooltipTrigger>
           <TooltipContent>
             {connectingNames
-              ? docsLabels.presenceWithNames(connectingSummary, connectingNames)
+              ? docsCollabLabels.presenceWithNames(connectingSummary, connectingNames)
               : connectingSummary}
           </TooltipContent>
         </Tooltip>
@@ -89,7 +89,7 @@ export function DocsCollabPresence({
           <TooltipTrigger asChild>
             <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
               <UserAvatar
-                displayName={docsLabels.presenceUnreachableAvatar}
+                displayName={docsCollabLabels.presenceUnreachableAvatar}
                 compact
                 size="xs"
                 fallback="!"
@@ -100,7 +100,7 @@ export function DocsCollabPresence({
           </TooltipTrigger>
           <TooltipContent>
             {warningNames
-              ? docsLabels.presenceWithNames(unreachableSummary, warningNames)
+              ? docsCollabLabels.presenceWithNames(unreachableSummary, warningNames)
               : unreachableSummary}
           </TooltipContent>
         </Tooltip>

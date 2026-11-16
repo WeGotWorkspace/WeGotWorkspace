@@ -3,17 +3,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import { writeDefaultCollectionPrefs } from "@/lib/default-collection-prefs";
 import { contactBirthdayDisplay } from "./contacts-display-utils";
-import { mergeContactFromPatch } from "./contacts-patch-merge";
+import { mergeContactFromPatch } from "@/lib/models/contacts-patch-merge";
 import {
   canCreateContactInView,
-  contactCardToEditDraft,
   contactEditDraftHasContent,
   editDraftToCreateBody,
-  editDraftToPatch,
   emptyContactEditDraft,
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
 } from "./contacts-edit-utils";
+import { contactCardToEditDraft, editDraftToPatch } from "@/lib/models/contacts-edit-draft";
 
 const janeCard = {
   "@type": "Card",

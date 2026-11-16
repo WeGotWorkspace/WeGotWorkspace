@@ -9,7 +9,7 @@ import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
 
 const pendingSave = vi.hoisted(() => vi.fn(async (_path: string) => false));

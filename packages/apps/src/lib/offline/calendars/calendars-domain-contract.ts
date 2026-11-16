@@ -1,7 +1,7 @@
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
-import { createHybridCalendarOperations } from "@/lib/offline/calendars-hybrid-operations";
+import { createHybridCalendarOperations } from "@/lib/offline/calendars/calendars-hybrid-operations";
 import {
   readCalendarBootstrapFromCache,
   readCalendarSyncToken,
@@ -9,7 +9,7 @@ import {
   upsertCalendarEventInCache,
   writeCalendarBootstrapToCache,
   writeCalendarSyncToken,
-} from "@/lib/offline/calendars-offline-store";
+} from "@/lib/offline/calendars/calendars-offline-store";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 
 /**

@@ -8,7 +8,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import type { AdminSection } from "@/admin-core/src/admin-types";
+import type { AdminSection } from "@/lib/models/admin-types";
 
 export type AdminSectionDescriptor = {
   id: AdminSection;

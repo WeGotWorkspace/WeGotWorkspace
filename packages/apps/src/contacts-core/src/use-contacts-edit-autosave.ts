@@ -17,8 +17,8 @@ import {
 import {
   CONTACTS_CREATE_ID,
   contactEditDraftHasChanges,
-  type ContactEditDraft,
 } from "@/contacts-core/src/contacts-edit-utils";
+import { type ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import { useContactsAutosaveLifecycle } from "@/contacts-core/src/use-contacts-autosave-lifecycle";
 import {
   cardDraftJson,

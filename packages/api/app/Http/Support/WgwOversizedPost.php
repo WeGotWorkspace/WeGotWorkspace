@@ -102,8 +102,9 @@ final class WgwOversizedPost
     }
 
     /**
-     * A WebDAV PUT is streamed to disk by Sabre: neither PHP nor Laravel reads it
-     * into memory unless it is JSON or a form, so post_max_size is no bound.
+     * A WebDAV file PUT is streamed to disk by Sabre: neither PHP nor Laravel reads it
+     * into memory unless it is JSON or a form, so post_max_size is no bound. CalDAV and
+     * CardDAV PUTs are parsed in memory, so they keep the limit.
      */
     private static function isStreamedDavPut(?Request $request): bool
     {
@@ -112,7 +113,7 @@ final class WgwOversizedPost
         $type = (string) ($request?->headers->get('Content-Type') ?? $_SERVER['CONTENT_TYPE'] ?? '');
 
         return strtoupper($method) === 'PUT'
-            && preg_match('#(^|/)api/v\d+/#', $path) !== 1
+            && preg_match('#(^|/)files/(users|groups)/#', $path) === 1
             && preg_match('#json|form#i', $type) !== 1;
     }
 

@@ -6,8 +6,8 @@ vi.mock("@/lib/api/wgw/notifications", () => ({
   unsubscribePush: vi.fn(),
 }));
 
-vi.mock("./push-scope", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./push-scope")>()),
+vi.mock("@/lib/notifications/push-scope", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/notifications/push-scope")>()),
   currentPushScope: vi.fn(() => "/"),
   readPushScopes: vi.fn(async () => []),
   rememberPushScope: vi.fn(async () => undefined),
@@ -19,7 +19,11 @@ vi.mock("@/lib/api/wgw/http", () => ({
 
 import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
-import { currentPushScope, readPushScopes, rememberPushScope } from "./push-scope";
+import {
+  currentPushScope,
+  readPushScopes,
+  rememberPushScope,
+} from "@/lib/notifications/push-scope";
 import {
   ensurePushPermissionAndSubscribe,
   resetEnsurePushSubscriptionForTests,

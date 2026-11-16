@@ -9,7 +9,7 @@ import {
   type ToastDecisionDeps,
 } from "@/notifications-core/src/notification-toast-decision";
 import { NotificationToast } from "@/notifications-core/src/notification-toast";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /** Long enough to read a title and a line of body; hovering or focusing the toasts pauses it. */
 export const NOTIFICATION_TOAST_DURATION_MS = 8_000;

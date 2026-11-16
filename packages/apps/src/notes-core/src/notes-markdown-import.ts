@@ -1,4 +1,4 @@
-import { isValidNewTag, normalizeTag } from "@/notes-core/src/note-tag";
+import { isValidNewTag, normalizeTag } from "@/lib/models/note-tag";
 import { splitFrontMatter } from "@/notes-core/src/notes-markdown-front-matter";
 
 /**
