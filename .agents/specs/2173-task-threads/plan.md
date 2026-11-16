@@ -134,13 +134,13 @@ See spec.md, Non-goals.
   - `CollectionKind::TaskThreadPool` (DAV-hidden) exists, with a provisioner.
   - The REST routes from spec.md are in OpenAPI.
   - The access, move, delete, list-delete and limit rules are tested.
-  - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set.
+  - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
   - The 30-day orphan purge command is scheduled daily. It purges only keys whose `subject_left_at` is older than 30 days and whose UID is not in the list. Every leave hook (delete, REST move, CalDAV `DELETE`, CalDAV `MOVE`) upserts the key's row and sets that timestamp, and any write of the UID into the list clears it. Keys a hook missed are found from the entries, stamped on one run, and purged 30 days later.
   - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
   - `docs/architecture/tasks.md` gets "Decision 18 — Task threads".
   - The B invariants pass.
 - **Verify with:** `pnpm test:api-done-gate`
-- **Parallel with:** none
+- **Parallel with:** none (chunk F also edits the observer, after B)
 
 ### Chunk C: `ThreadEntry` push type
 - **Skill:** api, client-transport
