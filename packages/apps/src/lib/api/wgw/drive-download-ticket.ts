@@ -1,3 +1,4 @@
+import { UnexpectedApiResponseError } from "@/lib/api/api-error";
 import { normalizeApiVirtualPath, parentAndName } from "@/lib/files/api-path";
 import {
   DriveTransportError,
@@ -56,7 +57,7 @@ async function readDownloadTicket(res: Response, route: string): Promise<DriveDo
     throw new DriveTransportError(`${route} failed (${res.status})`, res.status);
   }
   const ticket = (await res.json()) as Partial<DriveDownloadTicket>;
-  if (!ticket.url) throw new Error("The download ticket has no URL.");
+  if (!ticket.url) throw new UnexpectedApiResponseError("The download ticket has no URL.");
   return {
     url: ticket.url,
     idleExpires: ticket.idleExpires ?? "",
@@ -147,7 +148,7 @@ async function postFolderDownloadTicket(
     );
   }
   const ticket = (await res.json()) as Partial<DriveFolderDownloadTicket>;
-  if (!ticket.url) throw new Error("The download ticket has no URL.");
+  if (!ticket.url) throw new UnexpectedApiResponseError("The download ticket has no URL.");
   return {
     url: ticket.url,
     name: ticket.name || "download.zip",

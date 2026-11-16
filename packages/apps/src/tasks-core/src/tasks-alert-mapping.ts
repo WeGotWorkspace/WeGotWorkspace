@@ -3,9 +3,8 @@ import {
   alertActionFromWire,
   formatAlertOffsetQuantity,
   type CalendarEventAlertFormValue,
-} from "@/calendar-core/src/calendar-alerts";
-import type { CalendarAlarmsCardLabels } from "@/calendar-core/src/calendar-alarms-card";
-import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
+} from "@/lib/calendar/calendar-alerts";
+import { defaultAlarmsCardLabels, type AlarmsCardLabels } from "@/alarms-card/src/alarms-card";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { Task, TaskAlert, TaskPatch } from "@/lib/models/tasks-types";
 
@@ -104,20 +103,6 @@ export function taskAlertsPatch(
   return patch;
 }
 
-/** Applies an alerts patch the way the API does: per id, null removes. */
-export function applyTaskAlertsPatch(
-  current: Task["alerts"] | null | undefined,
-  patch: TaskPatch["alerts"] | undefined,
-): Task["alerts"] | undefined {
-  if (patch === undefined) return current ?? undefined;
-  if (patch === null) return undefined;
-  const merged: Record<string, TaskAlert> = {};
-  for (const [id, alert] of Object.entries({ ...current, ...patch })) {
-    if (alert) merged[id] = alert;
-  }
-  return Object.keys(merged).length > 0 ? merged : undefined;
-}
-
 export function taskAlertCount(alerts: Task["alerts"] | null | undefined): number {
   return taskAlertsToFormValues(alerts).length;
 }
@@ -175,18 +160,18 @@ export function remindButtonLabel(
 /** Tasks dialog copy + shared calendar offset presets (intentional DRY). */
 export function tasksAlarmRowLabels(
   labels: Pick<TasksUILabels, "remindMe" | "remindAtTimeOfTask">,
-): CalendarAlarmsCardLabels {
+): AlarmsCardLabels {
   return {
     eventAlarmsLabel: labels.remindMe,
-    eventAlarmRemove: defaultCalendarLabels.eventAlarmRemove,
-    eventAlarmOffset: defaultCalendarLabels.eventAlarmOffset,
-    eventAlarmNone: defaultCalendarLabels.eventAlarmNone,
+    eventAlarmRemove: defaultAlarmsCardLabels.eventAlarmRemove,
+    eventAlarmOffset: defaultAlarmsCardLabels.eventAlarmOffset,
+    eventAlarmNone: defaultAlarmsCardLabels.eventAlarmNone,
     eventAlarmAtStart: labels.remindAtTimeOfTask,
-    eventAlarm5Min: defaultCalendarLabels.eventAlarm5Min,
-    eventAlarm10Min: defaultCalendarLabels.eventAlarm10Min,
-    eventAlarm15Min: defaultCalendarLabels.eventAlarm15Min,
-    eventAlarm30Min: defaultCalendarLabels.eventAlarm30Min,
-    eventAlarm1Hour: defaultCalendarLabels.eventAlarm1Hour,
-    eventAlarm1Day: defaultCalendarLabels.eventAlarm1Day,
+    eventAlarm5Min: defaultAlarmsCardLabels.eventAlarm5Min,
+    eventAlarm10Min: defaultAlarmsCardLabels.eventAlarm10Min,
+    eventAlarm15Min: defaultAlarmsCardLabels.eventAlarm15Min,
+    eventAlarm30Min: defaultAlarmsCardLabels.eventAlarm30Min,
+    eventAlarm1Hour: defaultAlarmsCardLabels.eventAlarm1Hour,
+    eventAlarm1Day: defaultAlarmsCardLabels.eventAlarm1Day,
   };
 }

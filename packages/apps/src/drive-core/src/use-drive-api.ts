@@ -29,7 +29,7 @@ import {
 import {
   rememberOfflineDriveUsername,
   resolveDriveOfflineUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 
 const DRIVE_BOOTSTRAP_SESSION_KEY = "wgw.drive.bootstrap.session";
 const GUEST_ACCOUNT_RETRY_BASE_MS = 2_000;

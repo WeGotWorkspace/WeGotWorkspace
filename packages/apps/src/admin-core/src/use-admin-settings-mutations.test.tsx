@@ -3,7 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AppToastApi } from "@/hooks/use-app-toast";
 import { buildAdminSettingsFormState } from "@/admin-core/src/admin-settings-form-utils";
-import type { AdminAPIOperations, AdminUIData } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations, AdminUIData } from "@/lib/models/admin-types";
 import { useAdminSettingsMutations } from "@/admin-core/src/use-admin-settings-mutations";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 

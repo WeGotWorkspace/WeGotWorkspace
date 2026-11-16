@@ -10,7 +10,7 @@ import {
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { recordDocsNodePath } from "@/lib/offline/docs/docs-node-paths";
 import { createHybridDocsDriveOperations } from "@/lib/offline/docs/docs-hybrid-operations";
-import { rememberOfflineDriveUsername } from "@/lib/offline/offline-session";
+import { rememberOfflineDriveUsername } from "@/lib/offline/core/offline-session";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import "@/lib/offline/drive/drive-schema";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";

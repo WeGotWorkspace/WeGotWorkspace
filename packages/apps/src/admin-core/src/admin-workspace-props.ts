@@ -1,5 +1,5 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { AdminAPIOperations, AdminSection, AdminUIData } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations, AdminSection, AdminUIData } from "@/lib/models/admin-types";
 
 export type AdminWorkspaceProps = {
   data: AdminUIData;

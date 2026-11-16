@@ -3,7 +3,7 @@ import {
   mailTestSendFeedback,
   normalizeMailTestRecipient,
 } from "@/admin-core/src/admin-mail-delivery-test";
-import type { AdminMailDeliveryLastTestSend } from "@/admin-core/src/admin-types";
+import type { AdminMailDeliveryLastTestSend } from "@/lib/models/admin-types";
 
 describe("normalizeMailTestRecipient", () => {
   it("trims a recipient that contains @", () => {

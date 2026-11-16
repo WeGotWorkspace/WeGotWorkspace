@@ -20,6 +20,7 @@ final class HealthEndpointTest extends TestCase
 
     public function test_up_fails_while_the_data_directory_is_not_writable(): void
     {
+        config(['wgw.data_dir' => sys_get_temp_dir()]);
         $this->get('/up')->assertOk();
 
         config(['wgw.data_dir' => '/nonexistent/wgw-content']);

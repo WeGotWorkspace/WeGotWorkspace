@@ -4,7 +4,7 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/lib/files/docs-route-search";
 import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
 import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
 import { docsSessionKnown } from "@/docs-core/src/docs-session-known";
@@ -25,19 +25,20 @@ import { fileNameToBrowserTitle, useDocumentTitle } from "@/lib/document-title";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import { DocxImportReportForDoc } from "@/docs-core/src/docx-import/docx-import-dialogs";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
-import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/text-editor-core/docs-collab";
+import { DocsCollabWorkspace, useDocsCollabPendingSync } from "@/docs-core/src/collab";
 import { useDocsFileRename } from "@/docs-core/src/use-docs-file-rename";
 import { createWgwDocsCollabWire } from "@/docs-core/src/docs-collab-wgw-wire";
 import { useDocsAPI } from "@/docs-core/src/use-docs-api";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
+import { mocksInBuild } from "@/lib/api/create-workspace-source";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
 import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
-import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
-import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
+import { resolveDocsOfflineUsername } from "@/lib/offline/core/offline-session";
+import { useOfflinePendingToast } from "@/lib/offline/core/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
@@ -139,7 +140,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
 
   const shareOperations = useMemo(
     () =>
-      wgwLiveApiEnabled() ? createWgwDriveShareOperations() : createMockDriveShareOperations(),
+      mocksInBuild && !wgwLiveApiEnabled()
+        ? createMockDriveShareOperations()
+        : createWgwDriveShareOperations(),
     [],
   );
 

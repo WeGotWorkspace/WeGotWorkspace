@@ -12,7 +12,7 @@ The expected results below describe the behaviour **once the epic's fixes have l
 | [#1700](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1700) | [#1604](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1604) | The service worker handles `pushsubscriptionchange`: it signs itself in with the refresh cookie and posts the new subscription, even with no window open | Merged |
 | [#1702](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1702) | [#1605](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1605) | Only a visible window, or a window in a Meet call (`in-call`, not the lobby), local-acks. A hidden window shows no page notification of its own; the service-worker push is the only OS notification path | Open |
 
-Per-app push scope for installed apps ([#1606](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1606)) is still being built. Rows that depend on it say "after #1606".
+On 2026-11-13 all five PRs above are merged, and per-app push scope for installed apps ([#1606](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1606)) has landed: only an iOS Home Screen app posts its own scope; browser tabs and desktop or Android installed apps post `/` and receive every domain.
 
 ## How delivery works, in one paragraph
 
@@ -101,12 +101,12 @@ How to read the delivery row:
 | ID | Platform | Install | Notes |
 | -- | -------- | ------- | ----- |
 | D1 | Chrome desktop, tab | — | Shares one subscription with D2 in the same profile. Stable uses `fcm.googleapis.com`; Beta, Dev and Canary use `jmt17.google.com` |
-| D2 | Chrome desktop, installed | Install from the address bar | "Hidden" = minimized or behind another app. Closing the app while a D1 tab is still open is P2, not P3 |
-| D3 | Edge desktop, tab | — | Push host `*.notify.windows.com` |
+| D2 | Chrome desktop, installed | Install from the address bar | "Hidden" = minimized or behind another app. Closing the app while a D1 tab is still open is P2, not P3. Installing needs a hand click: the DevTools protocol `PWA.install` command is not available in Chrome 157 Stable or Chrome 160 Canary on macOS |
+| D3 | Edge desktop, tab | — | Push host `*.notify.windows.com`. Edge was not installed on the Mac used for M3 |
 | D4 | Edge desktop, installed | Apps → Install this site as an app | As D2 |
 | D5 | Firefox desktop, tab | — | Push host `updates.push.services.mozilla.com`. Firefox may answer a VAPID mismatch with a status other than 403; record it in P7 |
-| D6 | Firefox desktop, installed | Only where Firefox can install a web app | Record N/A on a Firefox build without web-app install |
-| D7 | Safari desktop, tab | — | macOS Safari 16+. Push host `web.push.apple.com`. P6b: no worker console path like Chromium; mark "not proven" if it cannot be run |
+| D6 | Firefox desktop, installed | Only where Firefox can install a web app | Record N/A on a Firefox build without web-app install. Firefox 158 on macOS has none. Firefox answers a push signed with another VAPID key with `401` (errno 109), not `403` |
+| D7 | Safari desktop, tab | — | macOS Safari 16+. Push host `web.push.apple.com`. P6b: no worker console path like Chromium; mark "not proven" if it cannot be run. The "Allow notifications" prompt needs a hand click: `safaridriver` answers the WebDriver Set Permission command with `501` |
 | D8 | Safari desktop, installed | File → Add to Dock | Own storage and own subscription, separate from D7 |
 | A1 | Android Chrome, tab | — | "Hidden" = another app in front, or the screen off |
 | A2 | Android Chrome, installed | Install app / Add to Home screen | Shares one subscription with A1 in the same profile |
@@ -122,14 +122,14 @@ Same as [rtc-network-matrix.md](rtc-network-matrix.md): **pass (M#)**, **fail (M
 
 | Row | P1 visible | P2 hidden | P3 closed | P4 two devices | P5 Meet hidden | P6 rotated | P7 key changed |
 | --- | ---------- | --------- | --------- | -------------- | -------------- | ---------- | -------------- |
-| D1 Chrome tab | pass (M1), incl. P1b | pass (M1), incl. P2b, P2c | pass (M2) | | partial (M1): call pass, lobby (P5b) not proven | | pass (M2) |
-| D2 Chrome installed | | | | | | | |
-| D3 Edge tab | | | | | | | |
-| D4 Edge installed | | | | | | | |
-| D5 Firefox tab | | | | | | | |
-| D6 Firefox installed | | | | | | | |
-| D7 Safari tab | | | | | | | |
-| D8 Safari installed | | | | | | | |
+| D1 Chrome tab | pass (M1, M3), incl. P1b | pass (M1, M3), incl. P2b, P2c, P2d | pass (M2, M3) | pass (M3) | fail (M3, [#2129](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/2129)): call acked after the grace in 4 of 9; pass with [#2131](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/2131). P5b pass (M3) | partial (M3): a and b pass, no real `pushsubscriptionchange` seen | pass (M2, M3) |
+| D2 Chrome installed | not proven (M3): install needs a hand click | | | | | | |
+| D3 Edge tab | not run: Edge not installed on the test Mac (M3) | | | | | | |
+| D4 Edge installed | not run: Edge not installed on the test Mac (M3) | | | | | | |
+| D5 Firefox tab | pass (M3) | pass (M3), incl. P2b, P2d | pass (M3) | pass (M3), with D1 as device 2 | not proven (M3): the window joined the team room, not the meeting | partial (M3): a pass, b not proven | pass (M3): `401`, row kept until the app reopened |
+| D6 Firefox installed | N/A (M3) | N/A | N/A | N/A | N/A | N/A | N/A |
+| D7 Safari tab | not proven (M3): the permission prompt needs a hand click | | | | | | |
+| D8 Safari installed | not proven (M3): Add to Dock and the permission prompt need hand clicks | | | | | | |
 | A1 Android tab | | | | | | | |
 | A2 Android installed | | | | | | | |
 | I1 iOS suite PWA | | | | | | | |
@@ -185,12 +185,103 @@ In a brand-new Chrome for Testing profile, the first push after the first subscr
 
 P1, P2, P4, P5, P6, and every row other than D1. P1, P2 and P5 depend on #1702, which was not in this build; see [M1](#manual-runs-2026-10-28).
 
-## Full run — pending
+<a id="manual-runs-2026-11-13-m3"></a>
 
-The last acceptance criterion of [#1608](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1608) is one full run of this matrix. It waits for:
+## Manual runs — 2026-11-13 (desktop, partial, M3)
 
-- [#1652](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1652), [#1647](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1647), [#1651](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1651) and [#1702](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1702) on `main` ([#1700](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1700) is merged);
-- real devices for the Safari, Android and iOS rows;
-- [#1606](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1606) for the per-app expectations in I2.
+Build under test: `main` at `3e52763eb` (production build, `vite build` + `vite preview`), API on the PHP built-in server with SQLite, on a local test install. macOS 26.6.2. A = `member`, B = `admin`; B sends every DM over the REST API, so no mesh `check-now` reaches A. The sweep was run by hand 25 s after each event; no cron ran. Every browser had its own fresh profile; notification permission was set to "Allow" in the profile before launch (Chromium: profile preferences, Firefox: `permissions.default.desktop-notification`), which stands in for a hand click on Allow.
 
-A person runs it on their own devices. Record it as M3 with the commit under test, and update the scorecard.
+Browsers: Chrome 157.0.8103.51 Stable (driven over the DevTools protocol, no automation flags), Firefox 158.0 (WebDriver BiDi), Safari 26.6.2 (`safaridriver`). Edge is not installed on this Mac.
+
+"OS notification shown" means `registration.getNotifications()` listed it: the service worker called `showNotification`. The macOS banner itself and a click on it were not checked in M3.
+
+### Passed (M3)
+
+| Row | ID | Setup | Result |
+| --- | -- | ----- | ------ |
+| D1 | P1 | Tab on screen | Acked in the same second, no notification |
+| D1 | P2 | Window minimized | One notification, `sent_at` set. The first push after the first subscribe in a new profile was shown (the M2 note did not repeat for this profile) |
+| D1 | P2b | Hidden, back on screen 4 s after the DM | Acked when it came back, no push |
+| D1 | P2d | Reload after P2 while on screen | The bell lists the DMs, no new notification |
+| D1 | P3 | All WGW tabs closed, Chrome running | One notification, from the worker |
+| D1 | P3, Chrome quit | Chrome quit before the DM, sweep sent it, Chrome started 20 s later | The notification showed when Chrome started again (the push service kept it) |
+| D1 | P4a | Profile 1 on screen, profile 2 closed | Acked, no notification in either profile |
+| D1 | P4b | Profile 1 minimized, profile 2 closed | One notification in each profile; one `vapid` row per subscription |
+| D1 | P5b | Lobby ("Waiting to be let in"), window minimized | Not acked, one notification: the lobby does not count |
+| D1 | P6a | `unsubscribe()` in the page, app closed | Sweep: `410` (info), row pruned, no notification. Reopen: new row with another endpoint; the next DM arrived |
+| D1 | P6b | Worker console, every WGW tab closed | `/api/v1/auth/refresh` answered `200`; the app opened signed in |
+| D1 | P7 | Keys moved aside, new keys, app closed | `403` from FCM (warning), row pruned, no notification. Reopen: new row; the next DM arrived |
+| D5 | P1 | Tab on screen | Acked within 3 s, no notification |
+| D5 | P2, P2b, P2d | As D1 | As D1 |
+| D5 | P3 | All WGW tabs closed | One notification |
+| D5 | P4 | Firefox as device 1, Chrome profile as device 2 | a) Firefox on screen: acked, nothing on either. b) Firefox minimized, Chrome closed: one notification on each |
+| D5 | P6a | As D1 | `410` from `updates.push.services.mozilla.com`, pruned, new row on reopen, next DM arrived |
+| D5 | P7 | As D1 | Mozilla answered `401` ("VAPID public key mismatch", errno 109) at warning. As documented, the row was **not** pruned: the delivery moved its `due_at` for a retry. On reopen the client deleted the old endpoint and posted a new one; the next DM arrived, and the window acked the retried DM |
+
+### Failed (M3)
+
+| Row | ID | Result |
+| --- | -- | ------ |
+| D1 | P5 | Member in a call with admin (2 in call), window minimized. Acks came 10, 22, 29, 26, 6, 11, 22, 11 and 6 s after the DM: four of nine after the 20 s grace. While every tab is hidden the push stream reconnects every 30 s, so the call window sees the row late, and a sweep in that gap alerts during the call. Filed as [#2129](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/2129); [#2131](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/2131) keeps the stream at the visible pace during a call. With that branch, 15 DMs were acked 0–6 s after the event, also after more than 6 minutes hidden, and no sweep found an un-acked row. A colleague in the same call who sends from the app wakes the stream at once over the mesh; the gap shows for other senders |
+
+### Not proven (M3)
+
+| Row | ID | Why |
+| --- | -- | --- |
+| D1 | P6, real event | No real `pushsubscriptionchange` was observed |
+| D2 | all | Installing needs a hand click; `PWA.install` is not available in Chrome Stable 157 or Canary 160 |
+| D5 | P5 | Opening the meeting link in Firefox joined the team room call ("1 in call"), not the meeting the host held, so the case could not be set up. In that state the hidden window did not ack for minutes. Recheck by hand |
+| D5 | P6b | WebDriver BiDi lists the worker realm but cannot evaluate in it, and there is no worker console otherwise |
+| D7 | all | Signed in over `safaridriver`, but the "Allow notifications" prompt needs a hand click (WebDriver Set Permission answers `501`), so the tab has no subscription. The automation session then ended before P1 was recorded |
+| D8 | all | Add to Dock and the permission prompt need hand clicks |
+
+### Odd, not a failure (M3)
+
+- A brand-new Chrome profile replaced its first subscription within a minute, as in M2. The old row stayed until a later sweep got `410` and pruned it.
+- A `safaridriver` click on "Sign in" did not submit the form; `form.requestSubmit()` did. An automation quirk, not seen by hand.
+
+### Not run (M3)
+
+D3, D4 (Edge not installed), every phone row (A1, A2, I1, I2, I3), P8.
+
+## Still to run
+
+The last acceptance criterion of [#1608](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1608) is one full run of this matrix. After M3 these rows wait for a person:
+
+- D2 Chrome installed, D7 and D8 Safari: hand clicks on Install, Allow and Add to Dock. D5 P5 in Firefox.
+- D3 and D4 on a machine with Edge.
+- A1, A2, I1, I2, I3 on real phones. The iOS simulator cannot get a Web Push subscription.
+
+Record them as M4 with the commit under test, and update the scorecard.
+
+<a id="hand-run-script"></a>
+
+### Hand run script
+
+Setup, once:
+
+1. Use an HTTPS test install the phone trusts. Never a live install, and a disposable one if you run P7. On the Mac: a terminal in `packages/api` for the sweep and the SQL from [Verify](#verify).
+2. B (`admin`) sends from the Mac, in a browser where A is not signed in, or over the API.
+3. On each device: Focus off, banners allowed for the browser (iOS: for the Home Screen app once it asks).
+
+Per row, before the cases: sign in as A, allow notifications when asked, then check that `push_subscriptions` has a new row with the host the [Verify](#verify) list gives for that platform. Write down the time of each DM, and run the sweep 25 s after it.
+
+| Row | Install | Allow notifications |
+| --- | ------- | ------------------- |
+| D2 | Chrome: the install icon in the address bar, Install | Already allowed when D1 ran in the same profile; it shares that row |
+| D7 | — | Safari asks on the first click in the app; click Allow |
+| D8 | Safari: File → Add to Dock, open it from the Dock, sign in | Allow when it asks; expect a second `web.push.apple.com` row |
+| A1 | — | Chrome on Android asks on the first tap; Allow |
+| A2 | Chrome menu → Install app (or Add to Home screen), open it | Shares the A1 row; no new row expected |
+| I1 | Safari → Share → Add to Home Screen from `/`, open from the Home Screen, sign in | Tap anywhere in the app, then Allow |
+| I2 | As I1, but from `/docs` | Expect its own row with scope `/docs` |
+| I3 | — (Safari tab) | No prompt and no row: expected |
+
+Cases, per row (P1–P4 and P6a are enough on phones; P5 needs a second person in the call):
+
+1. **P1, on screen.** Keep the app on screen. B sends a DM. Expect: the bell updates with a chime, no OS alert on any device of A, row `acked_at` set.
+2. **P2, hidden.** Switch to another app (phone: home screen; Mac: minimize). Wait 10 s. B sends a DM. Sweep. Expect: exactly one alert on this device; tapping it opens the chat; row `sent_at` set. I3: no alert.
+3. **P3, closed.** Close the app (phone: swipe it away in the app switcher). B sends a DM. Sweep. Expect: one alert within about 80 s; tapping opens the app on the chat.
+4. **P4, two devices.** A on the Mac (on screen) and on the phone (closed). B sends a DM: nothing on either. Then both hidden or closed: one alert on each.
+5. **P6a, rotated.** Desktop only, in the console: `(await navigator.serviceWorker.ready).pushManager.getSubscription().then((s) => s?.unsubscribe())`. Close the app, DM, sweep: the log has `vapid_send_rejected` 404 or 410, no alert. Open and close the app, DM, sweep: the alert arrives.
+6. **I2 only, per-app scope.** With I1 and I2 both installed and closed: a DM (chat) shows once, from I1, not from I2. A Docs share or comment shows in I2 and opens inside it; I1 shows it too. The bell in I2 still lists every app.

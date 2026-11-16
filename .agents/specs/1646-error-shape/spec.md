@@ -27,7 +27,7 @@ The work is a refactor. No response body a client parses changes, and no text a 
 
 - One render hook in `packages/api/bootstrap/app.php` for every exception that renders as an API error. It is typed on a contract (`App\Exceptions\RendersApiError`), not on a concrete class.
 - `ApiHttpException` keeps its constructor and its body `{ error: <sentence>, code?: <machine code> }`. About 490 throw sites depend on it.
-- The three `<Domain>ResponseException` classes share one abstract parent with a typed constructor (status, machine code, optional message). The free-form `payload` array goes away. Body: `{ error: <machine code>, code: <machine code>, message?: <sentence> }`. `code` is new and always equals `error`; `error` and `message` keep their exact values.
+- The three `<Domain>ResponseException` classes become one `RealtimeApiException` with a typed constructor (status, machine code, optional message). The free-form `payload` array goes away. Body: `{ error: <machine code>, code: <machine code>, message?: <sentence> }`. `code` is new and always equals `error`; `error` and `message` keep their exact values.
 - Logging stays as it is in chunk A: the realtime exceptions are still reported by Laravel's handler and `ApiHttpException` is still not (Symfony `HttpException`). See plan.md, Logging decision.
 - OpenAPI `Error` schema (`{ error, code? }`) already allows the added `code`; a `message` property is added to it so the documented schema covers realtime bodies.
 - Client: the base class must not set `name`, so `String(error)` and every displayed message stay byte-identical for existing subclasses.
@@ -35,5 +35,5 @@ The work is a refactor. No response body a client parses changes, and no text a 
 ## Edge cases
 
 - `RtcSignalingException` payloads that already carry `code` (`peer_id_taken`) keep `code === error`.
-- `FilesController::showCollaborationRoom` catches `CollabResponseException` and turns it into a 404 `ApiHttpException`; that catch keeps working.
+- `FilesController::resolveRoom` catches the realtime exception from the collab join check and turns it into a 404 `ApiHttpException`; that catch keeps working.
 - A Laravel render callback typed on an interface is matched with `instanceof`, so `ApiHttpException` (extends `HttpException`) and the realtime base (extends `RuntimeException`) both hit the same hook before the catch-all `Throwable` hook.

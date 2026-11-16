@@ -13,7 +13,7 @@ import {
   installerAppUrl,
   isInstallerDataDirError,
 } from "@/installer-core/src/installer-flow";
-import type { WgwInstallerRuntimeState } from "@/installer-core/src/installer-types";
+import type { WgwInstallerRuntimeState } from "@/lib/models/installer-types";
 
 type RuntimeWithEnv = WgwInstallerRuntimeState & { db_from_env?: boolean };
 

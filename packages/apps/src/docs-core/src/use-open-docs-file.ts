@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { docsSearchFromApiPath, docsSearchFromNodeId } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, docsSearchFromNodeId } from "@/lib/files/docs-route-search";
 import {
   createDocsLocatorDeps,
   rememberDocsLocation,

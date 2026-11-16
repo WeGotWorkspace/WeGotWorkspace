@@ -49,7 +49,7 @@ import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema"
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
 import { reportTasksSyncConflicts } from "@/lib/offline/tasks/tasks-sync-conflicts";
-import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
+import { readOfflineTasksUsername } from "@/lib/offline/core/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
@@ -94,6 +94,15 @@ async function resolveCachedTask(
     if (isFetchNetworkError(error)) return fromCache;
     throw error;
   }
+}
+
+/**
+ * The UID a create keeps on every send (#2155). Safari reports a create that a
+ * reload cut off as failed although the server stored it; the outbox resend
+ * then carries the same UID, and the server answers with the stored task.
+ */
+function withClientUid(body: TaskCreate): TaskCreate {
+  return body.uid ? body : { ...body, uid: `urn:uuid:${crypto.randomUUID()}` };
 }
 
 async function queueOfflineCreate(username: string, body: TaskCreate): Promise<Task> {
@@ -285,7 +294,8 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
   const runner = runnerFor(username);
 
   return {
-    createTask: async (body, opts) => {
+    createTask: async (input, opts) => {
+      const body = withClientUid(input);
       if (!readBrowserOnline()) {
         return queueOfflineCreate(username, body);
       }

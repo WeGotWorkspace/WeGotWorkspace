@@ -125,8 +125,8 @@ vi.mock("@/lib/offline/core/connectivity-sync-runner", async (importOriginal) =>
 });
 
 // The test environment has no window, so the remembered account is stubbed.
-vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+vi.mock("@/lib/offline/core/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/offline-session")>()),
   readOfflineTasksUsername: () => rememberedUsername,
 }));
 

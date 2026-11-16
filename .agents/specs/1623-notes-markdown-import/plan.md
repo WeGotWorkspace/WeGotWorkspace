@@ -26,7 +26,7 @@ See spec.md.
 - `drive:fn-…` reference helpers. `path: packages/apps/src/text-editor-core/src/text-editor-image-src.ts:11`
 - Notes body editor is `DocsCollabEditor` with `format="markdown"`, so `DocsImage` renders `drive:` sources. `path: packages/apps/src/note-detail-view/src/note-text-editor-body.tsx:245`, `path: packages/apps/src/text-editor-core/src/text-editor-extensions.ts:124`
 - Server ACL inheritance for `.attachments/<fn-id>/` only applies to Doc FileNodes. `path: packages/api/app/Services/Drive/DriveShareAuthorizer.php:373`
-- Tag rule. `path: packages/apps/src/notes-core/src/note-tag.ts:1`, `path: packages/api/app/Services/Notes/NoteTag.php:16`
+- Tag rule. `path: packages/apps/src/lib/models/note-tag.ts:1`, `path: packages/api/app/Services/Notes/NoteTag.php:16`
 
 ## Considered
 

@@ -7,7 +7,7 @@ import {
   canOpenCalendarSettings,
   canWriteCalendarCollection,
 } from "@/calendar-core/src/calendar-collection-write";
-import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-share";
+import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";

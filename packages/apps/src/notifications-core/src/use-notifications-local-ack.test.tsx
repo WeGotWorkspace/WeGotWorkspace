@@ -2,6 +2,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeWebLocks } from "@/lib/jmap-client/push/mock/fake-web-locks";
+import { MeetCallProvider } from "@/meet-core/src/meet-call-provider";
+import { createMeetCallStore } from "@/meet-core/src/meet-call-store";
 
 vi.mock("@/lib/api/wgw/notifications", () => ({ ackLocalNotifications: vi.fn() }));
 
@@ -130,6 +132,31 @@ describe("useNotificationsLocalAck", () => {
     await settle();
 
     expect(sentIds()).toEqual([["n1"], ["n3", "n2"]]);
+  });
+
+  // #2129: the push stream keeps the visible pace only while the call is live.
+  it("tells the push stream when this tab is in a Meet call, not in the lobby", async () => {
+    const callStore = createMeetCallStore();
+    const setInMeetCall = vi.fn<(inCall: boolean) => void>();
+    const deps = tabDeps(new FakeWebLocks(), "a");
+    const { unmount } = renderHook(
+      () => useNotificationsLocalAck(() => ({ ...deps(), setInMeetCall })),
+      {
+        wrapper: ({ children }) => (
+          <MeetCallProvider store={callStore}>{children}</MeetCallProvider>
+        ),
+      },
+    );
+    expect(setInMeetCall).toHaveBeenLastCalledWith(false);
+    act(() => callStore.setStatus("waiting"));
+    expect(setInMeetCall).toHaveBeenLastCalledWith(false);
+    act(() => callStore.setStatus("in-call"));
+    expect(setInMeetCall).toHaveBeenLastCalledWith(true);
+    act(() => callStore.setStatus("idle"));
+    expect(setInMeetCall).toHaveBeenLastCalledWith(false);
+    act(() => callStore.setStatus("in-call"));
+    unmount();
+    expect(setInMeetCall).toHaveBeenLastCalledWith(false);
   });
 
   it("does not ack from a hidden window", async () => {

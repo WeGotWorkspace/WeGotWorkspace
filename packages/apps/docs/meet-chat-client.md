@@ -16,11 +16,11 @@ Spec: `.agents/specs/701-meet-chat-backend/spec.md` (Epic #701, Task #704).
 | `src/lib/jmap-client/chat/` + `adapter/JmapChatAdapter.ts`           | `ChatChannel`/`ChatMessage` `/changes` → `/get` inbound poll                                                    |
 | `src/lib/offline/meet-chat/meet-chat-schema.ts`                      | Dexie tables (domain `meet-chat`, version block 60–69)                                                          |
 | `src/lib/offline/meet-chat/chat-ulid.ts`                             | Client-side ULID generator for message ids                                                                      |
-| `src/lib/offline/meet-chat-offline-store.ts`                         | Dexie cache, sync tokens, backfill markers, outbox enqueue/coalescing                                           |
-| `src/lib/offline/meet-chat-outbox-flush.ts`                          | Outbox replay on reconnect                                                                                      |
-| `src/lib/offline/meet-chat-inbound-sync.ts`                          | REST changes-feed inbound + full-history backfill                                                               |
-| `src/lib/offline/meet-chat-jmap-inbound.ts`                          | Dexie ingest for remote objects (pending-write protection)                                                      |
-| `src/lib/offline/meet-chat-hybrid-operations.ts`                     | `MeetChatOperations` implementation + hybrid bootstrap                                                          |
+| `src/lib/offline/meet-chat/meet-chat-offline-store.ts`               | Dexie cache, sync tokens, backfill markers, outbox enqueue/coalescing                                           |
+| `src/lib/offline/meet-chat/meet-chat-outbox-flush.ts`                | Outbox replay on reconnect                                                                                      |
+| `src/lib/offline/meet-chat/meet-chat-inbound-sync.ts`                | REST changes-feed inbound + full-history backfill                                                               |
+| `src/lib/offline/meet-chat/meet-chat-jmap-inbound.ts`                | Dexie ingest for remote objects (pending-write protection)                                                      |
+| `src/lib/offline/meet-chat/meet-chat-hybrid-operations.ts`           | `MeetChatOperations` implementation + hybrid bootstrap                                                          |
 | `src/meet-core/src/meet-chat-api-source.ts` / `use-meet-chat-api.ts` | Mock vs live source (`wgwLiveApiEnabled()`) + workspace hook                                                    |
 
 ## Dexie schema

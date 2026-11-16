@@ -3,7 +3,7 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createMockDocsOperations } from "@/docs-core/src/docs-mock-operations";
 import { docsLabels as L } from "@/docs-core/src/docs-labels";
-import type { DocsAPIOperations } from "@/docs-core/src/docs-types";
+import type { DocsAPIOperations } from "@/lib/models/docs-types";
 import { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 import "@/docs-core/src/docs-workspace.css";
 

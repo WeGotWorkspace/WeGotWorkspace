@@ -22,7 +22,7 @@ import {
   freeBusyStatusFromWire,
   type CalendarEventAlertFormValue,
   type CalendarFreeBusyStatus,
-} from "@/calendar-core/src/calendar-alerts";
+} from "@/lib/calendar/calendar-alerts";
 import {
   matchRecurrencePreset,
   recurrencePresetToRule,
@@ -42,7 +42,7 @@ import {
 export type {
   CalendarEventAlertFormValue,
   CalendarFreeBusyStatus,
-} from "@/calendar-core/src/calendar-alerts";
+} from "@/lib/calendar/calendar-alerts";
 
 /**
  * Pure form model for the event editor: JSCalendar wire <-> editable fields.

@@ -38,7 +38,11 @@ import {
   SYNC_UPDATE,
 } from "@/text-editor-core/docs-collab/docs-collab-mesh-sync";
 import { DocsCollabMeshStateCheck } from "@/text-editor-core/docs-collab/docs-collab-mesh-state-check";
-import { YJS_HTTP_POLL_MS } from "@/text-editor-core/docs-collab/docs-collab-http-wire";
+import {
+  YJS_HTTP_IDLE_POLL_MS,
+  YJS_HTTP_POLL_MS,
+  type YjsHttpPollMode,
+} from "@/text-editor-core/docs-collab/docs-collab-http-wire";
 import { DocsCollabPrincipalReuse } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
 import type {
   DocsCollabMeshMessage,
@@ -296,6 +300,8 @@ export class DocsRtcSession {
         if (this.httpOnlyUntilRelay && !this.relayReady.has(peer.id)) return false;
         return !this.reuse.shouldSkipIce(peer);
       },
+      // A peer reached over the principal data channel needs no fast poll.
+      linkedElsewhere: (peerId) => this.reuse.extraPeers().some((peer) => peer.id === peerId),
       shouldAcceptOffer: (from) => {
         if (this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from)) return true;
         this.reuse.reopenAfterIgnoredOffer(from);
@@ -348,18 +354,7 @@ export class DocsRtcSession {
               this.mesh.retryPeerWithRelay(peerId, outcome.turn);
             }
           },
-          setFastPoll: (active) => {
-            this.pollIntervals.steadyMs = active
-              ? YJS_HTTP_POLL_MS
-              : DEFAULT_RTC_POLL_INTERVALS.steadyMs;
-            this.pollIntervals.connectingMs = Math.min(
-              this.pollIntervals.connectingMs,
-              YJS_HTTP_POLL_MS,
-            );
-            if (active) this.pollIntervals.maxDelayMs = YJS_HTTP_POLL_MS;
-            else delete this.pollIntervals.maxDelayMs;
-            this.mesh.kickPoll();
-          },
+          setPollMode: (mode) => this.applyHttpPollMode(mode),
           getYDoc: () => options.getYDoc?.() ?? null,
           trust: (peerId) => ({
             user: this.trust.userForPeerId(peerId),
@@ -408,6 +403,24 @@ export class DocsRtcSession {
   private forceRelayTransport(): boolean {
     const settings = applyRtcDebugOverrides(this.options.rtcSettings);
     return settings.forceRelay;
+  }
+
+  /**
+   * The HTTP fallback carries the document, so its poll is the delivery path:
+   * the cap also holds against the idle and hidden-tab backoff.
+   */
+  private applyHttpPollMode(mode: YjsHttpPollMode): void {
+    const intervals = this.pollIntervals;
+    if (mode === "off") {
+      intervals.steadyMs = DEFAULT_RTC_POLL_INTERVALS.steadyMs;
+      delete intervals.maxDelayMs;
+      return;
+    }
+    const delay = mode === "fast" ? YJS_HTTP_POLL_MS : YJS_HTTP_IDLE_POLL_MS;
+    intervals.steadyMs = delay;
+    intervals.connectingMs = Math.min(intervals.connectingMs, delay);
+    intervals.maxDelayMs = delay;
+    if (mode === "fast") this.mesh.kickPoll();
   }
 
   private webrtcUnavailable(): boolean {

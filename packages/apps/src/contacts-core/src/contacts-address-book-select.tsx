@@ -32,7 +32,7 @@ export type ContactsAddressBookSelectProps = {
   variant?: "field" | "toolbar";
   /**
    * `swatch` reuses ColorSwatchTrigger (icon + chevron, no caption) — same chrome as
-   * NotesNotebookSelect / CalendarEventCalendarPicker. `labeled` keeps the Select trigger
+   * NotebookSelect / CalendarEventCalendarPicker. `labeled` keeps the Select trigger
    * with visible name. `ghost` is the detail-pane switcher above the contact's
    * name: dot + name in the book's colour, no chrome (same as Notes' notebook).
    */

@@ -114,6 +114,7 @@ These rows follow a product decision instead of the default denial:
 - **Client-chosen ids:** a note `uid`, chat channel `id` or chat message `id` that only an object the caller cannot see uses does not collide. The create succeeds under a fresh id, exactly as for an unused id, and the other object is untouched. A chat channel `id` must be `chat-` plus a ULID or UUID; any other shape, including a group default channel id, is a 400 `invalidProperties` for every caller.
 - **Meeting codes:** a meeting code is its own invite. A signed-in actor who has the code of an ad-hoc meeting joins it and reads its configuration. A reserved code admits link guests only through the lobby.
 - **Batch local-ack:** `POST /notifications/local-ack` skips ids that are not the caller's and answers exactly as for unknown ids. It changes nothing for their owner.
+- **Batch read ack:** `POST /notifications/ack` (#2154) works the same way: ids that are not the caller's are skipped, the answer is the same as for unknown ids, and their owner's rows stay unread.
 
 ### Default outcomes: public
 

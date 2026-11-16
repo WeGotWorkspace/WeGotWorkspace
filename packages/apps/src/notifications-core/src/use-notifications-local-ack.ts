@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { ackLocalNotifications } from "@/lib/api/wgw/notifications";
+import { setPushInMeetCall } from "@/lib/jmap-client/push/meet-call-awake";
 import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import { useMeetCallStoreContext } from "@/meet-core/src/meet-call-provider";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
@@ -23,6 +24,11 @@ export type LocalAckDeps = {
   runExclusive: (task: () => Promise<void>) => Promise<void>;
   /** Rows this browser already acked, shared by its tabs and kept across reloads. */
   acked: LocalAckedStore;
+  /**
+   * Tells the push stream that this tab is in a live Meet call, so it hears
+   * new rows at the visible pace and acks them within the grace (#2129).
+   */
+  setInMeetCall?: (inCall: boolean) => void;
 };
 
 export function defaultLocalAckDeps(): LocalAckDeps {
@@ -30,6 +36,7 @@ export function defaultLocalAckDeps(): LocalAckDeps {
     runExclusive: (task) =>
       withCrossTabLock(LOCAL_ACK_LOCK, task, { maxWaitMs: LOCAL_ACK_LOCK_MAX_WAIT_MS }),
     acked: browserLocalAckedStore(),
+    setInMeetCall: setPushInMeetCall,
   };
 }
 
@@ -134,6 +141,18 @@ export function useNotificationsLocalAck(
     if (!callStore) return;
     return callStore.subscribe(flush);
   }, [callStore, flush]);
+
+  useEffect(() => {
+    const report = depsRef.current?.setInMeetCall;
+    if (!callStore || !report) return;
+    const sync = () => report(inMeetCall(callStore));
+    sync();
+    const unsubscribe = callStore.subscribe(sync);
+    return () => {
+      unsubscribe();
+      report(false);
+    };
+  }, [callStore]);
 
   return trackUnread;
 }

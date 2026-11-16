@@ -16,7 +16,7 @@ import {
   seedEmptyDocsCollabOffline,
 } from "@/lib/offline/docs/docs-pin-hydrate";
 import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { upsertDocsListingResult } from "@/lib/offline/docs-listing-offline-store";
+import { upsertDocsListingResult } from "@/lib/offline/docs/docs-listing-offline-store";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 
 export type MakeDocsOfflineAvailableOptions = {

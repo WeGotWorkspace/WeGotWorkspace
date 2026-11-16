@@ -11,7 +11,7 @@ import {
 } from "@/ui/alert-dialog";
 import { buttonVariants } from "@/button/src/button";
 import { GroupDialog, PasswordDialog, UserDialog } from "@/admin-core/src/admin-workspace-dialogs";
-import type { AdminUIData } from "@/admin-core/src/admin-types";
+import type { AdminUIData } from "@/lib/models/admin-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 

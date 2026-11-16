@@ -4,7 +4,6 @@ import { defaultContactsLabels } from "./contacts-labels";
 import {
   channelDisplayLabels,
   contactBirthdayDisplay,
-  contactDisplayName,
   isContactOrgCard,
   contactInitials,
   contactListDetail,
@@ -15,11 +14,11 @@ import {
   CONTACT_MEDIA_BLOB_PATH,
   filterCardsBySearch,
   groupContactCardsBySection,
-  mapEntriesSorted,
   phoneToTelHref,
   safeContactExternalHref,
   sortContactCardsForList,
 } from "./contacts-display-utils";
+import { contactDisplayName, mapEntriesSorted } from "@/lib/models/contacts-display";
 
 const janeCard = {
   "@type": "Card",

@@ -1,6 +1,6 @@
 import type { JmapCalendarEvent, JSCalendarPatchObject } from "@/lib/jmap-client";
 import type { CalendarEventPatch } from "@/lib/models/calendar-types";
-import { patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
+import { patchToJmapPartial } from "@/lib/calendar/calendar-wire";
 
 /** Later fields win per key — same last-write-wins coalescing as tasks/contacts. */
 export function coalesceCalendarEventPatches(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Collab;
 
+use App\Exceptions\RealtimeApiException;
 use App\Services\Rtc\RoomIdCodec;
 
 /**
@@ -97,6 +98,6 @@ final class CollabRoomPolicy
 
     private function fail(string $error, int $status = 400, ?string $message = null): never
     {
-        throw new CollabResponseException($status, $error, $message);
+        throw new RealtimeApiException($status, $error, $message);
     }
 }

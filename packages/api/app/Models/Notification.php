@@ -66,7 +66,9 @@ final class Notification extends Model
     /**
      * Create, supersede, read and clear all move the principal's inbox marker
      * (the `Notification` push state, #1660). Mass `query()->update()` and
-     * `query()->delete()` skip model events; inbox writers save per row.
+     * `query()->delete()` skip model events, so inbox writers save per row.
+     * The one exception is `NotificationInboxService::ackMany()` (#2154): it
+     * marks up to 100 rows read in one update and bumps the marker itself.
      */
     protected static function booted(): void
     {

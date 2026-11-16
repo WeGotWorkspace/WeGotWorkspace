@@ -21,7 +21,7 @@ import {
 import type {
   WgwInstallerActionResponse,
   WgwInstallerRuntimeState,
-} from "@/installer-core/src/installer-types";
+} from "@/lib/models/installer-types";
 import type { WgwInstallerErrorCode } from "@/lib/api/wgw";
 import type { InstallerWorkspaceProps } from "@/installer-core/src/installer-workspace-props";
 import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";

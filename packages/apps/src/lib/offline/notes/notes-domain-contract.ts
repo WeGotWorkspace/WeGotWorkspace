@@ -1,7 +1,7 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import type { NotesAPIOperations } from "@/lib/models/notes-types";
-import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
+import { createHybridNotesOperations } from "@/lib/offline/notes/notes-hybrid-operations";
 import {
   readNotesBootstrapFromCache,
   readSyncToken,
@@ -9,7 +9,7 @@ import {
   upsertNoteInCache,
   writeNotesBootstrapToCache,
   writeSyncToken,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import type { OfflineDomainOperations, OfflineDomainStore } from "@/lib/offline/core/types";
 
 /**

@@ -1,6 +1,6 @@
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
-import { isNotesPersistForbidden } from "@/notes-core/src/notes-persist-access";
+import { isNotesPersistForbidden } from "@/lib/offline/notes/notes-persist-access";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
 
 /** Room key = VJOURNAL UID = REST noteId. */

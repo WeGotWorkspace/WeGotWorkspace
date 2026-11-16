@@ -4,7 +4,7 @@ import type {
   AdminUIData,
   AdminUpdateCheck,
   AdminUpdateState,
-} from "@/admin-core/src/admin-types";
+} from "@/lib/models/admin-types";
 
 const MOCK_CHECK_RESULTS: AdminUpdateCheck[] = [
   { ok: true, label: "PHP runtime", detail: "Meets minimum version for this release." },

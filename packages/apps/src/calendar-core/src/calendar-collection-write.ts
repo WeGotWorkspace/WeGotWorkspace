@@ -1,4 +1,4 @@
-import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-share";
+import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 export type CalendarCollectionWriteInfo = Pick<CalendarInfo, "scope" | "mayShare" | "mayWrite">;

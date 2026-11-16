@@ -1,4 +1,4 @@
-import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import type {
   CalendarAPIOperations,
   CalendarFeedInfo,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { findCachedDmChannelByPeer } from "@/lib/offline/meet-chat-offline-store";
+import { findCachedDmChannelByPeer } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { latestMessageInChannel } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
@@ -40,7 +40,7 @@ import {
   meetCollectionIdFromPublic,
   meetPublicChannelId,
 } from "@/lib/meetings/meet-public-id";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetAuthorPresence } from "@/meet-core/src/use-meet-author-presence";

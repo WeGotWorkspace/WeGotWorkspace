@@ -1,5 +1,5 @@
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import type { SettingsGroup } from "@/settings-core/src/settings-types";
+import type { SettingsGroup } from "@/lib/models/settings-types";
 import type { SettingsProfileFormValues } from "@/settings-core/src/settings-profile-form-schema";
 
 export function getProfileFormDefaults(
