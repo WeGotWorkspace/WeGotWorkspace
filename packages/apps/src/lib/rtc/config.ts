@@ -1,7 +1,7 @@
 import type { IceMode, RtcSettings, TurnCredentials } from "@/lib/rtc/types";
 
 export type ToRtcConfigOptions = {
-  /** Pool size when not forcing relay (meet: 4, collab: 2). */
+  /** Pool size when not forcing relay (default: none; docs collab: 2). */
   iceCandidatePoolSize?: number;
   /** Credentials from a relay request; without them there is no TURN server. */
   turn?: TurnCredentials | null;
@@ -67,7 +67,9 @@ export function toRtcConfig(
     }
   }
 
-  const poolSize = options.iceCandidatePoolSize ?? 4;
+  // The size is fixed after the first offer and Chromium refills the pool when TURN is applied,
+  // so any pool gathers TURN again on every relay switch.
+  const poolSize = options.iceCandidatePoolSize ?? 0;
 
   return {
     iceServers,

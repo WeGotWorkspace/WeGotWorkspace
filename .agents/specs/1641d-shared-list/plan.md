@@ -73,8 +73,8 @@ Considered: the existing Contacts windowing (`contacts-list-window.ts`), `@tanst
 
 None for chunk A. These were found while writing the spec. Each is a behaviour difference between apps, so it goes to the overview session (and Wouter) before the chunk that would change it:
 
-- [ ] (chunk C) Tasks rows get Enter (open) and F2 (rename) from the suite keymap. Today Tasks has neither. Chunk C keeps today's keys unless this is decided.
-- [ ] (chunk C) Notes, Tasks and Contacts rows become one roving Tab stop, like Drive (the keymap decision says "roving focus"). Today every row is a Tab stop. Windowing already limits Tab to mounted rows. Chunks A–C keep the plain buttons unless this is decided.
+- [x] (chunk C) Tasks rows get Enter (open) and F2 (rename) from the suite keymap. Today Tasks has neither. Decided 2026-11-13: yes. Built in its own PR after chunk C, which keeps today's keys.
+- [x] (chunk C) Notes, Tasks and Contacts rows become one roving Tab stop, like Drive (the keymap decision says "roving focus"). Today every row is a Tab stop. Windowing already limits Tab to mounted rows. Decided 2026-11-13: yes. Built in its own PR after chunk C; chunks A–C keep the plain buttons.
 - [ ] (chunk D) Drive's grid shows Folders before Files, but ↑/↓ and shift-click ranges follow the sort order across both. Under the Modified or Size sort the keys jump between sections. This is a bug on `main`, filed as #2090. Chunk D windows each section without changing the order.
 
 ## Invariants
@@ -113,8 +113,9 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Done when:**
   - Tasks renders through `WorkspaceList` with the shared comparison.
   - An exiting row stays pinned until its exit animation ends.
-  - `shownTitles` reads the list without depending on every row being mounted.
-  - The measurement covers open, tick and type-title at 1000 tasks in one list.
+  - Unmeasured rows use an estimate per task: with or without a notes excerpt.
+  - `shownTitles` scrolls a windowed list through, and Tasks specs that find a row by title reveal it first (`revealTask`), so none depends on every row being mounted.
+  - The measurement covers open, scroll, keys, tick and type-title at 1000 tasks in one list. Tick and type put the task back over the API after each run.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/tasks-core`, the tasks sync matrix, the measurement script
 - **Parallel with:** none
 
@@ -122,12 +123,12 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/drive-core/src/drive-browser.tsx:419`
 - **Done when:**
-  - The list view windows table rows with spacer rows, keeping the hairlines and the roving `tabindex` row mounted.
-  - The grid windows rows of tiles per section; the column count comes from the container width.
-  - Rows and tiles are memoized.
-  - Previews still load only for tiles in view.
-  - The measurement covers open folder, rename and search at 500 files.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/drive-core`, `e2e/drive-inbound-many-files.spec.ts`, the measurement script
+  - The list view windows table rows with spacer rows, keeping the hairlines and the roving `tabindex` row mounted. `DriveListView` binds through the headless `useWorkspaceListRows`; the folder picker and Docs home get it through their reuse.
+  - The grid windows rows of tiles per section above 80 tiles; the column count is a rendered row's track count, read again on resize.
+  - Previews still load only for tiles in view, and the preview observer lets go of tiles that unmount.
+  - Items sit at the same pixel positions as on `main` at any scroll depth, in both views.
+  - The measurement covers open, scroll, keys, rename and search on a folder of 1000 files and 20 folders, in both views.
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/drive-core`, `e2e/drive-inbound-many-files.spec.ts`, `e2e/drive-list-windowed.spec.ts`, the measurement script
 - **Parallel with:** none
 
 ### Chunk E: Docs home

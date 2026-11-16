@@ -10,7 +10,9 @@
  * Usage (against a production build: `vite build && vite preview`, live API):
  *   node scripts/measure-list-frames.mjs --app notes --base-url http://127.0.0.1:4461 \
  *     --api-url http://127.0.0.1:9461 [--scenario all|open|scroll|keys|…] [--runs 3] [--cpu 4]
- *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search).
+ *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search),
+ *   drive (open, scroll, keys, rename, search; `--drive-view grid|list`, `--drive-path "My Drive/…"`),
+ *   tasks (open, scroll, keys, tick, type; `--tasks-list <list id>`).
  *
  * Each run uses a fresh browser context (no cache, no IndexedDB): a cold first visit.
  * Scenarios find rows by position on screen, never by DOM index, so the numbers
@@ -35,6 +37,9 @@ const { values } = parseArgs({
     username: { type: "string", default: process.env.WGW_E2E_USERNAME ?? "admin" },
     password: { type: "string", default: process.env.WGW_E2E_PASSWORD ?? "storybook-dev" },
     json: { type: "boolean", default: false },
+    "drive-view": { type: "string", default: "list" },
+    "drive-path": { type: "string", default: "My Drive/List bench" },
+    "tasks-list": { type: "string", default: "list-bench" },
   },
 });
 
@@ -159,6 +164,88 @@ async function arrowDownThrough(page) {
 }
 
 const APPS = {
+  drive: {
+    get path() {
+      return `/drive?path=${encodeURIComponent(values["drive-path"])}`;
+    },
+    // An arrow function: Playwright serializes it into the page as written.
+    init: (viewMode) => {
+      localStorage.setItem("wgw.ui.drive.viewMode", viewMode);
+    },
+    get initArg() {
+      return values["drive-view"];
+    },
+    async ready(page) {
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      await page.getByText("Loading folder…").waitFor({ state: "detached", timeout: 60_000 });
+    },
+    scenarios: {
+      /** Cold open of a large folder: from navigation until the items have painted. */
+      async open(page) {
+        await APPS.drive.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /** Scroll the whole folder in 20 steps. */
+      async scroll(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        return scrollThrough(page);
+      },
+      /** Select an item, then ArrowDown 30 times: the selection follows. */
+      async keys(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
+      },
+      /**
+       * Rename an item near the top with F2: the folder re-renders with the new name
+       * in place. Toggles between two names, so runs never depend on whether the
+       * last run's write reached the server before its browser closed.
+       */
+      async rename(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        const names = ["File 0002", "File 0002 renamed"];
+        const itemNamed = (name) =>
+          page
+            .locator(ROW_SELECTOR)
+            .filter({ has: page.getByText(`${name}.csv`, { exact: true }) });
+        const fromIndex = (await itemNamed(names[0]).count()) ? 0 : 1;
+        const item = itemNamed(names[fromIndex]).first();
+        // F2 renames the focused item. Focus it rather than click: near the top it
+        // sits under the sticky heading, which would take the click.
+        const hit = item.locator(".drive-tile__hit");
+        await ((await hit.count()) ? hit : item).focus();
+        const start = await now(page);
+        await page.keyboard.press("F2");
+        await page
+          .getByRole("dialog")
+          .getByRole("textbox")
+          .first()
+          .fill(names[1 - fromIndex]);
+        await page.keyboard.press("Enter");
+        await page.getByRole("dialog").waitFor({ state: "detached", timeout: 15_000 });
+        await itemNamed(names[1 - fromIndex])
+          .first()
+          .waitFor({ timeout: 15_000 });
+        return { start, interactions: 1 };
+      },
+      /** Type a search one letter at a time, then clear it. */
+      async search(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        const search = page.getByPlaceholder("Search in Drive...");
+        await search.click();
+        const start = await now(page);
+        await search.pressSequentially("fil", { delay: KEY_DELAY_MS * 3 });
+        for (let i = 0; i < 3; i += 1) {
+          await page.keyboard.press("Backspace");
+          await page.waitForTimeout(KEY_DELAY_MS * 3);
+        }
+        return { start, interactions: 6 };
+      },
+    },
+  },
   contacts: {
     path: "/contacts",
     async ready(page) {
@@ -197,6 +284,91 @@ const APPS = {
           await page.waitForTimeout(KEY_DELAY_MS * 3);
         }
         return { start, interactions: 6 };
+      },
+    },
+  },
+  tasks: {
+    get path() {
+      return `/tasks/lists/${encodeURIComponent(values["tasks-list"])}`;
+    },
+    /** The list has painted and its row count stopped changing (the sync settled). */
+    async ready(page) {
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      const total = () =>
+        page.evaluate(() => {
+          const list = document.querySelector("[data-workspace-list-rows]");
+          return Number(
+            list?.getAttribute("data-workspace-list-rows") ??
+              document.querySelectorAll(".tasks-list-row").length,
+          );
+        });
+      let last = -1;
+      for (let stable = 0; stable < 3;) {
+        const count = await total();
+        stable = count === last ? stable + 1 : 0;
+        last = count;
+        await page.waitForTimeout(400);
+      }
+    },
+    scenarios: {
+      /** Cold open of a long list: from navigation until the tasks have painted. */
+      async open(page) {
+        await APPS.tasks.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /** Scroll the whole list in 20 steps. */
+      async scroll(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        return scrollThrough(page);
+      },
+      /** Select a task, then ArrowDown 30 times: each step opens that task. */
+      async keys(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
+      },
+      /**
+       * Tick the second task's circle: it plays its exit animation and leaves the
+       * list. The task is reopened over the API after the run.
+       */
+      async tick(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        const row = page.locator(".tasks-list-row").nth(1);
+        const id = await row.locator(ROW_SELECTOR).getAttribute("data-list-item-id");
+        const start = await now(page);
+        await row.getByRole("checkbox").click();
+        await page
+          .locator(`${ROW_SELECTOR}[data-list-item-id="${id}"]`)
+          .waitFor({ state: "detached", timeout: 15_000 });
+        return {
+          start,
+          interactions: 1,
+          restore: { id, patch: { workflowStatus: "needs-action" } },
+        };
+      },
+      /** Open a task about 40 rows down and type 40 characters into its name. */
+      async type(page) {
+        await APPS.tasks.ready(page);
+        await page.waitForTimeout(1500);
+        await scrollList(page, 3000);
+        await page.waitForTimeout(500);
+        await clickRowInMiddle(page);
+        const name = page.getByPlaceholder("Task name");
+        await name.waitFor({ timeout: 15_000 });
+        const title = await name.inputValue();
+        const id = await page
+          .locator(`${ROW_SELECTOR}[data-active="true"]`)
+          .getAttribute("data-list-item-id");
+        await name.click();
+        await page.keyboard.press("End");
+        await page.waitForTimeout(1500);
+        const start = await now(page);
+        await page.keyboard.type(" typing in a long list stays smooth ok", {
+          delay: KEY_DELAY_MS,
+        });
+        return { start, interactions: 40, restore: id ? { id, patch: { title } } : undefined };
       },
     },
   },
@@ -247,6 +419,21 @@ const APPS = {
   },
 };
 
+/** Puts a task the scenario changed back, so every run starts from the same list. */
+async function restoreTask({ id, patch }, accessToken) {
+  const url = `${values["api-url"]}/api/v1/tasks/items/${encodeURIComponent(id)}`;
+  const headers = { Accept: "application/json", Authorization: `Bearer ${accessToken}` };
+  const current = await fetch(url, { headers });
+  if (!current.ok) throw new Error(`restore task ${id}: ${current.status}`);
+  const { etag } = await current.json();
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json", "If-Match": etag ?? "*" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`restore task ${id}: ${res.status} ${await res.text()}`);
+}
+
 async function runOnce(browser, app, scenarioName, accessToken) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await context.addInitScript(installFrameObserver);
@@ -256,6 +443,7 @@ async function runOnce(browser, app, scenarioName, accessToken) {
       localStorage.setItem("wgw.api.session_kind", "member");
     }
   }, accessToken);
+  if (app.init) await context.addInitScript(app.init, app.initArg);
   const page = await context.newPage();
   const cpu = Number(values.cpu);
   if (cpu > 1) {
@@ -263,12 +451,13 @@ async function runOnce(browser, app, scenarioName, accessToken) {
     await session.send("Emulation.setCPUThrottlingRate", { rate: cpu });
   }
   await page.goto(new URL(app.path, values["base-url"]).toString());
-  const { start } = await app.scenarios[scenarioName](page, {});
+  const { start, restore } = await app.scenarios[scenarioName](page, {});
   const end = (await now(page)) + TAIL_MS;
   await page.waitForTimeout(TAIL_MS);
   const frames = await framesBetween(page, start, end);
   const shape = await pageShape(page);
   await context.close();
+  if (restore) await restoreTask(restore, accessToken);
   const durations = frames.map((frame) => Math.round(frame.duration));
   return {
     longFrames: durations.length,
