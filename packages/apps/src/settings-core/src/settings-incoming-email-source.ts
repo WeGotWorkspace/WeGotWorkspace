@@ -10,18 +10,25 @@ import type {
   CalendarReplyMailboxUpdate,
 } from "@wgw/openapi-types/calendars-types";
 
-let mockOperations: CalendarReplyMailboxOperations | null = null;
+/**
+ * The user's incoming mailbox (Settings → Incoming email). Calendar invitation replies are its
+ * first use, so the REST resource still lives under `/calendars/reply-mailbox`.
+ */
+export type IncomingMailbox = CalendarReplyMailbox;
+export type IncomingMailboxOperations = CalendarReplyMailboxOperations;
 
-/** Live REST with an API; one in-memory mock per page otherwise. */
-export function defaultCalendarReplyMailboxOperations(): CalendarReplyMailboxOperations {
-  return createWorkspaceSource<CalendarReplyMailboxOperations>({
+let mockOperations: IncomingMailboxOperations | null = null;
+
+/** Live REST with an API; one in-memory mock per page otherwise, shared by both panes. */
+export function defaultIncomingMailboxOperations(): IncomingMailboxOperations {
+  return createWorkspaceSource<IncomingMailboxOperations>({
     isLive: wgwLiveApiEnabled(),
     createLiveSource: createWgwCalendarReplyMailboxOperations,
     createMockSource: () => (mockOperations ??= createMockCalendarReplyMailboxOperations()),
   });
 }
 
-export type CalendarReplyMailboxFormValues = {
+export type IncomingEmailFormValues = {
   host: string;
   security: "ssl" | "starttls";
   /** Empty for the usual port of the security mode. */
@@ -29,37 +36,32 @@ export type CalendarReplyMailboxFormValues = {
   username: string;
   /** Empty keeps the saved password. */
   password: string;
-  folder: string;
 };
 
-export const EMPTY_REPLY_MAILBOX_FORM: CalendarReplyMailboxFormValues = {
+export const EMPTY_INCOMING_EMAIL_FORM: IncomingEmailFormValues = {
   host: "",
   security: "ssl",
   port: "",
   username: "",
   password: "",
-  folder: "INBOX",
 };
+
+export const DEFAULT_MAILBOX_FOLDER = "INBOX";
 
 const USUAL_PORT = { ssl: 993, starttls: 143 } as const;
 
-export function usualReplyMailboxPort(
-  security: CalendarReplyMailboxFormValues["security"],
-): number {
+export function usualIncomingEmailPort(security: IncomingEmailFormValues["security"]): number {
   return USUAL_PORT[security];
 }
 
-export function replyMailboxToForm(
-  mailbox: CalendarReplyMailbox | null,
-): CalendarReplyMailboxFormValues {
-  if (!mailbox) return EMPTY_REPLY_MAILBOX_FORM;
+export function incomingEmailToForm(mailbox: IncomingMailbox | null): IncomingEmailFormValues {
+  if (!mailbox) return EMPTY_INCOMING_EMAIL_FORM;
   return {
     host: mailbox.host,
     security: mailbox.security,
     port: mailbox.port === USUAL_PORT[mailbox.security] ? "" : String(mailbox.port),
     username: mailbox.username,
     password: "",
-    folder: mailbox.folder,
   };
 }
 
@@ -67,25 +69,28 @@ export function replyMailboxToForm(
  * The server sends the stored password only to the server it was saved for: a new mail server
  * or port needs the password typed again.
  */
-export function replyMailboxNeedsPasswordAgain(
-  values: CalendarReplyMailboxFormValues,
-  saved: CalendarReplyMailbox | null,
+export function incomingEmailNeedsPasswordAgain(
+  values: IncomingEmailFormValues,
+  saved: IncomingMailbox | null,
 ): boolean {
   if (!saved || values.password) return false;
   const port = values.port.trim()
     ? Number(values.port.trim())
-    : usualReplyMailboxPort(values.security);
+    : usualIncomingEmailPort(values.security);
   return values.host.trim().toLowerCase() !== saved.host || port !== saved.port;
 }
 
-/** `null` when a required field is empty (the password only on the first connect). */
-export function replyMailboxUpdateFromForm(
-  values: CalendarReplyMailboxFormValues,
-  connected: boolean,
+/**
+ * `null` when a required field is empty (the password only on the first connect). The folder
+ * is not part of the connection: the saved one is sent back unchanged.
+ */
+export function incomingEmailUpdateFromForm(
+  values: IncomingEmailFormValues,
+  saved: IncomingMailbox | null,
 ): CalendarReplyMailboxUpdate | null {
   const host = values.host.trim();
   const username = values.username.trim();
-  if (!host || !username || (!connected && !values.password)) return null;
+  if (!host || !username || (!saved && !values.password)) return null;
   const port = values.port.trim();
   return {
     host,
@@ -93,6 +98,20 @@ export function replyMailboxUpdateFromForm(
     ...(port ? { port: Number(port) } : {}),
     username,
     ...(values.password ? { password: values.password } : {}),
-    folder: values.folder.trim() || "INBOX",
+    folder: saved?.folder ?? DEFAULT_MAILBOX_FOLDER,
+  };
+}
+
+/** The saved connection with another folder; the stored password is kept. */
+export function mailboxFolderUpdate(
+  saved: IncomingMailbox,
+  folder: string,
+): CalendarReplyMailboxUpdate {
+  return {
+    host: saved.host,
+    security: saved.security,
+    port: saved.port,
+    username: saved.username,
+    folder: folder.trim() || DEFAULT_MAILBOX_FOLDER,
   };
 }

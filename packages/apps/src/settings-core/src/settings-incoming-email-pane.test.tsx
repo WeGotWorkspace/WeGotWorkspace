@@ -5,8 +5,8 @@ import {
   mockCalendarReplyMailbox,
 } from "@/lib/api/mock/calendar-reply-mailbox";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
-import { calendarReplyMailboxLabels as labels } from "@/settings-core/src/settings-calendar-reply-mailbox-labels";
-import { SettingsCalendarReplyMailboxSection } from "@/settings-core/src/settings-calendar-reply-mailbox-section";
+import { incomingEmailLabels as labels } from "@/settings-core/src/settings-incoming-email-labels";
+import { SettingsIncomingEmailPane } from "@/settings-core/src/settings-incoming-email-pane";
 import { TooltipProvider } from "@/ui/tooltip";
 import type { CalendarReplyMailbox } from "@wgw/openapi-types/calendars-types";
 
@@ -32,7 +32,7 @@ function spiedOperations(seed: CalendarReplyMailbox | null = null) {
 function renderSection(operations = spiedOperations()) {
   render(
     <TooltipProvider>
-      <SettingsCalendarReplyMailboxSection operations={operations} />
+      <SettingsIncomingEmailPane operations={operations} />
     </TooltipProvider>,
   );
   return operations;
@@ -58,8 +58,8 @@ afterEach(() => {
   cleanup();
 });
 
-describe("SettingsCalendarReplyMailboxSection", () => {
-  it("connects a mailbox after the login succeeds and shows that replies are read", async () => {
+describe("SettingsIncomingEmailPane", () => {
+  it("connects a mailbox after the login succeeds and shows that it is read", async () => {
     const operations = renderSection();
     await screen.findByLabelText(labels.host);
     expect(screen.queryByRole("button", { name: labels.disconnect })).toBeNull();
@@ -140,12 +140,15 @@ describe("SettingsCalendarReplyMailboxSection", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(labels.tooMany);
   });
 
-  it("saves a connected mailbox only after a change and keeps the saved password", async () => {
-    const operations = renderSection(spiedOperations(mockCalendarReplyMailbox()));
+  it("saves a connected mailbox only after a change, keeping the password and the folder", async () => {
+    const operations = renderSection(
+      spiedOperations(mockCalendarReplyMailbox({ folder: "Calendar replies" })),
+    );
     const save = await screen.findByRole("button", { name: labels.save });
     expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByLabelText("Folder")).toBeNull();
 
-    type(labels.folder, "Replies");
+    type(labels.username, "me+cal@example.com");
     expect((save as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(save);
 
@@ -153,8 +156,8 @@ describe("SettingsCalendarReplyMailboxSection", () => {
     expect(operations.save).toHaveBeenCalledWith({
       host: "imap.example.com",
       security: "ssl",
-      username: "me@example.com",
-      folder: "Replies",
+      username: "me+cal@example.com",
+      folder: "Calendar replies",
     });
   });
 
@@ -217,9 +220,9 @@ describe("SettingsCalendarReplyMailboxSection", () => {
   it("explains the Gmail app password step before connecting", async () => {
     renderSection();
     await screen.findByLabelText(labels.host);
-    expect(screen.getByText(labels.passwordHint)).toBeTruthy();
-    expect(labels.passwordHint).toContain("app password");
-    expect(labels.passwordHint).toContain("2-Step Verification");
+    expect(screen.getByText(labels.intro)).toBeTruthy();
+    expect(labels.intro).toContain("app password");
+    expect(labels.intro).toContain("2-Step Verification");
   });
 
   it("says it needs a connection while offline", async () => {

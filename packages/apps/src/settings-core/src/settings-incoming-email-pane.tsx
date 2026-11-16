@@ -1,73 +1,80 @@
 import { useId, type ReactNode } from "react";
 import { useWatch } from "react-hook-form";
-import { MailCheck } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Button } from "@/button/src/button";
-import type { CalendarReplyMailboxOperations } from "@/lib/api/wgw/calendar-reply-mailbox";
-import { calendarReplyMailboxLabels as labels } from "@/settings-core/src/settings-calendar-reply-mailbox-labels";
+import { incomingEmailLabels as labels } from "@/settings-core/src/settings-incoming-email-labels";
 import {
-  usualReplyMailboxPort,
-  type CalendarReplyMailboxFormValues,
-} from "@/settings-core/src/settings-calendar-reply-mailbox-source";
+  usualIncomingEmailPort,
+  type IncomingEmailFormValues,
+  type IncomingMailbox,
+  type IncomingMailboxOperations,
+} from "@/settings-core/src/settings-incoming-email-source";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import {
-  useSettingsCalendarReplyMailbox,
-  type SettingsCalendarReplyMailboxController,
-} from "@/settings-core/src/use-settings-calendar-reply-mailbox";
+  useSettingsIncomingEmail,
+  type SettingsIncomingEmailController,
+} from "@/settings-core/src/use-settings-incoming-email";
 import { Form, FormField } from "@/ui/form";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
-import type { CalendarReplyMailbox } from "@wgw/openapi-types/calendars-types";
-import "./settings-calendar-reply-mailbox-section.css";
+import "./settings-incoming-email-pane.css";
 
 /**
- * Invitation replies in Settings → Calendar (#1589): the IMAP mailbox the owner's invitations
- * are sent from, so replies from other calendar apps update their events. Connect and Save log
- * in to the mailbox first; nothing is stored when that fails.
+ * Settings → Incoming email (#1589): the IMAP mailbox apps read for the user, such as Calendar
+ * for invitation replies. Connect and Save log in to the mailbox first; nothing is stored when
+ * that fails. Which folder an app reads is that app's own setting.
  */
-export function SettingsCalendarReplyMailboxSection({
+export function SettingsIncomingEmailPane({
   operations,
 }: {
   /** Stories and tests; the app uses the live REST resource (mock without an API). */
-  operations?: CalendarReplyMailboxOperations;
+  operations?: IncomingMailboxOperations;
 }) {
-  const controller = useSettingsCalendarReplyMailbox(operations);
+  const controller = useSettingsIncomingEmail(operations);
   return (
-    <SettingsPaneCard title={labels.title} icon={<MailCheck aria-hidden />}>
-      <ReplyMailboxBody controller={controller} />
+    <SettingsPaneCard title={labels.title} icon={<Mail aria-hidden />}>
+      <IncomingEmailBody controller={controller} />
     </SettingsPaneCard>
   );
 }
 
-function ReplyMailboxBody({ controller }: { controller: SettingsCalendarReplyMailboxController }) {
+function IncomingEmailBody({ controller }: { controller: SettingsIncomingEmailController }) {
   const { phase, retry } = controller;
   if (phase === "loading" || phase === "offline") {
     return (
-      <p className="settings-reply-mailbox__status" role="status">
+      <p className="settings-incoming-email__note" role="status">
         {phase === "loading" ? labels.loading : labels.offline}
       </p>
     );
   }
   if (phase === "error") {
     return (
-      <div className="settings-reply-mailbox__actions" role="alert">
-        <p className="settings-reply-mailbox__status">{labels.loadError}</p>
+      <div className="settings-incoming-email__actions" role="alert">
+        <p className="settings-incoming-email__note">{labels.loadError}</p>
         <Button type="button" variant="outline" size="sm" label={labels.retry} onClick={retry} />
       </div>
     );
   }
-  return <ReplyMailboxForm controller={controller} />;
+  return <IncomingEmailForm controller={controller} />;
 }
 
+/** "13 Nov, 02:19"; the year only when it is not this year. */
 function formatChecked(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(iso),
-  );
+  const date = new Date(iso);
+  const thisYear = date.getFullYear() === new Date().getFullYear();
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    ...(thisYear ? {} : { year: "numeric" }),
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 /** One line on how reading goes: the error, a pause, waiting for a first message, or fine. */
-function statusLine(mailbox: CalendarReplyMailbox): string {
+export function incomingEmailStatusLine(mailbox: IncomingMailbox): string {
   const checked = mailbox.lastCheckedAt
     ? ` ${labels.lastChecked(formatChecked(mailbox.lastCheckedAt))}`
     : "";
@@ -86,10 +93,10 @@ function TextRow({
   autoComplete,
   placeholder,
 }: {
-  name: Exclude<keyof CalendarReplyMailboxFormValues, "security">;
+  name: Exclude<keyof IncomingEmailFormValues, "security">;
   label: string;
   description?: string;
-  control: SettingsCalendarReplyMailboxController["form"]["control"];
+  control: SettingsIncomingEmailController["form"]["control"];
   type?: "text" | "password";
   autoComplete?: string;
   placeholder?: string;
@@ -116,7 +123,7 @@ function TextRow({
   );
 }
 
-function ReplyMailboxForm({ controller }: { controller: SettingsCalendarReplyMailboxController }) {
+function IncomingEmailForm({ controller }: { controller: SettingsIncomingEmailController }) {
   const { form, mailbox, busy, failure } = controller;
   const securityId = useId();
   const security = useWatch({ control: form.control, name: "security" });
@@ -125,16 +132,16 @@ function ReplyMailboxForm({ controller }: { controller: SettingsCalendarReplyMai
   return (
     <Form {...form}>
       <form
-        className="settings-reply-mailbox"
+        className="settings-incoming-email"
         onSubmit={(event) => {
           event.preventDefault();
           controller.save();
         }}
       >
-        <p className="settings-reply-mailbox__intro">{labels.intro}</p>
+        <p className="settings-incoming-email__note">{labels.intro}</p>
         {mailbox ? (
-          <p className="settings-reply-mailbox__status" role="status">
-            {statusLine(mailbox)}
+          <p className="settings-incoming-email__status" role="status">
+            {incomingEmailStatusLine(mailbox)}
           </p>
         ) : null}
         <TextRow
@@ -163,7 +170,7 @@ function ReplyMailboxForm({ controller }: { controller: SettingsCalendarReplyMai
           label={labels.port}
           description={labels.portHint}
           control={form.control}
-          placeholder={String(usualReplyMailboxPort(security))}
+          placeholder={String(usualIncomingEmailPort(security))}
         />
         <TextRow
           name="username"
@@ -175,18 +182,12 @@ function ReplyMailboxForm({ controller }: { controller: SettingsCalendarReplyMai
         <TextRow
           name="password"
           label={labels.password}
-          description={connected ? labels.passwordKeep : labels.passwordHint}
+          description={connected ? labels.passwordKeep : undefined}
           control={form.control}
           type="password"
           autoComplete="new-password"
         />
-        <TextRow
-          name="folder"
-          label={labels.folder}
-          description={labels.folderHint}
-          control={form.control}
-        />
-        <div className="settings-reply-mailbox__actions">
+        <div className="settings-incoming-email__actions">
           <Button
             type="submit"
             variant="primary"
@@ -217,7 +218,7 @@ function ReplyMailboxForm({ controller }: { controller: SettingsCalendarReplyMai
           ) : null}
         </div>
         {failure ? (
-          <p className="settings-reply-mailbox__failure" role="alert">
+          <p className="settings-incoming-email__failure" role="alert">
             {failure}
           </p>
         ) : null}

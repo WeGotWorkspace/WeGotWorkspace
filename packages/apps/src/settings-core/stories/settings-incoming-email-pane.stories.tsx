@@ -3,25 +3,25 @@ import {
   createMockCalendarReplyMailboxOperations,
   mockCalendarReplyMailbox,
 } from "@/lib/api/mock/calendar-reply-mailbox";
-import type { CalendarReplyMailboxOperations } from "@/lib/api/wgw/calendar-reply-mailbox";
-import { SettingsCalendarReplyMailboxSection } from "@/settings-core/src/settings-calendar-reply-mailbox-section";
+import { SettingsIncomingEmailPane } from "@/settings-core/src/settings-incoming-email-pane";
+import type { IncomingMailboxOperations } from "@/settings-core/src/settings-incoming-email-source";
 import { SettingsStoryScope } from "./settings-story-scope";
 
 const meta = {
-  title: "Features/Settings/Panes/Calendar invitation replies",
-  component: SettingsCalendarReplyMailboxSection,
+  title: "Features/Settings/Panes/Incoming email",
+  component: SettingsIncomingEmailPane,
   parameters: {
     layout: "fullscreen",
   },
-} satisfies Meta<typeof SettingsCalendarReplyMailboxSection>;
+} satisfies Meta<typeof SettingsIncomingEmailPane>;
 
 export default meta;
-type Story = StoryObj<typeof SettingsCalendarReplyMailboxSection>;
+type Story = StoryObj<typeof SettingsIncomingEmailPane>;
 
-function story(operations: CalendarReplyMailboxOperations): Story["render"] {
+function story(operations: IncomingMailboxOperations): Story["render"] {
   return () => (
     <SettingsStoryScope>
-      <SettingsCalendarReplyMailboxSection operations={operations} />
+      <SettingsIncomingEmailPane operations={operations} />
     </SettingsStoryScope>
   );
 }
