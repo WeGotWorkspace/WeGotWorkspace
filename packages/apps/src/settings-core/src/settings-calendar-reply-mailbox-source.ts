@@ -63,7 +63,6 @@ export function replyMailboxToForm(
   };
 }
 
-/** `null` when a required field is empty (the password only on the first connect). */
 /**
  * The server sends the stored password only to the server it was saved for: a new mail server
  * or port needs the password typed again.
@@ -76,9 +75,10 @@ export function replyMailboxNeedsPasswordAgain(
   const port = values.port.trim()
     ? Number(values.port.trim())
     : usualReplyMailboxPort(values.security);
-  return values.host.trim() !== saved.host || port !== saved.port;
+  return values.host.trim().toLowerCase() !== saved.host || port !== saved.port;
 }
 
+/** `null` when a required field is empty (the password only on the first connect). */
 export function replyMailboxUpdateFromForm(
   values: CalendarReplyMailboxFormValues,
   connected: boolean,
