@@ -12,8 +12,8 @@ import {
   getCollabRoomPendingRevision,
   readCollabPendingRooms,
   setCollabRoomPendingServerSave,
-} from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
-import { listExistingIndexedDatabaseNames } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-pending-registry";
+import { listExistingIndexedDatabaseNames } from "@/lib/collab/docs-collab-persistence";
 
 const POLL_INTERVAL_MS = 4000;
 

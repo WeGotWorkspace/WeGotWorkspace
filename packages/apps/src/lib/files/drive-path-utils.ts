@@ -1,3 +1,5 @@
+import { extensionFromFileName } from "@/lib/files/file-name-utils";
+
 /** Sidebar / UI virtual path for the user trash location. */
 export const DRIVE_TRASH_UI_PATH = "Trash";
 
@@ -68,6 +70,12 @@ export function normalizeApiVirtualPath(path: string): string {
   if (!trimmed || trimmed === "/") return "/";
   const withLeading = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return withLeading.replace(/\/+$/, "");
+}
+
+/** True when a shared API path points at a file (last segment has an extension). */
+export function isShareTargetFile(apiPath: string): boolean {
+  const lastSegment = normalizeApiVirtualPath(apiPath).split("/").filter(Boolean).at(-1) ?? "";
+  return extensionFromFileName(lastSegment) !== "";
 }
 
 /** True when the API path is outside the user's own drive and member group drives (i.e. reached via a share). */

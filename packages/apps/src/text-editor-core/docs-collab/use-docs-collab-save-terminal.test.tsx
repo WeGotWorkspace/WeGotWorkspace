@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MutableRefObject } from "react";
 import * as Y from "yjs";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { CollabHttpError } from "./docs-collab-utils";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 import { DOC_STATUS_ACCESS_LOST, DOC_STATUS_DOCUMENT_GONE } from "./docs-collab-status";
 
 const persistCollabSave = vi.hoisted(() => vi.fn());

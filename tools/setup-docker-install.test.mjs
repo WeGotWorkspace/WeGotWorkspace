@@ -210,6 +210,35 @@ test("save_update_channel writes WGW_UPDATE_CHANNEL once", () => {
   }
 });
 
+test("write_env_from_example randomizes database passwords unless the volume exists", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "wgw-env-passwords-"));
+  const envPath = path.join(dir, ".env");
+  const example = path.join(repoRoot, "docker/install/.env.example");
+  const write = (volumeExit, kept = "") => {
+    writeFileSync(path.join(dir, "docker"), `#!/bin/sh\nexit ${volumeExit}\n`, { mode: 0o755 });
+    const result = runLib(`write_env_from_example "${envPath}" "${example}"`, {
+      PATH: `${dir}:${process.env.PATH}`,
+      kept_db_passwords: kept,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return readFileSync(envPath, "utf8");
+  };
+  try {
+    const fresh = write(1);
+    const password = fresh.match(/^MARIADB_PASSWORD=([0-9a-f]{32})$/m)?.[1];
+    assert.ok(password);
+    assert.match(fresh, new RegExp(`^WGW_DB_PASSWORD=${password}$`, "m"));
+    assert.match(fresh, /^MARIADB_ROOT_PASSWORD=[0-9a-f]{32}$/m);
+
+    const kept = write(0, "WGW_DB_PASSWORD=a&b\nMARIADB_PASSWORD=a&b\nMARIADB_ROOT_PASSWORD=c|d");
+    assert.equal(kept.match(/^MARIADB_PASSWORD=/gm)?.length, 1);
+    assert.match(kept, /^WGW_DB_PASSWORD=a&b$/m);
+    assert.match(kept, /^MARIADB_ROOT_PASSWORD=c\|d$/m);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("release workflow never makes a prerelease Latest", () => {
   const workflow = readFileSync(releaseWorkflow, "utf8");
   assert.match(workflow, /prerelease: \$\{\{ contains\(github\.ref_name, '-'\) \}\}/);

@@ -8,7 +8,8 @@ import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-
 import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
-import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
+import { DriveGridView } from "@/drive-core/src/drive-browser";
+import { DriveListView } from "@/drive-core/src/drive-list-view";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveFileMenuAction } from "@/drive-core/src/drive-file-actions";
 import { driveLabels } from "@/drive-core/src/drive-labels";

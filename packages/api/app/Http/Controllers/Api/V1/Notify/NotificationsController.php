@@ -17,6 +17,7 @@ final class NotificationsController
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate(['unread' => ['sometimes', 'in:true,false,1,0']]);
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $unreadOnly = $request->boolean('unread');
         $payload = $this->inbox->list($principal['username'], $unreadOnly);

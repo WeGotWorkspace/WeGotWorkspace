@@ -10,6 +10,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import "../src/styles.css";
+import "../src/provide-collab-content-codec";
 // Scoped to Chromatic capture + Storybook Vitest — see chromatic-reduced-motion.css
 import "./chromatic-reduced-motion.css";
 import { DocsFilePreview } from "../src/docs-core/src/docs-file-preview";

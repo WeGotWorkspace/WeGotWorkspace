@@ -11,7 +11,7 @@ import {
   triggerBrowserBlobDownload,
 } from "@/lib/offline/docs/docs-offline-download";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import { collabDocumentFormat } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { collabDocumentFormat } from "@/lib/collab/docs-collab-utils";
 
 const username = "alice";
 

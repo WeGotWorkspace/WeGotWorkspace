@@ -16,6 +16,7 @@ import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { workspaceListRowPropsEqual } from "@/workspace-list/src/workspace-list-row-props";
 
 /** The notebook at the foot of a row: its colour dot and its name. */
 function NotesListNotebook({ name, color }: { name: string; color?: string }) {
@@ -42,29 +43,10 @@ export type NotesListRowProps = {
   onToggleArchive: (id: string) => void;
 };
 
-const ROW_PROP_KEYS = [
-  "note",
-  "L",
-  "notebookCollections",
-  "isTouch",
-  "starred",
-  "archived",
-  "pendingSync",
-  "dragging",
-  "onToggleStar",
-  "onToggleArchive",
-] as const satisfies readonly (keyof NotesListRowProps)[];
-
 /**
- * Compare only the row's own props. On touch, `SwipeableList` clones each child
- * with a fresh `resetState` callback and an index-based `id` on every render;
- * `ListItem` ignores both, so they must not defeat the memo (#1714).
+ * One note in the list. Re-renders only when its own note or flags change; the
+ * shared comparison ignores the props `SwipeableList` injects on touch (#1714).
  */
-function sameNotesListRowProps(prev: NotesListRowProps, next: NotesListRowProps): boolean {
-  return ROW_PROP_KEYS.every((key) => Object.is(prev[key], next[key]));
-}
-
-/** One note in the list. Re-renders only when its own note or flags change. */
 export const NotesListRow = memo(function NotesListRow({
   note,
   L,
@@ -158,4 +140,4 @@ export const NotesListRow = memo(function NotesListRow({
         : {})}
     />
   );
-}, sameNotesListRowProps);
+}, workspaceListRowPropsEqual);

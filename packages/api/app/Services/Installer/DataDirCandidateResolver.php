@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Support\SafePath;
 use App\Support\WgwInstallConfig;
 
 /**
@@ -101,7 +102,7 @@ final class DataDirCandidateResolver
             throw DataDirRejected::notAbsolute();
         }
 
-        $parentReal = realpath(dirname($path));
+        $parentReal = SafePath::isAccessible(dirname($path)) ? realpath(dirname($path)) : false;
         if ($parentReal === false) {
             throw DataDirRejected::parentMissing();
         }
@@ -152,7 +153,9 @@ final class DataDirCandidateResolver
     public function apply(DataDirChoice $choice): void
     {
         $path = $choice->path;
-        putenv('WGW_DATA_DIR='.$path);
+        if (function_exists('putenv')) {
+            putenv('WGW_DATA_DIR='.$path);
+        }
         $_ENV['WGW_DATA_DIR'] = $path;
         $_SERVER['WGW_DATA_DIR'] = $path;
         config(['wgw.data_dir' => $path]);
@@ -217,7 +220,7 @@ final class DataDirCandidateResolver
      */
     private function evaluate(string $candidate, string $owner, string $boundary): string|array
     {
-        $parentReal = realpath(dirname($candidate));
+        $parentReal = SafePath::isAccessible(dirname($candidate)) ? realpath(dirname($candidate)) : false;
         if ($parentReal === false) {
             return ['failure' => 'unavailable'];
         }

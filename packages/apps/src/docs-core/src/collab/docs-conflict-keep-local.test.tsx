@@ -8,10 +8,7 @@ import { resetConnectivityHubForTests } from "@/lib/offline/core/browser-online"
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { resetDocsCollabBackoffForTests } from "@/text-editor-core/docs-collab/docs-collab-room-backoff";
 import { clearDocsCollabSyncState } from "@/text-editor-core/docs-collab/docs-collab-sync-registry";
-import {
-  rememberSidecarEtag,
-  resetSidecarEtagsForTests,
-} from "@/text-editor-core/docs-collab/docs-collab-etag";
+import { rememberSidecarEtag, resetSidecarEtagsForTests } from "@/lib/collab/docs-collab-etag";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab/docs-collab-types";
 import { useDocsCollabSave } from "@/text-editor-core/docs-collab/use-docs-collab-save";
 import { useDocsCollabSessionRefs } from "@/text-editor-core/docs-collab/use-docs-collab-session-refs";

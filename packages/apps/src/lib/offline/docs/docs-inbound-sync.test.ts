@@ -14,7 +14,7 @@ import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-c
 
 const pendingSave = vi.hoisted(() => vi.fn(async (_path: string) => false));
 
-vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importOriginal) => ({
+vi.mock("@/lib/collab/docs-collab-persistence", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   hasDocsCollabPendingServerSave: pendingSave,
 }));

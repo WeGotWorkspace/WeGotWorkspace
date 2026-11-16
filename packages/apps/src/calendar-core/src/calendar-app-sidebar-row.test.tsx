@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 const bootstrap = createCalendarAppBootstrap();
 
@@ -65,7 +65,7 @@ function mockDomApis() {
 
 async function renderCalendarApp(initialPath: string) {
   const history = createMemoryHistory({ initialEntries: [initialPath] });
-  const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+  const router = createMockWeGotWorkspaceRouter(history);
   await router.load();
   render(<RouterProvider router={router} />);
   await screen.findByRole("button", { name: /^View mode:/ });

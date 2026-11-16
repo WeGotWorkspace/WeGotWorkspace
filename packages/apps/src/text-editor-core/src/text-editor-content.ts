@@ -4,8 +4,12 @@ import {
   plainTextToTiptapContent,
 } from "@/text-editor-core/src/text-editor-plain-content";
 
-export const TEXT_EDITOR_CONTENT_FORMATS = ["html", "markdown", "text"] as const;
-export type TextEditorContentFormat = (typeof TEXT_EDITOR_CONTENT_FORMATS)[number];
+import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
+
+export {
+  TEXT_EDITOR_CONTENT_FORMATS,
+  type TextEditorContentFormat,
+} from "@/lib/files/text-content-format";
 
 type TextEditorMarkdownStorage = {
   markdown?: {

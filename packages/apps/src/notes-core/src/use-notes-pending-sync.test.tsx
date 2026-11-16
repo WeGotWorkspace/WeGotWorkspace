@@ -12,7 +12,7 @@ vi.mock("@/lib/offline/notes/notes-collab-rooms", () => ({
   noteCollabRoomKey: (uid: string) => uid,
 }));
 
-vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", () => ({
+vi.mock("@/lib/collab/docs-collab-persistence", () => ({
   listExistingIndexedDatabaseNames: vi.fn(async () => null),
 }));
 
@@ -24,9 +24,9 @@ import {
 import {
   isCollabRoomPendingServerSave,
   setCollabRoomPendingServerSave,
-} from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
+} from "@/lib/collab/docs-collab-pending-registry";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
-import { listExistingIndexedDatabaseNames } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { listExistingIndexedDatabaseNames } from "@/lib/collab/docs-collab-persistence";
 
 describe("useNotesPendingSync", () => {
   beforeEach(() => {

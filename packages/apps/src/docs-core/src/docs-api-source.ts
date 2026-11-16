@@ -1,4 +1,8 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { wgwFetchPrincipal, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createDocsAppBootstrap } from "@/lib/api/mock/docs-bootstrap";
 import { createWgwDocsDriveOperations } from "@/lib/offline/docs/docs-drive-operations";
@@ -24,11 +28,13 @@ export function createHybridDocsApiSource(): DocsApiSource {
 export function createDefaultDocsApiSource(): DocsApiSource {
   return createWorkspaceSource<DocsApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createDocsAppBootstrap()),
-      createNetworkOperations: () => createWgwDocsDriveOperations(),
-      createOperations: () => createWgwDocsDriveOperations(),
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createDocsAppBootstrap()),
+          createNetworkOperations: () => createWgwDocsDriveOperations(),
+          createOperations: () => createWgwDocsDriveOperations(),
+        })
+      : mocksNotInBuild,
     createLiveSource: createHybridDocsApiSource,
   });
 }

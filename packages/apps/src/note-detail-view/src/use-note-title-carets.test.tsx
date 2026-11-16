@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
-import { writeNoteTitle } from "@/text-editor-core/docs-collab/docs-collab-document-title";
+import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import {
   NOTE_TITLE_SELECTION_FIELD,
   decodeTitleSelection,

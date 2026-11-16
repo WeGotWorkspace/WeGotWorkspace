@@ -3,28 +3,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
-import { loadBootstrapInParallel } from "./docs-collab-bootstrap";
+import { loadBootstrapInParallel } from "@/lib/collab/docs-collab-bootstrap";
 import {
   rememberSidecarEtag,
   resetSidecarEtagsForTests,
   sidecarPrecondition,
-} from "./docs-collab-etag";
+} from "@/lib/collab/docs-collab-etag";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
-import {
-  decideExternalWrite,
-  EXTERNAL_WRITE_HEADER,
-  replaceDocumentWithExternalText,
-} from "./docs-collab-external-write";
+import { decideExternalWrite, replaceDocumentWithExternalText } from "./docs-collab-external-write";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import {
+  EXTERNAL_WRITE_HEADER,
   fetchYjsSnapshot,
   loadCollabText,
   loadMarkdown,
   loadYjsSnapshot,
   saveDocument,
-} from "./docs-collab-server-io";
+} from "@/lib/collab/docs-collab-server-io";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { isExternalWriteRefusal, SERVER_ORIGIN } from "./docs-collab-utils";
+import { isExternalWriteRefusal, SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 /**
  * One scenario table for Notes and Docs. The fake server is the same kind of

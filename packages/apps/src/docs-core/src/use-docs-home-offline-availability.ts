@@ -10,7 +10,7 @@ import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
   docsCollabRoomKey,
   hasDocsCollabPendingServerSave,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 import {
   getDocsCollabSyncState,
   subscribeDocsCollabSyncState,

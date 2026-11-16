@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type * as Y from "yjs";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 /**
  * Longest the editor waits for a document's first content before it takes

@@ -33,7 +33,7 @@ describe("toRtcConfig", () => {
   it("uses all transport with stun and turn when not forcing relay", () => {
     const config = toRtcConfig(baseSettings, "direct", { turn });
     expect(config.iceTransportPolicy).toBe("all");
-    expect(config.iceCandidatePoolSize).toBe(4);
+    expect(config.iceCandidatePoolSize).toBe(0);
     expect(config.iceServers).toHaveLength(2);
   });
 

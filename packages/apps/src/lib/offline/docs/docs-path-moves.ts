@@ -1,5 +1,5 @@
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
-import { moveDocsCollabPathDatabases } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { moveDocsCollabPathDatabases } from "@/lib/collab/docs-collab-persistence";
 
 /**
  * A Doc (or the folder that holds it) now lives at another path (#1563). Every

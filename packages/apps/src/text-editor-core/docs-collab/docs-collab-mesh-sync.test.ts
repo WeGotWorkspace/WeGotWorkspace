@@ -14,7 +14,7 @@ import {
   isDocumentBearingSyncMessage,
   mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 describe("docs-collab-mesh-sync", () => {
   it("sync round-trip between two docs via step1 and reply", () => {

@@ -11,7 +11,7 @@ import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import {
   clearDocsCollabOfflinePersistence,
   hasDocsCollabPendingServerSave,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 
 /** A collab document whose local text has not reached the server yet. */
 export function documentHasUnsavedLocalWork(apiPath: string): Promise<boolean> {

@@ -14,8 +14,8 @@ import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { roomServerAllowed } from "./docs-collab-room-backoff";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { docsCollabIndexedDbKey } from "./docs-collab-persistence";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { docsCollabIndexedDbKey } from "@/lib/collab/docs-collab-persistence";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import { LEADER_CLAIM_GRACE_MS } from "./docs-collab-tab-sync";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import {
