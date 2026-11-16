@@ -132,7 +132,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 }
 ```
 
-Optionally import `react-swipeable-list/dist/styles.css` when using swipe lists (notes).
+`ListItem` and `WorkspaceSwipeList` import `react-swipeable-list/dist/styles.css` themselves; product workspaces do not import it (#2195).
 
 **Storybook** — product `*-story-scope.tsx` with variants for list column, detail pane, dialogs (see `notes-story-scope.tsx`). List-pane stories may mount `CollectionListWorkspace` directly with fixtures; workspace stories render full `*Workspace` fullscreen.
 

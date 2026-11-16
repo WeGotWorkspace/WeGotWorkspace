@@ -6,6 +6,9 @@ import {
   TrailingActions,
   LeadingActions,
 } from "react-swipeable-list";
+// The swipe layout (actions hidden behind the row) lives in this file. Import it where the
+// rows render, so any app that shows them gets it on a cold start (#2195).
+import "react-swipeable-list/dist/styles.css";
 import {
   useCancelDelegatedPress,
   useListItemEventDelegation,

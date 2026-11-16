@@ -15,12 +15,14 @@ function evenOffsets(count: number, size = 100) {
 }
 
 describe("listWindowRange", () => {
-  it("renders a short list in full", () => {
-    const offsets = evenOffsets(WORKSPACE_LIST_WINDOW_AFTER);
-    expect(listWindowRange(offsets, 3000, 400)).toEqual({ start: 0, end: 80 });
-    expect(listWindowSegments(offsets, { start: 0, end: 80 })).toEqual([
-      { kind: "rows", start: 0, end: 80 },
-    ]);
+  it("windows any row count: whether to window at all is the caller's threshold", () => {
+    // 41 rows of 100px (a grid of 120 tiles), scrolled to the middle.
+    const range = listWindowRange(evenOffsets(41), 2000, 600, 200);
+    expect(range.start).toBeGreaterThan(0);
+    expect(range.end).toBeLessThan(41);
+    expect(
+      listWindowSegments(evenOffsets(WORKSPACE_LIST_WINDOW_AFTER), { start: 0, end: 80 }),
+    ).toEqual([{ kind: "rows", start: 0, end: 80 }]);
   });
 
   it("renders the first rows while the scrollport has no height", () => {

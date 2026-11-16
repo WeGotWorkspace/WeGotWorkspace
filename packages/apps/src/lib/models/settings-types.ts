@@ -5,6 +5,7 @@ export const BUILTIN_PANEL_IDS = [
   "memberships",
   "offline",
   "assistants",
+  "incoming-email",
   "calendar",
   "tasks",
   "contacts",

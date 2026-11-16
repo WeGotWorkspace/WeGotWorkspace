@@ -47,6 +47,7 @@ export const liveTierSpecs = [
   "drive-guest-large-download",
   "drive-guest-upload",
   "drive-inbound-many-files",
+  "drive-list-windowed",
   "drive-offline-home",
   "drive-selection-download",
   "drive-upload-batch-dialog",
@@ -92,6 +93,7 @@ export const liveTierSpecs = [
   "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",
+  "tasks-list-windowed",
   "tasks-push",
   "undo-offline",
 ];
