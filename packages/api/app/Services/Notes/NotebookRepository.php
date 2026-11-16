@@ -223,9 +223,11 @@ final class NotebookRepository
      *
      * @return array<string, string> notebook api id => synctoken
      */
-    public function notebookSyncTokens(string $username): array
+    public function notebookSyncTokens(string $username, bool $provision = true): array
     {
-        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
+        if ($provision) {
+            $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
+        }
         $tokens = [];
         $instances = $this->accessibleNotebookInstances($username);
         foreach ($instances as $instance) {

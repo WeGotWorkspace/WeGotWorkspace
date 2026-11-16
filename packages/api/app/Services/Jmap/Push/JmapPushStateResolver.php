@@ -155,11 +155,11 @@ final class JmapPushStateResolver
             return $this->fileNodeState($username);
         }
         $state = match ($source) {
-            'notes' => JmapAccountStateCodec::compose($this->notes->notebookSyncTokens($username)),
+            'notes' => JmapAccountStateCodec::compose($this->notes->notebookSyncTokens($username, provision: false)),
             'calendars' => JmapAccountStateCodec::compose($this->events->calendarSyncTokens($username)),
             'contacts' => JmapAccountStateCodec::compose($this->books->syncTokens($username)),
             'chat' => JmapAccountStateCodec::compose($this->channels->channelSyncTokens($username)),
-            'tasks' => (string) $this->taskLists->changes($username, null)['newState'],
+            'tasks' => (string) $this->taskLists->changes($username, null, provision: false)['newState'],
             'inbox' => (string) $this->inbox->markerFor($username),
             default => throw new \LogicException('Unknown push state source '.$source),
         };
