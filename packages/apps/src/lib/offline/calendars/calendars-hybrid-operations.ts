@@ -9,6 +9,7 @@ import type {
 } from "@/lib/models/calendar-types";
 import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
+import type { CalendarSubscription } from "@wgw/openapi-types/calendars-types";
 import {
   createCalendarEventLive,
   createCalendarLive,
@@ -80,10 +81,10 @@ function requireOnline(action: string): void {
   }
 }
 
-async function withSubscriptionUrls(
+function withSubscriptionUrls(
   bootstrap: CalendarAppBootstrap,
-): Promise<CalendarAppBootstrap> {
-  const list = await listCalendarSubscriptionsLive().catch(() => []);
+  list: CalendarSubscription[],
+): CalendarAppBootstrap {
   if (list.length === 0) return bootstrap;
   const urlById = new Map(list.map((row) => [row.id, row.url]));
   return {
@@ -468,6 +469,8 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   // stay. One window for the fetch and the writes, also across midnight.
   const window = calendarBootstrapWindow();
   const liveWindow = { window };
+  const listSubscriptions = () => listCalendarSubscriptionsLive().catch(() => []);
+  const subscriptions = readBrowserOnline() ? listSubscriptions() : undefined;
   let bootstrap = await fetchCalendarLiveBootstrap(window);
   const username = bootstrap.session.user.username;
   if (!username) {
@@ -479,14 +482,16 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
-    const refreshed = await refreshStaleCalendarSubscriptionsLive().catch(() => false);
+    // Only the read goes out with the bootstrap: refreshes still wait for the outbox flush.
+    const list = await (subscriptions ?? listSubscriptions());
+    const refreshed = await refreshStaleCalendarSubscriptionsLive(list).catch(() => false);
     if (refreshed) {
       bootstrap = await fetchCalendarLiveBootstrap(window);
       await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
       await runnerFor(username).flush();
     }
     const merged = (await readCalendarBootstrapFromCache(username)) ?? bootstrap;
-    bootstrap = await withSubscriptionUrls(merged).catch(() => merged);
+    bootstrap = withSubscriptionUrls(merged, list);
     await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
   }
   const cached = await readCalendarBootstrapFromCache(username);

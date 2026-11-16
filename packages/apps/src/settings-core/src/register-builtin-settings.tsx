@@ -6,6 +6,7 @@ import {
   FileText,
   HardDrive,
   Info,
+  Mail,
   Palette,
   StickyNote,
   User,
@@ -16,6 +17,7 @@ import { SettingsAboutPane } from "@/settings-core/src/settings-about-pane";
 import { SettingsAppearancePane } from "@/settings-core/src/settings-appearance-pane";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsCalendarAvailabilitySection } from "@/settings-core/src/settings-calendar-availability-section";
+import { SettingsCalendarReplyFolderSection } from "@/settings-core/src/settings-calendar-reply-folder-section";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
 import { SettingsDocsPane } from "@/settings-core/src/settings-docs-pane";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
@@ -24,6 +26,8 @@ import {
   SettingsNotesPane,
   SettingsTasksPane,
 } from "@/settings-core/src/settings-default-collection-pane";
+import { SettingsIncomingEmailPane } from "@/settings-core/src/settings-incoming-email-pane";
+import { incomingEmailLabels } from "@/settings-core/src/settings-incoming-email-labels";
 import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
@@ -77,6 +81,13 @@ export function registerBuiltinSettings(): void {
     group: "account",
     reachable: (ctx) => ctx.mcpEnabled === true,
     needsSettingsApi: true,
+  });
+  registerPanel({
+    id: "incoming-email",
+    label: incomingEmailLabels.panel,
+    description: incomingEmailLabels.panelDescription,
+    icon: <Mail className="size-3.5" />,
+    group: "account",
   });
   registerPanel({
     id: "calendar",
@@ -150,6 +161,11 @@ export function registerBuiltinSettings(): void {
     render: () => <SettingsOfflinePane />,
   });
   registerSlice({
+    id: "incoming-email",
+    panelIds: ["incoming-email"],
+    render: () => <SettingsIncomingEmailPane />,
+  });
+  registerSlice({
     id: "appearance",
     panelIds: ["appearance"],
     render: () => <SettingsAppearancePane />,
@@ -168,6 +184,11 @@ export function registerBuiltinSettings(): void {
     id: "calendar-availability",
     panelIds: ["calendar"],
     render: () => <SettingsCalendarAvailabilitySection />,
+  });
+  registerSlice({
+    id: "calendar-reply-folder",
+    panelIds: ["calendar"],
+    render: () => <SettingsCalendarReplyFolderSection />,
   });
   registerSlice({
     id: "tasks-default-collection",
