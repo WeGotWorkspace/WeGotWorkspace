@@ -1,7 +1,7 @@
 import type { IceMode, RtcSettings, TurnCredentials } from "@/lib/rtc/types";
 
 export type ToRtcConfigOptions = {
-  /** Pool size when not forcing relay (meet: none, collab: 2). */
+  /** Pool size when not forcing relay (default: none; docs collab: 2). */
   iceCandidatePoolSize?: number;
   /** Credentials from a relay request; without them there is no TURN server. */
   turn?: TurnCredentials | null;
