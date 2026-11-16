@@ -446,6 +446,20 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->assertSame($queriesToOpen('Small'), $queriesToOpen('Large'));
     }
 
+    public function test_reconciling_a_folder_loaded_before_its_rename_keeps_its_children(): void
+    {
+        $this->seedPrivateFile('bob', 'Projects/plan.txt');
+        $nodes = $this->getAll();
+        $index = app(FileNodeIndexService::class);
+        $folder = $index->liveByNodeId($this->nodeIdByName($nodes, 'Projects'));
+        $this->jmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [(string) $folder?->node_id => ['name' => 'Archive']]], 'c0'],
+        ])->assertOk();
+
+        $this->assertCount(1, $index->reconcileDirectory($folder));
+        $this->assertNotNull($index->liveByNodeId($this->nodeIdByName($nodes, 'plan.txt')));
+    }
+
     public function test_query_changes_is_cannot_calculate_changes(): void
     {
         $this->jmap([

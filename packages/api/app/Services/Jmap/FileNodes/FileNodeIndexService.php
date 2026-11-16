@@ -607,9 +607,10 @@ final class FileNodeIndexService
     }
 
     /** @return list<JmapFileNode> */
-    private function reconcileChildren(JmapFileNode $dirNode): array
+    private function reconcileChildren(JmapFileNode $dir): array
     {
-        if (! $dirNode->is_dir) {
+        $dirNode = $this->liveByNodeId((string) $dir->node_id);
+        if ($dirNode === null || ! $dirNode->is_dir) {
             return [];
         }
 
