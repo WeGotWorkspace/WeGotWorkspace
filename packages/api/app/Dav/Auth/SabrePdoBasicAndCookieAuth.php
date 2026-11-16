@@ -55,22 +55,25 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
 
         $digest = (string) $row->digest;
         $secret = (string) config('app.key');
-        if ($secret === '') {
+        // Process memory only: nothing derived from a password goes to disk, the database or a shared cache.
+        if ($secret === '' || ! extension_loaded('apcu') || ! apcu_enabled()) {
             return password_verify($password, $digest);
         }
 
         // A keyed MAC, so the cache never holds anything that recovers or replays the
         // password; the digest in it makes a password change or rehash miss at once.
-        $key = 'dav-basic-verified:'.$row->id;
+        // The key is keyed too, so installs sharing one APCu segment keep separate entries.
+        $key = 'dav-basic-verified:'.substr(hash_hmac('sha256', (string) $row->id, $secret), 0, 32);
         $mac = hash_hmac('sha256', $row->id.'|'.$digest.'|'.$password, $secret);
-        $remembered = Cache::get($key);
+        $memory = Cache::store('apc');
+        $remembered = $memory->get($key);
         if (is_string($remembered) && hash_equals($remembered, $mac)) {
             return true;
         }
         if (! password_verify($password, $digest)) {
             return false;
         }
-        Cache::put($key, $mac, self::VERIFIED_SECONDS);
+        $memory->put($key, $mac, self::VERIFIED_SECONDS);
 
         return true;
     }

@@ -96,6 +96,8 @@ CalDAV and CardDAV clients discover this server with `GET /.well-known/caldav` a
 
 For automatic client discovery, install WeGotWorkspace on its own (sub)domain. In a subdirectory installation, users must enter the full DAV URL manually when setting up a calendar or contacts client.
 
+DAV sync clients sign in faster with the PHP APCu extension enabled, which remembers a correct password check in memory for five minutes; without APCu every request checks the password in full.
+
 ### Cron (reminders and Web Push)
 
 Due Calendar/Task reminders and Web Push fallback need Laravel’s scheduler **every minute**. Add a host crontab entry (adjust the path to this install):

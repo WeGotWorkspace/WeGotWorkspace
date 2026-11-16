@@ -14,9 +14,20 @@ use Tests\Support\WgwInstallFixture;
 
 final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
 {
+    public static bool $apcuOff = false;
+
+    /** @var list<string|null> */
+    private array $rememberedIn = [];
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        Event::listen(KeyWritten::class, function (KeyWritten $event): void {
+            if (str_starts_with($event->key, 'dav-basic-verified:')) {
+                $this->rememberedIn[] = $event->storeName;
+            }
+        });
 
         $this->app['env'] = 'production';
         putenv('WGW_DISABLE_LOGIN_THROTTLE');
@@ -85,17 +96,33 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
             ->assertJsonPath('username', 'bob');
     }
 
-    public function test_repeated_dav_basic_auth_verifies_the_password_once(): void
+    protected function tearDown(): void
     {
-        $verified = 0;
-        Event::listen(KeyWritten::class, function (KeyWritten $event) use (&$verified): void {
-            $verified += str_starts_with($event->key, 'dav-basic-verified:') ? 1 : 0;
-        });
+        self::$apcuOff = false;
+        parent::tearDown();
+    }
+
+    public function test_repeated_dav_basic_auth_verifies_the_password_once_in_apcu(): void
+    {
+        if (! extension_loaded('apcu') || ! apcu_enabled()) {
+            $this->markTestSkipped('Needs the apcu extension with apc.enable_cli=1.');
+        }
 
         $this->dav('bob', 'secret')->assertStatus(207);
         $this->dav('bob', 'secret')->assertStatus(207);
 
-        $this->assertSame(1, $verified);
+        $this->assertSame(['apc'], $this->rememberedIn);
+    }
+
+    public function test_without_apcu_dav_basic_auth_verifies_every_time_and_writes_nothing(): void
+    {
+        self::$apcuOff = true;
+
+        $this->dav('bob', 'secret')->assertStatus(207);
+        $this->dav('bob', 'secret')->assertStatus(207);
+        $this->dav('bob', 'wrong')->assertStatus(401);
+
+        $this->assertSame([], $this->rememberedIn);
     }
 
     public function test_remembered_dav_credential_does_not_accept_a_wrong_password(): void
@@ -133,4 +160,14 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
             'REMOTE_ADDR' => '203.0.113.9',
         ], $server));
     }
+}
+
+namespace App\Dav\Auth;
+
+use Tests\Feature\Dav\DavBasicAuthThrottleTest;
+
+// Shadows the global function inside the auth class's namespace, so a test can run as if APCu were off.
+function apcu_enabled(): bool
+{
+    return ! DavBasicAuthThrottleTest::$apcuOff && \apcu_enabled();
 }
