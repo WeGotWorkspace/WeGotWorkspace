@@ -4,6 +4,8 @@ export const chatUiLabels = {
   empty: "No messages yet",
   deleted: "This message was deleted",
   edited: "Edited",
+  sending: "Sending…",
+  notSent: "Not sent",
   reply: "Reply",
   react: "Add reaction",
   edit: workspaceLabels.dialog.edit,
