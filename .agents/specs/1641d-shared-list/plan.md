@@ -140,7 +140,11 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/docs-core/src/docs-home-pane.tsx:411`
-- **Done when:** Docs home gets chunk D's windowed views through its existing reuse. `docs-home-browse.spec.ts` passes with 1000 docs.
+- **Done when:**
+  - Docs home gets chunk D's windowed views through its existing reuse.
+  - `docs-home-browse.spec.ts` covers 120 documents live, in list and grid: only a window of rows is mounted, the keyboard moves through them, Enter opens a document, and no `/files/content` request is made while browsing.
+  - `docs-home-pane-previews.test.tsx` covers 1000 documents in jsdom, with no tile byte reads.
+  - A live seed of 1000 documents was dropped as too slow for the live tier (decided by the overview session, 2026-11-16).
 - **Found while building (2026-11-16):** Docs home needs no tiles-in-view hook. A grid tile previews only images (`use-drive-grid-previews.ts`), and every Docs home view lists only `DOCS_HOME_LIST_EXTENSIONS` (`md`, `markdown`, `txt`, `docx`, `gdoc`), so its grid reads no file bytes at any length. Wiring the hook would only add a re-render per scroll. `docs-home-pane-previews.test.tsx` fails if Docs home ever lists a type with a tile preview.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/docs-core`, `e2e/docs-home-browse.spec.ts`, the measurement script
 - **Parallel with:** none
