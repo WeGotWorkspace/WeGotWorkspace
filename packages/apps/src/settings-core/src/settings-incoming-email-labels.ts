@@ -4,7 +4,7 @@ export const incomingEmailLabels = {
   panelDescription: "A mailbox apps read for you",
   title: "Mailbox",
   intro:
-    "Apps read this mailbox for you, such as Calendar for invitation replies. Nothing in it changes. Gmail needs an app password (turn on 2-Step Verification first); Google Workspace and Microsoft 365 cannot connect yet.",
+    "Only calendar replies to your invitations are read, for Calendar. Nothing else in the mailbox is read or changed. Gmail needs an app password (turn on 2-Step Verification first); Google Workspace and Microsoft 365 cannot connect yet.",
   host: "Mail server",
   hostHint: "For example imap.example.com",
   security: "Security",

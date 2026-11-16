@@ -221,6 +221,8 @@ describe("SettingsIncomingEmailPane", () => {
     renderSection();
     await screen.findByLabelText(labels.host);
     expect(screen.getByText(labels.intro)).toBeTruthy();
+    expect(labels.intro).toContain("Only calendar replies");
+    expect(labels.intro).toContain("Nothing else in the mailbox is read or changed");
     expect(labels.intro).toContain("app password");
     expect(labels.intro).toContain("2-Step Verification");
   });
