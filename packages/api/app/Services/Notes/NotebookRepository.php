@@ -403,21 +403,9 @@ final class NotebookRepository
                     'alreadyExists',
                 );
             }
-            $reserved = $this->collections->reservedPrefixOwner($requestedId);
-            if ($reserved === CollectionKind::ChatChannel) {
-                throw new ApiHttpException(
-                    409,
-                    'This notebook id is reserved for chat channels.',
-                    'alreadyExists',
-                );
-            }
-            if ($reserved === CollectionKind::DocsThreadPool) {
-                throw new ApiHttpException(
-                    409,
-                    'This notebook id is reserved for docs threads.',
-                    'alreadyExists',
-                );
-            }
+            $this->collections->rejectReservedPrefix($requestedId, fn (CollectionKind $owner): string => $owner === CollectionKind::ChatChannel
+                ? 'This notebook id is reserved for chat channels.'
+                : 'This notebook id is reserved for docs threads.');
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedNoteUriSlugs(), true)
                 || $this->collections->uriTaken($principalUri, $requestedId)
@@ -431,20 +419,12 @@ final class NotebookRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'notebook-'.substr($base, strlen('group-'));
         }
-        if ($this->collections->reservedPrefixOwner($base) !== null) {
-            $base = 'notebook-'.$base;
-        }
+        $base = $this->collections->prefixReservedSlug($base, 'notebook-');
         if (in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
             $base = 'notebook';
         }
-        $candidate = $base;
-        $suffix = 2;
-        while ($this->collections->uriTaken($principalUri, $candidate)) {
-            $candidate = $base.'-'.$suffix;
-            $suffix++;
-        }
 
-        return $candidate;
+        return $this->collections->freeUri($principalUri, $base);
     }
 
     private function notifyCollectionShare(

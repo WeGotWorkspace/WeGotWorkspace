@@ -69,10 +69,7 @@ final class DriveSharesController
         $principal = $this->principal($request);
 
         return response()->json([
-            'data' => $this->shares->sharedWithMe(
-                $principal['username'],
-                false,
-            ),
+            'data' => $this->shares->sharedWithMe($principal['username']),
         ]);
     }
 

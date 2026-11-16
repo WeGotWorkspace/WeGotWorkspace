@@ -101,6 +101,38 @@ final class CalDavCollections
     }
 
     /**
+     * A requested id on another app's prefix is a 409, with the message the
+     * caller gives for that owner.
+     *
+     * @param  \Closure(CollectionKind): string  $message
+     */
+    public function rejectReservedPrefix(string $requestedId, \Closure $message): void
+    {
+        $owner = $this->reservedPrefixOwner($requestedId);
+        if ($owner !== null) {
+            throw new ApiHttpException(409, $message($owner), 'alreadyExists');
+        }
+    }
+
+    /** A generated slug on another app's prefix gets `$prefix` in front instead. */
+    public function prefixReservedSlug(string $slug, string $prefix): string
+    {
+        return $this->reservedPrefixOwner($slug) === null ? $slug : $prefix.$slug;
+    }
+
+    public function freeUri(string $principalUri, string $base): string
+    {
+        $candidate = $base;
+        $suffix = 2;
+        while ($this->uriTaken($principalUri, $candidate)) {
+            $candidate = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
+    }
+
+    /**
      * @param  \Closure(Builder<Calendar>): mixed  $calendarScope
      */
     public function findInstance(string $principalUri, string $uri, \Closure $calendarScope): ?CalendarInstance
