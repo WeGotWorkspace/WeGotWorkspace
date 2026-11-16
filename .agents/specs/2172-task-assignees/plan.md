@@ -153,7 +153,8 @@ See spec.md, Non-goals.
   - An Assignees row with a picker limited to the audience, read-only people disabled, keyboard reachable and announced.
   - Avatars on list rows with "+N" and names on hover.
   - The audience is cached per list for offline use.
-  - `rescueBody` drops `u:` attendees outside the target list's cached audience with write access, keeps only the person's own `u:` entry when nothing is cached, and keeps `e:` attendees. Vitest on `tasksRescueOperations`: rescuing a parked task that has a `u:` assignee without access to the target list and an `e:` attendee creates the task, with the `e:` attendee kept.
+  - `rescueBody` keeps only `u:` attendees in the target list's cached audience with write access (only the person's own `u:` entry when nothing is cached) and `e:` attendees whose email matches no one in that audience. It drops `attN` ids and every other entry. If the create still gets 422 `invalid_participant` (an `e:` address that became an account outside the audience), rescue drops the id the error names and retries once.
+  - Vitest on `tasksRescueOperations`: rescuing a parked task that has a `u:` assignee without access to the target list, an `attN` id and an `e:` attendee creates the task, with only the `e:` attendee kept. A second case covers the 422-then-retry.
   - `applyTaskPatch` and `coalesceTaskPatches` merge `participants` per id, where a `null` entry removes one, the same as `alerts`. Vitest covers two queued assigns, an assign then an unassign, and the optimistic task.
   - Mock API, Storybook stories (empty, three assignees, no-access assignee, offline) and Vitest.
 - **Verify with:** `pnpm test:apps-done-gate`
