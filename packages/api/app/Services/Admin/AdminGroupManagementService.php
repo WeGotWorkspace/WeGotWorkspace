@@ -17,6 +17,7 @@ use App\Services\Drive\DriveShareRevoker;
 use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
+use App\Services\Teams\TeamMembershipReader;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -105,6 +106,7 @@ final class AdminGroupManagementService
                 ->where('principal_id', $principal->id)
                 ->orWhere('member_id', $principal->id)
                 ->delete();
+            app(TeamMembershipReader::class)->forget();
 
             $principal->delete();
 

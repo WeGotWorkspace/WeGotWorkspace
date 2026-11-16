@@ -10,11 +10,14 @@ use App\Services\Admin\AdminConstants;
 /**
  * Reads Team membership from `groupmembers`. A Team is a group principal under
  * `principals/groups/`. Every reader of "which Teams is X in" and "who shares a Team
- * with X" goes through here. Not cached: {@see TeamColleagues} memoises per request.
+ * with X" goes through here. {@see teamsOf()} is memoised for one request.
  */
 final class TeamMembershipReader
 {
     private const USER_URI_PATTERN = '#^principals/([^/]+)$#';
+
+    /** @var array<string, list<array{uri: string, slug: string, displayName: string}>> */
+    private array $teams = [];
 
     /**
      * The user's Teams, ordered by uri.
@@ -23,6 +26,10 @@ final class TeamMembershipReader
      */
     public function teamsOf(string $username): array
     {
+        $key = self::normalise($username);
+        if (isset($this->teams[$key])) {
+            return $this->teams[$key];
+        }
         $rows = GroupMember::query()
             ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
             ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
@@ -42,7 +49,12 @@ final class TeamMembershipReader
             ];
         }
 
-        return $teams;
+        return $this->teams[$key] = $teams;
+    }
+
+    public function forget(): void
+    {
+        $this->teams = [];
     }
 
     /**

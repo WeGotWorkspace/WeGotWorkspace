@@ -32,6 +32,7 @@ use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
+use App\Support\WgwSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
@@ -67,7 +68,9 @@ final class WgwServiceProvider extends ServiceProvider
             }
         });
 
-        // Colleague sets (Epic #1915), memoised for one request and cleared in place the same way.
+        // Colleague sets (Epic #1915) and Team memberships, memoised for one request and cleared in place the same way.
+        $this->app->scoped(TeamMembershipReader::class);
+        $this->app->scoped(WgwSettings::class);
         $this->app->scoped(TeamColleagues::class, static fn ($app): TeamColleagues => new TeamColleagues(
             $app->make(TeamMembershipReader::class),
             static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
@@ -76,6 +79,10 @@ final class WgwServiceProvider extends ServiceProvider
             if ($app->resolved(TeamColleagues::class)) {
                 $app->make(TeamColleagues::class)->forgetRequestState();
             }
+            if ($app->resolved(TeamMembershipReader::class)) {
+                $app->make(TeamMembershipReader::class)->forget();
+            }
+            $app->forgetInstance(WgwSettings::class);
         });
 
         // Principals one CalDAV local delivery may open (#1922): never carried into the next request.

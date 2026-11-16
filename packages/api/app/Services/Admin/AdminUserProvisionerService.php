@@ -13,6 +13,7 @@ use App\Services\Auth\UserSessionRevoker;
 use App\Services\Drive\DriveShareRevoker;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
+use App\Services\Teams\TeamMembershipReader;
 use App\Support\AppPaths;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -165,6 +166,7 @@ final class AdminUserProvisionerService
                     ->where('member_id', $principalId)
                     ->orWhere('principal_id', $principalId)
                     ->delete();
+                app(TeamMembershipReader::class)->forget();
 
                 Principal::query()
                     ->where('uri', $principalUri)

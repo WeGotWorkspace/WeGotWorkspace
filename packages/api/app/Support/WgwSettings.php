@@ -8,6 +8,9 @@ use App\Models\AppSetting;
 
 final class WgwSettings
 {
+    /** @var array<string, mixed>|null */
+    private ?array $normalized = null;
+
     public const MAIL_SMTP_HOST = 'mail_smtp_host';
 
     public const MAIL_SMTP_PORT = 'mail_smtp_port';
@@ -37,12 +40,16 @@ final class WgwSettings
      */
     public static function normalized(): array
     {
+        $settings = app(self::class);
+        if ($settings->normalized !== null) {
+            return $settings->normalized;
+        }
         $db = [];
         foreach (AppSetting::query()->get(['name', 'value']) as $row) {
             $db[(string) $row->name] = AppSetting::decodeValue((string) $row->value);
         }
 
-        return array_merge(self::defaults(), self::coerce($db));
+        return $settings->normalized = array_merge(self::defaults(), self::coerce($db));
     }
 
     /**
