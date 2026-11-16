@@ -97,27 +97,26 @@ final class JmapContactStateService
 
     /**
      * Ensures a state row exists and rotates state_token when the CardDAV etag changes (read path).
+     *
+     * firstOrCreate falls back to createOrFirst, so two requests creating the same
+     * (username, card_id) at once share one row instead of failing on the UNIQUE key.
      */
     private function ensureStateRow(string $username, Card $card, string $addressBookUri): JmapContactState
     {
         $cardId = ContactCardMapper::cardIdFromUri((string) $card->uri);
-        $row = JmapContactState::query()
-            ->where('username', $username)
-            ->where('card_id', $cardId)
-            ->first();
-
         $rawEtag = is_string($card->etag) ? $card->etag : null;
 
-        if ($row === null) {
-            $row = JmapContactState::query()->create([
-                'username' => $username,
-                'card_id' => $cardId,
+        $row = JmapContactState::query()->firstOrCreate(
+            ['username' => $username, 'card_id' => $cardId],
+            fn (): array => [
                 'address_book_uri' => $addressBookUri,
                 'card_uri' => (string) $card->uri,
                 'state_token' => $this->generateStateToken(),
                 'etag' => $rawEtag,
-            ]);
+            ],
+        );
 
+        if ($row->wasRecentlyCreated) {
             return $row;
         }
 
