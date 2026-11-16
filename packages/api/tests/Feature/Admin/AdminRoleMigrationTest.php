@@ -73,7 +73,7 @@ final class AdminRoleMigrationTest extends WgwDatabaseTestCase
             $state = $this->withBearer($token)->getJson('/api/v1/settings/state')->assertOk();
             $this->assertTrue($state->json('isAdmin'));
             $this->assertContains(
-                ['id' => LegacyAdministratorsTeam::URI, 'displayName' => 'Administrators'],
+                ['id' => LegacyAdministratorsTeam::URI, 'displayName' => 'Administrators', 'memberCount' => 2],
                 $state->json('groups'),
             );
 
