@@ -9,6 +9,7 @@ import { calendarReplyMailboxLabels as labels } from "@/settings-core/src/settin
 import {
   defaultCalendarReplyMailboxOperations,
   replyMailboxToForm,
+  replyMailboxNeedsPasswordAgain,
   replyMailboxUpdateFromForm,
   type CalendarReplyMailboxFormValues,
 } from "@/settings-core/src/settings-calendar-reply-mailbox-source";
@@ -114,6 +115,10 @@ export function useSettingsCalendarReplyMailbox(
   const save = form.handleSubmit((values) => {
     const connected = mailbox !== null;
     const update = replyMailboxUpdateFromForm(values, connected);
+    if (update && replyMailboxNeedsPasswordAgain(values, mailbox)) {
+      setFailure(labels.passwordAgain);
+      return;
+    }
     if (!update) {
       setFailure(labels.required);
       return;

@@ -44,6 +44,7 @@ export const calendarReplyMailboxLabels = {
       "Connected, not reading replies yet. When a message has arrived in this mailbox, press Check now.",
   } as Record<string, string>,
   required: "Fill in the mail server, username and password.",
+  passwordAgain: "Enter the password again for the new mail server or port.",
   invalid: "Check the mail server, port and username.",
   tooMany: "Too many attempts. Try again in a few minutes.",
   failed: "Could not save the mailbox settings.",

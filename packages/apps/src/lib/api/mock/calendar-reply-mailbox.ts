@@ -27,7 +27,7 @@ export function mockCalendarReplyMailbox(
 
 /**
  * In-memory stand-in for `/api/v1/calendars/reply-mailbox`, with the server's rules: the first
- * save needs a password, and the password `wrong` fails the login with 422 `auth_failed`.
+ * save needs a password, so does a new host or port, and the password `wrong` fails the login with 422 `auth_failed`.
  */
 export function createMockCalendarReplyMailboxOperations(
   seed: CalendarReplyMailbox | null = null,
@@ -45,12 +45,16 @@ export function createMockCalendarReplyMailboxOperations(
       if (!mailbox && !password) {
         throw new WgwRequestError("PUT /calendars/reply-mailbox failed (400)", 400, "bad_request");
       }
+      const port = update.port ?? (update.security === "ssl" ? 993 : 143);
+      if (mailbox && !password && (update.host !== mailbox.host || port !== mailbox.port)) {
+        throw new WgwRequestError("PUT /calendars/reply-mailbox failed (400)", 400, "bad_request");
+      }
       if (password === "wrong") {
         throw new WgwRequestError("PUT /calendars/reply-mailbox failed (422)", 422, "auth_failed");
       }
       mailbox = mockCalendarReplyMailbox({
         host: update.host,
-        port: update.port ?? (update.security === "ssl" ? 993 : 143),
+        port,
         security: update.security,
         username: update.username,
         folder: update.folder || "INBOX",

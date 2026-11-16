@@ -158,6 +158,24 @@ describe("SettingsCalendarReplyMailboxSection", () => {
     });
   });
 
+  it("asks for the password again before saving a new mail server or port", async () => {
+    const operations = renderSection(spiedOperations(mockCalendarReplyMailbox()));
+    const save = await screen.findByRole("button", { name: labels.save });
+
+    type(labels.port, "1993");
+    fireEvent.click(save);
+
+    expect((await screen.findByRole("alert")).textContent).toBe(labels.passwordAgain);
+    expect(operations.save).not.toHaveBeenCalled();
+
+    type(labels.password, "app-password");
+    fireEvent.click(save);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(labels.saved));
+    expect(operations.save).toHaveBeenCalledWith(
+      expect.objectContaining({ port: 1993, password: "app-password" }),
+    );
+  });
+
   it("checks and disconnects a connected mailbox", async () => {
     const operations = renderSection(spiedOperations(mockCalendarReplyMailbox()));
     fireEvent.click(await screen.findByRole("button", { name: labels.check }));
