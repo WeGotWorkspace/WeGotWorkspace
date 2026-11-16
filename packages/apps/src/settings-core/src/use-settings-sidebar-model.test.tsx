@@ -23,6 +23,7 @@ describe("useSettingsSidebarModel", () => {
       "appearance",
       "assistants",
       "incoming-email",
+      "diagnostics",
       "about",
     ]);
     expect(result.current.apps.map((section) => section.id)).toEqual([
@@ -46,6 +47,7 @@ describe("useSettingsSidebarModel", () => {
       "offline",
       "appearance",
       "incoming-email",
+      "diagnostics",
       "about",
     ]);
     expect(result.current.apps.map((section) => section.id)).toEqual([

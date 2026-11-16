@@ -12,6 +12,7 @@ export const BUILTIN_PANEL_IDS = [
   "notes",
   "docs",
   "meet",
+  "diagnostics",
   "about",
 ] as const;
 

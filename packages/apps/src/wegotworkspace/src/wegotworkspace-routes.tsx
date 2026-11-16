@@ -31,6 +31,7 @@ import { WeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-logout
 import { withWeGotWorkspaceAuth } from "@/wegotworkspace/src/wegotworkspace-require-auth";
 import { wegotworkspaceRootRoute } from "@/wegotworkspace/src/wegotworkspace-router-shared";
 import { WeGotWorkspaceNotFound } from "@/wegotworkspace/src/wegotworkspace-shell";
+import { recordUnexpectedError } from "@/lib/diagnostics/error-diagnostics-recorder";
 import { createWorkspacePwaHead } from "@/lib/workspace-pwa-head";
 
 /*
@@ -690,5 +691,10 @@ export function createWeGotWorkspaceRouter({
     history,
     defaultPreloadStaleTime: 0,
     defaultNotFoundComponent: WeGotWorkspaceNotFound,
+    // A route that fails to render or load shows the router's error view; keep the error
+    // for Copy diagnostics (#2204). Expected failures are skipped by the recorder.
+    defaultOnCatch: (error) => {
+      void recordUnexpectedError(error, "route");
+    },
   });
 }
