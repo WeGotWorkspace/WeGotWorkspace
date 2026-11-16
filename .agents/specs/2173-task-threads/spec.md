@@ -142,11 +142,11 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Each entry has `id`, `kind`, `parentId`, `author` (`username`, `displayName`), `body` (null for activity and tombstones), `mentions`, `reactions`, `createdAt`, `editedAt`, `deletedAt` and `activity`.
   - It also returns a thread `state` for `/changes`.
 - `POST …/entries` with `{id, body, parentId?, mentions?, scopeId?}`:
-  - `id` is a client ULID. A ULID already used by an object out of the caller's reach gets a fresh id in the answer, as in Chat.
+  - `id` is a client ULID. A ULID that is already an entry of **this subject by the caller**, under any key, follows the retry order below and never gets a fresh id, also when the caller can no longer read the earlier scope. Any other ULID that is already taken (an entry of another subject, or another person's entry) is stored under a fresh id in the answer, as in Chat; the response then looks like any new comment, so it reveals nothing about the other entry.
   - `scopeId` is the scope the writer saw the subject in (for a task, its list). The web app always sends it, so a comment queued offline never lands in front of a new audience without its author knowing. Callers that omit it post to the current scope.
   - A retry is resolved in this order, and none of these cases writes anything:
-    - the ULID is already stored under the subject's **current** key: 200 with that entry (an idempotent retry);
-    - the ULID is already stored under **another** key of the same subject (an earlier scope): 409 `already_stored`, with no entry in the body, because the caller may not read that scope any more;
+    - the caller's own entry with that ULID is under the subject's **current** key: 200 with that entry (an idempotent retry);
+    - the caller's own entry with that ULID is under **another** key of the same subject (an earlier scope): 409 `already_stored`, with no entry in the body, because the caller may not read that scope any more;
     - the ULID is not stored and `scopeId` is not the current scope: 409 `subject_moved`.
   - A `parentId` must be a root entry under the subject's current key. A reply, an activity entry, or an id from another key is rejected with 422 and nothing is stored.
   - A mention outside the subject's audience is dropped from the stored mentions, but the text stays.

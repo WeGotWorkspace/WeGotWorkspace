@@ -37,7 +37,7 @@ See spec.md, Non-goals.
   - Tested. `path: packages/api/tests/Feature/Dav/ChatCollectionsDavExposureTest.php:167` (`test_docs_thread_pool_is_dav_invisible_while_notes_stay_dav_visible`)
 - **Docs threads follow a document to another owner's pool.** This is the opposite of this Epic's rule for tasks. `path: packages/api/app/Services/Docs/DocsThreadPathSync.php:19`
 - **Docs thread notifications** are grouped per thread with a dedupe key, and Docs mention notices wait for stored mentions. `path: packages/api/app/Services/Notify/DocsThreadActivityNotify.php:119`, `path: packages/api/app/Services/Notify/DocsThreadActivityNotify.php:14`
-- **The JMAP push types.** `ChatMessage` exists. There is no thread type, and Docs threads poll every 4 s. `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:36`, `path: packages/apps/src/text-editor-core/docs-collab/use-docs-threads-source.ts:13` (on main since moved to `packages/apps/src/docs-core/src/collab/`)
+- **The JMAP push types.** `ChatMessage` exists. There is no thread type, and Docs threads poll every 4 s. `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:36`, `path: packages/apps/src/docs-core/src/collab/use-docs-threads-source.ts:16` (this file moved after `db6a4f161`, so this pin is to main at `f54d7aff3`)
 - **chat-ui exports** the composer, mention menu, message, list, thread panel and reaction bar. `path: packages/apps/src/chat-ui/src/index.ts:1`
 - **There is no activity or history log anywhere.**
   - `calendarchanges` holds only uri, synctoken and operation. `path: packages/api/resources/installer/sql/mysql/calendars.sql:43`
@@ -118,7 +118,7 @@ See spec.md, Non-goals.
 - **A comment written offline is stored once, however often it is sent.** A wrong change would duplicate comments after a flaky reconnect or two tabs flushing. Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_post_with_the_same_ulid_twice_stores_one_entry` (new, chunk B); `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `sends a queued comment once across two flushes` (new, chunk H).
 - **A queued comment never lands in another list's thread without its author's say.** A wrong change would show a comment written for one audience to another. Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_post_with_a_stale_scope_id_is_409_and_stores_nothing` (new, chunk B); `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps a comment whose task moved as not sent` (new, chunk H).
 - **An entry under another key can never be read or written through the subject's routes.** A wrong change would let someone who can see the task in list B react to, reply to or edit an entry left in list A. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_entry_from_another_list_is_404_and_is_not_written` (new, chunk B).
-- **A retry after a move never stores a comment twice.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_retry_of_a_stored_id_after_a_move_is_already_stored_and_writes_nothing` (new, chunk B).
+- **A retry after a move never stores a comment twice.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_retry_of_a_stored_id_after_a_move_is_already_stored_and_writes_nothing` (new, chunk B): the caller cannot read the old list, and the new list's entry count stays the same; plus `test_a_ulid_taken_by_another_person_gets_a_fresh_id` (new, chunk B).
 - **An offline comment never sorts into the thread's past.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_entries_sort_by_arrival_not_by_ulid_time` (new, chunk B).
 - **The shared purge never stamps or deletes a subject that still exists.** A wrong change would delete live threads of any non-task app 30 days after their first comment. Proof: `path: packages/api/tests/Feature/Threads/ThreadServiceWithFakeSubjectTest.php`, assertion `test_purge_does_not_stamp_a_live_non_task_subject` (new, chunk B).
 - **Queued rows behind a comment that is not sent are not lost.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `holds rows queued behind a comment that stays not sent` (new, chunk H).
@@ -155,7 +155,7 @@ See spec.md, Non-goals.
   - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered, and the task delete and move paths calling `ThreadLifecycle`.
   - The shared layer passes its tests with the test-only subject type (the "no task code" invariant).
   - The task access, move, delete, list-delete and limit rules are tested.
-  - `POST …/entries` follows the retry order in spec.md: 200 for a ULID under the current key, 409 `already_stored` for one under an earlier key, 409 `subject_moved` for a new ULID with a stale `scopeId`; none of them writes.
+  - `POST …/entries` follows the retry order in spec.md: 200 for the caller's own ULID under the current key, 409 `already_stored` for the caller's own ULID under an earlier key, 409 `subject_moved` for a new ULID with a stale `scopeId`; none of them writes. A ULID already stored for this subject by the caller is never replaced with a fresh id, including when the caller cannot read the earlier scope; a fresh id is only for a ULID taken by another subject or another person.
   - Entry routes and `parentId` accept only entries under the subject's current key (404 or 422 otherwise, nothing written).
   - Lists sort and page by `(created_at, uid)`.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
@@ -193,7 +193,7 @@ See spec.md, Non-goals.
 - **Skill:** apps-ui, workspace, accessibility
 - **Inputs:**
   - the chat-ui exports (`chat-ui/src/index.ts:1`);
-  - the Docs threads source as the shape for `useThread` (`text-editor-core/docs-collab/use-docs-threads-source.ts:97` at the pinned commit; on main `docs-core/src/collab/use-docs-threads-source.ts`);
+  - the Docs threads source as the shape for `useThread` (`packages/apps/src/docs-core/src/collab/use-docs-threads-source.ts:100`, pinned to main at `f54d7aff3`);
   - the detail view fields (`tasks-detail-view.tsx:187`);
   - #2172's audience cache;
   - the product owner's mockup (`mockup-task-detail.webp` in this folder);
