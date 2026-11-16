@@ -1,4 +1,4 @@
-Source: #2173 (body-hash: 238e0fc8)
+Source: #2173 (body-hash: fb8c64b3)
 Goal: WeGotWorkspace/Product#87
 
 # Discussion thread and activity log on a task
