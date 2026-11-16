@@ -66,7 +66,6 @@ final class DriveSharesController
 
     public function sharedWithMe(Request $request): JsonResponse
     {
-        $request->validate(['includeNotes' => ['sometimes', 'in:true,false,1,0']]);
         $principal = $this->principal($request);
 
         return response()->json([

@@ -4298,14 +4298,11 @@ export interface paths {
         };
         /**
          * List paths shared with current user
-         * @description Path-keyed Drive member grants. Default omits leftover `.notes` file paths so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`); `includeNotes=true` only includes old `.notes` path grants, not a Notes client API. A grant from an owner who shares no Team with the caller (or to a Team the owner left) is left out until they share a Team again, admins included; FileNode and path access follow the same rule.
+         * @description Path-keyed Drive member grants. Leftover `.notes` file paths are left out so Drive Shared with me stays note-free. Notes themselves are CalDAV VJOURNAL (`/notes/*` + `urn:wgw:jmap:notes`). A grant from an owner who shares no Team with the caller (or to a Team the owner left) is left out until they share a Team again, admins included; FileNode and path access follow the same rule.
          */
         get: {
             parameters: {
-                query?: {
-                    /** @description When true, include leftover Drive file grants under `.notes`. Default is false. Not used by the Notes app (VJOURNAL notebooks). */
-                    includeNotes?: boolean;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -4321,7 +4318,6 @@ export interface paths {
                         "application/json": components["schemas"]["DriveSharedWithMeDataResponse"];
                     };
                 };
-                400: components["responses"]["JmapBadRequest"];
             };
         };
         put?: never;
