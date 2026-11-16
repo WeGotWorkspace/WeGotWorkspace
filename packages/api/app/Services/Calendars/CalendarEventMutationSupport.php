@@ -645,7 +645,8 @@ final class CalendarEventMutationSupport
         return function (string $eventId) use ($username, $objects, $listed, $principalUris): ?array {
             $object = $objects->get(CalendarEventMapper::eventUriFromId($eventId));
 
-            return $object === null ? null : $this->locateInObject($username, $eventId, $object, $listed, $principalUris);
+            // A miss goes to the database, whose default collation matches the uri case-insensitively.
+            return $object === null ? $this->findOwnedEvent($username, $eventId) : $this->locateInObject($username, $eventId, $object, $listed, $principalUris);
         };
     }
 
