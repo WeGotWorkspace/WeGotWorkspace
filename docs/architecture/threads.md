@@ -21,6 +21,7 @@ Conversations attached to something: a chat channel, a document, a task. Every t
    - There is no per-period access: a new Team member reads the history like everyone else.
 4. **History stays with its audience.** A thread is keyed on the subject *and* the place that sets its audience.
    - For a task that place is the list. Moving a task to another list starts a fresh thread, and the old entries are never shown to the new list's audience.
+   - Entries whose task has left that list, by a delete or a move, stay hidden under the old key and are purged after 30 days unless the task comes back. A CalDAV `MOVE` counts as a move. A native client's delete-then-create counts as a delete plus a new task.
    - Docs differs today: a document's threads follow it into another owner's pool (`DocsThreadPathSync`). Whether Docs should follow rule 4 is an open product question. #2173 does not change Docs.
 5. **Pools are per owner.** A domain keeps one hidden pool per owner (a user or a Team). Docs uses `docs-threads`, and tasks use `task-threads`. Chat is the exception: each channel or DM is its own collection, because the channel is the subject. An index table makes listing a thread one query.
 6. **Activity entries are data, written by the server.**

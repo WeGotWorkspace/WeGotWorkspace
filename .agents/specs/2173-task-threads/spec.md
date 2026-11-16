@@ -1,4 +1,4 @@
-Source: #2173 (body-hash: d7143f5b)
+Source: #2173 (body-hash: 238e0fc8)
 Goal: WeGotWorkspace/Product#87
 
 # Discussion thread and activity log on a task
@@ -27,9 +27,12 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **History belongs to the list.**
   - A person who joins a Team later sees the whole thread. A person who leaves loses all of it.
   - When a task moves to another list, the key no longer matches the old entries, so the new list's audience never sees them. This holds for any other list, the same owner's included. The new thread starts with one activity entry, "moved here from another list". It never names the old list.
-  - Old entries stay under the old key and are deleted with that list. If the task moves back, they show again to that list's audience, who saw them before.
-  - Deleting a task deletes its thread under the current key.
-- **Live updates.** A new JMAP push type `ThreadEntry`, with source `threads`. Its state changes when any task thread pool the user can read changes.
+  - Old entries stay under the old key, where nobody sees them. They are deleted with that list, or by the 30-day purge below. If the task moves back within 30 days, they show again to that list's audience, who saw them before.
+  - Deleting a task does not delete its thread at once. The entries stay under the list's key, where nobody can see them because there is no task. A daily job purges any key whose task UID has not been in that list for 30 days, whether the task was deleted or moved away. This makes an undo, or a native client's delete-then-create, safe (see Lifecycle hooks).
+  - Native clients move tasks in two ways, and both are covered under Lifecycle hooks:
+    - a CalDAV `MOVE` counts as a move;
+    - a `DELETE` in one list followed by a `PUT` in another counts as a delete plus a new task.
+- **Live updates.** A new JMAP push type `ThreadEntry`, with source `threads`. Its state changes only when a thread in a **list the user can read** changes, never for other lists in the same pool.
   - The open thread panel refetches its thread on a state change.
   - The panel polls only while it is open and visible, and only while push is down (15 s). This keeps the idle-polling lesson of #2156.
 - **Notifications.**
@@ -102,7 +105,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `ThreadReactions::toggle(array $set, string $emoji, string $username): array` replaces the two private `toggleReactionSet` copies.
 - `ThreadAuthorNames` replaces the two `displayNames` helpers.
 - **Golden tests first.** Before the move, chunk A adds tests that pin the ICS each domain writes today for fixed input: a comment, a reply, an edit, a tombstone, reactions and mentions. After the move the bytes are the same. The existing unit and feature tests stay unchanged.
-- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (list calendarid + task UID), `kind`, `parent_uid`, `author`, `created_at` and `activity_field` (nullable).
+- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (list calendarid + task UID), `subject_list` (the list calendarid, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq`, `subject_seen_at` and `activity_field` (nullable).
   - Only task threads use it in this Epic.
   - `docs_thread_index` stays. Moving Docs onto `thread_index` is a follow-up named in threads.md.
 
@@ -129,16 +132,20 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - at most 5 000 entries per thread. A post past that gets 409 `thread_full`.
   - Activity entries are pruned oldest first beyond 1 000 per thread, and comments are never pruned. Pruning makes room, so automatic activity never hits the limit.
 - **Lifecycle hooks:**
-  - `TaskRepository::delete` and the CalDAV observer's "deleted" change set delete the thread under the current key.
-  - `TaskListRepository::delete` deletes every entry whose `X-WGW-TASK-LIST` is that list.
-  - A move (`taskListId` in the change set) writes the "moved here" activity entry under the new key.
+  - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted at once. The entries stay under the list's key. `tasks:purge-orphan-threads` (daily) deletes the entries of a key once no task with that UID has been in that list for 30 days. The index stores `subject_seen_at`, which every write to the task updates.
+  - **List deleted:** only when the **owner** deletes it, every entry whose `X-WGW-TASK-LIST` is that list is deleted. `TaskListRepository::delete` only dismisses a sharee's copy (`dismissIfSharee`), and that deletes nothing.
+  - **Move through REST, MCP or the web app** (`taskListId` in the change set): the "moved here" activity entry is written under the new key, and the old entries stay under the old key until the 30-day purge.
+  - **CalDAV `MOVE`** of a task object to another list: Sabre copies and then deletes in one request, because calendars are not `IMoveTarget`. The observer turns `afterMethod:MOVE` (source and destination both in task lists, 2xx) into the same `moved` change set as a REST move. The destination gets "moved here", and the source's entries stay under the source key.
+  - **CalDAV `DELETE` in list A, then `PUT` of the same UID in list B** (two requests, as some clients do it): these cannot be told apart from a real delete and a new task. B gets a `created` entry. A's entries stay under A's key, and the 30-day purge removes them unless the task comes back to A.
+  - **The same UID `PUT` back into list A within 30 days** (undo, or a move back by a delete-then-create client): A's old entries show again, followed by a `created` entry.
   - These hooks run after the task write has committed. A failure is logged and retried by the next write. It never fails the task write.
 
 ### Push and live updates (chunk C)
 
 - `ThreadEntry` is added to `JmapPushStateResolver::TYPES`, with source `threads`.
-  - The state is a hash over the `synctoken`s of the task thread pools whose owners have a list the user can see. Those are the user's own pool, their Teams' pools and the pools of owners who share a list with them.
-  - Computing the state is one query, which the plan names.
+  - The state is a hash over `max(thread_index.modseq)` per **readable list**. That covers every list in `CalendarCollectionAccess::accessibleInstances` for the user, grouped by `subject_key`'s list part. A comment in an owner's private list therefore changes nothing for a sharee of another list in the same pool: no timing leak and no extra refetch.
+  - `thread_index.modseq` is bumped on every insert, edit, reaction, tombstone and purge of an entry, so deletes are seen too.
+  - Computing the state is one indexed query over `thread_index` (`subject_list`, `modseq`).
   - Nothing is added to the idle request load: the client asks for the type only while a thread panel is open.
 
 ### Notifications (chunk D)
@@ -158,9 +165,9 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - `created`;
   - `moved` (in, no source).
 - **Values:** stored raw. Strings are cut to 200 characters. Dates are ISO with their time zone, or floating. Assignees are participant ids, rendered with current names.
-- **Merging quick edits.** When the newest entry in the thread is an activity entry by the same actor, for the same field, less than 10 minutes old, the writer updates its `to` (or its sets) instead of adding one. If `from` then equals `to`, the entry is deleted. This runs in one transaction with a lock on the thread's newest index row.
+- **Merging quick edits.** When the newest entry in the thread is an activity entry by the same actor, for the same field, less than 10 minutes old, the writer updates its `to` (or its sets) instead of adding one. If `from` then equals `to`, the entry is deleted. This runs in one transaction that first locks the **pool collection row** (the pool's `calendars` row, which always exists). Two concurrent first writes to an empty thread are therefore serialized too. On SQLite the `IMMEDIATE` transaction mode already serializes writers.
+- **Imports** (`TaskImportService`) log only one `created` entry per task, with `{source: "import"}`, and no per-field entries.
 - **Not logged:**
-  - imports (`TaskImportService`), which write one `created` entry per imported task with `{source: "import"}`;
   - `sortOrder`, `sequence`, `updated`, alarms, `icsProps`.
 - **CalDAV writes** use the authenticated principal as the actor. The observer only acts after a successful write (#2172 invariant).
 
@@ -185,7 +192,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Someone who left the Team.** Their comments stay, with their name. Notifications skip them, because they are outside the audience. Mentions of them are not stored.
 - **A deleted user.** Their entries show "Former member". The display-name helper already falls back.
 - **The same task UID in two lists** (a copy made by a native client). The key includes the list, so the two threads are separate.
-- **A task moves A → B → A.** The thread in A shows its old entries again, followed by the "moved here" entry. The thread in B stays under B's key and is deleted when B is deleted.
+- **A task moves A → B → A within 30 days, through the web app, MCP, REST or a CalDAV `MOVE`.** The thread in A shows its old entries again, followed by the "moved here" entry. After 30 days away, A's old entries are gone and A starts fresh. The thread in B stays under B's key and is deleted when B is deleted.
+- **The same round trip from a client that deletes and re-creates.** B gets `created`, not "moved here". Back in A within 30 days, A's old entries show again, followed by `created`. After 30 days A's old entries are gone.
 - **A multi-VTODO file.** Entries are keyed by the VTODO UID, not the file.
 - **A recurring task.** One thread for the series. Changes to one occurrence's override are logged as the master's field with `{occurrence: <recurrenceId>}`.
 - **A CalDAV client rewrites the whole VTODO with no real change.** The change set is empty and nothing is logged.

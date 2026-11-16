@@ -43,7 +43,9 @@ See spec.md, Non-goals.
   - `calendarchanges` holds only uri, synctoken and operation. `path: packages/api/resources/installer/sql/mysql/calendars.sql:43`
   - The only audit table is MCP-only. `path: packages/api/database/migrations/wgw/2026_09_08_000350_wgw_create_mcp_audit_and_sessions.php:13`
 - **From Epic #2172 (planned, not on main yet):** `TaskListAudience`, `TaskChangeSet` and `TaskChangeObserverPlugin`. Spec in [PR #2175](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/2175), `.agents/specs/2172-task-assignees/spec.md` on that branch.
-- **Deleting a task list.** `path: packages/api/app/Services/Tasks/TaskListRepository.php:191`
+- **Deleting a task list.** A sharee's delete only dismisses their copy. `path: packages/api/app/Services/Tasks/TaskListRepository.php:191`, `path: packages/api/app/Services/Tasks/TaskListRepository.php:198`
+- **CalDAV write methods include `MOVE`.** `EventDispatchPlugin` fires after it, with source and destination. `path: packages/api/app/Dav/Server/EventDispatchPlugin.php:29`
+- **Only Drive directories implement `IMoveTarget`.** A calendar object `MOVE` is a copy and then a delete inside one request. `path: packages/api/app/Dav/Storage/FlysystemDirectory.php:11`
 - **Task import.** `path: packages/api/app/Services/Tasks/TaskImportService.php:29`
 
 ## Considered
@@ -97,7 +99,10 @@ See spec.md, Non-goals.
 - **Someone who cannot see the task gets 404 on every thread route, including reactions and changes.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_every_thread_route_is_404_without_list_access` (new, chunk B).
 - **Nobody can edit, delete or create an activity entry through the API.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_activity_entries_are_read_only` (new, chunk B).
 - **A failed or unauthorized CalDAV write logs no activity.** Proof: `path: packages/api/tests/Feature/Tasks/TaskChangeObserverPluginTest.php`, assertion `test_forbidden_caldav_put_on_read_only_list_notifies_nobody` (#2172), extended in chunk F with an activity assertion.
-- **A thread hook failure never fails the task write.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_thread_cleanup_failure_keeps_the_task_delete` (new, chunk B).
+- **A thread hook failure never fails the task write.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_thread_hook_failure_keeps_the_task_write` (new, chunk B).
+- **A native client's move never destroys or leaks a thread.** A CalDAV `MOVE` acts like a REST move. A `DELETE` then `PUT` keeps the source entries under the source key until the 30-day purge, and shows them to nobody else. A wrong change would delete a thread for good on an Apple or Thunderbird move, or show list A's history in list B. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertions `test_caldav_move_writes_moved_here_and_keeps_source_entries`, `test_delete_then_put_elsewhere_starts_fresh_and_keeps_source_entries`, `test_purge_removes_orphan_entries_after_30_days_only` (new, chunk B).
+- **Push state never changes for lists the user cannot read.** A wrong change would leak the timing of activity in another person's private list. Proof: `path: packages/api/tests/Feature/Jmap/JmapEventSourceThreadTest.php`, assertion `test_state_ignores_threads_in_unreadable_lists_of_the_same_pool` (new, chunk C).
+- **Only the owner deleting a list removes its thread entries.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_sharee_dismiss_keeps_thread_entries` (new, chunk B).
 - **No idle polling is added.** The thread panel polls only while it is open, visible and push is down. Proof: `path: packages/apps/src/tasks-core/src/use-task-thread.test.ts`, assertion `does not poll while push is up or the panel is closed` (new, chunk E).
 - **After chunk A, main still works with no task-thread code.** Proof: `cmd: pnpm test:api-done-gate`.
 
@@ -122,12 +127,16 @@ See spec.md, Non-goals.
 - **Skill:** api, security
 - **Inputs:**
   - the hidden kinds (`CollectionKind.php:25`) and the pool provisioner pattern (`DocsThreadPoolProvisioner.php:47`);
-  - list delete (`TaskListRepository.php:191`);
-  - #2172's audience and change set.
+  - list delete (`TaskListRepository.php:191`, sharee dismiss at `:198`);
+  - CalDAV `MOVE` (`EventDispatchPlugin.php:29`, `FlysystemDirectory.php:11`);
+  - #2172's audience, change set and observer.
 - **Done when:**
   - `CollectionKind::TaskThreadPool` (DAV-hidden) exists, with a provisioner.
   - The REST routes from spec.md are in OpenAPI.
   - The access, move, delete, list-delete and limit rules are tested.
+  - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set.
+  - The 30-day orphan purge command is scheduled daily.
+  - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
   - `docs/architecture/tasks.md` gets "Decision 18 — Task threads".
   - The B invariants pass.
 - **Verify with:** `pnpm test:api-done-gate`
@@ -137,7 +146,7 @@ See spec.md, Non-goals.
 - **Skill:** api, client-transport
 - **Inputs:** the push types (`JmapPushStateResolver.php:36`).
 - **Done when:**
-  - `ThreadEntry` state changes on any write to a pool the user can read, and does not change for pools they cannot read.
+  - `ThreadEntry` state is a hash of `max(thread_index.modseq)` per list the user can read. It changes on any entry write in a readable list, and never for another list in the same pool that the user cannot read.
   - The client subscribes only while a thread panel is open.
   - Tests cover both.
 - **Verify with:** `pnpm test:api-done-gate`, `pnpm test:apps-done-gate`
@@ -176,11 +185,12 @@ See spec.md, Non-goals.
   - import (`TaskImportService.php:29`).
 - **Done when:**
   - REST, MCP and CalDAV writes produce the entries in spec.md.
-  - Quick edits are merged under a lock.
+  - Quick edits are merged under a lock on the pool collection row, so two concurrent first writes to an empty thread are serialized too.
   - Imports write one `created` entry each.
   - An empty change set writes nothing.
   - Pruning keeps "created" and "moved here".
-  - Tests for each field, for merging, for two actors, and for the CalDAV path.
+  - A CalDAV `MOVE` logs "moved here" in the destination. A `DELETE` then `PUT` logs `created`.
+  - Tests for each field, for merging (including two concurrent first writes), for two actors, and for the CalDAV `PUT`, `MOVE` and `DELETE` then `PUT` paths.
 - **Verify with:** `pnpm test:api-done-gate`
 - **Parallel with:** none (after B)
 
