@@ -142,6 +142,10 @@ export function useSettingsIncomingEmail(
   };
 
   const save = form.handleSubmit((values) => {
+    if (!/^\d*$/.test(values.port.trim())) {
+      setFailure(labels.invalid);
+      return;
+    }
     const update = incomingEmailUpdateFromForm(values, mailbox);
     if (update && incomingEmailNeedsPasswordAgain(values, mailbox)) {
       setFailure(labels.passwordAgain);
