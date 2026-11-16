@@ -16,7 +16,7 @@ import {
   subscribeNoteArchivedElsewhere,
 } from "@/lib/offline/notes/notes-archived-elsewhere";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { CollabHttpError } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 
 const username = "archived-elsewhere-user";
 

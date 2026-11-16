@@ -1,7 +1,7 @@
 import {
   isCollabPayloadTooLarge,
   isCollabPreconditionFailed,
-} from "@/text-editor-core/docs-collab/docs-collab-utils";
+} from "@/lib/collab/docs-collab-utils";
 
 export const NOTES_TOO_LARGE_MESSAGE = "This note is too large to save.";
 

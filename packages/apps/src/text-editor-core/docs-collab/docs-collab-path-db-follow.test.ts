@@ -11,9 +11,9 @@ import {
   DOCS_COLLAB_IDENTITY_DB_VERSION,
   DOCS_COLLAB_PATH_DB_VERSION,
   docsCollabIndexedDbKey,
-} from "./docs-collab-persistence";
-import { docsCollabPathDbLockName } from "./docs-collab-path-db-lock";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+} from "@/lib/collab/docs-collab-persistence";
+import { docsCollabPathDbLockName } from "@/lib/collab/docs-collab-path-db-lock";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import { DEFAULT_DOCS_COLLAB_URLS } from "./docs-collab-types";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 import { useDocsCollabJoin } from "./use-docs-collab-join";

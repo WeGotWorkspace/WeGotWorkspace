@@ -1,13 +1,10 @@
 import type * as Y from "yjs";
 import * as Yjs from "yjs";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
-import { adoptServerSnapshot } from "./docs-collab-bootstrap";
-import { writeNoteTitle } from "./docs-collab-document-title";
+import { adoptServerSnapshot } from "@/lib/collab/docs-collab-bootstrap";
+import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import { SERVER_ORIGIN } from "./docs-collab-utils";
-
-/** Set on `GET ?format=yjs` when the stored state is not an ancestor of the journal. */
-export const EXTERNAL_WRITE_HEADER = "X-Wgw-External-Write";
+import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 export type ExternalWriteDetail = {
   markdown: string;
@@ -24,10 +21,6 @@ export type ExternalWriteDetail = {
 export const EXTERNAL_REBUILD_ORIGIN = "external-rebuild";
 
 export type ExternalWriteAction = "adopt" | "rebuild" | "prompt";
-
-export function externalWriteFromHeader(headers: Headers): boolean {
-  return headers.get(EXTERNAL_WRITE_HEADER) === "1";
-}
 
 /**
  * A person is asked only when the server state has no CRDT ancestor and this

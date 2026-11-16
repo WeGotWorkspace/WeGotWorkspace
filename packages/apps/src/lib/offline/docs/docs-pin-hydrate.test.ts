@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { hydrateDocsCollabForOffline } from "@/lib/offline/docs/docs-pin-hydrate";
-import { resolveDocsCollabDatabase } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { resolveDocsCollabDatabase } from "@/lib/collab/docs-collab-persistence";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 vi.mock("@/lib/api/wgw/http", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/wgw/http")>()),

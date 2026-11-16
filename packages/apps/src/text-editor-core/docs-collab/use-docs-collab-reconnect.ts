@@ -1,4 +1,4 @@
-import { isExternalWriteRefusal } from "./docs-collab-utils";
+import { isExternalWriteRefusal } from "@/lib/collab/docs-collab-utils";
 import { useCallback, useEffect, useRef } from "react";
 import { docsCollabLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { useOnReconnect } from "@/hooks/use-connectivity";
@@ -15,7 +15,7 @@ import {
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,

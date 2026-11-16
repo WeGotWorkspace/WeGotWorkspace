@@ -8,7 +8,7 @@ import {
   handleGuardedSyncMessage,
   handleSyncMessage,
 } from "./docs-collab-mesh-sync";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 function docWithBody(text: string): Y.Doc {
   const doc = new Y.Doc();

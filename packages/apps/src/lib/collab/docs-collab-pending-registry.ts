@@ -1,5 +1,10 @@
 const STORAGE_KEY = "wgw:collab-pending-rooms";
 
+/** The lock an open editor holds for its room, and a background save tries. */
+export function collabUploadLockName(databaseName: string): string {
+  return `wgw-collab-upload:${databaseName}`;
+}
+
 interface PendingState {
   rooms: Set<string>;
   // Counts every set call per room, also those that change nothing, so a reader can tell

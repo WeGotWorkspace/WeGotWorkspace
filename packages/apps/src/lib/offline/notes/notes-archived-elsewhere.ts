@@ -10,7 +10,7 @@ import {
 } from "@/lib/offline/notes/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { discardNoteCollabBuffer } from "@/lib/offline/notes/notes-collab-rooms";
-import { isArchivedRefusal } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { isArchivedRefusal } from "@/lib/collab/docs-collab-utils";
 
 /**
  * The server refused a change because the note was archived elsewhere

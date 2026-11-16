@@ -1,12 +1,11 @@
 import { ApiError } from "@/lib/api/api-error";
+import { docsEditorFormatFromFileName } from "@/lib/files/docs-editor-format";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { docsEditorFormatFromFileName } from "@/text-editor-core/docs-collab/docs-editor-format";
-import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
-import { BC_TAB_ORIGIN } from "./docs-collab-tab-sync";
-import type { DocsCollabUrls } from "./docs-collab-types";
+import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
 
-export { BC_TAB_ORIGIN };
+/** Origin of an update another tab of this browser sent over the BroadcastChannel. */
+export const BC_TAB_ORIGIN = "bc-tab";
 export const MESH_ORIGIN = "mesh";
 export const SEED_ORIGIN = "seed";
 export const SERVER_ORIGIN = "server";
@@ -159,7 +158,7 @@ export function isYDocEmpty(doc: Y.Doc): boolean {
 
 /** The caller's format when it gives one; otherwise the room's file name decides. */
 export function collabFormatForUrls(
-  urls: Pick<DocsCollabUrls, "room" | "documentFormat"> | undefined,
+  urls: { room?: string; documentFormat?: TextEditorContentFormat } | undefined,
 ): TextEditorContentFormat {
   return urls?.documentFormat ?? collabDocumentFormat(urls?.room);
 }

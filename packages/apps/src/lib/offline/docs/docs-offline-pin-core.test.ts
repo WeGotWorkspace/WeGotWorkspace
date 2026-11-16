@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 vi.mock("@/lib/offline/docs/docs-pin-hydrate", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/offline/docs/docs-pin-hydrate")>();
@@ -20,9 +20,8 @@ vi.mock("@/lib/offline/docs/docs-pin-hydrate", async (importOriginal) => {
   };
 });
 
-vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/text-editor-core/docs-collab/docs-collab-persistence")>();
+vi.mock("@/lib/collab/docs-collab-persistence", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/collab/docs-collab-persistence")>();
   return {
     ...actual,
     clearDocsCollabOfflinePersistence: vi.fn(async (apiPath: string) => {
@@ -39,7 +38,7 @@ vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importO
 });
 
 import { hydrateDocsCollabForOffline } from "@/lib/offline/docs/docs-pin-hydrate";
-import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { clearDocsCollabOfflinePersistence } from "@/lib/collab/docs-collab-persistence";
 import {
   listDocsAvailability,
   migrateDocsAvailabilityPath,

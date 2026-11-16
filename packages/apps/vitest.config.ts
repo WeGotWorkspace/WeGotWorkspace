@@ -58,6 +58,8 @@ export default defineConfig({
           environment: "node",
           include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
           execArgv: nodeWebStorageExecArgv,
+          // lib/offline reads and seeds collab documents through the editor (#2116).
+          setupFiles: [path.resolve(__dirname, "src/provide-collab-content-codec.ts")],
         },
       },
       {
@@ -73,7 +75,10 @@ export default defineConfig({
           pool: "forks",
           maxWorkers: 1,
           execArgv: nodeWebStorageExecArgv,
-          setupFiles: [path.resolve(__dirname, "src/jsdom-setup.ts")],
+          setupFiles: [
+            path.resolve(__dirname, "src/jsdom-setup.ts"),
+            path.resolve(__dirname, "src/provide-collab-content-codec.ts"),
+          ],
         },
       },
       {

@@ -5,7 +5,7 @@ import {
   replaceDocumentWithExternalText,
 } from "./docs-collab-external-write";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { collabFormatForUrls } from "./docs-collab-utils";
+import { collabFormatForUrls } from "@/lib/collab/docs-collab-utils";
 
 export type DocsExternalWriteRequest = {
   /** The urls to hand to `useDocsCollab`, with `onExternalWrite` wired. */
