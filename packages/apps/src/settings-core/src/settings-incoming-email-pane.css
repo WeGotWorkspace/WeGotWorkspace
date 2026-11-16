@@ -13,8 +13,22 @@
   @apply m-0 text-sm text-muted-foreground;
 }
 
-.settings-incoming-email__status {
-  @apply m-0 mt-3 mb-1 rounded-md bg-muted px-3 py-2 text-sm text-foreground;
+.settings-incoming-email__header-action {
+  @apply flex items-center gap-2;
+}
+
+.settings-incoming-email__tag {
+  @apply inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+/* The tag's detail and the info button: a few sentences, so a readable width. */
+.settings-incoming-email__tooltip {
+  @apply flex max-w-xs flex-col gap-2;
+}
+
+/* Replies not applied yet: under the rows, above the buttons. */
+.settings-incoming-email__note--below {
+  @apply pt-3;
 }
 
 .settings-incoming-email__actions {

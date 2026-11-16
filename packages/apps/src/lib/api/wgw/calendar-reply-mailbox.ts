@@ -24,15 +24,36 @@ export type CalendarReplyMailboxOperations = {
   disconnect: () => Promise<void>;
 };
 
+/**
+ * The server allows a few mailbox logins per window (connect, save, check). A 429 says when
+ * the next one may run (`Retry-After`, seconds), so the client can wait instead of failing.
+ */
+export class MailboxLoginsLimitedError extends WgwRequestError {
+  readonly retryAfterSeconds: number;
+
+  constructor(message: string, retryAfterSeconds: number, code?: string) {
+    super(message, 429, code);
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+const DEFAULT_RETRY_AFTER_SECONDS = 60;
+
 async function failure(res: Response, method: string, path: string): Promise<WgwRequestError> {
   const body = await res.text();
   const detail = wgwErrorMessageFromBody(body, res.status, res.statusText);
   const code = parseApiErrorJson(body.trim())?.code;
-  return new WgwRequestError(
-    `${method} ${path} failed (${res.status}): ${detail}`,
-    res.status,
-    typeof code === "string" ? code : undefined,
-  );
+  const message = `${method} ${path} failed (${res.status}): ${detail}`;
+  const parsedCode = typeof code === "string" ? code : undefined;
+  if (res.status === 429) {
+    const seconds = Number(res.headers.get("Retry-After"));
+    return new MailboxLoginsLimitedError(
+      message,
+      Number.isFinite(seconds) && seconds > 0 ? seconds : DEFAULT_RETRY_AFTER_SECONDS,
+      parsedCode,
+    );
+  }
+  return new WgwRequestError(message, res.status, parsedCode);
 }
 
 async function readState(
