@@ -169,7 +169,7 @@ bash tools/setup-docker-install.sh --local
 | `MARIADB_USER` | `wgw` | Application database user |
 | `MARIADB_PASSWORD` | `wgw` | Application database password |
 
-A fresh `setup.sh` install writes random values for the three passwords. With a `.env` copied by hand, change them before exposing the stack to a network.
+A fresh `setup.sh` install writes random values for the three passwords. With a `.env` copied by hand, change them before exposing the stack to a network. Keep `.env` as long as you keep the `wgw-db` volume, it holds the passwords the database was created with.
 
 ## Installer environment (`WGW_INSTALL_*`)
 

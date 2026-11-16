@@ -439,7 +439,7 @@ write_env_from_example() {
     root_password=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
     sed_inplace "s/^WGW_DB_PASSWORD=wgw\$/WGW_DB_PASSWORD=${db_password}/; s/^MARIADB_PASSWORD=wgw\$/MARIADB_PASSWORD=${db_password}/; s/^MARIADB_ROOT_PASSWORD=wgw-root\$/MARIADB_ROOT_PASSWORD=${root_password}/" "$path"
   elif [ -n "${kept_db_passwords:-}" ]; then
-    printf '%s\n' "$kept_db_passwords" >>"$path"
+    printf '%s\n' "$kept_db_passwords" | awk -F= 'NR == FNR { kept[$1] = $0; next } $1 in kept { $0 = kept[$1] } 1' - "$path" >"${path}.wgw-setup.tmp" && mv "${path}.wgw-setup.tmp" "$path"
   fi
 }
 
