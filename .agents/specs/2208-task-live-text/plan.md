@@ -131,10 +131,12 @@ None — every choice for this work is made. Product questions raised during rev
     - a status `PATCH` that commits before the text `PUT` takes the lock survives the text `PUT`;
     - a CalDAV `PUT` that committed before a text `PUT`, with its hook not yet run, makes the text `PUT` append that text and answer `409`; the hook then appends nothing;
     - a `?format=yjs` read that started before a text `PUT` commits leaves no pre-`PUT` link afterwards;
-    - two overlapping CalDAV `PUT`s leave both links, in order;
+    - two CalDAV `PUT`s whose hooks run in order leave both links in order, each hook appending the text of its own request body; when both commit before either hook runs, the chain ends on the last text and nothing is doubled;
+    - a CalDAV `PUT` that commits after `GET …/text` and before an `If-None-Match: *` text `PUT` makes that `PUT` answer `409`, and the native text stays;
+    - a text `PUT` leaves an empty chain (its own write adds no link);
     - a `TaskStatusChangedNotifyTest`-style test and, once #2172 is in, a change-set test see the text `PUT` as a normal write.
   - `task_yjs_state.state` is `MEDIUMBLOB` on MySQL; `vtodo_uid` is the component's real UID also for single-VTODO files (test: a native client adds a second VTODO to the file and the first task's state row is still found).
-  - The outside chain: REST, MCP, import and CalDAV text writes append a link while a state row exists; a text `PUT` clears it and must name the last link (`409` otherwise); the chain is capped at 20 links (the row is dropped beyond that); a blank title in the `PUT` gets `422 title_required`.
+  - The outside chain: REST, MCP and CalDAV text writes append a link while a state row exists; a text `PUT` clears it and must name the last link (`409` otherwise); the chain is capped at 20 links (the row is dropped beyond that); a blank title in the `PUT` gets `422 title_required`.
   - `CollabJoinAuthorizer` resolves `task:<calendarid>:<uid>` before the slash test, parsing a decimal `calendarid` and the whole remainder as the UID (test with a `urn:uuid:` UID and a UID with a slash); access `write` / `read` from the instance; `403` for an unknown object, a hidden or dismissed share, a malformed key, or a URI-collision attempt (a task with the same URI in the attacker's own list).
   - OpenAPI updated; `TasksAccessControlTest` gains the three routes.
 - **Verify with:** `cd packages/api && composer done-gate` (or `php scripts/done-gate.php` when the local run hits the 900 s limit)
@@ -148,7 +150,8 @@ None — every choice for this work is made. Product questions raised during rev
 - **Done when:**
   - Pure lib, Vitest on exports: `plainTextOps`, the plain seed (byte-identical for equal text), `mergeOutsideChain` (two documents applying it converge and hold the outside text once; local typing after the base survives), the rebase (same root, other root, no state), and line-end normalisation.
   - `mergeOutsideChain` with two links, in both orders of arrival (a peer that saw link 1 before link 2 arrived, and a peer that only ever saw the chain of two), for an insert ("Buy milk" → "Buy oat milk", then a notes-only change) and a delete that is undone ("Buy milk" → "Buy" → "Buy milk"): every peer ends on exactly the last link's text plus its typing.
-  - Blank title: the save is held while `note-title` is blank; leaving with a blank title restores the stored `SUMMARY` with a deterministic update (two peers leaving blank produce identical bytes, and the title is not doubled).
+  - Blank title: the save is held while `note-title` is blank. `restoreBlankTitle` starts from a document whose title was deleted after the stored state: after one apply the title is exactly `SUMMARY`; applying the same bytes from a second document leaves it once; the save after the restore carries the held description; a second restore with the same ids falls back to a local insert.
+  - An open room that is told of an outside write reads `GET …/text` and `?format=yjs` together and replays `outsideChain`; a peer that already applied link 1 of a two-link chain does not insert it again.
   - The text-fields emptiness test: a document restored from IndexedDB that already holds `note-title` and `plain-body` is not seeded again, on reopen offline and on join, and no `default` fragment appears in `doc.share`.
   - `DocsCollabUrls.documentShape: "text-fields"` routes seed, save and outside writes to that lib and never prompts; without it nothing changes for Docs or Notes.
   - The title field hook and carets take a `Y.Text` key and an awareness field; Notes passes `note-title` and `noteTitleSelection` and its tests stay green unchanged.
