@@ -110,7 +110,19 @@ class ImipSenderVerifier
             return ImipSenderCheck::refused(self::REPLAYED, ImipSenderCheck::DKIM);
         }
 
-        return ImipSenderCheck::verified($from, ImipSenderCheck::DKIM);
+        return ImipSenderCheck::verified($from, ImipSenderCheck::DKIM, $seenKey);
+    }
+
+    /**
+     * Forget the signature of a verified reply that was not handled (its
+     * calendar part could not be read, or applying it failed), so a second
+     * delivery of the same message is checked again.
+     */
+    public function release(ImipSenderCheck $check): void
+    {
+        if ($check->replayKey !== '') {
+            $this->cache->forget($check->replayKey);
+        }
     }
 
     /**

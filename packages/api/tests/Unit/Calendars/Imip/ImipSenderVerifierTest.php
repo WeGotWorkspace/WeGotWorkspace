@@ -138,6 +138,17 @@ final class ImipSenderVerifierTest extends TestCase
         $this->assertTrue($this->check($message, owner: 'carol')->ok());
     }
 
+    public function test_a_released_signature_can_be_checked_again(): void
+    {
+        $message = $this->fixture('reply-rsa-relaxed.eml');
+
+        $first = $this->check($message);
+        $this->assertTrue($first->ok());
+        $this->verifier()->release($first);
+
+        $this->assertTrue($this->check($message)->ok());
+    }
+
     public function test_a_broken_signature_is_refused_with_its_reason(): void
     {
         $message = str_replace('has accepted', 'has declined', $this->fixture('reply-rsa-relaxed.eml'));

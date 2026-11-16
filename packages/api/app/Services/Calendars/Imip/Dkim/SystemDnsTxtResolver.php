@@ -19,7 +19,7 @@ final class SystemDnsTxtResolver implements DnsTxtResolver
     public function txt(string $name): DnsTxtAnswer
     {
         try {
-            $records = @dns_get_record($name, DNS_TXT);
+            $records = @dns_get_record($name.'.', DNS_TXT);
         } catch (\Throwable) {
             return DnsTxtAnswer::error();
         }

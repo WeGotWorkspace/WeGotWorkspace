@@ -21,12 +21,10 @@ export const incomingEmailLabels = {
   check: "Check now",
   disconnect: "Disconnect",
   connected: "Mailbox connected",
-  connectedWaiting: "Mailbox connected. Press Check now once a message has arrived in it.",
   saved: "Mailbox settings saved",
   checked: "Mailbox checked",
   disconnected: "Mailbox disconnected",
   statusReading: "Connected.",
-  statusWaiting: "Connected, not reading yet. Press Check now once a message has arrived.",
   statusPaused: "Paused after repeated failed sign-ins. Check now or save new settings to resume.",
   lastChecked: (when: string) => `Last checked ${when}.`,
   errors: {
@@ -37,6 +35,8 @@ export const incomingEmailLabels = {
     folder_missing: "A folder an app reads does not exist in this mailbox.",
     host_not_allowed: "This mail server address is not allowed.",
     protocol_error: "The mail server gave an answer that could not be read.",
+    dns_unavailable:
+      "A reply is waiting because its sender's DNS did not answer. It is tried again on the next check.",
     untrusted_server_unknown:
       "Connected, not reading yet. Press Check now once a message has arrived.",
   } as Record<string, string>,

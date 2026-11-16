@@ -202,6 +202,30 @@ final class ImipMailboxDkimTest extends WgwDatabaseTestCase
         $this->assertSkippedWith(DkimResult::DNS_UNAVAILABLE);
     }
 
+    public function test_failing_lookups_hold_the_mailbox_for_one_hour_in_total(): void
+    {
+        $mailbox = $this->connect();
+        $this->server->messages[2] = $this->withSelector($this->signed('reply-rsa-relaxed.eml'), 'bad1');
+        $this->server->messages[3] = $this->withSelector($this->signed('reply-rsa-simple-length.eml'), 'bad2');
+        $this->server->messages[4] = $this->signed('reply-ed25519.eml');
+        $this->dns->records['bad1._domainkey.elsewhere.test'] = FakeDnsTxtResolver::FAIL;
+        $this->dns->records['bad2._domainkey.elsewhere.test'] = FakeDnsTxtResolver::FAIL;
+
+        $this->poller()->poll($mailbox, self::NOW);
+        $this->assertSame(1, $mailbox->fresh()?->last_uid);
+
+        $this->recordLogs();
+        $this->poller()->poll($mailbox->refresh(), self::NOW + ImipMailboxPoller::DNS_RETRY_SECONDS);
+
+        $fresh = $mailbox->fresh();
+        $this->assertSame(4, $fresh?->last_uid);
+        $this->assertNull($fresh?->last_error_code);
+        $this->assertSame('ACCEPTED', $this->guestStatus());
+        $skipped = array_filter($this->logged, static fn (array $line): bool => $line['message'] === ImipReplyIngest::LOG_SKIPPED
+            && ($line['context']['detail'] ?? null) === DkimResult::DNS_UNAVAILABLE);
+        $this->assertSame([2, 3], array_values(array_map(static fn (array $line): int => $line['context']['imap_uid'], $skipped)));
+    }
+
     public function test_trusted_server_refusal_is_not_overridden_by_dkim(): void
     {
         $mailbox = $this->connect(trusted: 'mx.receiver.test');
@@ -276,6 +300,21 @@ final class ImipMailboxDkimTest extends WgwDatabaseTestCase
             'sections' => ['1.2' => $calendar],
             'raw' => $raw,
         ];
+    }
+
+    /**
+     * The same message naming another selector (the signature no longer
+     * verifies, but its key is looked up first).
+     *
+     * @param  array{size: int, headers: string, structure: string, sections: array<string, string>, raw: string}  $message
+     * @return array{size: int, headers: string, structure: string, sections: array<string, string>, raw: string}
+     */
+    private function withSelector(array $message, string $selector): array
+    {
+        $message['headers'] = str_replace('s=rsa2048;', 's='.$selector.';', $message['headers']);
+        $message['raw'] = str_replace('s=rsa2048;', 's='.$selector.';', $message['raw']);
+
+        return $message;
     }
 
     /** @return array{size: int, headers: string, structure: string} */

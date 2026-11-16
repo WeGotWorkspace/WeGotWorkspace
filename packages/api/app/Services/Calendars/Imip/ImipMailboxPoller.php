@@ -21,8 +21,10 @@ use Illuminate\Support\Facades\Log;
  *   starts at the current highest UID: mail from before is never replayed.
  * - The cursor moves past every UID looked at, so one bad message cannot
  *   block the box. The one exception is a reply whose DKIM key lookup
- *   failed: the poll stops before it and the next poll tries again, for at
- *   most {@see DNS_RETRY_SECONDS}, so replies keep their arrival order.
+ *   failed: the poll stops before it and the next poll tries again, so
+ *   replies keep their arrival order. The mailbox waits at most
+ *   {@see DNS_RETRY_SECONDS} in total, counted from the first such failure;
+ *   after that, deferred messages are skipped at once.
  * - Senders are checked by {@see ImipSenderVerifier}: the trusted receiving
  *   server's Authentication-Results when one is known, DKIM otherwise.
  */
@@ -165,6 +167,7 @@ class ImipMailboxPoller
             }
             $mailbox->last_uid = $uid;
         }
+        $this->cache->forget($this->deferKey($mailbox));
 
         return null;
     }
@@ -195,7 +198,7 @@ class ImipMailboxPoller
             $now,
         );
         if ($sender->retry) {
-            if (! $this->retryExpired($mailbox, $summary->uid, $now)) {
+            if (! $this->retryExpired($mailbox, $now)) {
                 Log::notice(self::LOG_DEFERRED, ['owner' => $owner, 'imap_uid' => $summary->uid]);
 
                 return false;
@@ -215,6 +218,9 @@ class ImipMailboxPoller
             }
             $raw = null;
         }
+        if ($raw === null) {
+            $this->senders->release($sender);
+        }
         $ics = $raw !== null ? MimePartDecoder::decode($raw, $part->encoding, $part->charset) : null;
         if ($ics === null || strlen($ics) > VObjectPayloadGuard::MAX_ICS_BYTES) {
             $this->logSkipped($owner, $summary->uid, ImipReplyIngest::INVALID_CALENDAR, $sender);
@@ -224,6 +230,7 @@ class ImipMailboxPoller
         try {
             $this->ingest->ingest($owner, $sender, $ics, $summary->uid);
         } catch (\Throwable $exception) {
+            $this->senders->release($sender);
             Log::error(self::LOG_FAILED, [
                 'owner' => $owner,
                 'imap_uid' => $summary->uid,
@@ -248,12 +255,16 @@ class ImipMailboxPoller
     }
 
     /**
-     * Whether a message deferred on a failed key lookup has waited long
-     * enough to be skipped. The first deferral starts the clock.
+     * Whether the mailbox has waited long enough on failed key lookups. One
+     * clock per mailbox, not per message: anyone can send a signed reply
+     * whose key lookup fails, so each such message must not wait for itself.
+     * The first deferral starts the clock; once it has run out, every
+     * deferred message is skipped at once. A poll that ends without a
+     * deferral clears it.
      */
-    private function retryExpired(CalendarReplyMailbox $mailbox, int $uid, int $now): bool
+    private function retryExpired(CalendarReplyMailbox $mailbox, int $now): bool
     {
-        $key = self::DEFER_PREFIX.hash('sha256', strtolower((string) $mailbox->username).'|'.(int) $mailbox->uidvalidity.'|'.$uid);
+        $key = $this->deferKey($mailbox);
         $first = $this->cache->get($key);
         if (! is_int($first)) {
             $this->cache->put($key, $now, self::DNS_RETRY_SECONDS * 2);
@@ -262,6 +273,11 @@ class ImipMailboxPoller
         }
 
         return $now - $first >= self::DNS_RETRY_SECONDS;
+    }
+
+    private function deferKey(CalendarReplyMailbox $mailbox): string
+    {
+        return self::DEFER_PREFIX.hash('sha256', strtolower((string) $mailbox->username).'|'.(int) $mailbox->uidvalidity);
     }
 
     /**

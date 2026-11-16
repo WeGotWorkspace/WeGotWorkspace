@@ -21,11 +21,15 @@ final readonly class ImipSenderCheck
         public string $reason,
         public string $check,
         public bool $retry = false,
+        public string $replayKey = '',
     ) {}
 
-    public static function verified(MailAddress $sender, string $check = self::RECEIVING_SERVER): self
+    /**
+     * @param  string  $replayKey  cache key that marks the DKIM signature as used; the poller releases it when the reply could not be handled
+     */
+    public static function verified(MailAddress $sender, string $check = self::RECEIVING_SERVER, string $replayKey = ''): self
     {
-        return new self($sender, '', $check);
+        return new self($sender, '', $check, false, $replayKey);
     }
 
     public static function refused(string $reason, string $check = self::RECEIVING_SERVER): self
