@@ -72,7 +72,7 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe("/settings/calendar");
     });
-    expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Calendar settings" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Teams" }));
     await waitFor(() => {
