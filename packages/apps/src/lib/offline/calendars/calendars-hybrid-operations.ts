@@ -468,7 +468,8 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   // stay. One window for the fetch and the writes, also across midnight.
   const window = calendarBootstrapWindow();
   const liveWindow = { window };
-  const subscriptions = listCalendarSubscriptionsLive().catch(() => []);
+  const listSubscriptions = () => listCalendarSubscriptionsLive().catch(() => []);
+  const subscriptions = readBrowserOnline() ? listSubscriptions() : undefined;
   let bootstrap = await fetchCalendarLiveBootstrap(window);
   const username = bootstrap.session.user.username;
   if (!username) {
@@ -481,7 +482,7 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
     // Only the read goes out with the bootstrap: refreshes still wait for the outbox flush.
-    const list = await subscriptions;
+    const list = await (subscriptions ?? listSubscriptions());
     const refreshed = await refreshStaleCalendarSubscriptionsLive(list).catch(() => false);
     if (refreshed) {
       bootstrap = await fetchCalendarLiveBootstrap(window);
