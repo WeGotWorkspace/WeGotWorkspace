@@ -12,10 +12,15 @@ export function findListScroller(node: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-/** The element whose children are the rows (and spacers): the swipe list on touch. */
+/**
+ * The element whose children are the rows (and spacers): the swipe list (its
+ * `SwipeableList` on touch) for `WorkspaceList`, else the list node itself (a
+ * table body, a grid).
+ */
 export function listRowsContainer(listNode: HTMLElement | null): HTMLElement | null {
   const outer = listNode?.querySelector<HTMLElement>(":scope > .workspace-swipe-list") ?? null;
-  return outer?.querySelector<HTMLElement>(":scope > .swipeable-list") ?? outer;
+  if (!outer) return listNode;
+  return outer.querySelector<HTMLElement>(":scope > .swipeable-list") ?? outer;
 }
 
 export type ListScrollPosition = {

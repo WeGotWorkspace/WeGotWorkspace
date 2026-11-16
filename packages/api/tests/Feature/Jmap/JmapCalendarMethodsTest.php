@@ -11,6 +11,7 @@ use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -207,6 +208,27 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertSame($eventId, $args['list'][0]['id']);
         $this->assertSame('Lookup', $args['list'][0]['title']);
         $this->assertSame(['missing-event'], $args['notFound']);
+    }
+
+    public function test_calendar_event_get_reads_calendar_access_once_however_many_ids_it_gets(): void
+    {
+        $ids = [];
+        for ($i = 0; $i < 5; $i++) {
+            $ids[] = $this->seedEventViaPdo('bob', 'many-'.$i.'.ics', $this->sampleIcs('Many '.$i));
+        }
+        $accessQueries = function (array $ids): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->jmap([['CalendarEvent/get', ['accountId' => 'bob', 'ids' => $ids], 'c0']])
+                ->assertOk()->assertJsonCount(count($ids), 'methodResponses.0.1.list');
+
+            return count(array_filter(DB::getQueryLog(), fn (array $query): bool => str_contains($query['query'], 'calendarinstances')));
+        };
+
+        // The first request also provisions bob's collections.
+        $accessQueries($ids);
+
+        $this->assertSame($accessQueries([$ids[0]]), $accessQueries($ids));
     }
 
     public function test_calendar_event_get_projects_properties(): void

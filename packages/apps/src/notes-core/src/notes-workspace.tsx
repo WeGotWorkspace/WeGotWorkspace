@@ -1,6 +1,5 @@
 import { Eye, StickyNote } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
-import "react-swipeable-list/dist/styles.css";
 import {
   useCallback,
   useMemo,
