@@ -51,7 +51,8 @@ See spec.md, Non-goals.
   - Views filter one cross-list task set (`list:` is a filter, not a fetch). `path: packages/apps/src/tasks-core/src/tasks-task-utils.ts:203`
 - **No assignee UI exists.** The client's offline merge does **not** merge `participants` the way the server does. `applyTaskPatch` and `coalesceTaskPatches` replace the map whole, and only `alerts` merge per id. Two offline assigns would therefore coalesce into the last one. `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:9`, `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:32`
 - **The task body for a move or replace copies `participants` as they are.** `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:59`
-- **Cross-list views drop lists hidden in the sidebar, except on a list view.** `path: packages/apps/src/tasks-core/src/tasks-task-utils.test.ts:115`
+- **Rescuing a parked task posts it anew with that body.** A failed create parks it again, so a rejected rescue fails on every retry. `path: packages/apps/src/lib/offline/tasks/tasks-parked-writes.ts:34`, `path: packages/apps/src/lib/offline/core/rescue-parked-writes.ts:78`
+- **Cross-list views drop lists hidden in the sidebar, except on a list view.** `path: packages/apps/src/tasks-core/src/tasks-task-utils.test.ts:138`
 - **A move is a write with a target list through the same rewrite path as an edit.** `path: packages/api/app/Services/Tasks/TaskRepository.php:245`, `path: packages/api/app/Services/Tasks/TaskRepository.php:349`
 - **The principal search used by share dialogs searches colleagues, not a list audience.** `path: packages/apps/src/lib/models/tasks-types.ts:63`, `path: packages/apps/src/share-ui/share-principal-search-dropdown.tsx`
 - **Apple Reminders keeps unknown properties on edit.** `path: packages/api/tests/Feature/Tasks/TaskInPlaceUpdateTest.php:34` (`test_title_edit_keeps_everything_else_reminders_wrote`)
@@ -93,6 +94,7 @@ See spec.md, Non-goals.
 - **A CalDAV write that fails or is not allowed produces no change set, no notification and no row.** A wrong change would leak a notification for a write that never happened, or read a document before authorization. Proof: `path: packages/api/tests/Feature/Tasks/TaskChangeObserverPluginTest.php` assertion `test_forbidden_caldav_put_on_read_only_list_notifies_nobody` (new in chunk B).
 - **The members endpoint never lists people to someone who cannot see the list.** A wrong change would let anyone enumerate a Team's members by list id. Proof: `path: packages/api/tests/Feature/Tasks/TaskListMembersTest.php` assertion `test_members_of_unknown_or_hidden_list_is_404` (new in chunk A).
 - **Only attendees a write adds are validated.** A full `PUT` that resends a stored `e:` attendee, a move to a list where an assignee has no access, and an edit of a task whose assignee lost access all succeed. A wrong change would make tasks with native-client attendees or former members impossible to edit or move. Proof: `path: packages/api/tests/Feature/Tasks/TaskAssigneeValidationTest.php` assertions `test_put_resending_an_existing_external_attendee_succeeds`, `test_move_keeps_assignees_without_access_in_the_target_list`, `test_adding_a_reader_or_outsider_is_422` (new in chunk A).
+- **Rescuing a parked task never fails on its attendees.** A wrong change would park a task forever after its owner left the Team. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-parked-writes.test.ts` assertion `rescue drops assignees the target list cannot hold` (new in chunk C), and `path: packages/api/tests/Feature/Tasks/TaskAssigneeValidationTest.php` assertion `test_create_with_external_attendee_succeeds` (new in chunk A).
 - **Offline assigns and unassigns merge per person.** Two queued assigns keep both people, and an unassign removes only that person, in the queue and in the optimistic task. A wrong change would silently drop an assignee. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.test.ts` assertion `coalesces participants per id like alerts` (new in chunk C).
 - **After chunk A, main still works without B to E.** Existing tasks with attendees still read (now with `u:`/`e:` ids) and accept edits of other fields. Proof: `cmd: composer --working-dir packages/api test -- --filter 'Tasks|TaskRoundTrip|TaskInPlace'`.
 - **After chunk B, CalDAV writes still succeed when the observer throws.** Proof: `path: packages/api/tests/Feature/Tasks/TaskChangeObserverPluginTest.php` assertion `test_observer_exception_does_not_fail_the_put` (new in chunk B).
@@ -116,6 +118,8 @@ See spec.md, Non-goals.
   - REST and MCP reject a **newly added** assignee outside the target list's audience, or with read access only, with 422 `invalid_participant`. The added set is the merged result minus the stored task.
   - A move keeps assignees who lack access in the target list (200).
   - A full `PUT` that resends an existing `e:` attendee returns 200.
+  - A REST create with an `e:` attendee whose address no account has returns 201. An `e:` id whose email belongs to a user is checked as that user.
+  - For `u:` attendees the server writes `mailto:` and `CN` from the principal, whatever the payload says.
   - A patch with a positional `attN` key returns 422 `stale_participant_id`.
   - The members endpoint answers writers only (read-only callers get 403) and filters its list by the caller's Teams (#1915).
   - The invariant tests above pass.
@@ -149,6 +153,7 @@ See spec.md, Non-goals.
   - An Assignees row with a picker limited to the audience, read-only people disabled, keyboard reachable and announced.
   - Avatars on list rows with "+N" and names on hover.
   - The audience is cached per list for offline use.
+  - `rescueBody` drops `u:` attendees outside the target list's cached audience with write access, keeps only the person's own `u:` entry when nothing is cached, and keeps `e:` attendees. Vitest on `tasksRescueOperations`: rescuing a parked task that has a `u:` assignee without access to the target list and an `e:` attendee creates the task, with the `e:` attendee kept.
   - `applyTaskPatch` and `coalesceTaskPatches` merge `participants` per id, where a `null` entry removes one, the same as `alerts`. Vitest covers two queued assigns, an assign then an unassign, and the optimistic task.
   - Mock API, Storybook stories (empty, three assignees, no-access assignee, offline) and Vitest.
 - **Verify with:** `pnpm test:apps-done-gate`

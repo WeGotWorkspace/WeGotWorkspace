@@ -80,8 +80,11 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 
 ### Validation
 
-- The server checks only the attendee ids that **this write adds**. That set is the participant ids with role `attendee` in the merged result, minus those in the stored task before the write.
-- Each added id must be a `u:` id whose user is in the audience of the **target** list (the list the task is in after the write, so a move is checked against the new list) with write access. Otherwise the write fails with 422 `invalid_participant`, naming the id.
+- The server checks only the attendee ids that **this write adds**. That set is the participant ids with role `attendee` in the merged result, minus those in the stored task before the write. On a create there is no stored task, so every attendee counts as added.
+- An added attendee is a **user** when its id is `u:<username>`, or its email matches a user's email (that is how a read would show it). Each added user must be in the audience of the **target** list with write access. The target is the list the task is in after the write, so a move is checked against the new list. Otherwise the write fails with 422 `invalid_participant`, naming the id.
+- An added attendee that is **not a user** (`e:<email>` for an address no account has) passes, on creates and edits alike. This keeps today's behaviour for API callers and native-client data. Such an attendee is never notified. The web app's picker offers no way to add one.
+- For a user, the server writes the `mailto:` and the `CN` from the user's own principal (email and display name). It ignores any email or name in the payload, so a caller cannot send `u:alice` with someone else's address.
+- **Rescue of parked writes** (`rescueBody` in `tasks-parked-writes.ts`) creates a task anew in another list, often after the person lost access to the old one. Before posting, it drops every `u:` attendee who is not in the target list's audience with write access, using the audience cache from chunk C. When there is no cached audience for the target, it keeps only the person's own `u:` entry. `e:` attendees are kept. The rescue create therefore never hits `invalid_participant`, and a task with a Thunderbird attendee is still rescued.
 - Attendees the task already has pass through unchecked, whatever they are:
   - `e:` attendees from native clients;
   - people who lost access;
@@ -101,6 +104,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - The resolver is per request and is not cached across requests. Team membership changes must show on the next call.
 - `GET /api/v1/tasks/tasklists/{id}/members`:
   - It answers only a caller with **write** access to the list, the only people who can assign. A caller who cannot see the list gets 404, the same as an unknown list. A read-only caller gets 403. Assignee names on a task come from the task's own participants, so readers do not need this endpoint.
+  - The picker list is deliberately narrower than validation, which accepts the whole audience with write access. The API therefore still accepts an assignee the picker hides (another client may add them), and implementers should not "fix" that mismatch.
   - It returns the audience **filtered to people the caller may see** under the Teams rule (#1915): `TeamColleagues::sharesTeamIgnoringAdminRole`, plus the caller and the list owner. Without this filter, a person sharee who is not in the owning Team would get the names and emails of Team members they share no Team with. That is the "DM rail and share dialogs" row of the surface table in `TeamColleagues`, not the attendee-picker row.
   - It never lists people outside the audience. Admins get no wider list here. The "finds everyone" rule (#1915) applies to invite pickers, not to assignees.
 
