@@ -1,4 +1,4 @@
-Source: #2208 (body-hash: 39306dda)
+Source: #2208 (body-hash: 639e86b2)
 Goal: WeGotWorkspace/Product#151
 
 # Live co-editing of a task's title and description
