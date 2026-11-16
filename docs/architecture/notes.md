@@ -106,9 +106,9 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 
 ## Decision 7 — Collab is a session
 
-**Decision:** Live collab stays TipTap + Yjs mesh while WGW clients are in the room. Room key = `UID` = REST `noteId`. Persist = `PATCH /notes/items/{uid}` + `If-Match`. No server Yjs sidecar. No path-keyed rooms.
+**Decision:** Live collab stays TipTap + Yjs mesh while WGW clients are in the room. Room key = `UID` = REST `noteId`. Persist = the collab save `PUT /notes/items/{uid}` + `If-Match`, which writes `DESCRIPTION` and `SUMMARY` and stores the last saved Yjs state (`note_yjs_state`) beside the note. No server Yjs process: the server never runs a document, it only stores the state the clients save. No path-keyed rooms.
 
-**Why:** The document of record is VJOURNAL `DESCRIPTION`, not a `.yjs` file.
+**Why:** The document of record is VJOURNAL `DESCRIPTION`, not a `.yjs` file. The stored state only lets a client that joins later continue the same document instead of seeding a new one.
 
 **Who picks the UID:** The app does, when the note is made (a UUID). The note keeps that id from the first keystroke, so an offline create needs no temporary id and no remap. `POST /notes/items` uses a `uid` only when it is a UUID; anything else is ignored and the server mints one. A UID of a note the caller can see is a 409. A UID that only notes out of the caller's reach use is replaced by a fresh one, like a non-UUID value, so the answer never depends on notes the caller cannot see; the response `id` is authoritative and UIDs stay unique across every VJOURNAL. A repeated create with the same `uid` by the same caller returns the existing note (200), so a retry or a second tab never makes a second note.
 
