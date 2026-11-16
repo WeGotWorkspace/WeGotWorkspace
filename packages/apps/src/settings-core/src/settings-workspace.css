@@ -76,6 +76,15 @@
   border-radius: 0;
 }
 
+/* Profile: a read-only value with its Change button (email, password). */
+.settings-workspace .settings-profile-pane__control {
+  @apply flex w-full min-w-0 items-center gap-2;
+}
+
+.settings-workspace .settings-profile-pane__control > .input {
+  @apply min-w-0 flex-1;
+}
+
 /* Teams: a row per Team (icon tile, name, member count), hairlines as the settings rows. */
 .settings-workspace .settings-team-list {
   @apply m-0 list-none p-0;
@@ -211,9 +220,4 @@
 
 .ui-modal-surface.settings-workspace .settings-pane-card + .settings-pane-card {
   margin-top: 1.5rem;
-}
-
-/* Offline → max file size: a short number, not a full-width field. */
-.settings-workspace .settings-offline-pane__size {
-  width: 5rem;
 }

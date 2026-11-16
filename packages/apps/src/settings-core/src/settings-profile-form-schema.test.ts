@@ -1,112 +1,79 @@
 import { describe, expect, it } from "vitest";
 import {
-  settingsProfileFormSchema,
-  settingsProfileFormSchemaFor,
-  settingsProfileFormToRequest,
+  settingsDisplayNameFormSchema,
+  settingsDisplayNameRequest,
+  settingsEmailFormSchemaFor,
+  settingsEmailRequest,
+  settingsPasswordFormSchema,
+  settingsPasswordRequest,
 } from "@/settings-core/src/settings-profile-form-schema";
 
-describe("settingsProfileFormToRequest", () => {
-  it("maps identity fields to OpenAPI SettingsProfileRequest", () => {
-    expect(
-      settingsProfileFormToRequest({
-        displayName: "Jane Doe",
-        email: "jane@example.com",
-        newPassword: "",
-        confirmPassword: "",
-        currentPassword: "",
-      }),
-    ).toEqual({
+describe("settings profile requests", () => {
+  it("sends only the display name for the display name form", () => {
+    expect(settingsDisplayNameRequest({ displayName: "  Jane Doe " })).toEqual({
       displayName: "Jane Doe",
-      email: "jane@example.com",
     });
   });
 
-  it("includes password and current password when set", () => {
+  it("sends the email with the current password", () => {
     expect(
-      settingsProfileFormToRequest({
-        displayName: "Jane Doe",
-        email: "jane@example.com",
-        newPassword: "newpassword",
-        confirmPassword: "newpassword",
-        currentPassword: "secret",
-      }),
-    ).toEqual({
-      displayName: "Jane Doe",
-      email: "jane@example.com",
-      password: "newpassword",
+      settingsEmailRequest({ email: " jane@example.com ", currentPassword: "secret" }),
+    ).toEqual({ email: "jane@example.com", currentPassword: "secret" });
+  });
+
+  it("sends the password with the current password", () => {
+    expect(
+      settingsPasswordRequest({ newPassword: "newpassword", currentPassword: "secret" }),
+    ).toEqual({ password: "newpassword", currentPassword: "secret" });
+  });
+});
+
+describe("settings profile schemas", () => {
+  it("requires a display name", () => {
+    expect(settingsDisplayNameFormSchema.safeParse({ displayName: "  " }).success).toBe(false);
+  });
+
+  it("rejects an invalid email", () => {
+    const result = settingsEmailFormSchemaFor("jane@example.com").safeParse({
+      email: "not-an-email",
       currentPassword: "secret",
     });
-  });
-
-  it("omits an unchanged email when a baseline is provided", () => {
-    expect(
-      settingsProfileFormToRequest(
-        {
-          displayName: "Jane Doe",
-          email: "jane@example.com",
-          newPassword: "",
-          confirmPassword: "",
-          currentPassword: "",
-        },
-        "jane@example.com",
-      ),
-    ).toEqual({
-      displayName: "Jane Doe",
-    });
-  });
-
-  it("omits password when blank", () => {
-    const result = settingsProfileFormToRequest({
-      displayName: "Jane Doe",
-      email: "jane@example.com",
-      newPassword: "   ",
-      confirmPassword: "",
-      currentPassword: "",
-    });
-    expect(result).not.toHaveProperty("password");
-  });
-
-  it("rejects invalid email in the form schema before mapping", () => {
-    const result = settingsProfileFormSchema.safeParse({
-      displayName: "Jane",
-      email: "not-an-email",
-      newPassword: "",
-      confirmPassword: "",
-      currentPassword: "",
-    });
     expect(result.success).toBe(false);
   });
 
-  it("requires the current password when the email changes", () => {
-    const result = settingsProfileFormSchemaFor("jane@example.com").safeParse({
-      displayName: "Jane Doe",
+  it("rejects the email the user already has", () => {
+    const result = settingsEmailFormSchemaFor("jane@example.com").safeParse({
+      email: "JANE@example.com",
+      currentPassword: "secret",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("This is already your email");
+  });
+
+  it("requires the current password to change the email", () => {
+    const result = settingsEmailFormSchemaFor("jane@example.com").safeParse({
       email: "other@example.com",
-      newPassword: "",
-      confirmPassword: "",
       currentPassword: "",
     });
     expect(result.success).toBe(false);
   });
 
-  it("requires the current password when a new password is set", () => {
-    const values = {
-      displayName: "Jane Doe",
-      email: "jane@example.com",
+  it("requires the current password to change the password", () => {
+    const result = settingsPasswordFormSchema.safeParse({
       newPassword: "newpassword",
-      confirmPassword: "newpassword",
-      currentPassword: "",
-    };
-    expect(settingsProfileFormSchema.safeParse(values).success).toBe(false);
-  });
-
-  it("returns only OpenAPI SettingsProfileRequest fields", () => {
-    const result = settingsProfileFormToRequest({
-      displayName: "Jane Doe",
-      email: "jane@example.com",
-      newPassword: "",
-      confirmPassword: "",
       currentPassword: "",
     });
-    expect(Object.keys(result).sort()).toEqual(["displayName", "email"]);
+    expect(result.success).toBe(false);
+  });
+
+  it("holds a new password to the API's 10 characters", () => {
+    expect(
+      settingsPasswordFormSchema.safeParse({ newPassword: "short1234", currentPassword: "x" })
+        .success,
+    ).toBe(false);
+    expect(
+      settingsPasswordFormSchema.safeParse({ newPassword: "longenough", currentPassword: "x" })
+        .success,
+    ).toBe(true);
   });
 });

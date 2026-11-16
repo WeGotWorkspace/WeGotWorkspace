@@ -1,23 +1,9 @@
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import type { SettingsGroup } from "@/lib/models/settings-types";
-import type { SettingsProfileFormValues } from "@/settings-core/src/settings-profile-form-schema";
+import type { SettingsGroup, SettingsUser } from "@/lib/models/settings-types";
 
-export function getProfileFormDefaults(
-  overrides: Partial<SettingsProfileFormValues> = {},
-): SettingsProfileFormValues {
-  const { data } = createSettingsAppBootstrap();
-  return {
-    displayName: data.user.displayName,
-    email: data.user.email,
-    newPassword: "",
-    confirmPassword: "",
-    currentPassword: "",
-    ...overrides,
-  };
-}
-
-export function getProfileStoryUsername(): string {
-  return createSettingsAppBootstrap().data.user.username;
+/** The signed-in user the Profile stories show. */
+export function getProfileStoryUser(): SettingsUser {
+  return createSettingsAppBootstrap().data.user;
 }
 
 export function createMockGroups(overrides?: SettingsGroup[]): SettingsGroup[] {

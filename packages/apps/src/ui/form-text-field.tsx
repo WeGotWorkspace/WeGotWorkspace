@@ -62,18 +62,21 @@ export function FormTextField<TFieldValues extends FieldValues>({
             className={itemClassName}
             labelClassName={cn(fieldState.error && "text-destructive", labelClassName)}
           >
-            <Input
-              {...inputProps}
-              {...field}
-              id={inputId}
-              aria-invalid={Boolean(fieldState.error)}
-              aria-describedby={fieldState.error ? messageId : undefined}
-            />
-            {fieldState.error?.message ? (
-              <p id={messageId} className="text-[0.8rem] font-medium text-destructive">
-                {fieldState.error.message}
-              </p>
-            ) : null}
+            {/* Input and message stack: the message sits under the field, not beside it. */}
+            <div className="flex w-full min-w-0 flex-col gap-1.5">
+              <Input
+                {...inputProps}
+                {...field}
+                id={inputId}
+                aria-invalid={Boolean(fieldState.error)}
+                aria-describedby={fieldState.error ? messageId : undefined}
+              />
+              {fieldState.error?.message ? (
+                <p id={messageId} className="m-0 text-[0.8rem] font-medium text-destructive">
+                  {fieldState.error.message}
+                </p>
+              ) : null}
+            </div>
           </FieldLabelRow>
         )}
       />
