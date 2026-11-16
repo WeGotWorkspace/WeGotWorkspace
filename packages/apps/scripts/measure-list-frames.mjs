@@ -10,7 +10,8 @@
  * Usage (against a production build: `vite build && vite preview`, live API):
  *   node scripts/measure-list-frames.mjs --app notes --base-url http://127.0.0.1:4461 \
  *     --api-url http://127.0.0.1:9461 [--scenario all|open|scroll|keys|…] [--runs 3] [--cpu 4]
- *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search).
+ *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search),
+ *   drive (open, scroll, keys, rename, search; `--drive-view grid|list`, `--drive-path "My Drive/…"`).
  *
  * Each run uses a fresh browser context (no cache, no IndexedDB): a cold first visit.
  * Scenarios find rows by position on screen, never by DOM index, so the numbers
@@ -35,6 +36,8 @@ const { values } = parseArgs({
     username: { type: "string", default: process.env.WGW_E2E_USERNAME ?? "admin" },
     password: { type: "string", default: process.env.WGW_E2E_PASSWORD ?? "storybook-dev" },
     json: { type: "boolean", default: false },
+    "drive-view": { type: "string", default: "list" },
+    "drive-path": { type: "string", default: "My Drive/List bench" },
   },
 });
 
@@ -159,6 +162,88 @@ async function arrowDownThrough(page) {
 }
 
 const APPS = {
+  drive: {
+    get path() {
+      return `/drive?path=${encodeURIComponent(values["drive-path"])}`;
+    },
+    // An arrow function: Playwright serializes it into the page as written.
+    init: (viewMode) => {
+      localStorage.setItem("wgw.ui.drive.viewMode", viewMode);
+    },
+    get initArg() {
+      return values["drive-view"];
+    },
+    async ready(page) {
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      await page.getByText("Loading folder…").waitFor({ state: "detached", timeout: 60_000 });
+    },
+    scenarios: {
+      /** Cold open of a large folder: from navigation until the items have painted. */
+      async open(page) {
+        await APPS.drive.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /** Scroll the whole folder in 20 steps. */
+      async scroll(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        return scrollThrough(page);
+      },
+      /** Select an item, then ArrowDown 30 times: the selection follows. */
+      async keys(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
+      },
+      /**
+       * Rename an item near the top with F2: the folder re-renders with the new name
+       * in place. Toggles between two names, so runs never depend on whether the
+       * last run's write reached the server before its browser closed.
+       */
+      async rename(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        const names = ["File 0002", "File 0002 renamed"];
+        const itemNamed = (name) =>
+          page
+            .locator(ROW_SELECTOR)
+            .filter({ has: page.getByText(`${name}.csv`, { exact: true }) });
+        const fromIndex = (await itemNamed(names[0]).count()) ? 0 : 1;
+        const item = itemNamed(names[fromIndex]).first();
+        // F2 renames the focused item. Focus it rather than click: near the top it
+        // sits under the sticky heading, which would take the click.
+        const hit = item.locator(".drive-tile__hit");
+        await ((await hit.count()) ? hit : item).focus();
+        const start = await now(page);
+        await page.keyboard.press("F2");
+        await page
+          .getByRole("dialog")
+          .getByRole("textbox")
+          .first()
+          .fill(names[1 - fromIndex]);
+        await page.keyboard.press("Enter");
+        await page.getByRole("dialog").waitFor({ state: "detached", timeout: 15_000 });
+        await itemNamed(names[1 - fromIndex])
+          .first()
+          .waitFor({ timeout: 15_000 });
+        return { start, interactions: 1 };
+      },
+      /** Type a search one letter at a time, then clear it. */
+      async search(page) {
+        await APPS.drive.ready(page);
+        await page.waitForTimeout(1500);
+        const search = page.getByPlaceholder("Search in Drive...");
+        await search.click();
+        const start = await now(page);
+        await search.pressSequentially("fil", { delay: KEY_DELAY_MS * 3 });
+        for (let i = 0; i < 3; i += 1) {
+          await page.keyboard.press("Backspace");
+          await page.waitForTimeout(KEY_DELAY_MS * 3);
+        }
+        return { start, interactions: 6 };
+      },
+    },
+  },
   contacts: {
     path: "/contacts",
     async ready(page) {
@@ -256,6 +341,7 @@ async function runOnce(browser, app, scenarioName, accessToken) {
       localStorage.setItem("wgw.api.session_kind", "member");
     }
   }, accessToken);
+  if (app.init) await context.addInitScript(app.init, app.initArg);
   const page = await context.newPage();
   const cpu = Number(values.cpu);
   if (cpu > 1) {

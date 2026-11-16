@@ -45,7 +45,7 @@ Users see no change. The only goal is speed with about 1000 items, and fewer cop
 - `renderItem` runs only for mounted rows. Work that a row does (excerpt, date label, lookups) runs only for the rows on screen.
 - A row component is memoized with the shared comparison: `memo(Row, workspaceListRowPropsEqual)`. The comparison is shallow over the row's own props and ignores the props that `react-swipeable-list`'s `SwipeableList` injects into every child on touch, on every render: `actionDelay`, `destructiveCallbackDelay`, `fullSwipe`, `listType`, `optOutMouseEvents`, `scrollStartThreshold`, `swipeStartThreshold`, `threshold`, `clickedCallback`, `id`, `resetState`. The list is in the `SwipeableList` render in `react-swipeable-list@1.10.0` (`dist/react-swipeable-list.esm.js`, `SwipeableList.render`).
 - Each row renders exactly one root element: a `ListItem` button or frame, a swipeable item on touch, or a table row. The window measures rows by their order among the root children (and the children of section elements, below).
-- Grouped lists (Contacts' letter sections, Drive's Folders/Files, Chat's days) pass `isHeader(item)`. A header row is kept mounted while any row of its section is mounted, so a sticky header stays visible. A list whose sections are their own elements also passes `renderSection(header, content)`: each run that starts at a mounted header is wrapped in that element (Contacts' `<section aria-labelledby>`), so a sticky header sticks for exactly its own section and the next header pushes it out, as without windowing. A sticky header reports where it is stuck, so its size is measured from its section's top. A grid passes rows of tiles as items; the binding chunks tiles by the column count it reads from its own container.
+- Grouped lists (Contacts' letter sections, Drive's Folders/Files, Chat's days) pass `isHeader(item)`. A header row is kept mounted while any row of its section is mounted, so a sticky header stays visible. A list whose sections are their own elements also passes `renderSection(header, content)`: each run that starts at a mounted header is wrapped in that element (Contacts' `<section aria-labelledby>`), so a sticky header sticks for exactly its own section and the next header pushes it out, as without windowing. A sticky header reports where it is stuck, so its size is measured from its section's top. A grid passes rows of tiles as items: above 80 tiles the Drive grid chunks each section into rows, every row its own grid with the same auto-fill tracks, so the columns line up as in one grid. The column count is the track count of a rendered row, read again when the grid's width changes. Smaller grids stay one grid per section. A tile's focus or drag keeps its row mounted through `keyOfItemId`.
 
 ## Windowing
 
@@ -57,11 +57,12 @@ Users see no change. The only goal is speed with about 1000 items, and fewer cop
 - Where the browser has no scroll anchoring (`CSS.supports("overflow-anchor", "auto")` is false, e.g. Safari), the list corrects `scrollTop` itself when a row above the viewport changes size.
 - **Pinned rows** stay mounted even outside the window, each at its true offset (a spacer on each side):
   - the active row (`activeId`): the open item, the keyboard cursor and its `scrollIntoView`/`focus()` in `useListKeyboardNavigation` keep finding it;
-  - the row that holds focus: scrolling away does not drop focus to `<body>`;
+  - the row that holds focus, and its neighbours: scrolling away does not drop focus to `<body>`, and a step to the next row in the DOM lands on the next item;
   - the row being dragged: HTML5 `dragend` fires on the source element, so it must not unmount mid-drag;
   - the header of the first mounted section, and the header of every pinned row's section (see above).
 - The window reads the scroll container as the nearest scrolling ancestor and the list's own offset inside it, so a quick-add field or padding above the rows does not shift the window.
 - When the viewport has no height yet (hidden pane, jsdom), the first 24 rows render, as Contacts does today.
+- A container other than the swipe list (Drive's table body and grid) uses the headless `useWorkspaceListRows` hook that `WorkspaceList` wraps: it returns the rows and spacers and an `attachList` ref for the element whose children they are. `renderSpacer` replaces the default spacer `div` (a table passes a spacer row spanning every column, opted out of scroll anchoring like the default one, and shorter by the table's `border-spacing`). `windowAfter` changes the 80-item threshold (the grid windows above 80 tiles, not 80 rows). `animateReorder: false` leaves the FLIP animation off, as Drive had none.
 - `revealActive` (Contacts): a newly active row is scrolled into view once. A row within the overscan scrolls the least it needs; a far one lands at the top, as Contacts did. Scrolling the list later never pulls it back. Notes and the other lists leave it off: they already scroll on keyboard moves, and do not move the list when a note opens from a link.
 
 ## Keyboard, selection, swipe, drag
@@ -75,9 +76,9 @@ None of these move into the component. They already work from ids, not DOM order
 
 Known DOM-wide reads that windowing affects, handled per binding:
 
-- `list-item-focus.ts` `adjacentListItem` walks the DOM. Only the Drive folder picker uses it, and that list is not windowed.
+- `list-item-focus.ts` `adjacentListItem` walks the DOM. Only the Drive folder picker uses it, and its `DriveListView` windows above 80 items. The window keeps the focused row's neighbours mounted too, so the next row in the DOM is always the next item, even after the list scrolled away from the focused row.
 - `refocusListAfterNavigation` looks for the item with `tabindex="0"`. A roving-focus row is the active or first row, and both are mounted (pinned, or at the top).
-- e2e helpers that read every row title: `e2e/helpers/tasks-matrix.ts` `shownTitles`, and Drive's `drive-inbound-many-files.spec.ts`. They move to searching or scrolling in the Tasks and Drive PRs.
+- e2e helpers that read every row title: `e2e/helpers/tasks-matrix.ts` `shownTitles`, and Drive's `drive-inbound-many-files.spec.ts`. They move to searching or scrolling in the Tasks and Drive PRs. Drive's names that must be gone sort to the top, next to an item the spec checks is visible, so they would be mounted if they existed.
 
 ## One place to measure
 

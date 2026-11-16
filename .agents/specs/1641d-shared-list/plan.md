@@ -122,12 +122,12 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/drive-core/src/drive-browser.tsx:419`
 - **Done when:**
-  - The list view windows table rows with spacer rows, keeping the hairlines and the roving `tabindex` row mounted.
-  - The grid windows rows of tiles per section; the column count comes from the container width.
-  - Rows and tiles are memoized.
-  - Previews still load only for tiles in view.
-  - The measurement covers open folder, rename and search at 500 files.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/drive-core`, `e2e/drive-inbound-many-files.spec.ts`, the measurement script
+  - The list view windows table rows with spacer rows, keeping the hairlines and the roving `tabindex` row mounted. `DriveListView` binds through the headless `useWorkspaceListRows`; the folder picker and Docs home get it through their reuse.
+  - The grid windows rows of tiles per section above 80 tiles; the column count is a rendered row's track count, read again on resize.
+  - Previews still load only for tiles in view, and the preview observer lets go of tiles that unmount.
+  - Items sit at the same pixel positions as on `main` at any scroll depth, in both views.
+  - The measurement covers open, scroll, keys, rename and search on a folder of 1000 files and 20 folders, in both views.
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/drive-core`, `e2e/drive-inbound-many-files.spec.ts`, `e2e/drive-list-windowed.spec.ts`, the measurement script
 - **Parallel with:** none
 
 ### Chunk E: Docs home
