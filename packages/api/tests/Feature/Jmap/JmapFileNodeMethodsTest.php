@@ -437,6 +437,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
             DB::connection('wgw')->enableQueryLog();
             $this->jmap([
                 ['FileNode/query', ['accountId' => 'bob', 'filter' => ['parentId' => $this->nodeIdByName($nodes, $name)]], 'c0'],
+                ['FileNode/get', ['accountId' => 'bob', '#ids' => ['resultOf' => 'c0', 'name' => 'FileNode/query', 'path' => '/ids']], 'c1'],
             ])->assertOk();
 
             return count(DB::connection('wgw')->getQueryLog());

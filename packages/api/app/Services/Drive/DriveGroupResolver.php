@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
-use App\Services\Teams\TeamMembershipReader;
+use App\Services\Teams\TeamColleagues;
 
 final class DriveGroupResolver
 {
     public function __construct(
-        private readonly TeamMembershipReader $membership,
+        private readonly TeamColleagues $colleagues,
     ) {}
 
     /**
@@ -19,6 +19,6 @@ final class DriveGroupResolver
      */
     public function allowedGroupSlugs(string $username): array
     {
-        return array_column($this->membership->teamsOf($username), 'slug');
+        return $this->colleagues->teamSlugsOf($username);
     }
 }

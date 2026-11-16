@@ -109,7 +109,7 @@ final class FolderZipWalker
      */
     private function children(JmapFileNode $dir, string $path, array $principal): \Generator
     {
-        $this->index->reconcileDirectory((string) $dir->storage_key);
+        $this->index->reconcileDirectory($dir);
         $used = [];
         $children = JmapFileNode::query()
             ->where('parent_node_id', (string) $dir->node_id)

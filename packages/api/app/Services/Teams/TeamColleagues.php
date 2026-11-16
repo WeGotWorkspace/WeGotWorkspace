@@ -175,7 +175,7 @@ final class TeamColleagues
     /**
      * @return list<string>
      */
-    private function teamSlugsOf(string $viewer): array
+    public function teamSlugsOf(string $viewer): array
     {
         $viewer = TeamMembershipReader::normalise($viewer);
 

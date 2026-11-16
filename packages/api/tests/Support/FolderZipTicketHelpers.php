@@ -61,7 +61,11 @@ trait FolderZipTicketHelpers
 
     protected function reconcile(string $dirKey): void
     {
-        app(FileNodeIndexService::class)->reconcileDirectory($dirKey);
+        $index = app(FileNodeIndexService::class);
+        $dir = $index->liveByKey($dirKey);
+        if ($dir !== null) {
+            $index->reconcileDirectory($dir);
+        }
     }
 
     protected function reconcileTree(string $dirKey): void
