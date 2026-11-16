@@ -19,16 +19,18 @@ final class MeetRoomLimitsTest extends WgwDatabaseTestCase
         $this->setUpMeetFixtures();
     }
 
-    public function test_fifth_peer_join_returns_room_full(): void
+    public function test_seventh_peer_join_returns_room_full(): void
     {
         $this->guestJoin('peer-one', 'One');
         $this->guestJoin('peer-two', 'Two');
         $this->guestJoin('peer-three', 'Three');
         $this->guestJoin('peer-four', 'Four');
+        $this->guestJoin('peer-five', 'Five');
+        $this->guestJoin('peer-six', 'Six');
 
         $this->postJson($this->meetRoomPath('/participants'), [
-            'peerId' => 'peer-five',
-            'name' => 'Five',
+            'peerId' => 'peer-seven',
+            'name' => 'Seven',
         ])
             ->assertStatus(409)
             ->assertExactJson(['error' => 'room_full', 'code' => 'room_full']);
