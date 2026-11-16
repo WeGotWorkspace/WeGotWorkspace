@@ -68,15 +68,22 @@ function browser() {
   const hubs: JmapPushHub[] = [];
   const tab = (
     tabId: string,
-    opts: { visible?: boolean; wakeTransports?: () => PushTransport[]; noLocks?: boolean } = {},
+    opts: {
+      visible?: boolean;
+      inCall?: boolean;
+      wakeTransports?: () => PushTransport[];
+      noLocks?: boolean;
+    } = {},
   ) => {
     const view = visibility(opts.visible ?? true);
+    const call = visibility(opts.inCall ?? false);
     const focus = windowFocus();
     const hub = new JmapPushHub({
       tabId,
       topic: bus.topic(),
       locks: opts.noLocks ? null : locks.client(tabId),
       visibility: view,
+      awake: { awake: call.visible, subscribe: call.subscribe },
       focus,
       createEventSource: (ctx) => {
         const stream: FakeEventSource = {
@@ -101,7 +108,7 @@ function browser() {
       wakeTransports: opts.wakeTransports,
     });
     hubs.push(hub);
-    return { hub, view, focus };
+    return { hub, view, call, focus };
   };
   const live = () => streams.filter((stream) => !stream.stopped);
   return { locks, bus, streams, live, tab, hubs };
@@ -326,6 +333,69 @@ describe("JmapPushHub", () => {
       c.view.set(false);
       await settle();
       expect(await stream.ctx.everyTabHidden()).toBe(true);
+    });
+
+    // A hidden tab in a live Meet call local-acks, so it must hear a new inbox
+    // row within the 20 s grace, not on the 30 s hidden pace (#2129).
+    it("does not report every tab hidden while a hidden tab is in a Meet call", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false, inCall: true });
+      cleanup.push(a.hub.subscribe(["Notification"], vi.fn()));
+      await settle();
+      const stream = b.live()[0]!;
+      expect(await stream.ctx.everyTabHidden()).toBe(false);
+      a.call.set(false);
+      await settle();
+      expect(await stream.ctx.everyTabHidden()).toBe(true);
+      a.call.set(true);
+      await settle();
+      expect(await stream.ctx.everyTabHidden()).toBe(false);
+    });
+
+    it("a hidden tab that joins a Meet call wakes the leader", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      cleanup.push(a.hub.subscribe(["Notification"], vi.fn()));
+      await settle();
+      a.call.set(true);
+      await settle();
+      expect(b.live()[0]!.reconnectNow).toHaveBeenCalledWith("awake");
+    });
+
+    it("a hidden leader hands the stream to a hidden tab in a Meet call", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      const c = b.tab("c", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      c.call.set(true);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.live()).toHaveLength(1);
+    });
+
+    it("a hidden leader in a Meet call keeps the stream", async () => {
+      const b = browser();
+      const a = b.tab("a", { inCall: true });
+      const c = b.tab("c");
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      a.view.set(false);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+      expect(b.streams).toHaveLength(1);
+    });
+
+    it("a Meet call does not make a hidden tab the front tab", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false, inCall: true });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(await a.hub.frontTab()).toBeNull();
     });
 
     it("a tab that becomes visible wakes the leader", async () => {

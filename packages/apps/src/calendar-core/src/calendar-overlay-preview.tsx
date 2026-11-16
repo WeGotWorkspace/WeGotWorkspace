@@ -5,12 +5,12 @@ import {
   resolveAvailabilityPreview,
   type AvailabilityPreview,
 } from "@/calendar-core/src/calendar-availability-preview";
-import { parseAvailabilityOverlayKey } from "@/calendar-core/src/calendar-availability-overlay";
-import { CalendarTaskDuePopover } from "@/calendar-core/src/calendar-task-due-popover";
 import {
+  parseAvailabilityOverlayKey,
   parseTaskDueOverlayKey,
-  type TaskDueOverlayMarker,
-} from "@/calendar-core/src/calendar-task-due-overlay";
+} from "@/lib/calendar/calendar-render-overlay";
+import { CalendarTaskDuePopover } from "@/calendar-core/src/calendar-task-due-popover";
+import type { TaskDueOverlayMarker } from "@/calendar-core/src/calendar-task-due-overlay";
 import type { TeamAvailabilityState } from "@/calendar-core/src/use-team-availability";
 
 /** The read-only popover open for a render-only grid card. */

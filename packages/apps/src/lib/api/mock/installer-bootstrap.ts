@@ -1,11 +1,14 @@
-import type { InstallerWorkspaceProps } from "@/installer-core/src/installer-workspace-props";
-import type { InstallerAPIOperations, InstallerUIData } from "@/installer-core/src/installer-types";
+import type { InstallerAPIOperations, InstallerUIData } from "@/lib/models/installer-types";
 import { createMockInstallerOperations } from "@/lib/api/mock/installer-mock-operations";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { WgwInstallerRuntimeState } from "@/lib/api/wgw";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 
-export type InstallerWorkspaceBootstrap = Pick<InstallerWorkspaceProps, "data" | "operations">;
+/** The `data` and `operations` props of `InstallerWorkspace`. */
+export type InstallerWorkspaceBootstrap = {
+  data: InstallerUIData;
+  operations?: InstallerAPIOperations;
+};
 
 /** API bootstrap shape: workspace props plus session for `useWorkspaceApi` chrome parity. */
 export type InstallerAppBootstrap = InstallerWorkspaceBootstrap & {

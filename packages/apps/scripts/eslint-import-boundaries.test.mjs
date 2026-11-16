@@ -206,10 +206,16 @@ describe("lint-boundaries summary", () => {
 });
 
 describe("lint-boundaries baseline", () => {
-  /** @param {[string, string, number][]} rows */
-  const summaryOf = (rows) => ({
+  /**
+   * @param {[string, string, number][]} rows
+   * @param {{ a: string, b: string, aToB: number, bToA: number }[]} [twoWayPairs]
+   */
+  const summaryOf = (rows, twoWayPairs = []) => ({
     edges: rows.map(([from, to, files]) => ({ from, to, files })),
+    twoWayPairs,
   });
+  /** @param {Record<string, number>} edges @param {string[]} [twoWayPairs] */
+  const baselineOf = (edges, twoWayPairs = []) => ({ edges, twoWayPairs });
 
   it("fails on a new edge and on an edge with more files", () => {
     const { failures } = compareToBaseline(
@@ -217,34 +223,72 @@ describe("lint-boundaries baseline", () => {
         ["lib", "drive-core", 3],
         ["lib", "docs-core", 1],
       ]),
-      { "lib -> drive-core": 2 },
+      baselineOf({ "lib -> drive-core": 2 }),
     );
     expect(failures).toHaveLength(2);
     expect(failures[0]).toMatch(/lib -> drive-core grew from 2 to 3 files/);
-    expect(failures[1]).toMatch(/new edge lib -> docs-core \(1 files\)/);
+    expect(failures[1]).toMatch(/new edge lib -> docs-core \(1 file\)/);
   });
 
   it("only notices an edge that shrank or is gone", () => {
-    const { failures, notices } = compareToBaseline(summaryOf([["lib", "drive-core", 1]]), {
-      "lib -> drive-core": 2,
-      "lib -> docs-core": 4,
-    });
+    const { failures, notices } = compareToBaseline(
+      summaryOf([["lib", "drive-core", 1]]),
+      baselineOf({ "lib -> drive-core": 2, "lib -> docs-core": 4 }),
+    );
     expect(failures).toEqual([]);
     expect(notices).toEqual([
-      "lib -> drive-core dropped from 2 to 1 files",
+      "lib -> drive-core dropped from 2 to 1 file",
       "lib -> docs-core is gone",
     ]);
   });
 
-  it("lowers counts and drops gone edges, but never raises or adds", () => {
-    const next = lowerBaseline(
-      summaryOf([
-        ["lib", "drive-core", 1],
-        ["lib", "meet-core", 9],
-        ["lib", "notes-core", 5],
-      ]),
-      { "lib -> drive-core": 2, "lib -> docs-core": 4, "lib -> meet-core": 3 },
+  it("fails on a new two-way pair even when no edge is new or grew", () => {
+    // chat-ui -> docs-core is a known edge; docs-core -> chat-ui is a
+    // downward import, so it is no edge at all. Together they are a cycle.
+    const { failures } = compareToBaseline(
+      summaryOf(
+        [["chat-ui", "docs-core", 1]],
+        [{ a: "chat-ui", b: "docs-core", aToB: 1, bToA: 2 }],
+      ),
+      baselineOf({ "chat-ui -> docs-core": 1 }),
     );
-    expect(next).toEqual({ "lib -> drive-core": 1, "lib -> meet-core": 3 });
+    expect(failures).toEqual([
+      expect.stringMatching(
+        /^new two-way pair chat-ui <-> docs-core: chat-ui imports docs-core in 1 file and docs-core imports chat-ui in 2 files\./,
+      ),
+    ]);
+  });
+
+  it("passes a known two-way pair and notices one that is gone", () => {
+    const { failures, notices } = compareToBaseline(
+      summaryOf([], [{ a: "calendar-core", b: "tasks-core", aToB: 2, bToA: 2 }]),
+      baselineOf({}, ["calendar-core <-> tasks-core", "notes-core <-> tasks-core"]),
+    );
+    expect(failures).toEqual([]);
+    expect(notices).toEqual(["two-way pair notes-core <-> tasks-core is gone"]);
+  });
+
+  it("lowers counts and drops gone edges and pairs, but never raises or adds", () => {
+    const next = lowerBaseline(
+      summaryOf(
+        [
+          ["lib", "drive-core", 1],
+          ["lib", "meet-core", 9],
+          ["lib", "notes-core", 5],
+        ],
+        [
+          { a: "calendar-core", b: "tasks-core", aToB: 2, bToA: 2 },
+          { a: "chat-ui", b: "docs-core", aToB: 1, bToA: 1 },
+        ],
+      ),
+      baselineOf({ "lib -> drive-core": 2, "lib -> docs-core": 4, "lib -> meet-core": 3 }, [
+        "notes-core <-> tasks-core",
+        "calendar-core <-> tasks-core",
+      ]),
+    );
+    expect(next).toEqual({
+      edges: { "lib -> drive-core": 1, "lib -> meet-core": 3 },
+      twoWayPairs: ["calendar-core <-> tasks-core"],
+    });
   });
 });

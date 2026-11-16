@@ -1,7 +1,7 @@
 import { type Dispatch, type SetStateAction, useEffect } from "react";
 import type { Note } from "@/lib/models/note";
 import { subscribeNoteCreated } from "@/lib/offline/notes/notes-created-events";
-import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import { readOfflineNotesUsername } from "@/lib/offline/core/offline-session";
 
 /**
  * Clear `createPending` once the queued create reached the server (in this

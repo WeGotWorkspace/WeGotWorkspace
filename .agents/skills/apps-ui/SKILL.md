@@ -16,6 +16,7 @@ When building or refactoring UI in `packages/apps/src/**/*.{ts,tsx,css}`:
 | Task | Read |
 |------|------|
 | Primitive API / CSS variables / action surfaces | This file |
+| Showing an error: toast, inline, or callback | This file, [Showing an error](#showing-an-error-toast-inline-or-callback) |
 | Component / pane API design | [components.md](components.md) |
 | TypeScript conventions | [typescript.md](typescript.md) |
 | Which module may import which (layers, app-package allowlist) | [import-boundaries.md](import-boundaries.md) |
@@ -115,6 +116,18 @@ Implementation checklist:
 - Shared component owns dropdown trigger rendering and menu item mapping.
 - Consumer components pass action descriptors and labels, not ad-hoc dropdown trees.
 - Dropdown item icon sizing is normalized by shared CSS.
+
+## Showing an error: toast, inline, or callback
+
+There are three ways to show a failure. Pick by where the user is looking when it arrives:
+
+- **Inline** (component state, rendered next to the control with `role="alert"`): the failure belongs to something still on screen that the user can fix or retry there. A field or the submit of an open dialog or form, a settings section, a pane that could not load. Keep the dialog open and keep what the user typed. Do not also toast.
+- **Toast** (`useAppToast().showError`, `hooks/use-app-toast.ts`): from the user's point of view the action is done and the screen has moved on. A list mutation (rename, move, delete, star), an action from a menu, a save that runs in the background. Add `onRetry` or `onUndo` when that is a real next step. One toast per failure.
+- **Callback** (`onError`, `onMutationError`): a hook or shared component that does not know where it is shown. It reports the error to its owner, and the owner picks inline or toast. New shared components and hooks report this way instead of calling `useAppToast` themselves.
+
+An offline write that failed already shows in the app's sync notice (`useFailedOutboxCount`, `useDomainOutboxNotice`). Do not toast it again.
+
+Decide on the error, not on its text: `isApiError(error)` with `status` or `code` ([client-transport](../client-transport/SKILL.md)). Wording of what the user reads is a copy choice per surface; this rule does not change any existing message.
 
 ## Top-level SPA routes
 

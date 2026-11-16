@@ -3945,6 +3945,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description The task a repeated create with the same `uid` in the same list already made */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Task"];
+                    };
+                };
                 /** @description Created task */
                 201: {
                     headers: {
@@ -3956,6 +3965,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
         };
@@ -4311,6 +4321,7 @@ export interface paths {
                         "application/json": components["schemas"]["DriveSharedWithMeDataResponse"];
                     };
                 };
+                400: components["responses"]["JmapBadRequest"];
             };
         };
         put?: never;
@@ -7355,6 +7366,7 @@ export interface paths {
                         "application/json": components["schemas"]["NotificationListResponse"];
                     };
                 };
+                400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
             };
         };
@@ -8637,6 +8649,226 @@ export interface paths {
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
                 413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/reply-mailbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read my reply mailbox
+         * @description The IMAP mailbox invitation replies from external calendar apps are read from, with its last check. `mailbox` is null when none is connected.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The caller's reply mailbox */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarReplyMailboxState"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /**
+         * Connect or change my reply mailbox
+         * @description Logs in to the mailbox and opens the folder before anything is stored, and learns the receiving server id from the newest messages. Changing the host, username or folder starts reading new mail only. Ten logins per user per ten minutes across save and test, then 429.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CalendarReplyMailboxUpdate"];
+                };
+            };
+            responses: {
+                /** @description The caller's reply mailbox */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarReplyMailboxState"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                /** @description The mailbox could not be opened; `code` is `auth_failed`, `connect_failed`, `tls_failed`, `folder_missing`, `host_not_allowed` or `protocol_error`, and nothing is stored */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many logins in the window; `Retry-After` says when to try again */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Disconnect my reply mailbox
+         * @description Removes the mailbox and its stored password. Replies are no longer read.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Disconnected (also when none was connected) */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/reply-mailbox/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test my reply mailbox
+         * @description Logs in again with the stored settings, refreshes the receiving server id, and turns reading back on after a pause.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The caller's reply mailbox */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarReplyMailboxState"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                /** @description No reply mailbox is connected */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The mailbox could not be opened; `code` as for PUT */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many logins in the window */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark many notifications read at once (and ack their local delivery). One request whatever the number of rows. Ids that are not the caller's rows are ignored. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationAckBatchRequest"];
+                };
+            };
+            responses: {
+                /** @description Notifications marked read */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationOkResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
             };
         };
         delete?: never;
@@ -12668,6 +12900,45 @@ export interface components {
                 /** @description VEVENT UID groups in the file, not imported. */
                 events: number;
             };
+        };
+        /** @description The IMAP mailbox the caller's invitation replies are read from. The server only reads calendar replies in it and changes nothing in the mailbox. The password is never returned. */
+        CalendarReplyMailbox: {
+            host: string;
+            port: number;
+            /** @enum {string} */
+            security: "ssl" | "starttls";
+            /** @description IMAP login name. */
+            username: string;
+            /** @description Folder that is read, `INBOX` by default. */
+            folder: string;
+            passwordSet: boolean;
+            /** @description Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. Replies are only applied while it is known. */
+            trustedServer: string | null;
+            /** @description False after repeated failed logins; saving the settings again turns reading back on. */
+            active: boolean;
+            /** Format: date-time */
+            lastCheckedAt: string | null;
+            /** Format: date-time */
+            lastSuccessAt: string | null;
+            /** @enum {string|null} */
+            lastError: "auth_failed" | "connect_failed" | "tls_failed" | "folder_missing" | "host_not_allowed" | "protocol_error" | "untrusted_server_unknown" | null;
+        };
+        CalendarReplyMailboxState: {
+            mailbox: components["schemas"]["CalendarReplyMailbox"] | null;
+        };
+        CalendarReplyMailboxUpdate: {
+            host: string;
+            /** @description 993 for ssl and 143 for starttls when left out. */
+            port?: number;
+            /** @enum {string} */
+            security: "ssl" | "starttls";
+            username: string;
+            /** @description Required on the first save. Left out or null keeps the stored password. */
+            password?: string | null;
+            folder?: string | null;
+        };
+        NotificationAckBatchRequest: {
+            ids: string[];
         };
     };
     responses: {

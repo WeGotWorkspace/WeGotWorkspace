@@ -3,7 +3,7 @@ import { expect, screen, userEvent } from "storybook/test";
 import { fn } from "storybook/test";
 import { ContactsConflictDialog } from "@/contacts-core/src/contacts-conflict-dialog";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
-import type { ContactConflictFieldRow } from "@/lib/offline/contacts-conflict-merge";
+import type { ContactConflictFieldRow } from "@/lib/offline/contacts/contacts-conflict-merge";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
 const sampleFieldRows: ContactConflictFieldRow[] = [

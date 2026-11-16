@@ -26,7 +26,7 @@ import {
   UPDATE_PROGRESS_STEPS,
   type UpdateLogRow,
 } from "@/admin-core/src/admin-workspace-utils";
-import type { AdminUpdateChannel } from "@/admin-core/src/admin-types";
+import type { AdminUpdateChannel } from "@/lib/models/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 const DOCKER_INSTALL_DOCS_URL =

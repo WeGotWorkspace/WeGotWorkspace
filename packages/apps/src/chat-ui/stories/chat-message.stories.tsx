@@ -161,6 +161,31 @@ export const Deleted: Story = {
   },
 };
 
+export const Sending: Story = {
+  args: {
+    message: { ...CHAT_STORY_MESSAGE_PLAIN, syncState: "pending" },
+    currentUserId: CHAT_STORY_CURRENT_USER_ID,
+    actions,
+    presence: CHAT_STORY_AUTHOR_PRESENCE["ada.lovelace"],
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Sending…")).toBeInTheDocument();
+  },
+};
+
+export const NotSent: Story = {
+  name: "Not sent",
+  args: {
+    message: { ...CHAT_STORY_MESSAGE_PLAIN, syncState: "failed" },
+    currentUserId: CHAT_STORY_CURRENT_USER_ID,
+    actions,
+    presence: CHAT_STORY_AUTHOR_PRESENCE["ada.lovelace"],
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Not sent")).toBeInTheDocument();
+  },
+};
+
 export const InternalPreview: Story = {
   name: "Internal preview",
   args: {

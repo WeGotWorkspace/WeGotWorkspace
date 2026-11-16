@@ -1,4 +1,4 @@
-import { docsSearchFromApiPath } from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath } from "@/lib/files/docs-route-search";
 import { extensionFromFileName } from "@/lib/files/file-name-utils";
 import { driveGroupUiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import { fileSupportsTextPreview } from "@/lib/file-preview/file-preview-utils";

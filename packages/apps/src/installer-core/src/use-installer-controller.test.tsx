@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { InstallerAPIOperations } from "@/installer-core/src/installer-types";
+import type { InstallerAPIOperations } from "@/lib/models/installer-types";
 import { useInstallerController } from "@/installer-core/src/use-installer-controller";
 import { createInstallerAppBootstrap } from "@/lib/api/mock/installer-bootstrap";
 import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";

@@ -1,12 +1,12 @@
 import type { ChatMessage } from "@/lib/models/meet-types";
 import type { WgwChatChannel } from "@/lib/api/wgw/meet-chat";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import {
   findCachedDmChannelByPeer,
   listCachedChatChannels,
   listCachedChatMessages,
   upsertChatChannelInCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 /** Max Crockford ULID — marks every existing message read when history is empty. */
 export const MEET_CHAT_CAUGHT_UP_READ_UID = "7ZZZZZZZZZZZZZZZZZZZZZZZZZ";

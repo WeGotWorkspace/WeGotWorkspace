@@ -1,19 +1,14 @@
-/** True when the track is from getDisplayMedia (local or detectable on the receiver). */
+/**
+ * True when the local track is from getDisplayMedia and the browser says so
+ * (`displaySurface`; Chromium and Safari). The track label is never used: a
+ * camera such as "Studio Display Camera" is still a camera, and Firefox labels a
+ * monitor share "Primary Monitor" without a `displaySurface`. Remote tracks never
+ * carry this; the sender's disclosed `screen` flag covers them.
+ */
 export function isDisplayCaptureVideoTrack(track: MediaStreamTrack | null | undefined): boolean {
   if (!track || track.kind !== "video") return false;
-
-  const settings = track.getSettings?.() as MediaTrackSettings & {
-    displaySurface?: string;
-  };
-  if (settings?.displaySurface) return true;
-
-  const label = track.label.toLowerCase();
-  return (
-    label.includes("screen") ||
-    label.includes("window") ||
-    label.includes("display") ||
-    label.includes("desktop")
-  );
+  const settings = track.getSettings?.() as MediaTrackSettings & { displaySurface?: string };
+  return Boolean(settings?.displaySurface);
 }
 
 export function isDisplayCaptureStream(stream: MediaStream | null | undefined): boolean {

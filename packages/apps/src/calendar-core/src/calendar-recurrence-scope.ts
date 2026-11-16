@@ -21,7 +21,7 @@ import {
   alertMapsEqual,
   alertsToWire,
   freeBusyStatusFromWire,
-} from "@/calendar-core/src/calendar-alerts";
+} from "@/lib/calendar/calendar-alerts";
 import {
   engineEventToForm,
   formRecurrenceRules,

@@ -1,4 +1,4 @@
-import type { NotificationInboxItem } from "./notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /** Service worker → window: an inbox row that just arrived by Web Push (#1670). */
 export const WGW_NOTIFICATION_PUSHED_MESSAGE = "wgw-notification-pushed";

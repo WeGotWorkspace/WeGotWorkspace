@@ -21,7 +21,7 @@ import {
 } from "@/settings-core/src/settings-reachability";
 import { resetSettingsRegistryForTests } from "@/settings-core/src/settings-registry";
 import { settingsSectionFromLocation } from "@/settings-core/src/settings-section";
-import type { BuiltinPanelId } from "@/settings-core/src/settings-types";
+import type { BuiltinPanelId } from "@/lib/models/settings-types";
 import type { SettingsDialogApi } from "@/settings-core/src/settings-dialog-provider";
 import { SettingsWorkspace } from "@/settings-core/src/settings-workspace";
 import { AppSidebarPrimaryProvider } from "@/app-sidebar/src/app-sidebar-primary";

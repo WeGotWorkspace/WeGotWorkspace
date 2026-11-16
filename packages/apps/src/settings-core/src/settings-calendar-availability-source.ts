@@ -1,4 +1,8 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { createMockCalendarAvailabilitySettingsOperations } from "@/lib/api/mock/calendar-availability-settings";
 import {
   createWgwCalendarAvailabilitySettingsOperations,
@@ -14,7 +18,9 @@ export function defaultCalendarAvailabilitySettingsOperations(): CalendarAvailab
   return createWorkspaceSource<CalendarAvailabilitySettingsOperations>({
     isLive: wgwLiveApiEnabled(),
     createLiveSource: createWgwCalendarAvailabilitySettingsOperations,
-    createMockSource: () => (mockOperations ??= createMockCalendarAvailabilitySettingsOperations()),
+    createMockSource: mocksInBuild
+      ? () => (mockOperations ??= createMockCalendarAvailabilitySettingsOperations())
+      : mocksNotInBuild,
   });
 }
 

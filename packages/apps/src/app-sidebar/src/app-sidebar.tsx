@@ -7,7 +7,7 @@ import {
   sidebarSelectClickDismisses,
 } from "@/workspace-shell/src/sidebar-breakpoint";
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
-import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
+import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
 import { publishElementHeight } from "@/lib/publish-element-height";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";

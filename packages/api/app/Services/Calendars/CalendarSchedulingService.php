@@ -10,8 +10,6 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Services\Calendars\Conversion\ParticipantConversionSupport;
-use App\Services\Search\BestEffortSearchIndexSync;
-use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -31,8 +29,7 @@ final class CalendarSchedulingService
     public function __construct(
         private readonly WgwCalendarBackendFactory $backends,
         private readonly CalendarPrincipalAddresses $addresses,
-        private readonly SearchIndexerService $searchIndexer,
-        private readonly BestEffortSearchIndexSync $searchIndexSync,
+        private readonly CalendarObjectSearchIndex $searchIndex,
         private readonly CalendarImipService $imip,
         private readonly CalendarSchedulingObjects $objects,
         private readonly CalendarSchedulingDeliveryPolicy $deliveryPolicy,
@@ -552,17 +549,9 @@ final class CalendarSchedulingService
 
     private function unindexPath(string $principalUri, string $calendarUri, string $eventUri): void
     {
-        $username = str_starts_with($principalUri, 'principals/')
-            ? substr($principalUri, strlen('principals/'))
-            : $principalUri;
-        $davPath = 'calendars/'.$username.'/'.$calendarUri.'/'.$eventUri;
-        $this->searchIndexSync->sync(
-            'calendars',
-            fn () => $this->searchIndexer->deleteDavPath($davPath),
-            $davPath,
-            $username,
-        );
-        $this->eventDispatch->fireMutation($username, 'calendars', 'deleted', $davPath);
+        $this->searchIndex->remove($principalUri, $calendarUri, $eventUri);
+        $davPath = CalendarObjectSearchIndex::davPath($principalUri, $calendarUri, $eventUri);
+        $this->eventDispatch->fireMutation($davPath['username'], 'calendars', 'deleted', $davPath['davPath']);
     }
 
     private function defaultCalendarInstance(string $principalUri): ?CalendarInstance
@@ -579,15 +568,6 @@ final class CalendarSchedulingService
 
     private function indexPath(string $principalUri, string $calendarUri, string $eventUri): void
     {
-        $username = str_starts_with($principalUri, 'principals/')
-            ? substr($principalUri, strlen('principals/'))
-            : $principalUri;
-        $davPath = 'calendars/'.$username.'/'.$calendarUri.'/'.$eventUri;
-        $this->searchIndexSync->sync(
-            'calendars',
-            fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
-            $davPath,
-            $username,
-        );
+        $this->searchIndex->index($principalUri, $calendarUri, $eventUri);
     }
 }

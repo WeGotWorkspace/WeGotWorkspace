@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 
 export type ConnectivityState = {
   online: boolean;

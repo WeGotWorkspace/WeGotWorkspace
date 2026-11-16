@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 import { TooltipProvider } from "@/ui/tooltip";
 import { createDocsAppBootstrap, createDocsTxtBootstrap } from "@/lib/api/mock/docs-bootstrap";
-import type { DocsAppBootstrap } from "@/docs-core/src/docs-types";
+import type { DocsAppBootstrap } from "@/lib/models/docs-types";
 import { createMockDocsOperations } from "@/docs-core/src/docs-mock-operations";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
 import { useDocsController } from "@/docs-core/src/use-docs-controller";

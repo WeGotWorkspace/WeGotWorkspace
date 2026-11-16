@@ -2,10 +2,8 @@ import {
   enabledAddressBookIds,
   firstEnabledAddressBookId,
 } from "@/contacts-core/src/contacts-addressbook-color";
-import {
-  contactDisplayName,
-  contactListSortName,
-} from "@/contacts-core/src/contacts-display-utils";
+import { contactListSortName } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactCard, ContactCardPatch } from "@/lib/models/contacts-types";
 
 type AddressBookIdSource = {

@@ -2,12 +2,12 @@
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
-import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/pwa-navigate-fallback-denylist";
+import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/core/pwa-navigate-fallback-denylist";
 import {
   notificationClickTarget,
   pickNotificationClient,
   WGW_NOTIFICATION_NAVIGATE_MESSAGE,
-} from "./notifications-core/src/notification-click-navigate";
+} from "./lib/notifications/notification-click-navigate";
 import { parseNotificationPushPayload } from "./notifications-core/src/parse-notification-push-payload";
 import {
   pushDeliveryPlan,
@@ -17,7 +17,7 @@ import {
   handlePushSubscriptionChange,
   serviceWorkerApiBaseUrl,
 } from "./notifications-core/src/push-subscription-change";
-import { readPushScopes } from "./notifications-core/src/push-scope";
+import { readPushScopes } from "./lib/notifications/push-scope";
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;

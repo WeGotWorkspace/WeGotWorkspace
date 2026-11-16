@@ -6,6 +6,7 @@ import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import type { HttpSignalingFetch, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import type { RtcPeerDescriptor, RtcSettings } from "@/lib/rtc/types";
 import { announceMeetJoin } from "@/meet-core/src/meet-join-hint";
+import { formatMeetInboundDescription } from "@/meet-core/src/meet-opus-fmtp";
 import {
   applyMeetSendEncodings,
   cameraSendingDisabled,
@@ -72,6 +73,7 @@ export class MeetRtcSession {
       refreshRtcSettings: this.options.refreshRtcSettings,
       onRtcSettings: this.options.onRtcSettings,
       binding,
+      formatInboundDescription: formatMeetInboundDescription,
       signaling: {
         apiBase: this.options.apiBase,
         fetchImpl: this.options.fetchImpl,

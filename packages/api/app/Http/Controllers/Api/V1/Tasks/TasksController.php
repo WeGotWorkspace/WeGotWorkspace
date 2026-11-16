@@ -57,10 +57,28 @@ final class TasksController
         /** @var array{username: string, role: string} $principal */
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
 
-        return JmapResourceResponse::json(
-            $this->tasks->create($principal['username'], $request->json()->all()),
-            201,
-        );
+        $payload = $request->json()->all();
+
+        // A client-chosen UID makes the create idempotent (#2155): a resend
+        // gets the task it already made (200) instead of a second one.
+        $existing = $this->tasks->existingCreateForRetry($principal['username'], $payload);
+        if ($existing !== null) {
+            return JmapResourceResponse::json($existing, 200);
+        }
+
+        try {
+            return JmapResourceResponse::json($this->tasks->create($principal['username'], $payload), 201);
+        } catch (ApiHttpException $exception) {
+            // Two sends raced: the loser still gets the task the winner made.
+            $existing = $exception->errorCode() === 'alreadyExists'
+                ? $this->tasks->existingCreateForRetry($principal['username'], $payload)
+                : null;
+            if ($existing === null) {
+                throw $exception;
+            }
+
+            return JmapResourceResponse::json($existing, 200);
+        }
     }
 
     public function update(TaskUpsertRequest $request, string $taskId): JsonResponse

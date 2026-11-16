@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Database\WgwSqliteConnection;
+use App\Database\WgwSqliteConnector;
 use App\Events\EventDispatch;
 use App\Events\NotifyListener;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
@@ -17,12 +18,15 @@ use App\Services\Mcp\PassportKeyStore;
 use App\Services\Notify\MinishlinkWebPushSender;
 use App\Services\Notify\NotifiedRecipients;
 use App\Services\Notify\WebPushSender;
+use App\Support\AppPaths;
 use App\Support\CspFormActions;
 use App\Support\CspNonce;
 use App\Support\SqliteTextLobStatement;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\ConnectionEstablished;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -36,6 +40,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Immediate SQLite transactions on PHP 8.3 too (see WgwSqliteConnection).
         Connection::resolverFor('sqlite', static fn ($pdo, $database, $prefix, $config) => new WgwSqliteConnection($pdo, $database, $prefix, $config));
+        // WAL journal mode that never fails a request (see WgwSqliteConnector).
+        $this->app->bind('db.connector.sqlite', WgwSqliteConnector::class);
         $this->app->singleton(CspNonce::class);
         $this->app->singleton(CspFormActions::class);
         $this->app->singleton(EventDispatch::class, function ($app): EventDispatch {
@@ -55,6 +61,14 @@ class AppServiceProvider extends ServiceProvider
             }
 
             SqliteTextLobStatement::deferOn($event->connection);
+        });
+
+        // `/up` is the readiness check; /api/v1/health stays a static liveness check.
+        Event::listen(DiagnosingHealth::class, function (): void {
+            DB::connection('wgw')->selectOne('SELECT 1');
+            if (! is_writable($this->app->make(AppPaths::class)->dataDir())) {
+                throw new \RuntimeException('The data directory is not writable.');
+            }
         });
 
         JsonResource::withoutWrapping();

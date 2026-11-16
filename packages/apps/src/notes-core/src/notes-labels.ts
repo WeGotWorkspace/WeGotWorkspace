@@ -1,10 +1,11 @@
 import { noPeopleOrTeamsFoundCopy } from "@/share-ui/share-labels";
+import { defaultNoteBodyLabels } from "@/note-detail-view/src/note-body-labels";
 import {
   workspaceDestructiveDialogLabels,
   type WorkspaceDestructiveDialogLabels,
 } from "@/lib/workspace/destructive-dialog";
 import { sharePrincipalCopy } from "@/share-ui/share-labels";
-import type { TaskProjectDialogLabels } from "@/tasks-core/src/task-project-dialog";
+import type { ProjectDialogLabels } from "@/project-dialog/src/project-dialog";
 import { mergeWorkspaceLabels, workspaceLabels } from "@/lib/workspace/workspace-labels";
 import {
   defaultNotesImportLabels,
@@ -173,7 +174,7 @@ export const defaultNotesLabels: NotesUILabels = {
   sectionSharedNotebooks: workspaceLabels.sharing.sharedWithMe,
   sectionTags: "Tags",
   share: "Share",
-  titlePlaceholder: "Title",
+  titlePlaceholder: defaultNoteBodyLabels.titlePlaceholder,
   addNotebook: "Create notebook",
   addTag: "New tag",
   tagCharsetHint: "Use letters a–z and -",
@@ -232,11 +233,10 @@ export const defaultNotesLabels: NotesUILabels = {
   tagViewTitle: (tag) => tag,
   newNoteCategory: "Note",
   pendingSync: workspaceLabels.sync.pending,
-  externalWriteTitle: "Changed outside the app",
-  externalWriteDescription: (title) =>
-    `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,
-  externalWriteKeepMine: "Keep my edits",
-  externalWriteUseOutside: "Use the outside version",
+  externalWriteTitle: defaultNoteBodyLabels.externalWriteTitle,
+  externalWriteDescription: defaultNoteBodyLabels.externalWriteDescription,
+  externalWriteKeepMine: defaultNoteBodyLabels.externalWriteKeepMine,
+  externalWriteUseOutside: defaultNoteBodyLabels.externalWriteUseOutside,
   noticeBarLabel: workspaceLabels.noticeBarLabel,
   syncFailedNotice: workspaceLabels.sync.failedNotice,
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
@@ -297,7 +297,7 @@ export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILab
   return mergeWorkspaceLabels(defaultNotesLabels, overrides);
 }
 
-export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): TaskProjectDialogLabels {
+export function notesNotebookDialogLabelsFrom(labels: NotesUILabels): ProjectDialogLabels {
   return {
     createTitle: labels.newNotebookTitle,
     editTitle: labels.editNotebookTitle,

@@ -2,7 +2,7 @@
 import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONTACTS_AUTOSAVE_DEBOUNCE_MS } from "./contacts-edit-autosave";
-import { contactCardToEditDraft } from "./contacts-edit-utils";
+import { contactCardToEditDraft } from "@/lib/models/contacts-edit-draft";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import {
   advance,

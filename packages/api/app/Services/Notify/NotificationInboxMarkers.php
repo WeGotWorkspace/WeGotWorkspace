@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Log;
  * (#1660, docs/architecture/jmap-push.md "Inbox: a change marker per principal").
  *
  * {@see Notification} bumps it on every create, update (supersede,
- * read) and delete (clear) of a row, so a writer cannot forget it. A missing
+ * read) and delete (clear) of a row, so a writer cannot forget it. A mass
+ * update skips those events: `NotificationInboxService::ackMany()` (the
+ * batched read, #2154) calls {@see bump()} itself, once. A missing
  * row reads as 0. A failed bump is logged, never thrown: it must not undo the
  * inbox write.
  */

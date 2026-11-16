@@ -3,11 +3,8 @@ import { Circle, Trash2, UserMinus } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 import { workspaceListRowPropsEqual } from "@/workspace-list/src/workspace-list-row-props";
 import type { ContactCard } from "@/lib/models/contacts-types";
-import {
-  contactDisplayName,
-  contactListDetail,
-  contactListSubtitle,
-} from "@/contacts-core/src/contacts-display-utils";
+import { contactListDetail, contactListSubtitle } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAddressBookSelectBook } from "@/contacts-core/src/contacts-address-book-select";
 import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";

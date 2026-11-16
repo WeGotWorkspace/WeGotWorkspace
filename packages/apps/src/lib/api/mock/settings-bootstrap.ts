@@ -1,6 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import type { SettingsUIData } from "@/settings-core/src/settings-types";
+import type { SettingsUIData } from "@/lib/models/settings-types";
 
 export type SettingsAppBootstrap = {
   data: SettingsUIData;

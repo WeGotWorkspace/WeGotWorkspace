@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Meet;
 
 use App\Events\EventDispatch;
+use App\Exceptions\RealtimeApiException;
 use App\Models\CalendarObject;
 use App\Models\MeetReservation;
 use App\Services\Admin\AdminConstants;
@@ -64,7 +65,7 @@ final class MeetReservationService
             return $row;
         }
 
-        throw new MeetResponseException(404, 'not_found', 'Meeting room is not reserved.');
+        throw new RealtimeApiException(404, 'not_found', 'Meeting room is not reserved.');
     }
 
     public function reserve(

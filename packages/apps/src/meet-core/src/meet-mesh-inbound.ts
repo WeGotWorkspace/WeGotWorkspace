@@ -1,12 +1,12 @@
-import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat-jmap-inbound";
+import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import { findCachedChannelForUiId } from "@/lib/offline/meet-chat/meet-chat-read-marker";
-import { upsertChatChannelInCache } from "@/lib/offline/meet-chat-offline-store";
+import { upsertChatChannelInCache } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { meetMeshSenderMayHint } from "@/meet-core/src/meet-mesh-fanout-targets";
 import {
   meetMeshChatMessageToApp,
   meetMeshReceiveChannelId,
 } from "@/meet-core/src/meet-mesh-message";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import type { MeetChannel } from "@/lib/models/meet-types";
 import type { PresenceChannelMessage } from "@/presence-core/src/presence-types";
 

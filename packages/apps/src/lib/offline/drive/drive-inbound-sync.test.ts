@@ -75,7 +75,7 @@ import { writeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
 import {
   readDocsListingFromCache,
   writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-listing-offline-store";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import { findUploadPlaceholder } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import { enqueueDriveUploadBatch } from "@/lib/offline/drive/upload/drive-upload-store";

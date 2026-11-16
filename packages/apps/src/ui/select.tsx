@@ -13,7 +13,25 @@ import "./input.css";
 
 installKeyboardFocusModality();
 
-const Select = SelectPrimitive.Root;
+/**
+ * Radix Select, minus its phantom "" pick. Inside a form, Radix mirrors the value in a
+ * hidden native select; when `value` changes in the same render as the items (one form
+ * reused for another record), that select briefly lacks the option and reports "" as a
+ * change. An item can never have the value "", so it is never the user's choice.
+ */
+function Select({ onValueChange, ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  return (
+    <SelectPrimitive.Root
+      {...props}
+      onValueChange={
+        onValueChange &&
+        ((value) => {
+          if (value !== "") onValueChange(value);
+        })
+      }
+    />
+  );
+}
 
 const SelectGroup = SelectPrimitive.Group;
 

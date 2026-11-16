@@ -1,7 +1,11 @@
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import {
   createCalendarEventLive,
   createCalendarJmapClient,
@@ -19,13 +23,13 @@ import {
   createHybridCalendarOperations,
   loadCalendarBootstrapHybrid,
   loadCalendarRangeHybrid,
-} from "@/lib/offline/calendars-hybrid-operations";
+} from "@/lib/offline/calendars/calendars-hybrid-operations";
 import type { CalendarUtcRange } from "@/lib/calendar-load-window";
-import { resolveCalendarsOfflineUsername } from "@/lib/offline/offline-session";
+import { resolveCalendarsOfflineUsername } from "@/lib/offline/core/offline-session";
 import {
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
-} from "@/calendar-core/src/calendar-share";
+} from "@/lib/calendar/calendar-share";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { createMockCalendarIcsOperations } from "@/lib/api/mock/calendar-ics-operations";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
@@ -172,7 +176,7 @@ export function createMockCalendarApiSource(): CalendarApiSource {
 export function createDefaultCalendarApiSource(): CalendarApiSource {
   return createWorkspaceSource<CalendarApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: createMockCalendarApiSource,
+    createMockSource: mocksInBuild ? createMockCalendarApiSource : mocksNotInBuild,
     createLiveSource: createHybridCalendarApiSource,
   });
 }

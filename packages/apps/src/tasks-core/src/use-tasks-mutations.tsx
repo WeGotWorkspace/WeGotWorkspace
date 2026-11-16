@@ -2,12 +2,9 @@ import { useCallback } from "react";
 import { CheckCircle2, Circle, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import type { Task, TaskPatch } from "@/lib/models/tasks-types";
-import {
-  canWriteTaskList,
-  isTaskCompleted,
-  shouldHideCompletedTaskAfterExit,
-  taskListName,
-} from "@/tasks-core/src/tasks-task-utils";
+import { shouldHideCompletedTaskAfterExit, taskListName } from "@/tasks-core/src/tasks-task-utils";
+import { canWriteTaskList } from "@/lib/models/task-lists";
+import { isTaskCompleted } from "@/lib/models/task-fields";
 import {
   tasksCompleteToastMessage,
   tasksMoveToastMessage,

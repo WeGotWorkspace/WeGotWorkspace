@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { listPendingContactCardIds } from "@/lib/offline/contacts-offline-store";
+import { listPendingContactCardIds } from "@/lib/offline/contacts/contacts-offline-store";
 
 const POLL_INTERVAL_MS = 4000;
 

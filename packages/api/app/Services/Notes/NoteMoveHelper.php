@@ -72,13 +72,12 @@ final class NoteMoveHelper
 
     public function bumpSyncToken(int $calendarId): void
     {
-        $synctoken = (int) Calendar::query()->whereKey($calendarId)->value('synctoken');
-        Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
+        Calendar::query()->whereKey($calendarId)->increment('synctoken');
     }
 
     private function recordChange(int $calendarId, string $uri, int $operation): void
     {
-        $synctoken = (int) Calendar::query()->whereKey($calendarId)->value('synctoken');
+        $synctoken = (int) Calendar::query()->whereKey($calendarId)->lockForUpdate()->value('synctoken');
         $this->writeChange($calendarId, $uri, $operation, $synctoken);
         Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
     }

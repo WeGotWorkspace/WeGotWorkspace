@@ -1,6 +1,6 @@
 import { useId, useState, type ReactElement } from "react";
 import { Button } from "@/button/src/button";
-import { isValidNewTag, normalizeTag } from "@/notes-core/src/note-tag";
+import { isValidNewTag, normalizeTag } from "@/lib/models/note-tag";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import {
