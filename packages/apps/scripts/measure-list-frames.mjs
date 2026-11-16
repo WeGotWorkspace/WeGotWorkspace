@@ -109,7 +109,6 @@ function ulid() {
   return head + tail;
 }
 
-/** Posts a chat message as `--chat-dm` into its DM with the signed-in user. */
 /** The DM's messages URL and headers, as the other person. */
 async function dmPeerChannel() {
   const api = `${values["api-url"]}/api/v1`;
@@ -144,6 +143,7 @@ async function newestChatText() {
     : values["chat-newest"];
 }
 
+/** Posts a chat message as `--chat-dm` into its DM with the signed-in user. */
 async function postAsDmPeer(body) {
   const { url, headers } = await dmPeerChannel();
   const res = await fetch(url, {
