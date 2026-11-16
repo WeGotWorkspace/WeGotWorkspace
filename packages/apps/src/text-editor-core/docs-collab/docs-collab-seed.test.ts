@@ -9,7 +9,7 @@ import {
   shouldDeferToMeshSeed,
   shouldSeedOffline,
 } from "./docs-collab-seed";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 describe("docs-collab-seed", () => {
   it("isLowestPeer picks lexicographically smallest id", () => {

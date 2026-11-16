@@ -1,9 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  useOfflinePendingToast,
-  useOfflineSyncToast,
-} from "@/lib/offline/core/use-offline-sync-toast";
+import { useOfflinePendingToast, useOfflineSyncToast } from "./use-offline-sync-toast";
 
 const show = vi.fn();
 const online = vi.hoisted(() => ({ value: true }));

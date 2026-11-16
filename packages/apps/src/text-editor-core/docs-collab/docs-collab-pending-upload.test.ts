@@ -4,19 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import {
-  collabUploadLockName,
-  type PendingCollabRoom,
-  uploadPendingCollabRooms,
-} from "./docs-collab-pending-upload";
+import { type PendingCollabRoom, uploadPendingCollabRooms } from "./docs-collab-pending-upload";
 import { holdCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { EXTERNAL_WRITE_HEADER } from "./docs-collab-external-write";
+import { EXTERNAL_WRITE_HEADER } from "@/lib/collab/docs-collab-server-io";
 import {
+  collabUploadLockName,
   isCollabRoomPendingServerSave,
   setCollabRoomPendingServerSave,
-} from "./docs-collab-pending-registry";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+} from "@/lib/collab/docs-collab-pending-registry";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 let counter = 0;
 

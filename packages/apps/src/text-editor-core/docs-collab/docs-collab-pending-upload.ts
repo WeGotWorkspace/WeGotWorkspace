@@ -5,19 +5,17 @@ import { withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { collabDatabaseHasPendingSave } from "@/lib/offline/core/offline-wipe";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
-import { rememberSidecarEtag } from "./docs-collab-etag";
-import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
+import { rememberSidecarEtag } from "@/lib/collab/docs-collab-etag";
+import {
+  collabUploadLockName,
+  setCollabRoomPendingServerSave,
+} from "@/lib/collab/docs-collab-pending-registry";
 import { persistCollabSave } from "./docs-collab-save-attempt";
-import { fetchYjsSnapshot } from "./docs-collab-server-io";
+import { fetchYjsSnapshot } from "@/lib/collab/docs-collab-server-io";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { isArchivedRefusal, SERVER_ORIGIN } from "./docs-collab-utils";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
-
-/** The lock an open editor holds for its room, and a background save tries. */
-export function collabUploadLockName(databaseName: string): string {
-  return `wgw-collab-upload:${databaseName}`;
-}
+import { isArchivedRefusal, SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 export type PendingCollabRoom = {
   room: string;

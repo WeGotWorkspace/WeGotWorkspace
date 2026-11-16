@@ -21,7 +21,7 @@ import {
 } from "@/lib/offline/core/offline-session";
 import { setNotesSyncConflictListener } from "@/lib/offline/notes/notes-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
-import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import {
   NOTES_CHANGES_POLL_MS,

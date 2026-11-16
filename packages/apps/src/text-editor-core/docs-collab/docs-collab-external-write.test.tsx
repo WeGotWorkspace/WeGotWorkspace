@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { readNoteTitle } from "./docs-collab-document-title";
+import { readNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
-import { isRemoteUpdateOrigin } from "./docs-collab-utils";
+import { isRemoteUpdateOrigin } from "@/lib/collab/docs-collab-utils";
 import {
   EXTERNAL_REBUILD_ORIGIN,
   replaceDocumentWithExternalText,

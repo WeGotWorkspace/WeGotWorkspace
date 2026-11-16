@@ -1,11 +1,8 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
-import {
-  docsCollabReadNames,
-  docsCollabRoomKey,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { docsCollabReadNames, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 async function roomHasCollabPersistence(roomKey: string): Promise<boolean> {
   const ydoc = new Y.Doc();

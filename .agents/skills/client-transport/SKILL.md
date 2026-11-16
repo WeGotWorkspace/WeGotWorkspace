@@ -41,6 +41,7 @@ A bare `throw new Error(` is left only for a programmer or input assertion: a gu
 - `admin.ts` `fetchAdminLiveBootstrap`: the line after the retry loop, which the loop never reaches (its last attempt rethrows).
 - `drive-create-keep-both.ts`: the keep-both loop ran out of attempts. Each attempt picks a name that the fresh sibling list says is free, so only a server that keeps answering `alreadyExists` gets here.
 - `auth-token.ts`: missing credentials in the authenticated Storybook parity story.
+- `create-workspace-source.ts` `mocksNotInBuild`: the stand-in for a mock factory in a production build. The live API is always on there, so it never runs.
 
 ## Do not classify on the message
 

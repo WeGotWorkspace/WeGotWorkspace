@@ -12,9 +12,9 @@ import {
   noteTitleIsInDoc,
   readNoteTitle,
   writeNoteTitle,
-} from "./docs-collab-document-title";
+} from "@/lib/collab/docs-collab-document-title";
 import { LEADER_CLAIM_GRACE_MS } from "./docs-collab-tab-sync";
-import { BC_TAB_ORIGIN, isRemoteUpdateOrigin, MESH_ORIGIN } from "./docs-collab-utils";
+import { BC_TAB_ORIGIN, isRemoteUpdateOrigin, MESH_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import { applyFollowerTabSync, useDocsCollabTabSync } from "./use-docs-collab-tab-sync";
 
 class MockBroadcastChannel {

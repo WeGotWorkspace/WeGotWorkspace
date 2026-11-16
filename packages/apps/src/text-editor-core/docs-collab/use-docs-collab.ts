@@ -13,9 +13,9 @@ import { useDocsCollabReconnect } from "./use-docs-collab-reconnect";
 import { useDocsCollabSave } from "./use-docs-collab-save";
 import { useDocsCollabSessionRefs } from "./use-docs-collab-session-refs";
 import { useDocsCollabTabSync } from "./use-docs-collab-tab-sync";
-import { docsCollabRoomKey } from "./docs-collab-persistence";
+import { docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
 import { holdCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
-import { collabUploadLockName } from "./docs-collab-pending-upload";
+import { collabUploadLockName } from "@/lib/collab/docs-collab-pending-registry";
 
 export {
   DEFAULT_DOCS_COLLAB_URLS,
@@ -29,7 +29,7 @@ export {
   SEED_ORIGIN,
   SERVER_ORIGIN,
   IDB_ORIGIN,
-} from "./docs-collab-utils";
+} from "@/lib/collab/docs-collab-utils";
 export { resetDocsCollabBackoffForTests };
 
 export function useDocsCollab({

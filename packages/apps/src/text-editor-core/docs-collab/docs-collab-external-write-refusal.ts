@@ -1,4 +1,4 @@
-import { fetchYjsSnapshot, loadCollabText } from "./docs-collab-server-io";
+import { fetchYjsSnapshot, loadCollabText } from "@/lib/collab/docs-collab-server-io";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 
 /**

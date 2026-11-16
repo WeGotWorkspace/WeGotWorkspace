@@ -24,7 +24,7 @@ import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
-import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { docsCollabIndexedDbKey } from "@/lib/collab/docs-collab-persistence";
 import { docsAvailabilityTable, docsListingRowsTable } from "@/lib/offline/docs/docs-schema";
 import {
   readDocsListingFromCache,
@@ -54,7 +54,7 @@ vi.mock("@/lib/api/wgw/drive", () => ({
 }));
 
 import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
-import * as docsCollabPersistence from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import * as docsCollabPersistence from "@/lib/collab/docs-collab-persistence";
 import * as docsOfflineDownload from "@/lib/offline/docs/docs-offline-download";
 
 const username = "alice";

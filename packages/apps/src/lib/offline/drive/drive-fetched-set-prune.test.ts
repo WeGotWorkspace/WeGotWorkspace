@@ -35,8 +35,8 @@ import {
   DOCS_COLLAB_IDENTITY_DB_VERSION,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
+} from "@/lib/collab/docs-collab-persistence";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 const username = "alice";
 

@@ -3,8 +3,8 @@ import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
-import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
-import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
+import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
+import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
@@ -33,9 +33,9 @@ import {
   isCollabDocumentGoneError,
   isCollabPayloadTooLarge,
   isExternalWriteRefusal,
-} from "./docs-collab-utils";
+} from "@/lib/collab/docs-collab-utils";
 import { askAboutRefusedSave } from "./docs-collab-external-write-refusal";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 type UseDocsCollabSaveOptions = {
   refs: DocsCollabSessionRefs;

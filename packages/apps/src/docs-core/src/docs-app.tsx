@@ -35,10 +35,10 @@ import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock"
 import { mocksInBuild } from "@/lib/api/create-workspace-source";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
-import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
+import { useDriveFileNodeInbound } from "@/drive-core/src/use-drive-file-node-inbound";
 import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
 import { resolveDocsOfflineUsername } from "@/lib/offline/core/offline-session";
-import { useOfflinePendingToast } from "@/lib/offline/core/use-offline-sync-toast";
+import { useOfflinePendingToast } from "@/hooks/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { resolveDocsCollabPermissionsWhileLoading } from "@/docs-core/src/docs-collab-permissions";
