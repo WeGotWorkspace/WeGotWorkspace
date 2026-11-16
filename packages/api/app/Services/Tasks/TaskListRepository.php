@@ -338,6 +338,7 @@ final class TaskListRepository
         if ($requestedId !== null && $requestedId !== '') {
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedTaskUriSlugs(), true)
+                || $this->collections->reservedPrefixOwner($requestedId) !== null
                 || $this->collections->uriTaken($principalUri, $requestedId)
             ) {
                 throw new ApiHttpException(409, 'Task list id already exists.', 'alreadyExists');
@@ -348,6 +349,9 @@ final class TaskListRepository
         $base = Str::slug($name, '-') ?: 'tasks';
         if (str_starts_with($base, 'group-')) {
             $base = 'project-'.substr($base, strlen('group-'));
+        }
+        if ($this->collections->reservedPrefixOwner($base) !== null) {
+            $base = 'project-'.$base;
         }
         if (in_array($base, CalendarCollectionUris::reservedTaskUriSlugs(), true)) {
             $base = 'project';

@@ -438,6 +438,7 @@ final class CalendarRepository
             if (
                 $requestedId === CalendarCollectionUris::EVENT_DEFAULT
                 || CalendarCollectionUris::parseGroupCalendarApiId($requestedId) !== null
+                || $this->collections->reservedPrefixOwner($requestedId) !== null
                 || $this->collections->uriTaken($principalUri, $requestedId)
             ) {
                 throw new ApiHttpException(409, 'Calendar id already exists.', 'alreadyExists');
@@ -449,6 +450,9 @@ final class CalendarRepository
         $base = Str::slug($name, '-') ?: 'calendar';
         if (str_starts_with($base, 'group-')) {
             $base = 'calendar-'.substr($base, strlen('group-'));
+        }
+        if ($this->collections->reservedPrefixOwner($base) !== null) {
+            $base = 'calendar-'.$base;
         }
         if (in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
             $base = 'calendar';

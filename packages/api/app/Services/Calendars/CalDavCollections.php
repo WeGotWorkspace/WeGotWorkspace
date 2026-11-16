@@ -10,6 +10,8 @@ use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Chat\ChatCollectionUris;
+use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -79,6 +81,23 @@ final class CalDavCollections
             ->where('principaluri', $principalUri)
             ->where('uri', $uri)
             ->exists();
+    }
+
+    /**
+     * Prefixes that belong to another app. No other collection may be created
+     * on them: chat-/dm- would shadow Meet rooms, and docs-threads would block
+     * the thread pool for that principal.
+     */
+    public function reservedPrefixOwner(string $uri): ?CollectionKind
+    {
+        if (ChatCollectionUris::isChatUri($uri)) {
+            return CollectionKind::ChatChannel;
+        }
+        if (str_starts_with($uri, DocsThreadCollectionUris::POOL_URI)) {
+            return CollectionKind::DocsThreadPool;
+        }
+
+        return null;
     }
 
     /**

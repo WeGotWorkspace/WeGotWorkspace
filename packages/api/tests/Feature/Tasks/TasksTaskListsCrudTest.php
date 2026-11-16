@@ -79,6 +79,14 @@ final class TasksTaskListsCrudTest extends WgwDatabaseTestCase
             ->assertJsonPath('id', 'side-project-2');
     }
 
+    public function test_create_answers_409_for_an_id_reserved_for_chat(): void
+    {
+        $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/tasklists', ['name' => 'Standup', 'id' => 'chat-standup'])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'alreadyExists');
+    }
+
     public function test_create_group_scoped_task_list(): void
     {
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
