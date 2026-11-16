@@ -4,7 +4,7 @@ Source spec: [spec.md](./spec.md). Shared design: [docs/architecture/threads.md]
 
 ## Goal
 
-Every task gets a conversation, and later a record of what changed, in one timeline that the list's audience can read. It is built on one thread module that Chat and Docs already need, so this is not a third copy. The rule "the history belongs to the list" keeps a moved task from carrying its past to a new audience.
+Every task gets a conversation, and later a record of what changed, in one timeline that the list's audience can read. It is built on one thread module that Chat and Docs already need, so this is not a third copy. Everything that is not about tasks (storage, API, access through a subject type, lifecycle, push, notifications, activity, panel and offline) is shared, so comments on notes or on a future app need only a small subject type on each side. The rule "the history belongs to the list" keeps a moved task from carrying its past to a new audience.
 
 ## Budget
 
@@ -58,6 +58,9 @@ See spec.md, Non-goals.
   - Chat's message model (stored mentions, edit, tombstone, reactions) is reused as the entry model.
   - chat-ui is reused for the composer and messages.
   - A third set of converter and repository copies was rejected. Chunk A extracts the shared core first.
+- **Building the thread service, panel and offline queue for Tasks only** (the first version of this plan) was rejected by the product owner on 2026-11-16. A later app would have had to copy the repository, routes, lifecycle, push, notifier, panel and outbox. The cost of the shared layer now is a small interface on each side and one test-only subject type; the code size hardly changes.
+- **Moving Chat and Docs onto subject types in this Epic** was rejected as scope. Chat's channels are their own collections and Docs threads follow a document between owners, so both need their own decisions. Chunk A gives them the shared converter core; the rest is a follow-up in threads.md.
+- **One generic route with the subject in the body** (`POST /threads` with `{subjectType, subjectId}`) was rejected in favour of the subject in the path, so access is resolved before the body is read and 404s look the same for every type.
 - **One pool per task list instead of per owner** was rejected. It would double the hidden collections, and sharing a list would need a second share on its pool. The per-owner pool keyed by list and UID gives the same isolation.
 - **Carrying the thread along when a task moves within the same owner** (first proposal to the product owner, 2026-11-14) was rejected. A move from a private list to a shared list of the same owner would show private history to the sharees. Keying on the list is the only rule that never shows history to a new audience. Its cost: comments stay behind on any move. The product owner agreed on 2026-11-16, on condition that the web app says so when a task is moved (spec.md, UI, Move confirmation).
 - **A per-period or per-join history grant** (new members see only entries after they joined) was rejected. No comparable tool does it, it conflicts with comments being readable, and it needs membership history the server does not keep.
@@ -91,7 +94,8 @@ See spec.md, Non-goals.
 - [x] Thread history is keyed on the list, so any move starts fresh. Product owner, 2026-11-16: agreed, and every move in the web app says what happens to the comments. It affects chunks B and E.
 - [x] Read access is enough to comment (Goal wording). It affects chunk B only.
 - [x] Mentions and comment notifications are in scope. Product owner, 2026-11-16. It affects chunk D.
-- [x] Commenting works offline through the Tasks outbox. Product owner, 2026-11-16. It adds chunk H and the `listId` check in chunk B.
+- [x] Commenting works offline through a shared threads outbox. Product owner, 2026-11-16. It adds chunk H and the `scopeId` check in chunk B.
+- [x] Threads are a shared layer with Tasks as its first subject type, so another app can reuse it. Product owner, 2026-11-16. It shapes chunks B to H.
 
 ## Invariants
 
@@ -100,7 +104,8 @@ See spec.md, Non-goals.
   - `path: packages/api/tests/Unit/Docs/DocsThreadJournalConverterTest.php`, assertion `test_comment_root_round_trip_preserves_kind_path_and_anchors`;
   - new golden-ICS tests in `path: packages/api/tests/Unit/Threads/ThreadEntryGoldenIcsTest.php`, assertion `test_chat_and_docs_bytes_unchanged` (written before the move, chunk A).
 - **Docs comment permissions do not change.** Proof: `path: packages/api/tests/Feature/Docs/DocsThreadsTest.php`, assertion `test_comment_sharee_can_persist_view_only_cannot`.
-- **Thread pools never show up over CalDAV.** A wrong change would expose comments to every native client. Proof: `path: packages/api/tests/Feature/Dav/ChatCollectionsDavExposureTest.php`, assertion `test_docs_thread_pool_is_dav_invisible_while_notes_stay_dav_visible`, plus a new `test_task_thread_pool_is_dav_invisible` in the same file (chunk B).
+- **Thread pools never show up over CalDAV.** A wrong change would expose comments to every native client. Proof: `path: packages/api/tests/Feature/Dav/ChatCollectionsDavExposureTest.php`, assertion `test_docs_thread_pool_is_dav_invisible_while_notes_stay_dav_visible`, plus a new `test_thread_pool_is_dav_invisible` in the same file (chunk B).
+- **The shared thread layer has no task code.** A wrong change would tie the layer to tasks again, and the next app would copy it. Proof: `path: packages/api/tests/Feature/Threads/ThreadServiceWithFakeSubjectTest.php`, assertion `test_post_list_react_and_purge_work_for_a_non_task_subject` (new, chunk B); `path: packages/apps/src/thread-ui/thread-panel.test.tsx`, assertion `renders and posts for a non-task adapter` (new, chunk E); `cmd: git grep -n -E 'Services\\Tasks|tasks-core|offline/tasks' packages/api/app/Services/Threads packages/apps/src/thread-ui packages/apps/src/lib/offline/threads` returns nothing (no shared file imports task code).
 - **A viewer never sees entries written under another list.** A wrong change would leak a private list's history to a Team after a move. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_moved_task_shows_a_fresh_thread_to_the_new_audience` (new, chunk B).
 - **Someone who cannot see the task gets 404 on every thread route, including reactions and changes.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_every_thread_route_is_404_without_list_access` (new, chunk B).
 - **Nobody can edit, delete or create an activity entry through the API.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_activity_entries_are_read_only` (new, chunk B).
@@ -109,10 +114,10 @@ See spec.md, Non-goals.
 - **A native client's move never destroys or leaks a thread.** A CalDAV `MOVE` acts like a REST move. A `DELETE` then `PUT` keeps the source entries under the source key until the 30-day purge, and shows them to nobody else. A wrong change would delete a thread for good on an Apple or Thunderbird move, or show list A's history in list B. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertions `test_caldav_move_writes_moved_here_and_keeps_source_entries`, `test_delete_then_put_elsewhere_starts_fresh_and_keeps_source_entries`, `test_purge_removes_orphan_entries_after_30_days_only`, `test_thread_of_task_untouched_for_40_days_survives_purge`, `test_task_untouched_for_40_days_then_deleted_or_moved_keeps_source_entries_30_more_days`, `test_writing_the_uid_back_clears_the_leave_time`, `test_purge_stamps_keys_with_entries_but_no_leave_time_and_purges_them_30_days_later` (new, chunk B).
 - **Push state never changes for lists the user cannot read.** A wrong change would leak the timing of activity in another person's private list. Proof: `path: packages/api/tests/Feature/Jmap/JmapEventSourceThreadTest.php`, assertion `test_state_ignores_threads_in_unreadable_lists_of_the_same_pool` (new, chunk C).
 - **Only the owner deleting a list removes its thread entries.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_sharee_dismiss_keeps_thread_entries` (new, chunk B).
-- **No idle polling is added.** The thread panel polls only while it is open, visible and push is down. Proof: `path: packages/apps/src/tasks-core/src/use-task-thread.test.ts`, assertion `does not poll while push is up or the panel is closed` (new, chunk E).
-- **A comment written offline is stored once, however often it is sent.** A wrong change would duplicate comments after a flaky reconnect or two tabs flushing. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadApiTest.php`, assertion `test_post_with_the_same_ulid_twice_stores_one_entry` (new, chunk B); `path: packages/apps/src/lib/offline/tasks/tasks-thread-outbox-flush.test.ts`, assertion `sends a queued comment once across two flushes` (new, chunk H).
-- **A queued comment never lands in another list's thread without its author's say.** A wrong change would show a comment written for one audience to another. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadApiTest.php`, assertion `test_post_with_a_stale_list_id_is_409_and_stores_nothing` (new, chunk B); `path: packages/apps/src/lib/offline/tasks/tasks-thread-outbox-flush.test.ts`, assertion `keeps a comment whose task moved as not sent` (new, chunk H).
-- **A queued comment is never dropped silently.** Proof: `path: packages/apps/src/lib/offline/tasks/tasks-thread-outbox-flush.test.ts`, assertion `keeps the text of a comment whose task is gone` (new, chunk H).
+- **No idle polling is added.** The thread panel polls only while it is open, visible and push is down. Proof: `path: packages/apps/src/thread-ui/use-thread.test.ts`, assertion `does not poll while push is up or the panel is closed` (new, chunk E).
+- **A comment written offline is stored once, however often it is sent.** A wrong change would duplicate comments after a flaky reconnect or two tabs flushing. Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_post_with_the_same_ulid_twice_stores_one_entry` (new, chunk B); `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `sends a queued comment once across two flushes` (new, chunk H).
+- **A queued comment never lands in another list's thread without its author's say.** A wrong change would show a comment written for one audience to another. Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_post_with_a_stale_scope_id_is_409_and_stores_nothing` (new, chunk B); `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps a comment whose task moved as not sent` (new, chunk H).
+- **A queued comment is never dropped silently.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps the text of a comment whose task is gone` (new, chunk H).
 - **After chunk A, main still works with no task-thread code.** Proof: `cmd: pnpm test:api-done-gate`.
 
 ## Chunks
@@ -132,18 +137,20 @@ See spec.md, Non-goals.
 - **Verify with:** `pnpm test:api-done-gate`; `cmd: git grep -n "function toggleReactionSet" packages/api/app` returns nothing.
 - **Parallel with:** none
 
-### Chunk B: Task thread pool, API, access and lifecycle
+### Chunk B: Shared thread service and the task subject type
 - **Skill:** api, security
 - **Inputs:**
   - the hidden kinds (`CollectionKind.php:25`) and the pool provisioner pattern (`DocsThreadPoolProvisioner.php:47`);
+  - the Docs repository and controller as the shape for the shared repository and routes (`DocsThreadRepository.php:65`);
   - list delete (`TaskListRepository.php:191`, sharee dismiss at `:198`);
   - CalDAV `MOVE` (`EventDispatchPlugin.php:29`, `FlysystemDirectory.php:11`);
   - #2172's audience, change set and observer.
 - **Done when:**
-  - `CollectionKind::TaskThreadPool` (DAV-hidden) exists, with a provisioner.
-  - The REST routes from spec.md are in OpenAPI.
-  - The access, move, delete, list-delete and limit rules are tested.
-  - `POST …/thread` is idempotent on the client ULID and answers 409 `task_moved` when a given `listId` is not the task's current list.
+  - In `App\Services\Threads`: `ThreadSubjectType`, `ThreadSubjectRegistry`, `CollectionKind::ThreadPool` (DAV-hidden) with a shared provisioner, the shared repository, `ThreadsController` with the routes from spec.md in OpenAPI, and `ThreadLifecycle` with the `threads:purge-orphans` command.
+  - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered, and the task delete and move paths calling `ThreadLifecycle`.
+  - The shared layer passes its tests with the test-only subject type (the "no task code" invariant).
+  - The task access, move, delete, list-delete and limit rules are tested.
+  - `POST …/entries` is idempotent on the client ULID and answers 409 `subject_moved` when a given `scopeId` is not the subject's current scope.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
   - The 30-day orphan purge command is scheduled daily. It purges only keys whose `subject_left_at` is older than 30 days and whose UID is not in the list. Every leave hook (delete, REST move, CalDAV `DELETE`, CalDAV `MOVE`) upserts the key's row and sets that timestamp, and any write of the UID into the list clears it. Keys a hook missed are found from the entries, stamped on one run, and purged 30 days later.
   - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
@@ -156,7 +163,7 @@ See spec.md, Non-goals.
 - **Skill:** api, client-transport
 - **Inputs:** the push types (`JmapPushStateResolver.php:36`).
 - **Done when:**
-  - `ThreadEntry` state is a hash of `max(thread_index.modseq)` per list the user can read. It changes on any entry write in a readable list, and never for another list in the same pool that the user cannot read.
+  - `ThreadEntry` state is a hash of `max(thread_index.modseq)` per readable scope, over every registered subject type's `readableScopes`. For tasks it changes on any entry write in a readable list, and never for another list in the same pool that the user cannot read.
   - The client subscribes only while a thread panel is open.
   - Tests cover both.
 - **Verify with:** `pnpm test:api-done-gate`, `pnpm test:apps-done-gate`
@@ -169,25 +176,28 @@ See spec.md, Non-goals.
   - the Chat mention notices (`ChatMessageRepository.php:580`);
   - the allow-list (`NotifyListener.php:30`).
 - **Done when:**
-  - `tasks.thread_activity` and `tasks.mentioned` are delivered to the recipients in spec.md, never to the actor or to people outside the audience.
-  - One row per person per task, with supersede.
+  - The shared `ThreadNotifier` sends each subject type's two actions to the recipients in spec.md, never to the actor or to people outside the audience. It is tested with the test-only subject type too.
+  - `tasks.thread_activity` and `tasks.mentioned` are the task actions. One row per person per task, with supersede.
   - The PHP and TypeScript formatters have the copy.
 - **Verify with:** `pnpm test:api-done-gate`
 - **Parallel with:** C, E
 
-### Chunk E: Thread panel
+### Chunk E: Shared thread panel, mounted in Tasks
 - **Skill:** apps-ui, workspace, accessibility
 - **Inputs:**
   - the chat-ui exports (`chat-ui/src/index.ts:1`);
+  - the Docs threads source as the shape for `useThread` (`use-docs-threads-source.ts:13`);
   - the detail view fields (`tasks-detail-view.tsx:187`);
   - #2172's audience cache;
   - the product owner's mockup (`mockup-task-detail.webp` in this folder);
   - the three move paths (`use-tasks-mutations.tsx:202`, `tasks-workspace.tsx:438`, `tasks-workspace.tsx:88`).
 - **Done when:**
-  - A thread panel with comments, replies, reactions, edit and delete of your own messages, and mentions limited to the audience, laid out as in spec.md, UI, Layout.
-  - A read cache offline, with "Last updated …".
+  - `thread-ui/` has `ThreadSubjectAdapter`, `ThreadPanel` and `useThread`, and `lib/api/wgw/threads.ts` is the shared client. None of them imports from `tasks-core`.
+  - The panel has comments, replies, reactions, edit and delete of your own messages, and mentions limited to the adapter's people, laid out as in spec.md, UI, Layout.
+  - `tasks-core` has the task adapter and mounts the panel in the detail view.
+  - A read cache offline in `lib/offline/threads/`, with "Last updated …".
   - The move confirm, the multi-select move dialog and the drag toast say that comments stay in the old list (spec.md, UI, Move confirmation), with Vitest on the label functions.
-  - Mock API, Storybook stories (empty, busy thread, tombstone, offline, a "Sending…" and a "Not sent" comment) and Vitest, including the polling invariant.
+  - Mock API, Storybook stories for `ThreadPanel` with a stub adapter (empty, busy thread, tombstone, offline, a "Sending…" and a "Not sent" comment) and Vitest, including the polling invariant and a non-task adapter.
 - **Verify with:** `pnpm test:apps-done-gate`
 - **Parallel with:** C, D
 
@@ -196,12 +206,12 @@ See spec.md, Non-goals.
 - **Inputs:**
   - the core outbox (`outbox-store.ts:10`, `:151`; `outbox-flush.ts:83`);
   - Chat's row shapes and re-key handling (`meet-chat-outbox-flush.ts:44`, `:87`) and its ULID (`chat-ulid.ts:46`);
-  - the Tasks outbox flush (`tasks-outbox-flush.ts:188`);
-  - chunk B's `listId` check and chunk E's panel.
+  - the Tasks outbox flush as a second example of a domain flush (`tasks-outbox-flush.ts:188`);
+  - chunk B's `scopeId` check and chunk E's panel.
 - **Done when:**
-  - Comments, replies, edits, deletes and reactions queue offline in the Tasks outbox and flush in order once online, with the composer enabled offline.
+  - `lib/offline/threads/` is one offline domain for every subject type. Comments, replies, edits, deletes and reactions queue there while offline and flush in order once online, with the composer enabled offline.
   - A queued send shows at once with "Sending…"; edits and reactions queued behind it follow a re-keyed id.
-  - 404, 403 and 409 `task_moved` keep the comment as "Not sent" with Copy and Discard, plus "Post in the new list" on 409 when allowed. They show in the failed-outbox notice.
+  - 404, 403 and 409 `subject_moved` keep the comment as "Not sent" with Copy and Discard, plus the adapter's "post where it is now" action on 409 when allowed. They show in the failed-outbox notice.
   - Vitest for the flush (the H invariants) and for two tabs flushing at once.
   - A live Playwright spec: go offline, comment and reply, reload while offline and see both, go online, and a second user sees each comment once.
 - **Verify with:** `pnpm test:apps-done-gate`
@@ -213,6 +223,7 @@ See spec.md, Non-goals.
   - #2172's `TaskChangeSet` and `TaskChangeObserverPlugin`;
   - import (`TaskImportService.php:29`).
 - **Done when:**
+  - The shared `ThreadActivityWriter` takes `ThreadFieldChange`s for any subject type; `TaskThreadActivity` maps the task change set to them.
   - REST, MCP and CalDAV writes produce the entries in spec.md.
   - Quick edits are merged under a lock on the pool collection row, so two concurrent first writes to an empty thread are serialized too.
   - Imports write one `created` entry each.
@@ -227,7 +238,7 @@ See spec.md, Non-goals.
 - **Skill:** apps-ui
 - **Inputs:** chunk E's panel; the entry format from chunk F.
 - **Done when:**
-  - `thread-ui/format-thread-activity.ts` is pure, with Vitest for every field, merged entries, a removed person, and the locale and time zone.
+  - `thread-ui/format-thread-activity.ts` is pure and takes field labels from the adapter, with Vitest for every task field, merged entries, a removed person, the locale and time zone, and a stub adapter's own field.
   - `ThreadActivityRow` exists.
   - The "Show changes" toggle is remembered per user in localStorage, wrapped in try/catch.
   - Stories cover them.

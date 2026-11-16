@@ -40,7 +40,8 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 
 | | Chat | Docs | Tasks (#2173) |
 |---|---|---|---|
-| Collection | one per channel or DM (`chat-…`, `dm-…`) | `docs-threads` pool per owner | `task-threads` pool per owner |
+| Collection | one per channel or DM (`chat-…`, `dm-…`) | `docs-threads` pool per owner | `task-threads` pool per owner (kind `thread_pool`) |
+| Built on | own repository and routes | own repository and routes | the shared thread service, through the `task` subject type |
 | Subject key | the channel | the document path, which moves with the doc | list `calendarid` + task UID |
 | Access | channel membership | Drive share (`mayView` / `mayComment`) | the task's current list (read access can comment) |
 | Edit / delete | the author / tombstone | none | the author / tombstone |
@@ -51,22 +52,35 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 
 ## Shared code
 
-- **Backend:** `App\Services\Threads`, built in #2173 chunk A.
-  - `ThreadEntryJournal` is the converter core, for the properties in rule 1.
-  - `ThreadReactions` toggles a reaction.
-  - `ThreadAuthorNames` resolves display names.
-  - `thread_index` is the generic index (`subject_type`, `subject_key`).
-  - Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
+Threads are a shared layer. An app plugs in a **subject type**: the thing a thread is about (a task) and its **scope**, the place that sets who can see it (the task's list). Tasks is the first subject type (#2173).
+
+- **Backend:** `App\Services\Threads`.
+  - Converter core (#2173 chunk A): `ThreadEntryJournal` for the properties in rule 1, `ThreadReactions` to toggle a reaction, `ThreadAuthorNames` for display names. Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
+  - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, existence for the purge, notification actions), and `ThreadSubjectRegistry`.
+  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` with the daily `threads:purge-orphans`, the `ThreadEntry` push state, `ThreadNotifier` and `ThreadActivityWriter`.
+  - `thread_index` and `thread_subject` are generic (`subject_type`, `subject_key`, `subject_scope`).
 - **Frontend:**
-  - the chat-ui composer, mention menu, message and reaction bar;
-  - the shared `reaction-picker` and `user-avatar`;
-  - `thread-ui` (new in #2173) for the timeline and activity rows.
+  - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread`, the activity row and its formatter;
+  - `lib/api/wgw/threads.ts`, the shared API client;
+  - `lib/offline/threads/`, one offline domain for the read cache and the outbox of every subject type;
+  - the chat-ui composer, mention menu, message and reaction bar, and the shared `reaction-picker` and `user-avatar`.
 
   Docs cards still have their own reply input. Moving them onto the chat composer is a follow-up.
 
+## Adding threads to another app
+
+For example comments on notes, with the notebook as scope. Nothing shared changes; the app adds:
+
+1. A server subject type: how to find the subject and check access, its scope, its audience, who follows it, the scopes a user can read, and whether a subject still exists in a scope. Register it.
+2. Calls to `ThreadLifecycle` from the app's delete and move paths (`left`, `returned`, `scopeDeleted`), and a decision on what a move does (rule 4).
+3. Its two notification actions (`<app>.thread_activity`, `<app>.mentioned`) with copy in both formatters.
+4. A client adapter, and `ThreadPanel` mounted where the subject is shown.
+5. Optional: field changes for the activity log, and field labels in the adapter.
+
 ## Follow-ups this design makes possible
 
-- Docs threads on `thread_index` and `ThreadEntry` push, retiring the 4 s poll.
+- Docs threads on `thread_index` and `ThreadEntry` push, retiring the 4 s poll; later Docs and Chat as subject types of the shared service.
+- Threads in another app, such as Notes, through the checklist above.
 - Docs mentions stored the way Chat stores them, which unblocks the `docs.mentioned` notice.
 - Activity entries for Docs (resolved, renamed) and for Chat channels (topic changed).
 - A product decision on rule 4 for Docs (threads following a document to another owner).
