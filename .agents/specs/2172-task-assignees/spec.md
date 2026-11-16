@@ -126,6 +126,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
   - It runs only for objects in a `task_list` collection.
   - It reads the old object in `beforeWriteContent` and `beforeUnbind` (no DB writes), keyed by path.
   - It acts only in `afterMethod:PUT` or `afterMethod:DELETE` with a 2xx status and an authenticated actor. It never acts on a failed or unauthorized write (see `.agents/review-findings.md`, 2026-10-18 row).
+  - A CalDAV `MOVE` between task lists produces no change set in this Epic. It adds no assignee, so nobody is owed a `tasks.assigned` notice. Epic #2173 chunk B extends this plugin to turn such a `MOVE` into a `moved` change set for the activity log.
   - It never fails the write; exceptions are logged, as in `EventDispatchPlugin`.
   - Multi-VTODO files (Decision 9 in tasks.md) produce one change set per VTODO UID.
 
