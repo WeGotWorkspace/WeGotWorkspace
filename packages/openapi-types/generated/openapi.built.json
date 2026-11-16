@@ -11168,7 +11168,7 @@
                 "properties": {
                     "maxPeers": {
                         "type": "integer",
-                        "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15)."
+                        "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 6, clamped 2-15)."
                     },
                     "maxVideoProfile": {
                         "type": "string",
@@ -12202,6 +12202,7 @@
                     "folderId",
                     "passwordSet",
                     "trustedServer",
+                    "senderCheck",
                     "active",
                     "lastCheckedAt",
                     "lastSuccessAt",
@@ -12245,7 +12246,15 @@
                             "string",
                             "null"
                         ],
-                        "description": "Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. Replies are only applied while it is known."
+                        "description": "Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. While it is known, a reply is applied only when that server's Authentication-Results header shows the sender is authenticated."
+                    },
+                    "senderCheck": {
+                        "type": "string",
+                        "enum": [
+                            "receiving_server",
+                            "dkim"
+                        ],
+                        "description": "How a reply's sender is authenticated: `receiving_server` uses the trusted receiving server's Authentication-Results header; `dkim` (no trusted server known) verifies the reply's own DKIM signature against the signer's key in DNS."
                     },
                     "active": {
                         "type": "boolean",
@@ -12270,6 +12279,7 @@
                             "string",
                             "null"
                         ],
+                        "description": "`dns_unavailable`: the last check stopped at a reply whose DKIM key could not be looked up; it is tried again on the next check. `untrusted_server_unknown` is no longer reported and only remains on a mailbox until its next check.",
                         "enum": [
                             "auth_failed",
                             "connect_failed",
@@ -12277,6 +12287,7 @@
                             "folder_missing",
                             "host_not_allowed",
                             "protocol_error",
+                            "dns_unavailable",
                             "untrusted_server_unknown",
                             null
                         ]

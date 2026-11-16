@@ -20,7 +20,7 @@ vi.mock("@/hooks/use-connectivity", () => ({
 vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => state.online,
 }));
-vi.mock("@/lib/offline/drive/use-drive-file-node-inbound", () => ({
+vi.mock("@/drive-core/src/use-drive-file-node-inbound", () => ({
   useDriveFileNodeInbound: (
     _username: string | undefined,
     _key: number,

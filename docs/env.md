@@ -54,6 +54,7 @@ Password reset delivery runs after the HTTP response via Laravel `defer()`. That
 ### Database-backed Laravel drivers (optional)
 
 To use `SESSION_DRIVER=database` or `CACHE_STORE=database`, also set `SESSION_CONNECTION=wgw` and `DB_CACHE_CONNECTION=wgw`. The WGW database has those tables, so app servers sharing it share sessions, cache and locks.
+Rate limit counters follow `CACHE_STORE` unless `CACHE_LIMITER` names another store, so `CACHE_LIMITER=file` keeps them off the database at the cost of each server counting on its own.
 
 ### Scheduler (reminders and Web Push)
 

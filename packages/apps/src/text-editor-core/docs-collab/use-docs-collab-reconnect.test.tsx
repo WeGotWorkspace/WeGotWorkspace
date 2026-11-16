@@ -5,7 +5,7 @@ import type { MutableRefObject } from "react";
 import * as Y from "yjs";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import { resetDocsCollabBackoffForTests, roomServerAllowed } from "./docs-collab-room-backoff";
-import { CollabHttpError } from "./docs-collab-utils";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwHasAuthenticatedSession: () => false,

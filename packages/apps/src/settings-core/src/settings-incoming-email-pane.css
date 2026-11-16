@@ -26,11 +26,6 @@
   @apply flex max-w-xs flex-col gap-2;
 }
 
-/* Replies not applied yet: under the rows, above the buttons. */
-.settings-incoming-email__note--below {
-  @apply pt-3;
-}
-
 .settings-incoming-email__actions {
   @apply flex flex-wrap items-center gap-3 pt-3;
 }

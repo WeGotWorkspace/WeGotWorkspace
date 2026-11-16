@@ -62,6 +62,8 @@ export const incomingEmailLabels = {
     folder_missing: "A folder an app reads does not exist in this mailbox.",
     host_not_allowed: "This mail server address is not allowed.",
     protocol_error: "The mail server gave an answer that could not be read.",
+    dns_unavailable:
+      "A reply is waiting because its sender's DNS did not answer. It is tried again on the next check.",
   } as Record<string, string>,
   required: "Fill in the mail server, username and password.",
   requiredConnected: "Fill in the mail server and username.",

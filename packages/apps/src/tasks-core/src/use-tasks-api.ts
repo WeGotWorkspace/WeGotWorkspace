@@ -23,7 +23,7 @@ import {
 import { setTasksSyncConflictListener } from "@/lib/offline/tasks/tasks-sync-conflicts";
 import { subscribeTaskWriteRefused } from "@/lib/offline/tasks/tasks-refused-write";
 import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
-import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksUIData } from "@/lib/models/tasks-types";
 import { useTasksLiveInbound } from "@/tasks-core/src/use-tasks-live-inbound";

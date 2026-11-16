@@ -16,7 +16,7 @@ import "@/lib/offline/drive/drive-schema";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
 import { buildDocsCollabUrlsForPath } from "@/lib/offline/docs/docs-pin-hydrate";
 import { persistCollabSave } from "./docs-collab-save-attempt";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import {
   docsCollabIndexedDbKey,
   docsCollabPathKeyedSources,
@@ -24,7 +24,7 @@ import {
   migrateCollabPersistence,
   migrateDocsCollabPendingSaveFromLegacy,
   resolveDocsCollabDatabase,
-} from "./docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 
 const saveDocument = vi.hoisted(() => vi.fn(async () => "etag-1"));
 const liveRenameItem = vi.hoisted(() =>
@@ -35,7 +35,7 @@ const liveRenameItem = vi.hoisted(() =>
   })),
 );
 
-vi.mock("./docs-collab-server-io", () => ({
+vi.mock("@/lib/collab/docs-collab-server-io", () => ({
   saveDocument,
   loadYjsSnapshot: vi.fn(),
 }));
@@ -137,7 +137,10 @@ describe("docs collab identity database", () => {
   });
 
   it("lands an offline edit on the renamed path without migrateCollabPersistence", async () => {
-    const migrate = vi.spyOn(await import("./docs-collab-persistence"), "migrateCollabPersistence");
+    const migrate = vi.spyOn(
+      await import("@/lib/collab/docs-collab-persistence"),
+      "migrateCollabPersistence",
+    );
     const oldPath = "/users/ada/old-name.md";
     const newPath = "/users/ada/new-name.md";
     await upsertDriveEntry(username, entry(oldPath, "fn-rename"));

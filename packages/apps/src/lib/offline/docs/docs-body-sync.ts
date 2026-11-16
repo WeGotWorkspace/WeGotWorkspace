@@ -23,11 +23,8 @@ import {
 } from "@/lib/offline/core/progressive-sync-runner";
 import { withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
-import { collabUploadLockName } from "@/text-editor-core/docs-collab/docs-collab-pending-upload";
-import {
-  docsCollabRoomKey,
-  resolveDocsCollabDatabase,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { collabUploadLockName } from "@/lib/collab/docs-collab-pending-registry";
+import { docsCollabRoomKey, resolveDocsCollabDatabase } from "@/lib/collab/docs-collab-persistence";
 
 const DOCS_BODY_SYNC_META_KEY = "docs:auto-sync:body-progress";
 /** Low on purpose: the pacer sets the rate; this keeps browser connections free for the user. */

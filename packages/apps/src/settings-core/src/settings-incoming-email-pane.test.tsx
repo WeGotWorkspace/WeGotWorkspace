@@ -302,6 +302,11 @@ describe("SettingsIncomingEmailPane", () => {
   it.each([
     [{ active: false, lastError: "auth_failed" as const }, labels.tag.paused, labels.statusPaused],
     [{ lastError: "connect_failed" as const }, labels.tag.failed, labels.errors.connect_failed],
+    [
+      { lastError: "dns_unavailable" as const },
+      labels.tag.connected,
+      labels.errors.dns_unavailable,
+    ],
   ])("shows how reading goes (%o)", async (overrides, tagLabel, detail) => {
     renderSection(seeded(overrides));
     await screen.findByRole("button", { name: labels.disconnect });
@@ -309,7 +314,7 @@ describe("SettingsIncomingEmailPane", () => {
     expect(tagDetail()).toContain(detail);
   });
 
-  it("keeps a mailbox it cannot verify senders in Connected, with no error", async () => {
+  it("shows a mailbox without a trusted receiving server as Connected, with no error", async () => {
     renderSection(seeded({ trustedServer: null, lastError: "untrusted_server_unknown" as const }));
     await screen.findByRole("button", { name: labels.disconnect });
     expect(tag()).toBe(labels.tag.connected);

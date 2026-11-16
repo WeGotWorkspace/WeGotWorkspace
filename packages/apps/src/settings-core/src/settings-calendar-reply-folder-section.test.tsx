@@ -124,9 +124,4 @@ describe("SettingsCalendarReplyFolderSection", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe(labels.folderMissing);
   });
-
-  it("says replies are not applied while no sender can be verified", async () => {
-    renderSection(mockCalendarReplyMailbox({ trustedServer: null }));
-    expect(await screen.findByText(labels.repliesNotApplied)).toBeTruthy();
-  });
 });

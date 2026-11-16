@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { hash32, isYDocEmpty } from "./docs-collab-utils";
+import { hash32, isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 /**
  * Bump when a change to the seeding pipeline would alter the Yjs items built

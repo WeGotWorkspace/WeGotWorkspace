@@ -13,7 +13,7 @@ import {
   noteTitleIsInDoc,
   readNoteTitle,
   writeNoteTitle,
-} from "@/text-editor-core/docs-collab/docs-collab-document-title";
+} from "@/lib/collab/docs-collab-document-title";
 
 const NoteCollabYDocContext = createContext<Y.Doc | null>(null);
 const NoteCollabTitleSaveContext = createContext<(() => void) | null>(null);

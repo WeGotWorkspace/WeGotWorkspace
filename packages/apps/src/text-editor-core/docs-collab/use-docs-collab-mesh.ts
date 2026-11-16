@@ -26,7 +26,7 @@ import type {
   DocsCollabUrls,
 } from "./docs-collab-types";
 import { collectCollabWarningPeers } from "./docs-collab-mesh-warnings";
-import { isYDocEmpty, MESH_ORIGIN } from "./docs-collab-utils";
+import { isYDocEmpty, MESH_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 export { PEER_FAILURE_WARNING_DELAY_MS } from "./docs-collab-mesh-warnings";
 

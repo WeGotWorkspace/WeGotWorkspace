@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 const uploadPendingCollabRooms = vi.hoisted(() => vi.fn(async () => undefined));
 const setCollabRoomPendingServerSave = vi.hoisted(() => vi.fn());
 const online = vi.hoisted(() => ({ value: true }));
 
 vi.mock("./docs-collab-pending-upload", () => ({ uploadPendingCollabRooms }));
-vi.mock("./docs-collab-pending-registry", () => ({ setCollabRoomPendingServerSave }));
+vi.mock("@/lib/collab/docs-collab-pending-registry", () => ({ setCollabRoomPendingServerSave }));
 vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => online.value,
 }));

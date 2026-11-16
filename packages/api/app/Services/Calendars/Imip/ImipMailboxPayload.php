@@ -148,6 +148,7 @@ final class ImipMailboxPayload
             'folderId' => ImipMailboxObjects::id((string) $mailbox->folder),
             'passwordSet' => (string) $mailbox->password_enc !== '',
             'trustedServer' => $trusted !== '' ? $trusted : null,
+            'senderCheck' => $trusted !== '' ? ImipSenderCheck::RECEIVING_SERVER : ImipSenderCheck::DKIM,
             'active' => (bool) $mailbox->enabled,
             'lastCheckedAt' => $this->iso($mailbox->last_polled_at),
             'lastSuccessAt' => $this->iso($mailbox->last_success_at),

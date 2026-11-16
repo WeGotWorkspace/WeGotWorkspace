@@ -132,19 +132,24 @@ function incomingEmailTag({
   if (dirty) return { label: labels.tag.unsaved, tone: "warning", detail: labels.unsavedDetail };
   const detail = incomingEmailStatusLine(mailbox);
   if (!mailbox.active) return { label: labels.tag.paused, tone: "warning", detail };
-  if (mailbox.lastError && !incomingEmailUnverified(mailbox)) {
+  const error = incomingEmailError(mailbox);
+  if (error && !REPLY_WAITING_ERRORS.has(error)) {
     return { label: labels.tag.failed, tone: "warning", detail };
   }
-  // Signing in works even when replies cannot be verified yet: the card says that part.
+  // A reply that waits for its sender's DNS does not stop the connection: the detail says it.
   return { label: labels.tag.connected, tone: "success", detail };
 }
 
+/** Errors about one waiting reply, not about signing in to the mailbox. */
+const REPLY_WAITING_ERRORS: ReadonlySet<string> = new Set(["dns_unavailable"]);
+
 /**
- * Signed in, but no sender can be verified yet. That is the reading app's concern (Calendar
- * says so under Invitation replies), not the connection's: the tag stays Connected.
+ * The error to show, if any. `untrusted_server_unknown` is no longer reported (senders are
+ * checked by DKIM without a trusted server) and only lingers until the next check.
  */
-function incomingEmailUnverified(mailbox: IncomingMailbox): boolean {
-  return !mailbox.trustedServer || mailbox.lastError === "untrusted_server_unknown";
+function incomingEmailError(mailbox: IncomingMailbox): string | null {
+  const error = mailbox.lastError;
+  return error && error !== "untrusted_server_unknown" ? error : null;
 }
 
 function IncomingEmailBody({ controller }: { controller: SettingsIncomingEmailController }) {
@@ -190,8 +195,9 @@ function incomingEmailStatusLine(mailbox: IncomingMailbox): string | null {
     ? labels.lastChecked(formatChecked(mailbox.lastCheckedAt))
     : null;
   if (!mailbox.active) return labels.statusPaused;
-  if (mailbox.lastError && !incomingEmailUnverified(mailbox)) {
-    const reason = labels.errors[mailbox.lastError] ?? labels.failed;
+  const error = incomingEmailError(mailbox);
+  if (error) {
+    const reason = labels.errors[error] ?? labels.failed;
     return checked ? `${reason} ${checked}` : reason;
   }
   return checked;

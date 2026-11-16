@@ -23,8 +23,11 @@ final class ImapClient
     /** Most folders listed; a mailbox with more lists the first ones the server sends. */
     public const MAX_FOLDERS = 500;
 
-    /** Header fields fetched per message; nothing else of the header is read. */
-    public const HEADER_FIELDS = ['FROM', 'SENDER', 'MESSAGE-ID', 'AUTHENTICATION-RESULTS'];
+    /**
+     * Header fields fetched per message. `DKIM-SIGNATURE` tells whether a
+     * DKIM check is worth downloading the whole message for.
+     */
+    public const HEADER_FIELDS = ['FROM', 'SENDER', 'MESSAGE-ID', 'AUTHENTICATION-RESULTS', 'DKIM-SIGNATURE'];
 
     private int $tagCounter = 0;
 
@@ -212,6 +215,25 @@ final class ImapClient
                 continue;
             }
             $value = $items['BODY['.$section.']'] ?? null;
+
+            return is_string($value) ? $value : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * The whole message as stored (header and body), for a DKIM check. The
+     * caller checks RFC822.SIZE first; the literal cap still applies.
+     */
+    public function message(int $uid): ?string
+    {
+        $response = $this->command('UID FETCH '.$uid.' (UID BODY.PEEK[])', ImapException::PROTOCOL_ERROR);
+        foreach ($this->fetchItems($response) as $items) {
+            if (($items['UID'] ?? null) !== (string) $uid) {
+                continue;
+            }
+            $value = $items['BODY[]'] ?? null;
 
             return is_string($value) ? $value : null;
         }

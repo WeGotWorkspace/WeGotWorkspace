@@ -28,11 +28,8 @@ import {
 import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import "@/lib/offline/drive/drive-schema";
-import {
-  docsCollabIndexedDbKey,
-  docsCollabRoomKey,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
+import { docsCollabIndexedDbKey, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 

@@ -5,8 +5,6 @@ export const calendarReplyFolderLabels = {
   about: "About invitation replies",
   reading:
     "Calendar reads only the replies to your invitations. To find them it checks the sender of new messages; it never opens other mail and never marks, moves or deletes anything.",
-  repliesNotApplied:
-    "Replies aren't applied yet: Calendar can't verify who sent them in this mailbox.",
   mailbox: "Mailbox",
   notConnected: "Connect one in Incoming email",
   openIncomingEmail: "Open Incoming email",

@@ -32,6 +32,8 @@ function mockMailboxFolderId(folder: string): string {
 export function mockCalendarReplyMailbox(
   overrides: Partial<CalendarReplyMailbox> = {},
 ): CalendarReplyMailbox {
+  const trustedServer =
+    "trustedServer" in overrides ? (overrides.trustedServer ?? null) : "mx.example.com";
   return {
     host: "imap.example.com",
     port: 993,
@@ -40,7 +42,9 @@ export function mockCalendarReplyMailbox(
     folder: "INBOX",
     folderId: mockMailboxFolderId("INBOX"),
     passwordSet: true,
-    trustedServer: "mx.example.com",
+    trustedServer,
+    // Like the server: DKIM is the check whenever no trusted receiving server is known.
+    senderCheck: trustedServer ? "receiving_server" : "dkim",
     active: true,
     lastCheckedAt: "2026-11-13T09:40:00Z",
     lastSuccessAt: "2026-11-13T09:40:00Z",

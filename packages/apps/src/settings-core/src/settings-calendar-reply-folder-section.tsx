@@ -4,10 +4,7 @@ import { Button } from "@/button/src/button";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { calendarReplyFolderLabels as labels } from "@/settings-core/src/settings-calendar-reply-folder-labels";
 import { useSettingsDialog } from "@/settings-core/src/settings-dialog-context";
-import type {
-  IncomingMailbox,
-  IncomingMailboxOperations,
-} from "@/settings-core/src/settings-incoming-email-source";
+import type { IncomingMailboxOperations } from "@/settings-core/src/settings-incoming-email-source";
 import { SettingsInfoButton } from "@/settings-core/src/settings-info-button";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import {
@@ -98,11 +95,6 @@ function ReplyFolderLoading() {
   );
 }
 
-/** Signed in, but no sender can be verified in this mailbox yet: no reply is applied. */
-function repliesUnverified(mailbox: IncomingMailbox): boolean {
-  return !mailbox.trustedServer || mailbox.lastError === "untrusted_server_unknown";
-}
-
 function ReplyFolderForm({ controller }: { controller: SettingsCalendarReplyFolderController }) {
   const { mailbox, folderList, savingFolderId, failure } = controller;
   const id = useId();
@@ -157,11 +149,6 @@ function ReplyFolderForm({ controller }: { controller: SettingsCalendarReplyFold
           </Select>
         </span>
       </FieldLabelRow>
-      {repliesUnverified(mailbox) ? (
-        <p className="settings-incoming-email__note settings-incoming-email__note--below">
-          {labels.repliesNotApplied}
-        </p>
-      ) : null}
       {failure ? (
         <p className="settings-incoming-email__failure" role="alert">
           {failure}

@@ -23,7 +23,7 @@ import type { DriveAPIOperations, DriveAppBootstrap, DriveUIData } from "@/lib/f
 
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import { DRIVE_READ_BLOB_MAX_BYTES, readResponseBlobWithin } from "@/lib/files/read-blob-limit";
-import { isShareTargetFile } from "@/share-ui/share-destination";
+import { isShareTargetFile } from "@/lib/files/drive-path-utils";
 import { fetchWgwUnifiedSearch } from "@/lib/api/wgw/search";
 import {
   createFileNodeFile,

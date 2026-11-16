@@ -7,7 +7,7 @@ import { type PendingCollabRoom, uploadPendingCollabRooms } from "@/text-editor-
 import {
   docsCollabIndexedDbKey,
   listExistingIndexedDatabaseNames,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 import { buildNoteCollabUrls } from "./note-collab-path";
 
 /**

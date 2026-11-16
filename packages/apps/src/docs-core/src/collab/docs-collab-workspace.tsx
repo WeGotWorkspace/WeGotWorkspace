@@ -9,7 +9,7 @@ import {
   resolveDocsCollabFormatBarMode,
   resolveDocsCollabPermissions,
 } from "@/docs-core/src/docs-collab-permissions";
-import { docsEditorFormatFromFileName } from "@/text-editor-core/docs-collab/docs-editor-format";
+import { docsEditorFormatFromFileName } from "@/lib/files/docs-editor-format";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { DocsOpening } from "@/docs-core/src/docs-opening";
@@ -56,7 +56,7 @@ import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-l
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "@/text-editor-core/docs-collab/docs-collab-editor";
-import { notifyDocumentGone } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { notifyDocumentGone } from "@/lib/collab/docs-collab-utils";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
 import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";

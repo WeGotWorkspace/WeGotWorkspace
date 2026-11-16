@@ -33,7 +33,7 @@ import {
   docsCollabRoomKey,
   indexedDbNamesForRoom,
   listExistingIndexedDatabaseNames,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 import type { EntityTable } from "dexie";
 
 /** Paths kept because `PENDING_SERVER_SAVE_KEY` is set. Both home notices read this. */
