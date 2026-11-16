@@ -625,7 +625,10 @@ final class FileNodeIndexService
         $indexed = $unknown === [] ? [] : JmapFileNode::query()
             ->whereIn('storage_key', $unknown)->whereNull('deleted_at')->pluck('storage_key')->all();
         foreach (array_diff($unknown, $indexed) as $childKey) {
-            $this->recordCreate($childKey);
+            // The default MySQL collation matches keys case- and accent-insensitively, so it decides.
+            if ($this->liveByKey($childKey) === null) {
+                $this->recordCreate($childKey);
+            }
         }
 
         foreach ($children as $child) {
