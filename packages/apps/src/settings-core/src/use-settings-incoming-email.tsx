@@ -160,7 +160,12 @@ export function useSettingsIncomingEmail(
   };
 
   const connect = () => {
-    const update = incomingEmailUpdateFromForm(form.getValues(), null);
+    const values = form.getValues();
+    if (!portIsNumber(values)) {
+      setFailure(labels.invalid);
+      return;
+    }
+    const update = incomingEmailUpdateFromForm(values, null);
     if (!update) {
       setFailure(labels.required);
       return;
@@ -187,6 +192,10 @@ export function useSettingsIncomingEmail(
       });
       return;
     }
+    if (!portIsNumber(values)) {
+      setFailure(labels.invalid);
+      return;
+    }
     if (incomingEmailNeedsPasswordAgain(values, saved)) {
       setFailure(labels.passwordAgain);
       return;
@@ -207,6 +216,7 @@ export function useSettingsIncomingEmail(
     const saved = mailboxRef.current;
     if (!saved) return labels.failed;
     // The rows as they stand go along: a new mail server is saved with its password.
+    if (!portIsNumber(form.getValues())) return labels.invalid;
     const update = incomingEmailUpdateFromForm({ ...form.getValues(), password }, saved);
     if (!update) return labels.requiredConnected;
     const failed = await run("save", async () => {
@@ -228,6 +238,11 @@ export function useSettingsIncomingEmail(
   };
 
   return { phase, mailbox, form, busy, failure, connect, check, changePassword, disconnect, retry };
+}
+
+/** An empty port means the usual one; anything else must be digits, not sent as typed. */
+function portIsNumber(values: IncomingEmailFormValues): boolean {
+  return /^\d*$/.test(values.port.trim());
 }
 
 function sameFormValues(a: IncomingEmailFormValues, b: IncomingEmailFormValues): boolean {

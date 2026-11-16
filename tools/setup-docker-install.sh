@@ -755,6 +755,8 @@ cmd_upgrade() {
 
   pull_images
 
+  load_env
+  [ -n "${WGW_HTTP_BIND:-}" ] || log "The web port listens on 127.0.0.1 only. Set WGW_HTTP_BIND=0.0.0.0 in .env to reach it from other machines."
   log "Recreating stack (migrator runs before web)..."
   compose up -d
 

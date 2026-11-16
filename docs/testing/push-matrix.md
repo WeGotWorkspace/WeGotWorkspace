@@ -64,7 +64,7 @@ Run each step **20 s or more after the event**, from `packages/api`.
 
    Hosts: Chrome Stable and Android Chrome Stable `fcm.googleapis.com`. Chrome Beta, Dev, Canary and unbranded Chromium `jmt17.google.com` (#1891). Edge `*.notify.windows.com`, Firefox `updates.push.services.mozilla.com`, Safari and iOS `web.push.apple.com`. The server only stores endpoints on these hosts; any other host answers 400 and leaves no row.
 
-4. **Log** (`storage/logs/laravel.log`): look for `vapid_send_rejected` (one per refused send; 404/410 at info, others at warning), `vapid_send_failed` (no response) and `vapid_sweep_failures` (one summary per sweep run with `sent`, `failed`, `by_status`, `by_host`).
+4. **Log** (`storage/logs/laravel-YYYY-MM-DD.log`): look for `vapid_send_rejected` (one per refused send; 404/410 at info, others at warning), `vapid_send_failed` (no response) and `vapid_sweep_failures` (one summary per sweep run with `sent`, `failed`, `by_status`, `by_host`).
 
 How to read the delivery row:
 

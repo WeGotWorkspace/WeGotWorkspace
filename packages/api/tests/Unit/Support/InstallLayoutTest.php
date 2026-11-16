@@ -69,6 +69,14 @@ final class SafePathTest extends TestCase
     }
 
     #[Test]
+    public function is_accessible_treats_a_root_open_basedir_as_allowing_everything(): void
+    {
+        $this->assertTrue(SafePath::isAccessible('/home/site/wgw-data', '/'));
+        $this->assertTrue(SafePath::isAccessible('/srv/a/b', '/tmp:/srv/a'));
+        $this->assertFalse(SafePath::isAccessible('/srv/ab', '/tmp:/srv/a'));
+    }
+
+    #[Test]
     public function is_file_returns_false_for_paths_outside_open_basedir_without_touching_them(): void
     {
         $original = ini_get('open_basedir');

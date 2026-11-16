@@ -37,7 +37,7 @@ Then open:
 http://localhost:8080/install/
 ```
 
-Default host port is **8080** (`WGW_HTTP_PORT`).
+Default host port is **8080** (`WGW_HTTP_PORT`). It listens on `127.0.0.1` only, so the installer and plain http are not reachable from the network: put the [TLS proxy](#tls-https) in front, or set `WGW_HTTP_BIND=0.0.0.0` in `.env` to publish the port on every interface on purpose. Docker's published ports go around host firewalls such as ufw.
 
 ### MySQL first-run defaults
 
@@ -66,6 +66,8 @@ bash setup.sh backup
 bash setup.sh upgrade        # latest from manifest.json (confirms interactively)
 bash setup.sh upgrade 1.2.0  # explicit version — backup → pull → migrator → web
 ```
+
+Every service logs through Docker's `json-file` driver with rotation (`x-wgw-logging` in `docker-compose.yml`), which overrides a daemon-wide log driver such as journald or Loki for this stack.
 
 Check for updates (read-only — does not apply):
 
@@ -158,6 +160,7 @@ bash tools/setup-docker-install.sh --local
 | `COMPOSE_PROFILES` | `mysql` | `mysql` = web + MariaDB; `sqlite` = web only |
 | `WGW_IMAGE` | pinned at install time | GHCR image tag |
 | `WGW_HTTP_PORT` | `8080` | Host port mapped to container HTTP :80 |
+| `WGW_HTTP_BIND` | `127.0.0.1` | Host address that port listens on; `0.0.0.0` for every interface |
 | `WGW_WAIT_FOR_DB` | `1` | Entrypoint/migrator wait for MySQL before proceeding |
 | `WGW_DB_HOST` | `db` | MySQL hostname (Compose service name) |
 | `WGW_DB_PORT` | `3306` | MySQL port |

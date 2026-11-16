@@ -167,6 +167,18 @@ describe("SettingsIncomingEmailPane", () => {
     expect(operations.save).not.toHaveBeenCalled();
   });
 
+  it("rejects a port that is not a number instead of sending it", async () => {
+    const operations = renderSection();
+    await screen.findByLabelText(labels.host);
+
+    fillNewMailbox("app-password");
+    type(labels.port, "99a");
+    fireEvent.click(screen.getByRole("button", { name: labels.connect }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(labels.invalid);
+    expect(operations.save).not.toHaveBeenCalled();
+  });
+
   it("says when the mail server can be checked again after too many logins", async () => {
     const operations = seeded();
     vi.mocked(operations.test).mockRejectedValueOnce(
