@@ -21,6 +21,7 @@ final class JmapCalendarEventStateService
 {
     /**
      * @param  array<string, mixed>  $event
+     * @param  array<string, JmapCalendarEventState>  $knownStates  from statesFor() when reading many
      * @return array<string, mixed>
      */
     public function attachStateToken(
@@ -28,16 +29,27 @@ final class JmapCalendarEventStateService
         array $event,
         CalendarObject $object,
         string $calendarUri,
+        array $knownStates = [],
     ): array {
         $eventId = (string) ($event['id'] ?? '');
         if ($eventId === '') {
             return $event;
         }
 
-        $state = $this->ensureStateRow($username, $eventId, $object, $calendarUri);
+        // A miss still reads its row, as the collation matches event ids case-insensitively.
+        $state = $this->ensureStateRow($username, $eventId, $object, $calendarUri, $knownStates[$eventId] ?? null);
         $event['state'] = $state->state_token;
 
         return $event;
+    }
+
+    /**
+     * @param  list<string>  $eventIds
+     * @return array<string, JmapCalendarEventState>
+     */
+    public function statesFor(string $username, array $eventIds): array
+    {
+        return JmapCalendarEventState::query()->where('username', $username)->whereIn('event_id', $eventIds)->get()->keyBy('event_id')->all();
     }
 
     /**
@@ -102,8 +114,9 @@ final class JmapCalendarEventStateService
         string $eventId,
         CalendarObject $object,
         string $calendarUri,
+        ?JmapCalendarEventState $row,
     ): JmapCalendarEventState {
-        $row = JmapCalendarEventState::query()
+        $row ??= JmapCalendarEventState::query()
             ->where('username', $username)
             ->where('event_id', $eventId)
             ->first();

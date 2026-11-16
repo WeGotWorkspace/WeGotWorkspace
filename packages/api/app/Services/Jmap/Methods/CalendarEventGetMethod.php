@@ -6,6 +6,7 @@ namespace App\Services\Jmap\Methods;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\Calendars\CalendarEventRepository;
+use App\Services\Calendars\JmapCalendarEventStateService;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\Methods\Concerns\HandlesGetArguments;
@@ -24,7 +25,10 @@ final class CalendarEventGetMethod implements JmapMethodInterface
 {
     use HandlesGetArguments;
 
-    public function __construct(private readonly CalendarEventRepository $events) {}
+    public function __construct(
+        private readonly CalendarEventRepository $events,
+        private readonly JmapCalendarEventStateService $eventStates,
+    ) {}
 
     public function name(): string
     {
@@ -60,9 +64,10 @@ final class CalendarEventGetMethod implements JmapMethodInterface
             $this->guardGetAllBound($list);
         } else {
             $locate = $this->events->ownedEventLocator($username, $ids);
+            $states = $this->eventStates->statesFor($username, $ids);
             foreach ($ids as $id) {
                 try {
-                    $list[] = $this->events->show($username, $id, $locate);
+                    $list[] = $this->events->show($username, $id, $locate, $states);
                 } catch (ApiHttpException $e) {
                     if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
                         $notFound[] = $id;
