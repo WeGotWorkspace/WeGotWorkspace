@@ -11,7 +11,7 @@ import {
   applyMeetChannelPatch,
   buildMeetChannel,
   canDeleteMeetChannel,
-} from "@/meet-core/src/meet-channel-write";
+} from "@/lib/meetings/meet-channel-write";
 import type { MeetChannel, MeetChatOperations } from "@/lib/models/meet-types";
 import type { MeetCalendarSlice } from "@/meet-core/src/meet-workspace-props";
 import type { MeetChannelDialogs } from "@/meet-core/src/use-meet-channel-dialogs";

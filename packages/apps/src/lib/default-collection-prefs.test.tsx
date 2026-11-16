@@ -10,7 +10,7 @@ import {
   useDefaultCollectionId,
   writeDefaultCollectionPrefs,
 } from "@/lib/default-collection-prefs";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved } from "@/lib/settings-slice-saved";
 
 describe("default-collection-prefs", () => {
   it("parses a trimmed collection id and ignores blanks", () => {

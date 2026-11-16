@@ -1,4 +1,4 @@
-import type { AdminSection } from "@/admin-core/src/admin-types";
+import type { AdminSection } from "@/lib/models/admin-types";
 
 export const ADMIN_DEFAULT_SECTION: AdminSection = "users";
 

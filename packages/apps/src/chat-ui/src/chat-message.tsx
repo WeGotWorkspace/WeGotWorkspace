@@ -1,5 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { MessageSquare, MessageSquareReply, Pencil, Smile, Trash2 } from "lucide-react";
+import {
+  CircleAlert,
+  Clock,
+  MessageSquare,
+  MessageSquareReply,
+  Pencil,
+  Smile,
+  Trash2,
+} from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
@@ -16,7 +24,10 @@ import {
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
 import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
 import { formatChatTime, formatChatTimeShort } from "@/chat-ui/src/chat-message-group";
-import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
+import type {
+  ChatMessage as ChatMessageModel,
+  ChatMessageSyncState,
+} from "@/lib/models/chat-types";
 import { cn } from "@/lib/utils";
 import "@/text-editor-core/src/text-editor.css";
 import "@/chat-ui/src/chat-ui.css";
@@ -189,6 +200,7 @@ export function ChatMessage({
             <ChatMarkdownBody content={message.body} mentions={message.mentions} />
           </div>
         )}
+        {message.syncState && !editing ? <ChatMessageSync state={message.syncState} /> : null}
         {!deleted && !editing && message.previews.length > 0 ? (
           <div className="chat-message__previews">
             {message.previews.map((preview) => (
@@ -224,5 +236,16 @@ export function ChatMessage({
       </div>
       {hoverActions}
     </article>
+  );
+}
+
+/** Under the body: the message has not reached the server yet. */
+function ChatMessageSync({ state }: { state: ChatMessageSyncState }) {
+  const Icon = state === "failed" ? CircleAlert : Clock;
+  return (
+    <p className="chat-message__sync" data-sync-state={state}>
+      <Icon className="chat-message__sync-icon" aria-hidden />
+      {state === "failed" ? chatUiLabels.notSent : chatUiLabels.sending}
+    </p>
   );
 }

@@ -3,7 +3,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
   meetActorPrincipal,

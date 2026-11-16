@@ -338,7 +338,7 @@ final class TaskListRepository
         if ($requestedId !== null && $requestedId !== '') {
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedTaskUriSlugs(), true)
-                || $this->findTaskListInstance($principalUri, $requestedId) !== null
+                || $this->collections->uriTaken($principalUri, $requestedId)
             ) {
                 throw new ApiHttpException(409, 'Task list id already exists.', 'alreadyExists');
             }
@@ -354,7 +354,7 @@ final class TaskListRepository
         }
         $candidate = $base;
         $suffix = 2;
-        while ($this->findTaskListInstance($principalUri, $candidate) !== null) {
+        while ($this->collections->uriTaken($principalUri, $candidate)) {
             $candidate = $base.'-'.$suffix;
             $suffix++;
         }

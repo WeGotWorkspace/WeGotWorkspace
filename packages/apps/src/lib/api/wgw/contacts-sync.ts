@@ -16,7 +16,7 @@ import {
   ingestRemoteContactCard,
   ingestRemoteContactCardDestroyed,
   ingestRemoteContactCardListedAway,
-} from "@/lib/offline/contacts-jmap-inbound";
+} from "@/lib/offline/contacts/contacts-jmap-inbound";
 import {
   listCachedAddressBookIds,
   listPendingContactCardIds,
@@ -25,7 +25,7 @@ import {
   readSyncToken,
   writeAddressBooksSyncToken,
   writeSyncToken,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import { runScopedInbound, type ScopedInboundBinding } from "@/lib/offline/core/inbound-sync";
 
 /** Envelope empty compose — REST used `"0"`, which cannotCalculateChanges. */

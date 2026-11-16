@@ -2,7 +2,7 @@ import type { ChatMessage } from "@/lib/models/meet-types";
 import {
   meetDirectMessageChannelId,
   meetDirectMessagePrincipalId,
-} from "@/meet-core/src/meet-direct-messages";
+} from "@/lib/meetings/meet-direct-messages";
 import type { PresenceChannelMessage } from "@/presence-core/src/presence-types";
 
 export type MeetMeshChatMessage = PresenceChannelMessage;

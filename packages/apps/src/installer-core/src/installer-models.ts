@@ -1,5 +1,5 @@
-import type { WgwInstallerRuntimeState } from "@/installer-core/src/installer-types";
-import type { InstallerServerCheck } from "@/installer-core/src/installer-types";
+import type { WgwInstallerRuntimeState } from "@/lib/models/installer-types";
+import type { InstallerServerCheck } from "@/lib/models/installer-types";
 
 export function toInstallerServerChecks(
   state: WgwInstallerRuntimeState | null,

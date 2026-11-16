@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
 import { getTasksSyncRunner } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { listFailedTaskOutbox } from "@/lib/offline/tasks/tasks-offline-store";
-import { useFailedOutboxCount } from "@/lib/offline/use-failed-outbox-count";
+import { useFailedOutboxCount } from "@/lib/offline/core/use-failed-outbox-count";
 import type { ActionNotice } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";

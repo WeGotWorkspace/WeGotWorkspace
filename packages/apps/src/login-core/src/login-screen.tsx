@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
-import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { AuthenticationPage } from "@/authentication-page/src/authentication-page";
 import {
   wgwEstablishMcpWebSession,
   wgwFetchPasswordRecoveryEnabled,

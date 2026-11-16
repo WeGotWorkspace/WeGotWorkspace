@@ -6,6 +6,7 @@ namespace Tests\Unit\MailDelivery;
 
 use App\Services\MailDelivery\MailDeliverySecretFile;
 use App\Services\MailDelivery\MailDeliverySecretService;
+use App\Support\DataDirSecretBox;
 use App\Support\WgwInstallConfig;
 use Tests\Support\UiDistFixture;
 use Tests\TestCase;
@@ -106,10 +107,10 @@ final class MailDeliverySecretFileTest extends TestCase
     public function test_password_stored_under_the_legacy_secret_still_decrypts(): void
     {
         $this->writeSecret($this->legacyPath(), random_bytes(32));
-        $before = new MailDeliverySecretService($this->secretFile());
+        $before = new MailDeliverySecretService(new DataDirSecretBox($this->secretFile()));
         $blob = $before->encrypt('smtp-password');
 
-        $after = new MailDeliverySecretService($this->secretFile());
+        $after = new MailDeliverySecretService(new DataDirSecretBox($this->secretFile()));
 
         $this->assertSame('smtp-password', $after->decrypt($blob));
         $this->assertSame(file_get_contents($this->legacyPath()), file_get_contents($this->primaryPath()));

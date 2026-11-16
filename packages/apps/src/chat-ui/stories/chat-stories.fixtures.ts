@@ -5,7 +5,7 @@ import type {
   ChatMessage,
   ChatUnfurlMap,
 } from "@/lib/models/chat-types";
-import { mapChatPreviews } from "@/meet-core/src/meet-chat-urls";
+import { mapChatPreviews } from "@/lib/meetings/meet-chat-urls";
 
 export const CHAT_STORY_CURRENT_USER_ID = "demo.user";
 

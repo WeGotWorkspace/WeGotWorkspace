@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  CalendarCalendarDialog,
-  DEFAULT_CALENDAR_COLOR,
-} from "@/calendar-core/src/calendar-calendar-dialog";
+import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { shareLabels } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";

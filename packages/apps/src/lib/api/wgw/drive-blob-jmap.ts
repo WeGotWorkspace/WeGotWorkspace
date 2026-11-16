@@ -1,3 +1,4 @@
+import { UnexpectedApiResponseError } from "@/lib/api/api-error";
 import {
   DriveTransportError,
   expandJmapUrl,
@@ -67,7 +68,7 @@ export async function uploadJmapPart(
   const res = await wgwFetch(toApiRelativePath(url), { ...init, onUploadProgress: onSent });
   if (res.ok) {
     const payload = (await res.json()) as { blobId?: string; size?: number };
-    if (!payload.blobId) throw new Error("JMAP upload returned no blobId");
+    if (!payload.blobId) throw new UnexpectedApiResponseError("JMAP upload returned no blobId");
     return {
       blobId: payload.blobId,
       size: typeof payload.size === "number" ? payload.size : part.size,
@@ -157,7 +158,7 @@ export async function joinJmapBlobParts(
   if (created) return created;
   const setError = response.notCreated?.file;
   if (setError) throw setErrorFailure(setError, "Blob/upload");
-  throw new Error("Blob/upload returned no blob.");
+  throw new UnexpectedApiResponseError("Blob/upload returned no blob.");
 }
 
 export type JmapBlobAssembly = {
@@ -198,7 +199,7 @@ export async function createJmapBlobAssembly(
     throw new DriveUploadTooLargeError(fileName, Number(setError.maxSize) || 0);
   }
   if (setError) throw setErrorFailure(setError, "BlobAssembly/set");
-  throw new Error("BlobAssembly/set returned no assembly.");
+  throw new UnexpectedApiResponseError("BlobAssembly/set returned no assembly.");
 }
 
 export type JmapAssemblyAppendResult = {

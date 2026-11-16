@@ -1,9 +1,6 @@
 import { Select, SelectContent, SelectItem } from "@/ui/select";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
-import type {
-  ContactChannelContext,
-  ContactPhoneType,
-} from "@/contacts-core/src/contacts-edit-utils";
+import type { ContactChannelContext, ContactPhoneType } from "@/lib/models/contacts-edit-draft";
 import {
   channelSelectValue,
   channelValueFromSelect,

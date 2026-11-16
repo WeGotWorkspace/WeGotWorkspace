@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api/api-error";
+import { ApiError, UnexpectedApiResponseError } from "@/lib/api/api-error";
 import {
   wgwApiBaseUrl,
   wgwFetch,
@@ -156,7 +156,7 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
   const client = createDriveJmapClient();
   const session = await client.connect();
   if (!(FILENODE_CAPABILITY in session.capabilities)) {
-    throw new Error("JMAP session does not advertise FileNode.");
+    throw new UnexpectedApiResponseError("JMAP session does not advertise FileNode.");
   }
   const core = session.capabilities[CORE_CAPABILITY] as { maxSizeUpload?: number } | undefined;
   const accountId = client.primaryAccountId(FILENODE_CAPABILITY);
@@ -449,7 +449,7 @@ export async function uploadJmapBlob(
     throw new DriveTransportError(`POST /jmap/upload failed (${res.status})`, res.status);
   }
   const payload = (await res.json()) as { blobId?: string };
-  if (!payload.blobId) throw new Error("JMAP upload returned no blobId");
+  if (!payload.blobId) throw new UnexpectedApiResponseError("JMAP upload returned no blobId");
   return payload.blobId;
 }
 
@@ -467,7 +467,7 @@ export async function resolveDownloadableFileNode(
     node = got.list[0];
     if (node) session.cache.remember(path, node);
   }
-  if (!node?.blobId) throw new Error(`FileNode has no blobId: ${path}`);
+  if (!node?.blobId) throw new UnexpectedApiResponseError(`FileNode has no blobId: ${path}`);
   return node as JmapFileNode & { blobId: string };
 }
 

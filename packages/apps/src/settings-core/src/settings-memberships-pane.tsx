@@ -1,6 +1,6 @@
 import { Card } from "@/card/src/card";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
-import type { SettingsGroup } from "@/settings-core/src/settings-types";
+import type { SettingsGroup } from "@/lib/models/settings-types";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
 
 export type SettingsMembershipsPaneProps = {

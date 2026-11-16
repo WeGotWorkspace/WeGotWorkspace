@@ -11,7 +11,7 @@ import {
   readOfflineContactsUsername,
   readOfflineNotesUsername,
   readOfflineTasksUsername,
-} from "@/lib/offline/offline-session";
+} from "@/lib/offline/core/offline-session";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
 import { isShareGroupId, type CollectionShareWith } from "@/lib/sharing/collection-share";
 

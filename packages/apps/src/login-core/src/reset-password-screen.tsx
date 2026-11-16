@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/button/src/button";
-import { AuthenticationPage } from "@/login-core/src/authentication-page";
+import { AuthenticationPage } from "@/authentication-page/src/authentication-page";
 import { wgwResetPasswordWithToken } from "@/lib/api/wgw/http";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";

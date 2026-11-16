@@ -17,7 +17,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'principals',
             'groupmembers',
             'app_settings',
-            'mail_user_credentials',
+            'calendar_reply_mailboxes',
             'calendarobjects',
             'cards',
             'app_update_history',

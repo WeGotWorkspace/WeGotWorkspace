@@ -1,0 +1,371 @@
+import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
+import { Input } from "@/ui/input";
+import { FieldLabelRow } from "@/ui/field-label-row";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
+import {
+  groupSlugFromOwnerScopeValue,
+  OwnerScopeField,
+  ownerScopeValueFromDirectory,
+  PERSONAL_SCOPE_VALUE,
+} from "@/ui/owner-scope-field";
+import { CollectionShareSection } from "@/share-ui/collection-share-section";
+import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
+import { ProjectColorPicker } from "@/project-dialog/src/project-color-picker";
+import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/lib/models/task-lists";
+import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
+import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
+import "@/share-ui/share-ui.css";
+import { NO_AUTOFILL } from "@/ui/no-autofill";
+
+export type ProjectDialogState =
+  | null
+  | { mode: "create" }
+  | {
+      mode: "edit";
+      listId: string;
+      name: string;
+      color: string | null;
+      scope: "personal" | "group";
+      groupSlug: string | null;
+      mayShare?: boolean;
+      isSharee?: boolean;
+      shareWith?: CollectionShareWith | null;
+      /** Enable Owner (personal ↔ group), same options as create. */
+      canChangeOwner?: boolean;
+      /** Owner delete in the footer — same gate as Calendar `mayDelete`. */
+      mayDelete?: boolean;
+    };
+
+export type ProjectDialogConfirmInput = {
+  name: string;
+  color: string | null;
+  groupSlug?: string | null;
+};
+
+export type ProjectDialogShare = {
+  knownPrincipals?: readonly CollectionSharePrincipal[];
+  online?: boolean;
+  /** The viewer is in no Team (#1924). */
+  noTeam?: boolean;
+  onSearchPrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
+  onPatchShareWith: (listId: string, shareWith: CollectionShareWith) => Promise<void>;
+};
+
+export type ProjectDialogLabels = {
+  createTitle: string;
+  editTitle: string;
+  nameLabel: string;
+  colorLabel: string;
+  scopeLabel: string;
+  scopePersonal: (ownerLabel: string) => string;
+  scopeGroup: (name: string) => string;
+  scopeReadOnlyLabel: string;
+  changeOwnerConfirmTitle: string;
+  changeOwnerConfirmToGroup: (groupName: string) => string;
+  changeOwnerConfirmToPersonal: string;
+  changeOwnerConfirm: string;
+  createButton: string;
+  saveButton: string;
+  cancel: string;
+  shareListSectionTitle: string;
+  shareListSectionHint: string;
+  shareListAddPlaceholder: string;
+  shareListSearchEmpty: string;
+  shareListOffline: string;
+  removeListShareTitle: string;
+  removeListShareConfirm: string;
+  removeSharedList: string;
+  removeSharedListConfirmTitle: string;
+  removeSharedListConfirmDescription: string;
+  deleteList: string;
+  deleteListConfirmTitle: string;
+  deleteListConfirmDescription: string;
+  delete: string;
+};
+
+type ProjectDialogProps = {
+  dialog: ProjectDialogState;
+  groups: TaskProjectGroupOption[];
+  personalOwnerLabel: string;
+  onClose: () => void;
+  onConfirm: (input: ProjectDialogConfirmInput) => void;
+  labels: ProjectDialogLabels;
+  contentClassName?: string;
+  share?: ProjectDialogShare;
+  onRemoveShared?: () => void;
+  onDelete?: () => void;
+};
+
+function editDialogDisplayColor(listId: string, color: string | null): string {
+  return taskListDotColor({ id: listId, color });
+}
+
+export function ProjectDialog({
+  dialog,
+  groups,
+  personalOwnerLabel,
+  onClose,
+  onConfirm,
+  labels,
+  contentClassName,
+  share,
+  onRemoveShared,
+  onDelete,
+}: ProjectDialogProps) {
+  const [name, setName] = useState("");
+  const [color, setColor] = useState<string>(DEFAULT_TASK_LIST_COLOR);
+  const [scopeValue, setScopeValue] = useState(PERSONAL_SCOPE_VALUE);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [confirmOwnerOpen, setConfirmOwnerOpen] = useState(false);
+  const open = dialog !== null;
+  const isCreate = dialog?.mode === "create";
+  const isSharee = dialog?.mode === "edit" && Boolean(dialog.isSharee);
+  const showShare = dialog?.mode === "edit" && Boolean(dialog.mayShare) && Boolean(share);
+  const canRemoveShared = isSharee && Boolean(onRemoveShared);
+  const canDelete = dialog?.mode === "edit" && dialog.mayDelete === true && Boolean(onDelete);
+  const canChangeOwner = isCreate || (dialog?.mode === "edit" && Boolean(dialog.canChangeOwner));
+
+  useEffect(() => {
+    if (!dialog) {
+      setConfirmRemoveOpen(false);
+      setConfirmDeleteOpen(false);
+      setConfirmOwnerOpen(false);
+      return;
+    }
+    if (dialog.mode === "create") {
+      setName("");
+      setColor(DEFAULT_TASK_LIST_COLOR);
+      setScopeValue(PERSONAL_SCOPE_VALUE);
+      return;
+    }
+    setName(dialog.name);
+    setColor(editDialogDisplayColor(dialog.listId, dialog.color));
+    setScopeValue(ownerScopeValueFromDirectory(dialog.scope, dialog.groupSlug));
+  }, [dialog]);
+
+  const trimmedName = name.trim();
+  const selectedColor = color.trim() || DEFAULT_TASK_LIST_COLOR;
+  const ownerUnchanged =
+    dialog?.mode === "edit" &&
+    ownerScopeValueFromDirectory(dialog.scope, dialog.groupSlug) === scopeValue;
+  const unchangedEdit =
+    dialog?.mode === "edit" &&
+    trimmedName === dialog.name.trim() &&
+    selectedColor.toLowerCase() ===
+      editDialogDisplayColor(dialog.listId, dialog.color).toLowerCase() &&
+    ownerUnchanged;
+  const canSubmit = Boolean(trimmedName) && (isCreate || !unchangedEdit);
+  const ownerTransferPending = dialog?.mode === "edit" && canChangeOwner && !ownerUnchanged;
+  const nextOwnerGroupSlug = groupSlugFromOwnerScopeValue(scopeValue);
+  const ownerConfirmDescription = nextOwnerGroupSlug
+    ? labels.changeOwnerConfirmToGroup(
+        groups.find((group) => group.slug === nextOwnerGroupSlug)?.displayName ??
+          nextOwnerGroupSlug,
+      )
+    : labels.changeOwnerConfirmToPersonal;
+
+  const confirmInput = (): ProjectDialogConfirmInput => ({
+    name: trimmedName,
+    color: selectedColor,
+    ...(isCreate || canChangeOwner ? { groupSlug: groupSlugFromOwnerScopeValue(scopeValue) } : {}),
+  });
+  const ownerLabels = {
+    label: labels.scopeLabel,
+    personal: labels.scopePersonal,
+    group: labels.scopeGroup,
+    readOnlyLabel: labels.scopeReadOnlyLabel,
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+        <DialogContent className={contentClassName} aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>{isCreate ? labels.createTitle : labels.editTitle}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!canSubmit) return;
+              if (ownerTransferPending) {
+                setConfirmOwnerOpen(true);
+                return;
+              }
+              onConfirm(confirmInput());
+            }}
+          >
+            <FieldLabelRow
+              layout="inline"
+              fill
+              label={labels.nameLabel}
+              htmlFor="task-project-name"
+            >
+              <NameColorRow>
+                <Input
+                  id="task-project-name"
+                  {...NO_AUTOFILL}
+                  className={NAME_COLOR_ROW_INPUT_CLASS}
+                  autoFocus
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+                <ProjectColorPicker
+                  value={selectedColor}
+                  onChange={setColor}
+                  colorLabel={labels.colorLabel}
+                />
+              </NameColorRow>
+            </FieldLabelRow>
+
+            <OwnerScopeField
+              id="task-project-scope"
+              value={scopeValue}
+              onValueChange={setScopeValue}
+              groups={groups}
+              personalOwnerLabel={personalOwnerLabel}
+              labels={ownerLabels}
+              disabled={!canChangeOwner}
+            />
+
+            {showShare && share && dialog?.mode === "edit" ? (
+              <CollectionShareSection
+                collectionId={dialog.listId}
+                shareWith={dialog.shareWith}
+                knownPrincipals={share.knownPrincipals}
+                online={share.online}
+                noTeam={share.noTeam}
+                dialogClassName={contentClassName}
+                copy={{
+                  title: labels.shareListSectionTitle,
+                  hint: labels.shareListSectionHint,
+                  placeholder: labels.shareListAddPlaceholder,
+                  empty: labels.shareListSearchEmpty,
+                  offline: labels.shareListOffline,
+                  removeTitle: labels.removeListShareTitle,
+                  removeConfirm: labels.removeListShareConfirm,
+                }}
+                onSearchPrincipals={share.onSearchPrincipals}
+                onPatchShareWith={share.onPatchShareWith}
+              />
+            ) : null}
+
+            <DialogFooter
+              start={
+                canDelete ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.deleteList}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  />
+                ) : canRemoveShared ? (
+                  <IconButton
+                    type="button"
+                    variant="outline"
+                    severity="danger"
+                    size="md"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    label={labels.removeSharedList}
+                    onClick={() => setConfirmRemoveOpen(true)}
+                  />
+                ) : null
+              }
+            >
+              <Button type="button" variant="outline" onClick={onClose}>
+                {labels.cancel}
+              </Button>
+              <Button type="submit" disabled={!canSubmit}>
+                {isCreate ? labels.createButton : labels.saveButton}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOwnerOpen} onOpenChange={setConfirmOwnerOpen}>
+        <AlertDialogContent className={contentClassName}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.changeOwnerConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{ownerConfirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmOwnerOpen(false);
+                onConfirm(confirmInput());
+              }}
+            >
+              {labels.changeOwnerConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+        <AlertDialogContent className={contentClassName}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.removeSharedListConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {labels.removeSharedListConfirmDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmRemoveOpen(false);
+                onRemoveShared?.();
+              }}
+            >
+              {labels.removeSharedList}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent className={contentClassName}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.deleteListConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{labels.deleteListConfirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline">{labels.cancel}</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setConfirmDeleteOpen(false);
+                  onDelete?.();
+                }}
+              >
+                {labels.delete}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

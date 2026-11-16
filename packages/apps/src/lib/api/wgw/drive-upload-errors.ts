@@ -1,3 +1,5 @@
+import { ApiError } from "@/lib/api/api-error";
+
 /**
  * Typed failures of the chunked upload (#1519). The uploader turns each into
  * an item error code; anything else is classified by HTTP status.
@@ -9,12 +11,12 @@
  * sha256 differs from what was sent (a body the host discarded). The
  * uploader halves its part size and sends the part again.
  */
-export class DriveUploadPartRejectedError extends Error {
+export class DriveUploadPartRejectedError extends ApiError {
   constructor(
     readonly reason: "http_413" | "limit" | "part_mismatch",
-    readonly status: number,
+    status: number,
   ) {
-    super(`The server refused an upload part (${reason}).`);
+    super(`The server refused an upload part (${reason}).`, status);
     this.name = "DriveUploadPartRejectedError";
   }
 }

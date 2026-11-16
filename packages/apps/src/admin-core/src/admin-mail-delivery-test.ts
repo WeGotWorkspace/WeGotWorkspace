@@ -1,4 +1,4 @@
-import type { AdminMailDeliveryLastTestSend } from "@/admin-core/src/admin-types";
+import type { AdminMailDeliveryLastTestSend } from "@/lib/models/admin-types";
 
 export type MailTestRecipient =
   { ok: true; recipient: string } | { ok: false; message: "A recipient email is required" };

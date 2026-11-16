@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api/api-error";
+import { ApiError, UnexpectedApiResponseError } from "@/lib/api/api-error";
 import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import {
   JmapCalendarsClient,
@@ -19,11 +19,11 @@ import {
   calendarInfoFromJmap,
   calendarSharePrincipalsFromDirectory,
   filterCalendarSharePrincipals,
+  mapCalendarDirectoryGroups,
   type CalendarSharePrincipal,
-} from "@/calendar-core/src/calendar-share";
+} from "@/lib/calendar/calendar-share";
 import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
-import { mapCalendarDirectoryGroups } from "@/calendar-core/src/calendar-workspace-props";
-import { draftToJmapEvent, patchToJmapPartial } from "@/calendar-core/src/calendar-wire";
+import { draftToJmapEvent, patchToJmapPartial } from "@/lib/calendar/calendar-wire";
 import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
 import {
   cachedCollectionAudience,
@@ -159,10 +159,11 @@ export async function createCalendarEventLive(
     create: { "create-1": draftToJmapEvent(draft) },
   });
   const created = response.created?.["create-1"];
-  if (!created?.id) throw new Error("CalendarEvent/set returned no created id");
+  if (!created?.id)
+    throw new UnexpectedApiResponseError("CalendarEvent/set returned no created id");
   const get = await calendars.getCalendarEvents(accountId, [created.id]);
   const event = get.list[0];
-  if (!event) throw new Error("Created event could not be fetched");
+  if (!event) throw new UnexpectedApiResponseError("Created event could not be fetched");
   checkNowAfterWrite([cachedCollectionAudience("calendars", Object.keys(event.calendarIds ?? {}))]);
   return event;
 }
@@ -180,7 +181,7 @@ export async function patchCalendarEventLive(
   });
   const get = await calendars.getCalendarEvents(accountId, [eventId]);
   const event = get.list[0];
-  if (!event) throw new Error("Updated event could not be fetched");
+  if (!event) throw new UnexpectedApiResponseError("Updated event could not be fetched");
   checkNowAfterWrite([
     before,
     cachedCollectionAudience("calendars", Object.keys(event.calendarIds ?? {})),
@@ -211,10 +212,10 @@ export async function createCalendarLive(
     },
   });
   const created = response.created?.["create-1"];
-  if (!created?.id) throw new Error("Calendar/set returned no created id");
+  if (!created?.id) throw new UnexpectedApiResponseError("Calendar/set returned no created id");
   const get = await calendars.getCalendars(accountId, [created.id]);
   const calendar = get.list[0];
-  if (!calendar) throw new Error("Created calendar could not be fetched");
+  if (!calendar) throw new UnexpectedApiResponseError("Created calendar could not be fetched");
   return toCalendarInfo(calendar);
 }
 
@@ -231,7 +232,7 @@ export async function patchCalendarLive(
   });
   const get = await calendars.getCalendars(accountId, [calendarId]);
   const calendar = get.list[0];
-  if (!calendar) throw new Error("Updated calendar could not be fetched");
+  if (!calendar) throw new UnexpectedApiResponseError("Updated calendar could not be fetched");
   const info = toCalendarInfo(calendar);
   checkNowAfterWrite([before], info.shareWith);
   return info;

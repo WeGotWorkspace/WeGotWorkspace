@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { createWgwMeetOperations } from "@/lib/api/wgw/meet";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import { findCachedDmChannelByPeer } from "@/lib/offline/meet-chat-offline-store";
+import { findCachedDmChannelByPeer } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { latestMessageInChannel } from "@/lib/offline/meet-chat/meet-chat-read-marker";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { useCalendarAPI } from "@/calendar-core/src/use-calendar-api";
@@ -34,13 +34,13 @@ import {
   meetSelectionFromRouteParams,
   type MeetChatRouteParams,
 } from "@/meet-core/src/meet-chat-route";
-import { useNotificationsMarkReadOnConsume } from "@/notifications-core/src/use-notifications-mark-read-on-consume";
+import { useNotificationsMarkReadOnConsume } from "@/lib/notifications/use-notifications-mark-read-on-consume";
 import {
   meetChannelIdsEqual,
   meetCollectionIdFromPublic,
   meetPublicChannelId,
 } from "@/lib/meetings/meet-public-id";
-import { meetDirectMessagePrincipalId } from "@/meet-core/src/meet-direct-messages";
+import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 import type { MeetAPIOperations, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
 import { MeetWorkspace } from "@/meet-core/src/meet-workspace";
 import { useMeetAuthorPresence } from "@/meet-core/src/use-meet-author-presence";
@@ -52,6 +52,9 @@ import { useMeetNowClock } from "@/meet-core/src/use-meet-now-clock";
 import { mergeMeetCallLive } from "@/meet-core/src/meet-call-stage-layout";
 import { useMeetChannelCallActivity } from "@/meet-core/src/use-meet-channel-call-activity";
 import { useMeetMeshSync } from "@/meet-core/src/use-meet-mesh-sync";
+import { useMeetChatSyncNotice } from "@/meet-core/src/use-meet-chat-sync-notice";
+import { meetLabels } from "@/meet-core/src/meet-labels";
+import { NoticeBar } from "@/notice-bar/src/notice-bar";
 
 export type MeetChatAppProps = {
   /** Chat bootstrap/ops source (defaults to the hybrid Dexie + REST source). */
@@ -80,6 +83,10 @@ function MeetChatLiveWorkspace({
   const channels = useMemo(() => data.channels ?? [], [data.channels]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [caughtUp, setCaughtUp] = useState(true);
+  const syncNotice = useMeetChatSyncNotice({
+    username: session.user.username ?? null,
+    patchFromCache,
+  });
 
   // Deep links: /meet/channels/$channelId and /meet/dms/$peerId ↔ workspace
   // selection. Nested children of /meet, so switching never remounts this app.
@@ -454,6 +461,7 @@ function MeetChatLiveWorkspace({
       session={session}
       operations={operationsWithMesh}
       onLogout={onLogout}
+      mainNotice={<NoticeBar label={meetLabels.noticeBarLabel} notices={[syncNotice]} />}
       callStageRoom={callStageRoom}
       // Deep link wins; otherwise returning to /meet mid-call lands on the call.
       initialChannelId={routeChannelId ?? resumeLiveCallChannelId ?? undefined}

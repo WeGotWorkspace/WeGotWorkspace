@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Temporal } from "@js-temporal/polyfill";
 import { writeCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
-import { notifySettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { notifySettingsSliceSaved } from "@/lib/settings-slice-saved";
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 
 describe("useCalendarDisplayPrefs", () => {

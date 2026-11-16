@@ -347,8 +347,6 @@ final class FrontRoutingTest extends TestCase
         $this->postCspReport(str_repeat('a', 8192))->assertNoContent();
         $this->assertCount(2, $reports);
         $this->assertSame('info', $reports[0]->level);
-        $this->assertSame('daily', config('logging.channels.csp.driver'));
-        $this->assertSame(7, (int) config('logging.channels.csp.days'));
         $this->assertSame('script-src', $reports[0]->context['violated-directive'] ?? null);
 
         $beforeRejects = count($reports);

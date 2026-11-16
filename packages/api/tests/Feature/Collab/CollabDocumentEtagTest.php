@@ -6,8 +6,9 @@ namespace Tests\Feature\Collab;
 
 use App\Services\Collab\DocCollabDocumentService;
 use App\Storage\WgwStorage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
-use Symfony\Component\Process\Process;
+use Illuminate\Support\Sleep;
 use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
@@ -197,57 +198,21 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
         $this->assertSame('', $response->getContent());
     }
 
-    public function test_a_held_lock_blocks_the_first_open_until_the_other_writer_finishes(): void
+    public function test_a_held_lock_refuses_the_first_open_instead_of_racing(): void
     {
-        $lockPath = DocCollabDocumentService::documentLockPath(self::SIDECAR_STORAGE_PATH);
-        $flag = $this->dataDir.'/lock-held';
-        $script = $this->dataDir.'/hold-lock.php';
-        file_put_contents($script, <<<'PHP'
-<?php
-$handle = fopen($argv[1], 'c');
-if ($handle === false || ! flock($handle, LOCK_EX)) {
-    fwrite(STDERR, "lock failed\n");
-    exit(1);
-}
-file_put_contents($argv[2], 'held');
-usleep(1200000);
-flock($handle, LOCK_UN);
-fclose($handle);
-PHP);
-        $process = new Process([PHP_BINARY, $script, $lockPath, $flag]);
-        $process->start();
-
-        $deadline = microtime(true) + 5;
-        while (! is_file($flag) && microtime(true) < $deadline) {
-            usleep(20000);
-        }
-        $this->assertFileExists($flag, $process->getErrorOutput());
-
+        $lock = Cache::lock(DocCollabDocumentService::documentLockKey(self::SIDECAR_STORAGE_PATH), 60);
+        $this->assertTrue($lock->get());
         $token = $this->issueBearerToken();
-        $started = microtime(true);
-        $this->withBearer($token)
-            ->putCollaboration(
-                $this->collaborationUrl(),
-                "# First\n",
-                "\x01",
-                ['If-None-Match' => '*'],
-            )
-            ->assertOk();
-        $this->assertGreaterThan(
-            0.8,
-            microtime(true) - $started,
-            'The first open must wait on the sidecar lock instead of racing the other writer.',
-        );
-        $process->wait();
+        Sleep::fake(syncWithCarbon: true);
 
         $this->withBearer($token)
-            ->putCollaboration(
-                $this->collaborationUrl(),
-                "# Second\n",
-                "\x02",
-                ['If-None-Match' => '*'],
-            )
-            ->assertStatus(412);
+            ->putCollaboration($this->collaborationUrl(), "# First\n", "\x01", ['If-None-Match' => '*'])
+            ->assertStatus(503);
+
+        $lock->release();
+        $this->withBearer($token)
+            ->putCollaboration($this->collaborationUrl(), "# First\n", "\x01", ['If-None-Match' => '*'])
+            ->assertOk();
     }
 
     public function test_a_first_put_without_a_precondition_is_accepted(): void

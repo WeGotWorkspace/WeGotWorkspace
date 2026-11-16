@@ -4,8 +4,8 @@ import type { Note } from "@/lib/models/note";
 import { announceNoteArchivedElsewhere } from "@/lib/offline/notes/notes-archived-elsewhere";
 import { useNoteArchivedElsewhere } from "./use-note-archived-elsewhere";
 
-vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+vi.mock("@/lib/offline/core/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/offline-session")>()),
   readOfflineNotesUsername: vi.fn(() => "archived-user"),
 }));
 

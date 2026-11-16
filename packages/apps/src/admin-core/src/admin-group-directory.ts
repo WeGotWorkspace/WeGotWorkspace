@@ -1,4 +1,4 @@
-import type { AdminGroup, AdminUser } from "@/admin-core/src/admin-types";
+import type { AdminGroup, AdminUser } from "@/lib/models/admin-types";
 
 export type RequiredGroupName =
   { ok: true; name: string } | { ok: false; message: "Team name is required" };

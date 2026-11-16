@@ -32,8 +32,6 @@ export {
 } from "./contacts-addressbook-write";
 export {
   channelDisplayLabels,
-  contactDisplayName,
-  contactPersonName,
   isContactOrgCard,
   contactInitials,
   contactListDetail,
@@ -45,9 +43,13 @@ export {
   contactPhotoBlobId,
   CONTACT_MEDIA_BLOB_PATH,
   filterCardsBySearch,
-  mapEntriesSorted,
   type ChannelDisplayLabelOptions,
 } from "./contacts-display-utils";
+export {
+  contactDisplayName,
+  contactPersonName,
+  mapEntriesSorted,
+} from "@/lib/models/contacts-display";
 export { ContactUserAvatar } from "./contact-user-avatar";
 export { ContactsGroupIcon } from "./contacts-group-icon";
 export { ContactsOrgIcon } from "./contacts-org-icon";
@@ -73,17 +75,19 @@ export {
 export {
   CONTACTS_CREATE_ID,
   contactEditDraftHasContent,
-  contactCardToEditDraft,
   editDraftToCreateBody,
-  editDraftToPatch,
   emptyContactEditDraft,
-  newContactMapId,
   canCreateContactInView,
   resolveCreateAddressBookIds,
   resolveDefaultContactsView,
+} from "./contacts-edit-utils";
+export {
+  contactCardToEditDraft,
+  editDraftToPatch,
+  newContactMapId,
   CONTACT_CHANNEL_CONTEXTS,
   CONTACT_PHONE_TYPES,
   type ContactChannelContext,
   type ContactEditDraft,
   type ContactPhoneType,
-} from "./contacts-edit-utils";
+} from "@/lib/models/contacts-edit-draft";

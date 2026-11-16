@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import type { SettingsUIData } from "@/settings-core/src/settings-types";
+import type { SettingsUIData } from "@/lib/models/settings-types";
 
 /**
  * Named reachability facts for panel and slice gates.

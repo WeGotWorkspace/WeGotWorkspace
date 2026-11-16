@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useLocation, useRouter } from "@tanstack/react-router";
-import type { SettingsSection } from "@/settings-core/src/settings-types";
+import type { SettingsSection } from "@/lib/models/settings-types";
 import {
   isSettingsPathname,
   resolveSettingsSection,

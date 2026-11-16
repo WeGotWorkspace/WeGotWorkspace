@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
-import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { driveInboundLabels } from "@/lib/offline/drive/drive-inbound-labels";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import { syncDriveFileNodesIfStale } from "@/lib/offline/drive/drive-file-node-push";
@@ -35,8 +35,8 @@ export function useDriveFileNodeInbound(
   const showKept = useCallback(
     (result: DriveInboundSyncResult) => {
       if (result.keptUnsavedPaths.length === 0) return;
-      show(docsLabels.keptUnsavedDocumentTitle, {
-        description: docsLabels.keptUnsavedDocumentMessage(
+      show(driveInboundLabels.keptUnsavedDocumentTitle, {
+        description: driveInboundLabels.keptUnsavedDocumentMessage(
           shownPaths(result.keptUnsavedPaths),
           result.keptUnsavedPaths.length,
         ),
