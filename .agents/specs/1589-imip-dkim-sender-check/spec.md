@@ -51,7 +51,7 @@ The signature's `d=` must equal the `From:` domain, or be a parent of it with at
 
 ### DNS lookup
 
-- One TXT query per selector and domain, through PHP's `dns_get_record` behind a `DnsTxtResolver` interface. It uses the system resolver, so it works under `open_basedir` and needs no new dependency. It has no per-call timeout: a slow resolver is bounded by the system resolver's own timeout (glibc: 5 seconds, 2 attempts per nameserver) and by the stop-on-failure rule below, so one poll waits on at most one failing lookup. A failed lookup (`dns_get_record` returning false: a temporary or non-recoverable resolver error) is a temporary error; an empty answer is "no record".
+- One TXT query per selector and domain, through PHP's `dns_get_record` behind a `DnsTxtResolver` interface. It uses the system resolver, so it works under `open_basedir` and needs no new dependency. It has no per-call timeout: a slow resolver is bounded by the system resolver's own timeout (glibc: 5 seconds, 2 attempts per nameserver). While the mailbox clock is still running, the poll stops at the first failed lookup and waits on that one. Once the clock has run out, the poll skips each message whose lookup fails and continues, so it can wait on one lookup per such message in the batch. A failed lookup (`dns_get_record` returning false: a temporary or non-recoverable resolver error) is a temporary error; an empty answer is "no record".
 - Selector and domain are checked against DNS name syntax before any query; a name with other characters fails the signature.
 - Answers are cached in the shared cache: a key record for 1 hour, "no record" (NXDOMAIN or no TXT) for 10 minutes. A failed lookup (timeout, SERVFAIL, refused, no resolver) is never cached.
 - Tests inject a fake resolver; no test makes a real DNS query.
@@ -59,7 +59,7 @@ The signature's `d=` must equal the `From:` domain, or be a parent of it with at
 ### DNS unreachable: skip and retry, never trust
 
 - A lookup that fails is a temporary error. When no other aligned signature has passed, the reply is neither applied nor skipped: the poll stops at that message, keeps the cursor before it, and records `dns_unavailable` as the mailbox's last error. The next poll (2 minutes later) tries again. Later messages wait, so replies are still applied in arrival order.
-- A message that stays undecidable for 1 hour is skipped with `dkim_dns_unavailable` and the cursor moves past it, so a sender domain with broken DNS cannot hold up the mailbox for longer than that.
+- While key lookups keep failing, the mailbox waits at most 1 hour in total, counted from the first failure; after that every message whose lookup fails is skipped with `dkim_dns_unavailable` and the cursor moves past it, until a poll reaches the end of the folder. A sender domain with broken DNS, or many of them, cannot hold up the mailbox for longer than that.
 
 ### What the poller fetches
 

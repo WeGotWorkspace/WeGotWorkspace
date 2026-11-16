@@ -57,7 +57,7 @@ See spec.md, Non-goals.
 None — every choice is made. Choices taken without Wouter, to confirm in review:
 
 1. Freshness window 72 hours, replay memory 73 hours.
-2. DNS give-up after 1 hour per message.
+2. DNS give-up after 1 hour per mailbox, counted from the first failed lookup. Decided by Wouter on 2026-11-16.
 3. One-directional alignment for DKIM (`d=` equal to or a parent of the `From:` domain).
 4. New payload field `senderCheck` instead of reusing `trustedServer: null`.
 5. `dns_get_record` without a new dependency; `pear/net_dns2` is the option if a per-query timeout is wanted.
