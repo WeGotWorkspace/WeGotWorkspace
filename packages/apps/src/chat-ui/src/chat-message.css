@@ -73,6 +73,21 @@
   color: var(--chat-muted, var(--workspace-label-color));
 }
 
+/* A send, edit or delete the server has not taken yet, under the body. Pending
+   reads as the time's quiet ink; failed takes the error tone. */
+.chat-message__sync {
+  @apply mt-0.5 flex items-center gap-1 text-xs;
+  color: var(--chat-muted, var(--workspace-label-color));
+}
+
+.chat-message__sync[data-sync-state="failed"] {
+  color: var(--color-error);
+}
+
+.chat-message__sync-icon {
+  @apply size-3 shrink-0;
+}
+
 .chat-message--continuation .chat-message__body,
 .chat-message--continuation .chat-message__deleted {
   @apply mt-0;

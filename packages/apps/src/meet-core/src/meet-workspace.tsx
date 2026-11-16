@@ -11,7 +11,7 @@ import {
   viewerHasNoTeam,
 } from "@/lib/sharing/collection-share";
 import type { CollectionSharePrincipal } from "@/lib/sharing/collection-share";
-import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
+import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
 import {
   meetChannelComposerPlaceholder,
   meetChannelTitle,
@@ -100,6 +100,7 @@ export function MeetWorkspace({
   operations,
   onLogout,
   className,
+  mainNotice,
   initialChannelId,
   initialCallLayout,
   initialThreadId = null,
@@ -647,6 +648,7 @@ export function MeetWorkspace({
             onEditChannel={dialogs.openEdit}
           />
         }
+        mainNotice={mainNotice}
         main={
           <MeetWorkspaceMainSurfaces
             open={conversationOpen || visitEngaged}

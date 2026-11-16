@@ -47,13 +47,14 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/tasks")>();
   return {
     ...actual,
+    createTask: vi.fn(),
     patchTask: vi.fn(),
     getTask: vi.fn(),
     patchTaskList: vi.fn(),
   };
 });
 
-import { patchTask, patchTaskList } from "@/lib/api/wgw/tasks";
+import { createTask, patchTask, patchTaskList } from "@/lib/api/wgw/tasks";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 describe("createHybridTasksOperations", () => {
@@ -70,6 +71,37 @@ describe("createHybridTasksOperations", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("queues a create the network cut off under the UID it was first sent with (#2155)", async () => {
+    // Safari reports a create cut off by a reload as a network error although
+    // the server stored it. The resend must carry the same UID, so the server
+    // answers with that task instead of storing a second one.
+    vi.mocked(createTask).mockRejectedValue(new TypeError("The network connection was lost."));
+
+    const operations = createHybridTasksOperations(username);
+    const queued = await operations.createTask({
+      taskListIds: { [task.taskListId]: true },
+      title: "Buy milk",
+    });
+
+    const sent = vi.mocked(createTask).mock.calls[0]![0];
+    expect(sent.uid).toMatch(/^urn:uuid:[0-9a-f-]{36}$/);
+    const create = (await listOutboxMutations(username)).find((row) => row.op === "create");
+    expect(JSON.parse(create!.payload).body.uid).toBe(sent.uid);
+    expect(queued.uid).toBe(sent.uid);
+  });
+
+  it("keeps a UID the caller already chose", async () => {
+    vi.mocked(createTask).mockRejectedValue(new TypeError("Network request failed"));
+
+    await createHybridTasksOperations(username).createTask({
+      taskListIds: { [task.taskListId]: true },
+      title: "Chosen",
+      uid: "urn:uuid:chosen",
+    });
+
+    expect(vi.mocked(createTask).mock.calls[0]![0].uid).toBe("urn:uuid:chosen");
   });
 
   it("queues patch offline and updates IndexedDB when navigator.onLine is false", async () => {

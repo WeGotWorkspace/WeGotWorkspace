@@ -1,13 +1,13 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 describe("wegotworkspace settings routes", () => {
   it("matches section on direct /settings/$section loads", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/settings/calendar"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const match = router.state.matches.find((entry) => entry.params.section);
@@ -19,7 +19,7 @@ describe("wegotworkspace settings routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/settings"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
     expect(router.state.location.pathname).toBe("/settings");
 
@@ -37,7 +37,7 @@ describe("wegotworkspace settings routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/settings/memberships"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     await router.navigate({ to: "/settings" });

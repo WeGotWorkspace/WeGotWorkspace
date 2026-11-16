@@ -20,7 +20,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
-import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { ChangeNotebookDialog } from "@/project-dialog/src/change-notebook-dialog";
 import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
@@ -77,14 +77,14 @@ import {
   notebookDisplayColor,
   notebookDotColor,
   notesDetailTintStyle,
-} from "@/notes-core/src/notes-notebook-color";
+} from "@/lib/models/notebook-color";
 import {
   notebookSelectValueForNotes,
   pendingMoveAfterNotebookCreate,
-  type NotesNotebookSelectItem,
-} from "@/notes-core/src/notes-notebook-select";
-import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
-import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
+  type NotebookSelectItem,
+} from "@/project-dialog/src/notebook-select";
+import { ProjectDialog } from "@/project-dialog/src/project-dialog";
+import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
 import { Callout } from "@/callout/src/callout";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import "@/notes-core/src/notes-workspace.css";
@@ -315,7 +315,7 @@ export function NotesWorkspace({
     [selectViewClearingTitleFocus, setNotes],
   );
   const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
-  const [createdMoveDraft, setCreatedMoveDraft] = useState<NotesNotebookSelectItem | null>(null);
+  const [createdMoveDraft, setCreatedMoveDraft] = useState<NotebookSelectItem | null>(null);
   const openCreateNotebook = useCallback(
     (moveNoteIds?: string[]) => {
       pendingMoveAfterCreateRef.current = moveNoteIds?.length ? moveNoteIds : null;
@@ -657,7 +657,7 @@ export function NotesWorkspace({
         }}
       />
 
-      <NotesChangeNotebookDialog
+      <ChangeNotebookDialog
         open={!!moveDialog}
         notebooks={selectNotebooks}
         value={notebookSelectValueForNotes(notes, moveDialog?.ids, selectNotebooks)}
@@ -674,7 +674,7 @@ export function NotesWorkspace({
         onCreateNotebook={canManageNotebooks && moveDialog ? () => openCreateNotebook() : undefined}
       />
 
-      <TaskProjectDialog
+      <ProjectDialog
         dialog={notebookDialog}
         groups={groups}
         personalOwnerLabel={personalOwnerLabel(session)}

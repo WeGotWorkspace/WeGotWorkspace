@@ -266,7 +266,7 @@ test.describe("Contacts first download on a new device", () => {
     await page.reload();
     await search(page, keptName);
     await expect(page.getByText(keptName, { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("No cached contacts available offline")).toHaveCount(0);
+    await expect(page.getByText("Not available offline yet")).toHaveCount(0);
     await expect(page.getByText("Could not load live contacts")).toHaveCount(0);
     expect((await storedContacts(page)).unfinished).toBe(true);
 

@@ -1,5 +1,6 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
 
 describe("wegotworkspace notes routes", () => {
@@ -7,7 +8,7 @@ describe("wegotworkspace notes routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/notes/all/n-123"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const noteMatch = router.state.matches.find((match) => match.params.noteId);
@@ -37,7 +38,7 @@ describe("wegotworkspace notes routes", () => {
       const history = createMemoryHistory({
         initialEntries: [`/notes/${view}`],
       });
-      const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+      const router = createMockWeGotWorkspaceRouter(history);
       await router.load();
       expect(router.state.location.pathname).toBe(`/notes/${view}`);
 
@@ -54,7 +55,7 @@ describe("wegotworkspace notes routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/notes/shared-with-me"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     await router.navigate({
@@ -75,7 +76,7 @@ describe("wegotworkspace notes routes", () => {
     const history = createMemoryHistory({
       initialEntries: [`/notes/all/${noteId}`],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const noteMatch = router.state.matches.find((match) => match.params.noteId);
@@ -86,7 +87,7 @@ describe("wegotworkspace notes routes", () => {
     const archiveHistory = createMemoryHistory({
       initialEntries: ["/notes/archive/n-456"],
     });
-    const archiveRouter = createWeGotWorkspaceRouter({ mode: "mock", history: archiveHistory });
+    const archiveRouter = createMockWeGotWorkspaceRouter(archiveHistory);
     await archiveRouter.load();
 
     const archiveMatch = archiveRouter.state.matches.find((match) =>
@@ -97,7 +98,7 @@ describe("wegotworkspace notes routes", () => {
     const notebookHistory = createMemoryHistory({
       initialEntries: ["/notes/notebooks/notes-drafts/n-789"],
     });
-    const notebookRouter = createWeGotWorkspaceRouter({ mode: "mock", history: notebookHistory });
+    const notebookRouter = createMockWeGotWorkspaceRouter(notebookHistory);
     await notebookRouter.load();
 
     const notebookMatch = notebookRouter.state.matches.find((match) => match.params.notebookId);
@@ -111,7 +112,7 @@ describe("wegotworkspace notes routes", () => {
     const starredHistory = createMemoryHistory({
       initialEntries: ["/notes/starred"],
     });
-    const starredRouter = createWeGotWorkspaceRouter({ mode: "mock", history: starredHistory });
+    const starredRouter = createMockWeGotWorkspaceRouter(starredHistory);
     await starredRouter.load();
     expect(starredRouter.state.location.pathname).toBe("/notes/starred");
     expect(starredRouter.state.matches.some((match) => match.params.notebookId)).toBe(false);

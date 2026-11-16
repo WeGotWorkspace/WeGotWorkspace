@@ -16,7 +16,11 @@ export function useHybridBootstrap<T>({
   cacheTimeoutMs?: number;
 }) {
   const [phase, setPhase] = useState<HybridPhase>("loading");
-  const [error, setError] = useState<string | null>(null);
+  /**
+   * The thrown error itself, so the shell can tell a typed cause (offline before
+   * the first online visit, #2100) from a load failure.
+   */
+  const [error, setError] = useState<Error | null>(null);
   const [data, setData] = useState<T | null>(null);
   const [successVersion, setSuccessVersion] = useState(0);
   /** Finished snapshot. Progressive pages paint while this stays false. */
@@ -56,7 +60,7 @@ export function useHybridBootstrap<T>({
       })
       .catch((e: unknown) => {
         setData(null);
-        setError(e instanceof Error ? e.message : String(e));
+        setError(e instanceof Error ? e : new Error(String(e)));
         setPhase("error");
         setComplete(false);
       });

@@ -9,7 +9,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 
 vi.mock("@/lib/api/wgw/notifications", () => ({
   listNotifications: vi.fn(async () => ({ list: [], unreadCount: 0 })),
-  ackNotification: vi.fn(),
+  ackNotifications: vi.fn(),
   ackLocalNotifications: vi.fn(),
   fetchVapidPublicKey: vi.fn(),
   subscribePush: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock("@/lib/notifications/notification-click-navigate", async (importOriginal
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import {
   ackLocalNotifications,
-  ackNotification,
+  ackNotifications,
   listNotifications,
 } from "@/lib/api/wgw/notifications";
 import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensure-push-subscription";
@@ -109,11 +109,11 @@ describe("NotificationsHost", () => {
     vi.mocked(listNotifications).mockReset();
     localStorage.clear();
     vi.mocked(ackLocalNotifications).mockReset();
-    vi.mocked(ackNotification).mockReset();
+    vi.mocked(ackNotifications).mockReset();
     vi.mocked(assignNotificationNavigate).mockReset();
     vi.mocked(listNotifications).mockResolvedValue({ list: [], unreadCount: 0 });
     vi.mocked(ackLocalNotifications).mockResolvedValue(undefined);
-    vi.mocked(ackNotification).mockResolvedValue(undefined);
+    vi.mocked(ackNotifications).mockResolvedValue(undefined);
     window.localStorage.removeItem(NOTIFICATION_INBOX_SOUND_MUTED_KEY);
     resetInboxNotificationSoundForTests();
   });
@@ -395,7 +395,7 @@ describe("NotificationsHost", () => {
       expect(inbox?.items).toHaveLength(0);
       expect(inbox?.unreadCount).toBe(0);
     });
-    expect(ackNotification).toHaveBeenCalledWith("n1");
+    expect(ackNotifications).toHaveBeenCalledWith(["n1"]);
   });
 
   it("mark-all-read clears the unread tray list", async () => {
@@ -422,7 +422,7 @@ describe("NotificationsHost", () => {
       expect(inbox?.items).toHaveLength(0);
       expect(inbox?.unreadCount).toBe(0);
     });
-    expect(ackNotification).toHaveBeenCalledWith("n1");
+    expect(ackNotifications).toHaveBeenCalledWith(["n1"]);
   });
 
   it("markReadWhere acks only matching navigate rows", async () => {
@@ -458,8 +458,40 @@ describe("NotificationsHost", () => {
       expect(inbox?.items).toEqual([other]);
       expect(inbox?.unreadCount).toBe(1);
     });
-    expect(ackNotification).toHaveBeenCalledWith("n1");
-    expect(ackNotification).not.toHaveBeenCalledWith("n2");
+    expect(ackNotifications).toHaveBeenCalledWith(["n1"]);
+    expect(ackNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  it("opening a channel with 32 unread mentions marks them read with one request (#2154)", async () => {
+    const mentions = Array.from({ length: 32 }, (_, index) => ({
+      ...unreadItem,
+      id: `m${index + 1}`,
+      tag: `chat.mentioned:${index + 1}`,
+    }));
+    vi.mocked(listNotifications).mockResolvedValue({ list: mentions, unreadCount: 32 });
+
+    let inbox: ReturnType<typeof useNotificationsInbox> = null;
+    function Probe() {
+      inbox = useNotificationsInbox();
+      return null;
+    }
+
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(inbox?.items).toHaveLength(32);
+    });
+
+    await inbox!.markReadWhere((item) => item.navigate === unreadItem.navigate);
+    await waitFor(() => {
+      expect(inbox?.unreadCount).toBe(0);
+    });
+    expect(ackNotifications).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ackNotifications).mock.calls[0]?.[0]).toHaveLength(32);
   });
 
   it("SW notificationclick postMessage opens the deep link after session expiry", () => {
