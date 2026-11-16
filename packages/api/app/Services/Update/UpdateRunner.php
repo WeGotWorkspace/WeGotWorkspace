@@ -56,7 +56,7 @@ final class UpdateRunner
         $driver = $this->packages->wgwDriver();
         $checks = $this->envChecker->checkAll($driver === 'mysql' ? 'mysql' : 'sqlite');
         $compatible = $this->envChecker->allPassed($checks);
-        $checks = array_merge($checks, $this->files->capacityChecks($this->install->installRoot()));
+        $checks = array_merge($checks, $this->files->capacityChecks($this->install->installRoot(), readQuota: $installChannel !== 'docker'));
         $lockHeld = is_file($this->store->absolutePath($this->store->lockPath()));
         $phase = self::phaseFromState($state);
         $inProgress = $lockHeld || $phase !== null;

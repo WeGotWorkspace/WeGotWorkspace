@@ -194,13 +194,25 @@ test("clicking the toast opens the DM and marks the row read", async ({ browser 
     const toast = toastFor(tabA, text);
     await expect(toast).toBeVisible({ timeout: TOAST_BOUND_MS });
 
+    const perRowAcks: string[] = [];
+    tabA.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        /\/notifications\/(?!ack$|local-ack$)[^/]+\/ack$/.test(request.url())
+      ) {
+        perRowAcks.push(request.url());
+      }
+    });
+    // One batched read ack carries the row (#2154).
     const read = tabA.waitForRequest(
       (request) =>
         request.method() === "POST" &&
-        request.url().endsWith(`/notifications/${encodeURIComponent(rowId)}/ack`),
+        /\/notifications\/ack$/.test(request.url()) &&
+        ((request.postDataJSON() as { ids?: string[] } | null)?.ids?.includes(rowId) ?? false),
     );
     await toast.getByRole("button").click();
     await read;
+    expect(perRowAcks).toEqual([]);
     await expect(tabA).toHaveURL(/\/meet\/dms\/admin$/);
     await expect(tabA.getByText(text).first()).toBeVisible();
 

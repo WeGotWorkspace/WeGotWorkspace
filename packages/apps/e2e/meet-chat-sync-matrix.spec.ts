@@ -427,6 +427,11 @@ test.describe("meet chat offline", () => {
       await pollCache(tab, channelId, (c) => c.outbox.map((row) => row.op), "queued").toEqual([
         "send",
       ]);
+      // The main chat column (the call rail keeps a second, closed one).
+      const sent = tab
+        .locator(".workspace-app-layout__main-content")
+        .locator("article.chat-message", { hasText: `${id} too late` });
+      await expect(sent.locator(".chat-message__sync")).toHaveText("Sending…");
 
       await shareWithTeammate(channelId, false);
       await setTabOffline(tab, false);
@@ -442,6 +447,13 @@ test.describe("meet chat offline", () => {
       expect((await tabCache(tab, channelId)).messages.map((m) => [m.body, m.pending])).toEqual([
         [`${id} too late`, true],
       ]);
+      // On screen: the message reads "Not sent" and Meet shows the sync notice with Retry.
+      await expect(sent.locator(".chat-message__sync")).toHaveText("Not sent", {
+        timeout: 15_000,
+      });
+      const notice = tab.getByRole("region", { name: "Needs your attention" });
+      await expect(notice).toContainText("Some changes could not sync", { timeout: 15_000 });
+      await expect(notice.getByRole("button", { name: "Retry" })).toBeVisible();
     } finally {
       await context.close();
       await deleteChannel(channelId);

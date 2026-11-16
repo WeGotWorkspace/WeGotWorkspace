@@ -48,7 +48,15 @@ export type ChatMessage = {
   threadId?: string | null;
   replyCount?: number;
   parentId?: string | null;
+  /**
+   * A send, edit or delete of this message the server has not taken yet:
+   * `pending` while it waits, `failed` once sending it failed. Absent when the
+   * server has it.
+   */
+  syncState?: ChatMessageSyncState;
 };
+
+export type ChatMessageSyncState = "pending" | "failed";
 
 export type ChatUnfurlMap = Record<string, ChatLinkPreview>;
 

@@ -77,7 +77,7 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | `meet-core` (guest invite) | Split (stripped)         | `meet-core/src/meet-app.tsx` — live `/meet/guest`, unauthorized `/meet/channels/{id}`, `/meet/join` mount `MeetGuestChannel` |
 | `meet-core` (guest)        | Split (stripped)         | `meet-core/src/meet-guest-channel.tsx` — `MeetGuestChannel`: one room, no channel sidebar (`hideSidebarToggle`)              |
 | `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                  |
-| `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app             |
+| `docs-core` (collab)       | Split (collab submodule) | `docs-core/src/collab/docs-collab-workspace.tsx` — the Docs editor workspace on the shared collab engine                     |
 
 Settings contributions live in a compile-time registry (`registerBuiltinSettings()` from the SPA shell). The Settings app lists Account sections plus Apps rows that have a reachable slice (Calendar, Tasks, Contacts, Notes). Product workspaces that pass `appId` show a Settings row above the avatar; that row opens the same panel in a dialog. Empty apps (Drive, Docs, Meet) hide the row. Skip Settings, Admin, Install, and Meet guest.
 

@@ -438,7 +438,7 @@ final class CalendarRepository
             if (
                 $requestedId === CalendarCollectionUris::EVENT_DEFAULT
                 || CalendarCollectionUris::parseGroupCalendarApiId($requestedId) !== null
-                || $this->findCalendarInstance($principalUri, $requestedId) !== null
+                || $this->collections->uriTaken($principalUri, $requestedId)
             ) {
                 throw new ApiHttpException(409, 'Calendar id already exists.', 'alreadyExists');
             }
@@ -458,7 +458,7 @@ final class CalendarRepository
         }
         $candidate = $base;
         $suffix = 2;
-        while ($this->findCalendarInstance($principalUri, $candidate) !== null) {
+        while ($this->collections->uriTaken($principalUri, $candidate)) {
             $candidate = $base.'-'.$suffix;
             $suffix++;
         }

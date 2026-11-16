@@ -476,6 +476,23 @@ describe("createHybridDocsDriveOperations offline gaps (#1563)", () => {
     unsubscribe();
   });
 
+  it("sends a star queued while the browser is online without waiting for a reconnect (#2104)", async () => {
+    // The connection came back while the star was being queued, or the network
+    // failed under a browser that still says online: no reconnect follows.
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    live.setStar.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const operations = createHybridDocsDriveOperations(username);
+
+    await operations.setStar({ path: "/users/alice/Queued.md", starred: true });
+
+    await expect.poll(async () => (await listOutboxMutations(username)).length).toBe(0);
+    expect(live.setStar).toHaveBeenCalledTimes(2);
+    expect(live.setStar).toHaveBeenLastCalledWith({
+      path: "/users/alice/Queued.md",
+      starred: true,
+    });
+  });
+
   it("lists a folder from this device when offline, with the last live listing", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     live.listDirectory.mockResolvedValue(trashListing);

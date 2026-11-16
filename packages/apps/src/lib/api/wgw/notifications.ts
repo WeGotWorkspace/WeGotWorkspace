@@ -12,10 +12,18 @@ export async function listNotifications(opts?: {
   return (await wgwReadJson(res)) as NotificationInboxList;
 }
 
-export async function ackNotification(id: string): Promise<void> {
-  const res = await wgwFetch(`/notifications/${encodeURIComponent(id)}/ack`, { method: "POST" });
+/**
+ * Mark inbox rows read (and skip their push) in one request. At most 100 ids;
+ * ids that are not the user's rows are ignored (#2154).
+ */
+export async function ackNotifications(ids: readonly string[]): Promise<void> {
+  const res = await wgwFetch("/notifications/ack", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
   if (!res.ok)
-    throw new WgwRequestError(`POST /notifications/${id}/ack failed (${res.status})`, res.status);
+    throw new WgwRequestError(`POST /notifications/ack failed (${res.status})`, res.status);
 }
 
 /**

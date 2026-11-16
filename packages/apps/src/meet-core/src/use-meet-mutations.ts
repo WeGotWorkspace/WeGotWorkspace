@@ -12,6 +12,7 @@ import { buildLocalMeetChatLine } from "@/meet-core/src/meet-chat-line";
 import {
   buildMeetControlMessage,
   encodeMeetKnockerName,
+  isMeetRoomFullError,
 } from "@/meet-core/src/meet-control-messages";
 import {
   MEET_AD_HOC_RESERVATION_TTL_MS,
@@ -36,6 +37,20 @@ export type UseMeetMutationsArgs = {
    */
   persistentCall?: boolean;
 };
+
+/**
+ * What a failed join shows and rethrows. A full room (`room_full`) gets plain
+ * words; every other error passes through as thrown.
+ */
+function meetJoinFailure(error: unknown, fallback: string): { message: string; error: unknown } {
+  if (isMeetRoomFullError(error)) {
+    return {
+      message: meetLabels.callFull,
+      error: new Error(meetLabels.callFull, { cause: error }),
+    };
+  }
+  return { message: error instanceof Error ? error.message : fallback, error };
+}
 
 export function useMeetMutations({
   room,
@@ -152,11 +167,11 @@ export function useMeetMutations({
           room.setStartedAt(Date.now());
           debugRtc("join-room-success", { room: target, peerId });
         } catch (e) {
-          const message = e instanceof Error ? e.message : "Could not join meeting.";
-          debugRtc("join-room-failed", { room: target, peerId, message });
+          const failure = meetJoinFailure(e, "Could not join meeting.");
+          debugRtc("join-room-failed", { room: target, peerId, message: failure.message });
           room.setStatus("failed");
-          room.setError(message);
-          throw e;
+          room.setError(failure.message);
+          throw failure.error;
         }
       });
     },
@@ -214,11 +229,11 @@ export function useMeetMutations({
           }
           room.setStatus("waiting");
         } catch (e) {
-          const message = e instanceof Error ? e.message : "Could not request to join.";
+          const failure = meetJoinFailure(e, "Could not request to join.");
           room.setStatus("failed");
-          room.setError(message);
+          room.setError(failure.message);
           room.setWaitingForAdmission(false);
-          throw e;
+          throw failure.error;
         }
       });
     },

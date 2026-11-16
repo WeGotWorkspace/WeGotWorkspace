@@ -170,6 +170,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::get('dav/capabilities', DavCapabilitiesController::class);
 
     Route::get('notifications', [NotificationsController::class, 'index']);
+    Route::post('notifications/ack', [NotificationsController::class, 'ackBatch']);
     Route::post('notifications/local-ack', [NotificationsController::class, 'ackLocalBatch']);
     Route::post('notifications/{id}/ack', [NotificationsController::class, 'ack']);
     Route::post('notifications/{id}/local-ack', [NotificationsController::class, 'ackLocal']);

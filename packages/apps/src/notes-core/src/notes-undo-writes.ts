@@ -3,7 +3,7 @@ import type { Note } from "@/lib/models/note";
 import {
   persistNoteKeepingSyncRace,
   persistNoteOrDropGone,
-} from "@/notes-core/src/notes-persist-access";
+} from "@/lib/offline/notes/notes-persist-access";
 import type { NoteMetadataField, NotesAPIOperations } from "@/lib/models/notes-types";
 
 /**

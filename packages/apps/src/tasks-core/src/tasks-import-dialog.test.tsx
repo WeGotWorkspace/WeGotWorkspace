@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksImportDialog } from "@/tasks-core/src/tasks-import-dialog";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
-import { DEFAULT_TASK_LIST_COLOR } from "@/tasks-core/src/tasks-task-utils";
+import { DEFAULT_TASK_LIST_COLOR } from "@/lib/models/task-lists";
 import type { Task } from "@/lib/models/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 

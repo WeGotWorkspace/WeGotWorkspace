@@ -8,7 +8,7 @@
  *   /tasks/priority/:prioritySlug
  */
 
-import { INBOX_TASK_LIST_ID, isInboxTaskList } from "@/tasks-core/src/tasks-task-utils";
+import { INBOX_TASK_LIST_ID, isInboxTaskList } from "@/lib/models/task-lists";
 
 export const DEFAULT_TASKS_VIEW = "state:all";
 

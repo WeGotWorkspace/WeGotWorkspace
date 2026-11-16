@@ -43,7 +43,7 @@ import {
   upsertNoteInCache,
   upsertNotebookInCache,
 } from "@/lib/offline/notes/notes-offline-store";
-import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
+import { isNotesPersistGone, persistHttpStatus } from "@/lib/offline/notes/notes-persist-access";
 
 export type OutboxFlushResult = {
   stateMismatches: string[];
