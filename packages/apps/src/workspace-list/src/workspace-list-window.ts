@@ -75,6 +75,24 @@ export function listWindowRange(
 }
 
 /**
+ * Rows to mount for a list that shows its end (a chat stuck to its newest
+ * message): the last viewport of rows plus overscan above it, whatever the scroll
+ * position says yet. While the scrollport has no height, the last rows render.
+ */
+export function listWindowRangeAtEnd(
+  offsets: Float64Array,
+  viewportHeight: number,
+  overscanPx: number = WORKSPACE_LIST_OVERSCAN_PX,
+): ListWindowRange {
+  const count = offsets.length - 1;
+  if (viewportHeight <= 0) {
+    return { start: Math.max(0, count - WORKSPACE_LIST_UNSIZED_ROWS), end: count };
+  }
+  const top = Math.max(0, offsets[count]! - viewportHeight);
+  return { start: listWindowRange(offsets, top, viewportHeight, overscanPx).start, end: count };
+}
+
+/**
  * Runs of rows to render plus the gaps between them. Pinned rows outside the range
  * render at their own offset, each with a gap on either side.
  */

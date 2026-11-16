@@ -1,15 +1,33 @@
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { CollectionState } from "@/collection-state/src/collection-state";
-import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
+import type { ChatMessageAction } from "@/chat-ui/src/chat-message";
+import { ChatMessageRow } from "@/chat-ui/src/chat-message-row";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
-import { groupChatMessages, groupChatMessagesByDay } from "@/chat-ui/src/chat-message-group";
+import {
+  chatListItemIsHeader,
+  chatListItemKey,
+  chatListItems,
+  chatListTodayKey,
+  estimateChatListItem,
+  type ChatListItem,
+} from "@/chat-ui/src/chat-message-list-items";
 import type {
   ChatAuthorPresenceMap,
   ChatMessage as ChatMessageModel,
 } from "@/lib/models/chat-types";
+import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
+import { useWorkspaceListRows } from "@/workspace-list/src/use-workspace-list-rows";
 import { cn } from "@/lib/utils";
 import "@/chat-ui/src/chat-ui.css";
 import "@/chat-ui/src/chat-message-list.css";
@@ -18,6 +36,10 @@ export type ChatMessageListProps = {
   messages: readonly ChatMessageModel[];
   currentUserId: string;
   emptyLabel?: string;
+  /**
+   * The hover actions of a message. Rows are memoized: the actions may depend on the
+   * message and `currentUserId` only. Their handlers may change; a click calls the latest.
+   */
   actionsForMessage?: (message: ChatMessageModel) => ChatMessageAction[] | undefined;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   onOpenThread?: (message: ChatMessageModel) => void;
@@ -30,6 +52,10 @@ export type ChatMessageListProps = {
 };
 
 const STICK_THRESHOLD_PX = 48;
+/** Announcements kept in the live region; older ones were read already. */
+const ANNOUNCEMENTS_KEPT = 5;
+
+type Announcement = { id: string; text: string };
 
 function isNearBottom(el: HTMLDivElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight < STICK_THRESHOLD_PX;
@@ -42,6 +68,19 @@ function scrollToBottom(el: HTMLDivElement, ignoreScrollRef: { current: boolean 
     el.scrollTop = el.scrollHeight;
     ignoreScrollRef.current = false;
   });
+}
+
+/** The messages after `previousId`: what arrived since the last render. */
+function messagesAfter(
+  messages: readonly ChatMessageModel[],
+  previousId: string,
+): ChatMessageModel[] {
+  const at = messages.findIndex((message) => message.id === previousId);
+  return at < 0 ? messages.slice(-1) : messages.slice(at + 1);
+}
+
+function announcementFor(message: ChatMessageModel): Announcement {
+  return { id: message.id, text: `${message.authorName}: ${markdownToPlainText(message.body)}` };
 }
 
 export function ChatMessageList({
@@ -59,6 +98,7 @@ export function ChatMessageList({
   onCaughtUpChange,
 }: ChatMessageListProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const rowsRef = useRef<HTMLDivElement | null>(null);
   const dayIdPrefix = useId();
   const stickRef = useRef(true);
   const ignoreScrollRef = useRef(false);
@@ -67,8 +107,95 @@ export function ChatMessageList({
   onCaughtUpChangeRef.current = onCaughtUpChange;
   const caughtUpNotifiedRef = useRef(true);
   const [showJump, setShowJump] = useState(false);
-  const groups = groupChatMessages(messages);
-  const daySections = groupChatMessagesByDay(groups);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  const todayKey = chatListTodayKey();
+  // `todayKey` relabels Today / Yesterday after midnight.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const items = useMemo(() => chatListItems(messages), [messages, todayKey]);
+
+  // Rows keep stable handlers, so they skip re-rendering; a click calls the latest prop.
+  const latest = useRef({ actionsForMessage, onToggleReaction, onOpenThread });
+  latest.current = { actionsForMessage, onToggleReaction, onOpenThread };
+  const actionsFor = useCallback(
+    (message: ChatMessageModel) => latest.current.actionsForMessage?.(message),
+    [],
+  );
+  const toggleReaction = useCallback(
+    (messageId: string, emoji: string) => latest.current.onToggleReaction?.(messageId, emoji),
+    [],
+  );
+  const openThread = useCallback(
+    (message: ChatMessageModel) => latest.current.onOpenThread?.(message),
+    [],
+  );
+
+  const dayHeaderId = useCallback((key: string) => `${dayIdPrefix}chat-day-${key}`, [dayIdPrefix]);
+  const renderItem = (item: ChatListItem) => {
+    if (item.kind === "day") {
+      return (
+        <ListStickyHeader
+          id={dayHeaderId(item.day.key)}
+          label={item.day.label}
+          emphasis={item.day.emphasis}
+          rest={item.day.rest}
+          variant="frost"
+        />
+      );
+    }
+    const { message } = item;
+    const editing = editingMessageId === message.id;
+    return (
+      <ChatMessageRow
+        message={message}
+        currentUserId={currentUserId}
+        continuation={item.continuation}
+        beforeContinuation={item.beforeContinuation}
+        groupStart={item.groupStart}
+        editing={editing}
+        editComposer={editing ? editComposer?.(message) : undefined}
+        presence={authorPresence?.[message.authorId]}
+        allowThread={allowThread}
+        actionsFor={actionsForMessage ? actionsFor : undefined}
+        toggleReaction={onToggleReaction ? toggleReaction : undefined}
+        openThread={onOpenThread ? openThread : undefined}
+      />
+    );
+  };
+  const renderSection = (header: ChatListItem, content: ReactNode[]) => (
+    // A labelled group, not a region: several lists can show the same day.
+    <div
+      role="group"
+      className="chat-message-list__day-section"
+      aria-labelledby={header.kind === "day" ? dayHeaderId(header.day.key) : undefined}
+    >
+      {content}
+    </div>
+  );
+  const pinnedKeys = useMemo(
+    () => (editingMessageId ? [editingMessageId] : []),
+    [editingMessageId],
+  );
+  const followEnd = useCallback(() => stickRef.current, []);
+
+  const { attachList, rows, dataAttributes } = useWorkspaceListRows({
+    items,
+    getKey: chatListItemKey,
+    renderItem,
+    estimateSize: estimateChatListItem,
+    isHeader: chatListItemIsHeader,
+    renderSection,
+    pinnedKeys,
+    animateReorder: false,
+    followEnd,
+  });
+  const attachRows = useCallback(
+    (node: HTMLDivElement | null) => {
+      rowsRef.current = node;
+      attachList(node);
+    },
+    [attachList],
+  );
 
   function notifyCaughtUp(next: boolean): void {
     if (caughtUpNotifiedRef.current === next) return;
@@ -109,6 +236,10 @@ export function ChatMessageList({
     const appended = Boolean(lastId && lastId !== previousId && previousId !== undefined);
     const ownSend = appended && last?.authorId === currentUserId;
 
+    if (appended && previousId !== undefined) {
+      const arrived = messagesAfter(messages, previousId).map(announcementFor);
+      setAnnouncements((previous) => [...previous, ...arrived].slice(-ANNOUNCEMENTS_KEPT));
+    }
     if (ownSend) {
       stickRef.current = true;
       setShowJump(false);
@@ -126,9 +257,8 @@ export function ChatMessageList({
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(stickToBottom);
     observer.observe(el);
-    for (const child of el.children) {
-      observer.observe(child);
-    }
+    // Rows mounting, measuring or loading (link previews) change the rows' height.
+    if (rowsRef.current) observer.observe(rowsRef.current);
     return () => observer.disconnect();
   }, [messages, currentUserId]);
 
@@ -140,6 +270,13 @@ export function ChatMessageList({
         className,
       )}
     >
+      {/* New messages are read out here, once. The log is not live itself: the
+          window mounts older rows as they scroll in, and those are not news. */}
+      <div className="chat-message-list__announcer sr-only" aria-live="polite">
+        {announcements.map((announcement) => (
+          <p key={announcement.id}>{announcement.text}</p>
+        ))}
+      </div>
       {messages.length === 0 ? (
         <CollectionState icon={<MessageSquare className="size-12" />}>{emptyLabel}</CollectionState>
       ) : (
@@ -149,51 +286,11 @@ export function ChatMessageList({
             className="chat-message-list__scroll"
             onScroll={onScroll}
             role="log"
-            aria-live="polite"
-            aria-relevant="additions"
+            aria-live="off"
           >
-            {daySections.map((day) => (
-              // A labelled group, not a region: several lists can show the same day.
-              <div
-                key={day.key}
-                role="group"
-                className="chat-message-list__day-section"
-                aria-labelledby={`${dayIdPrefix}chat-day-${day.key}`}
-              >
-                <ListStickyHeader
-                  id={`${dayIdPrefix}chat-day-${day.key}`}
-                  label={day.label}
-                  emphasis={day.emphasis}
-                  rest={day.rest}
-                  variant="frost"
-                />
-                {day.groups.map((group) => (
-                  <div key={group.id} className="chat-message-list__group">
-                    {group.messages.map((message, index) => (
-                      <ChatMessage
-                        key={message.id}
-                        message={message}
-                        currentUserId={currentUserId}
-                        continuation={index > 0}
-                        editing={editingMessageId === message.id}
-                        editComposer={
-                          editingMessageId === message.id ? editComposer?.(message) : undefined
-                        }
-                        actions={actionsForMessage?.(message)}
-                        presence={authorPresence?.[message.authorId]}
-                        allowThread={allowThread}
-                        onOpenThread={onOpenThread ? () => onOpenThread(message) : undefined}
-                        onToggleReaction={
-                          onToggleReaction
-                            ? (emoji) => onToggleReaction(message.id, emoji)
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
+            <div ref={attachRows} className="chat-message-list__rows" {...dataAttributes}>
+              {rows}
+            </div>
           </div>
           {showJump ? (
             <Button

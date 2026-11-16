@@ -38,10 +38,19 @@
   @apply flex min-w-0 max-w-full flex-col;
 }
 
-.chat-message-list__group {
+/* One message (#1641 step d): the window mounts, measures and drops rows, so a
+   row's spacing comes from what the list knows, never from its DOM neighbours,
+   which may be spacers. Padding, not margin: the window measures border boxes. */
+.chat-message-list__row {
   @apply flex min-w-0 max-w-full flex-col;
 }
 
-.chat-message-list__group + .chat-message-list__group {
-  @apply mt-2;
+/* The gap between two author runs on the same day. */
+.chat-message-list__row--group-start {
+  @apply pt-2;
+}
+
+/* One author's run reads as one block: tight above a follow-up message. */
+.chat-message-list__row > .chat-message--before-continuation {
+  @apply pb-1;
 }

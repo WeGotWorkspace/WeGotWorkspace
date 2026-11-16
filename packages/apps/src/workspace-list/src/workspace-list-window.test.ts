@@ -5,6 +5,7 @@ import {
   WORKSPACE_LIST_WINDOW_AFTER,
   listRowOffsets,
   listWindowRange,
+  listWindowRangeAtEnd,
   listWindowSegments,
   mountedRowCount,
   sectionHeaderIndex,
@@ -13,6 +14,27 @@ import {
 function evenOffsets(count: number, size = 100) {
   return listRowOffsets(Array.from({ length: count }, () => size));
 }
+
+describe("listWindowRangeAtEnd", () => {
+  it("windows the last viewport plus overscan, whatever the scroll position", () => {
+    const offsets = evenOffsets(1000);
+    const range = listWindowRangeAtEnd(offsets, 800);
+    expect(range.end).toBe(1000);
+    expect(offsets[range.start + 1]!).toBeGreaterThan(100_000 - 800 - WORKSPACE_LIST_OVERSCAN_PX);
+    expect(offsets[range.start]!).toBeLessThanOrEqual(100_000 - 800 - WORKSPACE_LIST_OVERSCAN_PX);
+  });
+
+  it("renders the last rows while the scrollport has no height", () => {
+    expect(listWindowRangeAtEnd(evenOffsets(1000), 0)).toEqual({
+      start: 1000 - WORKSPACE_LIST_UNSIZED_ROWS,
+      end: 1000,
+    });
+  });
+
+  it("renders every row of a list shorter than the viewport", () => {
+    expect(listWindowRangeAtEnd(evenOffsets(5), 800)).toEqual({ start: 0, end: 5 });
+  });
+});
 
 describe("listWindowRange", () => {
   it("windows any row count: whether to window at all is the caller's threshold", () => {
