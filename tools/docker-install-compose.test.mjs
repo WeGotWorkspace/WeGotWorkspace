@@ -116,6 +116,10 @@ for (const [label, file] of [
     assert.match(loop, new RegExp(`schedule:run[^;]*&& touch ${heartbeatFile};`));
   });
 
+  test(`${label} stack publishes the web port on 127.0.0.1 by default`, { skip }, () => {
+    assert.equal(composeServices(file).web.ports[0].host_ip, "127.0.0.1");
+  });
+
   test(`${label} stack: each long-running service with its own entrypoint has a health check`, { skip }, () => {
     const services = composeServices(file);
     const missing = Object.keys(services)
