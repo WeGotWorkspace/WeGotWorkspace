@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { EditorContent } from "@tiptap/react";
 import { DocsCollabCommentControl } from "@/text-editor-core/docs-collab/docs-collab-comment-control";
-import { docsLabels } from "@/docs-core/src/docs-labels";
+import { docsCollabLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import {
   TextEditorFormatBar,
   TEXT_EDITOR_FORMAT_BAR_GROUPS,
@@ -126,7 +126,7 @@ function CommentControlDemo() {
         showPrint={false}
         commentControl={
           <DocsCollabCommentControl
-            labels={docsLabels}
+            labels={docsCollabLabels}
             canAddFromSelection
             onAddCommentFromSelection={() => {}}
           />
@@ -146,7 +146,7 @@ export const CommentControl: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      canvas.getByRole("button", { name: docsLabels.commentsAddFromSelection }),
+      canvas.getByRole("button", { name: docsCollabLabels.commentsAddFromSelection }),
     ).toBeInTheDocument();
   },
 };

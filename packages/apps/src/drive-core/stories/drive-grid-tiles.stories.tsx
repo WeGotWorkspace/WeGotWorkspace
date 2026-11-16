@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { DriveGridView, DriveListView } from "@/drive-core/src/drive-browser";
+import { DriveGridView } from "@/drive-core/src/drive-browser";
+import { DriveListView } from "@/drive-core/src/drive-list-view";
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import { extensionHue } from "@/drive-core/src/drive-file-avatar-label";
 import type { DriveFile } from "@/lib/files/drive-models";

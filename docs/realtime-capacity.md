@@ -4,11 +4,15 @@ Reference profile: PHP-FPM with `pm.max_children = 5`. One child serves one requ
 
 Clients poll their own signaling route. After a room is connected the cadence backs off (`packages/apps/src/lib/rtc/session/poll-cadence.ts`):
 
-| Channel | While connecting | Once the room is stable |
-| --- | --- | --- |
-| Meet | 400 ms | 4 s |
-| Docs | 400 ms | 15 s |
-| Presence | 400 ms | 1.2 s (no extra backoff) |
+| Channel | While connecting | Nobody reachable in the room | Every reachable peer linked |
+| --- | --- | --- | --- |
+| Meet | 400 ms, then 1.2 s | 4 s when alone | 4 s |
+| Docs | 400 ms, then 1.2 s | 2 s | 5 s |
+| Presence | 400 ms, then 1.2 s | 4 s | 20 s |
+
+In Docs and Presence a peer counts as connecting for 20 s after it appears on the roster or its link drops (`UNLINKED_PEER_FAST_WINDOW_MS`). After that it no longer holds the room at 1.2 s: a page that closed without its leave beacon, or a browser whose WebRTC never opens, used to keep every room it shared at the connecting cadence (#2156). A Docs peer linked through the presence mesh (collab reuse) counts as linked. The 2 s for an empty Docs room is also how long a newcomer who is not linked yet waits to be found.
+
+Docs over the HTTP fallback (no data channel) polls 1 s while edits flow and for 30 s after the last one, then 2 s.
 
 Clients do not post session samples. The budget below is signaling polls only.
 
@@ -36,16 +40,16 @@ Rates below are the polls that mix produces. They come from the cadence above, n
 
 | Slice | Peers | Cadence | Polls per minute |
 | --- | --- | --- | --- |
-| Presence, steady | 8 | 1.2 s | 400 |
-| Two Docs rooms, steady | 4 | 15 s | 16 |
+| Presence, steady | 8 | 20 s | 24 |
+| Two Docs rooms, steady | 4 | 5 s | 48 |
 | 4-person call, steady | 4 | 4 s | 60 |
-| **Reference mix, steady** | **16** |  | **476** |
+| **Reference mix, steady** | **16** |  | **132** |
 | Join burst, or the 10th participant while peers are still connecting | 10 | 400 ms | 1500 |
 
-| If one signaling poll takes | Polls per minute with 5 children | Reference mix (476/min) | Connecting burst (1500/min) |
+| If one signaling poll takes | Polls per minute with 5 children | Reference mix (132/min) | Connecting burst (1500/min) |
 | --- | --- | --- | --- |
-| 50 ms | 6000 | about 8% of the pool | about 25% of the pool |
-| 200 ms | 1500 | about 32% of the pool | the pool is full for that short window |
+| 50 ms | 6000 | about 2% of the pool | about 25% of the pool |
+| 200 ms | 1500 | about 9% of the pool | the pool is full for that short window |
 
 The burst is the constraint. It lasts until ICE settles and Meet drops back to a 4-second poll. A poll that stays under 200 ms fits the reference mix on this profile, including the 10th joiner, as long as that connecting window is brief. A poll slower than 200 ms fills all five children for the whole burst.
 

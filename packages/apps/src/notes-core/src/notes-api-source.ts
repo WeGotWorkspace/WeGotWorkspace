@@ -1,10 +1,14 @@
 import { createNotesAppBootstrap, type NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import {
   createHybridNotesOperations,
   loadNotesBootstrapHybrid,
-} from "@/lib/offline/notes-hybrid-operations";
+} from "@/lib/offline/notes/notes-hybrid-operations";
 import { resolveNotesOfflineUsername } from "@/lib/offline/core/offline-session";
 import type { NotesAPIOperations } from "@/lib/models/notes-types";
 import { createWgwNotesMarkdownImport } from "@/notes-core/src/notes-markdown-import-wgw";
@@ -32,14 +36,16 @@ export function createHybridNotesApiSource(): NotesApiSource {
 export function createDefaultNotesApiSource(): NotesApiSource {
   return createWorkspaceSource<NotesApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createNotesAppBootstrap()),
-      createOperations: (bootstrap) => {
-        const username = resolveNotesOfflineUsername(bootstrap?.session.user.username);
-        if (!username) return undefined;
-        return createHybridNotesOperations(username);
-      },
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createNotesAppBootstrap()),
+          createOperations: (bootstrap) => {
+            const username = resolveNotesOfflineUsername(bootstrap?.session.user.username);
+            if (!username) return undefined;
+            return createHybridNotesOperations(username);
+          },
+        })
+      : mocksNotInBuild,
     createLiveSource: createHybridNotesApiSource,
   });
 }

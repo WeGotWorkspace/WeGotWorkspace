@@ -2,13 +2,17 @@ import {
   createContactsAppBootstrap,
   type ContactsAppBootstrap,
 } from "@/lib/api/mock/contacts-bootstrap";
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { ContactsAPIOperations } from "@/lib/models/contacts-types";
 import {
   createHybridContactsOperations,
   loadContactsBootstrapHybrid,
-} from "@/lib/offline/contacts-hybrid-operations";
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
 import { resolveContactsOfflineUsername } from "@/lib/offline/core/offline-session";
 
 export type ContactsApiSource = {
@@ -30,14 +34,16 @@ export function createHybridContactsApiSource(): ContactsApiSource {
 export function createDefaultContactsApiSource(): ContactsApiSource {
   return createWorkspaceSource<ContactsApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createContactsAppBootstrap()),
-      createOperations: (bootstrap) => {
-        const username = resolveContactsOfflineUsername(bootstrap?.session.user.username);
-        if (!username) return undefined;
-        return createHybridContactsOperations(username);
-      },
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createContactsAppBootstrap()),
+          createOperations: (bootstrap) => {
+            const username = resolveContactsOfflineUsername(bootstrap?.session.user.username);
+            if (!username) return undefined;
+            return createHybridContactsOperations(username);
+          },
+        })
+      : mocksNotInBuild,
     createLiveSource: createHybridContactsApiSource,
   });
 }

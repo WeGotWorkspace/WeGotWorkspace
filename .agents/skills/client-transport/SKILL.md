@@ -42,8 +42,6 @@ A bare `throw new Error(` is left only for a programmer or input assertion: a gu
 - `drive-create-keep-both.ts`: the keep-both loop ran out of attempts. Each attempt picks a name that the fresh sibling list says is free, so only a server that keeps answering `alreadyExists` gets here.
 - `auth-token.ts`: missing credentials in the authenticated Storybook parity story.
 
-Still bare, and not assertions: six HTTP failures whose callers classify on status, where a status changes behaviour the user can notice. `drive.ts` star writes (`DELETE` and `POST /files/star` through `postJson`) and `GET /files/starred` (the Drive and Docs outbox flush would treat a 409/412 as a state mismatch), guest `GET /files/children` (the folder listing would start auto-retrying 5xx), `drive-shares.ts` `getShareJson` (same two effects), and `calendar-scheduling.ts` `throwUnlessSchedulingOk` (a 403 RSVP would become a permanent outbox failure). They move in their own PR with the behaviour change written down.
-
 ## Do not classify on the message
 
 Never classify a failure from the contents of `error.message`. The regex fallback in `isPermanentOutboxFailure` (`lib/offline/core/outbox-store.ts`) exists only for outbox rows already stored in IndexedDB before `lastStatus` existed. It is a migration path. Do not copy it, and do not widen it.
@@ -52,7 +50,6 @@ Never classify a failure from the contents of `error.message`. The regex fallbac
 
 - `isPermanentOutboxFailure` — the migration path above.
 - `isFetchNetworkError` (`lib/offline/core/browser-online.ts`) — a fetch that never reached a server has no HTTP status; the browser's `TypeError` text is the only signal.
-- The `precondition failed` fallback in `lib/offline/docs/docs-outbox-flush.ts` and `lib/offline/drive/drive-outbox-flush.ts` — some Drive REST writes in `lib/api/wgw/drive.ts` still throw an `Error` without a status. Remove the fallback once they throw a typed error.
 
 ## Why the status matters
 

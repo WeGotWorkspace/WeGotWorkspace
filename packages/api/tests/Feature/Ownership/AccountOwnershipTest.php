@@ -134,6 +134,8 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
 
     private const LOCAL_ACK_BATCH = 'POST /notifications/local-ack';
 
+    private const READ_ACK_BATCH = 'POST /notifications/ack';
+
     private const QUOTA_GET = 'JMAP Quota/get';
 
     private const QUOTA_CHANGES = 'JMAP Quota/changes';
@@ -181,9 +183,11 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
             // The batch ack names its rows in the body. Another user's ids leave
             // that user's rows alone and answer like an unknown id (spec:
             // decided exception "Batch local-ack").
-            $cases[] = OwnershipCase::of(self::LOCAL_ACK_BATCH, $actor, Scope::OwnUser, Outcome::Allowed);
-            $cases[] = OwnershipCase::of(self::LOCAL_ACK_BATCH, $actor, Scope::OtherUser, Outcome::NotFound)
-                ->declared(Outcome::Allowed);
+            foreach ([self::LOCAL_ACK_BATCH, self::READ_ACK_BATCH] as $batch) {
+                $cases[] = OwnershipCase::of($batch, $actor, Scope::OwnUser, Outcome::Allowed);
+                $cases[] = OwnershipCase::of($batch, $actor, Scope::OtherUser, Outcome::NotFound)
+                    ->declared(Outcome::Allowed);
+            }
 
             array_push($cases, ...self::quotaCases($actor));
             array_push($cases, ...self::meetingCases($actor));
@@ -391,7 +395,7 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
     {
         $anonymous = Actor::Anonymous;
         $cases = [];
-        foreach ([...self::LIST_OPS, ...self::RECORD_WRITE_OPS, self::LOCAL_ACK_BATCH, self::QUOTA_GET, self::QUOTA_CHANGES, self::QUOTA_QUERY, self::QUOTA_QUERY_CHANGES, 'POST /meetings/rooms', 'PATCH /meetings/rooms/{roomId}'] as $op) {
+        foreach ([...self::LIST_OPS, ...self::RECORD_WRITE_OPS, self::LOCAL_ACK_BATCH, self::READ_ACK_BATCH, self::QUOTA_GET, self::QUOTA_CHANGES, self::QUOTA_QUERY, self::QUOTA_QUERY_CHANGES, 'POST /meetings/rooms', 'PATCH /meetings/rooms/{roomId}'] as $op) {
             $cases[] = OwnershipCase::of($op, $anonymous, Scope::OtherUser, Outcome::Unauthenticated);
         }
         $cases[] = OwnershipCase::of('GET /meetings/rooms/{roomId}', $anonymous, Scope::OtherUser, Outcome::Allowed);
@@ -519,7 +523,7 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
         match ($case->operation) {
             'GET /notifications' => $this->runNotificationList($case),
             'POST /notifications/{id}/ack', 'POST /notifications/{id}/local-ack' => $this->runNotificationAck($case),
-            self::LOCAL_ACK_BATCH => $this->runNotificationAckBatch($case),
+            self::LOCAL_ACK_BATCH, self::READ_ACK_BATCH => $this->runNotificationAckBatch($case),
             self::QUOTA_GET, self::QUOTA_CHANGES, self::QUOTA_QUERY, self::QUOTA_QUERY_CHANGES => $this->runQuota($case),
             'POST /notifications/push/subscriptions' => $this->runPushStore($case),
             'DELETE /notifications/push/subscriptions' => $this->runPushDestroy($case),
@@ -651,13 +655,19 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
     {
         $owner = $case->actor === Actor::Anonymous ? OwnershipPrincipals::CAROL : $this->recordOwner($case);
         $id = $this->seedNotification($owner);
-        $send = fn (string $target): TestResponse => $this->requestAs($case->actor, 'POST', '/notifications/local-ack', ['ids' => [$target]]);
+        $read = $case->operation === self::READ_ACK_BATCH;
+        $path = $read ? '/notifications/ack' : '/notifications/local-ack';
+        $send = fn (string $target): TestResponse => $this->requestAs($case->actor, 'POST', $path, ['ids' => [$target]]);
 
         if ($case->outcome === Outcome::Allowed && $case->scope === Scope::OwnUser) {
             $this->assertRestOutcome($send($id), $case);
             $after = $this->notificationSnapshot($owner, $id);
             $this->assertNotNull($after['localAckedAt'], $case->key().': local delivery not acknowledged.');
-            $this->assertNull($after['readAt'], $case->key().': local ack marked the notification read.');
+            if ($read) {
+                $this->assertNotNull($after['readAt'], $case->key().': notification not marked read.');
+            } else {
+                $this->assertNull($after['readAt'], $case->key().': local ack marked the notification read.');
+            }
 
             return;
         }

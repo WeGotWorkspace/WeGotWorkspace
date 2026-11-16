@@ -25,6 +25,15 @@ export function workspaceUserInitials(user: WorkspaceUser): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** Name shown for the viewer's own (personal) owner scope. */
+export function personalOwnerLabel(session: WorkspaceSession): string {
+  const displayName = session.user.displayName?.trim();
+  if (displayName) return displayName;
+  const username = session.user.username?.trim();
+  if (username) return username;
+  return "Me";
+}
+
 /** Sidebar footer subtitle for public share guest sessions. */
 export const WORKSPACE_GUEST_FOOTER_DETAIL = "View only";
 /** Footer subtitle for a guest on a folder link that allows adding files (#1715). */

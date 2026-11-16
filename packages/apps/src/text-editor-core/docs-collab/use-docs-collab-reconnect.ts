@@ -1,6 +1,6 @@
 import { isExternalWriteRefusal } from "./docs-collab-utils";
 import { useCallback, useEffect, useRef } from "react";
-import { docsLabels } from "@/docs-core/src/docs-labels";
+import { docsCollabLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import {
   wgwAwaitSessionRefreshForReconnect,
@@ -104,7 +104,7 @@ export function useDocsCollabReconnect({
       if (!isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef)) return;
 
       const isCurrent = () => isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef);
-      setStatus(docsLabels.statusConnecting);
+      setStatus(docsCollabLabels.statusConnecting);
       const meshPeers = await joinMesh(name, authToken, isCurrent);
       if (meshPeers === null || !isCurrent()) return;
       setConnectingPeers(meshPeers);

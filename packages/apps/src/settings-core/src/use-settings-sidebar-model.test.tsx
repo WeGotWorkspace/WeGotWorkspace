@@ -20,6 +20,7 @@ describe("useSettingsSidebarModel", () => {
       "profile",
       "memberships",
       "assistants",
+      "incoming-email",
       "about",
     ]);
     expect(result.current.device.map((section) => section.id)).toEqual(["offline", "appearance"]);
@@ -41,6 +42,7 @@ describe("useSettingsSidebarModel", () => {
     expect(result.current.account.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
+      "incoming-email",
       "about",
     ]);
     expect(result.current.device.map((section) => section.id)).toEqual(["offline", "appearance"]);

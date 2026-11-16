@@ -1,5 +1,6 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
 
 describe("wegotworkspace meet routes", () => {
@@ -7,7 +8,7 @@ describe("wegotworkspace meet routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/meet/meetings/room-123"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const match = router.state.matches.find((entry) => entry.params.meetingId);
@@ -82,7 +83,7 @@ describe("wegotworkspace meet routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/meet"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     expect(router.state.location.pathname).toBe("/meet");

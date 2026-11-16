@@ -34,9 +34,15 @@ export function buildMeetControlMessage(payload: MeetControlMessage): string {
  */
 const MEET_KNOCK_REQUIRED_ERROR = "knock_required";
 const MEET_ROOM_NOT_ACTIVE_ERROR = "room_not_active";
+const MEET_ROOM_FULL_ERROR = "room_full";
 
 export function isMeetKnockRequiredError(error: unknown): boolean {
   return error instanceof Error && error.message.includes(MEET_KNOCK_REQUIRED_ERROR);
+}
+
+/** The room already holds `meet_max_peers` participants (`MeetSignalingService` join). */
+export function isMeetRoomFullError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes(MEET_ROOM_FULL_ERROR);
 }
 
 export function isMeetRoomNotActiveError(error: unknown): boolean {

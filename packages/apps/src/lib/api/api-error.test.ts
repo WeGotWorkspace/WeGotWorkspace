@@ -17,7 +17,7 @@ import { TasksRequestError } from "@/lib/api/wgw/tasks";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { HttpSignalingError } from "@/lib/rtc/signaling/http-client";
 import { CollabHttpError } from "@/text-editor-core/docs-collab/docs-collab-utils";
-import { DocsThreadsRequestError } from "@/text-editor-core/docs-collab/docs-threads-errors";
+import { DocsThreadsRequestError } from "@/docs-core/src/collab/docs-threads-errors";
 
 describe("ApiError", () => {
   it("carries the message, status and code", () => {

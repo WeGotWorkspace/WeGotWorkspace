@@ -12,7 +12,7 @@ import {
 import {
   listPendingChatMessageIds,
   type MeetChatCachedBootstrap,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 const username = "grace";
 const live = createMeetAppBootstrap();

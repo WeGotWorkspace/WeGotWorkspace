@@ -55,7 +55,7 @@ export async function setDriveFileStar(
     return;
   }
   const res = await wgwFetch(target, { method: "DELETE", signal: opts?.signal });
-  if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`DELETE /files/star failed (${res.status})`, res.status);
 }
 
 function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
@@ -75,6 +75,9 @@ async function listAllDriveFiles(
   input: { offset: number; limit: number },
   opts?: { signal?: AbortSignal },
 ): Promise<{ entries: WgwDriveDirectoryEntry[]; nextOffset: number; hasMore: boolean }> {
+  // Asked next to the search, but a failed search still surfaces first.
+  const userRequest = fetchDriveUser(opts);
+  userRequest.catch(() => undefined);
   const page = await fetchWgwUnifiedSearch({
     sources: ["file"],
     offset: input.offset,
@@ -85,7 +88,12 @@ async function listAllDriveFiles(
     .filter((result) => result.category !== "folder" && !isHiddenStorageKey(result.sourceKey))
     .map((result) => `/${result.sourceKey.replace(/^\/+/, "")}`);
   const entries =
-    paths.length > 0 ? await listFileNodeEntriesByPaths(paths, { signal: opts?.signal }) : [];
+    paths.length > 0
+      ? await listFileNodeEntriesByPaths(paths, {
+          signal: opts?.signal,
+          username: (await userRequest).username,
+        })
+      : [];
   return {
     entries: entries.filter((entry) => entry.type !== "dir" && isVisibleDriveEntry(entry)),
     // The index pages over every result, folders included.
@@ -96,7 +104,7 @@ async function listAllDriveFiles(
 
 async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
   const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /files/children failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /files/children failed (${res.status})`, res.status);
   const payload = (await wgwReadJson(res)) as WgwDriveListingResponse;
   return {
     ...payload.data,
@@ -249,7 +257,7 @@ async function postJson(path: string, body: object, opts?: { signal?: AbortSigna
       // fall through
     }
   }
-  throw new Error(`POST ${path} failed (${res.status})`);
+  throw new WgwRequestError(`POST ${path} failed (${res.status})`, res.status);
 }
 
 function createSharedDriveOperations(): Pick<
@@ -269,7 +277,8 @@ function createSharedDriveOperations(): Pick<
     },
     async listStars(opts) {
       const res = await wgwFetch("/files/starred", { method: "GET", signal: opts?.signal });
-      if (!res.ok) throw new Error(`GET /files/starred failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`GET /files/starred failed (${res.status})`, res.status);
       const payload = (await wgwReadJson(res)) as WgwDriveStarsResponse;
       return payload.data.paths ?? [];
     },

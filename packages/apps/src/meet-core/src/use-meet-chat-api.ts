@@ -6,13 +6,13 @@ import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
   getMeetChatSyncRunner,
   meetChatBootstrapFromCached,
-} from "@/lib/offline/meet-chat-hybrid-operations";
-import { syncMeetChatInboundFromRest } from "@/lib/offline/meet-chat-inbound-sync";
+} from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
+import { syncMeetChatInboundFromRest } from "@/lib/offline/meet-chat/meet-chat-inbound-sync";
 import {
   notifyMeetChatCacheChanged,
   subscribeMeetChatCacheChanged,
 } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
-import { readMeetChatBootstrapFromCache } from "@/lib/offline/meet-chat-offline-store";
+import { readMeetChatBootstrapFromCache } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
 import {
   readOfflineMeetChatUsername,

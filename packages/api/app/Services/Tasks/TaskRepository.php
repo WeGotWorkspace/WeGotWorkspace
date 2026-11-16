@@ -21,6 +21,7 @@ use App\Services\Search\SearchIndexerService;
 use App\Services\Tasks\Conversion\ConversionSupport;
 use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
 use App\Services\VObject\ICalendarInPlacePatcher;
+use App\Services\VObject\VJournalUidGuard;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -158,11 +159,17 @@ final class TaskRepository
         $objectUri = $this->allocateObjectUri((int) $instance->calendarid, $taskPayload);
         $ics = $this->mapper->toIcs($taskPayload);
 
-        $this->backends->calBackend()->createCalendarObject(
-            [(int) $instance->calendarid, (int) $instance->id],
-            $objectUri,
-            $ics,
-        );
+        try {
+            $this->backends->calBackend()->createCalendarObject(
+                [(int) $instance->calendarid, (int) $instance->id],
+                $objectUri,
+                $ics,
+            );
+        } catch (\PDOException $exception) {
+            // Another send with this UID won the race for the `calendarid_uid` index.
+            VJournalUidGuard::throwIfUniqueViolation($exception, 'A task with this UID already exists.');
+            throw $exception;
+        }
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
         $this->searchIndexSync->sync(
             'tasks',
@@ -184,6 +191,31 @@ final class TaskRepository
         }
 
         return $task;
+    }
+
+    /**
+     * The task a repeated create already made (#2155): the same client UID in
+     * the same task list. A resend after a lost or cancelled response gets it
+     * instead of a second task. Null when the UID is new in that list.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>|null
+     */
+    public function existingCreateForRetry(string $username, array $payload): ?array
+    {
+        $uid = $payload['uid'] ?? null;
+        if (! is_string($uid) || trim($uid) === '') {
+            return null;
+        }
+        $instance = $this->resolveTaskListFromPayload($username, $payload);
+        $this->collectionAccess->assertCollectionWritable($instance, 'This task list is read-only.');
+        $object = CalendarObject::query()
+            ->where('calendarid', (int) $instance->calendarid)
+            ->where('uid', $uid)
+            ->where('componenttype', 'VTODO')
+            ->first();
+
+        return $object === null ? null : $this->mapper->toTask($object, $this->taskListUriForInstance($instance));
     }
 
     /**

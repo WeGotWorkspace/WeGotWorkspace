@@ -6,7 +6,7 @@ import {
   listCachedChatChannels,
   listCachedChatMessages,
   upsertChatChannelInCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
 /** Max Crockford ULID — marks every existing message read when history is empty. */
 export const MEET_CHAT_CAUGHT_UP_READ_UID = "7ZZZZZZZZZZZZZZZZZZZZZZZZZ";

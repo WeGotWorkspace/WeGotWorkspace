@@ -47,7 +47,8 @@ When using the default MySQL stack (`COMPOSE_PROFILES=mysql`), use these in the 
 | --- | --- |
 | Host | `db` |
 | Port | `3306` |
-| Database / user / password | `wgw` (match `MARIADB_*` in `wegotworkspace/.env`) |
+| Database / user | `wgw` (match `MARIADB_*` in `wegotworkspace/.env`) |
+| Password | `MARIADB_PASSWORD` in `wegotworkspace/.env` |
 
 ## Lifecycle commands
 
@@ -168,7 +169,7 @@ bash tools/setup-docker-install.sh --local
 | `MARIADB_USER` | `wgw` | Application database user |
 | `MARIADB_PASSWORD` | `wgw` | Application database password |
 
-Change default passwords before exposing the stack to a network.
+A fresh `setup.sh` install writes random values for the three passwords. With a `.env` copied by hand, change them before exposing the stack to a network. Keep `.env` as long as you keep the `wgw-db` volume, it holds the passwords the database was created with.
 
 ## Installer environment (`WGW_INSTALL_*`)
 
@@ -194,7 +195,7 @@ Set these in `packages/api/.env` (Docker: the `api.env` file on the `wgw-install
 | `WGW_INSTALL_ENABLE_FILES` | (site defaults) | Optional DAV toggles (default on) |
 | `WGW_INSTALL_ENABLE_CALENDARS` | (site defaults) | Optional |
 | `WGW_INSTALL_ENABLE_CONTACTS` | (site defaults) | Optional |
-| `WGW_INSTALL_CHANNEL` | — | `docker` — disables Admin web updater (seeded automatically on Docker) |
+| `WGW_INSTALL_CHANNEL` | — | `docker` — disables Admin web updater (set in the image, and seeded into `api.env` on Docker) |
 
 **Autofill:** partial `WGW_INSTALL_*` values pre-populate first-run (for example database from env skips the Database screen); the operator still confirms remaining screens.
 
@@ -291,7 +292,9 @@ cd wegotworkspace
 bash setup.sh backup
 ```
 
-This archives named volumes and (when using MySQL) dumps the database to `wegotworkspace/backups/<timestamp>/`.
+This archives named volumes and (when using MySQL) dumps the database to `wegotworkspace/backups/<timestamp>/`. Only your user can open that folder, since it holds the database and `APP_KEY`.
+
+With SQLite, the `wgw-content` archive holds `db.sqlite` together with its `db.sqlite-wal` and `db.sqlite-shm` files. Restore the whole volume, not `db.sqlite` on its own ([INSTALL.md § SQLite database files](../INSTALL.md#sqlite-database-files)).
 
 Manual MySQL dump:
 

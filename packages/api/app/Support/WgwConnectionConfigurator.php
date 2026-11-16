@@ -55,6 +55,7 @@ final class WgwConnectionConfigurator
                 'transaction_mode' => 'IMMEDIATE',
                 // Wait for another writer's lock instead of failing at once.
                 'busy_timeout' => 5000,
+                'journal_mode' => self::sqliteJournalMode(),
             ],
         ]);
         DB::purge('wgw');
@@ -124,10 +125,22 @@ final class WgwConnectionConfigurator
                 'transaction_mode' => 'IMMEDIATE',
                 // Wait for another writer's lock instead of failing at once.
                 'busy_timeout' => 5000,
+                'journal_mode' => self::sqliteJournalMode(),
             ],
         ]);
         DB::purge('wgw');
         SqliteTextLobStatement::enableOn($pdo);
         DB::connection('wgw')->setPdo($pdo);
+    }
+
+    /**
+     * Keep the journal mode config/database.php gives the wgw connection
+     * (WAL unless WGW_DB_SQLITE_JOURNAL_MODE says otherwise).
+     */
+    private static function sqliteJournalMode(): string
+    {
+        $mode = config('database.connections.wgw.journal_mode');
+
+        return is_string($mode) && $mode !== '' ? $mode : 'wal';
     }
 }

@@ -2,11 +2,11 @@ import "fake-indexeddb/auto";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   listFailedNotesOutbox: vi.fn(),
 }));
 
-import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
+import { listFailedNotesOutbox } from "@/lib/offline/notes/notes-offline-store";
 import { useNotesFailedSync } from "@/notes-core/src/use-notes-failed-sync";
 
 describe("useNotesFailedSync", () => {

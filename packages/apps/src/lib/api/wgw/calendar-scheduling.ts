@@ -78,7 +78,7 @@ function throwUnlessSchedulingOk(
   if (response.status === 404 || response.status === 410) {
     throw new CalendarSchedulingGoneError(notificationId);
   }
-  throw new Error(fallback);
+  throw new WgwRequestError(fallback, response.status);
 }
 
 export async function respondCalendarSchedulingNotification(

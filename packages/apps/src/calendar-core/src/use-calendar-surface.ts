@@ -17,8 +17,8 @@ import {
   ingestRemoteCalendar,
   ingestRemoteCalendarDestroyed,
   ingestRemoteCalendarEvent,
-} from "@/lib/offline/calendars-jmap-inbound";
-import { syncCalendarEventChanges } from "@/lib/offline/calendars-inbound-sync";
+} from "@/lib/offline/calendars/calendars-jmap-inbound";
+import { syncCalendarEventChanges } from "@/lib/offline/calendars/calendars-inbound-sync";
 
 export type CalendarSurfaceStore = {
   /** Engine-model events for the lit views (working set + Dexie). */

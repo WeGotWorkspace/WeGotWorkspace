@@ -4,6 +4,9 @@ import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const meetLabels = {
   productName: "Meet",
+  noticeBarLabel: workspaceLabels.noticeBarLabel,
+  syncFailedNotice: workspaceLabels.sync.failedNotice,
+  retrySync: workspaceLabels.dialog.retry,
   callEndedTitle: "Call ended",
   missingInviteTitle: "Nothing here",
   missingInviteBody: "This meeting is not active. Ask the host for a fresh invite link.",
@@ -27,6 +30,7 @@ export const meetLabels = {
   speakToTest: "Speak to test",
   joinMeeting: "Join meeting",
   askToJoin: "Ask to join",
+  callFull: "This call is full. Try again when someone leaves.",
   knockToJoin: "Knock to join",
   startMeeting: "Start meeting",
   inviteRequired: "Invite link required",

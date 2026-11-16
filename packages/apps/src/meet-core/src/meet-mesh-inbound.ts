@@ -1,6 +1,6 @@
-import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat-jmap-inbound";
+import { ingestRemoteChatMessage } from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import { findCachedChannelForUiId } from "@/lib/offline/meet-chat/meet-chat-read-marker";
-import { upsertChatChannelInCache } from "@/lib/offline/meet-chat-offline-store";
+import { upsertChatChannelInCache } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { meetMeshSenderMayHint } from "@/meet-core/src/meet-mesh-fanout-targets";
 import {
   meetMeshChatMessageToApp,

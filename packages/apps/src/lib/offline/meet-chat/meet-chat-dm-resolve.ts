@@ -9,7 +9,7 @@ import { openChatDm } from "@/lib/api/wgw/meet-chat";
 import {
   findCachedDmChannelByPeer,
   upsertChatChannelInCache,
-} from "@/lib/offline/meet-chat-offline-store";
+} from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import { meetDirectMessagePrincipalId } from "@/lib/meetings/meet-direct-messages";
 
 /**

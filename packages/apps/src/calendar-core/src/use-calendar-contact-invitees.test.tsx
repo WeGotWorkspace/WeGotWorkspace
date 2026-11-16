@@ -9,11 +9,11 @@ import {
   refreshCalendarContactCards,
   useCalendarContactInvitees,
 } from "@/calendar-core/src/use-calendar-contact-invitees";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts-offline-store";
+import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
 import { listCards } from "@/lib/api/wgw/contacts";
 import { TooltipProvider } from "@/ui/tooltip";
 
-vi.mock("@/lib/offline/contacts-offline-store", () => ({
+vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   readContactsBootstrapFromCache: vi.fn(),
 }));
 

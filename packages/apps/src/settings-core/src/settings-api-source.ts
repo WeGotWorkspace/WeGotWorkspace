@@ -1,4 +1,8 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import {
   createSettingsAppBootstrap,
   type SettingsAppBootstrap,
@@ -35,10 +39,12 @@ export function createWgwSettingsApiSource(): SettingsApiSource {
 export function createDefaultSettingsApiSource(): SettingsApiSource {
   return createWorkspaceSource<SettingsApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createSettingsAppBootstrap()),
-      createOperations: () => undefined,
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createSettingsAppBootstrap()),
+          createOperations: () => undefined,
+        })
+      : mocksNotInBuild,
     createLiveSource: createWgwSettingsApiSource,
   });
 }

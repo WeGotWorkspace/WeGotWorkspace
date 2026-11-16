@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
-import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
+import { taskListDotColor } from "@/lib/models/task-lists";
 import { useTasksProjectMutations } from "@/tasks-core/src/use-tasks-project-mutations";
 import { useTasksShell } from "@/tasks-core/src/use-tasks-shell";
 

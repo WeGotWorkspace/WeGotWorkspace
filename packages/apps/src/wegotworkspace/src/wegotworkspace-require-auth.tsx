@@ -68,5 +68,7 @@ export function withWeGotWorkspaceAuth<Props extends object>(
     );
   }
   AuthenticatedRoute.displayName = `WithWeGotWorkspaceAuth(${Component.displayName ?? Component.name ?? "Route"})`;
-  return AuthenticatedRoute as unknown as RouteComponent;
+  // Keep a lazy route's `preload` so the router loads its chunk before render.
+  const preload = (Component as { preload?: () => Promise<void> }).preload;
+  return Object.assign(AuthenticatedRoute, preload ? { preload } : {}) as unknown as RouteComponent;
 }

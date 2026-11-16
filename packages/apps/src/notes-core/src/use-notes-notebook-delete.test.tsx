@@ -6,13 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { NotesVjournalRequestError } from "@/lib/api/wgw/notes-vjournal";
 import type { Note } from "@/lib/models/note";
-import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
+import { createHybridNotesOperations } from "@/lib/offline/notes/notes-hybrid-operations";
 import {
   listOutboxMutations,
   readNotesBootstrapFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+} from "@/lib/offline/notes/notes-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { notesNotebooksTable, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";

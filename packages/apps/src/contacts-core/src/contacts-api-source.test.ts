@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { writeContactsBootstrapToCache } from "@/lib/offline/contacts-offline-store";
+import { writeContactsBootstrapToCache } from "@/lib/offline/contacts/contacts-offline-store";
 import { createHybridContactsApiSource } from "./contacts-api-source";
 
 const username = "carol";

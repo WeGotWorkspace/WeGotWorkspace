@@ -1,11 +1,15 @@
 import { createRef } from "react";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsListPanel } from "./contacts-list-panel";
 import { defaultContactsLabels } from "./contacts-labels";
-import { contactListRowOffset, flattenContactListRows } from "./contacts-list-window";
+import { contactListRowHeight, flattenContactListRows } from "./contacts-list-rows";
+import {
+  TEST_VIEWPORT_ATTR,
+  installListLayoutStubs,
+} from "@/workspace-list/src/workspace-list-test-layout";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 const reorderIds = vi.hoisted(() => vi.fn());
@@ -343,7 +347,12 @@ function WindowHarness({
 }) {
   const panel = WindowPanel({ cards, activeId, listLoading });
   return (
-    <div ref={scrollerRef} className="contacts-list-scroller">
+    <div
+      ref={scrollerRef}
+      className="contacts-list-scroller"
+      style={{ overflowY: "auto" }}
+      {...{ [TEST_VIEWPORT_ATTR]: "" }}
+    >
       {panel.listContent}
     </div>
   );
@@ -386,15 +395,32 @@ function WindowPanel({
 }
 
 describe("ContactsListPanel window", () => {
+  const VIEWPORT_PX = 400;
   const cards = Array.from({ length: 120 }, (_, index) => personAt(index));
 
-  /** Id of the first card row painted at `scrollTop`. */
+  beforeEach(() => {
+    installListLayoutStubs(VIEWPORT_PX);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Id of the card row at `scrollTop`, by the rem row sizes (16px root in jsdom). */
   function cardIdAt(scrollTop: number): string {
     const rows = flattenContactListRows(cards);
-    const index = rows.findIndex((_, i) => contactListRowOffset(rows, i + 1) > scrollTop);
-    const row = rows[index];
-    if (row?.kind !== "card") throw new Error(`no card row at ${scrollTop}`);
-    return row.card.id;
+    let offset = 0;
+    for (const row of rows) {
+      offset += contactListRowHeight(row);
+      if (offset > scrollTop && row.kind === "card") return row.card.id;
+    }
+    throw new Error(`no card row at ${scrollTop}`);
+  }
+
+  function mountedCardIds(root: ParentNode): string[] {
+    return Array.from(root.querySelectorAll("[data-list-item-id]")).map((node) =>
+      node.getAttribute("data-list-item-id")!,
+    );
   }
 
   function mount(activeId: string) {
@@ -406,8 +432,6 @@ describe("ContactsListPanel window", () => {
           activeId={activeId}
           scrollerRef={(node) => {
             holder.current = node;
-            if (!node) return;
-            Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
           }}
         />
       </TooltipProvider>,
@@ -417,51 +441,58 @@ describe("ContactsListPanel window", () => {
     return { scroller, ...view };
   }
 
+  function scrollTo(scroller: HTMLElement, top: number) {
+    act(() => {
+      scroller.scrollTop = top;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+  }
+
+  it("mounts only the rows near the scrollport, under their letter header", () => {
+    const { scroller } = mount("");
+    scrollTo(scroller, 4000);
+
+    const ids = mountedCardIds(scroller);
+    expect(ids.length).toBeGreaterThan(3);
+    expect(ids.length).toBeLessThan(40);
+    expect(ids).toContain(cardIdAt(4000));
+    // The window starts mid-section: its letter header stays mounted, first in its section.
+    const section = scroller.querySelector("section");
+    expect(section?.getAttribute("aria-labelledby")).toBe("contacts-section-P");
+    expect(section?.firstElementChild?.id).toBe("contacts-section-P");
+  });
+
   it("does not scroll the active row back into view when the window moves", () => {
     const scrollIntoView = spyScrollIntoView();
     const { scroller } = mount("card-0");
     scrollIntoView.mockClear();
 
-    act(() => {
-      scroller.scrollTop = 4000;
-      scroller.dispatchEvent(new Event("scroll"));
-    });
+    scrollTo(scroller, 4000);
 
     expect(scroller.scrollTop).toBe(4000);
     expect(scrollIntoView).not.toHaveBeenCalled();
-    const labelledBy = scroller.querySelector("section")?.getAttribute("aria-labelledby");
-    expect(labelledBy).toBe("contacts-section-P");
-    expect(scroller.querySelector(`#${labelledBy}`)).toBeTruthy();
-    scrollIntoView.mockRestore();
+    // The open contact stays mounted, so keyboard moves from it keep working.
+    expect(mountedCardIds(scroller)).toContain("card-0");
   });
 
-  it("scrolls an off-screen row into view when the selection changes", () => {
+  it("scrolls a far contact into view when it opens", () => {
     const scrollIntoView = spyScrollIntoView();
     const { scroller, rerender } = mount("card-0");
-    act(() => {
-      scroller.scrollTop = 4000;
-      scroller.dispatchEvent(new Event("scroll"));
-    });
+    scrollTo(scroller, 4000);
     scrollIntoView.mockClear();
 
     rerender(
       <TooltipProvider>
-        <WindowHarness
-          cards={cards}
-          activeId="card-119"
-          scrollerRef={(node) => {
-            if (!node) return;
-            Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
-          }}
-        />
+        <WindowHarness cards={cards} activeId="card-119" scrollerRef={() => undefined} />
       </TooltipProvider>,
     );
 
-    const rows = flattenContactListRows(cards);
-    const index = rows.findIndex((row) => row.kind === "card" && row.card.id === "card-119");
-    expect(scroller.scrollTop).toBe(contactListRowOffset(rows, index));
-    expect(scrollIntoView).toHaveBeenCalled();
-    scrollIntoView.mockRestore();
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    const target = scrollIntoView.mock.contexts[0] as HTMLElement;
+    expect(target.closest("[data-list-item-id]")?.getAttribute("data-list-item-id")).toBe(
+      "card-119",
+    );
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
   });
 
   it("keeps windowing on scroll when rows arrive before the spinner clears", () => {
@@ -470,8 +501,6 @@ describe("ContactsListPanel window", () => {
     const holder: { current: HTMLDivElement | null } = { current: null };
     const scrollerRef = (node: HTMLDivElement | null) => {
       holder.current = node;
-      if (!node) return;
-      Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
     };
     const { rerender } = render(
       <TooltipProvider>
@@ -486,20 +515,28 @@ describe("ContactsListPanel window", () => {
     const scroller = holder.current;
     if (!scroller) throw new Error("scroller missing");
 
-    act(() => {
-      scroller.scrollTop = 4000;
-      scroller.dispatchEvent(new Event("scroll"));
-    });
+    scrollTo(scroller, 4000);
 
-    expect(scroller.querySelector(`[data-list-item-id="${cardIdAt(4000)}"]`)).toBeTruthy();
+    expect(mountedCardIds(scroller)).toContain(cardIdAt(4000));
+    expect(mountedCardIds(scroller).length).toBeLessThan(40);
   });
 
   it("keeps windowing on scroll when the scroller remounts with the same rows", () => {
     // Live first visit: the import drop zone appears once the cold download
     // unlocks, which wraps and remounts the scroller with an unchanged row count.
-    const clientHeight = vi
-      .spyOn(HTMLElement.prototype, "clientHeight", "get")
-      .mockReturnValue(400);
+    vi.restoreAllMocks();
+    installListLayoutStubs(VIEWPORT_PX);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.classList.contains("notes-swipe-list") ? VIEWPORT_PX : 0;
+    });
+    const computed = window.getComputedStyle.bind(window);
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+      const style = computed(element, pseudo);
+      if (!element.classList.contains("notes-swipe-list")) return style;
+      return { ...style, overflowY: "auto" } as CSSStyleDeclaration;
+    });
     const dropZone = {
       active: false,
       overlay: null,
@@ -526,21 +563,21 @@ describe("ContactsListPanel window", () => {
     );
     if (!scroller) throw new Error("scroller missing");
 
-    act(() => {
-      scroller.scrollTop = 4000;
-      scroller.dispatchEvent(new Event("scroll"));
-    });
+    scrollTo(scroller, 4000);
 
-    expect(scroller.querySelector(`[data-list-item-id="${cardIdAt(4000)}"]`)).toBeTruthy();
-    clientHeight.mockRestore();
+    expect(mountedCardIds(scroller)).toContain(cardIdAt(4000));
+    expect(mountedCardIds(scroller).length).toBeLessThan(40);
   });
 
   it("animates from the full visible id list, not the mounted window", () => {
     reorderIds.mockClear();
     mount("card-0");
     const ids = reorderIds.mock.calls.at(-1)?.[0] as string[];
+    // Every card, in display order; letter headers do not animate.
+    const shown = flattenContactListRows(cards).flatMap((row) =>
+      row.kind === "card" ? [row.card.id] : [],
+    );
+    expect(ids).toEqual(shown);
     expect(ids).toHaveLength(cards.length);
-    expect(ids[0]).toBe("card-0");
-    expect(ids.at(-1)).toBe("card-119");
   });
 });
