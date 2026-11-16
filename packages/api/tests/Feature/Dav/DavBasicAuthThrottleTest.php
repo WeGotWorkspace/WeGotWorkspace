@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dav;
 
+use App\Models\User;
 use App\Support\WgwSettings;
+use Illuminate\Cache\Events\KeyWritten;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
@@ -80,6 +83,43 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
             ])
             ->assertOk()
             ->assertJsonPath('username', 'bob');
+    }
+
+    public function test_repeated_dav_basic_auth_verifies_the_password_once(): void
+    {
+        $verified = 0;
+        Event::listen(KeyWritten::class, function (KeyWritten $event) use (&$verified): void {
+            $verified += str_starts_with($event->key, 'dav-basic-verified:') ? 1 : 0;
+        });
+
+        $this->dav('bob', 'secret')->assertStatus(207);
+        $this->dav('bob', 'secret')->assertStatus(207);
+
+        $this->assertSame(1, $verified);
+    }
+
+    public function test_remembered_dav_credential_does_not_accept_a_wrong_password(): void
+    {
+        $this->dav('bob', 'secret')->assertStatus(207);
+
+        $this->dav('bob', 'wrong')->assertStatus(401);
+    }
+
+    public function test_remembered_dav_credential_is_refused_after_a_password_change(): void
+    {
+        $this->dav('bob', 'secret')->assertStatus(207);
+        User::query()->where('username', 'bob')->update(['digest' => password_hash('changed', PASSWORD_DEFAULT)]);
+
+        $this->dav('bob', 'secret')->assertStatus(401);
+        $this->dav('bob', 'changed')->assertStatus(207);
+    }
+
+    public function test_remembered_dav_credential_is_refused_once_the_user_is_disabled(): void
+    {
+        $this->dav('bob', 'secret')->assertStatus(207);
+        User::query()->where('username', 'bob')->update(['enabled' => false]);
+
+        $this->dav('bob', 'secret')->assertStatus(401);
     }
 
     /**

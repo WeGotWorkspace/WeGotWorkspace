@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Dav\Auth;
 
+use App\Models\User;
 use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\UserEnabledGuard;
+use Illuminate\Support\Facades\Cache;
 use Sabre\DAV\Auth\Backend\PDOBasicAuth;
 use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
 
 final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
 {
+    private const VERIFIED_SECONDS = 300;
+
     /** @return array<mixed> */
     public function check(RequestInterface $request, ResponseInterface $response)
     {
@@ -33,11 +37,40 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
             throw new TooManyAttempts($limiter->protocolRetryAfter($user, $clientIp));
         }
 
-        if (! parent::validateUserPass($username, $password) || ! app(UserEnabledGuard::class)->isEnabled($user)) {
+        if (! $this->passwordMatches($user, (string) $password) || ! app(UserEnabledGuard::class)->isEnabled($user)) {
             $limiter->hitProtocol($user, $clientIp);
 
             return false;
         }
+
+        return true;
+    }
+
+    private function passwordMatches(string $username, string $password): bool
+    {
+        $row = User::query()->where('username', $username)->first(['id', 'digest']);
+        if ($row === null) {
+            return false;
+        }
+
+        $digest = (string) $row->digest;
+        $secret = (string) config('app.key');
+        if ($secret === '') {
+            return password_verify($password, $digest);
+        }
+
+        // A keyed MAC, so the cache never holds anything that recovers or replays the
+        // password; the digest in it makes a password change or rehash miss at once.
+        $key = 'dav-basic-verified:'.$row->id;
+        $mac = hash_hmac('sha256', $row->id.'|'.$digest.'|'.$password, $secret);
+        $remembered = Cache::get($key);
+        if (is_string($remembered) && hash_equals($remembered, $mac)) {
+            return true;
+        }
+        if (! password_verify($password, $digest)) {
+            return false;
+        }
+        Cache::put($key, $mac, self::VERIFIED_SECONDS);
 
         return true;
     }
