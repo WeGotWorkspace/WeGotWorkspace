@@ -57,7 +57,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Quick edits are merged (see Technical constraints).
 - **Thread panel UI.** `ThreadPanel` lives in `thread-ui/` and knows nothing about tasks. Tasks mounts it in the task detail view below the fields, as in the product owner's mockup ([mockup-task-detail.webp](./mockup-task-detail.webp), 2026-11-16).
   - One timeline in time order: comments with their replies, and activity rows.
-  - A "Show changes" toggle (default on) hides activity rows.
+  - A "Show changes" toggle, on by default, shows activity rows; turning it off hides them.
   - The composer is the chat-ui composer, with mentions limited to the list audience.
   - Messages and reactions use chat-ui and the shared reaction picker.
   - The activity row and its formatter live in `thread-ui/` too. The formatter takes field labels and value renderers from the subject adapter, so another app brings only its own field names.
@@ -138,13 +138,17 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 
 - The routes are shared, under `/api/v1/threads/{subjectType}/{subjectId}`. For a task, `subjectType` is `task` and `subjectId` is the task id the task routes use.
 - `GET …/entries`:
-  - It returns entries in time order, 200 per page, with a cursor.
+  - It returns entries in time order, 200 per page, with a cursor. Order and cursor are by `(created_at, uid)`, never by the ULID alone: the ULID holds the client's clock, and an offline comment must sort by when it arrived.
   - Each entry has `id`, `kind`, `parentId`, `author` (`username`, `displayName`), `body` (null for activity and tombstones), `mentions`, `reactions`, `createdAt`, `editedAt`, `deletedAt` and `activity`.
   - It also returns a thread `state` for `/changes`.
 - `POST …/entries` with `{id, body, parentId?, mentions?, scopeId?}`:
-  - `id` is a client ULID. Retries with the same id are idempotent, as in Chat.
-  - `scopeId` is the scope the writer saw the subject in (for a task, its list). When it is given and the subject is now in another scope, the post fails with 409 `subject_moved` and nothing is stored. The web app always sends it, so a comment queued offline never lands in front of a new audience without its author knowing. Callers that omit it post to the current scope.
-  - A `parentId` that is itself a reply is rejected with 422.
+  - `id` is a client ULID. A ULID already used by an object out of the caller's reach gets a fresh id in the answer, as in Chat.
+  - `scopeId` is the scope the writer saw the subject in (for a task, its list). The web app always sends it, so a comment queued offline never lands in front of a new audience without its author knowing. Callers that omit it post to the current scope.
+  - A retry is resolved in this order, and none of these cases writes anything:
+    - the ULID is already stored under the subject's **current** key: 200 with that entry (an idempotent retry);
+    - the ULID is already stored under **another** key of the same subject (an earlier scope): 409 `already_stored`, with no entry in the body, because the caller may not read that scope any more;
+    - the ULID is not stored and `scopeId` is not the current scope: 409 `subject_moved`.
+  - A `parentId` must be a root entry under the subject's current key. A reply, an activity entry, or an id from another key is rejected with 422 and nothing is stored.
   - A mention outside the subject's audience is dropped from the stored mentions, but the text stays.
 - `PATCH …/entries/{entryId}` with `{body}` and `DELETE …/entries/{entryId}` (tombstone):
   - author only (403);
@@ -153,6 +157,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `GET …/changes?since=<state>` returns the changed and removed entry ids.
 - **Access:**
   - Every route asks the subject type to resolve the subject. 404 if the caller cannot see it. For tasks, read access to the list is enough to post (`canPost`).
+  - **Entries are scoped to the current key.** A pool holds every list of its owner, plus hidden entries under old keys. List, changes, `PATCH`, `DELETE` and `…/reactions` load an entry only when its key is the resolved subject's type, current scope and id. Any other `entryId` answers 404 and nothing is written, so someone who can see a task in list B cannot read, edit or react to an entry left in list A, or in another list of the same pool. Docs has the same guard today (`requireRootOnPath`, `DocsThreadRepository.php:364`).
   - A task in a multi-VTODO file is addressed by its UID, as in the task routes.
 - **Limits:**
   - a body of at most 65 536 bytes (`MAX_BODY_BYTES`, the same in Chat and Docs);
@@ -161,8 +166,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Lifecycle hooks.** The shared `ThreadLifecycle` has three calls, keyed by subject type, scope and subject id: `left()` sets `subject_left_at` (upserting the `thread_subject` row), `returned()` clears it, and `scopeDeleted()` deletes every entry in a scope. The purge and its stamping of missed keys are shared too; they ask the subject type's `existsInScope`. What follows is how Tasks calls them.
   - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted at once. The entries stay under the list's key. The delete hook sets `subject_left_at = now` on the key.
   - **Leave time.** `subject_left_at` is set on the **source** key by every hook where the task leaves a list: the task-delete hook (REST, MCP, CalDAV `DELETE`), the REST, MCP or web-app move hook, and the CalDAV `MOVE` hook. Any write that puts that UID in that list again clears it: a create, a `PUT`, or a move back. The hook **upserts** the key's `thread_subject` row, because a task deleted before anyone commented has none.
-  - **Purge.** `threads:purge-orphans` (daily, every subject type) deletes the entries of a key only when `subject_left_at` is older than 30 days **and** no calendar object with that UID exists in that list. Comments and task edits do not touch `subject_left_at`, so a thread on a task that nobody edits for months stays. The purge deletes the key's `thread_subject` row together with its entries.
-  - **Missed leave hooks.** A leave hook can fail without failing the task write, which would leave a key with entries, no task in the list and a null leave time. On each run the purge first finds such keys **from the entries in `thread_index`**, not from `thread_subject`, and stamps `subject_left_at = now` on them, upserting the `thread_subject` row. A later run then purges them 30 days on.
+  - **Purge.** `threads:purge-orphans` (daily, every subject type) deletes the entries of a key only when `subject_left_at` is older than 30 days **and** the subject type's `existsInScope` is false. For tasks, `existsInScope` is "a calendar object with that UID exists in that list". Comments and task edits do not touch `subject_left_at`, so a thread on a task that nobody edits for months stays. The purge deletes the key's `thread_subject` row together with its entries.
+  - **Missed leave hooks.** A leave hook can fail without failing the task write, which would leave a key with entries, no task in the list and a null leave time. On each run the purge first finds keys **from the entries in `thread_index`**, not from `thread_subject`, whose leave time is null and whose subject type's `existsInScope` is false, and stamps `subject_left_at = now` on them, upserting the `thread_subject` row. A subject that still exists is never stamped, whatever its type. A later run then purges them 30 days on.
   - **List deleted:** only when the **owner** deletes it, `scopeDeleted()` deletes every entry whose `X-WGW-SUBJECT-SCOPE` is that list. `TaskListRepository::delete` only dismisses a sharee's copy (`dismissIfSharee`), and that deletes nothing.
   - **Move through REST, MCP or the web app** (`taskListId` in the change set): the "moved here" activity entry is written under the new key, and the old entries stay under the old key until the 30-day purge.
   - **CalDAV `MOVE`** of a task object to another list: Sabre copies and then deletes in one request, because calendars are not `IMoveTarget`. The observer turns `afterMethod:MOVE` (source and destination both in task lists, 2xx) into the same `moved` change set as a REST move. The destination gets "moved here", and the source's entries stay under the source key.
@@ -228,9 +233,12 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - The last fetched thread per subject is cached there and shown offline with "Last updated …".
   - The composer stays enabled offline. A new comment or reply gets a client ULID, is written to the cached thread at once with a "Sending…" mark, and is queued as a row in the threads outbox. Edits, deletes and reactions on your own queued or sent messages queue the same way, behind the send they depend on.
   - The flush follows Chat's outbox (`meet-chat-outbox-flush.ts`): the send posts the client ULID with the `scopeId` the author saw. If the server answers with another id, the rows queued behind it follow the new id.
-  - The entry's `createdAt` is the server's time when the send arrives, so an offline comment appears at the end of the thread for everyone, never in its past.
+  - The entry's `createdAt` is the server's time when the send arrives, and the thread sorts by `(created_at, uid)`, so an offline comment appears at the end of the thread for everyone, never in its past.
   - Mentions are picked from the adapter's cached people (for tasks, #2172's cached list audience). The server drops a mention of someone outside the audience at send time, as it does online.
-  - A send that cannot land is never dropped silently. On 404 (the subject is gone or access was lost), 403 or 409 `subject_moved`, the comment stays in the panel marked "Not sent", with the reason, "Copy text" and "Discard". On 409 `subject_moved` the panel also offers to post it where the subject is now ("Post in the new list" for tasks) when the author can see it there. These rows show in the existing failed-outbox notice.
+  - A send that cannot land is never dropped silently. On 404 (the subject is gone or access was lost), 403 or 409 `subject_moved`, the comment stays in the panel marked "Not sent", with the reason, "Copy text" and "Discard". These rows show in the existing failed-outbox notice.
+  - Only on 409 `subject_moved` does the panel also offer to post it where the subject is now ("Post in the new list" for tasks), when the author can see it there. That resends the **same** ULID with the current `scopeId`, so it can never make a second copy.
+  - On 409 `already_stored` the comment did land, in the earlier scope, before the subject moved and the answer was lost. The local copy stays as "Kept in the previous list", with "Copy text" and "Discard", and no offer to post it again.
+  - **Rows behind a comment that is not sent are held.** Replies, edits, deletes and reactions queued behind a send stay queued and are not sent while that comment is "Not sent"; the flush skips them instead of letting them 404 and lose local state. "Discard" removes them together with the comment. Posting in the new place sends the comment first, then those rows against its id. A row that still answers 404 because its target is not in the current thread stays "Not sent" too, with Copy and Discard, and never writes to the old scope.
   - Comments queue only for subjects whose thread is in the cache. A task whose thread was never opened online shows "Connect to load the conversation", as the assignee picker does.
 
 ## Edge cases

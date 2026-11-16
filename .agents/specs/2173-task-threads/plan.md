@@ -37,7 +37,7 @@ See spec.md, Non-goals.
   - Tested. `path: packages/api/tests/Feature/Dav/ChatCollectionsDavExposureTest.php:167` (`test_docs_thread_pool_is_dav_invisible_while_notes_stay_dav_visible`)
 - **Docs threads follow a document to another owner's pool.** This is the opposite of this Epic's rule for tasks. `path: packages/api/app/Services/Docs/DocsThreadPathSync.php:19`
 - **Docs thread notifications** are grouped per thread with a dedupe key, and Docs mention notices wait for stored mentions. `path: packages/api/app/Services/Notify/DocsThreadActivityNotify.php:119`, `path: packages/api/app/Services/Notify/DocsThreadActivityNotify.php:14`
-- **The JMAP push types.** `ChatMessage` exists. There is no thread type, and Docs threads poll every 4 s. `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:36`, `path: packages/apps/src/text-editor-core/docs-collab/use-docs-threads-source.ts:13`
+- **The JMAP push types.** `ChatMessage` exists. There is no thread type, and Docs threads poll every 4 s. `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:36`, `path: packages/apps/src/text-editor-core/docs-collab/use-docs-threads-source.ts:13` (on main since moved to `packages/apps/src/docs-core/src/collab/`)
 - **chat-ui exports** the composer, mention menu, message, list, thread panel and reaction bar. `path: packages/apps/src/chat-ui/src/index.ts:1`
 - **There is no activity or history log anywhere.**
   - `calendarchanges` holds only uri, synctoken and operation. `path: packages/api/resources/installer/sql/mysql/calendars.sql:43`
@@ -71,7 +71,7 @@ See spec.md, Non-goals.
 - **Storing rendered text** ("Anna changed …") was rejected in favour of `{field, from, to}`. Text would be frozen in one language and time zone, and names would go stale.
 - **Logging through `EventDispatchPlugin`** was rejected, because it has no before/after content. The activity writer reads #2172's change set.
 - **Moving Docs threads onto `thread_index` and push in this Epic** was rejected as scope. Named as a follow-up in threads.md.
-- **A read-only offline state** (cached thread, composer disabled) was the first proposal. The product owner chose offline commenting on 2026-11-16. Chat's outbox flush is Meet-specific code, but the core outbox it runs on is shared, so chunk H builds a Tasks thread flush on the core outbox and copies Chat's row shapes, not its code.
+- **A read-only offline state** (cached thread, composer disabled) was the first proposal. The product owner chose offline commenting on 2026-11-16. Chat's outbox flush is Meet-specific code, but the core outbox it runs on is shared, so chunk H builds one shared threads flush (`lib/offline/threads/`) on the core outbox and copies Chat's row shapes, not its code.
 - **Dropping a queued comment whose task is gone**, as Chat drops a send to a deleted channel, was rejected. A comment is the author's own text; it stays "Not sent" with Copy and Discard.
 - **Placing an offline comment at the time it was written** was rejected. Other people would get it in the thread's past, below entries they already read. The server's arrival time is used.
 
@@ -117,6 +117,11 @@ See spec.md, Non-goals.
 - **No idle polling is added.** The thread panel polls only while it is open, visible and push is down. Proof: `path: packages/apps/src/thread-ui/use-thread.test.ts`, assertion `does not poll while push is up or the panel is closed` (new, chunk E).
 - **A comment written offline is stored once, however often it is sent.** A wrong change would duplicate comments after a flaky reconnect or two tabs flushing. Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_post_with_the_same_ulid_twice_stores_one_entry` (new, chunk B); `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `sends a queued comment once across two flushes` (new, chunk H).
 - **A queued comment never lands in another list's thread without its author's say.** A wrong change would show a comment written for one audience to another. Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_post_with_a_stale_scope_id_is_409_and_stores_nothing` (new, chunk B); `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps a comment whose task moved as not sent` (new, chunk H).
+- **An entry under another key can never be read or written through the subject's routes.** A wrong change would let someone who can see the task in list B react to, reply to or edit an entry left in list A. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_entry_from_another_list_is_404_and_is_not_written` (new, chunk B).
+- **A retry after a move never stores a comment twice.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_retry_of_a_stored_id_after_a_move_is_already_stored_and_writes_nothing` (new, chunk B).
+- **An offline comment never sorts into the thread's past.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_entries_sort_by_arrival_not_by_ulid_time` (new, chunk B).
+- **The shared purge never stamps or deletes a subject that still exists.** A wrong change would delete live threads of any non-task app 30 days after their first comment. Proof: `path: packages/api/tests/Feature/Threads/ThreadServiceWithFakeSubjectTest.php`, assertion `test_purge_does_not_stamp_a_live_non_task_subject` (new, chunk B).
+- **Queued rows behind a comment that is not sent are not lost.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `holds rows queued behind a comment that stays not sent` (new, chunk H).
 - **A queued comment is never dropped silently.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps the text of a comment whose task is gone` (new, chunk H).
 - **After chunk A, main still works with no task-thread code.** Proof: `cmd: pnpm test:api-done-gate`.
 
@@ -150,9 +155,11 @@ See spec.md, Non-goals.
   - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered, and the task delete and move paths calling `ThreadLifecycle`.
   - The shared layer passes its tests with the test-only subject type (the "no task code" invariant).
   - The task access, move, delete, list-delete and limit rules are tested.
-  - `POST …/entries` is idempotent on the client ULID and answers 409 `subject_moved` when a given `scopeId` is not the subject's current scope.
+  - `POST …/entries` follows the retry order in spec.md: 200 for a ULID under the current key, 409 `already_stored` for one under an earlier key, 409 `subject_moved` for a new ULID with a stale `scopeId`; none of them writes.
+  - Entry routes and `parentId` accept only entries under the subject's current key (404 or 422 otherwise, nothing written).
+  - Lists sort and page by `(created_at, uid)`.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
-  - The 30-day orphan purge command is scheduled daily. It purges only keys whose `subject_left_at` is older than 30 days and whose UID is not in the list. Every leave hook (delete, REST move, CalDAV `DELETE`, CalDAV `MOVE`) upserts the key's row and sets that timestamp, and any write of the UID into the list clears it. Keys a hook missed are found from the entries, stamped on one run, and purged 30 days later.
+  - The 30-day orphan purge command is scheduled daily. It purges only keys whose `subject_left_at` is older than 30 days and whose subject type's `existsInScope` is false (for tasks: the UID is not in the list). It stamps a missed key only when its leave time is null and `existsInScope` is false. Every leave hook (delete, REST move, CalDAV `DELETE`, CalDAV `MOVE`) upserts the key's row and sets that timestamp, and any write of the UID into the list clears it. Keys a hook missed are found from the entries, stamped on one run, and purged 30 days later.
   - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
   - `docs/architecture/tasks.md` gets "Decision 18 — Task threads".
   - The B invariants pass.
@@ -186,7 +193,7 @@ See spec.md, Non-goals.
 - **Skill:** apps-ui, workspace, accessibility
 - **Inputs:**
   - the chat-ui exports (`chat-ui/src/index.ts:1`);
-  - the Docs threads source as the shape for `useThread` (`use-docs-threads-source.ts:13`);
+  - the Docs threads source as the shape for `useThread` (`text-editor-core/docs-collab/use-docs-threads-source.ts:97` at the pinned commit; on main `docs-core/src/collab/use-docs-threads-source.ts`);
   - the detail view fields (`tasks-detail-view.tsx:187`);
   - #2172's audience cache;
   - the product owner's mockup (`mockup-task-detail.webp` in this folder);
@@ -211,7 +218,8 @@ See spec.md, Non-goals.
 - **Done when:**
   - `lib/offline/threads/` is one offline domain for every subject type. Comments, replies, edits, deletes and reactions queue there while offline and flush in order once online, with the composer enabled offline.
   - A queued send shows at once with "Sending…"; edits and reactions queued behind it follow a re-keyed id.
-  - 404, 403 and 409 `subject_moved` keep the comment as "Not sent" with Copy and Discard, plus the adapter's "post where it is now" action on 409 when allowed. They show in the failed-outbox notice.
+  - 404, 403 and 409 `subject_moved` keep the comment as "Not sent" with Copy and Discard, plus the adapter's "post where it is now" action on `subject_moved` only, which resends the same ULID. 409 `already_stored` shows "Kept in the previous list" with no repost. They show in the failed-outbox notice.
+  - Rows queued behind a comment that is not sent stay held; Discard removes them with it, and a repost sends them after it.
   - Vitest for the flush (the H invariants) and for two tabs flushing at once.
   - A live Playwright spec: go offline, comment and reply, reload while offline and see both, go online, and a second user sees each comment once.
 - **Verify with:** `pnpm test:apps-done-gate`
