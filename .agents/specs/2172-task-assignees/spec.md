@@ -18,7 +18,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
   - every visible sharee, whether shared directly with a person or with a Team (expanded to its members).
 
   The resolver backs three things: the assignee picker endpoint, assignee validation and notification recipients. Epic #2173 reuses it for mentions.
-- **Who can be assigned.** Only people in the list audience **with write access**, so an assignee can tick the task off. Over REST and MCP the server rejects anyone else with 422. Over CalDAV the server never rejects an `ATTENDEE`, so third-party clients keep working. Such an attendee is simply never notified (see Edge cases).
+- **Who can be assigned.** Only people in the list audience **with write access**, so an assignee can tick the task off. Over REST and MCP the server rejects a **newly added** assignee outside that set with 422; attendees the task already has are never re-checked (see Technical constraints, Validation). Over CalDAV the server never rejects an `ATTENDEE`, so third-party clients keep working. Such an attendee is simply never notified (see Edge cases).
 - **Task change set.** A pure diff of a task before and after a write. The input is two JMAP-shaped task arrays from `TaskMapper`. The output is a list of field changes, with assignees added and removed as person ids.
   - REST and MCP writes compute it in `TaskRepository`.
   - CalDAV `PUT`s compute it in a new DAV plugin: it reads the stored object before the write and the new one after a successful write.
@@ -78,6 +78,17 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - Unknown parameters on an `ATTENDEE` (`RSVP`, `SCHEDULE-AGENT`, `DELEGATED-*`, `X-*`) survive an edit. This is the in-place patch from #1392. Assigning or unassigning one person does not rewrite the other `ATTENDEE` lines.
 - The OpenAPI `TaskParticipant` gains a read-only `username` (null for `e:` ids). Its `roles` stay as they are. An assignee is any participant with role `attendee`.
 
+### Validation
+
+- The server checks only the attendee ids that **this write adds**. That set is the participant ids with role `attendee` in the merged result, minus those in the stored task before the write.
+- Each added id must be a `u:` id whose user is in the audience of the **target** list (the list the task is in after the write, so a move is checked against the new list) with write access. Otherwise the write fails with 422 `invalid_participant`, naming the id.
+- Attendees the task already has pass through unchecked, whatever they are:
+  - `e:` attendees from native clients;
+  - people who lost access;
+  - assignees who are outside the new list's audience after a move.
+- So a full `PUT` that resends the stored `participants`, a move to a list where an assignee has no access, and a save of a task that carries a Thunderbird attendee all succeed.
+- A patch that uses a positional `attN` key gets 422 `stale_participant_id`. No client sends one today, because there is no assignee UI, so only third-party API callers can hit this.
+
 ### Audience resolver
 
 - `TaskListAudience::forList(CalendarInstance $list): list<{username, displayName, email, access: 'read'|'write'}>`. It is built from:
@@ -89,7 +100,8 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - Disabled accounts are left out.
 - The resolver is per request and is not cached across requests. Team membership changes must show on the next call.
 - `GET /api/v1/tasks/tasklists/{id}/members`:
-  - It returns the audience only to a caller who can see the list. Otherwise it answers 404, the same as an unknown list.
+  - It answers only a caller with **write** access to the list, the only people who can assign. A caller who cannot see the list gets 404, the same as an unknown list. A read-only caller gets 403. Assignee names on a task come from the task's own participants, so readers do not need this endpoint.
+  - It returns the audience **filtered to people the caller may see** under the Teams rule (#1915): `TeamColleagues::sharesTeamIgnoringAdminRole`, plus the caller and the list owner. Without this filter, a person sharee who is not in the owning Team would get the names and emails of Team members they share no Team with. That is the "DM rail and share dialogs" row of the surface table in `TeamColleagues`, not the attendee-picker row.
   - It never lists people outside the audience. Admins get no wider list here. The "finds everyone" rule (#1915) applies to invite pickers, not to assignees.
 
 ### Change set
@@ -134,8 +146,12 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - **Sidebar.** `state:assigned-to-me` is a new view in `filterTasksByView`.
   - A task matches when one of its participants has the id `u:<me>`, or role `attendee` and the current user's email.
   - Done and cancelled tasks are left out, like Today.
+  - It does **not** go through `filterTasksByHiddenLists`. The view shows every open task assigned to the user in every list they can see, including lists they turned off in the sidebar, because the Epic asks for "every open task … across the lists they can see".
   - The view needs no new fetch, because the task set is already cross-list.
-- **Offline.** Assigning edits `participants` through the existing task outbox. The offline patch merge already passes `participants` through. The picker needs the audience, so it is cached per list in the Tasks Dexie store and refreshed when the list is opened online. When offline, the cached audience is used. A list never opened online shows "Connect to load people".
+- **Offline.** Assigning edits `participants` through the existing task outbox.
+  - Today the client's offline merge replaces `participants` whole (`applyTaskPatch`, `coalesceTaskPatches`), and only `alerts` merge per id. Chunk C changes both functions to merge `participants` per id, as the server does, where a `null` entry removes one.
+  - Without that change, assigning Bob and then Carol while offline would queue a patch holding only Carol, and the optimistic task would show a `null` entry after an unassign.
+  - The picker needs the audience, so it is cached per list in the Tasks Dexie store and refreshed when the list is opened online. When offline, the cached audience is used. A list never opened online shows "Connect to load people".
 
 ## Edge cases
 
@@ -143,7 +159,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - **A task moves to another list.** Assignees stay. Those not in the new list's audience show as "No longer has access". Moving sends no new `tasks.assigned` notice, because nobody was newly added.
 - **Self-assign** is allowed. No notification is sent, because the actor is skipped.
 - **An assignee in a native client.** Thunderbird or jtx Board adds an `ATTENDEE` with an unknown email. The server stores it and the web app shows the email as the name. No notification, and the web app's picker can remove it.
-- **The same person written twice** (same email, different case): reading merges them into one `u:` entry. The next write from the web app writes it once.
+- **The same person written twice** (same email, different case): reading merges them into one `u:` entry, which takes its parameters from the first of those lines in file order. An unrelated edit leaves both lines as they are. Only when that person is unassigned or reassigned from the web app are their lines rewritten. The first line's parameters survive, and the duplicate is removed.
 - **Recurring tasks.** Assignees live on the master. Assignment from the web app edits the master, not overrides. If an override carries its own `ATTENDEE` from another client, it is kept and not shown.
 - **Removing an assignee** sends no notification. Epic #2173's activity log records it.
 - **An admin who is not in the Team** cannot be assigned. Neither can a Team-hidden colleague. Both are outside the audience.

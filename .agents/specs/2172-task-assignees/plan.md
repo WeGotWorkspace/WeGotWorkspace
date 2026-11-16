@@ -49,7 +49,10 @@ See spec.md, Non-goals.
   - Detail field rows. `path: packages/apps/src/tasks-core/src/tasks-detail-view.tsx:187`
   - Sidebar top items (All, Today, Upcoming, Overdue). `path: packages/apps/src/tasks-core/src/use-tasks-sidebar-model.tsx:58`
   - Views filter one cross-list task set (`list:` is a filter, not a fetch). `path: packages/apps/src/tasks-core/src/tasks-task-utils.ts:203`
-- **No assignee UI exists.** The offline patch merge already passes `participants` through. `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:59`
+- **No assignee UI exists.** The client's offline merge does **not** merge `participants` the way the server does. `applyTaskPatch` and `coalesceTaskPatches` replace the map whole, and only `alerts` merge per id. Two offline assigns would therefore coalesce into the last one. `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:9`, `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:32`
+- **The task body for a move or replace copies `participants` as they are.** `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.ts:59`
+- **Cross-list views drop lists hidden in the sidebar, except on a list view.** `path: packages/apps/src/tasks-core/src/tasks-task-utils.test.ts:115`
+- **A move is a write with a target list through the same rewrite path as an edit.** `path: packages/api/app/Services/Tasks/TaskRepository.php:245`, `path: packages/api/app/Services/Tasks/TaskRepository.php:349`
 - **The principal search used by share dialogs searches colleagues, not a list audience.** `path: packages/apps/src/lib/models/tasks-types.ts:63`, `path: packages/apps/src/share-ui/share-principal-search-dropdown.tsx`
 - **Apple Reminders keeps unknown properties on edit.** `path: packages/api/tests/Feature/Tasks/TaskInPlaceUpdateTest.php:34` (`test_title_edit_keeps_everything_else_reminders_wrote`)
 
@@ -80,6 +83,7 @@ See spec.md, Non-goals.
 
 - [x] Assignees need write access to the list. Taken tonight without the product owner, so it is listed under "Decisions to review" in the PR; it only changes chunk A's validation and C's picker state.
 - [x] No ORGANIZER is written. Also listed under "Decisions to review".
+- [x] The members endpoint answers writers only and filters by the caller's Teams (#1915). This came from the review loop (2026-11-14): otherwise a person sharee would see the names and emails of a Team they are not in. It is the conservative choice and is listed for the product owner; it only changes chunk A.
 
 ## Invariants
 
@@ -88,7 +92,9 @@ See spec.md, Non-goals.
 - **Apple Reminders' own properties survive.** Proof: `path: packages/api/tests/Feature/Tasks/TaskInPlaceUpdateTest.php` `test_title_edit_keeps_everything_else_reminders_wrote`.
 - **A CalDAV write that fails or is not allowed produces no change set, no notification and no row.** A wrong change would leak a notification for a write that never happened, or read a document before authorization. Proof: `path: packages/api/tests/Feature/Tasks/TaskChangeObserverPluginTest.php` assertion `test_forbidden_caldav_put_on_read_only_list_notifies_nobody` (new in chunk B).
 - **The members endpoint never lists people to someone who cannot see the list.** A wrong change would let anyone enumerate a Team's members by list id. Proof: `path: packages/api/tests/Feature/Tasks/TaskListMembersTest.php` assertion `test_members_of_unknown_or_hidden_list_is_404` (new in chunk A).
-- **After chunk A, main still works without B to E.** Existing tasks with positional `attN` ids still read and patch. Proof: `cmd: composer --working-dir packages/api test -- --filter 'Tasks|TaskRoundTrip|TaskInPlace'`.
+- **Only attendees a write adds are validated.** A full `PUT` that resends a stored `e:` attendee, a move to a list where an assignee has no access, and an edit of a task whose assignee lost access all succeed. A wrong change would make tasks with native-client attendees or former members impossible to edit or move. Proof: `path: packages/api/tests/Feature/Tasks/TaskAssigneeValidationTest.php` assertions `test_put_resending_an_existing_external_attendee_succeeds`, `test_move_keeps_assignees_without_access_in_the_target_list`, `test_adding_a_reader_or_outsider_is_422` (new in chunk A).
+- **Offline assigns and unassigns merge per person.** Two queued assigns keep both people, and an unassign removes only that person, in the queue and in the optimistic task. A wrong change would silently drop an assignee. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-patch-merge.test.ts` assertion `coalesces participants per id like alerts` (new in chunk C).
+- **After chunk A, main still works without B to E.** Existing tasks with attendees still read (now with `u:`/`e:` ids) and accept edits of other fields. Proof: `cmd: composer --working-dir packages/api test -- --filter 'Tasks|TaskRoundTrip|TaskInPlace'`.
 - **After chunk B, CalDAV writes still succeed when the observer throws.** Proof: `path: packages/api/tests/Feature/Tasks/TaskChangeObserverPluginTest.php` assertion `test_observer_exception_does_not_fail_the_put` (new in chunk B).
 
 ## Chunks
@@ -107,7 +113,11 @@ See spec.md, Non-goals.
   - `X-WGW-USERNAME` is written on assignees the app adds.
   - `TaskListAudience` exists with feature tests covering owner, Team list, person share, Team share, hidden grant and disabled user.
   - `GET /api/v1/tasks/tasklists/{id}/members` is in OpenAPI and tested, including the 404 for unknown or hidden lists.
-  - REST and MCP reject an assignee outside the audience, or with read access only, with 422 `invalid_participant`.
+  - REST and MCP reject a **newly added** assignee outside the target list's audience, or with read access only, with 422 `invalid_participant`. The added set is the merged result minus the stored task.
+  - A move keeps assignees who lack access in the target list (200).
+  - A full `PUT` that resends an existing `e:` attendee returns 200.
+  - A patch with a positional `attN` key returns 422 `stale_participant_id`.
+  - The members endpoint answers writers only (read-only callers get 403) and filters its list by the caller's Teams (#1915).
   - The invariant tests above pass.
 - **Verify with:** `pnpm test:api-done-gate`
 - **Parallel with:** none
@@ -133,12 +143,13 @@ See spec.md, Non-goals.
 - **Skill:** apps-ui, workspace, accessibility
 - **Inputs:**
   - the detail fields (`tasks-detail-view.tsx:187`);
-  - the offline patch merge (`tasks-patch-merge.ts:59`);
+  - the offline patch merge (`tasks-patch-merge.ts:9`, `:32`);
   - the members endpoint from chunk A.
 - **Done when:**
   - An Assignees row with a picker limited to the audience, read-only people disabled, keyboard reachable and announced.
   - Avatars on list rows with "+N" and names on hover.
   - The audience is cached per list for offline use.
+  - `applyTaskPatch` and `coalesceTaskPatches` merge `participants` per id, where a `null` entry removes one, the same as `alerts`. Vitest covers two queued assigns, an assign then an unassign, and the optimistic task.
   - Mock API, Storybook stories (empty, three assignees, no-access assignee, offline) and Vitest.
 - **Verify with:** `pnpm test:apps-done-gate`
 - **Parallel with:** B, D
@@ -151,6 +162,7 @@ See spec.md, Non-goals.
 - **Done when:**
   - `state:assigned-to-me` is in the filter, matching by id `u:<me>` or by attendee email.
   - It leaves out done and cancelled tasks.
+  - It ignores sidebar-hidden lists: it does not go through `filterTasksByHiddenLists`.
   - A sidebar item after Overdue, with a route and title.
   - Vitest on the filter.
 - **Verify with:** `pnpm test:apps-done-gate`
@@ -176,6 +188,10 @@ See spec.md, Non-goals.
   - A two-user browser e2e on a Team list: A assigns B, B gets the notification, opens the task and sees it under "Assigned to me".
   - Then B leaves the Team: A sees B greyed, and B no longer sees the task.
   - A CalDAV PUT that adds B notifies B once.
+  - **A live Playwright spec for offline assigning** (`packages/apps/e2e/tasks-assignees-offline.spec.ts`):
+    - User A opens a Team list and goes offline, assigns B and then C on one task, and reloads while still offline. Both B and C show.
+    - A goes back online. A second tab on A's account shows both B and C after sync.
+    - A unassigns B in one tab, and the other tab drops B without a reload.
 
 ## Test plan
 
