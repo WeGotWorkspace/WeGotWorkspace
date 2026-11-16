@@ -612,25 +612,23 @@ final class FileNodeIndexService
             return;
         }
 
-        $disk = $this->storage->files();
         $onDisk = [];
-        foreach ($disk->directories($dirKey) as $childKey) {
-            $onDisk[$childKey] = true;
+        foreach ($this->storage->files()->listContents($dirKey) as $entry) {
+            $onDisk[$entry->path()] = true;
         }
-        foreach ($disk->files($dirKey) as $childKey) {
-            $onDisk[$childKey] = false;
+        $children = $this->liveChildren((string) $dirNode->node_id);
+        $childKeys = array_map(fn (JmapFileNode $child): string => (string) $child->storage_key, $children);
+        $unknown = array_values(array_filter(
+            array_diff(array_map('strval', array_keys($onDisk)), $childKeys),
+            fn (string $key): bool => ! $this->isHiddenKey($key),
+        ));
+        $indexed = $unknown === [] ? [] : JmapFileNode::query()
+            ->whereIn('storage_key', $unknown)->whereNull('deleted_at')->pluck('storage_key')->all();
+        foreach (array_diff($unknown, $indexed) as $childKey) {
+            $this->recordCreate($childKey);
         }
 
-        foreach ($onDisk as $childKey => $isDir) {
-            if ($this->isHiddenKey((string) $childKey)) {
-                continue;
-            }
-            if ($this->liveByKey((string) $childKey) === null) {
-                $this->recordCreate((string) $childKey);
-            }
-        }
-
-        foreach ($this->liveChildren((string) $dirNode->node_id) as $child) {
+        foreach ($children as $child) {
             if (! array_key_exists((string) $child->storage_key, $onDisk)) {
                 $this->recordDelete((string) $child->storage_key);
             }
