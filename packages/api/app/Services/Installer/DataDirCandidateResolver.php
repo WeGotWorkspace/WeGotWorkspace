@@ -153,7 +153,9 @@ final class DataDirCandidateResolver
     public function apply(DataDirChoice $choice): void
     {
         $path = $choice->path;
-        putenv('WGW_DATA_DIR='.$path);
+        if (function_exists('putenv')) {
+            putenv('WGW_DATA_DIR='.$path);
+        }
         $_ENV['WGW_DATA_DIR'] = $path;
         $_SERVER['WGW_DATA_DIR'] = $path;
         config(['wgw.data_dir' => $path]);
