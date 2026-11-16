@@ -81,7 +81,7 @@ describe("SettingsIncomingEmailPane", () => {
     expect(screen.getByText(labels.passwordKeep)).toBeTruthy();
   });
 
-  it("asks for Check now when connecting could not learn the receiving server yet", async () => {
+  it("says connected when connecting found no trusted receiving server", async () => {
     const operations = spiedOperations();
     const save = operations.save;
     vi.mocked(save).mockImplementation(async (update) => {
@@ -97,8 +97,8 @@ describe("SettingsIncomingEmailPane", () => {
     fireEvent.click(screen.getByRole("button", { name: labels.connect }));
 
     await screen.findByRole("button", { name: labels.disconnect });
-    expect(toast.success).toHaveBeenCalledWith(labels.connectedWaiting);
-    expect(screen.getByRole("status").textContent).toContain(labels.statusWaiting);
+    expect(toast.success).toHaveBeenCalledWith(labels.connected);
+    expect(screen.getByRole("status").textContent).toContain(labels.statusReading);
   });
 
   it("keeps the form as typed and says why when the login fails", async () => {
@@ -206,7 +206,8 @@ describe("SettingsIncomingEmailPane", () => {
 
   it.each([
     [{ active: false, lastError: "auth_failed" as const }, labels.statusPaused],
-    [{ trustedServer: null }, labels.statusWaiting],
+    [{ trustedServer: null }, labels.statusReading],
+    [{ lastError: "dns_unavailable" as const }, labels.errors.dns_unavailable],
     [{ lastError: "connect_failed" as const }, labels.errors.connect_failed],
   ])("shows how reading goes (%o)", async (overrides, expected) => {
     renderSection(spiedOperations(mockCalendarReplyMailbox(overrides)));

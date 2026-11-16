@@ -12912,16 +12912,24 @@ export interface components {
             /** @description Folder that is read, `INBOX` by default. */
             folder: string;
             passwordSet: boolean;
-            /** @description Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. Replies are only applied while it is known. */
+            /** @description Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. While it is known, a reply is applied only when that server's Authentication-Results header shows the sender is authenticated. */
             trustedServer: string | null;
+            /**
+             * @description How a reply's sender is authenticated: `receiving_server` uses the trusted receiving server's Authentication-Results header; `dkim` (no trusted server known) verifies the reply's own DKIM signature against the signer's key in DNS.
+             * @enum {string}
+             */
+            senderCheck: "receiving_server" | "dkim";
             /** @description False after repeated failed logins; saving the settings again turns reading back on. */
             active: boolean;
             /** Format: date-time */
             lastCheckedAt: string | null;
             /** Format: date-time */
             lastSuccessAt: string | null;
-            /** @enum {string|null} */
-            lastError: "auth_failed" | "connect_failed" | "tls_failed" | "folder_missing" | "host_not_allowed" | "protocol_error" | "untrusted_server_unknown" | null;
+            /**
+             * @description `dns_unavailable`: the last check stopped at a reply whose DKIM key could not be looked up; it is tried again on the next check. `untrusted_server_unknown` is no longer reported and only remains on a mailbox until its next check.
+             * @enum {string|null}
+             */
+            lastError: "auth_failed" | "connect_failed" | "tls_failed" | "folder_missing" | "host_not_allowed" | "protocol_error" | "dns_unavailable" | "untrusted_server_unknown" | null;
         };
         CalendarReplyMailboxState: {
             mailbox: components["schemas"]["CalendarReplyMailbox"] | null;

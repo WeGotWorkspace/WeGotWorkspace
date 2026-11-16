@@ -73,14 +73,13 @@ function formatChecked(iso: string): string {
   }).format(date);
 }
 
-/** One line on how reading goes: the error, a pause, waiting for a first message, or fine. */
+/** One line on how reading goes: the error, a pause, or fine. */
 export function incomingEmailStatusLine(mailbox: IncomingMailbox): string {
   const checked = mailbox.lastCheckedAt
     ? ` ${labels.lastChecked(formatChecked(mailbox.lastCheckedAt))}`
     : "";
   if (!mailbox.active) return labels.statusPaused;
   if (mailbox.lastError) return `${labels.errors[mailbox.lastError] ?? labels.failed}${checked}`;
-  if (!mailbox.trustedServer) return labels.statusWaiting;
   return `${labels.statusReading}${checked}`;
 }
 

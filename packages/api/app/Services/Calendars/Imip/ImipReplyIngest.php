@@ -59,7 +59,6 @@ final class ImipReplyIngest
     private const STATUSES = ['ACCEPTED', 'DECLINED', 'TENTATIVE'];
 
     public function __construct(
-        private readonly ImipSenderAuthentication $authentication,
         private readonly VObjectPayloadGuard $payloadGuard,
         private readonly CalendarPrincipalAddresses $addresses,
         private readonly CalendarSchedulingObjects $objects,
@@ -72,19 +71,21 @@ final class ImipReplyIngest
 
     /**
      * @param  string  $owner  username of the mailbox owner (the organizer)
-     * @param  string  $trustedServerId  authserv-id of the mailbox's receiving server
+     * @param  ImipSenderCheck  $sender  outcome of {@see ImipSenderVerifier::check()}
      * @param  string  $ics  decoded `text/calendar` part
      * @param  int  $imapUid  for logs only
      */
-    public function ingest(string $owner, string $trustedServerId, MailHeaders $headers, string $ics, int $imapUid): ImipReplyOutcome
+    public function ingest(string $owner, ImipSenderCheck $sender, string $ics, int $imapUid): ImipReplyOutcome
     {
-        $outcome = $this->evaluate($owner, $trustedServerId, $headers, $ics);
+        $outcome = $this->evaluate($owner, $sender, $ics);
         if ($outcome->status === ImipReplyOutcome::SKIPPED) {
             Log::notice(self::LOG_SKIPPED, [
                 'owner' => $owner,
                 'imap_uid' => $imapUid,
                 'uid' => $outcome->uid,
                 'reason' => $outcome->reason,
+                'check' => $sender->check,
+                'detail' => $sender->reason,
             ]);
         } else {
             Log::info(self::LOG_APPLIED, [
@@ -92,15 +93,15 @@ final class ImipReplyIngest
                 'imap_uid' => $imapUid,
                 'uid' => $outcome->uid,
                 'changed' => $outcome->status === ImipReplyOutcome::APPLIED,
+                'check' => $sender->check,
             ]);
         }
 
         return $outcome;
     }
 
-    private function evaluate(string $owner, string $trustedServerId, MailHeaders $headers, string $ics): ImipReplyOutcome
+    private function evaluate(string $owner, ImipSenderCheck $check, string $ics): ImipReplyOutcome
     {
-        $check = $this->authentication->check($headers, $trustedServerId);
         $sender = $check->sender;
         if ($sender === null) {
             return ImipReplyOutcome::skipped(self::SENDER_NOT_VERIFIED);

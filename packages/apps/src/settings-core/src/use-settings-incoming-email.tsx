@@ -160,8 +160,7 @@ export function useSettingsIncomingEmail(
       const next = await operationsRef.current.save(update);
       applyReady(next.mailbox);
       if (connected) showSuccess(labels.saved);
-      // Only the connection test learns the receiving server; without it nothing is read yet.
-      else showSuccess(next.mailbox?.trustedServer ? labels.connected : labels.connectedWaiting);
+      else showSuccess(labels.connected);
     });
   });
 

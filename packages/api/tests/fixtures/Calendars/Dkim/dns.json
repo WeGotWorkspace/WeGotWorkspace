@@ -1,0 +1,7 @@
+{
+    "brisbane._domainkey.football.example.com": "v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
+    "ed1._domainkey.elsewhere.test": "v=DKIM1; k=ed25519; p=Ci7YMBzC1iDUMWBAaoHzi3B1nq4IvpuwIRPKp29xcA4=",
+    "relay._domainkey.mailer-relay.test": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnCWipCb/OKrcIcRYDFoO0t3NzKOq4f3fTFsRhzL8HHzpmNQYaGgmewmeMRs/Mexu8HsR0BQhE+zcwk+EnnuswFBraGFkTdMk30XUzAcEny8L96rU9TO+ICshIv+PXPJ2Z496t63gbBSrQ/G5LidS2NTajblQHfwEv6yIvAnhixK5HHXarscuvf4buytlj4mhzDPVL+MSR2FZoj/Dt7VeYPm2lzwfPpyrmsx0Ze7QBWWcbGwblGObFy0w/MmJTlx2Y77g3aCUL8FjHJu5F3/XIIyAG4KZHzs/HQPP8qQrAs/VUbojOn4MSBr6RvnuKYC9YiI3wE3nYUkXElEGf5WwSQIDAQAB",
+    "rsa2048._domainkey.elsewhere.test": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnCWipCb/OKrcIcRYDFoO0t3NzKOq4f3fTFsRhzL8HHzpmNQYaGgmewmeMRs/Mexu8HsR0BQhE+zcwk+EnnuswFBraGFkTdMk30XUzAcEny8L96rU9TO+ICshIv+PXPJ2Z496t63gbBSrQ/G5LidS2NTajblQHfwEv6yIvAnhixK5HHXarscuvf4buytlj4mhzDPVL+MSR2FZoj/Dt7VeYPm2lzwfPpyrmsx0Ze7QBWWcbGwblGObFy0w/MmJTlx2Y77g3aCUL8FjHJu5F3/XIIyAG4KZHzs/HQPP8qQrAs/VUbojOn4MSBr6RvnuKYC9YiI3wE3nYUkXElEGf5WwSQIDAQAB",
+    "test._domainkey.football.example.com": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDkHlOQoBTzWRiGs5V6NpP3idY6Wk08a5qhdR6wy5bdOKb2jLQiY/J16JYi0Qvx/byYzCNb3W91y3FutACDfzwQ/BC/e/8uBsCR+yz1Lxj+PL6lHvqMKrM3rG4hstT5QjvHO9PzoxZyVYLzBfO2EeC3Ip3G+2kryOTIKT+l/K4w3QIDAQAB"
+}

@@ -1,0 +1,53 @@
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=mailer-relay.test; i=@mailer-relay.test; q=dns/txt; s=relay;
+ t=1900000000; h=from : to : subject : date : message-id : mime-version
+ : content-type; bh=ghbRMuu923N5GM/XwRiTKxpOWHokn6la0nP6UvbcEYU=;
+ b=QgeD1MBqFhNrnWe38AUoxPzSml5M5KDoH1Ve6/e2FqhqlxxFkUCEQyvGtMi87ssue83CR
+ S4Q7Qvq1pSITVhzPLzroY8O4gGBNFbsH4DRjQaVLpxm1IKtVzNN5Dai7Aio/o16ZGzaUy1D
+ oXvLBvJKOFT3wan/nUK9vbFer/yHpRAHLOgc27z46hBRzgZLO0UDSpUlWzlK/pY9YRT64MC
+ 2uppSMgjdkDK6NniP1AOEv7wg+39Qhd8E2sLN5/ZYjOAv9ISb1vMpR7+doooBH5E84+rL63
+ HiTyYlPVfvQ3zY4WH1alUwpbelXpTuZiSzglE0lnq76mh75A11jbAkAywl5g==
+From: Guest Person <guest@elsewhere.test>
+To: bob@example.test
+Subject: Accepted: Planning @ Fri 1 Feb 2030 10am - 10:30am (UTC)
+Date: Sun, 17 Mar 2030 17:46:40 +0000
+Message-ID: <reply-1@elsewhere.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: multipart/alternative; boundary="b2"
+
+--b2
+Content-Type: text/plain; charset="UTF-8"
+
+Guest Person has accepted this invitation.
+
+--b2
+Content-Type: text/calendar; charset="UTF-8"; method=REPLY
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KUFJPRElEOi0vL0dvb2dsZSBJbmMvL0dvb2ds
+ZSBDYWxlbmRhciA3MC45MDU0Ly9FTg0KTUVUSE9EOlJFUExZDQpCRUdJTjpWRVZFTlQNCkRUU1RB
+UlQ6MjAzMDAyMDFUMTAwMDAwWg0KRFRFTkQ6MjAzMDAyMDFUMTAzMDAwWg0KRFRTVEFNUDoyMDMw
+MDEwMVQxMjAwMDBaDQpPUkdBTklaRVI7Q049Qm9iOm1haWx0bzpib2JAZXhhbXBsZS50ZXN0DQpV
+SUQ6aW1pcC1wb2xsLWV2ZW50LTENCkFUVEVOREVFO0NVVFlQRT1JTkRJVklEVUFMO1JPTEU9UkVR
+LVBBUlRJQ0lQQU5UO1BBUlRTVEFUPUFDQ0VQVEVEO0NOPUd1ZXN0DQogUGVyc29uO1gtTlVNLUdV
+RVNUUz0wOm1haWx0bzpndWVzdEBlbHNld2hlcmUudGVzdA0KU0VRVUVOQ0U6MA0KU1RBVFVTOkNP
+TkZJUk1FRA0KU1VNTUFSWTpQbGFubmluZw0KRU5EOlZFVkVOVA0KRU5EOlZDQUxFTkRBUg0K
+--b2--
+
+--b1
+Content-Type: application/ics; name="invite.ics"
+Content-Disposition: attachment; filename="invite.ics"
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KUFJPRElEOi0vL0dvb2dsZSBJbmMvL0dvb2ds
+ZSBDYWxlbmRhciA3MC45MDU0Ly9FTg0KTUVUSE9EOlJFUExZDQpCRUdJTjpWRVZFTlQNCkRUU1RB
+UlQ6MjAzMDAyMDFUMTAwMDAwWg0KRFRFTkQ6MjAzMDAyMDFUMTAzMDAwWg0KRFRTVEFNUDoyMDMw
+MDEwMVQxMjAwMDBaDQpPUkdBTklaRVI7Q049Qm9iOm1haWx0bzpib2JAZXhhbXBsZS50ZXN0DQpV
+SUQ6aW1pcC1wb2xsLWV2ZW50LTENCkFUVEVOREVFO0NVVFlQRT1JTkRJVklEVUFMO1JPTEU9UkVR
+LVBBUlRJQ0lQQU5UO1BBUlRTVEFUPUFDQ0VQVEVEO0NOPUd1ZXN0DQogUGVyc29uO1gtTlVNLUdV
+RVNUUz0wOm1haWx0bzpndWVzdEBlbHNld2hlcmUudGVzdA0KU0VRVUVOQ0U6MA0KU1RBVFVTOkNP
+TkZJUk1FRA0KU1VNTUFSWTpQbGFubmluZw0KRU5EOlZFVkVOVA0KRU5EOlZDQUxFTkRBUg0K
+--b1--
