@@ -58,6 +58,7 @@ export const liveTierSpecs = [
   "meet-adhoc-two-users",
   "meet-audio-only-camera",
   "meet-chat-push",
+  "meet-chat-windowed",
   "meet-guest-chat",
   "meet-guest-video-mirror",
   "meet-mesh-channel-roster",

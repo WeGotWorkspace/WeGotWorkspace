@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import type { ChatMessage } from "@/lib/models/chat-types";
+import { TooltipProvider } from "@/ui/tooltip";
 
 const CURRENT_USER = "demo.user";
 
@@ -115,5 +116,57 @@ describe("ChatMessageList sticky day labels", () => {
     expect(document.querySelector(".list-sticky-header")?.getAttribute("aria-label")).toMatch(
       /Today/,
     );
+  });
+});
+
+describe("ChatMessageList actions and announcements", () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
+  it("runs the latest action handler for a row whose message did not change", () => {
+    const messages = [msg("1", CURRENT_USER)];
+    const first = vi.fn();
+    const second = vi.fn();
+    const actions = (onClick: () => void) => () => [{ id: "delete" as const, onClick }];
+    const { rerender } = render(
+      <TooltipProvider>
+        <ChatMessageList
+          messages={messages}
+          currentUserId={CURRENT_USER}
+          actionsForMessage={actions(first)}
+        />
+      </TooltipProvider>,
+    );
+    rerender(
+      <TooltipProvider>
+        <ChatMessageList
+          messages={messages}
+          currentUserId={CURRENT_USER}
+          actionsForMessage={actions(second)}
+        />
+      </TooltipProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces nothing when the previous last message left the list", () => {
+    const { rerender } = render(
+      <ChatMessageList messages={[msg("1"), msg("2")]} currentUserId={CURRENT_USER} />,
+    );
+    rerender(<ChatMessageList messages={[msg("1"), msg("3")]} currentUserId={CURRENT_USER} />);
+    const announcer = document.querySelector(".chat-message-list__announcer")!;
+    expect(announcer.textContent).toBe("");
+  });
+
+  it("announces every message of a commit that appends more than five", () => {
+    const first = [msg("1")];
+    const { rerender } = render(<ChatMessageList messages={first} currentUserId={CURRENT_USER} />);
+    const added = ["2", "3", "4", "5", "6", "7"].map((id) => msg(id));
+    rerender(<ChatMessageList messages={[...first, ...added]} currentUserId={CURRENT_USER} />);
+    const announcer = document.querySelector(".chat-message-list__announcer")!;
+    for (const m of added) expect(announcer.textContent).toContain(`body ${m.id}`);
   });
 });

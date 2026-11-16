@@ -76,7 +76,7 @@ function messagesAfter(
   previousId: string,
 ): ChatMessageModel[] {
   const at = messages.findIndex((message) => message.id === previousId);
-  return at < 0 ? messages.slice(-1) : messages.slice(at + 1);
+  return at < 0 ? [] : messages.slice(at + 1);
 }
 
 function announcementFor(message: ChatMessageModel): Announcement {
@@ -118,7 +118,15 @@ export function ChatMessageList({
   const latest = useRef({ actionsForMessage, onToggleReaction, onOpenThread });
   latest.current = { actionsForMessage, onToggleReaction, onOpenThread };
   const actionsFor = useCallback(
-    (message: ChatMessageModel) => latest.current.actionsForMessage?.(message),
+    (message: ChatMessageModel) =>
+      latest.current.actionsForMessage?.(message)?.map((action) => ({
+        ...action,
+        onClick: () =>
+          latest.current
+            .actionsForMessage?.(message)
+            ?.find((candidate) => candidate.id === action.id)
+            ?.onClick(),
+      })),
     [],
   );
   const toggleReaction = useCallback(
@@ -238,7 +246,7 @@ export function ChatMessageList({
 
     if (appended && previousId !== undefined) {
       const arrived = messagesAfter(messages, previousId).map(announcementFor);
-      setAnnouncements((previous) => [...previous, ...arrived].slice(-ANNOUNCEMENTS_KEPT));
+      setAnnouncements((previous) => [...previous.slice(-ANNOUNCEMENTS_KEPT), ...arrived]);
     }
     if (ownSend) {
       stickRef.current = true;
