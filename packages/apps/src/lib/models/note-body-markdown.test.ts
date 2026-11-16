@@ -33,3 +33,10 @@ describe("noteBodyToMarkdown / markdownToNoteBody", () => {
     expect(markdownToNoteBody(noteBodyToMarkdown(body))).toEqual(body);
   });
 });
+
+describe("markdownToNoteBody on empty input", () => {
+  it("returns one empty paragraph for empty or blank markdown", () => {
+    expect(markdownToNoteBody("")).toEqual([""]);
+    expect(markdownToNoteBody("  \n\n ")).toEqual([""]);
+  });
+});
