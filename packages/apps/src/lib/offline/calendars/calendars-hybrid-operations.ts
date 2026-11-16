@@ -67,6 +67,7 @@ import {
 } from "@/lib/offline/calendars/calendars-sync-conflicts";
 import { readOfflineCalendarsUsername } from "@/lib/offline/core/offline-session";
 import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
+import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
 function rethrowUnlessOfflineQueue(error: unknown): void {
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -499,7 +500,7 @@ export async function loadCalendarBootstrapHybrid(): Promise<CalendarAppBootstra
       const cached = await readCalendarBootstrapFromCache(username);
       if (cached) return cached;
     }
-    throw new Error("No cached calendar available offline");
+    throw new OfflineNotCachedError("calendar");
   }
 
   return fetchCalendarHybridBootstrap();
