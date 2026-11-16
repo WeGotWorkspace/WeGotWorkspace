@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { createMockAdminOperations } from "@/admin-core/src/admin-mock-operations";
-import type { AdminUIData } from "@/admin-core/src/admin-types";
+import type { AdminUIData } from "@/lib/models/admin-types";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 

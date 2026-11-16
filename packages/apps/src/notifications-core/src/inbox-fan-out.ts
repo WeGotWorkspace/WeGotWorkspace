@@ -1,5 +1,5 @@
 import { crossTabTopic, type CrossTabTopic } from "@/lib/offline/core/cross-tab-topic";
-import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxList } from "@/lib/models/notifications-types";
 
 /**
  * Sent by the tab that fetched the inbox for a pushed `Notification` state:

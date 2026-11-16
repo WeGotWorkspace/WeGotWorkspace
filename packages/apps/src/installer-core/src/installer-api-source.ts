@@ -1,4 +1,8 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import {
   createInstallerAppBootstrap,
   type InstallerAppBootstrap,
@@ -7,7 +11,7 @@ import { createMockInstallerOperations } from "@/lib/api/mock/installer-mock-ope
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { fetchInstallerBootstrap } from "@/lib/api/wgw/installer";
-import type { InstallerAPIOperations } from "@/installer-core/src/installer-types";
+import type { InstallerAPIOperations } from "@/lib/models/installer-types";
 import { wgwInstallerOperations } from "@/installer-core/src/installer-wgw-operations";
 
 export type InstallerApiSource = {
@@ -36,13 +40,15 @@ export function createWgwInstallerApiSource(): InstallerApiSource {
 export function createDefaultInstallerApiSource(): InstallerApiSource {
   return createWorkspaceSource<InstallerApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createInstallerAppBootstrap()),
-      createOperations: (_source, bootstrap) => {
-        const seed = bootstrap?.data.state ?? createInstallerAppBootstrap().data.state;
-        return seed ? createMockInstallerOperations(seed) : undefined;
-      },
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createInstallerAppBootstrap()),
+          createOperations: (_source, bootstrap) => {
+            const seed = bootstrap?.data.state ?? createInstallerAppBootstrap().data.state;
+            return seed ? createMockInstallerOperations(seed) : undefined;
+          },
+        })
+      : mocksNotInBuild,
     createLiveSource: createWgwInstallerApiSource,
   });
 }

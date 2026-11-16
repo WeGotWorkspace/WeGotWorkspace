@@ -6,7 +6,7 @@ import {
   type DocsTrashUndoSnapshot,
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
-import { renamedDocsSearchResult } from "@/lib/offline/docs-listing-offline-store";
+import { renamedDocsSearchResult } from "@/lib/offline/docs/docs-listing-offline-store";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_CALENDAR_COLOR } from "@/calendar-core/src/calendar-calendar-dialog";
+import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import { CalendarImportDialog } from "@/calendar-core/src/calendar-import-dialog";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";

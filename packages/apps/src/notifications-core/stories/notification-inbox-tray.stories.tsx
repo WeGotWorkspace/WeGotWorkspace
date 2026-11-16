@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
-import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 function minutesAgo(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();

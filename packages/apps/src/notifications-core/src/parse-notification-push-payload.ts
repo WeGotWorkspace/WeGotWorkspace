@@ -1,9 +1,9 @@
 import {
   sanitizeNotificationNavigate,
   WEB_PUSH_DECLARATIVE_VERSION,
-} from "./notification-click-navigate";
-import type { NotificationInboxItem } from "./notifications-types";
-import { isPushScope, ROOT_PUSH_SCOPE, type PushScope } from "./push-scope";
+} from "@/lib/notifications/notification-click-navigate";
+import type { NotificationInboxItem } from "@/lib/models/notifications-types";
+import { isPushScope, ROOT_PUSH_SCOPE, type PushScope } from "@/lib/notifications/push-scope";
 
 export type NotificationPushPayload = {
   title: string;

@@ -9,8 +9,8 @@ import {
   readSyncToken,
   saveContactsColdDownloadPage,
   startContactsColdDownload,
-} from "@/lib/offline/contacts-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+} from "@/lib/offline/contacts/contacts-offline-store";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
 const username = "alice";

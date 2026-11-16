@@ -10,20 +10,20 @@ import {
   type EventOperation,
 } from "@/lib/calendar-engine";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
-import { createTempCalendarEventId } from "@/lib/offline/calendars-offline-store";
+import { createTempCalendarEventId } from "@/lib/offline/calendars/calendars-offline-store";
 import {
   engineEventToForm,
   formToDraft,
   formToFullPatch,
 } from "@/calendar-core/src/calendar-editor-model";
-import { newEventFreeBusyStatus } from "@/calendar-core/src/calendar-alerts";
+import { newEventFreeBusyStatus } from "@/lib/calendar/calendar-alerts";
 import { recurrenceOverridesFromEngineMap } from "@/calendar-core/src/calendar-recurrence-scope";
 import { canWriteCalendarCollection } from "@/calendar-core/src/calendar-collection-write";
 import {
+  isAvailabilityCalendarId,
   isRenderOnlyOverlayEvent,
   isRenderOnlyOverlayKey,
-} from "@/calendar-core/src/calendar-render-overlay";
-import { isAvailabilityCalendarId } from "@/calendar-core/src/calendar-availability-overlay";
+} from "@/lib/calendar/calendar-render-overlay";
 import type {
   CalendarAPIOperations,
   CalendarEventPatch,

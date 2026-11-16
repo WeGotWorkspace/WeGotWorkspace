@@ -371,9 +371,6 @@ final class InstallerWizardService
                     SettingKeys::CALENDAR_ENABLED => $enableCalendars,
                     SettingKeys::CONTACTS_ENABLED => $enableContacts,
                     SettingKeys::MAIL_ENABLED => $mailEnabled,
-                    SettingKeys::MAIL_IMAP_HOST => $mailEnabled ? trim((string) ($payload['mail_imap_host'] ?? '')) : '',
-                    SettingKeys::MAIL_IMAP_PORT => $mailEnabled ? (int) ($payload['mail_imap_port'] ?? 993) : 993,
-                    SettingKeys::MAIL_IMAP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl') : '',
                     SettingKeys::MAIL_SMTP_HOST => $mailEnabled ? trim((string) ($payload['mail_smtp_host'] ?? '')) : '',
                     SettingKeys::MAIL_SMTP_PORT => $mailEnabled ? (int) ($payload['mail_smtp_port'] ?? 587) : 587,
                     SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
@@ -450,11 +447,10 @@ final class InstallerWizardService
                 'enable_calendars' => true,
                 'enable_contacts' => true,
                 'show_browser_ui' => false,
-                'checks' => $this->env->checkAll('sqlite'),
+                'checks' => [],
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
                 'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
-                'data_dir' => $this->dataDirs->describe($this->wizardState()),
             ];
         }
 

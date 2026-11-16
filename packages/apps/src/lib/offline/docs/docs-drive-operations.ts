@@ -1,6 +1,6 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { parentAndName } from "@/lib/files/api-path";
-import type { DocsAPIOperations } from "@/docs-core/src/docs-types";
+import type { DocsAPIOperations } from "@/lib/models/docs-types";
 
 /** Live Files API operations for Docs (load/save/rename whole files). */
 export function createWgwDocsDriveOperations(): DocsAPIOperations {

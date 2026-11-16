@@ -18,13 +18,20 @@
  * Baseline (#1642 candidate 4, "warn mode with a baseline"):
  *
  *   lint:boundaries --check    exit 1 when an edge is new or has more files
- *                              than scripts/import-boundaries-baseline.json
- *   lint:boundaries --update   lower the baseline to today's counts; it never
- *                              raises a count and never adds an edge
+ *                              than scripts/import-boundaries-baseline.json,
+ *                              or when a two-way pair is not in its list
+ *   lint:boundaries --update   lower the baseline to today's counts and drop
+ *                              pairs that are gone; it never raises a count,
+ *                              never adds an edge and never adds a pair
  *
  * An edge that shrank only prints a notice, so a move in #1638 does not have
  * to touch the baseline in the same pull request. Raising a count or adding
  * an edge means editing the JSON by hand, which a reviewer sees.
+ *
+ * The pair list closes the gap the edge counts leave: when an app package
+ * starts importing a primitive that already imports it (an allowed, downward
+ * import), no violating edge is new or grows, yet the two now import each
+ * other. Every two-way pair must be on the list, so a new cycle fails CI.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -153,9 +160,21 @@ export function formatSummary(summary) {
   return out.join("\n");
 }
 
+/** @param {number} count */
+const files = (count) => `${count} ${count === 1 ? "file" : "files"}`;
+
+/** @param {{ a: string, b: string }} pair */
+export const pairKey = (pair) => `${pair.a} <-> ${pair.b}`;
+
 /**
- * @param {ReturnType<typeof summarize>} summary
- * @param {Record<string, number>} baseline files per "from -> to" edge
+ * @typedef {{ edges: Record<string, number>, twoWayPairs: string[] }} Baseline
+ *   files per "from -> to" edge, and the "a <-> b" pairs (a < b) that may
+ *   import each other
+ */
+
+/**
+ * @param {Pick<ReturnType<typeof summarize>, "edges" | "twoWayPairs">} summary
+ * @param {Baseline} baseline
  */
 export function compareToBaseline(summary, baseline) {
   const failures = [];
@@ -164,41 +183,60 @@ export function compareToBaseline(summary, baseline) {
   for (const edge of summary.edges) {
     const key = `${edge.from} -> ${edge.to}`;
     seen.add(key);
-    const allowed = baseline[key];
+    const allowed = baseline.edges[key];
     if (allowed === undefined) {
-      failures.push(`new edge ${key} (${edge.files} files). ${BASELINE_DOC}`);
+      failures.push(`new edge ${key} (${files(edge.files)}). ${BASELINE_DOC}`);
     } else if (edge.files > allowed) {
-      failures.push(`${key} grew from ${allowed} to ${edge.files} files. ${BASELINE_DOC}`);
+      failures.push(`${key} grew from ${allowed} to ${files(edge.files)}. ${BASELINE_DOC}`);
     } else if (edge.files < allowed) {
-      notices.push(`${key} dropped from ${allowed} to ${edge.files} files`);
+      notices.push(`${key} dropped from ${allowed} to ${files(edge.files)}`);
     }
   }
-  for (const key of Object.keys(baseline)) {
+  for (const key of Object.keys(baseline.edges)) {
     if (!seen.has(key)) notices.push(`${key} is gone`);
+  }
+  const knownPairs = new Set(baseline.twoWayPairs);
+  const seenPairs = new Set();
+  for (const pair of summary.twoWayPairs) {
+    const key = pairKey(pair);
+    seenPairs.add(key);
+    if (!knownPairs.has(key)) {
+      failures.push(
+        `new two-way pair ${key}: ${pair.a} imports ${pair.b} in ${files(pair.aToB)} and ${pair.b} imports ${pair.a} in ${files(pair.bToA)}. ${BASELINE_DOC}`,
+      );
+    }
+  }
+  for (const key of baseline.twoWayPairs) {
+    if (!seenPairs.has(key)) notices.push(`two-way pair ${key} is gone`);
   }
   return { failures, notices };
 }
 
 /**
- * Lower every count to today's value and drop edges that are gone. Never
- * raises a count, never adds an edge.
+ * Lower every count to today's value and drop edges and pairs that are gone.
+ * Never raises a count, never adds an edge, never adds a pair.
  *
- * @param {ReturnType<typeof summarize>} summary
- * @param {Record<string, number>} baseline
+ * @param {Pick<ReturnType<typeof summarize>, "edges" | "twoWayPairs">} summary
+ * @param {Baseline} baseline
+ * @returns {Baseline}
  */
 export function lowerBaseline(summary, baseline) {
   const current = new Map(summary.edges.map((edge) => [`${edge.from} -> ${edge.to}`, edge.files]));
   /** @type {Record<string, number>} */
-  const next = {};
-  for (const key of Object.keys(baseline).sort()) {
-    const files = current.get(key);
-    if (files !== undefined) next[key] = Math.min(files, baseline[key]);
+  const edges = {};
+  for (const key of Object.keys(baseline.edges).sort()) {
+    const count = current.get(key);
+    if (count !== undefined) edges[key] = Math.min(count, baseline.edges[key]);
   }
-  return next;
+  const currentPairs = new Set(summary.twoWayPairs.map(pairKey));
+  const twoWayPairs = baseline.twoWayPairs.filter((key) => currentPairs.has(key)).sort();
+  return { edges, twoWayPairs };
 }
 
+/** @returns {Baseline} */
 function readBaseline() {
-  return JSON.parse(readFileSync(baselinePath, "utf8")).edges;
+  const { edges, twoWayPairs } = JSON.parse(readFileSync(baselinePath, "utf8"));
+  return { edges, twoWayPairs: twoWayPairs ?? [] };
 }
 
 async function main() {
@@ -228,10 +266,10 @@ async function main() {
     return;
   }
   if (process.argv.includes("--update")) {
-    const edges = lowerBaseline(summary, readBaseline());
-    writeFileSync(baselinePath, `${JSON.stringify({ edges }, null, 2)}\n`);
+    const next = lowerBaseline(summary, readBaseline());
+    writeFileSync(baselinePath, `${JSON.stringify(next, null, 2)}\n`);
     process.stdout.write(
-      `Wrote ${Object.keys(edges).length} edges to ${path.relative(appsRoot, baselinePath)}\n`,
+      `Wrote ${Object.keys(next.edges).length} edges and ${next.twoWayPairs.length} two-way pairs to ${path.relative(appsRoot, baselinePath)}\n`,
     );
     return;
   }

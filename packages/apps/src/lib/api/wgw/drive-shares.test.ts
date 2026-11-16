@@ -205,4 +205,15 @@ describe("drive-shares client", () => {
       signal: undefined,
     });
   });
+
+  it("a failed GET carries the HTTP status and keeps its message", async () => {
+    wgwFetch.mockResolvedValueOnce(
+      new Response("down", { status: 502, statusText: "Bad Gateway" }),
+    );
+
+    await expect(fetchDriveSharedWithMe()).rejects.toMatchObject({
+      status: 502,
+      message: "GET /files/shared-with-me failed (502): 502 Bad Gateway",
+    });
+  });
 });

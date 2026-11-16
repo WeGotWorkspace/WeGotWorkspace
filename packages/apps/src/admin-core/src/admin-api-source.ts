@@ -1,9 +1,13 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { createAdminAppBootstrap, type AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createWgwAdminOperations, fetchAdminLiveBootstrap } from "@/lib/api/wgw/admin";
 import { createMockAdminOperations } from "@/admin-core/src/admin-mock-operations";
-import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
+import type { AdminAPIOperations } from "@/lib/models/admin-types";
 
 export type AdminApiSource = {
   loadBootstrap: () => Promise<AdminAppBootstrap>;
@@ -23,11 +27,13 @@ export function createWgwAdminApiSource(): AdminApiSource {
 export function createDefaultAdminApiSource(): AdminApiSource {
   return createWorkspaceSource<AdminApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: () => ({
-      loadBootstrap: () => Promise.resolve(createAdminAppBootstrap()),
-      createOperations: (_source, bootstrap) =>
-        bootstrap?.data ? createMockAdminOperations(bootstrap.data) : undefined,
-    }),
+    createMockSource: mocksInBuild
+      ? () => ({
+          loadBootstrap: () => Promise.resolve(createAdminAppBootstrap()),
+          createOperations: (_source, bootstrap) =>
+            bootstrap?.data ? createMockAdminOperations(bootstrap.data) : undefined,
+        })
+      : mocksNotInBuild,
     createLiveSource: createWgwAdminApiSource,
   });
 }

@@ -17,21 +17,31 @@ function fakeVideoTrack(overrides: { label?: string; displaySurface?: string }):
   } as MediaStreamTrack;
 }
 
+const asStream = (track: MediaStreamTrack) => ({ getVideoTracks: () => [track] }) as MediaStream;
+
 describe("meet-stream-mirror", () => {
   it("detects display capture from displaySurface", () => {
     const track = fakeVideoTrack({ displaySurface: "monitor" });
     expect(isDisplayCaptureVideoTrack(track)).toBe(true);
   });
 
-  it("detects display capture from label heuristics", () => {
-    const track = fakeVideoTrack({ label: "screen:0:0" });
-    expect(isDisplayCaptureVideoTrack(track)).toBe(true);
-  });
+  it.each(["Studio Display Camera", "Desktop Camera", "Screen Cam HD", "Window Webcam"])(
+    "does not take the camera %s for a screen share",
+    (label) => {
+      expect(isDisplayCaptureVideoTrack(fakeVideoTrack({ label }))).toBe(false);
+    },
+  );
+
+  it.each(["Studio Display Camera", "Desktop Camera", "Screen Cam HD", "Window Webcam"])(
+    "mirrors your own %s like any other camera",
+    (label) => {
+      expect(shouldMirrorMeetStream(asStream(fakeVideoTrack({ label })), { local: true })).toBe(
+        true,
+      );
+    },
+  );
 
   it("mirrors only the local camera, never a remote camera or a screen share", () => {
-    const asStream = (track: MediaStreamTrack) =>
-      ({ getVideoTracks: () => [track] }) as MediaStream;
-
     const camera = asStream(fakeVideoTrack({ label: "FaceTime HD Camera" }));
     const screen = asStream(fakeVideoTrack({ displaySurface: "monitor" }));
 
@@ -44,5 +54,13 @@ describe("meet-stream-mirror", () => {
     expect(shouldMirrorMeetStream(screen, { local: false })).toBe(false);
     expect(shouldMirrorMeetStream(camera, { local: true, screen: true })).toBe(false);
     expect(shouldMirrorMeetStream(null, { local: true })).toBe(false);
+  });
+
+  it("never mirrors a Firefox monitor share, which has no displaySurface", () => {
+    // Firefox labels a monitor share "Primary Monitor" and reports no displaySurface.
+    const firefoxScreen = asStream(fakeVideoTrack({ label: "Primary Monitor" }));
+    expect(shouldMirrorMeetStream(firefoxScreen, { local: false })).toBe(false);
+    expect(shouldMirrorMeetStream(firefoxScreen, { local: false, screen: true })).toBe(false);
+    expect(shouldMirrorMeetStream(firefoxScreen, { local: true, screen: true })).toBe(false);
   });
 });

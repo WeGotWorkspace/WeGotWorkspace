@@ -11,7 +11,7 @@ import {
   upsertTaskInCache,
   writeTasksBootstrapToCache,
 } from "@/lib/offline/tasks/tasks-offline-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
 import { flushTasksOutbox } from "@/lib/offline/tasks/tasks-outbox-flush";
 import {

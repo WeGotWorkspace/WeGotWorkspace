@@ -31,6 +31,8 @@ Implement `DriveAPIOperations` (or inject `DriveApiSource` via `createDefaultDri
 
 `DriveApp` wires `useDriveAPI` → `WorkspaceLiveAppShell` → `DriveWorkspace`, including route-driven view state (`drive-route-search.ts`).
 
+Drive does not import Docs. "Open in Docs" and "Save as Markdown" come through `DriveApp`'s `useDocsHandoff` slot (`drive-docs-handoff.ts`), which Docs fills with `useDocsDriveHandoff`; the shell's live `/drive` route renders Docs' `DriveAppWithDocs`. Without it neither action shows.
+
 ## Styling
 
 Pane and browser styling lives under `.drive-workspace` in `drive-workspace.css` (grid/list, selection bar, modals). Storybook pane stories wrap components in `stories/drive-story-scope.tsx` (`DriveStoryScope`) so the same root class applies as production.

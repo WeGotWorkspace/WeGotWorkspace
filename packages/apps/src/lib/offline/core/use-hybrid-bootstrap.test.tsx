@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { OfflineNotCachedError } from "./offline-not-cached-error";
 import { useHybridBootstrap } from "./use-hybrid-bootstrap";
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
@@ -7,6 +8,27 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
 }));
 
 describe("useHybridBootstrap", () => {
+  it("keeps the thrown error so the shell can tell its cause (#2100)", async () => {
+    const thrown = new OfflineNotCachedError("notes");
+    const load = () => Promise.reject(thrown);
+    const readCache = () => Promise.resolve(null);
+
+    const { result } = renderHook(() => useHybridBootstrap({ load, readCache }));
+
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.error).toBe(thrown);
+  });
+
+  it("wraps a thrown non-Error in an Error", async () => {
+    const load = () => Promise.reject("boom");
+    const readCache = () => Promise.resolve(null);
+
+    const { result } = renderHook(() => useHybridBootstrap({ load, readCache }));
+
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.error?.message).toBe("boom");
+  });
+
   it("does not bump successVersion when live follow-up replaces cache", async () => {
     const cached = { from: "cache" };
     const live = { from: "live" };

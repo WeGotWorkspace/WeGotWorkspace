@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { docsShareMenuHeaderAction } from "@/docs-core/src/docs-share-menu-action";
-import { docsCollabHeaderActions } from "@/text-editor-core/docs-collab/docs-collab-header-actions";
+import { docsCollabHeaderActions } from "@/docs-core/src/collab/docs-collab-header-actions";
 import type { Editor } from "@tiptap/react";
 
 beforeAll(() => {

@@ -83,7 +83,7 @@ vi.mock("@/lib/api/wgw/jmap-push", () => ({
   },
 }));
 
-vi.mock("@/lib/offline/contacts-jmap-inbound", () => ({
+vi.mock("@/lib/offline/contacts/contacts-jmap-inbound", () => ({
   ingestRemoteContactCard: mocks.ingestRemoteContactCard,
   ingestRemoteContactCardDestroyed: mocks.ingestRemoteContactCardDestroyed,
   ingestRemoteAddressBook: vi.fn(async () => undefined),

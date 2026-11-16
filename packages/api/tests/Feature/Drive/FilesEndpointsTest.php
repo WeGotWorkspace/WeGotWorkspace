@@ -84,7 +84,8 @@ final class FilesEndpointsTest extends WgwDatabaseTestCase
 
         $this->withBearer($token)
             ->post('/api/v1/files/content?path=/users/alice', [])
-            ->assertStatus(405);
+            ->assertStatus(405)
+            ->assertHeader('Allow');
     }
 
     public function test_deleted_dual_rest_write_routes_are_gone(): void

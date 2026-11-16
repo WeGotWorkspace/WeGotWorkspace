@@ -1,3 +1,4 @@
+import { WgwGuestSessionMissingError } from "@/lib/api/wgw/guest-session-missing-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import {
   downloadFileNodeWithTicket,
@@ -54,7 +55,7 @@ export async function setDriveFileStar(
     return;
   }
   const res = await wgwFetch(target, { method: "DELETE", signal: opts?.signal });
-  if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`DELETE /files/star failed (${res.status})`, res.status);
 }
 
 function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
@@ -95,7 +96,7 @@ async function listAllDriveFiles(
 
 async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
   const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /files/children failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /files/children failed (${res.status})`, res.status);
   const payload = (await wgwReadJson(res)) as WgwDriveListingResponse;
   return {
     ...payload.data,
@@ -214,7 +215,9 @@ export async function fetchDriveLiveBootstrap(): Promise<DriveAppBootstrap> {
   if (wgwIsGuestSession()) {
     const sharePath = wgwGuestSharePath();
     if (!sharePath) {
-      throw new Error("Share session is missing path context. Open the link again.");
+      throw new WgwGuestSessionMissingError(
+        "Share session is missing path context. Open the link again.",
+      );
     }
     const driveState = await fetchGuestDriveState(sharePath);
     return { session, data: driveState };
@@ -246,7 +249,7 @@ async function postJson(path: string, body: object, opts?: { signal?: AbortSigna
       // fall through
     }
   }
-  throw new Error(`POST ${path} failed (${res.status})`);
+  throw new WgwRequestError(`POST ${path} failed (${res.status})`, res.status);
 }
 
 function createSharedDriveOperations(): Pick<
@@ -266,7 +269,8 @@ function createSharedDriveOperations(): Pick<
     },
     async listStars(opts) {
       const res = await wgwFetch("/files/starred", { method: "GET", signal: opts?.signal });
-      if (!res.ok) throw new Error(`GET /files/starred failed (${res.status})`);
+      if (!res.ok)
+        throw new WgwRequestError(`GET /files/starred failed (${res.status})`, res.status);
       const payload = (await wgwReadJson(res)) as WgwDriveStarsResponse;
       return payload.data.paths ?? [];
     },

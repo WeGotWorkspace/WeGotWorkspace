@@ -13,7 +13,7 @@ import {
   writeAddressBooksSyncToken,
   writeContactsBootstrapToCache,
   writeSyncToken,
-} from "@/lib/offline/contacts-offline-store";
+} from "@/lib/offline/contacts/contacts-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
@@ -75,7 +75,7 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/offline/contacts-sync-conflicts", () => ({
+vi.mock("@/lib/offline/contacts/contacts-sync-conflicts", () => ({
   reportContactsSyncConflicts: vi.fn(),
 }));
 
@@ -84,7 +84,7 @@ import {
   pullContactCardChangesForBook,
   syncAllContactBooks,
 } from "@/lib/api/wgw/contacts-sync";
-import { reportContactsSyncConflicts } from "@/lib/offline/contacts-sync-conflicts";
+import { reportContactsSyncConflicts } from "@/lib/offline/contacts/contacts-sync-conflicts";
 
 type JmapChangesResponse = {
   oldState: string;

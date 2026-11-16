@@ -6,7 +6,7 @@ import {
   calendarRangeZoomDirection,
   restartCalendarRangeTransition,
   type CalendarRangeZoomDirection,
-} from "@/calendar-core/src/calendar-range-transition";
+} from "@/lib/calendar/calendar-range-transition";
 import { CalendarViewBase } from "../CalendarViewBase/CalendarViewBase.js";
 import { CalendarTimelineView } from "../CalendarTimelineView/CalendarTimelineView.js";
 import "../CalendarWeekdayHeader/CalendarWeekdayHeader.js";

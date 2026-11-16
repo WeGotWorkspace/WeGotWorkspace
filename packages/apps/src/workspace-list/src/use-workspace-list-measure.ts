@@ -172,7 +172,9 @@ export function useMeasureMountedRows({
     };
   }, [enabled, listNode, measure]);
 
-  const renderedKey = renderedIndexes.join(",");
+  // Runs every commit: rows can be replaced while the indexes stay the same (a search
+  // filter, an insert at the top, a touch/desktop switch). It only diffs element
+  // identity and reads no layout.
   useLayoutEffect(() => {
     const observed = observerRef.current;
     const container = listRowsContainer(listNode);
@@ -187,5 +189,5 @@ export function useMeasureMountedRows({
       if (!observed.rows.has(row)) observed.observer.observe(row);
     }
     observed.rows = rows;
-  }, [listNode, renderedKey, enabled, measure]);
+  });
 }

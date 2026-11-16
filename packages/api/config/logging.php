@@ -129,12 +129,17 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
-        'csp' => [
+        // A stack that writes log files keeps CSP reports in their own csp.log.
+        // Any other stack (stderr in a container) gets them with the rest of the log.
+        'csp' => array_intersect(explode(',', (string) $logStack), ['single', 'daily']) !== [] ? [
             'driver' => 'daily',
             'path' => storage_path('logs/csp.log'),
             'level' => 'info',
             'days' => env('LOG_CSP_DAYS', 7),
             'replace_placeholders' => true,
+        ] : [
+            'driver' => 'stack',
+            'channels' => ['stack'],
         ],
 
     ],

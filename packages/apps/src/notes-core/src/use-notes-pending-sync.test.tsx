@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/offline/notes-offline-store", () => ({
+vi.mock("@/lib/offline/notes/notes-offline-store", () => ({
   listPendingNoteIds: vi.fn(),
   readNotesBootstrapFromCache: vi.fn(),
 }));
@@ -17,7 +17,10 @@ vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", () => ({
 }));
 
 import { hasNoteCollabPendingServerSave } from "@/lib/offline/notes/notes-collab-rooms";
-import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import {
+  listPendingNoteIds,
+  readNotesBootstrapFromCache,
+} from "@/lib/offline/notes/notes-offline-store";
 import {
   isCollabRoomPendingServerSave,
   setCollabRoomPendingServerSave,

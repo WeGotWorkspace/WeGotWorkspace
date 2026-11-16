@@ -14,6 +14,8 @@ export const PUSH_LOCK_PREFIX = "wgw-jmap-push/";
 const LEADER_LOCK = `${PUSH_LOCK_PREFIX}leader`;
 const TAB_LOCK = `${PUSH_LOCK_PREFIX}tab/`;
 const VISIBLE_LOCK = `${PUSH_LOCK_PREFIX}visible/`;
+/** Held by a tab in a live Meet call: it keeps the stream at the visible pace (#2129). */
+const AWAKE_LOCK = `${PUSH_LOCK_PREFIX}awake/`;
 
 /** Messages on the hub's `crossTabTopic`. Every tab keeps the same copy of the map. */
 export type PushMessage =
@@ -26,6 +28,8 @@ export type PushMessage =
       confirmed: PushHashes;
       /** Optional so a tab on an older build still parses. */
       visible?: boolean;
+      /** The tab is in a live Meet call (#2129). Optional for older builds. */
+      awake?: boolean;
       /** Epoch ms of the tab's last window focus (front-tab election). */
       focusedAt?: number;
       /** The screen the tab shows, path plus query. */
@@ -60,12 +64,27 @@ export type VisibilitySource = {
   subscribe: (listener: () => void) => () => void;
 };
 
+/**
+ * Whether this tab must hear news as fast as a visible tab, although it may be
+ * hidden: a tab in a live Meet call local-acks while hidden, so it has to see
+ * a new inbox row within the local-ack grace (#2129).
+ */
+export type AwakeSource = {
+  awake: () => boolean;
+  subscribe: (listener: () => void) => () => void;
+};
+
 export type JmapPushHubOptions = {
   tabId: string;
   topic: CrossTabTopic<PushMessage>;
   /** Null without Web Locks: then the hub stays idle and the apps keep polling. */
   locks: WebLocks | null;
   visibility: VisibilitySource;
+  /**
+   * A tab in a live Meet call. It counts as visible for the stream's pace and
+   * for who holds the stream, not for {@link JmapPushHub.frontTab}.
+   */
+  awake?: AwakeSource;
   /** Window focus, for the front-tab election; without it every tab counts as never focused. */
   focus?: FocusSource;
   createEventSource: (ctx: EventSourceContext) => EventSourceLike;
@@ -205,6 +224,29 @@ export class JmapPushHub {
     if (this.#options.focus) cleanups.push(this.#options.focus.subscribe(() => this.#publishTab()));
     cleanups.push(() => releaseVisible?.());
 
+    const awake = this.#options.awake;
+    if (awake) {
+      let releaseAwake: (() => void) | null = null;
+      const syncAwake = (wake: boolean) => {
+        if (awake.awake() && !releaseAwake) {
+          releaseAwake = holdWebLock(locks, `${AWAKE_LOCK}${tabId}`);
+          if (wake) this.wake("awake");
+        } else if (!awake.awake() && releaseAwake) {
+          releaseAwake();
+          releaseAwake = null;
+          void this.#handOverIfHidden();
+        }
+      };
+      syncAwake(false);
+      cleanups.push(
+        awake.subscribe(() => {
+          syncAwake(true);
+          this.#publishTab();
+        }),
+      );
+      cleanups.push(() => releaseAwake?.());
+    }
+
     const bye = () => this.#publish({ v: 1, kind: "bye", tabId }, { otherTabsOnly: true });
     if (this.#options.onPageHide) cleanups.push(this.#options.onPageHide(bye));
 
@@ -234,24 +276,41 @@ export class JmapPushHub {
   /**
    * Chrome runs the timers of a tab hidden for 5 minutes once a minute, so a
    * hidden leader would reconnect late. While another subscribed tab is
-   * visible, a hidden leader gives the lock back and queues again; the lock
-   * moves on until a visible tab holds it, which never hands it over. Pass
-   * `otherVisible` when another tab just said it is visible: the browser grants
-   * that tab's visible lock later, so a query could still miss it. A tab that
-   * was waiting in the queue drops such a claim, but its roll-call in `#lead`
-   * makes every tab say again whether it is visible.
+   * visible or in a live Meet call, a hidden leader gives the lock back and
+   * queues again; the lock moves on until such a tab holds it, which never
+   * hands it over. Pass `otherVisible` when another tab just said it is visible:
+   * the browser grants that tab's visible lock later, so a query could still
+   * miss it. A tab that was waiting in the queue drops such a claim, but its
+   * roll-call in `#lead` makes every tab say again whether it is visible.
    */
   async #handOverIfHidden(otherVisible = false): Promise<void> {
-    const { locks, tabId, visibility } = this.#options;
-    if (!locks || !this.#eventSource || visibility.visible()) return;
+    const { locks, tabId } = this.#options;
+    if (!locks || !this.#eventSource || this.#busy()) return;
     if (!otherVisible) {
-      const visible = await heldLockSuffixes(locks, VISIBLE_LOCK).catch(() => null);
-      visible?.delete(tabId);
-      if (!visible || visible.size === 0) return;
+      const busy = await this.#busyTabs(locks);
+      busy?.delete(tabId);
+      if (!busy || busy.size === 0) return;
     }
-    if (!this.#active || !this.#eventSource || visibility.visible()) return;
+    if (!this.#active || !this.#eventSource || this.#busy()) return;
     this.#leaveLeaderQueue?.();
     this.#joinLeaderQueue(locks);
+  }
+
+  /** This tab is visible or in a live Meet call: it hears news at the visible pace. */
+  #busy(): boolean {
+    return this.#options.visibility.visible() || (this.#options.awake?.awake() ?? false);
+  }
+
+  /** Tabs that are visible or in a live Meet call, from their locks; null when locks fail. */
+  async #busyTabs(locks: WebLocks): Promise<Set<string> | null> {
+    const [visible, awake] = await Promise.all([
+      heldLockSuffixes(locks, VISIBLE_LOCK).catch(() => null),
+      this.#options.awake
+        ? heldLockSuffixes(locks, AWAKE_LOCK).catch(() => null)
+        : Promise.resolve(new Set<string>()),
+    ]);
+    if (!visible || !awake) return null;
+    return new Set([...visible, ...awake]);
   }
 
   #lead(locks: WebLocks): () => void {
@@ -267,8 +326,8 @@ export class JmapPushHub {
         return this.#confirmations.lastEventId(live);
       },
       everyTabHidden: async () => {
-        const visible = await heldLockSuffixes(locks, VISIBLE_LOCK).catch(() => null);
-        return visible !== null && visible.size === 0;
+        const busy = await this.#busyTabs(locks);
+        return busy !== null && busy.size === 0;
       },
       onStatus: (connected) => {
         this.#leaderStatus = connected;
@@ -328,7 +387,7 @@ export class JmapPushHub {
             { otherTabsOnly: true },
           );
           // Trust the message: the browser grants the new tab's visible lock later.
-          void this.#handOverIfHidden(message.visible === true);
+          void this.#handOverIfHidden(message.visible === true || message.awake === true);
         }
         break;
       case "bye":
@@ -343,7 +402,9 @@ export class JmapPushHub {
         this.#setConnected(message.connected);
         break;
       case "wake":
-        if (message.reason === "visible") void this.#handOverIfHidden(true);
+        if (message.reason === "visible" || message.reason === "awake") {
+          void this.#handOverIfHidden(true);
+        }
         this.#eventSource?.reconnectNow(message.reason);
         break;
     }
@@ -383,6 +444,7 @@ export class JmapPushHub {
       types: [...types].sort(),
       confirmed,
       visible: this.#options.visibility.visible(),
+      ...(this.#options.awake?.awake() ? { awake: true } : {}),
       ...this.#selfActivity(),
     };
     const key = JSON.stringify(message);

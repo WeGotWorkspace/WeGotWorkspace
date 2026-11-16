@@ -6,7 +6,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { QueueMutation } from "@/hooks/use-queued-mutation";
-import type { ContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
+import type { ContactEditDraft } from "@/lib/models/contacts-edit-draft";
 import type { ContactCard, ContactsAPIOperations } from "@/lib/models/contacts-types";
 import { contactMutationOpts } from "@/contacts-core/src/contacts-undo-writes";
 

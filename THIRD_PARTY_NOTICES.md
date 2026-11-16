@@ -26,7 +26,7 @@ dependency change:
 - **Version:** 4.4.4
 - **License:** Apache-2.0
 - **Homepage:** https://dexie.org
-- **Used by:** `packages/apps` (`src/lib/offline/offline-db.ts`), bundled into
+- **Used by:** `packages/apps` (`src/lib/offline/core/offline-db.ts`), bundled into
   the app builds shipped in the release.
 
 ### NOTICE

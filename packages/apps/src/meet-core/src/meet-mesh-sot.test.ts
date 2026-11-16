@@ -5,12 +5,12 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import {
   ingestRemoteChatChannel,
   ingestRemoteChatMessage,
-} from "@/lib/offline/meet-chat-jmap-inbound";
+} from "@/lib/offline/meet-chat/meet-chat-jmap-inbound";
 import {
   meetChatChannelsTable,
   meetChatMessagesTable,
 } from "@/lib/offline/meet-chat/meet-chat-schema";
-import { getCachedChatMessage } from "@/lib/offline/meet-chat-offline-store";
+import { getCachedChatMessage } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 import {
   applyMeetMeshFanoutEvent,
   wrapMeetChatOperationsWithMesh,

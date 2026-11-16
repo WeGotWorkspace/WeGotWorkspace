@@ -4,7 +4,10 @@ import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import { readDocsNodeIdForPath } from "@/lib/offline/docs/docs-node-paths";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
-import { readOfflineDocsUsername, readOfflineDriveUsername } from "@/lib/offline/offline-session";
+import {
+  readOfflineDocsUsername,
+  readOfflineDriveUsername,
+} from "@/lib/offline/core/offline-session";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import {
   holdDocsCollabPathDatabase,

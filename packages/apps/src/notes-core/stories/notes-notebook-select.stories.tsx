@@ -3,33 +3,30 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, within } from "storybook/test";
 import { createNotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
-import {
-  NotesNotebookSelect,
-  type NotesNotebookSelectItem,
-} from "@/notes-core/src/notes-notebook-select";
+import { NotebookSelect, type NotebookSelectItem } from "@/project-dialog/src/notebook-select";
 import "@/notes-core/src/notes-workspace.css";
 
-const seedNotebooks: NotesNotebookSelectItem[] =
+const seedNotebooks: NotebookSelectItem[] =
   createNotesAppBootstrap().data.notebookCollections ?? [];
 
-function NotesNotebookSelectHarness({
+function NotebookSelectHarness({
   onNotebookChange,
   onCreateNotebook,
   disabled = false,
   triggerVariant,
 }: {
-  onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
+  onNotebookChange: (notebook: NotebookSelectItem) => void;
   onCreateNotebook?: () => void;
   disabled?: boolean;
   triggerVariant?: "labeled" | "swatch" | "ghost";
 }) {
-  const [current, setCurrent] = useState<NotesNotebookSelectItem>(
+  const [current, setCurrent] = useState<NotebookSelectItem>(
     seedNotebooks[2] ?? seedNotebooks[0] ?? { id: "Drafts", name: "Drafts" },
   );
 
   return (
     <div className="notes-workspace max-w-sm p-6">
-      <NotesNotebookSelect
+      <NotebookSelect
         notebooks={seedNotebooks}
         value={current}
         labels={defaultNotesLabels}
@@ -45,9 +42,9 @@ function NotesNotebookSelectHarness({
   );
 }
 
-const meta: Meta<typeof NotesNotebookSelectHarness> = {
-  title: "Features/Notes/Components/NotesNotebookSelect",
-  component: NotesNotebookSelectHarness,
+const meta: Meta<typeof NotebookSelectHarness> = {
+  title: "Features/Notes/Components/NotebookSelect",
+  component: NotebookSelectHarness,
   tags: ["autodocs"],
   args: {
     onNotebookChange: fn(),
@@ -56,7 +53,7 @@ const meta: Meta<typeof NotesNotebookSelectHarness> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof NotesNotebookSelectHarness>;
+type Story = StoryObj<typeof NotebookSelectHarness>;
 
 export const Default: Story = {
   tags: ["vitest-ci"],

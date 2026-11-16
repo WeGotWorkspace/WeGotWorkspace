@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { subscribeSettingsSliceSaved } from "@/settings-core/src/settings-slice-saved";
+import { subscribeSettingsSliceSaved } from "@/lib/settings-slice-saved";
 
 export const DEFAULT_COLLECTION_APPS = ["tasks", "contacts", "notes"] as const;
 export type DefaultCollectionApp = (typeof DEFAULT_COLLECTION_APPS)[number];

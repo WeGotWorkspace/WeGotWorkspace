@@ -23,7 +23,7 @@ import {
   ContactsAddressBookDialog,
   contactsAddressBookDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-addressbook-dialog";
-import { contactDisplayName } from "@/contacts-core/src/contacts-display-utils";
+import { contactDisplayName } from "@/lib/models/contacts-display";
 import { firstEnabledAddressBookId } from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsCreateGroupDialog,
@@ -60,8 +60,8 @@ import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useContactsFailedSync } from "@/contacts-core/src/use-contacts-failed-sync";
 import { useContactsPendingSync } from "@/contacts-core/src/use-contacts-pending-sync";
 import { useContactsSidebarModel } from "@/contacts-core/src/use-contacts-sidebar-model";
-import { getContactsSyncRunner } from "@/lib/offline/contacts-hybrid-operations";
-import { resolveContactsOfflineUsername } from "@/lib/offline/offline-session";
+import { getContactsSyncRunner } from "@/lib/offline/contacts/contacts-hybrid-operations";
+import { resolveContactsOfflineUsername } from "@/lib/offline/core/offline-session";
 import "react-swipeable-list/dist/styles.css";
 import "@/contacts-core/src/contacts-workspace.css";
 

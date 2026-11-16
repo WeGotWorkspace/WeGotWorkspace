@@ -1,4 +1,4 @@
-import { defaultMailDeliveryState } from "@/admin-core/src/admin-mail-delivery";
+import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
 import type { AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
@@ -16,7 +16,7 @@ import type {
   AdminUpdateBackupItem,
   AdminUpdateCheck,
   AdminUpdateState,
-} from "@/admin-core/src/admin-types";
+} from "@/lib/models/admin-types";
 
 function coerceUpdateBackupItem(input: AdminUpdateBackupItem): AdminUpdateBackupItem {
   return {

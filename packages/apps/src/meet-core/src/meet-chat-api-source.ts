@@ -1,12 +1,16 @@
-import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
+import {
+  createWorkspaceSource,
+  mocksInBuild,
+  mocksNotInBuild,
+} from "@/lib/api/create-workspace-source";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
 import { createMeetChatOperations } from "@/lib/api/mock/meet-chat-operations";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import {
   createHybridMeetChatOperations,
   loadMeetChatBootstrapHybrid,
-} from "@/lib/offline/meet-chat-hybrid-operations";
-import { resolveMeetChatOfflineUsername } from "@/lib/offline/offline-session";
+} from "@/lib/offline/meet-chat/meet-chat-hybrid-operations";
+import { resolveMeetChatOfflineUsername } from "@/lib/offline/core/offline-session";
 import type { MeetAppBootstrap, MeetChatOperations } from "@/lib/models/meet-types";
 
 export type MeetChatApiSource = {
@@ -50,7 +54,7 @@ function createMockMeetChatApiSource(): MeetChatApiSource {
 export function createDefaultMeetChatApiSource(): MeetChatApiSource {
   return createWorkspaceSource<MeetChatApiSource>({
     isLive: wgwLiveApiEnabled(),
-    createMockSource: createMockMeetChatApiSource,
+    createMockSource: mocksInBuild ? createMockMeetChatApiSource : mocksNotInBuild,
     createLiveSource: createHybridMeetChatApiSource,
   });
 }
