@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isInboxTaskList, sortSidebarTaskLists, taskListDotColor } from "@/lib/models/task-lists";
+import {
+  canWriteTaskList,
+  isInboxTaskList,
+  sortSidebarTaskLists,
+  taskListDotColor,
+} from "@/lib/models/task-lists";
 
 describe("task-lists", () => {
   it("isInboxTaskList uses owned role or uri, never display name", () => {
@@ -30,5 +35,14 @@ describe("task-lists", () => {
         { id: "beta", name: "beta" },
       ]).map((list) => list.id),
     ).toEqual(["inbox", "alpha", "beta"]);
+  });
+});
+
+describe("canWriteTaskList", () => {
+  it("allows writing unless the list's rights say mayWriteAll is false", () => {
+    expect(canWriteTaskList(undefined)).toBe(true);
+    expect(canWriteTaskList({ myRights: null })).toBe(true);
+    expect(canWriteTaskList({ myRights: { mayWriteAll: true } })).toBe(true);
+    expect(canWriteTaskList({ myRights: { mayWriteAll: false } })).toBe(false);
   });
 });

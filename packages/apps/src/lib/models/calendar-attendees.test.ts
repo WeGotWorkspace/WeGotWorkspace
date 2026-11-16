@@ -8,6 +8,7 @@ import {
   isLikelyEmail,
   isSessionEventInvitee,
   isSessionEventOrganizer,
+  inviteeForAttendee,
   listedInviteeAttendees,
   normalizeParticipationStatus,
   organizerAttendeeForList,
@@ -265,5 +266,24 @@ describe("calendar attendees", () => {
     expect(attendeeRoleFromRoles(["optional", ""])).toBe("optional");
     expect(attendeeRoleFromRoles(["attendee"])).toBe("required");
     expect(attendeeRoleFromRoles(undefined)).toBe("required");
+  });
+});
+
+describe("inviteeForAttendee", () => {
+  const ada = { username: "ada", email: "ada@example.test", name: "Ada" };
+  const bob = { username: "bob", email: "", name: "Bob" };
+
+  it("finds the teammate by email, ignoring case and a mailto: prefix", () => {
+    expect(inviteeForAttendee({ email: "MAILTO:Ada@Example.test" }, [bob, ada])).toBe(ada);
+  });
+
+  it("finds a teammate without an email by username", () => {
+    expect(inviteeForAttendee({ email: "bob" }, [ada, bob])).toBe(bob);
+  });
+
+  it("finds nobody for a blank address or an outsider", () => {
+    expect(inviteeForAttendee({ email: "  " }, [ada, bob])).toBeUndefined();
+    expect(inviteeForAttendee({ email: "eve@example.test" }, [ada, bob])).toBeUndefined();
+    expect(inviteeForAttendee({ email: "ada@example.test" })).toBeUndefined();
   });
 });

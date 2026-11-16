@@ -104,3 +104,16 @@ describe("rebaseContactDraft", () => {
     expect(next.phones).toEqual([blank]);
   });
 });
+
+describe("contact name patch without any stored name", () => {
+  it("sends nothing while the draft name stays empty", () => {
+    const nameless = cardWith({});
+    expect(editDraftToPatch(contactCardToEditDraft(nameless), nameless)).toEqual({});
+  });
+
+  it("sends the new name once the person types one", () => {
+    const nameless = cardWith({});
+    const draft = { ...contactCardToEditDraft(nameless), nameGiven: "Ada" };
+    expect(editDraftToPatch(draft, nameless).name?.full).toBe("Ada");
+  });
+});
