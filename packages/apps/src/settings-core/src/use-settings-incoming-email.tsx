@@ -107,9 +107,8 @@ export function useIncomingMailboxLoad(
 
 /**
  * Settings → Incoming email (#1589). Connect logs in with what was typed; a failed login keeps
- * the form as typed with the reason. A connected mailbox saves itself: each save logs in again,
- * so an edit is checked as the user goes. The password changes in its own dialog. Opening the
- * pane checks a mailbox that is not being read, so it can resume or learn its mail server.
+ * the form as typed with the reason. Edits to a connected mailbox are saved by Test connection,
+ * which logs in again; nothing logs in by itself. The password changes in its own dialog.
  */
 export function useSettingsIncomingEmail(
   operations: IncomingMailboxOperations = defaultIncomingMailboxOperations(),
