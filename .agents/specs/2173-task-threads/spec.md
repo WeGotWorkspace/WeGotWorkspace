@@ -32,6 +32,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Native clients move tasks in two ways, and both are covered under Lifecycle hooks:
     - a CalDAV `MOVE` counts as a move;
     - a `DELETE` in one list followed by a `PUT` in another counts as a delete plus a new task.
+  - **The web app says so before a move** (product owner, 2026-11-16). Every move the web app makes tells the person, before or as it happens, that the comments and history stay behind in the old list and that people in the new list start with an empty thread (see UI, Move confirmation).
 - **Live updates.** A new JMAP push type `ThreadEntry`, with source `threads`. Its state changes only when a thread in a **list the user can read** changes, never for other lists in the same pool.
   - The open thread panel refetches its thread on a state change.
   - The panel polls only while it is open and visible, and only while push is down (15 s). This keeps the idle-polling lesson of #2156.
@@ -40,12 +41,14 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - `tasks.mentioned` goes to mentioned people in the audience instead of `thread_activity`, as Chat does.
   - Both are grouped per task with `supersede`, as Docs does per thread.
   - Activity entries never notify. #798 and #2172 own the notices for status and assignment.
+  - Mentions and both notices are in scope by the product owner's decision of 2026-11-16, although the Goal first listed them as non-goals.
+- **Commenting works offline** (product owner, 2026-11-16). Comments, replies, edits and deletes of your own messages, and reactions are queued in the Tasks outbox while offline and sent once the connection is back. The client ULID makes each send idempotent, as in Chat. See UI, Offline.
 - **Activity log (chunks F and G).**
   - The server turns #2172's `TaskChangeSet`, computed for REST, MCP and CalDAV writes, into activity entries in the same thread.
   - Each entry stores data, not text: `X-WGW-ACTIVITY` is JSON `{field, from, to}` or `{field, added, removed}`, plus the actor and time.
   - The client renders it in the reader's language and time zone, for example "Anna changed the title to 'Moodboard v2' · 1 Jan, 22:21".
   - Quick edits are merged (see Technical constraints).
-- **Thread panel UI.** It sits in the task detail view below the fields.
+- **Thread panel UI.** It sits in the task detail view below the fields, as in the product owner's mockup ([mockup-task-detail.webp](./mockup-task-detail.webp), 2026-11-16).
   - One timeline in time order: comments with their replies, and activity rows.
   - A "Show changes" toggle (default on) hides activity rows.
   - The composer is the chat-ui composer, with mentions limited to the list audience.
@@ -86,7 +89,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - `lib/models/tasks-types.ts` (thread operations);
   - `lib/jmap-client/push` (new type);
   - `notifications-core/format-notification-copy.ts`;
-  - Tasks Dexie store (read cache);
+  - Tasks Dexie store (read cache) and the Tasks outbox (offline thread writes);
+  - the Tasks move confirmation, move dialog and move toast copy;
   - mock API;
   - Storybook;
   - Vitest.
@@ -115,8 +119,9 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - It returns entries in time order, 200 per page, with a cursor.
   - Each entry has `id`, `kind`, `parentId`, `author` (`username`, `displayName`), `body` (null for activity and tombstones), `mentions`, `reactions`, `createdAt`, `editedAt`, `deletedAt` and `activity`.
   - It also returns a thread `state` for `/changes`.
-- `POST …/thread` with `{id, body, parentId?, mentions?}`:
+- `POST …/thread` with `{id, body, parentId?, mentions?, listId?}`:
   - `id` is a client ULID. Retries with the same id are idempotent, as in Chat.
+  - `listId` is the list the writer saw the task in. When it is given and the task is now in another list, the post fails with 409 `task_moved` and nothing is stored. The web app always sends it, so a comment queued offline never lands in front of a new audience without its author knowing. Callers that omit it post to the task's current list.
   - A `parentId` that is itself a reply is rejected with 422.
   - A mention outside the list audience is dropped from the stored mentions, but the text stays.
 - `PATCH …/thread/{entryId}` with `{body}` and `DELETE …/thread/{entryId}` (tombstone):
@@ -185,9 +190,23 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - The mention source is the list audience. The audience cache from #2172 chunk C is reused.
 - **Activity row** (chunk G) in `thread-ui/thread-activity-row.tsx`, with the formatter in `thread-ui/format-thread-activity.ts`.
   - The formatter is pure. It takes the entry, the people map, the locale and the time zone. It is covered by Vitest for every field, merged entries and the removed-person case.
+- **Layout** (from the mockup):
+  - The panel starts under a divider below the last field row, headed "Activity". The "Show changes" toggle sits at the right of that heading.
+  - Each entry shows the author's avatar, name and relative time ("2h ago", with the full date on hover), then the body.
+  - The composer is the last row: the current user's avatar, a one-line input "Write a comment…" that grows as you type, and a "Comment" button with its shortcut (⌘↵ / Ctrl+Enter). Typing `@` opens the mention menu; the placeholder hints at it. The mockup's "M to mention" is read as `@`, because a plain letter cannot open a menu in a text field.
+- **Move confirmation.** Every move path in the web app states what happens to the thread:
+  - The single-task confirm from the detail view (`requestMoveTask`) keeps its title and adds a second sentence to the description: "Comments and history stay in “{old list}”. People in “{new list}” start with an empty thread."
+  - The multi-select "Move to list" dialog shows the same sentence under its description, in the plural.
+  - Dragging tasks onto a list in the sidebar has no confirm today. Its "Moved" toast gains the same short line, and its Undo moves the task back, which shows the old thread again (within 30 days, see Lifecycle hooks).
+  - The copy is the same whether or not the thread has comments, so the client needs no thread count for it.
 - **Offline.**
   - The last fetched thread per task is cached in the Tasks Dexie store and shown offline with "Last updated …".
-  - Offline, the composer is disabled and says "Comments need a connection". There is no outbox for comments in this Epic.
+  - The composer stays enabled offline. A new comment or reply gets a client ULID, is written to the cached thread at once with a "Sending…" mark, and is queued as a row in the Tasks outbox. Edits, deletes and reactions on your own queued or sent messages queue the same way, behind the send they depend on.
+  - The flush follows Chat's outbox (`meet-chat-outbox-flush.ts`): the send posts the client ULID with the `listId` the author saw. If the server answers with another id, the rows queued behind it follow the new id.
+  - The entry's `createdAt` is the server's time when the send arrives, so an offline comment appears at the end of the thread for everyone, never in its past.
+  - Mentions are picked from #2172's cached list audience. The server drops a mention of someone outside the audience at send time, as it does online.
+  - A send that cannot land is never dropped silently. On 404 (the task is gone or access was lost), 403 or 409 `task_moved`, the comment stays in the panel marked "Not sent", with the reason, "Copy text" and "Discard". On 409 `task_moved` the panel also offers "Post in the new list" when the author can see it there. These rows show in the existing failed-outbox notice.
+  - Comments queue only for tasks whose thread is in the cache. A task whose thread was never opened online shows "Connect to load the conversation", as the assignee picker does.
 
 ## Edge cases
 
@@ -204,3 +223,6 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **A tombstoned root with replies.** The root shows "Comment deleted" and its replies stay.
 - **A mention of someone who loses access later.** The stored mention stays and renders as plain text.
 - **Pruning activity** never removes the "created" or "moved here" entries.
+- **A comment written offline, then the same tab goes online twice or two tabs flush at once.** The client ULID makes the second send a no-op, so the comment shows once.
+- **Someone moves the task while the author is offline.** The queued comment gets 409 `task_moved`. It stays "Not sent" in the author's panel, and the author chooses to post it in the new list or discard it.
+- **A reply queued offline to a root that was deleted meanwhile.** It is posted; the root shows "Comment deleted" with the reply under it, as online.

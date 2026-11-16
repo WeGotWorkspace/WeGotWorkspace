@@ -47,6 +47,9 @@ See spec.md, Non-goals.
 - **CalDAV write methods include `MOVE`.** `EventDispatchPlugin` fires after it, with source and destination. `path: packages/api/app/Dav/Server/EventDispatchPlugin.php:29`
 - **Only Drive directories implement `IMoveTarget`.** A calendar object `MOVE` is a copy and then a delete inside one request. `path: packages/api/app/Dav/Storage/FlysystemDirectory.php:11`
 - **Task import.** `path: packages/api/app/Services/Tasks/TaskImportService.php:29`
+- **Moving a task in the web app.** Three paths: the detail view asks for a confirm, the multi-select dialog picks a list, and a drag onto a sidebar list moves at once with an Undo toast. `path: packages/apps/src/tasks-core/src/use-tasks-mutations.tsx:202`, `path: packages/apps/src/tasks-core/src/tasks-labels.ts:370`, `path: packages/apps/src/tasks-core/src/tasks-workspace.tsx:438`, `path: packages/apps/src/tasks-core/src/tasks-workspace.tsx:88`, `path: packages/apps/src/tasks-core/src/tasks-labels.ts:343`
+- **Offline sends.** The core outbox queues rows per domain and flushes them in order; queued rows can follow an entity that the server re-keyed. Chat queues sends, edits, deletes and reactions with client ULIDs, and the server's create is idempotent on that ULID. `path: packages/apps/src/lib/offline/core/outbox-store.ts:10`, `path: packages/apps/src/lib/offline/core/outbox-store.ts:151`, `path: packages/apps/src/lib/offline/core/outbox-flush.ts:83`, `path: packages/apps/src/lib/offline/meet-chat/meet-chat-outbox-flush.ts:87`, `path: packages/apps/src/lib/offline/meet-chat/chat-ulid.ts:46`, `path: packages/api/app/Services/Chat/ChatMessageRepository.php:160`
+- **Chat drops a queued send whose channel is gone.** Task comments must not copy that: their text is kept. `path: packages/apps/src/lib/offline/meet-chat/meet-chat-outbox-flush.ts:78`
 
 ## Considered
 
@@ -56,7 +59,7 @@ See spec.md, Non-goals.
   - chat-ui is reused for the composer and messages.
   - A third set of converter and repository copies was rejected. Chunk A extracts the shared core first.
 - **One pool per task list instead of per owner** was rejected. It would double the hidden collections, and sharing a list would need a second share on its pool. The per-owner pool keyed by list and UID gives the same isolation.
-- **Carrying the thread along when a task moves within the same owner** (first proposal to the product owner, 2026-11-14) was rejected. A move from a private list to a shared list of the same owner would show private history to the sharees. Keying on the list is the only rule that never shows history to a new audience. Its cost: comments stay behind on any move. Listed under "Decisions to review".
+- **Carrying the thread along when a task moves within the same owner** (first proposal to the product owner, 2026-11-14) was rejected. A move from a private list to a shared list of the same owner would show private history to the sharees. Keying on the list is the only rule that never shows history to a new audience. Its cost: comments stay behind on any move. The product owner agreed on 2026-11-16, on condition that the web app says so when a task is moved (spec.md, UI, Move confirmation).
 - **A per-period or per-join history grant** (new members see only entries after they joined) was rejected. No comparable tool does it, it conflicts with comments being readable, and it needs membership history the server does not keep.
 - **Storing the activity log in a SQL table** instead of VJOURNAL entries in the thread was rejected:
   - it is one timeline with one access rule, one push type and one delete path;
@@ -65,7 +68,9 @@ See spec.md, Non-goals.
 - **Storing rendered text** ("Anna changed …") was rejected in favour of `{field, from, to}`. Text would be frozen in one language and time zone, and names would go stale.
 - **Logging through `EventDispatchPlugin`** was rejected, because it has no before/after content. The activity writer reads #2172's change set.
 - **Moving Docs threads onto `thread_index` and push in this Epic** was rejected as scope. Named as a follow-up in threads.md.
-- **An outbox for offline comments** was rejected for now. Chat's outbox is Meet-specific, and a read cache plus a disabled composer is the smallest honest offline state.
+- **A read-only offline state** (cached thread, composer disabled) was the first proposal. The product owner chose offline commenting on 2026-11-16. Chat's outbox flush is Meet-specific code, but the core outbox it runs on is shared, so chunk H builds a Tasks thread flush on the core outbox and copies Chat's row shapes, not its code.
+- **Dropping a queued comment whose task is gone**, as Chat drops a send to a deleted channel, was rejected. A comment is the author's own text; it stays "Not sent" with Copy and Discard.
+- **Placing an offline comment at the time it was written** was rejected. Other people would get it in the thread's past, below entries they already read. The server's arrival time is used.
 
 ## Affected packages
 
@@ -78,14 +83,15 @@ See spec.md, Non-goals.
 1. #2172 chunks A and B are on main: audience, stable participant ids, change set and observer.
 2. Chunk A (shared module, Chat and Docs moved onto it) comes before B.
 3. B (pool, API, access, lifecycle) comes next. Then C (push), D (notifications) and E (thread panel UI) run in parallel.
-4. F (activity writer) comes after B. G (activity rows UI) comes after E and F.
+4. F (activity writer) comes after B. G (activity rows UI) comes after E and F. H (offline comments) comes after B and E.
 5. V comes last.
 
 ## Open decisions
 
-- [x] Thread history is keyed on the list, so any move starts fresh. Taken overnight; listed under "Decisions to review" in the PR. It affects chunk B only.
+- [x] Thread history is keyed on the list, so any move starts fresh. Product owner, 2026-11-16: agreed, and every move in the web app says what happens to the comments. It affects chunks B and E.
 - [x] Read access is enough to comment (Goal wording). It affects chunk B only.
-- [x] There is no offline comment outbox. It affects chunk E only.
+- [x] Mentions and comment notifications are in scope. Product owner, 2026-11-16. It affects chunk D.
+- [x] Commenting works offline through the Tasks outbox. Product owner, 2026-11-16. It adds chunk H and the `listId` check in chunk B.
 
 ## Invariants
 
@@ -104,6 +110,9 @@ See spec.md, Non-goals.
 - **Push state never changes for lists the user cannot read.** A wrong change would leak the timing of activity in another person's private list. Proof: `path: packages/api/tests/Feature/Jmap/JmapEventSourceThreadTest.php`, assertion `test_state_ignores_threads_in_unreadable_lists_of_the_same_pool` (new, chunk C).
 - **Only the owner deleting a list removes its thread entries.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_sharee_dismiss_keeps_thread_entries` (new, chunk B).
 - **No idle polling is added.** The thread panel polls only while it is open, visible and push is down. Proof: `path: packages/apps/src/tasks-core/src/use-task-thread.test.ts`, assertion `does not poll while push is up or the panel is closed` (new, chunk E).
+- **A comment written offline is stored once, however often it is sent.** A wrong change would duplicate comments after a flaky reconnect or two tabs flushing. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadApiTest.php`, assertion `test_post_with_the_same_ulid_twice_stores_one_entry` (new, chunk B); `path: packages/apps/src/lib/offline/tasks/tasks-thread-outbox-flush.test.ts`, assertion `sends a queued comment once across two flushes` (new, chunk H).
+- **A queued comment never lands in another list's thread without its author's say.** A wrong change would show a comment written for one audience to another. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadApiTest.php`, assertion `test_post_with_a_stale_list_id_is_409_and_stores_nothing` (new, chunk B); `path: packages/apps/src/lib/offline/tasks/tasks-thread-outbox-flush.test.ts`, assertion `keeps a comment whose task moved as not sent` (new, chunk H).
+- **A queued comment is never dropped silently.** Proof: `path: packages/apps/src/lib/offline/tasks/tasks-thread-outbox-flush.test.ts`, assertion `keeps the text of a comment whose task is gone` (new, chunk H).
 - **After chunk A, main still works with no task-thread code.** Proof: `cmd: pnpm test:api-done-gate`.
 
 ## Chunks
@@ -134,6 +143,7 @@ See spec.md, Non-goals.
   - `CollectionKind::TaskThreadPool` (DAV-hidden) exists, with a provisioner.
   - The REST routes from spec.md are in OpenAPI.
   - The access, move, delete, list-delete and limit rules are tested.
+  - `POST …/thread` is idempotent on the client ULID and answers 409 `task_moved` when a given `listId` is not the task's current list.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
   - The 30-day orphan purge command is scheduled daily. It purges only keys whose `subject_left_at` is older than 30 days and whose UID is not in the list. Every leave hook (delete, REST move, CalDAV `DELETE`, CalDAV `MOVE`) upserts the key's row and sets that timestamp, and any write of the UID into the list clears it. Keys a hook missed are found from the entries, stamped on one run, and purged 30 days later.
   - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
@@ -170,13 +180,32 @@ See spec.md, Non-goals.
 - **Inputs:**
   - the chat-ui exports (`chat-ui/src/index.ts:1`);
   - the detail view fields (`tasks-detail-view.tsx:187`);
-  - #2172's audience cache.
+  - #2172's audience cache;
+  - the product owner's mockup (`mockup-task-detail.webp` in this folder);
+  - the three move paths (`use-tasks-mutations.tsx:202`, `tasks-workspace.tsx:438`, `tasks-workspace.tsx:88`).
 - **Done when:**
-  - A thread panel with comments, replies, reactions, edit and delete of your own messages, and mentions limited to the audience.
-  - A read cache offline, with the composer disabled offline.
-  - Mock API, Storybook stories (empty, busy thread, tombstone, offline) and Vitest, including the polling invariant.
+  - A thread panel with comments, replies, reactions, edit and delete of your own messages, and mentions limited to the audience, laid out as in spec.md, UI, Layout.
+  - A read cache offline, with "Last updated …".
+  - The move confirm, the multi-select move dialog and the drag toast say that comments stay in the old list (spec.md, UI, Move confirmation), with Vitest on the label functions.
+  - Mock API, Storybook stories (empty, busy thread, tombstone, offline, a "Sending…" and a "Not sent" comment) and Vitest, including the polling invariant.
 - **Verify with:** `pnpm test:apps-done-gate`
 - **Parallel with:** C, D
+
+### Chunk H: Offline comments
+- **Skill:** workspace, client-transport
+- **Inputs:**
+  - the core outbox (`outbox-store.ts:10`, `:151`; `outbox-flush.ts:83`);
+  - Chat's row shapes and re-key handling (`meet-chat-outbox-flush.ts:44`, `:87`) and its ULID (`chat-ulid.ts:46`);
+  - the Tasks outbox flush (`tasks-outbox-flush.ts:188`);
+  - chunk B's `listId` check and chunk E's panel.
+- **Done when:**
+  - Comments, replies, edits, deletes and reactions queue offline in the Tasks outbox and flush in order once online, with the composer enabled offline.
+  - A queued send shows at once with "Sending…"; edits and reactions queued behind it follow a re-keyed id.
+  - 404, 403 and 409 `task_moved` keep the comment as "Not sent" with Copy and Discard, plus "Post in the new list" on 409 when allowed. They show in the failed-outbox notice.
+  - Vitest for the flush (the H invariants) and for two tabs flushing at once.
+  - A live Playwright spec: go offline, comment and reply, reload while offline and see both, go online, and a second user sees each comment once.
+- **Verify with:** `pnpm test:apps-done-gate`
+- **Parallel with:** F, G (after B and E)
 
 ### Chunk F: Activity writer
 - **Skill:** api, security
@@ -211,13 +240,15 @@ See spec.md, Non-goals.
   - The verifier, prompted from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md), returns `PASS` or `PASS_WITH_NITS`.
   - A two-user browser e2e on a Team list: A comments and mentions B, B gets the notification and replies, and A sees the reply without reloading.
   - A renames the task and sets the priority, and both rows show in B's language.
-  - A moves the task to a private list, and B no longer sees the task. A sees a fresh thread with "moved here".
+  - A moves the task to a private list; the confirm says the comments stay behind. B no longer sees the task. A sees a fresh thread with "moved here".
+  - B goes offline, comments, goes online, and A sees the comment once.
   - A Chat and Docs comment smoke test still passes.
 
 ## Test plan
 
 - [ ] API: golden ICS first (chunk A); then OpenAPI, failing feature tests, the implementation and `composer done-gate` for each API chunk.
-- [ ] UI: mock-tier Storybook, Vitest for the formatter, the polling rule and the offline cache.
+- [ ] UI: mock-tier Storybook, Vitest for the formatter, the polling rule, the offline cache, the move copy and the offline outbox flush.
+- [ ] Live Playwright for offline comments (chunk H).
 - [ ] E2E: two users, one Team list, plus a move to a private list (chunk V).
 
 ## Doc updates
