@@ -370,7 +370,7 @@ function deleteIndexedDatabase(databaseName: string): Promise<boolean> {
 }
 
 /** Open outbox paths plus placeholders of files still in the upload queue. */
-async function prunerProtectedPaths(username: string): Promise<Set<string>> {
+export async function prunerProtectedPaths(username: string): Promise<Set<string>> {
   const rows = await listOutboxMutations(username);
   const paths = await uploadPlaceholderProtectedPaths(username);
   for (const row of rows) {
@@ -389,7 +389,7 @@ async function prunerProtectedPaths(username: string): Promise<Set<string>> {
 }
 
 /** True when `id` or one of its ancestors is an open outbox path or a live upload placeholder. */
-function isProtectedFromPrune(id: string, protectedPaths: ReadonlySet<string>): boolean {
+export function isProtectedFromPrune(id: string, protectedPaths: ReadonlySet<string>): boolean {
   let current = id;
   while (current.length > 0) {
     if (protectedPaths.has(current)) return true;

@@ -58,7 +58,8 @@ export function registerBuiltinSettings(): void {
   registerPanel({
     id: "offline",
     label: "Offline",
-    description: "Offline content sync on this device",
+    description:
+      "Offline content sync on this device. Calendar, Contacts, Notes and Tasks are always available offline.",
     icon: <HardDrive className="size-3.5" />,
     group: "device",
   });
