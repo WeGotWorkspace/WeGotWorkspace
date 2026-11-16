@@ -48,17 +48,38 @@ function outboxLockName(domain: string, username: string): string {
 /** Serializes flush attempts so a single in-flight sync never overlaps itself. */
 export class ConnectivitySyncRunner<T = void> {
   private inFlight: Promise<T | undefined> | undefined;
+  private next: Promise<T | undefined> | undefined;
 
   constructor(private readonly flushTask: FlushTask<T>) {}
 
+  /** Starts a flush, or joins the one that runs. */
   flush(): Promise<T | undefined> {
-    if (this.inFlight) return this.inFlight;
-    this.inFlight = this.flushTask()
+    return this.inFlight ?? this.start();
+  }
+
+  /**
+   * Flushes a row just queued. A flush that runs listed its rows already, so
+   * this one starts once it ends: a write that raced the reconnect would
+   * otherwise wait for the next reconnect (#2104). Several such asks share
+   * that one extra run.
+   */
+  flushAfterWrite(): Promise<T | undefined> {
+    if (!this.inFlight) return this.start();
+    this.next ??= this.inFlight.then(() => {
+      this.next = undefined;
+      return this.flush();
+    });
+    return this.next;
+  }
+
+  private start(): Promise<T | undefined> {
+    const run: Promise<T | undefined> = this.flushTask()
       .catch(() => undefined)
       .finally(() => {
-        this.inFlight = undefined;
+        if (this.inFlight === run) this.inFlight = undefined;
       });
-    return this.inFlight;
+    this.inFlight = run;
+    return run;
   }
 }
 

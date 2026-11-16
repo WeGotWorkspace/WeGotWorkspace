@@ -16,9 +16,9 @@ import {
   COLLAB_REUSE_ACK_TIMEOUT_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEADLINE_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS,
-  COLLAB_REUSE_ROSTER_WAIT_MS,
   DocsCollabPrincipalReuse,
 } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
+import { COLLAB_REUSE_ROSTER_WAIT_MS } from "@/text-editor-core/docs-collab/docs-collab-reuse-roster-wait";
 import {
   encodeUpdateBroadcast,
   handleSyncMessage,

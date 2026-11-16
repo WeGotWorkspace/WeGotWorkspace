@@ -18,6 +18,7 @@ export const liveTierSpecs = [
   "calendar-team-availability-offline",
   "contacts-first-download",
   "contacts-first-open-count",
+  "contacts-list-windowed",
   "contacts-offline-read-only",
   "contacts-open-draft-merge",
   "contacts-push",
@@ -46,6 +47,7 @@ export const liveTierSpecs = [
   "drive-guest-large-download",
   "drive-guest-upload",
   "drive-inbound-many-files",
+  "drive-list-windowed",
   "drive-offline-home",
   "drive-selection-download",
   "drive-upload-batch-dialog",
@@ -67,6 +69,7 @@ export const liveTierSpecs = [
   "notes-collab-steady-typing",
   "notes-create-lost-response",
   "notes-leave-within-save-delay",
+  "notes-list-windowed",
   "notes-markdown-import",
   "notes-new-before-notebooks-load",
   "notes-new-tab-unsaved-text",
@@ -78,13 +81,16 @@ export const liveTierSpecs = [
   "notes-undo-two-users",
   "notifications-hidden-call",
   "notifications-inbox-push",
+  "notifications-read-batch",
   "notifications-toast",
   "presence-offline-start",
   "presence-team-rooms",
   "push-mesh-interval",
   "queued-write-reload",
+  "rtc-idle-poll",
   "settings-calendar-availability",
   "sync-notice-bar",
+  "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",
   "tasks-push",
@@ -142,3 +148,10 @@ export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;
 
 /** Local coturn relay tier. One worker, and not part of pull-request CI. */
 export const relayTierSpecPattern = /rtc-relay\.spec\.ts/;
+
+/**
+ * Production-build PWA tier: `vite build` plus `vite preview`, where the
+ * service worker precaches every chunk, lazy app chunks included (#1628).
+ * `playwright.pwa.config.mjs` runs it. Not part of the Storybook or live tier.
+ */
+export const pwaTierSpecPattern = /pwa-offline-reload\.spec\.ts/;

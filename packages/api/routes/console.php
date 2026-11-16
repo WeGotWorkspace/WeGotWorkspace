@@ -490,20 +490,27 @@ Artisan::command('wgw:availability:prune-cache', function (AvailabilityCachePrun
     return Command::SUCCESS;
 })->purpose('Delete expired Team availability cache files that are never read again');
 
-Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobMaintenance $maintenance): int {
-    $result = $maintenance->runFull();
+Artisan::command('wgw:jmap:blobs-gc {--max-seconds= : Stop starting hash steps after this many seconds (default: the step time limit, 60 on the CLI)}', function (JmapBlobMaintenance $maintenance): int {
+    $maxSeconds = $this->option('max-seconds');
+    if ($maxSeconds !== null && (! is_numeric($maxSeconds) || (int) $maxSeconds < 0)) {
+        $this->error('--max-seconds must be a whole number of seconds, 0 or more.');
+
+        return Command::INVALID;
+    }
+    $result = $maintenance->runFull($maxSeconds === null ? null : (int) $maxSeconds);
     $this->info(sprintf(
-        'Deleted %d expired blob(s); retained %d referenced blob(s); expired %d assembl(ies) and %d staged copy(ies); swept %d temp file(s); stored %d pending content hash(es).',
+        'Deleted %d expired blob(s); retained %d referenced blob(s); expired %d assembl(ies) and %d staged copy(ies); swept %d temp file(s); stored %d pending content hash(es), %d still pending.',
         $result['blobsDeleted'],
         $result['blobsRetained'],
         $result['assembliesExpired'],
         $result['stagingExpired'],
         $result['tempFilesDeleted'],
         $result['hashesStored'],
+        $result['hashesPending'],
     ));
 
     return Command::SUCCESS;
-})->purpose('Delete expired, unreferenced JMAP blobs, assemblies, and staged copies, and hash files discovered on disk (domain references are never collected)');
+})->purpose('Delete expired, unreferenced JMAP blobs, assemblies, and staged copies, and hash files discovered on disk for a bounded time (domain references are never collected)');
 
 Artisan::command('wgw:calendar:imip-poll', function (ImipMailboxPoller $poller): int {
     $polled = $poller->pollDue();

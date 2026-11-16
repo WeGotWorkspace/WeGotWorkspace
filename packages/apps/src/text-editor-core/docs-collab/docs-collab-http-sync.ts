@@ -11,11 +11,13 @@ import {
   diffForStateVector,
   encodeYjsHttpPayload,
   splitYjsUpdate,
+  YJS_HTTP_ACTIVE_WINDOW_MS,
   YJS_HTTP_BATCH_MS,
   YJS_HTTP_FALLBACK_AFTER_MS,
   YJS_HTTP_RELAY_AFTER_MS,
   YJS_HTTP_RESYNC_MS,
   type YjsHttpPayload,
+  type YjsHttpPollMode,
 } from "./docs-collab-http-wire";
 import { applyGuardedRemoteUpdate } from "./docs-collab-update-guard";
 import { MESH_ORIGIN } from "./docs-collab-utils";
@@ -43,7 +45,8 @@ export type DocsCollabHttpSyncPorts = {
   sendStateVectorOnChannel: (peerId: string) => void;
   requestRelay: (peerId: string, reason: "timeout" | "refresh") => Promise<RelayRequestOutcome>;
   onRelay: (peerId: string, name: string, outcome: RelayRequestOutcome) => void;
-  setFastPoll: (active: boolean) => void;
+  /** Fast while edits flow to or from a peer on the HTTP path, idle while it is quiet. */
+  setPollMode: (mode: YjsHttpPollMode) => void;
   getYDoc: () => Y.Doc | null;
   trust: (peerId: string) => { access: DocsCollabAccess; user: string };
   /** This client's own right. Only a writer may answer a state vector. */
@@ -86,7 +89,15 @@ export class DocsCollabHttpSync {
 
   private seq = 0;
 
-  private fastPoll = false;
+  private pollMode: YjsHttpPollMode = "off";
+
+  /** Peers on the HTTP path at the last `evaluate`. */
+  private httpPeerCount = 0;
+
+  /** Last local or remote edit, or a peer joining the HTTP path. */
+  private activeAt = Number.NEGATIVE_INFINITY;
+
+  private pollModeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly ports: DocsCollabHttpSyncPorts) {}
 
@@ -100,14 +111,14 @@ export class DocsCollabHttpSync {
     if (this.flushTimer) clearTimeout(this.flushTimer);
     if (this.evaluateTimer) clearTimeout(this.evaluateTimer);
     if (this.resyncTimer) clearInterval(this.resyncTimer);
+    if (this.pollModeTimer) clearTimeout(this.pollModeTimer);
     this.flushTimer = null;
     this.evaluateTimer = null;
     this.resyncTimer = null;
+    this.pollModeTimer = null;
     this.pending = [];
-    if (this.fastPoll) {
-      this.fastPoll = false;
-      this.ports.setFastPoll(false);
-    }
+    this.httpPeerCount = 0;
+    this.updatePollMode();
   }
 
   evaluate(): void {
@@ -119,17 +130,15 @@ export class DocsCollabHttpSync {
     for (const peer of httpPeers) {
       if (this.httpSince.has(peer.id)) continue;
       this.httpSince.add(peer.id);
+      this.activeAt = now;
       this.sendStateVector(peer.id);
       this.lastResync.set(peer.id, now);
     }
     for (const id of [...this.httpSince]) {
       if (!httpIds.has(id)) this.httpSince.delete(id);
     }
-    const wantFast = httpPeers.length > 0;
-    if (wantFast !== this.fastPoll) {
-      this.fastPoll = wantFast;
-      this.ports.setFastPoll(wantFast);
-    }
+    this.httpPeerCount = httpPeers.length;
+    this.updatePollMode();
     this.expireClosedRelayMarks(peers, now);
     for (const peer of relayDuePeers(peers, now, immediate, this.relayRequested)) {
       const reason: Extract<RelayReason, "timeout" | "refresh"> = this.relayIssued.has(peer.id)
@@ -148,6 +157,33 @@ export class DocsCollabHttpSync {
       });
     }
     this.scheduleNextEvaluate(peers, now, immediate);
+  }
+
+  /**
+   * Fast poll only while edits flow. Two idle editors on the HTTP path, or a
+   * peer that left without a leave, poll at the idle cadence (#2156).
+   */
+  private updatePollMode(): void {
+    const now = this.ports.now();
+    const quietAt = this.activeAt + YJS_HTTP_ACTIVE_WINDOW_MS;
+    let mode: YjsHttpPollMode = "off";
+    if (this.httpPeerCount > 0) mode = now < quietAt ? "fast" : "idle";
+    if (this.pollModeTimer) clearTimeout(this.pollModeTimer);
+    this.pollModeTimer = null;
+    if (mode === "fast") {
+      this.pollModeTimer = setTimeout(() => {
+        this.pollModeTimer = null;
+        this.updatePollMode();
+      }, quietAt - now);
+    }
+    if (mode === this.pollMode) return;
+    this.pollMode = mode;
+    this.ports.setPollMode(mode);
+  }
+
+  private noteActivity(): void {
+    this.activeAt = this.ports.now();
+    if (this.pollMode === "idle") this.updatePollMode();
   }
 
   /** Re-run `evaluate` when the next peer becomes due for the mailbox or a relay. */
@@ -191,6 +227,7 @@ export class DocsCollabHttpSync {
 
   noteLocalUpdate(update: Uint8Array): void {
     if (this.ports.meshHydrated && !this.ports.meshHydrated()) return;
+    this.noteActivity();
     this.pending.push(update);
     if (this.flushTimer) return;
     this.flushTimer = setTimeout(() => {
@@ -208,6 +245,7 @@ export class DocsCollabHttpSync {
         this.answerStateVector(message.from, decoded.bytes);
         continue;
       }
+      this.noteActivity();
       if (this.ports.deliverRemoteUpdate) {
         this.ports.deliverRemoteUpdate(message.from, decoded.bytes);
         continue;

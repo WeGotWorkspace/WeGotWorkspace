@@ -19,12 +19,12 @@ Draws from the Pioneer programme's sync-correctness work (#1565 stays in that mi
 ## What exists
 
 - The shared contract has store functions only, no inbound abstraction. `path: packages/apps/src/lib/offline/core/types.ts:48`
-- Notes REST inbound: notebooks first, then per-notebook changes. It falls back to a full list with no token or on `cannotCalculateChanges`, prunes missing notes except queued or `createPending` ones, and holds the notebook token when a skipped id still has an outbox row that is not a `stateMismatch`. `path: packages/apps/src/lib/offline/notes-inbound-sync.ts:76`
-- Notes reports a conflict only when the server moved since the write was queued; an unknown base counts as moved. `path: packages/apps/src/lib/offline/notes-jmap-inbound.ts:81`
+- Notes REST inbound: notebooks first, then per-notebook changes. It falls back to a full list with no token or on `cannotCalculateChanges`, prunes missing notes except queued or `createPending` ones, and holds the notebook token when a skipped id still has an outbox row that is not a `stateMismatch`. `path: packages/apps/src/lib/offline/notes/notes-inbound-sync.ts:76`
+- Notes reports a conflict only when the server moved since the write was queued; an unknown base counts as moved. `path: packages/apps/src/lib/offline/notes/notes-jmap-inbound.ts:81`
 - Tasks uses the same rule with an unknown base counted as not moved, one account-wide token, and a full re-list of every touched list. `path: packages/apps/src/lib/offline/tasks/tasks-inbound.ts:65`
-- Contacts protects `pendingSync` rows only and reports any inbound change to a pending id as a conflict. `path: packages/apps/src/lib/offline/contacts-offline-store.ts:118` `path: packages/apps/src/lib/offline/contacts-jmap-inbound.ts:21`
-- Calendars has a token reader and writer that only the domain contract uses; inbound runs from in-memory JMAP state. `path: packages/apps/src/lib/offline/calendars-offline-store.ts:157`
-- Meet chat merges an edit into a queued send outside a transaction, the #1711 pattern. `path: packages/apps/src/lib/offline/meet-chat-offline-store.ts:114`
+- Contacts protects `pendingSync` rows only and reports any inbound change to a pending id as a conflict. `path: packages/apps/src/lib/offline/contacts/contacts-offline-store.ts:118` `path: packages/apps/src/lib/offline/contacts/contacts-jmap-inbound.ts:21`
+- Calendars has a token reader and writer that only the domain contract uses; inbound runs from in-memory JMAP state. `path: packages/apps/src/lib/offline/calendars/calendars-offline-store.ts:157`
+- Meet chat merges an edit into a queued send outside a transaction, the #1711 pattern. `path: packages/apps/src/lib/offline/meet-chat/meet-chat-offline-store.ts:114`
 - Two private copies of chunked JMAP get exist: `#getContactCardsByIds` in `JmapContactsClient` (pages at `min(maxObjectsInGet, CONTACT_CARD_GET_MAX_IDS_PER_REQUEST)` = 40) and `#maxObjectsInGet` in `JmapFileNodesClient`. `path: packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts` `path: packages/apps/src/lib/jmap-client/filenodes/JmapFileNodesClient.ts`
 - Notes, Calendar and Chat fetch changed ids in one unchunked get. `path: packages/apps/src/lib/jmap-client/notes/JmapNotesClient.ts:63` `path: packages/apps/src/lib/jmap-client/calendars/JmapCalendarsClient.ts:89` `path: packages/apps/src/lib/jmap-client/chat/JmapChatClient.ts:56`
 - PR [#1785](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1785) (#1661, open) moves the four JMAP adapters onto a shared `JmapInboundAdapter` base with `pullChanges()` / `refetchAll()`.
@@ -56,10 +56,10 @@ None. The unknown-base policy is a binding option (Notes moved, Tasks not moved,
 
 ## Invariants
 
-- A note queued for create or edit survives a full list that lacks it, and is not reported as a conflict. A wrong change deletes unsent notes. Proof: `path: packages/apps/src/lib/offline/notes-inbound-sync.test.ts` assertion `does not prune a note that is still queued, so it is not reported as a conflict`.
-- A note that moved between notebooks in one poll is kept. A wrong change deletes it. Proof: `path: packages/apps/src/lib/offline/notes-inbound-sync.test.ts` assertion `does not destroy a note that moved into another notebook in the same poll`.
-- The notebook token is held while a skipped destroy can still be sent, and advances for a non-retryable stateMismatch. A wrong change either loses the server's delete or pins the token forever. Proof: `path: packages/apps/src/lib/offline/notes-inbound-sync.test.ts` assertion `does not advance the sync token when a destroy is still pending` and `advances the sync token when the skipped destroy is a non-retryable stateMismatch`.
-- A queued Notes field keeps the local value; other fields are adopted; a conflict needs a moved server version. Proof: `path: packages/apps/src/lib/offline/notes-jmap-inbound.test.ts` assertion `merges an inbound tag change when the queued write is an archive` and `does not report a conflict for a queued change the server has not seen yet`.
+- A note queued for create or edit survives a full list that lacks it, and is not reported as a conflict. A wrong change deletes unsent notes. Proof: `path: packages/apps/src/lib/offline/notes/notes-inbound-sync.test.ts` assertion `does not prune a note that is still queued, so it is not reported as a conflict`.
+- A note that moved between notebooks in one poll is kept. A wrong change deletes it. Proof: `path: packages/apps/src/lib/offline/notes/notes-inbound-sync.test.ts` assertion `does not destroy a note that moved into another notebook in the same poll`.
+- The notebook token is held while a skipped destroy can still be sent, and advances for a non-retryable stateMismatch. A wrong change either loses the server's delete or pins the token forever. Proof: `path: packages/apps/src/lib/offline/notes/notes-inbound-sync.test.ts` assertion `does not advance the sync token when a destroy is still pending` and `advances the sync token when the skipped destroy is a non-retryable stateMismatch`.
+- A queued Notes field keeps the local value; other fields are adopted; a conflict needs a moved server version. Proof: `path: packages/apps/src/lib/offline/notes/notes-jmap-inbound.test.ts` assertion `merges an inbound tag change when the queued write is an archive` and `does not report a conflict for a queued change the server has not seen yet`.
 - A queued Tasks delete is not brought back, and a queued edit is not a conflict while the server has its base version. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-inbound-sync.test.ts` assertion `a queued delete is not brought back by the re-list` and `a queued edit is not a conflict when the server copy did not change`.
 - A failed Tasks pull or lock timeout leaves cache and state alone. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-inbound-sync.test.ts` assertion `a failed pull leaves the cache and the state as they are` and `a lock timeout writes neither the snapshot nor the state`.
 - Notes behaves the same end to end across tabs and network states. Proof: `cmd: pnpm --dir packages/apps exec playwright test -c playwright.matrix.config.mjs notes-sync-matrix`.
@@ -81,7 +81,7 @@ None. The unknown-base policy is a binding option (Notes moved, Tasks not moved,
 
 - **id:** `inbound-core`
 - **Skill:** workspace
-- **Inputs:** Notes and Tasks rules above — `path: packages/apps/src/lib/offline/notes-inbound-sync.ts:76` `path: packages/apps/src/lib/offline/tasks/tasks-inbound.ts:65`
+- **Inputs:** Notes and Tasks rules above — `path: packages/apps/src/lib/offline/notes/notes-inbound-sync.ts:76` `path: packages/apps/src/lib/offline/tasks/tasks-inbound.ts:65`
 - **Done when:** `lib/offline/core/inbound-sync.ts` exports the pending-write reader, `serverMovedSince(bases, remoteVersion, policy)` (the policy also covers a missing remote version), the scope reconcile (removals except pending and `createPending`) and `runScopedInbound(binding)` with token hold and the full-list fallback. Its own unit tests cover every Notes and Tasks invariant above against a fake binding.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline/core/inbound-sync.test.ts`
 - **Parallel with:** `jmap-get-chunks`

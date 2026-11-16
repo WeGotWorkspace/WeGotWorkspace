@@ -1,16 +1,10 @@
 import { MessageSquarePlus } from "lucide-react";
-import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import type { DocsCollabCommentControlLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { IconButton } from "@/button/src/button";
 import type { TextEditorFormatBarSize } from "@/text-editor-core/src/text-editor-format-bar-config";
 
 export type DocsCollabCommentControlProps = {
-  labels: Pick<
-    DocsUILabels,
-    | "commentsAddFromSelection"
-    | "commentsAddFromSelectionDisabledNoSelection"
-    | "commentsAddFromSelectionDisabledViewSource"
-    | "commentsAddFromSelectionDisabledReadOnly"
-  >;
+  labels: DocsCollabCommentControlLabels;
   canAddFromSelection: boolean;
   commentsDisabled?: boolean;
   /** Prefer an explicit title when comments are disabled (view-source vs share rights). */

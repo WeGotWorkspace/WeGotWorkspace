@@ -19,21 +19,3 @@ export type {
   DocsCollabSidebarPanelFilter,
   DocsCollabSidebarPanelProps,
 } from "./docs-collab-sidebar-panel";
-export { useDocsCollabFloatingLayerLayout } from "./use-docs-collab-floating-layer-layout";
-export type {
-  DocsCollabFloatingLayerLayout,
-  UseDocsCollabFloatingLayerLayoutOptions,
-  UseDocsCollabFloatingLayerLayoutResult,
-} from "./use-docs-collab-floating-layer-layout";
-export { DocsCollabMessageReply, DocsCommentsReply } from "./docs-collab-message-reply";
-export type {
-  DocsCollabMessageReplyProps,
-  DocsCommentsReplyProps,
-} from "./docs-collab-message-reply";
-export { DocsCollabReactions, reactionAuthorNames } from "./docs-collab-reactions";
-export type { DocsCollabReactionsProps } from "./docs-collab-reactions";
-export { DocsCollabHighlightText } from "./docs-collab-highlight-text";
-export type {
-  DocsCollabHighlightTextProps,
-  DocsCollabHighlightVariant,
-} from "./docs-collab-highlight-text";

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { adminCopy } from "@/admin-core/src/admin-copy";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 function mockDomApis() {
   Object.defineProperty(window, "matchMedia", {
@@ -35,7 +35,7 @@ function clickSidebarSection(label: string | RegExp) {
 
 async function renderAdminApp(initialPath: string) {
   const history = createMemoryHistory({ initialEntries: [initialPath] });
-  const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+  const router = createMockWeGotWorkspaceRouter(history);
   await router.load();
   render(<RouterProvider router={router} />);
   await screen.findByRole("button", { name: "Users & Teams" });

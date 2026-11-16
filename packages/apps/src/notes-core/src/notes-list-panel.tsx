@@ -9,7 +9,6 @@ import {
 import { Pencil, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { NotesListRow } from "@/notes-core/src/notes-list-row";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
@@ -17,11 +16,19 @@ import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
-import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
+import { WorkspaceList } from "@/workspace-list/src/workspace-list";
 import "@/notes-core/src/notes-list-panel.css";
 
 /** Shared default so rows keep a stable `notebookCollections` prop. */
 const NO_COLLECTIONS: NotesNotebookCollection[] = [];
+
+/**
+ * A row before it is measured: title, a two-line preview and the notebook line,
+ * plus the gap under it. Measuring corrects it; it only sizes rows not yet seen.
+ */
+const NOTES_ROW_ESTIMATE_PX = 104;
+const noteKey = (note: Note) => note.id;
+const noteRowEstimate = () => NOTES_ROW_ESTIMATE_PX;
 
 type NotesListPanelProps = {
   L: NotesUILabels;
@@ -87,12 +94,6 @@ export function NotesListPanel({
   onEditTag,
   pendingNoteIds,
 }: NotesListPanelProps) {
-  const listRef = useRef<HTMLDivElement>(null);
-  useListReorderAnimation(
-    listRef,
-    visibleNotes.map((note) => note.id),
-  );
-
   const multiSelecting = selectionMode || selectedIds.length > 1;
   const headerCount = multiSelecting ? selectedIds.length : visibleNotes.length;
   const headerCountLabel = multiSelecting ? L.listSelected(headerCount) : L.listItems(headerCount);
@@ -157,26 +158,24 @@ export function NotesListPanel({
         <LoadingSpinner size="lg" label={L.listLoading} />
       </div>
     ) : (
-      <div ref={listRef} className="notes-list-panel__list">
-        <NotesListRows
-          L={L}
-          visibleNotes={visibleNotes}
-          notebookCollections={notebookCollections}
-          isTouch={isTouch}
-          starred={starred}
-          archived={archived}
-          activeId={activeId}
-          selectedIds={selectedIds}
-          selectionMode={selectionMode}
-          isItemDragging={isItemDragging}
-          handleSelect={handleSelect}
-          enterSelectionFor={enterSelectionFor}
-          itemDragHandlers={itemDragHandlers}
-          toggleStar={toggleStar}
-          toggleArchive={toggleArchive}
-          pendingNoteIds={pendingNoteIds}
-        />
-      </div>
+      <NotesListRows
+        L={L}
+        visibleNotes={visibleNotes}
+        notebookCollections={notebookCollections}
+        isTouch={isTouch}
+        starred={starred}
+        archived={archived}
+        activeId={activeId}
+        selectedIds={selectedIds}
+        selectionMode={selectionMode}
+        isItemDragging={isItemDragging}
+        handleSelect={handleSelect}
+        enterSelectionFor={enterSelectionFor}
+        itemDragHandlers={itemDragHandlers}
+        toggleStar={toggleStar}
+        toggleArchive={toggleArchive}
+        pendingNoteIds={pendingNoteIds}
+      />
     ),
     hasItems: listLoading || visibleNotes.length > 0,
     emptyLabel: L.emptyList,
@@ -235,23 +234,22 @@ function NotesListRows({
   const onToggleArchive = useCallback((id: string) => handlersRef.current.toggleArchive(id), []);
   const collections = notebookCollections ?? NO_COLLECTIONS;
 
-  const rows = useMemo(
-    () =>
-      visibleNotes.map((note) => (
-        <NotesListRow
-          key={note.id}
-          note={note}
-          L={L}
-          notebookCollections={collections}
-          isTouch={isTouch}
-          starred={!!starred[note.id]}
-          archived={!!archived[note.id]}
-          pendingSync={pendingNoteIds?.has(note.id) ?? false}
-          dragging={isItemDragging(note.id)}
-          onToggleStar={onToggleStar}
-          onToggleArchive={onToggleArchive}
-        />
-      )),
+  // Called only for the rows the list mounts (#1641 step d).
+  const renderNote = useCallback(
+    (note: Note) => (
+      <NotesListRow
+        note={note}
+        L={L}
+        notebookCollections={collections}
+        isTouch={isTouch}
+        starred={!!starred[note.id]}
+        archived={!!archived[note.id]}
+        pendingSync={pendingNoteIds?.has(note.id) ?? false}
+        dragging={isItemDragging(note.id)}
+        onToggleStar={onToggleStar}
+        onToggleArchive={onToggleArchive}
+      />
+    ),
     [
       L,
       archived,
@@ -262,12 +260,19 @@ function NotesListRows({
       onToggleStar,
       pendingNoteIds,
       starred,
-      visibleNotes,
     ],
   );
+  // The keyboard cursor stays mounted, also while a range hides the active paint.
+  const pinnedKeys = useMemo(() => (activeId ? [activeId] : []), [activeId]);
 
   return (
-    <WorkspaceSwipeList
+    <WorkspaceList
+      className="notes-list-panel__list"
+      items={visibleNotes}
+      getKey={noteKey}
+      renderItem={renderNote}
+      estimateSize={noteRowEstimate}
+      pinnedKeys={pinnedKeys}
       isTouch={isTouch}
       activeId={paintActiveId}
       selectedIds={selectedIds}
@@ -275,8 +280,6 @@ function NotesListRows({
       onItemClick={handleSelect}
       onItemLongPress={enterSelectionFor}
       {...bindItemDragHandlers(itemDragHandlers)}
-    >
-      {rows}
-    </WorkspaceSwipeList>
+    />
   );
 }

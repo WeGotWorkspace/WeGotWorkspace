@@ -21,7 +21,7 @@ Internal composition (import from `@/drive-core/src/…` in stories or sibling p
 - `useDriveShell`, `useDriveList`, `useDriveMutations` — shell navigation, list/selection, and mutation slices
 - `useDriveAPI` (`src/drive-core/src/use-drive-api.ts`)
 - `DriveMainPane`, `DriveDetailActionBar`, `DriveNewMenu`
-- `DriveGridView`, `DriveListView` (`src/drive-core/src/drive-browser.tsx`)
+- `DriveGridView` (`src/drive-core/src/drive-browser.tsx`), `DriveListView` (`src/drive-core/src/drive-list-view.tsx`)
 - `DriveDetailPanel` (`src/drive-core/src/drive-detail-panel.tsx`) — DocsCollabSidebarPanel shell; docked via WorkspaceAppLayout `panel` / SideDrawer
 - `DriveMoveToDialog`, `DriveFolderPicker`, `DriveMediaPreview`
 
@@ -30,6 +30,8 @@ Internal composition (import from `@/drive-core/src/…` in stories or sibling p
 Implement `DriveAPIOperations` (or inject `DriveApiSource` via `createDefaultDriveApiSource`) and pass `data`, `session`, and `operations` into `DriveWorkspace`.
 
 `DriveApp` wires `useDriveAPI` → `WorkspaceLiveAppShell` → `DriveWorkspace`, including route-driven view state (`drive-route-search.ts`).
+
+Drive does not import Docs. "Open in Docs" and "Save as Markdown" come through `DriveApp`'s `useDocsHandoff` slot (`drive-docs-handoff.ts`), which Docs fills with `useDocsDriveHandoff`; the shell's live `/drive` route renders Docs' `DriveAppWithDocs`. Without it neither action shows.
 
 ## Styling
 

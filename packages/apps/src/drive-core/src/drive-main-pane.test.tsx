@@ -23,6 +23,9 @@ vi.mock("@/drive-core/src/drive-browser", () => ({
       ))}
     </ul>
   ),
+}));
+
+vi.mock("@/drive-core/src/drive-list-view", () => ({
   DriveListView: () => null,
 }));
 

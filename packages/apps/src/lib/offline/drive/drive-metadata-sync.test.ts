@@ -126,18 +126,20 @@ describe("syncDriveMetadataTree JMAP node ids", () => {
 });
 
 describe("drive metadata fetch prune", () => {
-  it("leaves the cache alone when the folder fetch fails", async () => {
-    await upsertDriveEntry(username, entry("/users/alice/still-here.md"));
-    listDirectories({ "/users/alice": new Error("FileNode/query failed (500)") });
+  it("prunes the home folder from a listing that also shows the group roots", async () => {
+    await upsertDriveEntry(username, entry("/users/alice/gone.md"));
+    const files = [entry("/users/alice/keep.md"), entry("/groups/team", "dir")];
 
-    await expect(refreshDriveDirectoryCache(username, "/users/alice")).rejects.toThrow(
-      /failed \(500\)/,
-    );
+    await refreshDriveDirectoryCache(username, {
+      ...bootstrap().data,
+      directory: { location: "/users/alice", files },
+    });
 
     const paths = (await readDirectoryEntriesFromCache(username, "/users/alice")).map(
       (row) => row.path,
     );
-    expect(paths).toEqual(["/users/alice/still-here.md"]);
+    expect(paths).toEqual(["/users/alice/keep.md"]);
+    expect(listFileNodeEntries).not.toHaveBeenCalled();
   });
 
   it("prunes a successful folder inside the tree crawl and skips a folder whose fetch failed", async () => {

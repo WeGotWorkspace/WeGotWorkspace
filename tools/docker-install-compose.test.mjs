@@ -88,9 +88,11 @@ test("no running install service gets the probe password under any key", { skip 
   }
 });
 
-test("release stack does not pass the admin password to any service", { skip }, () => {
+test("release stack passes the headless switch and admin password to the migrator only", { skip }, () => {
   const services = composeServices(releaseCompose);
-  assert.deepEqual(servicesWith(services, "WGW_INSTALL_ADMIN_PASSWORD"), []);
+  assert.deepEqual(servicesWith(services, "WGW_INSTALL_ADMIN_PASSWORD"), ["migrator"]);
+  assert.deepEqual(servicesWith(services, "WGW_INSTALL_HEADLESS"), ["migrator"]);
+  assert.equal(services.migrator.environment.WGW_INSTALL_ADMIN_PASSWORD, probePassword);
 });
 
 const heartbeatFile = "/tmp/wgw-scheduler-heartbeat";
