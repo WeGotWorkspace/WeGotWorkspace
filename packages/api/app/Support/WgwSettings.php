@@ -8,9 +8,6 @@ use App\Models\AppSetting;
 
 final class WgwSettings
 {
-    /** @var array<string, mixed>|null */
-    private ?array $normalized = null;
-
     public const MAIL_SMTP_HOST = 'mail_smtp_host';
 
     public const MAIL_SMTP_PORT = 'mail_smtp_port';
@@ -34,6 +31,9 @@ final class WgwSettings
     public const BROWSER_PLUGIN = 'browser_plugin';
 
     public const TIMEZONE = 'timezone';
+
+    /** @var array<string, mixed>|null */
+    private ?array $normalized = null;
 
     /**
      * @return array<string, mixed>
