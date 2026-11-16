@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode, useLayoutEffect, useRef } from "react";
 import { TextEditor } from "@/text-editor-core/src";
-import { docsEditorFormatFromFileName } from "@/text-editor-core/docs-collab/docs-editor-format";
+import { docsEditorFormatFromFileName } from "@/lib/files/docs-editor-format";
 import { cn } from "@/lib/utils";
 import "@/docs-core/src/docs-file-preview.css";
 

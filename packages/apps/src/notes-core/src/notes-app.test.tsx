@@ -11,7 +11,7 @@ vi.mock("@/lib/live/workspace-live-app-shell", () => ({
   WorkspaceLiveAppShell: (props: { render: () => unknown }) => props.render(),
 }));
 
-vi.mock("@/lib/offline/core/use-offline-sync-toast", () => ({
+vi.mock("@/hooks/use-offline-sync-toast", () => ({
   useOfflineSyncToast: () => undefined,
 }));
 

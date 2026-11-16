@@ -7,7 +7,7 @@ import {
   subscribeDocsCachesChanged,
 } from "@/lib/offline/docs/docs-inbound-sync";
 import { docsPathAfterMove, subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
-import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
+import { useDriveFileNodeInbound } from "@/drive-core/src/use-drive-file-node-inbound";
 
 type UseDocsEditorPathFollowArgs = {
   /** Offline account; without one nothing is held or followed. */

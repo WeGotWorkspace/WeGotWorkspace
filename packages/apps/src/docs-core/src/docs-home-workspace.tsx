@@ -56,11 +56,11 @@ import { useOfflineBodySyncRunning } from "@/lib/offline/core/use-offline-body-s
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import { useDomainOutboxNotice } from "@/lib/offline/core/use-domain-outbox-notice";
-import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
-import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
+import { useDriveFileNodeInbound } from "@/drive-core/src/use-drive-file-node-inbound";
+import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
-import { useOfflineSyncToast } from "@/lib/offline/core/use-offline-sync-toast";
+import { useOfflineSyncToast } from "@/hooks/use-offline-sync-toast";
 import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";

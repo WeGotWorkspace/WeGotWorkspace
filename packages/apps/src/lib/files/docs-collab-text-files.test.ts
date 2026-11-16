@@ -3,10 +3,7 @@ import {
   DOCS_COLLAB_TEXT_EXTENSIONS,
   isDocsCollabEditablePath,
 } from "@/lib/files/docs-collab-text-files";
-import {
-  docsEditorFormatFromFileName,
-  isDocsPlainTextFile,
-} from "@/text-editor-core/docs-collab/docs-editor-format";
+import { docsEditorFormatFromFileName, isDocsPlainTextFile } from "./docs-editor-format";
 
 describe("isDocsCollabEditablePath", () => {
   it("allows My Drive and group paths for allowlisted extensions", () => {

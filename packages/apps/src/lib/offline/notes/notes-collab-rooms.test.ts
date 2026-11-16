@@ -13,12 +13,12 @@ import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-coll
 import {
   docsCollabIndexedDbKey,
   migrateDocsCollabPendingSaveFromLegacy,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 import {
   isCollabRoomPendingServerSave,
   setCollabRoomPendingServerSave,
-} from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
+} from "@/lib/collab/docs-collab-pending-registry";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 async function seedMarkdown(indexedDbName: string, markdown: string): Promise<void> {
   const ydoc = new Y.Doc();

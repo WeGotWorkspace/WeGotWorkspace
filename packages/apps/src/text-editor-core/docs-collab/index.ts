@@ -24,8 +24,8 @@ export {
   restoreDocsCollabOfflinePersistence,
   migrateCollabPersistence,
   clearDocsCollabOfflinePersistence,
-} from "./docs-collab-persistence";
-export type { DocsCollabOfflinePersistenceSnapshot } from "./docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
+export type { DocsCollabOfflinePersistenceSnapshot } from "@/lib/collab/docs-collab-persistence";
 export {
   useDocsCollab,
   DEFAULT_DOCS_COLLAB_URLS,

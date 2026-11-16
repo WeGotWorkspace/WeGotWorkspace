@@ -10,9 +10,9 @@ import * as Y from "yjs";
 import * as leaveRoom from "./docs-collab-leave-room";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
-import { resolveDocsCollabDatabase } from "./docs-collab-persistence";
+import { resolveDocsCollabDatabase } from "@/lib/collab/docs-collab-persistence";
 import { DOC_STATUS_RESTORED_WORKING_VERSION } from "./docs-collab-status";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 import {
   DEFAULT_DOCS_COLLAB_URLS,
   type DocsCollabMeshMessage,

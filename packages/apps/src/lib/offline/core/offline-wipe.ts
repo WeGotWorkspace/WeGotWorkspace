@@ -2,7 +2,7 @@ import { appendLogoutStepFailure } from "@/lib/api/wgw/session-debug";
 import { isCrossTabLockTimeout, withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import { forgetPushScopes } from "@/lib/notifications/push-scope";
 import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 const OFFLINE_DB_PREFIX = "wgw-offline-";
 const OFFLINE_STORAGE_PREFIX = "wgw.offline.";

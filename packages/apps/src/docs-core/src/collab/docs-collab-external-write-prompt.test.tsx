@@ -12,11 +12,11 @@ import {
   readContentFromYDoc,
 } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { resetDocsCollabMeshLingerForTests } from "@/text-editor-core/docs-collab/docs-collab-mesh-linger";
-import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { docsCollabIndexedDbKey } from "@/lib/collab/docs-collab-persistence";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab/docs-collab-types";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
 import { DocsConflictDialog } from "./docs-conflict-dialog";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import {
   DEFAULT_DOCS_COLLAB_URLS,
   resetDocsCollabBackoffForTests,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   apiPathFromUiPath,
+  isShareTargetFile,
   DRIVE_TRASH_DIR_NAME,
   DRIVE_TRASH_UI_PATH,
   driveUserTrashApiPath,
@@ -128,5 +129,13 @@ describe("apiPathFromUiPath", () => {
     expect(apiPathFromUiPath("Trash/old.pdf", USER, groupRoots)).toBe(
       `${driveUserTrashApiPath(USER)}/old.pdf`,
     );
+  });
+});
+
+describe("isShareTargetFile", () => {
+  it("detects file targets by extension", () => {
+    expect(isShareTargetFile("/users/bob/contacts.vcf")).toBe(true);
+    expect(isShareTargetFile("/users/bob/Projects")).toBe(false);
+    expect(isShareTargetFile("users/bob/notes.md/")).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
+import { loadCollabContentCodec } from "@/lib/collab/collab-content-codec";
 import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
@@ -7,20 +8,12 @@ import {
   docsCollabRoomKey,
   migrateDocsCollabPathDatabaseToIdentity,
   resolveDocsCollabDatabase,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+} from "@/lib/collab/docs-collab-persistence";
 import { isRateLimitedError } from "@/lib/offline/core/background-sync-pacer";
-import { loadSnapshotOutcome } from "@/text-editor-core/docs-collab/docs-collab-bootstrap";
-import { rememberSidecarEtag } from "@/text-editor-core/docs-collab/docs-collab-etag";
-import {
-  fetchYjsSnapshot,
-  loadMarkdown,
-} from "@/text-editor-core/docs-collab/docs-collab-server-io";
-import {
-  collabDocumentFormat,
-  isYDocEmpty,
-  SERVER_ORIGIN,
-} from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { loadSnapshotOutcome } from "@/lib/collab/docs-collab-bootstrap";
+import { rememberSidecarEtag } from "@/lib/collab/docs-collab-etag";
+import { fetchYjsSnapshot, loadMarkdown } from "@/lib/collab/docs-collab-server-io";
+import { collabDocumentFormat, isYDocEmpty, SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 export function buildDocsCollabUrlsForPath(apiPath: string): {
   room: string;
@@ -52,6 +45,7 @@ export async function seedEmptyDocsCollabOffline(apiPath: string): Promise<void>
   if (!isDocsCollabEditablePath(room)) return;
 
   const documentFormat = collabDocumentFormat(room);
+  const { applyContentSeedToYDoc } = await loadCollabContentCodec();
   const database = await resolveDocsCollabDatabase(room);
   const ydoc = new Y.Doc();
   const persistence = new IndexeddbPersistence(database.name, ydoc);
@@ -92,6 +86,7 @@ export async function hydrateDocsCollabForOffline({
 
   const urls = buildDocsCollabUrlsForPath(room);
   const documentFormat = collabDocumentFormat(room);
+  const { applyContentSeedToYDoc } = await loadCollabContentCodec();
   const database = await resolveDocsCollabDatabase(room);
   const ydoc = new Y.Doc();
   const persistence = new IndexeddbPersistence(database.name, ydoc);

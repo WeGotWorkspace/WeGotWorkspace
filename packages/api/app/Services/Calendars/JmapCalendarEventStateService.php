@@ -108,6 +108,10 @@ final class JmapCalendarEventStateService
 
     /**
      * Ensures a state row exists and rotates state_token when the CalDAV etag changes (read path).
+     *
+     * firstOrCreate falls back to createOrFirst: when a concurrent request inserts the same
+     * (username, event_id) between our read and our insert, the UNIQUE violation is caught and
+     * the winner's row is returned instead of failing the JMAP call with serverFail.
      */
     private function ensureStateRow(
         string $username,
@@ -116,22 +120,20 @@ final class JmapCalendarEventStateService
         string $calendarUri,
         ?JmapCalendarEventState $row,
     ): JmapCalendarEventState {
-        $row ??= JmapCalendarEventState::query()
-            ->where('username', $username)
-            ->where('event_id', $eventId)
-            ->first();
-
         $rawEtag = is_string($object->etag) ? $object->etag : null;
 
-        if ($row === null) {
-            return JmapCalendarEventState::query()->create([
-                'username' => $username,
-                'event_id' => $eventId,
+        $row ??= JmapCalendarEventState::query()->firstOrCreate(
+            ['username' => $username, 'event_id' => $eventId],
+            fn (): array => [
                 'calendar_uri' => $calendarUri,
                 'object_uri' => (string) $object->uri,
                 'state_token' => $this->generateStateToken(),
                 'etag' => $rawEtag,
-            ]);
+            ],
+        );
+
+        if ($row->wasRecentlyCreated) {
+            return $row;
         }
 
         if ($rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag) {

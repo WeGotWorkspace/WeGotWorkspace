@@ -20,7 +20,7 @@ import {
   type YjsHttpPollMode,
 } from "./docs-collab-http-wire";
 import { applyGuardedRemoteUpdate } from "./docs-collab-update-guard";
-import { MESH_ORIGIN } from "./docs-collab-utils";
+import { MESH_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import type { RelayReason, RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 
 export type DocsHttpRosterPeer = {

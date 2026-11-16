@@ -4,10 +4,16 @@ import { parseRetryAfterMs } from "@/lib/offline/core/background-sync-pacer";
 import { encodeFramedPayload } from "@/lib/wire/framed-payload";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { noteTitleForSave } from "./docs-collab-document-title";
-import { EXTERNAL_WRITE_HEADER, externalWriteFromHeader } from "./docs-collab-external-write";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
 const textEncoder = new TextEncoder();
+
+/** Set on `GET ?format=yjs` when the stored state is not an ancestor of the journal. */
+export const EXTERNAL_WRITE_HEADER = "X-Wgw-External-Write";
+
+export function externalWriteFromHeader(headers: Headers): boolean {
+  return headers.get(EXTERNAL_WRITE_HEADER) === "1";
+}
 
 function withBearerAuth(
   headers: Record<string, string>,

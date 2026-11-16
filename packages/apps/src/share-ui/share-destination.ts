@@ -1,6 +1,9 @@
 import { docsSearchFromApiPath } from "@/lib/files/docs-route-search";
-import { extensionFromFileName } from "@/lib/files/file-name-utils";
-import { driveGroupUiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
+import {
+  driveGroupUiPath,
+  isShareTargetFile,
+  normalizeApiVirtualPath,
+} from "@/lib/files/drive-path-utils";
 import { fileSupportsTextPreview } from "@/lib/file-preview/file-preview-utils";
 import { normalizeApiVirtualPath as normalizeSharePath, parentAndName } from "@/lib/files/api-path";
 
@@ -23,11 +26,6 @@ function lastPathSegment(apiPath: string): string {
 
 function isMarkdownSharePath(apiPath: string): boolean {
   return MARKDOWN_EXT.test(lastPathSegment(normalizeApiVirtualPath(apiPath)));
-}
-
-/** True when the shared API path points at a file (last segment has an extension). */
-export function isShareTargetFile(apiPath: string): boolean {
-  return extensionFromFileName(lastPathSegment(apiPath)) !== "";
 }
 
 /** Non-markdown share files that cannot be previewed in Drive/Docs should download. */

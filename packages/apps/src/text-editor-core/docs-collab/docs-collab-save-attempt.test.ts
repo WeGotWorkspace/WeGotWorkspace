@@ -1,10 +1,10 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { rememberSidecarEtag, resetSidecarEtagsForTests } from "./docs-collab-etag";
+import { rememberSidecarEtag, resetSidecarEtagsForTests } from "@/lib/collab/docs-collab-etag";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { isArchivedRefusal, isExternalWriteRefusal } from "./docs-collab-utils";
+import { isArchivedRefusal, isExternalWriteRefusal } from "@/lib/collab/docs-collab-utils";
 
 const { reportDocsSyncConflicts } = vi.hoisted(() => ({ reportDocsSyncConflicts: vi.fn() }));
 

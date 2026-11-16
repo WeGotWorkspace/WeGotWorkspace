@@ -1,10 +1,10 @@
 import type { IndexeddbPersistence } from "y-indexeddb";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
+import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
 import { uploadPendingCollabRooms } from "./docs-collab-pending-upload";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { collabFormatForUrls } from "./docs-collab-utils";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { collabFormatForUrls } from "@/lib/collab/docs-collab-utils";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 /** A room left while its save was still waiting on the save delay. */
 export type CollabRoomLeftUnsaved = { room: string; urls: DocsCollabUrls };

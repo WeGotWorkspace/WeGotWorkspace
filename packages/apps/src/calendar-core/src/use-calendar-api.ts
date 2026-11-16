@@ -14,7 +14,7 @@ import {
   resolveCalendarsOfflineUsername,
 } from "@/lib/offline/core/offline-session";
 import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
-import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import type { CalendarUIData } from "@/lib/models/calendar-types";
 import type { CalendarUtcRange } from "@/lib/calendar-load-window";
 import {

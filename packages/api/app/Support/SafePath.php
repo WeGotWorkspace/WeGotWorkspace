@@ -38,19 +38,19 @@ final class SafePath
         return str_starts_with(ltrim($head), '<');
     }
 
-    public static function isAccessible(string $path): bool
+    public static function isAccessible(string $path, ?string $openBasedir = null): bool
     {
         $path = self::normalize($path);
-        $openBasedir = ini_get('open_basedir');
-        if (! is_string($openBasedir) || $openBasedir === '') {
+        $openBasedir ??= (string) ini_get('open_basedir');
+        if ($openBasedir === '') {
             return true;
         }
 
         foreach (explode(PATH_SEPARATOR, $openBasedir) as $allowed) {
-            $allowed = self::normalize($allowed);
             if ($allowed === '') {
                 continue;
             }
+            $allowed = self::normalize($allowed);
             if ($path === $allowed || str_starts_with($path.'/', $allowed.'/')) {
                 return true;
             }

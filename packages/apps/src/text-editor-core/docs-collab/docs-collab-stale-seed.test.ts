@@ -5,7 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
-import { adoptServerSnapshot } from "./docs-collab-bootstrap";
+import { adoptServerSnapshot } from "@/lib/collab/docs-collab-bootstrap";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
 
 const SERVER_MARKDOWN = "# Plan\n\nFirst paragraph.\n\n- one\n- two\n\nLast paragraph.\n";
