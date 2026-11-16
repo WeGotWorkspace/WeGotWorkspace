@@ -72,3 +72,11 @@ describe("notesDetailTintStyle", () => {
     expect(notesDetailTintStyle("#fde68a")).not.toHaveProperty("--notes-detail-contrast-fg");
   });
 });
+
+describe("notebookTintForCascade", () => {
+  it("wraps hex colors in relative oklch and passes anything else through", async () => {
+    const { notebookTintForCascade } = await import("@/lib/models/notebook-color");
+    expect(notebookTintForCascade(" #aabbcc ")).toBe("oklch(from #aabbcc l c h)");
+    expect(notebookTintForCascade(" var(--x) ")).toBe("var(--x)");
+  });
+});

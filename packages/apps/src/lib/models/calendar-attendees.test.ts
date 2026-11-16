@@ -267,3 +267,14 @@ describe("calendar attendees", () => {
     expect(attendeeRoleFromRoles(undefined)).toBe("required");
   });
 });
+
+describe("inviteeForAttendee", () => {
+  it("resolves by email alias and returns undefined for blanks or strangers", async () => {
+    const { inviteeForAttendee } = await import("@/lib/models/calendar-attendees");
+    const carol = { username: "carol", email: "carol@example.test", name: "Carol" };
+    expect(inviteeForAttendee({ email: "mailto:Carol@Example.test" }, [carol])).toBe(carol);
+    expect(inviteeForAttendee({ email: "" }, [carol])).toBeUndefined();
+    expect(inviteeForAttendee({ email: "dave@example.test" }, [carol])).toBeUndefined();
+    expect(inviteeForAttendee({ email: "dave@example.test" })).toBeUndefined();
+  });
+});

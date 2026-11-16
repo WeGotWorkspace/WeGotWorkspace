@@ -32,3 +32,13 @@ describe("task-lists", () => {
     ).toEqual(["inbox", "alpha", "beta"]);
   });
 });
+
+describe("canWriteTaskList", () => {
+  it("allows unless rights say mayWriteAll is false", async () => {
+    const { canWriteTaskList } = await import("@/lib/models/task-lists");
+    expect(canWriteTaskList(undefined)).toBe(true);
+    expect(canWriteTaskList({ myRights: null })).toBe(true);
+    expect(canWriteTaskList({ myRights: { mayWriteAll: true } })).toBe(true);
+    expect(canWriteTaskList({ myRights: { mayWriteAll: false } })).toBe(false);
+  });
+});
