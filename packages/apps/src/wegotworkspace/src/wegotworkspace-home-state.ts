@@ -1,5 +1,6 @@
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
 import type { WgwSettingsStateResponse } from "@/lib/api/wgw/types";
+import { mocksInBuild } from "@/lib/api/create-workspace-source";
 
 export type WeGotWorkspaceHomeState = {
   showAdmin: boolean;
@@ -20,7 +21,7 @@ export const MOCK_HOME_STATE: WeGotWorkspaceHomeState = {
 };
 
 export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHomeState> {
-  if (!wgwLiveApiEnabled()) {
+  if (mocksInBuild && !wgwLiveApiEnabled()) {
     return MOCK_HOME_STATE;
   }
 

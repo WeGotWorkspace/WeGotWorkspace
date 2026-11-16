@@ -1,13 +1,13 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 describe("wegotworkspace admin routes", () => {
   it("matches /admin without a section param", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/admin"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     expect(router.state.location.pathname).toBe("/admin");
@@ -18,7 +18,7 @@ describe("wegotworkspace admin routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/admin"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
     expect(router.state.location.pathname).toBe("/admin");
 
@@ -31,7 +31,7 @@ describe("wegotworkspace admin routes", () => {
       const history = createMemoryHistory({
         initialEntries: [`/admin/${section}`],
       });
-      const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+      const router = createMockWeGotWorkspaceRouter(history);
       await router.load();
 
       expect(router.state.location.pathname).toBe(`/admin/${section}`);

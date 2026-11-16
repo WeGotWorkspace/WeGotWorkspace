@@ -53,6 +53,8 @@ export type RtcPeerMeshOptions = {
   onLinkChange?: () => void;
   onUnknownPeer?: () => void;
   shouldConnectToPeer?: (peer: RtcPeerDescriptor) => boolean;
+  /** A peer linked through another channel (collab reuse); the poll cadence counts it as linked. */
+  linkedElsewhere?: (peerId: string) => boolean;
   shouldHandleRtcSignals?: () => boolean;
   onPollData?: (data: HttpSignalingPollResult) => void | Promise<void>;
   onPeerRemoved?: (remoteId: string, name: string, reason: "bye" | "roster") => void;

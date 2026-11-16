@@ -38,6 +38,7 @@ WeGotWorkspace **runtime** data uses `WGW_*` keys in `packages/api/.env` (loaded
 | Prefix | Purpose |
 |--------|---------|
 | `WGW_DATA_DIR`, `WGW_DB_*`, `WGW_UPDATE_FEED_URL` | Post-install runtime (written by installer or legacy migrator) |
+| `WGW_DB_SQLITE_JOURNAL_MODE` | SQLite journal mode for the WGW database: `wal` (default) or `delete` for a database on a network share. Stored in the database file; see [INSTALL.md § SQLite database files](../INSTALL.md#sqlite-database-files). |
 | `WGW_UPDATE_CHANNEL` | Update channel: `stable` (default), `beta`, or `edge`. On ZIP installs it is the default until an admin picks a channel in Admin → Updates, which is stored in the database. Docker always reads it from the compose `.env`. A `WGW_UPDATE_FEED_URL` other than the stable default overrides the channel. |
 | `WGW_INSTALL_*` | Pre-install first-run / headless install autofill (Docker `api.env` seed) |
 | `WGW_MCP_PUBLIC_ORIGIN` | **Local only.** Public tunnel origin for MCP OAuth discovery and Admin Connection URL (no trailing slash). Ignored when `APP_ENV=production`. Each developer uses their own ngrok (or similar) host — do not commit a live URL. |

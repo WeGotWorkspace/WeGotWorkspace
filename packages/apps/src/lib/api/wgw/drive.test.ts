@@ -31,7 +31,9 @@ import {
   GUEST_UPLOAD_UNAVAILABLE,
   fetchDriveLiveBootstrap,
   resetDriveJmapSessionForTests,
+  setDriveFileStar,
 } from "@/lib/api/wgw/drive";
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import {
   DRIVE_READ_BLOB_MAX_BYTES,
   DriveFileTooLargeToOpenError,
@@ -779,6 +781,50 @@ describe("createWgwDriveOperations FileNode cutover", () => {
       name: "DriveTransportError",
       status: 502,
       message: "GET /jmap/download failed (502)",
+    });
+  });
+});
+
+// These REST failures carry their status since #1646. The message is unchanged;
+// the outbox and the folder listing now classify on `status` instead of text.
+describe("Drive REST failures carry the HTTP status", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetDriveJmapSessionForTests();
+    wgwIsGuestSession.mockReturnValue(false);
+    wgwGuestSharePath.mockReturnValue(null);
+  });
+
+  it("star, unstar and the starred list", async () => {
+    wgwFetch.mockImplementation(async () => new Response("gone", { status: 404 }));
+
+    await expect(setDriveFileStar("/users/bob/a.md", false)).rejects.toMatchObject({
+      status: 404,
+      message: "DELETE /files/star failed (404)",
+    });
+    await expect(setDriveFileStar("/users/bob/a.md", true)).rejects.toMatchObject({
+      status: 404,
+      message: "POST /files/star?path=%2Fusers%2Fbob%2Fa.md failed (404)",
+    });
+    const ops = createWgwDriveOperations("/users/bob");
+    const starred = ops.listStars();
+    await expect(starred).rejects.toBeInstanceOf(WgwRequestError);
+    await expect(ops.listStars()).rejects.toMatchObject({
+      status: 404,
+      message: "GET /files/starred failed (404)",
+    });
+  });
+
+  it("a guest folder listing", async () => {
+    wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
+    wgwFetch.mockImplementation(async () => new Response("busy", { status: 503 }));
+
+    const ops = createWgwDriveOperations("/users/bob/Test");
+    await expect(ops.listDirectory("/users/bob/Test")).rejects.toMatchObject({
+      name: "Error",
+      status: 503,
+      message: "GET /files/children failed (503)",
     });
   });
 });

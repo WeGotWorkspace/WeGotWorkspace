@@ -10,6 +10,7 @@ paths:
   - "packages/apps/src/**/*-core/**/*-workspace*.css"
   - "packages/apps/src/**/*-core/**/*-workspace.styles.ts"
   - "packages/apps/src/text-editor-core/docs-collab/**"
+  - "packages/apps/src/docs-core/src/collab/**"
 ---
 
 # WeGotWorkspace Apps — Workspace Shell

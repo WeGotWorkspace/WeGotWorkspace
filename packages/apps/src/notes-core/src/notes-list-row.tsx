@@ -11,7 +11,7 @@ import {
   noteShowsSharedBadge,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
-import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
+import { notebookDisplayColor, notebookDotColor } from "@/lib/models/notebook-color";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { noteAllowsStructureManage } from "@/notes-core/src/notes-structure-rights";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";

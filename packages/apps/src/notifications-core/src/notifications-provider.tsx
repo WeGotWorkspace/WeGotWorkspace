@@ -7,7 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { ackNotification, listNotifications } from "@/lib/api/wgw/notifications";
+import { listNotifications } from "@/lib/api/wgw/notifications";
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensure-push-subscription";
 import {
@@ -37,6 +37,7 @@ import {
 } from "@/notifications-core/src/pushed-inbox-items";
 import { useNotificationsInboxPush } from "@/notifications-core/src/use-notifications-inbox-push";
 import { useNotificationsLocalAck } from "@/notifications-core/src/use-notifications-local-ack";
+import { useNotificationsReadAck } from "@/notifications-core/src/use-notifications-read-ack";
 import { useNotificationToasts } from "@/notifications-core/src/use-notification-toasts";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 
@@ -102,19 +103,20 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const pushedRef = useRef<PushedInboxItems>(new Map());
   const signedIn = signedInMember();
   const trackUnreadForLocalAck = useNotificationsLocalAck();
+  const readAck = useNotificationsReadAck();
 
   /** A popover row or toast click: mark the row read, then open it. */
-  const onOpenItem = useCallback(async (item: NotificationInboxItem) => {
-    pushedRef.current = dropPushedItems(pushedRef.current, [item.id]);
-    setItems((prev) => prev.filter((row) => row.id !== item.id));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-    try {
-      await ackNotification(item.id);
-    } catch {
-      // Continue to navigate even if ack fails; next unread poll reconciles.
-    }
-    goToNotificationNavigate(item.navigate);
-  }, []);
+  const onOpenItem = useCallback(
+    async (item: NotificationInboxItem) => {
+      pushedRef.current = dropPushedItems(pushedRef.current, [item.id]);
+      setItems((prev) => prev.filter((row) => row.id !== item.id));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      // Never rejects: a failed ack is retried, and the row stays out of the tray.
+      await readAck.markRead([item.id]);
+      goToNotificationNavigate(item.navigate);
+    },
+    [readAck],
+  );
 
   const offerToasts = useNotificationToasts(onOpenItem);
 
@@ -122,7 +124,8 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     (fromServer: NotificationInboxList) => {
       const merged = mergePushedItems(fromServer, pushedRef.current, Date.now());
       pushedRef.current = merged.pending;
-      const payload = merged.payload;
+      // Rows marked read here stay out until the server has them as read.
+      const payload = readAck.hideMarkedRead(merged.payload);
       setItems(payload.list);
       setUnreadCount(payload.unreadCount);
       trackUnreadForLocalAck(payload.list);
@@ -142,7 +145,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
         }
       }
     },
-    [trackUnreadForLocalAck, offerToasts],
+    [trackUnreadForLocalAck, offerToasts, readAck],
   );
 
   const show = useCallback(
@@ -176,6 +179,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       setUnreadCount(0);
       return;
     }
+    readAck.retryUnconfirmed();
     refreshAbortRef.current?.abort();
     const abort = new AbortController();
     refreshAbortRef.current = abort;
@@ -187,7 +191,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     } catch {
       // Stay silent — tray is best-effort.
     }
-  }, [show]);
+  }, [show, readAck]);
 
   /**
    * The fetch for a pushed state. Not aborted by a refresh that starts
@@ -320,8 +324,8 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     pushedRef.current = dropPushedItems(pushedRef.current, ids);
     setItems([]);
     setUnreadCount(0);
-    await Promise.all(ids.map((id) => ackNotification(id).catch(() => undefined)));
-  }, [items]);
+    await readAck.markRead(ids);
+  }, [items, readAck]);
 
   const markReadWhere = useCallback(
     async (match: (item: NotificationInboxItem) => boolean) => {
@@ -331,9 +335,9 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       pushedRef.current = dropPushedItems(pushedRef.current, ids);
       setItems((prev) => prev.filter((row) => !ids.has(row.id)));
       setUnreadCount((prev) => Math.max(0, prev - matched.length));
-      await Promise.all([...ids].map((id) => ackNotification(id).catch(() => undefined)));
+      await readAck.markRead(ids);
     },
-    [items],
+    [items, readAck],
   );
 
   return useMemo((): NotificationsInboxValue | null => {
