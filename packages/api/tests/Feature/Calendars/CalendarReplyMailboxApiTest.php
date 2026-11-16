@@ -63,6 +63,7 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
             ->assertJsonPath('mailbox.folder', 'INBOX')
             ->assertJsonPath('mailbox.passwordSet', true)
             ->assertJsonPath('mailbox.trustedServer', 'mx.receiver.test')
+            ->assertJsonPath('mailbox.senderCheck', 'receiving_server')
             ->assertJsonPath('mailbox.active', true)
             ->assertJsonPath('mailbox.lastError', null);
         $this->assertStringNotContainsString('mailbox-pass', (string) $response->getContent());
@@ -73,6 +74,17 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
             'mailbox-pass',
             (string) $this->withBearer($this->token)->getJson('/api/v1/calendars/reply-mailbox')->getContent(),
         );
+    }
+
+    public function test_a_mailbox_whose_server_does_not_stamp_mail_is_checked_by_dkim(): void
+    {
+        $this->allowAnyHost();
+        $this->server->messages[1]['headers'] = "From: a@example.test\r\n\r\n";
+
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk()
+            ->assertJsonPath('mailbox.trustedServer', null)
+            ->assertJsonPath('mailbox.senderCheck', 'dkim')
+            ->assertJsonPath('mailbox.lastError', null);
     }
 
     public function test_first_save_needs_a_password(): void

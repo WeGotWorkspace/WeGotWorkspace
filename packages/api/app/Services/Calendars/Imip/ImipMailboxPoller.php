@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Calendars\Imip;
 
 use App\Models\CalendarReplyMailbox;
+use App\Services\Calendars\Imip\Dkim\DkimResult;
 use App\Services\VObject\VObjectPayloadGuard;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Facades\Log;
 
@@ -18,7 +20,11 @@ use Illuminate\Support\Facades\Log;
  * - The cursor is (UIDVALIDITY, last UID). A new mailbox or a new UIDVALIDITY
  *   starts at the current highest UID: mail from before is never replayed.
  * - The cursor moves past every UID looked at, so one bad message cannot
- *   block the box. It stays put while no trusted receiving server is known.
+ *   block the box. The one exception is a reply whose DKIM key lookup
+ *   failed: the poll stops before it and the next poll tries again, for at
+ *   most {@see DNS_RETRY_SECONDS}, so replies keep their arrival order.
+ * - Senders are checked by {@see ImipSenderVerifier}: the trusted receiving
+ *   server's Authentication-Results when one is known, DKIM otherwise.
  */
 class ImipMailboxPoller
 {
@@ -36,15 +42,25 @@ class ImipMailboxPoller
     /** Newest messages read to learn the receiving server's id. */
     private const LEARN_SAMPLE = 20;
 
-    public const UNTRUSTED_SERVER_UNKNOWN = 'untrusted_server_unknown';
+    /** How long a reply whose DKIM key lookup keeps failing is retried before it is skipped. */
+    public const DNS_RETRY_SECONDS = 3600;
+
+    /** Last error while the poll waits on a failed DKIM key lookup. */
+    public const DNS_UNAVAILABLE = 'dns_unavailable';
 
     public const LOG_FAILED = 'calendar.imip_poll_failed';
+
+    public const LOG_DEFERRED = 'calendar.imip_reply_deferred';
+
+    private const DEFER_PREFIX = 'calendar-imip-dkim-defer:';
 
     public function __construct(
         private readonly Container $container,
         private readonly ImipEndpointResolver $endpoints,
         private readonly ImipMailboxSettings $settings,
         private readonly ImipReplyIngest $ingest,
+        private readonly ImipSenderVerifier $senders,
+        private readonly Repository $cache,
     ) {}
 
     /** Poll the mailboxes that are due. Returns how many were polled. */
@@ -88,7 +104,7 @@ class ImipMailboxPoller
             );
             $state = $client->examine((string) $mailbox->folder);
             $highest = $client->highestUid($state['exists'], $state['uidnext']);
-            $error = $this->read($client, $mailbox, $state['uidvalidity'], $highest);
+            $error = $this->read($client, $mailbox, $state['uidvalidity'], $highest, $now);
             $mailbox->last_success_at = $now;
             $mailbox->auth_failures = 0;
             $mailbox->last_error_code = $error;
@@ -127,25 +143,25 @@ class ImipMailboxPoller
         }
     }
 
-    /** Reads new UIDs; returns an error code to show, or null. */
-    private function read(ImapClient $client, CalendarReplyMailbox $mailbox, int $uidValidity, int $highest): ?string
+    /**
+     * Reads new UIDs; returns an error code to show, or null. Without a
+     * trusted server id, senders are checked by DKIM. Only the connection
+     * test learns the id: a poll that learned it from the mail it is about
+     * to apply could be taught by a forgery.
+     */
+    private function read(ImapClient $client, CalendarReplyMailbox $mailbox, int $uidValidity, int $highest, int $now): ?string
     {
         if ($mailbox->uidvalidity !== $uidValidity || $mailbox->last_uid === null) {
             $mailbox->uidvalidity = $uidValidity;
             $mailbox->last_uid = $highest;
-        }
-        if ((string) $mailbox->trusted_server_id === '') {
-            // Only the connection test learns the id: a poll that learned it
-            // from the mail it is about to apply could be taught by a forgery.
-            return self::UNTRUSTED_SERVER_UNKNOWN;
         }
 
         $uids = array_slice($client->uidsAfter((int) $mailbox->last_uid), 0, self::BATCH_SIZE);
         $summaries = $client->summaries($uids);
         foreach ($uids as $uid) {
             $summary = $summaries[$uid] ?? null;
-            if ($summary !== null) {
-                $this->readMessage($client, $mailbox, $summary);
+            if ($summary !== null && ! $this->readMessage($client, $mailbox, $summary, $now)) {
+                return self::DNS_UNAVAILABLE;
             }
             $mailbox->last_uid = $uid;
         }
@@ -153,22 +169,43 @@ class ImipMailboxPoller
         return null;
     }
 
-    private function readMessage(ImapClient $client, CalendarReplyMailbox $mailbox, ImapMessageSummary $summary): void
+    /** False when the message must be read again on the next poll. */
+    private function readMessage(ImapClient $client, CalendarReplyMailbox $mailbox, ImapMessageSummary $summary, int $now): bool
     {
         $part = $summary->calendarPart;
         if ($part === null) {
-            return;
+            return true;
         }
         $owner = (string) $mailbox->username;
         if ($summary->size > self::MAX_MESSAGE_BYTES || $part->size > self::MAX_MESSAGE_BYTES) {
             $this->logSkipped($owner, $summary->uid, 'too_large');
 
-            return;
+            return true;
         }
         if ($part->method !== '' && $part->method !== 'REPLY') {
             $this->logSkipped($owner, $summary->uid, ImipReplyIngest::METHOD_NOT_SUPPORTED);
 
-            return;
+            return true;
+        }
+        $sender = $this->senders->check(
+            $owner,
+            $summary->headers,
+            (string) $mailbox->trusted_server_id,
+            fn (): ?string => $this->wholeMessage($client, $summary->uid),
+            $now,
+        );
+        if ($sender->retry) {
+            if (! $this->retryExpired($mailbox, $summary->uid, $now)) {
+                Log::notice(self::LOG_DEFERRED, ['owner' => $owner, 'imap_uid' => $summary->uid]);
+
+                return false;
+            }
+            $sender = ImipSenderCheck::refused(DkimResult::DNS_UNAVAILABLE, $sender->check);
+        }
+        if (! $sender->ok()) {
+            $this->logSkipped($owner, $summary->uid, ImipReplyIngest::SENDER_NOT_VERIFIED, $sender);
+
+            return true;
         }
         try {
             $raw = $client->section($summary->uid, $part->section);
@@ -180,12 +217,12 @@ class ImipMailboxPoller
         }
         $ics = $raw !== null ? MimePartDecoder::decode($raw, $part->encoding, $part->charset) : null;
         if ($ics === null || strlen($ics) > VObjectPayloadGuard::MAX_ICS_BYTES) {
-            $this->logSkipped($owner, $summary->uid, ImipReplyIngest::INVALID_CALENDAR);
+            $this->logSkipped($owner, $summary->uid, ImipReplyIngest::INVALID_CALENDAR, $sender);
 
-            return;
+            return true;
         }
         try {
-            $this->ingest->ingest($owner, (string) $mailbox->trusted_server_id, $summary->headers, $ics, $summary->uid);
+            $this->ingest->ingest($owner, $sender, $ics, $summary->uid);
         } catch (\Throwable $exception) {
             Log::error(self::LOG_FAILED, [
                 'owner' => $owner,
@@ -193,6 +230,38 @@ class ImipMailboxPoller
                 'exception' => $exception::class,
             ]);
         }
+
+        return true;
+    }
+
+    private function wholeMessage(ImapClient $client, int $uid): ?string
+    {
+        try {
+            return $client->message($uid);
+        } catch (ImapException $exception) {
+            if ($exception->errorCode !== ImapException::PROTOCOL_ERROR) {
+                throw $exception;
+            }
+
+            return null;
+        }
+    }
+
+    /**
+     * Whether a message deferred on a failed key lookup has waited long
+     * enough to be skipped. The first deferral starts the clock.
+     */
+    private function retryExpired(CalendarReplyMailbox $mailbox, int $uid, int $now): bool
+    {
+        $key = self::DEFER_PREFIX.hash('sha256', strtolower((string) $mailbox->username).'|'.(int) $mailbox->uidvalidity.'|'.$uid);
+        $first = $this->cache->get($key);
+        if (! is_int($first)) {
+            $this->cache->put($key, $now, self::DNS_RETRY_SECONDS * 2);
+
+            return false;
+        }
+
+        return $now - $first >= self::DNS_RETRY_SECONDS;
     }
 
     /**
@@ -235,13 +304,15 @@ class ImipMailboxPoller
         ]);
     }
 
-    private function logSkipped(string $owner, int $imapUid, string $reason): void
+    private function logSkipped(string $owner, int $imapUid, string $reason, ?ImipSenderCheck $sender = null): void
     {
         Log::notice(ImipReplyIngest::LOG_SKIPPED, [
             'owner' => $owner,
             'imap_uid' => $imapUid,
             'uid' => '',
             'reason' => $reason,
+            'check' => $sender?->check,
+            'detail' => $sender?->reason,
         ]);
     }
 
