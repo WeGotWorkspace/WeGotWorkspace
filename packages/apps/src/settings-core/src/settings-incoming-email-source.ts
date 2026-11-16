@@ -102,16 +102,17 @@ export function incomingEmailUpdateFromForm(
   };
 }
 
-/** The saved connection with another folder; the stored password is kept. */
+/** The saved connection with another folder (a Mailbox id); the stored password is kept. */
 export function mailboxFolderUpdate(
   saved: IncomingMailbox,
-  folder: string,
+  folderId: string,
 ): CalendarReplyMailboxUpdate {
   return {
     host: saved.host,
     security: saved.security,
     port: saved.port,
     username: saved.username,
-    folder: folder.trim() || DEFAULT_MAILBOX_FOLDER,
+    folder: saved.folder,
+    folderId,
   };
 }

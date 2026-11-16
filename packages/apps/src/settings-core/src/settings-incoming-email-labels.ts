@@ -1,14 +1,12 @@
 /** Copy of Settings → Incoming email: the mailbox apps read for you (#1589). */
 export const incomingEmailLabels = {
   panel: "Incoming email",
-  panelDescription:
-    "Calendar reads replies to your invitations here. Nothing in the mailbox changes.",
+  panelDescription: "The mailbox apps can read for you. Nothing in it changes.",
   title: "Mailbox",
   about: "About this mailbox",
   providers:
     "Gmail needs an app password (turn on 2-Step Verification first). Outlook.com, Hotmail and Microsoft 365 cannot connect yet; Google Workspace only if your organization allows app passwords.",
-  reading:
-    "Calendar reads only the replies to your invitations. To find them it checks the sender of new messages; it never opens other mail and never marks, moves or deletes anything.",
+  reading: "Apps read only the messages they need. Nothing is marked, moved or deleted.",
   host: "Mail server",
   hostHint: "For example imap.example.com",
   security: "Security",
@@ -34,7 +32,7 @@ export const incomingEmailLabels = {
   disconnect: "Disconnect",
   disconnectTitle: "Disconnect this mailbox?",
   disconnectDescription:
-    "Calendar stops reading replies to your invitations, so answers sent by email no longer update your events. The saved password is deleted from this server.",
+    "Apps stop reading this mailbox. The saved password is deleted from this server.",
   check: "Test connection",
   checking: "Testing…",
   checked: "Connection tested",
@@ -42,7 +40,6 @@ export const incomingEmailLabels = {
     "Press Test connection to save the changes. It signs in to the mailbox to test them.",
   saved: "Mailbox settings saved",
   connected: "Mailbox connected",
-  connectedWaiting: "Mailbox connected. Replies to your invitations aren't applied yet.",
   disconnected: "Mailbox disconnected",
   tag: {
     notConnected: "Not connected",
@@ -54,8 +51,6 @@ export const incomingEmailLabels = {
     paused: "Paused",
     failed: "Cannot connect",
   },
-  repliesNotApplied:
-    "Replies to your invitations aren't applied yet: Calendar can't verify who sent them in this mailbox.",
   statusPaused:
     "Paused after repeated failed sign-ins. Fix the password or the settings, then press Test connection.",
   lastChecked: (when: string) => `Last checked ${when}.`,
@@ -67,8 +62,6 @@ export const incomingEmailLabels = {
     folder_missing: "A folder an app reads does not exist in this mailbox.",
     host_not_allowed: "This mail server address is not allowed.",
     protocol_error: "The mail server gave an answer that could not be read.",
-    untrusted_server_unknown:
-      "Replies to your invitations aren't applied yet: Calendar can't verify who sent them in this mailbox.",
   } as Record<string, string>,
   required: "Fill in the mail server, username and password.",
   requiredConnected: "Fill in the mail server and username.",

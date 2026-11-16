@@ -1,9 +1,11 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createMockCalendarReplyMailboxOperations,
+  MOCK_MAILBOX_FOLDERS,
   mockCalendarReplyMailbox,
 } from "@/lib/api/mock/calendar-reply-mailbox";
+import { MailboxLoginsLimitedError } from "@/lib/api/wgw/calendar-reply-mailbox";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { calendarReplyFolderLabels as labels } from "@/settings-core/src/settings-calendar-reply-folder-labels";
 import { SettingsCalendarReplyFolderSection } from "@/settings-core/src/settings-calendar-reply-folder-section";
@@ -12,12 +14,18 @@ import {
   type SettingsDialogApi,
 } from "@/settings-core/src/settings-dialog-context";
 import type { IncomingMailbox } from "@/settings-core/src/settings-incoming-email-source";
-import { REPLY_FOLDER_AUTOSAVE_DELAY_MS } from "@/settings-core/src/use-settings-calendar-reply-folder";
 import { TooltipProvider } from "@/ui/tooltip";
+
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({ showSuccess: toast.success, showError: toast.error }),
+}));
 
 function renderSection(seed: IncomingMailbox | null) {
   const operations = createMockCalendarReplyMailboxOperations(seed);
   vi.spyOn(operations, "save");
+  vi.spyOn(operations, "folders");
   const dialog: SettingsDialogApi = {
     openPanel: vi.fn(),
     openRegisteredPanel: vi.fn(),
@@ -33,19 +41,22 @@ function renderSection(seed: IncomingMailbox | null) {
   return { operations, dialog };
 }
 
-function typeFolder(value: string): void {
-  fireEvent.change(screen.getByLabelText(labels.folder), { target: { value } });
+/** Radix Select opens on pointer down. */
+function openFolders(): void {
+  const trigger = screen.getByRole("combobox", { name: labels.folder });
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
 }
 
-async function waitForAutosave(): Promise<void> {
-  await act(async () => {
-    vi.advanceTimersByTime(REPLY_FOLDER_AUTOSAVE_DELAY_MS + 50);
-  });
-}
+beforeAll(() => {
+  // Radix Select needs pointer capture and scrolling, which jsdom lacks.
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.releasePointerCapture = () => {};
+  Element.prototype.scrollIntoView = () => {};
+});
 
 afterEach(() => {
-  vi.useRealTimers();
   cleanup();
+  toast.success.mockClear();
 });
 
 describe("SettingsCalendarReplyFolderSection", () => {
@@ -55,18 +66,23 @@ describe("SettingsCalendarReplyFolderSection", () => {
     fireEvent.click(await screen.findByRole("button", { name: labels.openIncomingEmail }));
 
     expect(screen.getByText(labels.notConnected)).toBeTruthy();
-    expect(screen.queryByLabelText(labels.folder)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: labels.folder })).toBeNull();
     expect(dialog.showPanel).toHaveBeenCalledWith("incoming-email");
   });
 
-  it("saves the folder by itself, keeping the rest of the connection", async () => {
+  it("lists the folders only when the dropdown opens, and saves a pick by its id", async () => {
     const { operations } = renderSection(mockCalendarReplyMailbox());
-    const input = (await screen.findByLabelText(labels.folder)) as HTMLInputElement;
-    expect(input.value).toBe("INBOX");
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const trigger = await screen.findByRole("combobox", { name: labels.folder });
+    expect(trigger.textContent).toContain("INBOX");
+    expect(operations.folders).not.toHaveBeenCalled();
 
-    typeFolder("Calendar replies");
-    await waitForAutosave();
+    openFolders();
+    const replies = await screen.findByRole("option", { name: "INBOX / Calendar replies" });
+    expect(operations.folders).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(
+      MOCK_MAILBOX_FOLDERS.map((folder) => folder.label),
+    );
+    fireEvent.click(replies);
 
     await waitFor(() =>
       expect(operations.save).toHaveBeenCalledWith({
@@ -74,25 +90,43 @@ describe("SettingsCalendarReplyFolderSection", () => {
         security: "ssl",
         port: 993,
         username: "me@example.com",
-        folder: "Calendar replies",
+        folder: "INBOX",
+        folderId: "M-replies",
       }),
     );
-    expect(operations.save).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(labels.folderSaved));
+    expect(screen.getByRole("combobox", { name: labels.folder }).textContent).toContain(
+      "INBOX / Calendar replies",
+    );
   });
 
-  it("says when the folder does not exist and keeps what was typed", async () => {
+  it("says why the folders could not be listed", async () => {
     const { operations } = renderSection(mockCalendarReplyMailbox());
-    await screen.findByLabelText(labels.folder);
+    await screen.findByRole("combobox", { name: labels.folder });
+    vi.mocked(operations.folders).mockRejectedValueOnce(
+      new MailboxLoginsLimitedError("Mailbox/get failed", 120, "rate_limited"),
+    );
+
+    openFolders();
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Test again after/);
+  });
+
+  it("says when the picked folder no longer exists", async () => {
+    const { operations } = renderSection(mockCalendarReplyMailbox());
+    await screen.findByRole("combobox", { name: labels.folder });
     vi.mocked(operations.save).mockRejectedValueOnce(
       new WgwRequestError("PUT failed (422)", 422, "folder_missing"),
     );
-    vi.useFakeTimers({ shouldAdvanceTime: true });
 
-    typeFolder("Nope");
-    await waitForAutosave();
+    openFolders();
+    fireEvent.click(await screen.findByRole("option", { name: "Archive" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(labels.folderMissing);
-    expect((screen.getByLabelText(labels.folder) as HTMLInputElement).value).toBe("Nope");
+  });
+
+  it("says replies are not applied while no sender can be verified", async () => {
+    renderSection(mockCalendarReplyMailbox({ trustedServer: null }));
+    expect(await screen.findByText(labels.repliesNotApplied)).toBeTruthy();
   });
 });

@@ -2,12 +2,19 @@
 export const calendarReplyFolderLabels = {
   title: "Invitation replies",
   intro: "Replies from other calendar apps update your events.",
-  notConnected: "Connect your mailbox in Incoming email to read replies.",
+  about: "About invitation replies",
+  reading:
+    "Calendar reads only the replies to your invitations. To find them it checks the sender of new messages; it never opens other mail and never marks, moves or deletes anything.",
+  repliesNotApplied:
+    "Replies aren't applied yet: Calendar can't verify who sent them in this mailbox.",
+  mailbox: "Mailbox",
+  notConnected: "Connect one in Incoming email",
   openIncomingEmail: "Open Incoming email",
   folder: "Folder",
   folderHint: "Where replies arrive",
+  foldersLoading: "Loading folders…",
+  folderSaved: "Folder saved",
   folderMissing: "This folder does not exist in your mailbox.",
-  folderInvalid: "Check the folder name.",
   loading: "Loading invitation reply settings…",
   offline: "Invitation reply settings need a connection. They load again when you are back online.",
   loadError: "Could not load invitation reply settings.",

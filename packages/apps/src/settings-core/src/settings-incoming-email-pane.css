@@ -38,3 +38,14 @@
 .settings-incoming-email__failure {
   @apply m-0 pt-2 text-sm text-destructive;
 }
+
+/* Invitation replies: the folder dropdown, a spinner beside it while a pick saves. */
+.settings-incoming-email__folder {
+  @apply flex w-full min-w-0 items-center justify-end gap-2 text-muted-foreground;
+  /* The dropdown's height, also while only a spinner stands in for it. */
+  min-block-size: var(--control-height-sm);
+}
+
+.settings-incoming-email__folder-status {
+  @apply flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground;
+}

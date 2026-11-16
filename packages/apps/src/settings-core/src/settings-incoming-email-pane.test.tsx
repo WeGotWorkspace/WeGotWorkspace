@@ -125,7 +125,7 @@ describe("SettingsIncomingEmailPane", () => {
     await screen.findByRole("button", { name: labels.disconnect });
   });
 
-  it("shows Connected, and that replies are not applied, when no sender can be verified", async () => {
+  it("shows Connected when signing in works, even before any sender can be verified", async () => {
     const operations = spiedOperations();
     vi.mocked(operations.save).mockImplementation(async (update) => ({
       mailbox: mockCalendarReplyMailbox({ host: update.host, trustedServer: null }),
@@ -137,9 +137,9 @@ describe("SettingsIncomingEmailPane", () => {
     fireEvent.click(screen.getByRole("button", { name: labels.connect }));
 
     await screen.findByRole("button", { name: labels.disconnect });
-    expect(toast.success).toHaveBeenCalledWith(labels.connectedWaiting);
+    expect(toast.success).toHaveBeenCalledWith(labels.connected);
     expect(tag()).toBe(labels.tag.connected);
-    expect(screen.getByText(labels.repliesNotApplied)).toBeTruthy();
+    expect(screen.queryByText(/calendar|invitation/i)).toBeNull();
   });
 
   it("keeps the form as typed and says why when the login fails", async () => {
@@ -297,19 +297,11 @@ describe("SettingsIncomingEmailPane", () => {
     expect(tagDetail()).toContain(detail);
   });
 
-  it("keeps a mailbox it cannot verify senders in Connected, with the note under the rows", async () => {
+  it("keeps a mailbox it cannot verify senders in Connected, with no error", async () => {
     renderSection(seeded({ trustedServer: null, lastError: "untrusted_server_unknown" as const }));
     await screen.findByRole("button", { name: labels.disconnect });
     expect(tag()).toBe(labels.tag.connected);
-    expect(screen.getByText(labels.repliesNotApplied)).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("has no note when senders are verified", async () => {
-    renderSection(seeded());
-    await screen.findByRole("button", { name: labels.disconnect });
-    expect(tag()).toBe(labels.tag.connected);
-    expect(screen.queryByText(labels.repliesNotApplied)).toBeNull();
   });
 
   it("explains what is read and the Gmail app password step behind the info button", async () => {
@@ -317,8 +309,7 @@ describe("SettingsIncomingEmailPane", () => {
     await screen.findByLabelText(labels.host);
     expect(screen.getByRole("button", { name: labels.about })).toBeTruthy();
     expect(screen.queryByText(labels.reading)).toBeNull();
-    expect(labels.reading).toContain("reads only the replies to your invitations");
-    expect(labels.reading).toContain("never marks, moves or deletes anything");
+    expect(labels.reading).toContain("Nothing is marked, moved or deleted");
     expect(labels.providers).toContain("Outlook.com, Hotmail and Microsoft 365 cannot connect yet");
     expect(labels.providers).toContain("app password");
     expect(labels.providers).toContain("2-Step Verification");

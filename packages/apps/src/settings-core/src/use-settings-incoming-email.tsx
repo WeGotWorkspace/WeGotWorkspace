@@ -168,8 +168,7 @@ export function useSettingsIncomingEmail(
     void run("connect", async () => {
       const next = await operationsRef.current.save(update);
       applyReady(next.mailbox);
-      // Only a login that saw a message learns the receiving server; until then nothing is read.
-      showSuccess(next.mailbox?.trustedServer ? labels.connected : labels.connectedWaiting);
+      showSuccess(labels.connected);
     });
   };
 

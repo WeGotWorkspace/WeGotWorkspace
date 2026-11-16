@@ -182,14 +182,14 @@ export function registerBuiltinSettings(): void {
     render: () => <SettingsCalendarPane />,
   });
   registerSlice({
-    id: "calendar-availability",
-    panelIds: ["calendar"],
-    render: () => <SettingsCalendarAvailabilitySection />,
-  });
-  registerSlice({
     id: "calendar-reply-folder",
     panelIds: ["calendar"],
     render: () => <SettingsCalendarReplyFolderSection />,
+  });
+  registerSlice({
+    id: "calendar-availability",
+    panelIds: ["calendar"],
+    render: () => <SettingsCalendarAvailabilitySection />,
   });
   registerSlice({
     id: "tasks-default-collection",

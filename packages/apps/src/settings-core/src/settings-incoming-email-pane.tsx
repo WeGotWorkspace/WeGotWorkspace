@@ -1,8 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useForm, useFormState, useWatch } from "react-hook-form";
-import { Info, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { IconButton } from "@/button/src/icon-button";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { incomingEmailLabels as labels } from "@/settings-core/src/settings-incoming-email-labels";
 import {
@@ -11,6 +10,7 @@ import {
   type IncomingMailbox,
   type IncomingMailboxOperations,
 } from "@/settings-core/src/settings-incoming-email-source";
+import { SettingsInfoButton } from "@/settings-core/src/settings-info-button";
 import { SettingsPageStatus } from "@/settings-core/src/settings-page-status";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import {
@@ -40,8 +40,8 @@ import "./settings-incoming-email-pane.css";
 const PASSWORD_MASK = "••••••••••";
 
 /**
- * Settings → Incoming email (#1589): the IMAP mailbox apps read for the user, such as Calendar
- * for invitation replies. Connect logs in to the mailbox first; nothing is stored when that
+ * Settings → Incoming email (#1589): the IMAP mailbox apps read for the user. What an app
+ * reads from it is that app's setting (Calendar: Invitation replies). Connect logs in to the mailbox first; nothing is stored when that
  * fails. Every login counts against a small server limit, so nothing logs in by itself: edits
  * wait for Test connection. Which folder an app reads is that app's own setting.
  */
@@ -80,24 +80,13 @@ export function SettingsIncomingEmailPane({
   );
 }
 
-/** What Calendar reads and which providers work: behind an info button, not on the page. */
+/** What apps read and which providers work: behind an info button, not on the page. */
 function AboutMailbox() {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <IconButton
-          label={labels.about}
-          icon={<Info aria-hidden />}
-          variant="ghost"
-          size="sm"
-          showTooltip={false}
-        />
-      </TooltipTrigger>
-      <TooltipContent className="settings-incoming-email__tooltip">
-        <p>{labels.reading}</p>
-        <p>{labels.providers}</p>
-      </TooltipContent>
-    </Tooltip>
+    <SettingsInfoButton label={labels.about}>
+      <p>{labels.reading}</p>
+      <p>{labels.providers}</p>
+    </SettingsInfoButton>
   );
 }
 
@@ -151,8 +140,8 @@ function incomingEmailTag({
 }
 
 /**
- * Signed in, but no sender can be verified yet: the mail server learned from the mailbox does
- * not mark checked senders (or there was no message to learn it from), so no reply is applied.
+ * Signed in, but no sender can be verified yet. That is the reading app's concern (Calendar
+ * says so under Invitation replies), not the connection's: the tag stays Connected.
  */
 function incomingEmailUnverified(mailbox: IncomingMailbox): boolean {
   return !mailbox.trustedServer || mailbox.lastError === "untrusted_server_unknown";
@@ -382,11 +371,6 @@ function ConnectedMailbox({ controller }: { controller: SettingsIncomingEmailCon
               </Button>
             </div>
           </FieldLabelRow>
-          {controller.mailbox && incomingEmailUnverified(controller.mailbox) ? (
-            <p className="settings-incoming-email__note settings-incoming-email__note--below">
-              {labels.repliesNotApplied}
-            </p>
-          ) : null}
           {/* Under the rows it is about, above the buttons. */}
           <Failure text={failure} />
           <div className="settings-incoming-email__actions">
