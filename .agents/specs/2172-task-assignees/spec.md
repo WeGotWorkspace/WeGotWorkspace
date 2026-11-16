@@ -28,8 +28,8 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
   - The copy reads "{actor} assigned you {summary}".
   - `navigate` opens the task.
 - **UI:**
-  - an **Assignees** row in the task detail view: avatars plus an add button, with a picker limited to the list audience (people with read-only access are shown disabled);
-  - assignee avatars (up to three, then "+N") at the end of each list row;
+  - an **Assignee** row in the task detail view, whose value (avatar and name, stacked avatars and "{N} people", or "Unassigned") opens a picker limited to the list audience (people with read-only access are shown disabled);
+  - assignee avatars (up to three, then "+N") with the other marks of each list row;
   - an **Assigned to me** item in the top section of the Tasks sidebar, after Overdue. It filters the in-memory, cross-list task set on the current user's participant id and email, and shows open tasks only.
 
 ## Non-goals
@@ -81,10 +81,10 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 ### Validation
 
 - The server checks only the attendee ids that **this write adds**. That set is the participant ids with role `attendee` in the merged result, minus those in the stored task before the write. On a create there is no stored task, so every attendee counts as added.
-- An added attendee is a **user** when its id is `u:<username>`, or its email matches a user's email (that is how a read would show it). Each added user must be in the audience of the **target** list with write access. The target is the list the task is in after the write, so a move is checked against the new list. Otherwise the write fails with 422 `invalid_participant`, which names **every** rejected id, not only the first.
+- An added attendee is a **user** when its id is `u:<username>`, or its email matches a user's email (that is how a read would show it). Each added user must be in the audience of the **target** list with write access. The target is the list the task is in after the write, so a move is checked against the new list. Otherwise the write fails with 422 `invalid_participant`. Its `error` sentence names every rejected id for a person reading it; clients classify on the status and `code` only, as every API error requires, and never parse the sentence.
 - An added attendee that is **not a user** (`e:<email>` for an address no account has) passes, on creates and edits alike. This keeps today's behaviour for API callers and native-client data. Such an attendee is never notified. The web app's picker offers no way to add one.
 - For a user, the server writes the `mailto:` and the `CN` from the user's own principal (email and display name). It ignores any email or name in the payload, so a caller cannot send `u:alice` with someone else's address.
-- **Rescue of parked writes** (`rescueBody` in `tasks-parked-writes.ts`) creates a task anew in another list, often after the person lost access to the old one. Before posting, it keeps only two kinds of attendee: `u:` attendees in the target list's audience with write access (from the audience cache of chunk C; with no cached audience, only the person's own `u:` entry), and `e:` attendees whose email is not the email of any person in that cached audience. Everything else is dropped: positional `attN` ids from a task parked before chunk A, and `e:` ids that may since have become accounts. The parked snapshot can be older than the deploy, so the server must never see an id it would treat as an unchecked user. The client cannot know about accounts outside the audience, so an `e:` address that has since become such an account can still get 422 `invalid_participant`. Rescue then drops every id the error names and retries once, so two such addresses cost one retry, not a task parked for good. A task with a Thunderbird attendee is therefore still rescued.
+- **Rescue of parked writes** (`rescueBody` in `tasks-parked-writes.ts`) creates a task anew in another list, often after the person lost access to the old one. Before posting, it keeps only two kinds of attendee: `u:` attendees in the target list's audience with write access (from the audience cache of chunk C; with no cached audience, only the person's own `u:` entry), and `e:` attendees whose email is not the email of any person in that cached audience. Everything else is dropped: positional `attN` ids from a task parked before chunk A, and `e:` ids that may since have become accounts. The parked snapshot can be older than the deploy, so the server must never see an id it would treat as an unchecked user. The client cannot know about accounts outside the audience, so an `e:` address that has since become such an account can still get 422 `invalid_participant`. Rescue then retries once with no attendees except the person's own `u:` entry, which is always allowed in a list they can write to. It reads no ids from the error, so any number of such addresses costs one retry, not a task parked for good; the rare price is that the other attendees are not carried over. A task with a Thunderbird attendee is therefore still rescued.
 - Attendees the task already has pass through unchecked, whatever they are:
   - `e:` attendees from native clients;
   - people who lost access;
@@ -142,14 +142,14 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 
 ### UI
 
-- **Detail view.** A new field row in the existing `DetailFieldList`, using the `TasksDetailField` pattern. The product owner's mockup (`.agents/specs/2173-task-threads/mockup-task-detail.webp`, added in PR #2178) puts it first, above Status:
+- **Detail view.** A new field row in the existing `DetailFieldList`, using the `TasksDetailField` pattern. The product owner's mockup of 2026-11-16 (the image is kept with Epic #2173's spec) puts it first, above Status; the points below describe it fully, so this spec does not depend on the image:
   - The row has a person icon and the label "Assignee". With one assignee the value is their avatar and name with a chevron; with two or more it is up to three stacked avatars and "{N} people". Clicking the value opens the picker.
   - With nobody assigned the value reads "Unassigned".
   - The picker is a popover listing the audience with a search box.
   - It reuses `UserAvatar` and the list/row primitives from `packages/apps/src/ui`. It does not reuse the share dialog's principal search, which searches every colleague, not the list audience.
   - Read-only people are shown disabled with "Can only view this list".
   - Saving goes through the existing detail autosave as a `participants` patch.
-- **List row.** Avatars only, at the right end of the row's meta line after the alarm and priority icons, as in the mockup. No names, which are too wide in narrow lists. Hovering shows each name.
+- **List row.** Avatars only, in `TasksListRowMarks` (the row's marks, top right), after the alarm and priority marks. The mockup draws those marks on the meta line; this spec keeps them where the row puts them today and only adds the avatars. No names, which are too wide in narrow lists. Hovering shows each name.
 - **Sidebar.** `state:assigned-to-me` is a new view in `filterTasksByView`.
   - A task matches when one of its participants has the id `u:<me>`, or role `attendee` and the current user's email.
   - Done and cancelled tasks are left out, like Today.

@@ -115,7 +115,7 @@ See spec.md, Non-goals.
   - `X-WGW-USERNAME` is written on assignees the app adds.
   - `TaskListAudience` exists with feature tests covering owner, Team list, person share, Team share, hidden grant and disabled user.
   - `GET /api/v1/tasks/tasklists/{id}/members` is in OpenAPI and tested, including the 404 for unknown or hidden lists.
-  - REST and MCP reject a **newly added** assignee outside the target list's audience, or with read access only, with 422 `invalid_participant`, which names every rejected id. The added set is the merged result minus the stored task.
+  - REST and MCP reject a **newly added** assignee outside the target list's audience, or with read access only, with 422 `invalid_participant` (classified on status and `code`; the sentence names the ids for people). The added set is the merged result minus the stored task.
   - A move keeps assignees who lack access in the target list (200).
   - A full `PUT` that resends an existing `e:` attendee returns 200.
   - A REST create with an `e:` attendee whose address no account has returns 201. An `e:` id whose email belongs to a user is checked as that user.
@@ -150,11 +150,11 @@ See spec.md, Non-goals.
   - the offline patch merge (`tasks-patch-merge.ts:9`, `:32`);
   - the members endpoint from chunk A.
 - **Done when:**
-  - An Assignees row with a picker limited to the audience, read-only people disabled, keyboard reachable and announced.
-  - Avatars on list rows with "+N" and names on hover.
+  - An Assignee row as in spec.md (UI, Detail view), with a picker limited to the audience, read-only people disabled, keyboard reachable and announced.
+  - Avatars in `TasksListRowMarks` with "+N" and names on hover.
   - The audience is cached per list for offline use.
-  - `rescueBody` keeps only `u:` attendees in the target list's cached audience with write access (only the person's own `u:` entry when nothing is cached) and `e:` attendees whose email matches no one in that audience. It drops `attN` ids and every other entry. If the create still gets 422 `invalid_participant` (an `e:` address that became an account outside the audience), rescue drops every id the error names and retries once.
-  - Vitest on `tasksRescueOperations`: rescuing a parked task that has a `u:` assignee without access to the target list, an `attN` id and an `e:` attendee creates the task, with only the `e:` attendee kept. A second case covers the 422-then-retry with two rejected `e:` ids: both are dropped and the single retry creates the task.
+  - `rescueBody` keeps only `u:` attendees in the target list's cached audience with write access (only the person's own `u:` entry when nothing is cached) and `e:` attendees whose email matches no one in that audience. It drops `attN` ids and every other entry. If the create still gets 422 `invalid_participant` (an `e:` address that became an account outside the audience), rescue retries once with only the person's own `u:` entry and reads no ids from the error.
+  - Vitest on `tasksRescueOperations`: rescuing a parked task that has a `u:` assignee without access to the target list, an `attN` id and an `e:` attendee creates the task, with only the `e:` attendee kept. A second case covers the 422-then-retry with two `e:` ids that the server rejects: the single retry sends only the person's own `u:` entry and creates the task.
   - `applyTaskPatch` and `coalesceTaskPatches` merge `participants` per id, where a `null` entry removes one, the same as `alerts`. Vitest covers two queued assigns, an assign then an unassign, and the optimistic task.
   - Mock API, Storybook stories (empty, three assignees, no-access assignee, offline) and Vitest.
 - **Verify with:** `pnpm test:apps-done-gate`
