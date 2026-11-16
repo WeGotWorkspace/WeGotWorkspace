@@ -38,6 +38,8 @@ See spec.md, Non-goals.
 - `NoteYjsProjection` keeps the object ETag and a content hash next to the state; an outside write is "ETag moved and content hash differs". `path: app/Services/Notes/NoteYjsProjection.php:23`, `path: app/Services/Notes/NoteYjsProjection.php:47`, `path: app/Services/Notes/NoteYjsProjection.php:79`
 - `note_yjs_state` is unique per `calendar_object_id` with a cascading FK, and its `state` column is widened to `MEDIUMBLOB` on MySQL. `path: database/migrations/wgw/2026_10_15_000620_wgw_create_note_yjs_state.php:34`, `path: database/migrations/wgw/2026_10_15_000620_wgw_create_note_yjs_state.php:36`, `path: database/migrations/wgw/2026_10_15_000620_wgw_create_note_yjs_state.php:67`
 - The Notes write locks the object row (`lockForUpdate`) inside one `wgw` transaction before it reads the ICS, and writes the object and the state row in that transaction. `path: app/Services/Notes/NoteCollaborativeWrite.php:53`
+- The Notes metadata `PATCH` also locks the object row and checks `If-Match` on the locked row. `path: app/Services/Notes/NoteRepository.php:203`
+- `rewriteOwnedTask` checks the task `If-Match` on its unlocked read. `path: app/Services/Tasks/TaskRepository.php:293`
 - The header name is shared. `path: app/Services/Collab/CollabExternalWrite.php:13`
 
 **Room join**
@@ -74,6 +76,8 @@ Considered: the Notes collab stack (`useDocsCollab`, `NoteYjsProjection`, the ti
 
 - **TipTap with a plain-text schema for the description** — rejected. It brings an `XmlFragment` that must be converted to and from plain text on every save and diff, and TipTap's paste and keyboard handling would invite formatting the product decided against. A `Y.Text` bound to a textarea is the exact shape of the data, and the Notes title already proves the binding and the multi-line carets.
 - **No stored Yjs state; seed every room from the ICS** (the starting proposal) — rejected after reading the merge path. Without a state that every client shares, two clients cannot produce the same Yjs update for one outside change: their documents carry different item ids. Then either one client must be elected to apply it (a race when it leaves) or every client applies it and the text doubles. The stored state is the common base that makes the outside diff deterministic, and Notes already stores one per note for the same reason.
+- **Locking only the text `PUT`** (the second draft) — rejected in review. A `PATCH` that passed `If-Match` on its unlocked read would wait out the text `PUT`'s lock and then write its stale ICS, reverting the saved text with no `412`. Every task object write takes the same row lock and checks `If-Match` on the locked row, as `NoteRepository::patch` does for notes.
+- **Restoring a blanked title through the chain at the next save** (the second draft) — rejected in review: someone who clears the title, pauses, and types a new one would get the old title interleaved with the new. The save is held while the title is blank instead.
 - **One outside diff from the stored state per outside write** (the first draft of this spec) — rejected in review. Two native writes before the next save would each diff from the stored text with their own client id: a peer that applied both inserts the first change twice, and a peer that missed the first is left with a different text. The server-kept **outside chain** lets every client replay all outside texts in order on the same base, so the updates stay deterministic.
 - **A leader peer that alone applies outside writes** — rejected: when it leaves or goes offline mid-merge the others have no safe way to know whether it applied the change, and a tab with no peers still needs to merge.
 - **Notes' outside-write prompt** (`decideExternalWrite` → `prompt`) — rejected for Tasks. Native VTODO clients write `SUMMARY` and `DESCRIPTION` all the time, so the prompt would appear in normal use. The deterministic diff merges instead; the rare cost is interleaved text when two writers change the same characters.
@@ -122,9 +126,15 @@ None — every choice for this work is made. Product questions raised during rev
 - **Done when:**
   - Migration and model `task_yjs_state` as in spec.md (Stored state), FK cascade, unique `(calendar_object_id, vtodo_uid)`.
   - `GET …/text`, `GET …/text?format=yjs` and `PUT …/text` behave as in spec.md (API), including `204` with no state, `428`, `412`, `409 external_write`, `413 state_too_large`, `422` over the field limits, `403` on a read-only list, `404` for a task the caller cannot see.
-  - The `PUT` runs in one `wgw` transaction with `lockForUpdate()` on the object row, re-reads the ICS from the locked row, and writes the object and the state row there (`rewriteOwnedTask` in a locked mode). Tests: a status `PATCH` and a CalDAV `PUT` that commit between the text `PUT`'s lookup and its write both survive (drive the race with a test hook between lookup and write); a `TaskStatusChangedNotifyTest`-style test and, once #2172 is in, a change-set test see the text `PUT` as a normal write.
+  - Every task object write (`rewriteOwnedTask` for `PATCH`, `PUT`, MCP and move; the text `PUT`; chain appends from the CalDAV hook and the `?format=yjs` repair) runs in one `wgw` transaction with `lockForUpdate()` on the object row and then the state row, re-reads both, and checks `If-Match` on the locked row. Tests (drive each race with a test hook between the unlocked lookup and the write):
+    - a status `PATCH` whose read happens before a text `PUT` takes the lock and whose write runs after the `PUT` commits gets `412`, the saved text is still there, and a follow-up `PATCH` with the new ETag stores the status beside it;
+    - a status `PATCH` that commits before the text `PUT` takes the lock survives the text `PUT`;
+    - a CalDAV `PUT` that committed before a text `PUT`, with its hook not yet run, makes the text `PUT` append that text and answer `409`; the hook then appends nothing;
+    - a `?format=yjs` read that started before a text `PUT` commits leaves no pre-`PUT` link afterwards;
+    - two overlapping CalDAV `PUT`s leave both links, in order;
+    - a `TaskStatusChangedNotifyTest`-style test and, once #2172 is in, a change-set test see the text `PUT` as a normal write.
   - `task_yjs_state.state` is `MEDIUMBLOB` on MySQL; `vtodo_uid` is the component's real UID also for single-VTODO files (test: a native client adds a second VTODO to the file and the first task's state row is still found).
-  - The outside chain: REST, MCP, import and CalDAV text writes append a link while a state row exists; a text `PUT` clears it and must name the last link (`409` otherwise); the chain is capped at 20 links (the row is dropped beyond that); a blank title in the `PUT` keeps `SUMMARY` and appends one link with it.
+  - The outside chain: REST, MCP, import and CalDAV text writes append a link while a state row exists; a text `PUT` clears it and must name the last link (`409` otherwise); the chain is capped at 20 links (the row is dropped beyond that); a blank title in the `PUT` gets `422 title_required`.
   - `CollabJoinAuthorizer` resolves `task:<calendarid>:<uid>` before the slash test, parsing a decimal `calendarid` and the whole remainder as the UID (test with a `urn:uuid:` UID and a UID with a slash); access `write` / `read` from the instance; `403` for an unknown object, a hidden or dismissed share, a malformed key, or a URI-collision attempt (a task with the same URI in the attacker's own list).
   - OpenAPI updated; `TasksAccessControlTest` gains the three routes.
 - **Verify with:** `cd packages/api && composer done-gate` (or `php scripts/done-gate.php` when the local run hits the 900 s limit)
@@ -138,6 +148,7 @@ None — every choice for this work is made. Product questions raised during rev
 - **Done when:**
   - Pure lib, Vitest on exports: `plainTextOps`, the plain seed (byte-identical for equal text), `mergeOutsideChain` (two documents applying it converge and hold the outside text once; local typing after the base survives), the rebase (same root, other root, no state), and line-end normalisation.
   - `mergeOutsideChain` with two links, in both orders of arrival (a peer that saw link 1 before link 2 arrived, and a peer that only ever saw the chain of two), for an insert ("Buy milk" → "Buy oat milk", then a notes-only change) and a delete that is undone ("Buy milk" → "Buy" → "Buy milk"): every peer ends on exactly the last link's text plus its typing.
+  - Blank title: the save is held while `note-title` is blank; leaving with a blank title restores the stored `SUMMARY` with a deterministic update (two peers leaving blank produce identical bytes, and the title is not doubled).
   - The text-fields emptiness test: a document restored from IndexedDB that already holds `note-title` and `plain-body` is not seeded again, on reopen offline and on join, and no `default` fragment appears in `doc.share`.
   - `DocsCollabUrls.documentShape: "text-fields"` routes seed, save and outside writes to that lib and never prompts; without it nothing changes for Docs or Notes.
   - The title field hook and carets take a `Y.Text` key and an awareness field; Notes passes `note-title` and `noteTitleSelection` and its tests stay green unchanged.
@@ -170,7 +181,7 @@ None — every choice for this work is made. Product questions raised during rev
   - Outbox rows carry a `base` map of the patched fields' previous values; `coalesceTaskPatches` keeps the first base per field.
   - On `412`, the autosave and the flush fetch the task once; when no patched field differs from its base on the server, the same patch is sent again with the server's ETag; otherwise today's conflict or error path runs.
   - Rows without `base` behave as today.
-  - Vitest: a status patch after a text-only server change lands; a status patch after a server status change still reports the conflict.
+  - Vitest: a status patch after a text-only server change lands; a status patch after a server status change still reports the conflict; when the single retry also gets `412`, today's error path runs (no second retry).
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline/tasks src/tasks-core`
 - **Parallel with:** `chunk-a-api-task-text`, `chunk-b-collab-text-fields`
 
@@ -201,7 +212,7 @@ None — every choice for this work is made. Product questions raised during rev
 - **Skill:** testing
 - **Inputs:** every chunk above; [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md)
 - **Done when:**
-  - A Playwright spec with two browser contexts (two users on a shared list) covers: typing in both fields shows on the other side with carets; concurrent typing in one sentence keeps both; an outside `PUT` over CalDAV (the Reminders fixture from `tests/fixtures/Interop/RealClients/`) while both type merges without a dialog; two quick outside `PUT`s (title, then notes, within 2 s) leave no doubled or lost text; blanking the title brings the stored title back in both contexts; a status change during typing saves; one context offline edits the notes and reconnects; a read-only third user sees typing and cannot type; revoking the share mid-session shows the access message.
+  - A Playwright spec with two browser contexts (two users on a shared list) covers: typing in both fields shows on the other side with carets; concurrent typing in one sentence keeps both; an outside `PUT` over CalDAV (the Reminders fixture from `tests/fixtures/Interop/RealClients/`) while both type merges without a dialog; two quick outside `PUT`s (title, then notes, within 2 s) leave no doubled or lost text; blanking the title, waiting past the save debounce and typing a new title saves exactly the new title as `SUMMARY`; leaving a task with a blank title shows the stored title again in the other context; a status change during typing saves; one context offline edits the notes and reconnects; a read-only third user sees typing and cannot type; revoking the share mid-session shows the access message.
   - A second tab of the same user converges with the first.
   - Verifier `PASS` or `PASS_WITH_NITS` and the parent ran the [done-checklist](../../skills/developer/done-checklist.md).
 - **Verify with:** the Playwright spec above, `pnpm test:apps-done-gate`, `composer done-gate`
