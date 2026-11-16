@@ -27,6 +27,7 @@ export const meetLabels = {
   speakToTest: "Speak to test",
   joinMeeting: "Join meeting",
   askToJoin: "Ask to join",
+  callFull: "This call is full. Try again when someone leaves.",
   knockToJoin: "Knock to join",
   startMeeting: "Start meeting",
   inviteRequired: "Invite link required",
