@@ -122,6 +122,12 @@ final class JmapCalendarEventStateService
     ): JmapCalendarEventState {
         $rawEtag = is_string($object->etag) ? $object->etag : null;
 
+        // The snapshot predates the object read, so a write that landed in between
+        // may be newer. Only trust it when this call will not write it back.
+        if ($row !== null && $rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag) {
+            $row = null;
+        }
+
         $row ??= JmapCalendarEventState::query()->firstOrCreate(
             ['username' => $username, 'event_id' => $eventId],
             fn (): array => [
