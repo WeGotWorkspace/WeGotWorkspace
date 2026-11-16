@@ -28,7 +28,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - A person who joins a Team later sees the whole thread. A person who leaves loses all of it.
   - When a task moves to another list, the key no longer matches the old entries, so the new list's audience never sees them. This holds for any other list, the same owner's included. The new thread starts with one activity entry, "moved here from another list". It never names the old list.
   - Old entries stay under the old key, where nobody sees them. They are deleted with that list, or by the 30-day purge below. If the task moves back within 30 days, they show again to that list's audience, who saw them before.
-  - Deleting a task does not delete its thread at once. The entries stay under the list's key, where nobody can see them because there is no task. A daily job purges any key whose task UID has not been in that list for 30 days, whether the task was deleted or moved away. This makes an undo, or a native client's delete-then-create, safe (see Lifecycle hooks).
+  - Deleting a task does not delete its thread at once. The entries stay under the list's key, where nobody can see them because there is no task. When the task leaves the list, by a delete or a move, the server records that moment on the key (`subject_left_at`). A daily job purges a key only when that moment is more than 30 days ago **and** no task with that UID is in that list. A task that simply sits unchanged in its list never has a leave time, so its thread is never purged. This makes an undo, or a native client's delete-then-create, safe (see Lifecycle hooks).
   - Native clients move tasks in two ways, and both are covered under Lifecycle hooks:
     - a CalDAV `MOVE` counts as a move;
     - a `DELETE` in one list followed by a `PUT` in another counts as a delete plus a new task.
@@ -105,7 +105,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `ThreadReactions::toggle(array $set, string $emoji, string $username): array` replaces the two private `toggleReactionSet` copies.
 - `ThreadAuthorNames` replaces the two `displayNames` helpers.
 - **Golden tests first.** Before the move, chunk A adds tests that pin the ICS each domain writes today for fixed input: a comment, a reply, an edit, a tombstone, reactions and mentions. After the move the bytes are the same. The existing unit and feature tests stay unchanged.
-- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (list calendarid + task UID), `subject_list` (the list calendarid, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq`, `subject_seen_at` and `activity_field` (nullable).
+- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (list calendarid + task UID), `subject_list` (the list calendarid, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq` and `activity_field` (nullable). A small `thread_subject` table holds one row per key, with `subject_left_at` (nullable).
   - Only task threads use it in this Epic.
   - `docs_thread_index` stays. Moving Docs onto `thread_index` is a follow-up named in threads.md.
 
@@ -132,7 +132,9 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - at most 5 000 entries per thread. A post past that gets 409 `thread_full`.
   - Activity entries are pruned oldest first beyond 1 000 per thread, and comments are never pruned. Pruning makes room, so automatic activity never hits the limit.
 - **Lifecycle hooks:**
-  - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted at once. The entries stay under the list's key. `tasks:purge-orphan-threads` (daily) deletes the entries of a key once no task with that UID has been in that list for 30 days. The index stores `subject_seen_at`, which every write to the task updates.
+  - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted at once. The entries stay under the list's key. The delete hook sets `subject_left_at = now` on the key.
+  - **Leave time.** `subject_left_at` is set on the **source** key by every hook where the task leaves a list: the task-delete hook (REST, MCP, CalDAV `DELETE`), the REST, MCP or web-app move hook, and the CalDAV `MOVE` hook. Any write that puts that UID in that list again clears it: a create, a `PUT`, or a move back.
+  - **Purge.** `tasks:purge-orphan-threads` (daily) deletes the entries of a key only when `subject_left_at` is older than 30 days **and** no calendar object with that UID exists in that list. Comments and task edits do not touch `subject_left_at`, so a thread on a task that nobody edits for months stays.
   - **List deleted:** only when the **owner** deletes it, every entry whose `X-WGW-TASK-LIST` is that list is deleted. `TaskListRepository::delete` only dismisses a sharee's copy (`dismissIfSharee`), and that deletes nothing.
   - **Move through REST, MCP or the web app** (`taskListId` in the change set): the "moved here" activity entry is written under the new key, and the old entries stay under the old key until the 30-day purge.
   - **CalDAV `MOVE`** of a task object to another list: Sabre copies and then deletes in one request, because calendars are not `IMoveTarget`. The observer turns `afterMethod:MOVE` (source and destination both in task lists, 2xx) into the same `moved` change set as a REST move. The destination gets "moved here", and the source's entries stay under the source key.
@@ -144,7 +146,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 
 - `ThreadEntry` is added to `JmapPushStateResolver::TYPES`, with source `threads`.
   - The state is a hash over `max(thread_index.modseq)` per **readable list**. That covers every list in `CalendarCollectionAccess::accessibleInstances` for the user, grouped by `subject_key`'s list part. A comment in an owner's private list therefore changes nothing for a sharee of another list in the same pool: no timing leak and no extra refetch.
-  - `thread_index.modseq` is bumped on every insert, edit, reaction, tombstone and purge of an entry, so deletes are seen too.
+  - `thread_index.modseq` is bumped on every insert, edit, reaction and tombstone of an entry. A purge needs no state change, because purged entries belong to no visible task.
   - Computing the state is one indexed query over `thread_index` (`subject_list`, `modseq`).
   - Nothing is added to the idle request load: the client asks for the type only while a thread panel is open.
 
