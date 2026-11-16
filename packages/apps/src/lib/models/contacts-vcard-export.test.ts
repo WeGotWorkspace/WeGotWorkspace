@@ -407,3 +407,39 @@ describe("contactCardToVCard birthdays", () => {
     expect(bdayOf({ "@type": "PartialDate", year: 1990, month: 5 })).toBeUndefined();
   });
 });
+
+describe("contactCardToVCard links", () => {
+  it("exports website links and skips contact-kind links", () => {
+    const card = makeCard({
+      links: {
+        l1: { "@type": "Link", kind: "contact", uri: "mailto:ada@example.test" },
+        l2: { "@type": "Link", uri: "https://ada.example.test" },
+      },
+    } as unknown as Partial<ContactCard>);
+    const urls = contactCardToVCard(card)
+      .split("\r\n")
+      .filter((line) => line.startsWith("URL"));
+    expect(urls).toEqual(["URL:https://ada.example.test"]);
+  });
+});
+
+describe("contactCardToVCard organizations, titles and typed channels", () => {
+  it("writes TITLE, ORG with units, typed EMAIL and TEL, and skips empty orgs and role titles", () => {
+    const card = makeCard({
+      titles: {
+        a: { name: "CEO", kind: "title" },
+        b: { name: "Boss", kind: "role" },
+        c: { kind: "title" },
+      },
+      organizations: { o1: {}, o2: { name: "Acme", units: [{ name: "R&D" }, {}] } },
+      emails: { e: { address: "a@b.test", contexts: { work: true } } },
+      phones: { p: { number: "1", contexts: { private: true }, features: { mobile: true } } },
+    } as unknown as Partial<ContactCard>);
+    const out = contactCardToVCard(card).split("\r\n");
+
+    expect(out.filter((line) => line.startsWith("TITLE"))).toEqual(["TITLE:CEO"]);
+    expect(out.filter((line) => line.startsWith("ORG"))).toEqual(["ORG:Acme;R&D"]);
+    expect(out).toContain("EMAIL;TYPE=WORK:a@b.test");
+    expect(out).toContain("TEL;TYPE=PRIVATE,MOBILE:1");
+  });
+});

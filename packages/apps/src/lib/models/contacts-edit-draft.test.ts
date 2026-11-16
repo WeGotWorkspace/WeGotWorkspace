@@ -326,3 +326,45 @@ describe("editDraftToPatch organization, title and note", () => {
     expect(editDraftToPatch(draft, active)).toEqual({ notes: { n1: null } });
   });
 });
+
+describe("contact edit draft edge rows", () => {
+  it("drafts a null address slot as one empty address row", () => {
+    expect(contactCardToEditDraft(cardWith({ addresses: { a1: null } })).addresses).toEqual([
+      {
+        id: "a1",
+        street: "",
+        locality: "",
+        region: "",
+        postalCode: "",
+        country: "",
+        contextType: "",
+      },
+    ]);
+  });
+
+  it("drafts a phone with the mobile feature as a mobile phone", () => {
+    const draft = contactCardToEditDraft(
+      cardWith({ phones: { p1: { "@type": "Phone", number: "1", features: { mobile: true } } } }),
+    );
+    expect(draft.phones).toEqual([{ id: "p1", number: "1", phoneType: "mobile" }]);
+  });
+
+  it("sends nothing for an empty phone row whose stored slot is null", () => {
+    const active = cardWith({ phones: { p1: null } });
+    const draft = {
+      ...contactCardToEditDraft(cardWith({})),
+      phones: [{ id: "p1", number: "", phoneType: "" as const }],
+    };
+    expect(editDraftToPatch(draft, active)).toEqual({});
+  });
+
+  it("sends no anniversaries patch for an impossible birthday", () => {
+    const active = cardWith({});
+    const draft = { ...contactCardToEditDraft(active), birthday: "1985-13-40" };
+    expect(editDraftToPatch(draft, active)).toEqual({});
+    expect(editDraftToPatch({ ...draft, birthday: "1985-02-40" }, active)).toEqual({});
+    expect(
+      editDraftToPatch({ ...draft, birthday: "1985-02-14" }, active).anniversaries,
+    ).toBeDefined();
+  });
+});

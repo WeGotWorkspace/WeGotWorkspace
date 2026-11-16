@@ -117,3 +117,26 @@ describe("contact name patch without any stored name", () => {
     expect(editDraftToPatch(draft, nameless).name?.full).toBe("Ada");
   });
 });
+
+describe("contact name patch with separators and repeated parts", () => {
+  it("drops separator components and a second component of a kind already placed", () => {
+    const card = cardWith({
+      name: {
+        "@type": "Name",
+        isOrdered: true,
+        components: [
+          { "@type": "NameComponent", kind: "given", value: "Jane" },
+          { "@type": "NameComponent", kind: "separator", value: " " },
+          { "@type": "NameComponent", kind: "given", value: "Ann" },
+          { "@type": "NameComponent", kind: "surname", value: "Doe" },
+        ],
+      },
+    });
+    const draft = { ...contactCardToEditDraft(card), nameSurname: "Smith" };
+    const name = editDraftToPatch(draft, card).name!;
+    expect(name.components?.map((part) => `${part.kind}:${part.value}`)).toEqual([
+      "given:Jane Ann",
+      "surname:Smith",
+    ]);
+  });
+});

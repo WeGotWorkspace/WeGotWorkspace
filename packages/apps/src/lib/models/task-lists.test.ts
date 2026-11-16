@@ -46,3 +46,23 @@ describe("canWriteTaskList", () => {
     expect(canWriteTaskList({ myRights: { mayWriteAll: false } })).toBe(false);
   });
 });
+
+describe("sortSidebarTaskLists inbox pinning", () => {
+  it("pins the owned Inbox by its uri even without an inbox role", () => {
+    expect(
+      sortSidebarTaskLists([
+        { id: "alpha", name: "Alpha" },
+        { id: "tasks-inbox", name: "Inbox" },
+      ]).map((list) => list.id),
+    ).toEqual(["tasks-inbox", "alpha"]);
+  });
+
+  it("does not pin a shared default list whose role is not inbox", () => {
+    expect(
+      sortSidebarTaskLists([
+        { id: "zulu", name: "Zulu", isSharee: true, isDefault: true },
+        { id: "alpha", name: "Alpha" },
+      ]).map((list) => list.id),
+    ).toEqual(["alpha", "zulu"]);
+  });
+});
