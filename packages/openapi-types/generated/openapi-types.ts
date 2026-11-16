@@ -12915,6 +12915,8 @@ export interface components {
             username: string;
             /** @description Folder that is read, `INBOX` by default. */
             folder: string;
+            /** @description The folder's Mailbox id, as Mailbox/get (urn:wgw:jmap:mail) returns it. */
+            folderId: string;
             passwordSet: boolean;
             /** @description Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. Replies are only applied while it is known. */
             trustedServer: string | null;
@@ -12940,9 +12942,39 @@ export interface components {
             /** @description Required on the first save. Left out or null keeps the stored password. */
             password?: string | null;
             folder?: string | null;
+            /** @description A Mailbox id from Mailbox/get; wins over `folder`. Looked up in the same login, 422 folder_missing when no folder has it. */
+            folderId?: string | null;
         };
         NotificationAckBatchRequest: {
             ids: string[];
+        };
+        /** @description Mailbox/get (vendor urn:wgw:jmap:mail) object: the RFC 8621 §2 Mailbox properties a read-only IMAP folder can carry. Ids derive from the IMAP name. */
+        MailMailbox: {
+            id: string;
+            name?: string;
+            parentId?: string | null;
+            /** @enum {string|null} */
+            role?: "inbox" | "all" | "archive" | "drafts" | "flagged" | "important" | "junk" | "sent" | "trash" | null;
+            sortOrder?: number;
+            myRights?: components["schemas"]["MailMailboxRights"];
+        };
+        /** @description RFC 8621 §2 MailboxRights; only mayReadItems is true. */
+        MailMailboxRights: {
+            mayReadItems: boolean;
+            mayAddItems: boolean;
+            mayRemoveItems: boolean;
+            maySetSeen: boolean;
+            maySetKeywords: boolean;
+            mayCreateChild: boolean;
+            mayRename: boolean;
+            mayDelete: boolean;
+            maySubmit: boolean;
+        };
+        /** @description Account object of urn:wgw:jmap:mail: the RFC 8621 §1.3.1 fields that apply to read-only Mailboxes. */
+        MailAccountCapability: {
+            maxMailboxDepth: null;
+            maxSizeMailboxName: number;
+            mayCreateTopLevelMailbox: boolean;
         };
     };
     responses: {

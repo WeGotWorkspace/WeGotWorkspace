@@ -58,6 +58,14 @@ final class JmapCapabilities
     public const AVAILABILITY = 'urn:wgw:jmap:availability';
 
     /**
+     * Vendor mail over the user's connected IMAP mailbox: Mailbox/get only, with
+     * RFC 8621 Mailbox objects (a subset of their properties). Not
+     * urn:ietf:params:jmap:mail until Email, Thread and the counts exist, so a
+     * standard client never meets a half mail capability; the move is a rename.
+     */
+    public const MAIL = 'urn:wgw:jmap:mail';
+
+    /**
      * Session document version, used as the prefix of the derived session
      * state (JmapCapabilitySet::sessionState()). The full state is this
      * constant plus a digest of the enabled capability URNs, so a feature
@@ -181,6 +189,20 @@ final class JmapCapabilities
         return [
             'maxChannelsPerMessage' => 1,
             'mayCreateChannel' => true,
+        ];
+    }
+
+    /**
+     * The RFC 8621 §1.3.1 account fields that apply to read-only Mailboxes.
+     *
+     * @return array{maxMailboxDepth: null, maxSizeMailboxName: int, mayCreateTopLevelMailbox: bool}
+     */
+    public static function mailAccountCapability(): array
+    {
+        return [
+            'maxMailboxDepth' => null,
+            'maxSizeMailboxName' => 255,
+            'mayCreateTopLevelMailbox' => false,
         ];
     }
 

@@ -37,6 +37,7 @@ final class JmapCapabilitySet
         NotesCapabilityProvider::class,
         ChatCapabilityProvider::class,
         AvailabilityCapabilityProvider::class,
+        MailCapabilityProvider::class,
         BlobCapabilityProvider::class,
         BlobAssemblyCapabilityProvider::class,
         QuotaCapabilityProvider::class,

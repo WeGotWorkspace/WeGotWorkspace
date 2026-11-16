@@ -28,6 +28,28 @@ final class ImapClientTest extends TestCase
         $this->assertSame(['STARTTLS', 'LOGIN "organizer@example.test" "***"', 'EXAMINE "INBOX"', 'UID SEARCH UID 4:*', 'UID SEARCH UID 10:*'], $server->verbs());
     }
 
+    public function test_folders_lists_names_that_open_inbox_first(): void
+    {
+        $server = new FakeImapServer(list: [
+            '(\\HasNoChildren) "/" "Work"',
+            '(\\Noselect \\HasChildren) "/" "[Gmail]"',
+            '(\\HasNoChildren) "/" "archive 10"',
+            '(\\HasNoChildren) "/" "inbox"',
+            '(\\HasNoChildren) "/" "&AMk-t&AOk-"',
+            '(\\HasNoChildren) "/" "archive 9"',
+            '(\\NonExistent) "/" "Gone"',
+        ]);
+        $client = new ImapClient($server);
+        $client->connect($this->endpoint(), 'organizer@example.test', 'secret');
+
+        $folders = $client->folders();
+
+        $this->assertSame(['INBOX', 'archive 9', 'archive 10', 'Work', "\u{c9}t\u{e9}"], array_map(static fn ($folder) => $folder->name, $folders));
+        $this->assertSame('/', $folders[0]->delimiter);
+        $this->assertSame(['\\hasnochildren'], $folders[0]->flags);
+        $this->assertSame(['LOGIN "organizer@example.test" "***"', 'LIST "" "*"'], $server->verbs());
+    }
+
     public function test_highest_uid_without_uidnext(): void
     {
         $server = new FakeImapServer(messages: [5 => $this->message()], sendUidNext: false);

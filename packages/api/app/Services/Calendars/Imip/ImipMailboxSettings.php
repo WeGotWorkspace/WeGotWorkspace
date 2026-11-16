@@ -36,7 +36,7 @@ class ImipMailboxSettings
      * past the mail that taught it.
      *
      * @param  array{host: string, port: int, security: string, login: string, folder: string}  $fields
-     * @param  array{trustedServerId: string, uidValidity: int, highestUid: int}  $test
+     * @param  array{trustedServerId: string, uidValidity: int, highestUid: int, folder?: string}  $test
      */
     public function save(string $username, array $fields, ?string $password, array $test): CalendarReplyMailbox
     {

@@ -107,13 +107,19 @@ class ImipMailboxPoller
      * folder's current UIDVALIDITY and highest UID, so a new mailbox reads
      * mail that arrives after this moment, not after its first poll.
      *
-     * @return array{trustedServerId: string, uidValidity: int, highestUid: int}
+     * With `$folderId` (a Mailbox id, {@see ImipMailboxObjects::id()}) the folder is looked
+     * up by id in the same login, and `folder` in the result is its name.
+     *
+     * @return array{trustedServerId: string, uidValidity: int, highestUid: int, folder: string}
      */
-    public function test(string $host, int $port, string $security, string $login, string $password, string $folder): array
+    public function test(string $host, int $port, string $security, string $login, string $password, string $folder, ?string $folderId = null): array
     {
         $client = $this->client();
         try {
             $client->connect($this->endpoints->resolve($host, $port, $security), $login, $password);
+            if ($folderId !== null) {
+                $folder = $this->folderFor($client, $folderId);
+            }
             $state = $client->examine($folder);
             $highest = $client->highestUid($state['exists'], $state['uidnext']);
 
@@ -121,10 +127,40 @@ class ImipMailboxPoller
                 'trustedServerId' => $this->learnTrustedServerId($client, $highest),
                 'uidValidity' => $state['uidvalidity'],
                 'highestUid' => $highest,
+                'folder' => $folder,
             ];
         } finally {
             $client->logout();
         }
+    }
+
+    /**
+     * Log in and list the folders that can be opened, for picking the one to read. Reads names
+     * only.
+     *
+     * @return list<ImapFolder>
+     */
+    public function folders(string $host, int $port, string $security, string $login, string $password): array
+    {
+        $client = $this->client();
+        try {
+            $client->connect($this->endpoints->resolve($host, $port, $security), $login, $password);
+
+            return $client->folders();
+        } finally {
+            $client->logout();
+        }
+    }
+
+    private function folderFor(ImapClient $client, string $folderId): string
+    {
+        foreach ($client->folders() as $folder) {
+            if (ImipMailboxObjects::id($folder->name) === $folderId) {
+                return $folder->name;
+            }
+        }
+
+        throw new ImapException(ImapException::FOLDER_MISSING, 'No folder has this id.');
     }
 
     /** Reads new UIDs; returns an error code to show, or null. */
