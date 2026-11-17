@@ -9,6 +9,7 @@ use App\Models\Notification;
 use App\Services\Calendars\Imip\ImipReplyIngest;
 use App\Services\Calendars\Imip\ImipReplyOutcome;
 use App\Services\Calendars\Imip\ImipReplyRateLimiter;
+use App\Services\Calendars\Imip\ImipSenderAuthentication;
 use App\Services\Calendars\Imip\MailHeaders;
 use Illuminate\Support\Facades\Cache;
 use Sabre\VObject\Component\VCalendar;
@@ -241,7 +242,9 @@ final class ImipReplyIngestTest extends WgwDatabaseTestCase
 
     private function ingest(MailHeaders $headers, string $ics): ImipReplyOutcome
     {
-        return $this->app->make(ImipReplyIngest::class)->ingest('bob', self::TRUSTED, $headers, $ics, 7);
+        $sender = (new ImipSenderAuthentication)->check($headers, self::TRUSTED);
+
+        return $this->app->make(ImipReplyIngest::class)->ingest('bob', $sender, $ics, 7);
     }
 
     private function assertSkipped(string $reason, ImipReplyOutcome $outcome): void

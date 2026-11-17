@@ -3,6 +3,7 @@ import {
   DEFAULT_NOTEBOOK_COLOR,
   notebookDisplayColor,
   notebookDotColor,
+  notebookTintForCascade,
   notesDetailTintStyle,
 } from "@/lib/models/notebook-color";
 
@@ -70,5 +71,16 @@ describe("notesDetailTintStyle", () => {
       ["--notes-detail-tint"]: "oklch(from #1e3a5f l c h)",
     });
     expect(notesDetailTintStyle("#fde68a")).not.toHaveProperty("--notes-detail-contrast-fg");
+  });
+});
+
+describe("notebookTintForCascade", () => {
+  it("wraps a hex color in relative OKLCH so mixes keep the hue", () => {
+    expect(notebookTintForCascade(" #14b8a6 ")).toBe("oklch(from #14b8a6 l c h)");
+  });
+
+  it("passes a non-hex color through trimmed", () => {
+    expect(notebookTintForCascade(" var(--accent) ")).toBe("var(--accent)");
+    expect(notesDetailTintStyle("rgb(1 2 3)")).toEqual({ "--notes-detail-tint": "rgb(1 2 3)" });
   });
 });

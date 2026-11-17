@@ -1,0 +1,12 @@
+# GitHub's generated release notes (workflows/release.yml → softprops/action-gh-release
+# with generate_release_notes). A merged PR labelled `upgrade-note` asks
+# existing installs to do something on upgrade: it is listed first, under its
+# own heading, with its title saying what to do. Everything else stays one list.
+changelog:
+  categories:
+    - title: Before you upgrade
+      labels:
+        - upgrade-note
+    - title: Changes
+      labels:
+        - "*"

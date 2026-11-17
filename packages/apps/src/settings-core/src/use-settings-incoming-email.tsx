@@ -3,7 +3,7 @@ import { useForm, type UseFormReturn } from "react-hook-form";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { isApiError } from "@/lib/api/api-error";
-import { isFetchNetworkError } from "@/lib/offline/browser-online";
+import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { incomingEmailLabels as labels } from "@/settings-core/src/settings-incoming-email-labels";
 import {
   defaultIncomingMailboxOperations,
@@ -160,8 +160,7 @@ export function useSettingsIncomingEmail(
       const next = await operationsRef.current.save(update);
       applyReady(next.mailbox);
       if (connected) showSuccess(labels.saved);
-      // Only the connection test learns the receiving server; without it nothing is read yet.
-      else showSuccess(next.mailbox?.trustedServer ? labels.connected : labels.connectedWaiting);
+      else showSuccess(labels.connected);
     });
   });
 

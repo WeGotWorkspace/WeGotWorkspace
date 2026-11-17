@@ -19,6 +19,7 @@
 - [ ] I tested the changes locally
 - [ ] I updated docs or comments when needed
 - [ ] I added/updated tests when behavior changed
+- [ ] If existing installs must do something on upgrade, the title says what (a maintainer adds the `upgrade-note` label)
 - [ ] I license this contribution under AGPL-3.0-or-later and have the right to submit it ([CONTRIBUTING.md](https://github.com/WeGotWorkspace/wegotworkspace/blob/main/CONTRIBUTING.md#licensing-your-contribution))
 
 ## API changes (only if touching `packages/api`)

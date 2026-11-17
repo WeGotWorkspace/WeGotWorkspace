@@ -203,7 +203,7 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         $this->assertSame(ImapException::FOLDER_MISSING, $mailbox->fresh()?->last_error_code);
     }
 
-    public function test_cursor_waits_while_the_receiving_server_is_unknown(): void
+    public function test_without_a_receiving_server_an_unsigned_reply_is_read_but_not_applied(): void
     {
         $this->server->messages = [1 => $this->plainMessage(authResults: false)];
         $mailbox = $this->connect(trusted: '');
@@ -214,6 +214,7 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         $fresh = $mailbox->fresh();
         $this->assertNotNull($fresh);
         $this->assertSame('', (string) $fresh->trusted_server_id);
+        $this->assertSame(2, $fresh->last_uid);
         $this->assertSame('NEEDS-ACTION', $this->guestStatus());
     }
 
@@ -304,14 +305,14 @@ final class ImipMailboxPollTest extends WgwDatabaseTestCase
         $this->assertLessThan(3.0, microtime(true) - $started);
     }
 
-    public function test_unknown_receiving_server_is_reported(): void
+    public function test_unknown_receiving_server_is_no_longer_an_error(): void
     {
         $this->server->messages = [1 => $this->plainMessage(authResults: false)];
         $mailbox = $this->connect(trusted: '');
 
         $this->poller()->poll($mailbox);
 
-        $this->assertSame(ImipMailboxPoller::UNTRUSTED_SERVER_UNKNOWN, $mailbox->fresh()?->last_error_code);
+        $this->assertNull($mailbox->fresh()?->last_error_code);
     }
 
     public function test_a_mailbox_is_polled_at_most_once_per_interval(): void

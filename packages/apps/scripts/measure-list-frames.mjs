@@ -13,6 +13,7 @@
  *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search),
  *   drive (open, scroll, keys, rename, search; `--drive-view grid|list`, `--drive-path "My Drive/…"`),
  *   tasks (open, scroll, keys, tick, type; `--tasks-list <list id>`),
+ *   docs (Docs home All Docs: open, scroll, keys; `--docs-view grid|list`),
  *   chat (a DM's messages: open, scroll, receive; `--chat-dm <user>`, `--chat-newest "<text>"`).
  *
  * Each run uses a fresh browser context (no cache, no IndexedDB): a cold first visit.
@@ -40,6 +41,7 @@ const { values } = parseArgs({
     json: { type: "boolean", default: false },
     "drive-view": { type: "string", default: "list" },
     "drive-path": { type: "string", default: "My Drive/List bench" },
+    "docs-view": { type: "string", default: "grid" },
     "tasks-list": { type: "string", default: "list-bench" },
     "chat-dm": { type: "string", default: "member" },
     "chat-newest": { type: "string", default: "Message 0997" },
@@ -88,9 +90,17 @@ async function framesBetween(page, from, to) {
 
 async function pageShape(page, rowSelector = ROW_SELECTOR) {
   return page.evaluate((rowSelector) => {
+    const lists = Array.from(document.querySelectorAll("[data-workspace-list-rows]"));
     return {
       nodes: document.getElementsByTagName("*").length,
       rows: document.querySelectorAll(rowSelector).length,
+      // Rows the windowed lists hold in all, mounted or not (`-` without one).
+      listRows: lists.length
+        ? lists.reduce(
+            (sum, list) => sum + Number(list.getAttribute("data-workspace-list-rows")),
+            0,
+          )
+        : "-",
     };
   }, rowSelector);
 }
@@ -313,6 +323,51 @@ const APPS = {
           await page.waitForTimeout(KEY_DELAY_MS * 3);
         }
         return { start, interactions: 6 };
+      },
+    },
+  },
+  docs: {
+    path: "/docs",
+    init: (viewMode) => {
+      localStorage.setItem("wgw.ui.docs.viewMode", viewMode);
+    },
+    get initArg() {
+      return values["docs-view"];
+    },
+    async ready(page) {
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      await page.getByText("Loading documents…").waitFor({ state: "detached", timeout: 60_000 });
+    },
+    scenarios: {
+      /** Cold open of All Docs: from navigation until the first page has painted. */
+      async open(page) {
+        await APPS.docs.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /**
+       * Scroll to the end until every page has loaded (50 documents a page), so the
+       * list grows to the whole account while it is scrolled.
+       */
+      async scroll(page) {
+        await APPS.docs.ready(page);
+        await page.waitForTimeout(1500);
+        const start = await now(page);
+        let steps = 0;
+        while (steps < 60 && (await page.locator(".drive-browser-load-more").count()) > 0) {
+          await page.evaluate(() => {
+            const scroller = document.querySelector(".docs-home-pane__scroll");
+            if (scroller) scroller.scrollTop = scroller.scrollHeight;
+          });
+          await page.waitForTimeout(300);
+          steps += 1;
+        }
+        return { start, interactions: steps };
+      },
+      /** Select a document, then ArrowDown 30 times: the selection follows. */
+      async keys(page) {
+        await APPS.docs.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
       },
     },
   },
@@ -603,7 +658,8 @@ async function main() {
           console.log(
             `${values.app} ${scenario} run ${run} (cpu ${values.cpu}x): ` +
               `${result.longFrames} / ${result.worstMs} / ${result.totalMs} ms ` +
-              `(long frames / worst / total), ${result.nodes} nodes, ${result.rows} rows mounted`,
+              `(long frames / worst / total), ${result.nodes} nodes, ${result.rows} rows mounted ` +
+              `of ${result.listRows} list rows`,
           );
         }
       }
