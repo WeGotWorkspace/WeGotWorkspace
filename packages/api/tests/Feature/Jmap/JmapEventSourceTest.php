@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Models\CalendarInstance;
+use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\Push\JmapPushEventId;
 use App\Services\Jmap\Push\JmapPushStateResolver;
@@ -110,9 +112,12 @@ final class JmapEventSourceTest extends WgwDatabaseTestCase
         $this->assertSame("retry: 3000\n\n", $idle->getContent());
     }
 
-    public function test_states_are_the_ones_foo_get_returns(): void
+    public function test_a_poll_does_not_provision_and_its_states_are_the_ones_foo_get_returns(): void
     {
         $token = $this->userBearerToken();
+        $this->readEventSource($token);
+        $this->assertFalse(CalendarInstance::query()->where('uri', CalendarCollectionUris::NOTE_GENERAL)->exists());
+        $this->withBearer($token)->getJson('/api/v1/tasks/tasklists/changes')->assertOk();
         $this->seedEventViaPdo('bob', 'standup.ics', $this->sampleIcs('Standup'));
         $changed = $this->changedStates($this->readEventSource($token), 'bob');
 

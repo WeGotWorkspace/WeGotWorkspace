@@ -215,9 +215,11 @@ final class TaskListRepository
     }
 
     /** @return array<mixed> */
-    public function changes(string $username, ?string $since): array
+    public function changes(string $username, ?string $since, bool $provision = true): array
     {
-        $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
+        if ($provision) {
+            $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
+        }
 
         return $this->collections->changes(
             $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList),
