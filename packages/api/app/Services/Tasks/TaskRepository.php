@@ -37,6 +37,7 @@ final class TaskRepository
         private readonly SearchIndexerService $searchIndexer,
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
+        private readonly TaskAssigneeGuard $assignees,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
@@ -155,7 +156,7 @@ final class TaskRepository
     {
         $instance = $this->resolveTaskListFromPayload($username, $payload);
         $this->collectionAccess->assertCollectionWritable($instance, 'This task list is read-only.');
-        $taskPayload = $this->normalizeTaskPayload($payload);
+        $taskPayload = $this->assignees->prepare(null, $this->normalizeTaskPayload($payload), $instance);
         $objectUri = $this->allocateObjectUri((int) $instance->calendarid, $taskPayload);
         $ics = $this->mapper->toIcs($taskPayload);
 
@@ -254,6 +255,8 @@ final class TaskRepository
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
     ): array {
+        $this->assignees->assertPatchUsesStableIds($patch);
+
         return $this->rewriteOwnedTask(
             $username,
             $taskId,
@@ -304,7 +307,11 @@ final class TaskRepository
         $target = $this->resolveMoveTarget($username, $targetListId, $instance, $objectUri, $located['vtodoUid']);
         $targetListUri = $this->taskListUriForInstance($target);
 
-        $taskPayload = $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask);
+        $taskPayload = $this->assignees->prepare(
+            $existingTask,
+            $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask),
+            $target,
+        );
         $taskPayload['id'] = $existingTask['id'];
         $taskPayload['taskListId'] = $targetListUri;
         $taskPayload['uid'] = $existingTask['uid'];

@@ -14,6 +14,7 @@ final class TaskMapper
 {
     public function __construct(
         private readonly IcsJmapTaskConverter $converter = new IcsJmapTaskConverter,
+        private readonly TaskParticipantDirectory $participants = new TaskParticipantDirectory,
     ) {}
 
     /**
@@ -22,7 +23,10 @@ final class TaskMapper
     public function toTasks(CalendarObject $object, string $taskListUri): array
     {
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-        $tasks = $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri);
+        $tasks = array_map(
+            $this->participants->resolveTask(...),
+            $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri),
+        );
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
         $lastModified = (int) ($object->lastmodified ?? 0);
         if ($lastModified <= 0 && $etag === null) {
@@ -58,6 +62,7 @@ final class TaskMapper
         if ($task === null) {
             return null;
         }
+        $task = $this->participants->resolveTask($task);
 
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
         if ($etag !== null) {

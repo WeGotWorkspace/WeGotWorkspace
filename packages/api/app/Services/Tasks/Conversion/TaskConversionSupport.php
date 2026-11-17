@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks\Conversion;
 
+use App\Services\Tasks\TaskParticipantDirectory;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use App\Services\VObject\ICalendarDateTime;
 use App\Services\VObject\VObjectScalar;
@@ -16,6 +17,13 @@ use Sabre\VObject\Property;
  */
 final class TaskConversionSupport
 {
+    /** Keeps an assignee mapped to their account when their email changes (#2172). */
+    public const USERNAME_PARAMETER = 'X-WGW-USERNAME';
+
+    public const USER_ID_PREFIX = 'u:';
+
+    public const EMAIL_ID_PREFIX = 'e:';
+
     /** @var array<string, string> */
     private const STATUS_TO_WORKFLOW = [
         'NEEDS-ACTION' => 'needs-action',
@@ -279,12 +287,17 @@ final class TaskConversionSupport
     }
 
     /**
+     * Participant ids are stable per person (#2172): `org` for ORGANIZER,
+     * `u:<username>` for an ATTENDEE that carries {@see self::USERNAME_PARAMETER},
+     * otherwise `e:<lowercased address>`. {@see TaskParticipantDirectory}
+     * turns an `e:` id whose address belongs to a user into that user's `u:` id.
+     * The same person written twice reads as one entry, from the first line.
+     *
      * @return array<string, mixed>
      */
     public static function participantsFromVtodo(VTodo $todo): array
     {
         $participants = [];
-        $index = 0;
 
         if (isset($todo->ORGANIZER)) {
             $participants['org'] = [
@@ -295,27 +308,60 @@ final class TaskConversionSupport
             ];
         }
 
-        if (isset($todo->ATTENDEE)) {
-            foreach ($todo->ATTENDEE as $attendee) {
-                $id = 'att'.(++$index);
-                $partstat = isset($attendee['PARTSTAT']) ? strtolower(VObjectScalar::string($attendee['PARTSTAT'])) : null;
-                $entry = [
-                    '@type' => 'Participant',
-                    'name' => self::participantNameFromProperty($attendee),
-                    'email' => self::emailFromCalAddress((string) $attendee->getValue()),
-                    'roles' => ['attendee'],
-                ];
-                if ($partstat !== null && $partstat !== '') {
-                    $entry['participationStatus'] = $partstat;
-                }
-                $participants[$id] = $entry;
+        foreach ($todo->select('ATTENDEE') as $attendee) {
+            if (! $attendee instanceof Property) {
+                continue;
             }
+            $email = self::emailFromCalAddress((string) $attendee->getValue());
+            $username = isset($attendee[self::USERNAME_PARAMETER])
+                ? strtolower(trim(VObjectScalar::string($attendee[self::USERNAME_PARAMETER])))
+                : '';
+            $id = $username !== '' ? self::USER_ID_PREFIX.$username : self::EMAIL_ID_PREFIX.strtolower((string) $email);
+            if ($id === self::EMAIL_ID_PREFIX || isset($participants[$id])) {
+                continue;
+            }
+            $partstat = isset($attendee['PARTSTAT']) ? strtolower(VObjectScalar::string($attendee['PARTSTAT'])) : null;
+            $entry = [
+                '@type' => 'Participant',
+                'name' => self::participantNameFromProperty($attendee),
+                'email' => $email,
+                'roles' => ['attendee'],
+                'username' => $username !== '' ? $username : null,
+            ];
+            if ($partstat !== null && $partstat !== '') {
+                $entry['participationStatus'] = $partstat;
+            }
+            $participants[$id] = $entry;
         }
 
         return $participants;
     }
 
+    /** The username in a `u:` participant id, or null for any other id. */
+    public static function usernameFromParticipantId(string $id): ?string
+    {
+        if (! str_starts_with($id, self::USER_ID_PREFIX)) {
+            return null;
+        }
+        $username = strtolower(trim(substr($id, strlen(self::USER_ID_PREFIX))));
+
+        return $username !== '' ? $username : null;
+    }
+
     /**
+     * @param  array<string, mixed>  $entry
+     */
+    public static function isOwnerParticipant(array $entry): bool
+    {
+        $roles = $entry['roles'] ?? [];
+
+        return is_array($roles) && in_array('owner', $roles, true);
+    }
+
+    /**
+     * An assignee the app knows as a user is written in one fixed form, so a
+     * reread renders the same line and the in-place patch keeps it (#2172).
+     *
      * @param  array<string, mixed>  $task
      */
     public static function writeParticipantsToVtodo(VTodo $todo, array $task): void
@@ -325,7 +371,7 @@ final class TaskConversionSupport
             return;
         }
 
-        foreach ($participants as $entry) {
+        foreach ($participants as $id => $entry) {
             if (! is_array($entry)) {
                 continue;
             }
@@ -333,18 +379,28 @@ final class TaskConversionSupport
             if (! is_string($email) || trim($email) === '') {
                 continue;
             }
-            $roles = $entry['roles'] ?? [];
             $params = ['CN' => $entry['name'] ?? $email];
             $address = str_starts_with($email, 'mailto:') ? $email : 'mailto:'.$email;
 
-            if (is_array($roles) && in_array('owner', $roles, true)) {
+            if (self::isOwnerParticipant($entry)) {
                 $todo->add('ORGANIZER', $address, $params);
 
                 continue;
             }
 
-            if (isset($entry['participationStatus']) && is_string($entry['participationStatus'])) {
-                $params['PARTSTAT'] = strtoupper($entry['participationStatus']);
+            $username = self::usernameFromParticipantId((string) $id);
+            if ($username !== null) {
+                $params['CUTYPE'] = 'INDIVIDUAL';
+                $params['ROLE'] = 'REQ-PARTICIPANT';
+            }
+            $status = isset($entry['participationStatus']) && is_string($entry['participationStatus'])
+                ? $entry['participationStatus']
+                : ($username !== null ? 'needs-action' : null);
+            if ($status !== null) {
+                $params['PARTSTAT'] = strtoupper($status);
+            }
+            if ($username !== null) {
+                $params[self::USERNAME_PARAMETER] = $username;
             }
             $todo->add('ATTENDEE', $address, $params);
         }
