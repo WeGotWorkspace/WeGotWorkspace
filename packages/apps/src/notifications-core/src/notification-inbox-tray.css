@@ -3,8 +3,8 @@
 .notification-inbox-tray__trigger {
   @apply relative;
   /*
-   * Unread count wears the suite selection mark (brand blue, as on multi-select bars and
-   * checked tasks), the same blue as the unread dot on tray rows.
+   * Unread count wears the full suite brand blue (`--scheme-selection`); the unread dot on tray
+   * rows uses the softer 80% selection-mark mix.
    * `--notification-inbox-badge-*` override it per surface.
    * Glyph and button stroke stay parent-owned (sidebar icon chrome /
    * `--app-sidebar-border-color`); do not pin them here.
