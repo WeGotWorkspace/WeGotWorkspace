@@ -160,8 +160,8 @@ export const CannotSubmit: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(/cannot submit yet/i)).toBeInTheDocument();
-    await expect(canvas.getByText(/login hides .*forgot password/i)).toBeInTheDocument();
+    await expect(canvas.getByText("Cannot send")).toBeInTheDocument();
+    await expect(canvas.getByText(/sign-in page hides .*forgot password/i)).toBeInTheDocument();
   },
 };
 
@@ -185,7 +185,8 @@ export const PlaceholderFrom: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(/placeholder from noreply@localhost/i)).toBeInTheDocument();
-    await expect(canvas.getByText(/set a real from to improve delivery/i)).toBeInTheDocument();
+    await expect(
+      canvas.getByText(/mail comes from noreply@localhost and may land in spam/i),
+    ).toBeInTheDocument();
   },
 };
