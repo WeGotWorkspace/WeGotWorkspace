@@ -6,7 +6,6 @@ namespace App\Services\Calendars\Imip;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarReplyMailbox;
-use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * REST shape of the caller's reply mailbox (`/calendars/reply-mailbox`). The
@@ -23,14 +22,10 @@ final class ImipMailboxPayload
 
     private const MAX_FOLDER = 255;
 
-    /** Logins a user may trigger by saving or testing, per window. Each one dials out. */
-    private const TESTS_PER_WINDOW = 10;
-
-    private const TEST_WINDOW_SECONDS = 600;
-
     public function __construct(
         private readonly ImipMailboxSettings $settings,
         private readonly ImipMailboxPoller $poller,
+        private readonly ImipMailboxLogins $logins,
     ) {}
 
     /**
@@ -72,8 +67,11 @@ final class ImipMailboxPayload
             throw new ApiHttpException(400, 'password is required when the host or port changes.', 'bad_request');
         }
         $loginPassword = $password ?? $this->settings->password($existing);
+        $folderId = $this->folderId($payload['folderId'] ?? null);
 
-        $test = $this->connectionTest($username, $fields, $loginPassword);
+        $test = $this->connectionTest($username, $fields, $loginPassword, $folderId);
+        // A Mailbox id was looked up in the same login: store the name it stands for.
+        $fields['folder'] = $test['folder'];
         $this->settings->save($username, $fields, $password, $test);
 
         return $this->show($username);
@@ -110,21 +108,15 @@ final class ImipMailboxPayload
 
     /**
      * @param  array{host: string, port: int, security: string, login: string, folder: string}  $fields
-     * @return array{trustedServerId: string, uidValidity: int, highestUid: int}
+     * @param  ?string  $folderId  a Mailbox id (Mailbox/get) that wins over `folder`
+     * @return array{trustedServerId: string, uidValidity: int, highestUid: int, folder: string}
      */
-    private function connectionTest(string $username, array $fields, string $password): array
+    private function connectionTest(string $username, array $fields, string $password, ?string $folderId = null): array
     {
-        $key = 'calendar-reply-mailbox-test:user:'.$username;
-        if (RateLimiter::tooManyAttempts($key, self::TESTS_PER_WINDOW)) {
-            throw new ApiHttpException(
-                429,
-                'Too many requests.',
-                'rate_limited',
-                [],
-                ['Retry-After' => max(1, RateLimiter::availableIn($key))],
-            );
+        $wait = $this->logins->take($username);
+        if ($wait !== null) {
+            throw new ApiHttpException(429, 'Too many requests.', 'rate_limited', [], ['Retry-After' => $wait]);
         }
-        RateLimiter::hit($key, self::TEST_WINDOW_SECONDS);
         try {
             return $this->poller->test(
                 $fields['host'],
@@ -133,6 +125,7 @@ final class ImipMailboxPayload
                 $fields['login'],
                 $password,
                 $fields['folder'],
+                $folderId,
             );
         } catch (ImapException $exception) {
             throw new ApiHttpException(422, $this->failureSentence($exception->errorCode), $exception->errorCode);
@@ -152,6 +145,7 @@ final class ImipMailboxPayload
             'security' => (string) $mailbox->security,
             'username' => (string) $mailbox->login,
             'folder' => (string) $mailbox->folder,
+            'folderId' => ImipMailboxObjects::id((string) $mailbox->folder),
             'passwordSet' => (string) $mailbox->password_enc !== '',
             'trustedServer' => $trusted !== '' ? $trusted : null,
             'senderCheck' => $trusted !== '' ? ImipSenderCheck::RECEIVING_SERVER : ImipSenderCheck::DKIM,
@@ -207,6 +201,18 @@ final class ImipMailboxPayload
         }
 
         return $this->text($value, 'folder', self::MAX_FOLDER, true);
+    }
+
+    private function folderId(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (! is_string($value) || preg_match('/^[A-Za-z0-9_-]{1,255}$/', $value) !== 1) {
+            throw new ApiHttpException(400, 'folderId must be a Mailbox id.', 'bad_request');
+        }
+
+        return $value;
     }
 
     private function text(mixed $value, string $field, int $max, bool $trim): string

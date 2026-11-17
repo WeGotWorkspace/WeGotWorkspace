@@ -89,6 +89,7 @@ export const liveTierSpecs = [
   "queued-write-reload",
   "rtc-idle-poll",
   "settings-calendar-availability",
+  "settings-offline-clear-cache",
   "sync-notice-bar",
   "tasks-create-lost-response",
   "tasks-ics-import",

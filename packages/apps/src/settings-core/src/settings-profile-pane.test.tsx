@@ -1,85 +1,74 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
 import {
-  settingsProfileFormSchema,
-  type SettingsProfileFormValues,
-} from "@/settings-core/src/settings-profile-form-schema";
-import type { SettingsProfileUnsyncedDiscard } from "@/settings-core/src/use-settings-profile-form";
+  useSettingsProfileForm,
+  type SettingsProfileUnsyncedDiscard,
+} from "@/settings-core/src/use-settings-profile-form";
+
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => ({
+    show: vi.fn(),
+    dismiss: vi.fn(),
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+  }),
+}));
+
+const user = {
+  username: "demo.user",
+  displayName: "Demo User",
+  email: "demo@example.test",
+};
 
 function ProfilePaneHarness({
   unsyncedDiscard = null,
 }: {
   unsyncedDiscard?: SettingsProfileUnsyncedDiscard | null;
 }) {
-  const form = useForm<SettingsProfileFormValues>({
-    resolver: zodResolver(settingsProfileFormSchema),
-    defaultValues: {
-      displayName: "Demo User",
-      email: "demo@example.test",
-      newPassword: "",
-      confirmPassword: "",
-      currentPassword: "",
-    },
-    mode: "onSubmit",
+  const profile = useSettingsProfileForm({
+    user,
+    operations: { saveProfile: vi.fn() },
+    countUnsyncedChanges: async () => 0,
   });
+  return <SettingsProfilePane profile={{ ...profile, unsyncedDiscard }} />;
+}
 
-  return (
-    <SettingsProfilePane
-      profile={{
-        username: "demo.user",
-        form,
-        saveProfile: form.handleSubmit(async () => {}),
-        unsyncedDiscard,
-      }}
-    />
-  );
+function changeButtons() {
+  const [email, password] = screen.getAllByRole("button", { name: "Change" });
+  return { email: email!, password: password! };
 }
 
 describe("SettingsProfilePane", () => {
-  it("enables Save changes when display name is edited", () => {
+  it("shows the account with the display name as the one editable field", () => {
     render(<ProfilePaneHarness />);
 
-    const saveButton = screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
-    expect(saveButton.disabled).toBe(true);
-
-    const displayName = screen.getByLabelText("Display name");
-    fireEvent.change(displayName, { target: { value: "Updated name" } });
-
-    expect(saveButton.disabled).toBe(false);
+    expect((screen.getByLabelText("Username") as HTMLInputElement).readOnly).toBe(true);
+    expect((screen.getByLabelText("Display name") as HTMLInputElement).readOnly).toBe(false);
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe(user.email);
+    expect(screen.getByText("Security")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 
-  it("shows Current password when the email field is dirty", () => {
+  it("opens Change email with the current password field", () => {
     render(<ProfilePaneHarness />);
 
-    fireEvent.change(screen.getByLabelText("Email"), {
-      target: { value: "other@example.test" },
-    });
+    fireEvent.click(changeButtons().email);
 
-    const currentPassword = screen.getByLabelText("Current password");
-    expect(currentPassword.getAttribute("autocomplete")).toBe("current-password");
+    expect(screen.getByRole("dialog").textContent).toContain("Change email");
+    expect(screen.getByLabelText("Current password").getAttribute("autocomplete")).toBe(
+      "current-password",
+    );
   });
 
-  it("shows Current password when a new password is entered", () => {
+  it("opens Change password with the current and the new password only", () => {
     render(<ProfilePaneHarness />);
 
-    fireEvent.change(screen.getByLabelText("New password"), {
-      target: { value: "hunter2hunter" },
-    });
+    fireEvent.click(changeButtons().password);
 
     expect(screen.getByLabelText("Current password")).toBeTruthy();
-  });
-
-  it("hides Current password when only the display name is dirty", () => {
-    render(<ProfilePaneHarness />);
-
-    fireEvent.change(screen.getByLabelText("Display name"), {
-      target: { value: "Updated name" },
-    });
-
-    expect(screen.queryByLabelText("Current password")).toBeNull();
+    expect(screen.getByLabelText("New password").getAttribute("autocomplete")).toBe("new-password");
+    expect(screen.queryByLabelText(/confirm/i)).toBeNull();
   });
 
   it("confirms discarding unsynced changes before the password is saved", () => {

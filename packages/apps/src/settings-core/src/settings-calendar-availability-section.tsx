@@ -2,6 +2,7 @@ import { useId } from "react";
 import { useWatch, type Control } from "react-hook-form";
 import { CalendarClock } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
 import type {
   CalendarAvailabilityDetail,
@@ -47,10 +48,13 @@ export function SettingsCalendarAvailabilitySection({
 function AvailabilityBody({ controller }: { controller: SettingsCalendarAvailabilityController }) {
   const { phase, settings, retry } = controller;
   if (phase === "loading") {
+    // The switch row as it will be, with a spinner where the switch goes: nothing shifts.
     return (
-      <p className="settings-availability__status" role="status">
-        {labels.loading}
-      </p>
+      <FieldLabelRow layout="inline" label={labels.switch} description={labels.offHint}>
+        <span className="settings-availability__pending" role="status" aria-label={labels.loading}>
+          <LoadingSpinner size="sm" />
+        </span>
+      </FieldLabelRow>
     );
   }
   if (phase === "offline") {

@@ -62,16 +62,17 @@ export function registerBuiltinSettings(): void {
   registerPanel({
     id: "offline",
     label: "Offline",
-    description: "Offline content sync on this device",
+    description:
+      "Offline content sync on this device. Calendar, Contacts, Notes and Tasks are always available offline.",
     icon: <HardDrive className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "appearance",
     label: "Appearance",
     description: "Light or dark theme on this device",
     icon: <Palette className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "assistants",
@@ -181,14 +182,14 @@ export function registerBuiltinSettings(): void {
     render: () => <SettingsCalendarPane />,
   });
   registerSlice({
-    id: "calendar-availability",
-    panelIds: ["calendar"],
-    render: () => <SettingsCalendarAvailabilitySection />,
-  });
-  registerSlice({
     id: "calendar-reply-folder",
     panelIds: ["calendar"],
     render: () => <SettingsCalendarReplyFolderSection />,
+  });
+  registerSlice({
+    id: "calendar-availability",
+    panelIds: ["calendar"],
+    render: () => <SettingsCalendarAvailabilitySection />,
   });
   registerSlice({
     id: "tasks-default-collection",

@@ -27,6 +27,7 @@ function toGroups(raw: WgwSettingsUserGroup[]): SettingsUIData["groups"] {
   return raw.map((group) => ({
     id: group.id,
     displayName: group.displayName,
+    memberCount: group.memberCount,
   }));
 }
 

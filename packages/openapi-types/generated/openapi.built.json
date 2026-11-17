@@ -1344,17 +1344,25 @@
             },
             "SettingsUserGroup": {
                 "type": "object",
+                "description": "A Team the caller belongs to.",
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Group principal uri (principals/groups/…)."
                     },
                     "displayName": {
                         "type": "string"
+                    },
+                    "memberCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "How many members the Team has, the caller included."
                     }
                 },
                 "required": [
                     "id",
-                    "displayName"
+                    "displayName",
+                    "memberCount"
                 ]
             },
             "SettingsUserGroupList": {
@@ -12191,6 +12199,7 @@
                     "security",
                     "username",
                     "folder",
+                    "folderId",
                     "passwordSet",
                     "trustedServer",
                     "senderCheck",
@@ -12224,6 +12233,10 @@
                     "folder": {
                         "type": "string",
                         "description": "Folder that is read, `INBOX` by default."
+                    },
+                    "folderId": {
+                        "type": "string",
+                        "description": "The folder's Mailbox id, as Mailbox/get (urn:wgw:jmap:mail) returns it."
                     },
                     "passwordSet": {
                         "type": "boolean"
@@ -12344,6 +12357,14 @@
                             "null"
                         ],
                         "maxLength": 255
+                    },
+                    "folderId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[A-Za-z0-9_-]{1,255}$",
+                        "description": "A Mailbox id from Mailbox/get; wins over `folder`. Looked up in the same login, 422 folder_missing when no folder has it."
                     }
                 }
             },
@@ -12364,6 +12385,119 @@
                             "minLength": 1,
                             "maxLength": 64
                         }
+                    }
+                }
+            },
+            "MailMailbox": {
+                "type": "object",
+                "required": [
+                    "id"
+                ],
+                "additionalProperties": false,
+                "description": "Mailbox/get (vendor urn:wgw:jmap:mail) object: the RFC 8621 §2 Mailbox properties a read-only IMAP folder can carry. Ids derive from the IMAP name.",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "role": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "inbox",
+                            "all",
+                            "archive",
+                            "drafts",
+                            "flagged",
+                            "important",
+                            "junk",
+                            "sent",
+                            "trash",
+                            null
+                        ]
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "myRights": {
+                        "$ref": "#/components/schemas/MailMailboxRights"
+                    }
+                }
+            },
+            "MailMailboxRights": {
+                "type": "object",
+                "required": [
+                    "mayReadItems",
+                    "mayAddItems",
+                    "mayRemoveItems",
+                    "maySetSeen",
+                    "maySetKeywords",
+                    "mayCreateChild",
+                    "mayRename",
+                    "mayDelete",
+                    "maySubmit"
+                ],
+                "additionalProperties": false,
+                "description": "RFC 8621 §2 MailboxRights; only mayReadItems is true.",
+                "properties": {
+                    "mayReadItems": {
+                        "type": "boolean"
+                    },
+                    "mayAddItems": {
+                        "type": "boolean"
+                    },
+                    "mayRemoveItems": {
+                        "type": "boolean"
+                    },
+                    "maySetSeen": {
+                        "type": "boolean"
+                    },
+                    "maySetKeywords": {
+                        "type": "boolean"
+                    },
+                    "mayCreateChild": {
+                        "type": "boolean"
+                    },
+                    "mayRename": {
+                        "type": "boolean"
+                    },
+                    "mayDelete": {
+                        "type": "boolean"
+                    },
+                    "maySubmit": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "MailAccountCapability": {
+                "type": "object",
+                "required": [
+                    "maxMailboxDepth",
+                    "maxSizeMailboxName",
+                    "mayCreateTopLevelMailbox"
+                ],
+                "additionalProperties": false,
+                "description": "Account object of urn:wgw:jmap:mail: the RFC 8621 §1.3.1 fields that apply to read-only Mailboxes.",
+                "properties": {
+                    "maxMailboxDepth": {
+                        "type": "null"
+                    },
+                    "maxSizeMailboxName": {
+                        "type": "integer"
+                    },
+                    "mayCreateTopLevelMailbox": {
+                        "type": "boolean"
                     }
                 }
             }

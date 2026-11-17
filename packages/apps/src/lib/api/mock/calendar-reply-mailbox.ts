@@ -1,9 +1,32 @@
-import type { CalendarReplyMailboxOperations } from "@/lib/api/wgw/calendar-reply-mailbox";
+import type {
+  CalendarReplyMailboxOperations,
+  MailboxFolder,
+} from "@/lib/api/wgw/calendar-reply-mailbox";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type {
   CalendarReplyMailbox,
   CalendarReplyMailboxState,
 } from "@wgw/openapi-types/calendars-types";
+
+/** The mock's folders, as Mailbox/get would list them. */
+export const MOCK_MAILBOX_FOLDERS: MailboxFolder[] = [
+  { id: "M-inbox", label: "INBOX", role: "inbox" },
+  { id: "M-archive", label: "Archive", role: "archive" },
+  { id: "M-replies", label: "INBOX / Calendar replies", role: null },
+];
+
+const MOCK_FOLDER_NAMES: Record<string, string> = {
+  "M-inbox": "INBOX",
+  "M-archive": "Archive",
+  "M-replies": "INBOX/Calendar replies",
+};
+
+function mockMailboxFolderId(folder: string): string {
+  return (
+    Object.entries(MOCK_FOLDER_NAMES).find(([, name]) => name === folder)?.[0] ??
+    `M-${folder.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
+  );
+}
 
 /** A connected mailbox as the server returns it after a successful save. */
 export function mockCalendarReplyMailbox(
@@ -17,6 +40,7 @@ export function mockCalendarReplyMailbox(
     security: "ssl",
     username: "me@example.com",
     folder: "INBOX",
+    folderId: mockMailboxFolderId("INBOX"),
     passwordSet: true,
     trustedServer,
     // Like the server: DKIM is the check whenever no trusted receiving server is known.
@@ -56,12 +80,25 @@ export function createMockCalendarReplyMailboxOperations(
       if (password === "wrong") {
         throw new WgwRequestError("PUT /calendars/reply-mailbox failed (422)", 422, "auth_failed");
       }
+      let folder = update.folder || "INBOX";
+      if (update.folderId) {
+        const named = MOCK_FOLDER_NAMES[update.folderId];
+        if (!named) {
+          throw new WgwRequestError(
+            "PUT /calendars/reply-mailbox failed (422)",
+            422,
+            "folder_missing",
+          );
+        }
+        folder = named;
+      }
       mailbox = mockCalendarReplyMailbox({
         host: update.host,
         port,
         security: update.security,
         username: update.username,
-        folder: update.folder || "INBOX",
+        folder,
+        folderId: mockMailboxFolderId(folder),
         ...checkedNow(),
       });
       return state();
@@ -76,5 +113,6 @@ export function createMockCalendarReplyMailboxOperations(
     disconnect: async () => {
       mailbox = null;
     },
+    folders: async () => (mailbox ? structuredClone(MOCK_MAILBOX_FOLDERS) : []),
   };
 }

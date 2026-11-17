@@ -20,6 +20,9 @@ final class ImapClient
     /** Largest whole response to one command. */
     private const MAX_RESPONSE_BYTES = 8_388_608;
 
+    /** Most folders listed; a mailbox with more lists the first ones the server sends. */
+    public const MAX_FOLDERS = 500;
+
     /**
      * Header fields fetched per message. `DKIM-SIGNATURE` tells whether a
      * DKIM check is worth downloading the whole message for.
@@ -73,6 +76,48 @@ final class ImapClient
         }
 
         return ['uidvalidity' => $uidValidity, 'uidnext' => $uidNext, 'exists' => $exists];
+    }
+
+    /**
+     * The folders that can be opened, names decoded to UTF-8, INBOX first and the rest
+     * sorted. LIST reads names only: nothing in the mailbox is opened or changed.
+     *
+     * @return list<ImapFolder>
+     */
+    public function folders(): array
+    {
+        $folders = [];
+        foreach ($this->command('LIST "" "*"', ImapException::PROTOCOL_ERROR) as $line) {
+            if (preg_match('/^\* LIST /i', $line) !== 1) {
+                continue;
+            }
+            // `LIST (flags) delimiter name`
+            $parsed = ImapResponseParser::parse(substr($line, 2));
+            $flags = $parsed[1] ?? null;
+            $delimiter = $parsed[2] ?? null;
+            $name = $parsed[3] ?? null;
+            if (! is_array($flags) || ! is_string($name) || $name === '') {
+                continue;
+            }
+            $flags = array_values(array_map(static fn (mixed $flag): string => is_string($flag) ? strtolower($flag) : '', $flags));
+            if (in_array('\\noselect', $flags, true) || in_array('\\nonexistent', $flags, true)) {
+                continue;
+            }
+            $folder = $this->folderName($name);
+            if ($folder === null) {
+                continue;
+            }
+            $folder = strcasecmp($folder, 'INBOX') === 0 ? 'INBOX' : $folder;
+            $folders[$folder] = new ImapFolder($folder, is_string($delimiter) ? $delimiter : null, $flags);
+            if (count($folders) >= self::MAX_FOLDERS) {
+                break;
+            }
+        }
+        $inbox = $folders['INBOX'] ?? null;
+        unset($folders['INBOX']);
+        uksort($folders, 'strnatcasecmp');
+
+        return $inbox !== null ? [$inbox, ...array_values($folders)] : array_values($folders);
     }
 
     /** Highest UID in the examined folder, 0 when it is empty. */
@@ -371,6 +416,17 @@ final class ImapClient
         }
 
         return mb_convert_encoding($folder, 'UTF7-IMAP', 'UTF-8');
+    }
+
+    /** A listed name as UTF-8 (modified UTF-7 per RFC 3501 5.1.3); null when it is not valid. */
+    private function folderName(string $name): ?string
+    {
+        if (! str_contains($name, '&')) {
+            return preg_match('/[\x00-\x1f\x7f-\xff]/', $name) === 1 ? null : $name;
+        }
+        $decoded = mb_convert_encoding($name, 'UTF-8', 'UTF7-IMAP');
+
+        return mb_check_encoding($decoded, 'UTF-8') && preg_match('/[\x00-\x1f]/', $decoded) !== 1 ? $decoded : null;
     }
 
     private function nextTag(): string
