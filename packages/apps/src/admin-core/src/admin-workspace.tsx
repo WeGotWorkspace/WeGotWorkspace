@@ -6,92 +6,34 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { Button } from "@/button/src/button";
-import { Callout } from "@/callout/src/callout";
+import { WorkspacePageHeader, WorkspacePageTrail } from "@/workspace-shell/src/workspace-page";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { useDocumentTitle } from "@/lib/document-title";
+import { isPageSecureContext } from "@/lib/secure-context";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
-import type { AdminSecurityWarning } from "@/lib/models/admin-types";
 import { AdminBackupsPane } from "@/admin-core/src/admin-backups-pane";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
+import {
+  AdminHealthPane,
+  adminHealthIssueCount,
+  adminSecurityChecks,
+} from "@/admin-core/src/admin-health-pane";
 import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
-import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
-import { AdminNotSecureNotice } from "@/admin-core/src/admin-not-secure-notice";
+import { useWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
+import { AdminPageStatus } from "@/admin-core/src/admin-page-status";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
-import {
-  appUrlFromBrowserLocation,
-  isAppUrlWarning,
-  isLoopbackOrigin,
-} from "@/admin-core/src/admin-workspace-utils";
+import { ADMIN_GROUP_LABELS, ADMIN_GROUP_ORDER } from "@/admin-core/src/use-admin-sidebar-model";
+import { ADMIN_DEFAULT_SECTION } from "@/admin-core/src/admin-section";
 import { cn } from "@/lib/utils";
+import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
+import { AdminSettingsAutosave } from "@/admin-core/src/use-admin-settings-autosave";
 import "@/admin-core/src/admin-workspace.css";
-
-export function AdminSecurityWarnings({
-  warnings,
-  baseUri,
-  origin = globalThis.location?.origin ?? "",
-  onUseThisAddress,
-}: {
-  /** From the latest admin state: a saved address clears the warning only once the server agrees. */
-  warnings: readonly AdminSecurityWarning[];
-  baseUri: string;
-  /** Browser origin; a prop so tests can pass a public one. */
-  origin?: string;
-  onUseThisAddress?: (url: string) => Promise<boolean | void> | boolean | void;
-}) {
-  const [pending, setPending] = useState(false);
-  if (warnings.length === 0) {
-    return null;
-  }
-  const url = origin === "" ? "" : appUrlFromBrowserLocation(origin, baseUri);
-  // The server ignores a loopback APP_URL, so saving it would change nothing.
-  const local = origin !== "" && isLoopbackOrigin(origin);
-
-  return (
-    <div className="admin-security-warnings">
-      {warnings.map((warning) => {
-        const isAppUrl = isAppUrlWarning(warning);
-        const offer = isAppUrl && url !== "" && !local;
-        // On a local address the admin cannot fix it from here: inform, do not alarm.
-        const localNote = isAppUrl && local;
-        const message = localNote
-          ? `${warning.message} To set it, open Admin on the site's public address, or set APP_URL in packages/api/.env (Docker: api.env on the config volume).`
-          : offer
-            ? `${warning.message} "Use this address" saves ${url} as the site address.`
-            : warning.message;
-        return (
-          <Callout
-            key={warning.code}
-            severity={localNote ? "info" : "error"}
-            title={localNote ? "Local address" : "Security warning"}
-            message={message}
-            action={
-              offer ? (
-                <Button
-                  label="Use this address"
-                  variant="outline"
-                  size="sm"
-                  disabled={pending || onUseThisAddress == null}
-                  onClick={() => {
-                    if (onUseThisAddress == null) return;
-                    setPending(true);
-                    void Promise.resolve(onUseThisAddress(url)).finally(() => setPending(false));
-                  }}
-                />
-              ) : undefined
-            }
-          />
-        );
-      })}
-    </div>
-  );
-}
 
 export function AdminWorkspace(props: AdminWorkspaceProps) {
   const { data, session, className, onLogout, section, initialSection, onSectionChange } = props;
@@ -105,12 +47,28 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
 
   useDocumentTitle(controller.currentSection.label);
 
-  const sidebarItems = controller.sections.map((candidate) => ({
-    label: candidate.label,
-    icon: candidate.icon,
-    selected: controller.section === candidate.id,
-    onClick: () => controller.selectSection(candidate.id),
-  }));
+  const secureContext = props.secureContext ?? isPageSecureContext();
+  const reachableDirectories = useWebRootProbe();
+  const securityChecks = adminSecurityChecks({
+    warnings: controller.securityWarnings,
+    secureContext,
+    reachableDirectories,
+    baseUri: data.webdav.baseUri,
+  });
+  const healthIssues = adminHealthIssueCount(securityChecks);
+
+  const sidebarGroups = ADMIN_GROUP_ORDER.map((group) => ({
+    group,
+    items: controller.sections
+      .filter((candidate) => candidate.group === group)
+      .map((candidate) => ({
+        label: candidate.label,
+        icon: candidate.icon,
+        selected: controller.section === candidate.id,
+        badge: candidate.id === "health" && healthIssues > 0 ? healthIssues : undefined,
+        onClick: () => controller.selectSection(candidate.id),
+      })),
+  })).filter((entry) => entry.items.length > 0);
 
   const groupMemberCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -146,7 +104,7 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
   }, [controller.updates.inProgress, confirmUpdateOpen]);
 
   return (
-    <>
+    <AutosaveStatusProvider>
       <WorkspaceAppLayout
         className={cn("admin-workspace", className)}
         sidebar={
@@ -162,25 +120,46 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
               />
             }
           >
-            <SidebarSection title="Administration" items={sidebarItems} />
+            {sidebarGroups.map((entry) => (
+              <SidebarSection
+                key={entry.group}
+                title={ADMIN_GROUP_LABELS[entry.group]}
+                items={entry.items}
+              />
+            ))}
           </AppSidebar>
         }
         mainHeader={
           <ViewHeader
-            title={controller.currentSection.label}
+            title={ADMIN_GROUP_LABELS[controller.currentSection.group]}
+            titlePrefix={
+              <WorkspacePageTrail
+                label="Admin"
+                path={ADMIN_DEFAULT_SECTION}
+                onNavigate={() => controller.selectSection(ADMIN_DEFAULT_SECTION)}
+              />
+            }
             sidebarOpen={controller.sidebarOpen}
             onToggleSidebar={() => controller.setSidebarOpen((value) => !value)}
           />
         }
         main={
-          <>
-            <AdminWebRootProbe />
-            <AdminNotSecureNotice secureContext={props.secureContext} />
-            <AdminSecurityWarnings
-              warnings={controller.securityWarnings}
-              baseUri={data.webdav.baseUri}
-              onUseThisAddress={(url) => controller.actions.useThisAddress(url)}
+          <AdminSettingsAutosave controller={controller}>
+            <WorkspacePageHeader
+              title={controller.currentSection.label}
+              description={controller.currentSection.description}
+              status={
+                <>
+                  {/* Keyed by page: a Saved from the previous page does not show here. The
+                      page's own state comes last, on the column edge. */}
+                  <AutosaveStatusTag key={controller.section} />
+                  <AdminPageStatus controller={controller} />
+                </>
+              }
             />
+            {controller.section === "health" ? (
+              <AdminHealthPane controller={controller} securityChecks={securityChecks} />
+            ) : null}
             {controller.section === "users" ? (
               <AdminUsersPane
                 controller={controller}
@@ -216,7 +195,7 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
                 mcpEndpointUrl={data.mcp.endpointUrl ?? undefined}
               />
             ) : null}
-          </>
+          </AdminSettingsAutosave>
         }
       />
 
@@ -243,6 +222,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         editingGroup={editingGroup}
         deletingGroup={deletingGroup}
       />
-    </>
+    </AutosaveStatusProvider>
   );
 }

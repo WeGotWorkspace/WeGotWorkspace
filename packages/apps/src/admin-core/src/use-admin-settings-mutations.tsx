@@ -2,6 +2,7 @@ import { isAppUrlWarning } from "@/admin-core/src/admin-workspace-utils";
 import {
   adminSettingsFormToMap,
   buildAdminSettingsFormState,
+  mergeStoredSettings,
   type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
 import {
@@ -57,6 +58,26 @@ export function useAdminSettingsMutations({
         setSettingsForm(previous);
       }
       showError(mutationErrorMessage(error, "Could not save admin settings"));
+    }
+  };
+
+  /** Autosave: stores `sent` without a toast (the page shows Saving / Saved); false on failure. */
+  const autosaveSettings = async (sent: AdminSettingsFormState): Promise<boolean> => {
+    if (!operations?.saveSettings) {
+      showError("Admin API is not ready yet");
+      return false;
+    }
+    try {
+      const next = await operations.saveSettings(adminSettingsFormToMap(sent));
+      const stored = buildAdminSettingsFormState(next);
+      setSettingsForm((current) => mergeStoredSettings(current, sent, stored));
+      setMailDelivery(next.mailDelivery);
+      setUpdates(next.updates);
+      setUpdateLogLines(next.updateLogLines);
+      return true;
+    } catch (error) {
+      showError(mutationErrorMessage(error, "Could not save admin settings"));
+      return false;
     }
   };
 
@@ -146,6 +167,7 @@ export function useAdminSettingsMutations({
 
   return {
     saveSettings,
+    autosaveSettings,
     clearMailDeliverySmtpPassword,
     clearTurnSecret,
     sendMailDeliveryTest,

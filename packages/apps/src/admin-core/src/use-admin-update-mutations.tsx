@@ -48,7 +48,6 @@ export function useAdminUpdateMutations({
       const next = await operations?.setUpdateChannel(channel);
       if (!next) return;
       setUpdates(next);
-      showSuccess(`Update channel set to ${channel}`);
       switched = true;
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not change the update channel"));

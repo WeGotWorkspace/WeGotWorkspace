@@ -26,7 +26,7 @@ export function useAdminShell({
   const [internalSection, setInternalSection] = useState<AdminSection>(() =>
     resolveAdminSection(initialSection ?? ADMIN_DEFAULT_SECTION),
   );
-  const section = resolveAdminSection(isControlled ? sectionProp : internalSection);
+  const requestedSection = resolveAdminSection(isControlled ? sectionProp : internalSection);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [users, setUsers] = useState(data.users);
   const [currentUser, setCurrentUser] = useState(data.currentUser);
@@ -40,7 +40,11 @@ export function useAdminShell({
   const [searchReindex, setSearchReindex] = useState(data.searchReindex);
   const [updateLogLines, setUpdateLogLines] = useState(data.updateLogLines);
   const applyRequestPendingRef = useRef(false);
-  const sections = useAdminSidebarModel();
+  const sections = useAdminSidebarModel({ installChannel: updates.installChannel });
+  // A section this install does not have (Backups on Docker) opens the default one.
+  const section = sections.some((candidate) => candidate.id === requestedSection)
+    ? requestedSection
+    : ADMIN_DEFAULT_SECTION;
 
   useEffect(() => {
     setUsers(data.users);

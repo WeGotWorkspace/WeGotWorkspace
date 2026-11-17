@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it } from "vitest";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
-import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import { AdminPaneScope } from "@/admin-core/stories/admin-story-scope";
 
 afterEach(() => {
   cleanup();
@@ -15,9 +15,9 @@ function EmailDeliveryHarness({
 } = {}) {
   const controller = useAdminPaneStoryController(override);
   return (
-    <AdminStoryScope>
+    <AdminPaneScope controller={controller}>
       <AdminEmailDeliveryPane controller={controller} />
-    </AdminStoryScope>
+    </AdminPaneScope>
   );
 }
 
@@ -30,9 +30,8 @@ describe("AdminEmailDeliveryPane", () => {
 
     expect(screen.getByDisplayValue("noreply@example.test")).toBeTruthy();
     expect(
-      screen.getByText(/password recovery uses this from address and transport/i),
+      screen.getByText(/password resets and invitations come from this address/i),
     ).toBeTruthy();
-    expect(screen.getByText(/noreply@localhost/i)).toBeTruthy();
   });
 
   it("explains that a placeholder From is used when none is saved", () => {
@@ -52,9 +51,10 @@ describe("AdminEmailDeliveryPane", () => {
       />,
     );
 
-    expect(screen.getByText(/submission is possible/i)).toBeTruthy();
-    expect(screen.getByText(/placeholder from noreply@localhost/i)).toBeTruthy();
-    expect(screen.getByText(/set a real from to improve delivery/i)).toBeTruthy();
+    expect(
+      screen.getByText(/mail comes from noreply@localhost and may land in spam/i),
+    ).toBeTruthy();
+    expect(screen.queryByText("Cannot send")).toBeNull();
   });
 
   it("explains that login hides Forgot password until mail can submit", () => {
@@ -70,8 +70,8 @@ describe("AdminEmailDeliveryPane", () => {
       />,
     );
 
-    expect(screen.getByText(/cannot submit yet/i)).toBeTruthy();
-    expect(screen.getByText(/login hides .*forgot password/i)).toBeTruthy();
+    expect(screen.getByText("Cannot send")).toBeTruthy();
+    expect(screen.getByText(/sign-in page hides .*forgot password/i)).toBeTruthy();
   });
 
   it("collects a recipient before sending a test email", async () => {
@@ -97,22 +97,22 @@ describe("AdminEmailDeliveryPane", () => {
   it("shows the external invitation switch and hourly limit", () => {
     render(<EmailDeliveryHarness />);
 
-    expect(screen.getByLabelText("External invitations enabled")).toBeTruthy();
-    expect(screen.getByLabelText("Hourly invitation limit")).toBeTruthy();
-    expect(screen.getByLabelText("Daily invitation limit")).toBeTruthy();
+    expect(screen.getByLabelText("Invite people outside this server")).toBeTruthy();
+    expect(screen.getByLabelText("Per hour")).toBeTruthy();
+    expect(screen.getByLabelText("Per day")).toBeTruthy();
   });
 
   it("keeps the hourly limit empty while the field is cleared", () => {
     render(<EmailDeliveryHarness />);
 
-    const limit = screen.getByLabelText("Hourly invitation limit");
+    const limit = screen.getByLabelText("Per hour");
     fireEvent.change(limit, { target: { value: "" } });
     expect(limit).toHaveProperty("value", "");
 
     fireEvent.change(limit, { target: { value: "42" } });
     expect(limit).toHaveProperty("value", "42");
 
-    const daily = screen.getByLabelText("Daily invitation limit");
+    const daily = screen.getByLabelText("Per day");
     fireEvent.change(daily, { target: { value: "" } });
     expect(daily).toHaveProperty("value", "");
   });

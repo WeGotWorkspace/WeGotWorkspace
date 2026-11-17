@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adminCopy } from "@/admin-core/src/admin-copy";
 import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 function mockDomApis() {
@@ -51,7 +50,7 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
   it("restores the Updates pane from /admin/updates", async () => {
     const { history } = await renderAdminApp("/admin/updates");
     expect(history.location.pathname).toBe("/admin/updates");
-    expect(await screen.findByText("Release status")).toBeTruthy();
+    expect(await screen.findByText("Version")).toBeTruthy();
   });
 
   it("restores the matching pane when the router navigates to /admin/email-delivery", async () => {
@@ -60,7 +59,7 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe("/admin/email-delivery");
     });
-    expect(await screen.findByText("From and transport")).toBeTruthy();
+    expect(await screen.findByText("Sending")).toBeTruthy();
   });
 
   it("writes /admin/email-delivery when the user picks Email delivery", async () => {
@@ -70,7 +69,7 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe("/admin/email-delivery");
     });
-    expect(await screen.findByText("From and transport")).toBeTruthy();
+    expect(await screen.findByText("Sending")).toBeTruthy();
   });
 
   it("canonicalizes unknown /admin/:section paths to /admin", async () => {
@@ -103,20 +102,16 @@ describe("AdminApp over http", { timeout: 15_000 }, () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps the not-secure notice up on every section", async () => {
+  it("flags HTTPS as critical on Health and badges the sidebar", async () => {
     vi.stubGlobal("isSecureContext", false);
-    await renderAdminApp("/admin");
-    expect(screen.getByText(adminCopy.notSecureTitle)).toBeTruthy();
-
-    clickSidebarSection(/^Email delivery$/);
-    expect(await screen.findByText("From and transport")).toBeTruthy();
-    expect(screen.getByText(adminCopy.notSecureTitle)).toBeTruthy();
+    await renderAdminApp("/admin/health");
+    expect(await screen.findByText(/This site opens over http:\/\//)).toBeTruthy();
+    expect(screen.getByText("Critical")).toBeTruthy();
   });
 
-  it("shows no notice on https or localhost", async () => {
+  it("passes the HTTPS check on https or localhost", async () => {
     vi.stubGlobal("isSecureContext", true);
-    await renderAdminApp("/admin");
-
-    expect(screen.queryByText(adminCopy.notSecureTitle)).toBeNull();
+    await renderAdminApp("/admin/health");
+    expect(await screen.findByText("This site opens over https://.")).toBeTruthy();
   });
 });

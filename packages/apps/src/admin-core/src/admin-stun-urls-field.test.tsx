@@ -13,7 +13,7 @@ function Harness({ initial }: { initial: string }) {
   const [value, setValue] = useState(initial);
   return (
     <TooltipProvider delayDuration={0}>
-      <AdminStunUrlsField value={value} onChange={setValue} />
+      <AdminStunUrlsField value={value} onChange={setValue} onRestore={setValue} />
       <output data-testid="stored">{value}</output>
     </TooltipProvider>
   );
@@ -26,8 +26,7 @@ function stored(): string {
 describe("AdminStunUrlsField", () => {
   it("marks the default and says whose server it is", () => {
     render(<Harness initial={DEFAULT_PUBLIC_STUN_URLS_CSV} />);
-    expect(screen.getByText("Default")).toBeTruthy();
-    expect(screen.getByText(/Provided by Nextcloud/)).toBeTruthy();
+    expect(screen.getByText(/Default: Nextcloud's public server/)).toBeTruthy();
     expect(screen.queryByText("Restore default")).toBeNull();
   });
 
@@ -49,7 +48,7 @@ describe("AdminStunUrlsField", () => {
       .find((button) => button.closest("[role='alertdialog']"));
     fireEvent.click(confirm!);
     expect(stored()).toBe(DEFAULT_PUBLIC_STUN_URLS_CSV);
-    expect(screen.getByText("Default")).toBeTruthy();
+    expect(screen.getByText(/Default: Nextcloud's public server/)).toBeTruthy();
   });
 
   it("keeps one field per url", () => {

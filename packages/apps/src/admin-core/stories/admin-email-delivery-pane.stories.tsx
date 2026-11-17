@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
-import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import { AdminPaneScope } from "@/admin-core/stories/admin-story-scope";
 
 function EmailDeliveryHarness({
   override,
@@ -11,9 +11,9 @@ function EmailDeliveryHarness({
 }) {
   const controller = useAdminPaneStoryController(override);
   return (
-    <AdminStoryScope>
+    <AdminPaneScope controller={controller}>
       <AdminEmailDeliveryPane controller={controller} />
-    </AdminStoryScope>
+    </AdminPaneScope>
   );
 }
 
