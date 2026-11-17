@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DIALECTS, davExecutors, nativeCard, resetNativeClients } from "./dav.mjs";
+import { DIALECTS, davExecutors, nativeCard, nativeEvent, rescheduleText, resetNativeClients } from "./dav.mjs";
 
 const origin = "http://sim.test";
 const href = "/addressbooks/joost/default/CARD-1.vcf";
@@ -87,4 +87,15 @@ test("a card made in the web app (JMAP id only) is found by its UID before the a
   assert.ok(query, "asked the address book for the UID");
   assert.ok(server.calls.some(([m, url]) => m === "PUT" && url === href), "wrote to the href the server named, not undefined.vcf");
   assert.match(server.body(), /NOTE:Via de web app gemaakt/);
+});
+
+test("a reschedule moves the event's DTSTART and leaves the VTIMEZONE alone", () => {
+  const ics = nativeEvent(DIALECTS.apple, "iphone", { uid: "EV-1", title: "Kick-off", start: "2026-11-12T09:00:00.000Z", minutes: 60, organizer: { name: "Joost", email: "joost@example.org" }, attendees: [] });
+  const zone = (t) => /BEGIN:VTIMEZONE[\s\S]*END:VTIMEZONE/.exec(t.replace(/\r\n /g, ""))[0];
+  const out = rescheduleText(ics, "2026-11-12T10:00:00.000Z", "2026-11-12T11:00:00.000Z");
+  assert.equal(zone(out), zone(ics));
+  const ev = /BEGIN:VEVENT[\s\S]*END:VEVENT/.exec(out)[0];
+  assert.match(ev, /DTSTART;TZID=[^:]+:20261112T11/);
+  assert.match(ev, /DTEND;TZID=[^:]+:20261112T12/);
+  assert.match(ev, /SEQUENCE:1/);
 });

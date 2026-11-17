@@ -54,6 +54,8 @@ export function createClaudeRunner({ bin = "claude", model = DIARY_MODEL, cwd, t
         }
         resolve({ text: String(result.result ?? ""), costUsd: result.total_cost_usd ?? 0, tokens, ms: Date.now() - started });
       });
+      // An early exit (old CLI, logged out) breaks the pipe; the close handler reports it.
+      child.stdin.on("error", () => {});
       child.stdin.end(`${JSON.stringify(message)}\n`);
     });
   }

@@ -59,6 +59,14 @@ function vevent(d, device, { uid, title, start, minutes, organizer, attendees, m
     ...d.eventExtra(), ...d.alarm(), "END:VEVENT", "END:VCALENDAR"]);
 }
 
+/** Moves the event's own DTSTART/DTEND and bumps SEQUENCE; the VTIMEZONE's DTSTART lines stay as they are. */
+function rescheduleText(text, start, end) {
+  return text.replace(/BEGIN:VEVENT[\s\S]*?END:VEVENT/, (block) => {
+    const seq = Number(/SEQUENCE:(\d+)/.exec(block)?.[1] ?? 0) + 1;
+    return block.replace(/DTSTART[^\r\n]*/, `DTSTART;TZID=${ZONE}:${local(start)}`).replace(/DTEND[^\r\n]*/, `DTEND;TZID=${ZONE}:${local(end)}`).replace(/SEQUENCE:\d+/, `SEQUENCE:${seq}`);
+  });
+}
+
 function vtodo(d, device, { uid, title, due, seq }) {
   const now = stamp(new Date().toISOString());
   return fold(["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:${d.prodid(device)}`, "BEGIN:VTODO", `UID:${uid}`, `DTSTAMP:${now}`, `CREATED:${now}`, `LAST-MODIFIED:${now}`, `SUMMARY:${title}`,
@@ -191,10 +199,7 @@ export const davExecutors = {
     const c = ctx.client(a.persona, "dav");
     const start = new Date(Date.parse(ev.start) + a.params.shiftMinutes * 60000).toISOString();
     const end = new Date(Date.parse(start) + (ev.minutes ?? 60) * 60000).toISOString();
-    const edit = (text) => {
-      const seq = Number(/SEQUENCE:(\d+)/.exec(text)?.[1] ?? 0) + 1;
-      return text.replace(/DTSTART[^\r\n]*/, `DTSTART;TZID=${ZONE}:${local(start)}`).replace(/DTEND[^\r\n]*/, `DTEND;TZID=${ZONE}:${local(end)}`).replace(/SEQUENCE:\d+/, `SEQUENCE:${seq}`);
-    };
+    const edit = (text) => rescheduleText(text, start, end);
     const href = await locate(ctx, a, `/calendars/${a.persona}/default/`, ev, "event");
     const { conflict } = await write(c, ctx.origin, store(a.persona, a.client), `/calendars/${a.persona}/default/`, href, { edit });
     return { patch: { key: a.params.event, start }, note: `${appName(a, "calendar")}${conflict ? "; 412 resolved" : ""}` };
@@ -270,4 +275,4 @@ export const davExecutors = {
   },
 };
 
-export { vevent as nativeEvent, vcard as nativeCard, ZONE };
+export { rescheduleText, vevent as nativeEvent, vcard as nativeCard, ZONE };

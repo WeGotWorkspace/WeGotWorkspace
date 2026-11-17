@@ -157,3 +157,18 @@ test("a client's address among the people of an action stays an address", () => 
   const f = personaFacts({ world, date: "2026-11-12", persona: "eva", ...g });
   assert.equal(f.actions[0].with, "anouk.vos@example.org");
 });
+
+test("a claude that exits before reading its input rejects instead of crashing the process", async () => {
+  const { mkdtempSync, writeFileSync, chmodSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { createClaudeRunner } = await import("./claude.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "sim-claude-"));
+  const bin = join(dir, "claude");
+  writeFileSync(bin, "#!/bin/sh\necho 'unknown flag' >&2\nexit 2\n");
+  chmodSync(bin, 0o755);
+  const image = join(dir, "big.jpg");
+  writeFileSync(image, Buffer.alloc(4 * 1024 * 1024, 1));
+  const runner = createClaudeRunner({ bin, cwd: join(dir, "cwd") });
+  await assert.rejects(runner.run({ system: "s", content: [{ type: "image", path: image }, { type: "text", text: "hi" }], budgetUsd: 0.1 }), /no result/);
+});

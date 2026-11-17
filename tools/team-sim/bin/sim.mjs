@@ -4,7 +4,8 @@
 //   sim down                  stop wgw-sim
 //   sim bootstrap [--date D]  reconcile the world for date D (default today)
 //   sim plan [--date D] [--json] [--data DIR] [--habits all]   the night's action list from a data dir
-//   sim night [--date D] [--minutes N] [--ui-only] [--api-only] [--skip-upgrade] [--no-diary] [--habits all]
+//   sim night [--date D] [--minutes N] [--ui-only] [--api-only] [--skip-upgrade] [--no-diary] [--habits all] [--scheduled]
+//   sim schedule install [--dry-run] | uninstall    the 01:00 launchd night (75 min cap), and its removal
 //   sim replay <date> [--action N] [--minutes N] [--plan-only] [--keep]
 //   sim status                last completed night; exits 1 after two days without one
 //   sim report <date>         re-render the morning report from a finished run
@@ -69,6 +70,17 @@ async function main() {
     }
     case "night": {
       const { runNight } = await import("../src/night/night.mjs");
+      if (flag("scheduled")) {
+        const { CAP_MINUTES } = await import("../src/schedule/schedule.mjs");
+        setTimeout(() => {
+          log(`night cut off after ${CAP_MINUTES} min`);
+          try {
+            liveInstance(createShell({ log })).instance.down();
+          } finally {
+            process.exit(1);
+          }
+        }, CAP_MINUTES * 60000).unref();
+      }
       const result = await runNight({
         date: option("date", today()),
         minutes: Number(option("minutes", 55)),
@@ -77,11 +89,30 @@ async function main() {
         skipUpgrade: flag("skip-upgrade"),
         noDiary: flag("no-diary"),
         habits: option("habits") ?? undefined,
-        manual: true,
+        manual: !flag("scheduled"),
         log,
         repoRoot: repoRoot(),
       });
       process.exitCode = result.ok ? 0 : 1;
+      return;
+    }
+    case "schedule": {
+      const schedule = await import("../src/schedule/schedule.mjs");
+      const run = (cmd, args, { allowFail = false } = {}) => {
+        try {
+          execFileSync(cmd, args, { stdio: "inherit" });
+        } catch (error) {
+          if (!allowFail) throw error;
+        }
+      };
+      if (argv[1] === "install") {
+        schedule.install({ node: process.execPath, simBin: realpathSync(import.meta.filename), paths: layout(), dryRun: flag("dry-run"), run, log });
+      } else if (argv[1] === "uninstall") {
+        schedule.uninstall({ run, log });
+      } else {
+        console.log("usage: sim schedule install [--dry-run] | uninstall");
+        process.exitCode = 1;
+      }
       return;
     }
     case "replay": {

@@ -29,8 +29,41 @@ pnpm --dir tools/team-sim test [-- planner|instance|actors/api|oracles|report|re
 `night` takes `--minutes N` (default 55 minutes of actions; less squeezes the
 same action list into a shorter window and says so in the report),
 `--skip-upgrade`, `--ui-only`, `--api-only`, `--no-diary` and `--habits all`
-(also on `plan`; kept in the snapshot meta so replay plans the same list). Scheduling (launchd, wake) is
-not part of this phase.
+(also on `plan`; kept in the snapshot meta so replay plans the same list).
+
+## Scheduling
+
+```sh
+node tools/team-sim/bin/sim.mjs schedule install [--dry-run]
+node tools/team-sim/bin/sim.mjs schedule uninstall
+```
+
+`install` writes a launchd agent that runs `sim night --scheduled` at 01:00
+under `nice`, cut off after 75 minutes, logging to `~/.wgw-sim/schedule.log`,
+and prints the one `sudo pmset repeat wakeorpoweron` line that wakes the Mac.
+`--scheduled` is the only way a night counts as unattended: one that starts
+after 06:00 is skipped and recorded as missed. `uninstall` removes the agent.
+
+## Triage
+
+Read the morning report, then:
+
+- A bug that reproduced (the report says so, with a replay command) is filed
+  directly with the `team-sim` label, written in user terms, after searching
+  for a duplicate. A known bug gets a comment only when the simulation adds
+  new information.
+- A failure that did not reproduce is filed only after it has shown up three
+  nights.
+- Security and visibility findings (the private section) never go into a
+  public issue or comment; they leave the private report only through the
+  advisory process.
+- Pains and requests (the `Product` and `Team voice` sections and the weekly
+  digest) go to the product lead. Triage never files them.
+- A known, accepted issue goes into `~/.wgw-sim/known-issues.json` so later
+  reports mark it instead of repeating it.
+- Diaries need a logged-in `claude` CLI; `sim diary <date>` writes them again,
+  and `--no-diary` skips them.
+- The triage after the third night records the phase 2 decision on #1981.
 
 ## A night
 
