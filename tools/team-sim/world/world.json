@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "studio": "Studio Kade",
+  "epoch": "2026-11-09",
+  "timeZone": "Europe/Amsterdam",
+  "internalDomain": "studiokade.example",
+  "externalDomain": "example.org",
+  "driveCapBytes": 10737418240,
+  "devAccounts": ["admin", "member"],
+  "devTeam": "team",
+  "uiRotation": ["eva", "joost", "priya", "fatima", "maarten", "lotte", "daan", "sanne", "tom", "bas"],
+  "background": { "from": "Google Workspace", "movedOn": "2026-11-02", "why": "control over their own data (sovereignty) instead of a big US platform" }
+}

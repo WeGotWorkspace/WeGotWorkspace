@@ -1,0 +1,10 @@
+{
+  "titles": {
+    "nl": ["Notulen kick-off", "Ideeën workshop", "Belnotities klant", "Inspiratie", "To do na overleg", "Leerpunten"],
+    "en": ["Kick-off minutes", "Workshop ideas", "Client call notes", "Inspiration", "Follow-ups", "Lessons learned"]
+  },
+  "lines": {
+    "nl": ["- Klant wil meer kleur", "- Deadline 12 december", "- Budget is krap, scope bewaken", "- Fotograaf: Jeroen (via Sanne)", "- Volgende stap: concept presenteren", "- Idee: verpakking als poster 🖼️", "- Café Noorderzon als locatie?", "- Let op: ü/ë in de naam van de klant"],
+    "en": ["- Client wants more colour", "- Deadline 12 December", "- Budget is tight, guard the scope", "- Photographer: Jeroen (via Sanne)", "- Next step: present concept", "- Idea: packaging as poster 🖼️", "- Café Noorderzon as venue?", "- Mind the ü/ë in the client name"]
+  }
+}
