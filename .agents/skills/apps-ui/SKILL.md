@@ -129,6 +129,16 @@ An offline write that failed already shows in the app's sync notice (`useFailedO
 
 Decide on the error, not on its text: `isApiError(error)` with `status` or `code` ([client-transport](../client-transport/SKILL.md)). Wording of what the user reads is a copy choice per surface; this rule does not change any existing message.
 
+### Unexpected errors: the diagnostics recorder
+
+An error nobody planned for goes to one recorder: `recordUnexpectedError(error, source)` in `lib/diagnostics/error-diagnostics-recorder.ts` (#2204). It keeps the last 50 in IndexedDB on the device (`lib/diagnostics/error-diagnostics-store.ts`), and Settings → Diagnostics copies them into a bug report. Nothing is sent anywhere, and logout deletes the buffer with the other offline data.
+
+- Already wired: the global `error` and `unhandledrejection` handlers (`installErrorDiagnostics` in `main.tsx`), the shell boundary `WeGotWorkspaceErrorBoundary`, and the router's `defaultOnCatch`. An error that reaches none of these is not recorded.
+- A local error boundary that swallows an error it did not expect calls `recordUnexpectedError(error, "render")` from `componentDidCatch`.
+- Do not add another global handler, error log, `console.error` sink, or third-party error service.
+- `isExpectedFailure` (`lib/diagnostics/error-diagnostics-expected.ts`) skips what the UI already handles: `ApiError` (401/403 included), a missing sign-in or guest session, `JmapRequestError`, offline (a fetch that never reached a server, `OfflineNotCachedError`), and `AbortError`. A new handled failure type goes there, decided on the class, not the message.
+- An entry keeps name, message, stack, app, path (no query string or fragment), build, user agent and time. It never stores a request or response body, document content, or the fields of a rejected object. `buildErrorDiagnostic` strips the query and fragment from every URL in the message and stack.
+
 ## Top-level SPA routes
 
 When adding a **new first path segment** in `packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx` (e.g. `/share`, `/tasks`), you MUST also allowlist that prefix on API `UiStaticServer` and extend `FrontRoutingTest`. Otherwise production GETs fall through to SabreDAV. See [api/SKILL.md](../api/SKILL.md) § SPA shell routes; Architecture `SpaShellRouteAllowlistTest` is the mechanical guard. Playwright e2e remains out of done-gate scope ([POLICY.md](../../POLICY.md)).

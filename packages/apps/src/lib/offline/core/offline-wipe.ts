@@ -3,6 +3,7 @@ import { isCrossTabLockTimeout, withCrossTabLock } from "@/lib/offline/core/cros
 import { forgetPushScopes } from "@/lib/notifications/push-scope";
 import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
+import { ERROR_DIAGNOSTICS_DB_NAME } from "@/lib/diagnostics/error-diagnostics-store";
 
 const OFFLINE_DB_PREFIX = "wgw-offline-";
 const OFFLINE_STORAGE_PREFIX = "wgw.offline.";
@@ -93,9 +94,10 @@ async function releasePush(authorizedFetch: AuthorizedFetch): Promise<void> {
 
 /**
  * Close and delete every offline account database, every note and document
- * collab room, and the remembered usernames. The account database includes the
- * outbox and every collab room, including document and note bodies that were
- * never saved. The logout screen counts that work and asks before it calls this.
+ * collab room, the recent errors kept for Copy diagnostics, and the remembered
+ * usernames. The account database includes the outbox and every collab room,
+ * including document and note bodies that were never saved. The logout screen
+ * counts that work and asks before it calls this.
  */
 export async function wipeOfflineAccountData(): Promise<void> {
   const Dexie = (await import("dexie")).default;
@@ -195,7 +197,7 @@ type WipeTargets = {
 
 async function databasesToWipe(): Promise<string[]> {
   const targets = await collectWipeTargets();
-  return [...targets.accountNames, ...targets.collabNames];
+  return [...targets.accountNames, ...targets.collabNames, ERROR_DIAGNOSTICS_DB_NAME];
 }
 
 async function collectWipeTargets(): Promise<WipeTargets> {

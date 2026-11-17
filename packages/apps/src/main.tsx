@@ -1,6 +1,7 @@
 // First: modules below may call crypto.randomUUID, which plain http lacks (#1526).
 import "@/lib/random-uuid-polyfill";
 import "@/provide-collab-content-codec";
+import { installErrorDiagnostics } from "@/lib/diagnostics/error-diagnostics-recorder";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { shouldRegisterServiceWorker } from "@/lib/offline/core/should-register-service-worker";
@@ -9,6 +10,8 @@ import { syncDocumentTheme } from "@/lib/theme-preference";
 import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";
 import "@/styles.css";
 
+// Keep unexpected errors on this device for Settings → Diagnostics (#2204). Nothing is sent.
+installErrorDiagnostics(window);
 syncDocumentTheme();
 // Before any route redirect: the window's launch path says which installed app this is.
 rememberLaunchPath(`${location.pathname}${location.search}`);

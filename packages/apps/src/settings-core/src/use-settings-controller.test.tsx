@@ -50,6 +50,7 @@ describe("useSettingsController MCP kill-switch", () => {
       "profile",
       "memberships",
       "incoming-email",
+      "diagnostics",
       "about",
     ]);
     expect(result.current.sidebarGroups.device.map((section) => section.id)).toEqual([
