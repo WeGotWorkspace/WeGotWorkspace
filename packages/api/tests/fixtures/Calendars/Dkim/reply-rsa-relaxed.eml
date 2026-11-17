@@ -1,0 +1,53 @@
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=elsewhere.test;
+ i=@elsewhere.test; q=dns/txt; s=rsa2048; t=1900000000; h=from : to :
+ subject : date : message-id : mime-version : content-type;
+ bh=ghbRMuu923N5GM/XwRiTKxpOWHokn6la0nP6UvbcEYU=;
+ b=K8WzIz3hlhoxT2Ge9IeJ3+L3LQD/IFhb3dObJcpAsRdENhXEVufmSXJgcQ3t/HZJ4tvD3
+ tjwNfvWLA9+lFmzKf5z7qgFG+R+Z16CopmUdglq0Dlg2NnaenbBNTZYtFO/apYIOTGmRGkY
+ y1+Yr5HTPaPidrUfuwJHCuN7HwohBpWjzPxVVySvQTAPQDrxn3BFv7peDt74DGQ/3vUb6Sq
+ 3zE4oRB50WpFET/d+B9DnTRaCW8zpYp6yfcUocIQL4GsCZQN7cnK0upKfweGGI7+pUCMU8H
+ yWgpPcbSIB8oHvzmSaGHdzwqAMuGuG7SEt6NrKVpmBwnYMfWzieRseFiz7PA==
+From: Guest Person <guest@elsewhere.test>
+To: bob@example.test
+Subject: Accepted: Planning @ Fri 1 Feb 2030 10am - 10:30am (UTC)
+Date: Sun, 17 Mar 2030 17:46:40 +0000
+Message-ID: <reply-1@elsewhere.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: multipart/alternative; boundary="b2"
+
+--b2
+Content-Type: text/plain; charset="UTF-8"
+
+Guest Person has accepted this invitation.
+
+--b2
+Content-Type: text/calendar; charset="UTF-8"; method=REPLY
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KUFJPRElEOi0vL0dvb2dsZSBJbmMvL0dvb2ds
+ZSBDYWxlbmRhciA3MC45MDU0Ly9FTg0KTUVUSE9EOlJFUExZDQpCRUdJTjpWRVZFTlQNCkRUU1RB
+UlQ6MjAzMDAyMDFUMTAwMDAwWg0KRFRFTkQ6MjAzMDAyMDFUMTAzMDAwWg0KRFRTVEFNUDoyMDMw
+MDEwMVQxMjAwMDBaDQpPUkdBTklaRVI7Q049Qm9iOm1haWx0bzpib2JAZXhhbXBsZS50ZXN0DQpV
+SUQ6aW1pcC1wb2xsLWV2ZW50LTENCkFUVEVOREVFO0NVVFlQRT1JTkRJVklEVUFMO1JPTEU9UkVR
+LVBBUlRJQ0lQQU5UO1BBUlRTVEFUPUFDQ0VQVEVEO0NOPUd1ZXN0DQogUGVyc29uO1gtTlVNLUdV
+RVNUUz0wOm1haWx0bzpndWVzdEBlbHNld2hlcmUudGVzdA0KU0VRVUVOQ0U6MA0KU1RBVFVTOkNP
+TkZJUk1FRA0KU1VNTUFSWTpQbGFubmluZw0KRU5EOlZFVkVOVA0KRU5EOlZDQUxFTkRBUg0K
+--b2--
+
+--b1
+Content-Type: application/ics; name="invite.ics"
+Content-Disposition: attachment; filename="invite.ics"
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KUFJPRElEOi0vL0dvb2dsZSBJbmMvL0dvb2ds
+ZSBDYWxlbmRhciA3MC45MDU0Ly9FTg0KTUVUSE9EOlJFUExZDQpCRUdJTjpWRVZFTlQNCkRUU1RB
+UlQ6MjAzMDAyMDFUMTAwMDAwWg0KRFRFTkQ6MjAzMDAyMDFUMTAzMDAwWg0KRFRTVEFNUDoyMDMw
+MDEwMVQxMjAwMDBaDQpPUkdBTklaRVI7Q049Qm9iOm1haWx0bzpib2JAZXhhbXBsZS50ZXN0DQpV
+SUQ6aW1pcC1wb2xsLWV2ZW50LTENCkFUVEVOREVFO0NVVFlQRT1JTkRJVklEVUFMO1JPTEU9UkVR
+LVBBUlRJQ0lQQU5UO1BBUlRTVEFUPUFDQ0VQVEVEO0NOPUd1ZXN0DQogUGVyc29uO1gtTlVNLUdV
+RVNUUz0wOm1haWx0bzpndWVzdEBlbHNld2hlcmUudGVzdA0KU0VRVUVOQ0U6MA0KU1RBVFVTOkNP
+TkZJUk1FRA0KU1VNTUFSWTpQbGFubmluZw0KRU5EOlZFVkVOVA0KRU5EOlZDQUxFTkRBUg0K
+--b1--

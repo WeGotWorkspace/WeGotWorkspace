@@ -1,7 +1,7 @@
 import * as Y from "yjs";
-import { rememberSidecarEtag } from "@/text-editor-core/docs-collab/docs-collab-etag";
-import { loadYjsSnapshot } from "@/text-editor-core/docs-collab/docs-collab-server-io";
-import { SERVER_ORIGIN } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { rememberSidecarEtag } from "@/lib/collab/docs-collab-etag";
+import { loadYjsSnapshot } from "@/lib/collab/docs-collab-server-io";
+import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 export async function resolveDocsConflictUseServer(
   ydoc: Y.Doc,

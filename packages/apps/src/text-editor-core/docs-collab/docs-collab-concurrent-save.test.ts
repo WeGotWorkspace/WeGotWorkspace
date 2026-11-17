@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
-import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import { loadYjsSnapshot, saveDocument } from "@/lib/collab/docs-collab-server-io";
 import {
   rememberSidecarEtag,
   resetSidecarEtagsForTests,
   sidecarPrecondition,
-} from "./docs-collab-etag";
-import { isServerDivergenceError, SERVER_ORIGIN } from "./docs-collab-utils";
+} from "@/lib/collab/docs-collab-etag";
+import { isServerDivergenceError, SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 const DOCUMENT_URL = "/api/v1/files/collaboration?path=docs%2Ftogether.md";
 const YJS_URL = `${DOCUMENT_URL}&format=yjs`;

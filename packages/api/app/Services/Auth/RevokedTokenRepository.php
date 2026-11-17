@@ -19,9 +19,7 @@ final class RevokedTokenRepository
 
     public function isRevoked(string $jti): bool
     {
-        $this->cleanupExpired();
-
-        return ApiRevokedToken::query()->where('jti', $jti)->exists();
+        return ApiRevokedToken::query()->where('jti', $jti)->where('expires_at', '>', time())->exists();
     }
 
     private function cleanupExpired(): void

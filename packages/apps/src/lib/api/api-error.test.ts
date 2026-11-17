@@ -16,7 +16,7 @@ import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 import { TasksRequestError } from "@/lib/api/wgw/tasks";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { HttpSignalingError } from "@/lib/rtc/signaling/http-client";
-import { CollabHttpError } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 import { DocsThreadsRequestError } from "@/docs-core/src/collab/docs-threads-errors";
 
 describe("ApiError", () => {

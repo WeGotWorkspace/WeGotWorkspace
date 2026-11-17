@@ -19,6 +19,8 @@ return [
 
     'default' => env('CACHE_STORE', 'file'),
 
+    'limiter' => env('CACHE_LIMITER'),
+
     /*
     |--------------------------------------------------------------------------
     | Cache Stores

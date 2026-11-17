@@ -11,7 +11,7 @@ import {
   migrateDocsCollabPathDatabaseToIdentity,
   migrateDocsCollabPendingSaveFromLegacy,
   resolveDocsCollabEditorDatabase,
-} from "./docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 import { isJoinGenerationCurrent, resetSessionRefsForTeardown } from "./docs-collab-join-lifecycle";
 import { leaveCollabRoom, rememberCollabRoomJoin } from "./docs-collab-joined-room";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
@@ -22,14 +22,14 @@ import {
   markRoomServerSuccess,
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
-import { fetchYjsSnapshot, loadCollabText } from "./docs-collab-server-io";
+import { fetchYjsSnapshot, loadCollabText } from "@/lib/collab/docs-collab-server-io";
 import { decideExternalWrite, replaceDocumentWithExternalText } from "./docs-collab-external-write";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
   loadBootstrapInParallel,
-} from "./docs-collab-bootstrap";
-import { forgetSidecarEtag, rememberSidecarEtag } from "./docs-collab-etag";
+} from "@/lib/collab/docs-collab-bootstrap";
+import { forgetSidecarEtag, rememberSidecarEtag } from "@/lib/collab/docs-collab-etag";
 import { settleDocumentGone } from "./docs-collab-gone";
 import {
   canSeedFromFile,
@@ -45,7 +45,7 @@ import {
   DOC_STATUS_SNAPSHOT_UNAVAILABLE,
   docStatusAfterJoinFailure,
 } from "./docs-collab-status";
-import { isCollabDocumentGoneError } from "./docs-collab-utils";
+import { isCollabDocumentGoneError } from "@/lib/collab/docs-collab-utils";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import {
   BC_TAB_ORIGIN,
@@ -56,8 +56,8 @@ import {
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
-} from "./docs-collab-utils";
-import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+} from "@/lib/collab/docs-collab-utils";
+import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,

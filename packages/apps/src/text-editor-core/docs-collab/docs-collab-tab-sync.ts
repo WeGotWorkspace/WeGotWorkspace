@@ -1,6 +1,5 @@
 import type { DocsCollabMeshMessage, DocsCollabMeshPeer } from "./docs-collab-types";
 
-export const BC_TAB_ORIGIN = "bc-tab";
 export const TAB_PING_INTERVAL_MS = 2000;
 export const LEADER_STALE_MS = 6000;
 /**

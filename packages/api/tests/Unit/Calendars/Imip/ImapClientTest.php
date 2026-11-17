@@ -90,7 +90,20 @@ final class ImapClientTest extends TestCase
         $this->assertSame('a@example.com', $summary->headers->first('from'));
         $this->assertSame('1', $summary->calendarPart?->section);
         $this->assertSame("BEGIN:VCALENDAR\r\n", $client->section(7, '1'));
-        $this->assertStringContainsString('BODY.PEEK[HEADER.FIELDS (FROM SENDER MESSAGE-ID AUTHENTICATION-RESULTS)]', $server->verbs()[2]);
+        $this->assertStringContainsString('BODY.PEEK[HEADER.FIELDS (FROM SENDER MESSAGE-ID AUTHENTICATION-RESULTS DKIM-SIGNATURE)]', $server->verbs()[2]);
+    }
+
+    public function test_whole_message_is_read_byte_for_byte_without_marking_it_read(): void
+    {
+        $raw = "DKIM-Signature: v=1; a=rsa-sha256;\r\n b=abc\r\nFrom: a@example.com\r\n\r\nLine one \r\n\r\n{12}\r\n)\r\n";
+        $server = new FakeImapServer(messages: [7 => ['raw' => $raw] + $this->message()]);
+        $client = new ImapClient($server);
+        $client->connect($this->endpoint(), 'organizer@example.test', 'secret');
+        $client->examine('INBOX');
+
+        $this->assertSame($raw, $client->message(7));
+        $this->assertNull($client->message(8));
+        $this->assertSame('UID FETCH 7 (UID BODY.PEEK[])', $server->verbs()[2]);
     }
 
     private function endpoint(string $security = ImapEndpoint::SECURITY_SSL): ImapEndpoint

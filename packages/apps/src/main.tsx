@@ -1,5 +1,6 @@
 // First: modules below may call crypto.randomUUID, which plain http lacks (#1526).
 import "@/lib/random-uuid-polyfill";
+import "@/provide-collab-content-codec";
 import { installErrorDiagnostics } from "@/lib/diagnostics/error-diagnostics-recorder";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

@@ -67,6 +67,8 @@ bash setup.sh upgrade        # latest from manifest.json (confirms interactively
 bash setup.sh upgrade 1.2.0  # explicit version — backup → pull → migrator → web
 ```
 
+Every service logs through Docker's `json-file` driver with rotation (`x-wgw-logging` in `docker-compose.yml`), which overrides a daemon-wide log driver such as journald or Loki for this stack.
+
 Check for updates (read-only — does not apply):
 
 ```bash
@@ -352,7 +354,7 @@ Maintainers: pre-release checklist (smoke job, GHCR visibility, multi-arch manif
 
 ## Real-time capacity
 
-A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 4-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md).
+A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 6-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md).
 
 ## TLS (HTTPS)
 

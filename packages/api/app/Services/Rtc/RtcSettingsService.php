@@ -20,7 +20,7 @@ final class RtcSettingsService
 
     private const LEGACY_TURN_CREDENTIAL_KEY = 'rtc_turn_credential';
 
-    public const DEFAULT_MEET_MAX_PEERS = 4;
+    public const DEFAULT_MEET_MAX_PEERS = 6;
 
     public const MIN_MEET_MAX_PEERS = 2;
 

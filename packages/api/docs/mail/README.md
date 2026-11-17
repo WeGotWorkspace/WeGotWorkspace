@@ -12,12 +12,13 @@ A user can connect one IMAP mailbox in Calendar settings so that replies to thei
 
 - `wgw:calendar:imip-poll` runs every minute from the scheduler. Each mailbox is read at most every two minutes, and only mail that arrives after it was connected.
 - The folder is opened read-only (`EXAMINE`, `BODY.PEEK`). Nothing is marked read, moved or deleted. Only the `text/calendar` part of a message is downloaded; other messages are not read past a few header fields.
-- Only `METHOD:REPLY` is applied, and only when the receiving mail server's `Authentication-Results` header verifies the sender and the sender is an attendee of an event the mailbox owner organizes. Invitations and cancellations from outside organizers are skipped.
+- Only `METHOD:REPLY` is applied, and only when the sender is authenticated and is an attendee of an event the mailbox owner organizes. Invitations and cancellations from outside organizers are skipped.
+- The sender is authenticated by the receiving mail server's `Authentication-Results` header when that server is known (learned when the mailbox is saved or tested). Otherwise the reply's own DKIM signature is verified against the signer's key in DNS (`app/Services/Calendars/Imip/Dkim/`): `rsa-sha256` or `ed25519-sha256`, `d=` equal to or a parent of the `From:` domain, signed in the last 72 hours, and not seen before. A failed DNS lookup holds the reply for the next check, for at most an hour.
 - The client is a small IMAP client on PHP stream sockets (`app/Services/Calendars/Imip/`): no `ext-imap`, no new Composer dependency. TLS is required (`ssl` or `starttls`). Hosts on private addresses are refused unless `WGW_IMIP_ALLOW_PRIVATE_HOSTS=true`.
 - The password is encrypted at rest with the same data-dir secret as the SMTP delivery password, under its own key label, and is never returned by the API.
 - Skipped and applied replies are logged as `calendar.imip_reply_skipped` / `calendar.imip_reply_applied` with identifiers and a reason code only.
 
-Spec: [.agents/specs/1589-imip-replies/](../../../../.agents/specs/1589-imip-replies/spec.md).
+Specs: [.agents/specs/1589-imip-replies/](../../../../.agents/specs/1589-imip-replies/spec.md), DKIM: [.agents/specs/1589-imip-dkim-sender-check/](../../../../.agents/specs/1589-imip-dkim-sender-check/spec.md).
 
 ## What is left on purpose
 

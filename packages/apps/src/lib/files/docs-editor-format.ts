@@ -1,6 +1,6 @@
 import { extensionFromFileName } from "@/lib/files/file-name-utils";
 import { DOCS_COLLAB_TEXT_EXTENSIONS } from "@/lib/files/docs-collab-text-files";
-import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
+import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
 
 /** Map a drive file name to the text-editor serialization format. */
 export function docsEditorFormatFromFileName(

@@ -8,7 +8,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import type { RemoteTitleCaret } from "@/text-editor-core/docs-collab/docs-collab-title-selection";
-import { readableTextColorOn } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { readableTextColorOn } from "@/lib/collab/docs-collab-utils";
 import {
   measureTextareaCarets,
   measureTextareaSelections,

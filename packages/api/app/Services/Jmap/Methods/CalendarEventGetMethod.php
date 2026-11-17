@@ -59,9 +59,10 @@ final class CalendarEventGetMethod implements JmapMethodInterface
             }
             $this->guardGetAllBound($list);
         } else {
+            $locate = $this->events->ownedEventLocator($username, $ids);
             foreach ($ids as $id) {
                 try {
-                    $list[] = $this->events->show($username, $id);
+                    $list[] = $this->events->show($username, $id, $locate);
                 } catch (ApiHttpException $e) {
                     if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
                         $notFound[] = $id;

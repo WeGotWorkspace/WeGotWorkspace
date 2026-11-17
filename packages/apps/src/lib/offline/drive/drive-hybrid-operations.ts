@@ -12,7 +12,7 @@ import {
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
-import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { clearDocsCollabOfflinePersistence } from "@/lib/collab/docs-collab-persistence";
 import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import {
   applyDocsStarToggle,

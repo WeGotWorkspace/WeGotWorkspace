@@ -6,7 +6,7 @@ import * as Y from "yjs";
 import type { DocsCollabSenderTrust } from "./docs-collab-types";
 import { mayAnswerSyncStep1WithLocalState } from "./docs-collab-mesh-hydration";
 import { applyGuardedRemoteUpdate, type DocsCollabUpdateVerdict } from "./docs-collab-update-guard";
-import { isYDocEmpty, MESH_ORIGIN } from "./docs-collab-utils";
+import { isYDocEmpty, MESH_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 /** y-protocols/sync message types, read off the first varuint. */
 export const SYNC_STEP_1 = 0;

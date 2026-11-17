@@ -7,7 +7,7 @@ import { enrichNotesListPreviewsFromCollabOffline } from "@/lib/offline/notes/no
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import { noteListExcerpt, noteListTitle } from "@/notes-core/src/notes-note-utils";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import { collabDocumentFormat } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { collabDocumentFormat } from "@/lib/collab/docs-collab-utils";
 
 async function seedCollabRoom(room: string, content: string): Promise<void> {
   const ydoc = new Y.Doc();

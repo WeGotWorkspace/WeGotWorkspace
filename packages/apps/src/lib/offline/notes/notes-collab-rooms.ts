@@ -1,15 +1,15 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import { setCollabRoomPendingServerSave } from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
+import { loadCollabContentCodec } from "@/lib/collab/collab-content-codec";
+import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
 import {
   collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
   listExistingIndexedDatabaseNames,
   migrateCollabPersistence,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
+} from "@/lib/collab/docs-collab-persistence";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 /** y-indexeddb room key = VJOURNAL UID (never a Drive `.notes` path). */
 export function noteCollabRoomKey(uid: string): string {
@@ -78,6 +78,7 @@ async function firstFromRoomNames<T>(
 export async function readNoteCollabOfflineContent(uid: string): Promise<string | null> {
   return firstFromRoomNames(uid, async (ydoc) => {
     if (isYDocEmpty(ydoc)) return null;
+    const { readContentFromYDoc } = await loadCollabContentCodec();
     return readContentFromYDoc(ydoc, "markdown");
   });
 }

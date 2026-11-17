@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isInboxTaskList, sortSidebarTaskLists, taskListDotColor } from "@/lib/models/task-lists";
+import {
+  canWriteTaskList,
+  isInboxTaskList,
+  sortSidebarTaskLists,
+  taskListDotColor,
+} from "@/lib/models/task-lists";
 
 describe("task-lists", () => {
   it("isInboxTaskList uses owned role or uri, never display name", () => {
@@ -30,5 +35,34 @@ describe("task-lists", () => {
         { id: "beta", name: "beta" },
       ]).map((list) => list.id),
     ).toEqual(["inbox", "alpha", "beta"]);
+  });
+});
+
+describe("canWriteTaskList", () => {
+  it("allows writing unless the list's rights say mayWriteAll is false", () => {
+    expect(canWriteTaskList(undefined)).toBe(true);
+    expect(canWriteTaskList({ myRights: null })).toBe(true);
+    expect(canWriteTaskList({ myRights: { mayWriteAll: true } })).toBe(true);
+    expect(canWriteTaskList({ myRights: { mayWriteAll: false } })).toBe(false);
+  });
+});
+
+describe("sortSidebarTaskLists inbox pinning", () => {
+  it("pins the owned Inbox by its uri even without an inbox role", () => {
+    expect(
+      sortSidebarTaskLists([
+        { id: "alpha", name: "Alpha" },
+        { id: "tasks-inbox", name: "Inbox" },
+      ]).map((list) => list.id),
+    ).toEqual(["tasks-inbox", "alpha"]);
+  });
+
+  it("does not pin a shared default list whose role is not inbox", () => {
+    expect(
+      sortSidebarTaskLists([
+        { id: "zulu", name: "Zulu", isSharee: true, isDefault: true },
+        { id: "alpha", name: "Alpha" },
+      ]).map((list) => list.id),
+    ).toEqual(["alpha", "zulu"]);
   });
 });

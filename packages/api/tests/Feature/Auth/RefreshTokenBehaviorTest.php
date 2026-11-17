@@ -8,6 +8,7 @@ use App\Models\ApiRefreshToken;
 use App\Models\ApiRevokedToken;
 use App\Services\Auth\RefreshCookie;
 use App\Services\Auth\RefreshTokenRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -188,6 +189,15 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $this->refresh($issued['refresh_token'])->assertUnauthorized();
         $this->refresh($successor)->assertUnauthorized();
         $this->refresh($other['refresh_token'])->assertOk();
+    }
+
+    public function test_an_authenticated_request_does_not_write(): void
+    {
+        $issued = $this->issueTokenPair();
+        DB::enableQueryLog();
+        $this->withBearer($issued['access_token'])->getJson('/api/v1/me')->assertOk();
+
+        $this->assertSame([], array_filter(DB::getQueryLog(), fn (array $query): bool => ! str_starts_with($query['query'], 'select')));
     }
 
     public function test_revoking_with_only_the_access_token_ends_its_session(): void

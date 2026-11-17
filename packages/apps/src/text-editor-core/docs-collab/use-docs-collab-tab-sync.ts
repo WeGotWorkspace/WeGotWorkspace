@@ -10,12 +10,11 @@ import {
   handleSyncMessage,
 } from "./docs-collab-mesh-sync";
 import {
-  BC_TAB_ORIGIN,
   DocsCollabTabCoordinator,
   type TabMeshStateSnapshot,
   type TabSyncHandlers,
 } from "./docs-collab-tab-sync";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { BC_TAB_ORIGIN, isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 /**
  * Apply a follower tab's BroadcastChannel sync on this tab. The Yjs listener

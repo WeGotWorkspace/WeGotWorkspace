@@ -1,4 +1,4 @@
-import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 
 /** Load state of a settings section that reads its values from the server. */
 export type ServerSettingsPhase = "loading" | "offline" | "error" | "ready";

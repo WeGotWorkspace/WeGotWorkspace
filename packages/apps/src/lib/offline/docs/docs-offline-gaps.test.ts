@@ -24,7 +24,7 @@ import {
   docsCollabIndexedDbKey,
   listExistingIndexedDatabaseNames,
   moveDocsCollabPathDatabases,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 
 // Docs offline gaps (#1563 step 2): text and writes follow a moved Doc, and
 // Trash and Starred are read from this device while offline.

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { collabErrorStatus } from "@/lib/collab/docs-collab-utils";
 import {
   HttpSignalingClient,
   HttpSignalingError,

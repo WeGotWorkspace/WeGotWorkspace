@@ -118,10 +118,10 @@ final class EnvFileWriter
         }
         $owner = fileowner($target);
         $group = filegroup($target);
-        if (is_int($owner)) {
+        if (is_int($owner) && function_exists('chown')) {
             @chown($tmp, $owner);
         }
-        if (is_int($group)) {
+        if (is_int($group) && function_exists('chgrp')) {
             @chgrp($tmp, $group);
         }
     }
