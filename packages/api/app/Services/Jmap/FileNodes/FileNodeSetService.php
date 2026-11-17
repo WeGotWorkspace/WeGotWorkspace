@@ -108,8 +108,7 @@ final class FileNodeSetService
         // each Drive root once ({@see FileNodeRootMarkers}).
         $this->markers->batch(function () use ($username, $create, $update, $destroy, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively): void {
             $principal = $this->accounts->principalFor($username);
-            $roots = $this->accounts->rootsFor($username);
-            $this->accounts->ensureAccountIndexed($username);
+            $roots = $this->accounts->ensureAccountIndexed($username);
 
             // Destroys first, deepest-first, so replace/create can reuse names
             // and "all children destroyed in the same operation" holds (§3.2.3).

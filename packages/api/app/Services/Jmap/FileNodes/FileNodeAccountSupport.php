@@ -100,23 +100,30 @@ final class FileNodeAccountSupport
         return implode("\n", $pairs);
     }
 
-    public function ensureAccountIndexed(string $username): void
+    /**
+     * @return list<string> the same roots as {@see rootsFor}
+     */
+    public function ensureAccountIndexed(string $username): array
     {
+        $roots = $this->rootsFor($username);
         $guest = $this->guests->find($username);
         if ($guest !== null) {
             if ($this->index->liveByKey($guest->rootKey) === null) {
                 $this->index->recordCreate($guest->rootKey);
             }
 
-            return;
+            return $roots;
         }
+        $accountRoots = $this->accountRootsFor($username);
         $this->index->ensureRootsIndexed($username, $this->groups->allowedGroupSlugs($username));
-        foreach ($this->shareRootKeysFor($username) as $key) {
+        foreach (array_diff($roots, $accountRoots) as $key) {
             if ($this->index->liveByKey($key) === null) {
                 // recordCreate keeps the owner's parent; do not mint a root here.
                 $this->index->recordCreate($key);
             }
         }
+
+        return $roots;
     }
 
     /**
@@ -143,9 +150,9 @@ final class FileNodeAccountSupport
     /**
      * @param  list<string>  $roots
      */
-    public function visibleLiveNode(string $nodeId, array $roots): ?JmapFileNode
+    public function visibleLiveNode(string $nodeId, array $roots, ?JmapFileNode $loaded = null): ?JmapFileNode
     {
-        $node = $this->index->liveByNodeId($nodeId);
+        $node = $loaded ?? $this->index->liveByNodeId($nodeId);
         if ($node === null || ! $this->index->isVisibleKey((string) $node->storage_key, $roots)) {
             return null;
         }
@@ -157,12 +164,13 @@ final class FileNodeAccountSupport
      * Reconcile the whole visible tree (used by get-all and unfiltered
      * queries): BFS from the roots, reconciling each directory's children.
      * Bounded in practice by maxObjectsInGet on the caller side.
+     *
+     * @param  list<string>  $roots  from {@see ensureAccountIndexed}
      */
-    public function reconcileVisibleTree(string $username): void
+    public function reconcileVisibleTree(array $roots): void
     {
-        $this->ensureAccountIndexed($username);
         $queue = [];
-        foreach ($this->rootsFor($username) as $root) {
+        foreach ($roots as $root) {
             $node = $this->index->liveByKey($root);
             if ($node !== null) {
                 $queue[] = $node;
@@ -172,8 +180,7 @@ final class FileNodeAccountSupport
         while ($queue !== [] && $guard < 2_000) {
             $dir = array_shift($queue);
             $guard++;
-            $this->index->reconcileDirectory((string) $dir->storage_key);
-            foreach ($this->index->liveChildren((string) $dir->node_id) as $child) {
+            foreach ($this->index->reconcileDirectory($dir) as $child) {
                 if ($child->is_dir) {
                     $queue[] = $child;
                 }

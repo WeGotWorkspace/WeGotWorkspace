@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Methods;
 
+use App\Models\JmapFileNode;
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeMapper;
@@ -52,21 +53,22 @@ final class FileNodeGetMethod implements JmapMethodInterface
         }
 
         $principal = $this->accounts->principalFor($username);
-        $roots = $this->accounts->rootsFor($username);
+        $roots = $this->accounts->ensureAccountIndexed($username);
 
         $ids = $this->requestedIds($args);
         $nodes = [];
         $notFound = [];
         if ($ids === null) {
-            $this->accounts->reconcileVisibleTree($username);
+            $this->accounts->reconcileVisibleTree($roots);
             foreach ($this->index->liveVisible($roots) as $node) {
                 $nodes[(string) $node->node_id] = $node;
             }
             $this->guardGetAllBound(array_values($nodes));
         } else {
-            $this->accounts->ensureAccountIndexed($username);
+            $loaded = JmapFileNode::query()->whereIn('node_id', $ids)->whereNull('deleted_at')->get()->keyBy('node_id');
             foreach ($ids as $id) {
-                $node = $this->accounts->visibleLiveNode($id, $roots);
+                // A miss still asks the database, because the default collation matches ids case-insensitively.
+                $node = $this->accounts->visibleLiveNode($id, $roots, $loaded->get($id));
                 if ($node === null) {
                     $notFound[] = $id;
 
