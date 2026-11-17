@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Calendars;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
@@ -91,6 +92,32 @@ final class CollectionKindInvariantTest extends WgwDatabaseTestCase
             CollectionKind::DocsThreadPool->value,
             $this->kindFor('principals/alice', DocsThreadCollectionUris::POOL_URI),
         );
+    }
+
+    public function test_a_calendar_cannot_take_an_id_reserved_for_chat_or_docs_threads(): void
+    {
+        foreach (['chat-x', 'dm-x', DocsThreadCollectionUris::POOL_URI] as $id) {
+            try {
+                app(CalendarRepository::class)->create('alice', ['name' => 'Projects', 'id' => $id]);
+                $this->fail("Calendar id {$id} was accepted.");
+            } catch (ApiHttpException $e) {
+                $this->assertSame(409, $e->getStatusCode(), $id);
+            }
+        }
+    }
+
+    public function test_a_calendar_slug_on_a_reserved_prefix_gets_calendar_in_front(): void
+    {
+        $calendar = app(CalendarRepository::class)->create('alice', ['name' => 'Chat room']);
+
+        $this->assertSame('calendar-chat-room', $calendar['id']);
+    }
+
+    public function test_a_task_list_slug_on_a_reserved_prefix_gets_project_in_front(): void
+    {
+        $this->asUser('alice')->postJson('/api/v1/tasks/tasklists', ['name' => 'Chat standup'])
+            ->assertCreated()
+            ->assertJsonPath('id', 'project-chat-standup');
     }
 
     private function provisionSurfaces(): string

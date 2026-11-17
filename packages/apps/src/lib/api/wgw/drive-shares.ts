@@ -128,15 +128,8 @@ export async function searchDriveSharePrincipals(
 
 export async function fetchDriveSharedWithMe(opts?: {
   signal?: AbortSignal;
-  includeNotes?: boolean;
 }): Promise<DriveSharedWithMeEntry[]> {
-  const params = new URLSearchParams();
-  if (opts?.includeNotes) params.set("includeNotes", "true");
-  const suffix = params.toString();
-  const payload = await getShareJson<DriveSharedWithMeDataResponse>(
-    `/files/shared-with-me${suffix ? `?${suffix}` : ""}`,
-    opts,
-  );
+  const payload = await getShareJson<DriveSharedWithMeDataResponse>("/files/shared-with-me", opts);
   return payload.data;
 }
 

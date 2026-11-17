@@ -112,6 +112,13 @@ final class NotificationInboxTest extends WgwDatabaseTestCase
         $this->assertNotSame($firstId, $unread['list'][0]['id']);
     }
 
+    public function test_unread_query_that_is_not_a_boolean_answers_400(): void
+    {
+        $this->withBearer($this->issueBearerTokenFor('alice'))
+            ->getJson('/api/v1/notifications?unread=abc')
+            ->assertStatus(400);
+    }
+
     public function test_uncurated_events_do_not_create_inbox_rows(): void
     {
         app(EventDispatch::class)->fire(WorkspaceEvent::make(

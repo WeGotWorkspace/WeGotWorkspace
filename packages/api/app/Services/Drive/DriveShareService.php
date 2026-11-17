@@ -354,16 +354,16 @@ final class DriveShareService
     }
 
     /**
-     * Path-keyed member grants. Note paths are omitted unless `$includeNotes`.
+     * Path-keyed member grants, without note paths.
      *
      * @return list<array<string, mixed>>
      */
-    public function sharedWithMe(string $username, bool $includeNotes = false): array
+    public function sharedWithMe(string $username): array
     {
         $rows = [];
         foreach ($this->memberGrantRows($username) as $row) {
             $path = (string) ($row['share']['path'] ?? '');
-            if (! $includeNotes && $this->paths->isNotePath($path)) {
+            if ($this->paths->isNotePath($path)) {
                 continue;
             }
             $rows[] = $row;

@@ -435,6 +435,7 @@ final class CalendarRepository
     private function allocateCalendarUri(string $principalUri, ?string $requestedId, string $name, ?string $groupSlug): string
     {
         if ($requestedId !== null && $requestedId !== '') {
+            $this->collections->rejectReservedPrefix($requestedId, fn (): string => 'Calendar id already exists.');
             if (
                 $requestedId === CalendarCollectionUris::EVENT_DEFAULT
                 || CalendarCollectionUris::parseGroupCalendarApiId($requestedId) !== null
@@ -450,20 +451,15 @@ final class CalendarRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'calendar-'.substr($base, strlen('group-'));
         }
+        $base = $this->collections->prefixReservedSlug($base, 'calendar-');
         if (in_array($base, CalendarCollectionUris::reservedEventUris(), true)) {
             $base = 'calendar';
         }
         if ($groupSlug !== null && $base === CalendarCollectionUris::groupCalendarCalDavUri($groupSlug)) {
             $base = 'calendar';
         }
-        $candidate = $base;
-        $suffix = 2;
-        while ($this->collections->uriTaken($principalUri, $candidate)) {
-            $candidate = $base.'-'.$suffix;
-            $suffix++;
-        }
 
-        return $candidate;
+        return $this->collections->freeUri($principalUri, $base);
     }
 
     private function notifyCollectionShare(

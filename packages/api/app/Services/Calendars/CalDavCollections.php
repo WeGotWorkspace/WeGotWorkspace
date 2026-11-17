@@ -10,6 +10,8 @@ use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Chat\ChatCollectionUris;
+use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -79,6 +81,55 @@ final class CalDavCollections
             ->where('principaluri', $principalUri)
             ->where('uri', $uri)
             ->exists();
+    }
+
+    /**
+     * Prefixes that belong to another app. No other collection may be created
+     * on them: chat-/dm- would shadow Meet rooms, and docs-threads would block
+     * the thread pool for that principal.
+     */
+    public function reservedPrefixOwner(string $uri): ?CollectionKind
+    {
+        if (ChatCollectionUris::isChatUri($uri)) {
+            return CollectionKind::ChatChannel;
+        }
+        if (str_starts_with($uri, DocsThreadCollectionUris::POOL_URI)) {
+            return CollectionKind::DocsThreadPool;
+        }
+
+        return null;
+    }
+
+    /**
+     * A requested id on another app's prefix is a 409, with the message the
+     * caller gives for that owner.
+     *
+     * @param  \Closure(CollectionKind): string  $message
+     */
+    public function rejectReservedPrefix(string $requestedId, \Closure $message): void
+    {
+        $owner = $this->reservedPrefixOwner($requestedId);
+        if ($owner !== null) {
+            throw new ApiHttpException(409, $message($owner), 'alreadyExists');
+        }
+    }
+
+    /** A generated slug on another app's prefix gets `$prefix` in front instead. */
+    public function prefixReservedSlug(string $slug, string $prefix): string
+    {
+        return $this->reservedPrefixOwner($slug) === null ? $slug : $prefix.$slug;
+    }
+
+    public function freeUri(string $principalUri, string $base): string
+    {
+        $candidate = $base;
+        $suffix = 2;
+        while ($this->uriTaken($principalUri, $candidate)) {
+            $candidate = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     /**

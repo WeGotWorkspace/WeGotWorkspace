@@ -338,6 +338,7 @@ final class TaskListRepository
     private function allocateTaskListUri(string $principalUri, ?string $requestedId, string $name): string
     {
         if ($requestedId !== null && $requestedId !== '') {
+            $this->collections->rejectReservedPrefix($requestedId, fn (): string => 'Task list id already exists.');
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedTaskUriSlugs(), true)
                 || $this->collections->uriTaken($principalUri, $requestedId)
@@ -351,17 +352,12 @@ final class TaskListRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'project-'.substr($base, strlen('group-'));
         }
+        $base = $this->collections->prefixReservedSlug($base, 'project-');
         if (in_array($base, CalendarCollectionUris::reservedTaskUriSlugs(), true)) {
             $base = 'project';
         }
-        $candidate = $base;
-        $suffix = 2;
-        while ($this->collections->uriTaken($principalUri, $candidate)) {
-            $candidate = $base.'-'.$suffix;
-            $suffix++;
-        }
 
-        return $candidate;
+        return $this->collections->freeUri($principalUri, $base);
     }
 
     private function notifyCollectionShare(

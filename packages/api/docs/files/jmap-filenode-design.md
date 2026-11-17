@@ -70,7 +70,7 @@ Indexed and exposed: the account's personal tree (`users/{username}/…`) and me
 
 - the product trash directory `.Trash` (and its children). Drive “Move to Trash” is a FileNode create/move into that folder;
 - leftover on-disk `.notes` trees (personal and group) and `.archive` **only** when it lives under `.notes` may still be indexed as FileNodes during/after migration. They are **not** the Notes store. Drive children listings still omit `.notes` via `DriveService::isHiddenNotesPath`. Other `.archive` directories stay hidden.
-- **Notes left Drive:** FileNode no longer projects a `note` object. Notes are CalDAV VJOURNAL (`REST /notes/*` + vendor `urn:wgw:jmap:notes` on `POST /jmap`). See [notes.md](../../../../docs/architecture/notes.md). There is no FileNode query/get/set under `.notes` and no Drive star for notes. `GET /files/shared-with-me?includeNotes=true` is a leftover Drive flag for old path grants, not a Notes client API.
+- **Notes left Drive:** FileNode no longer projects a `note` object. Notes are CalDAV VJOURNAL (`REST /notes/*` + vendor `urn:wgw:jmap:notes` on `POST /jmap`). See [notes.md](../../../../docs/architecture/notes.md). There is no FileNode query/get/set under `.notes` and no Drive star for notes. `GET /files/shared-with-me` always leaves note paths out; the old `includeNotes` flag is gone.
 
 ## Decision 5 — rights, visibility, and shared nodes
 
