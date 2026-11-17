@@ -104,3 +104,39 @@ describe("rebaseContactDraft", () => {
     expect(next.phones).toEqual([blank]);
   });
 });
+
+describe("contact name patch without any stored name", () => {
+  it("sends nothing while the draft name stays empty", () => {
+    const nameless = cardWith({});
+    expect(editDraftToPatch(contactCardToEditDraft(nameless), nameless)).toEqual({});
+  });
+
+  it("sends the new name once the person types one", () => {
+    const nameless = cardWith({});
+    const draft = { ...contactCardToEditDraft(nameless), nameGiven: "Ada" };
+    expect(editDraftToPatch(draft, nameless).name?.full).toBe("Ada");
+  });
+});
+
+describe("contact name patch with separators and repeated parts", () => {
+  it("drops separator components and a second component of a kind already placed", () => {
+    const card = cardWith({
+      name: {
+        "@type": "Name",
+        isOrdered: true,
+        components: [
+          { "@type": "NameComponent", kind: "given", value: "Jane" },
+          { "@type": "NameComponent", kind: "separator", value: " " },
+          { "@type": "NameComponent", kind: "given", value: "Ann" },
+          { "@type": "NameComponent", kind: "surname", value: "Doe" },
+        ],
+      },
+    });
+    const draft = { ...contactCardToEditDraft(card), nameSurname: "Smith" };
+    const name = editDraftToPatch(draft, card).name!;
+    expect(name.components?.map((part) => `${part.kind}:${part.value}`)).toEqual([
+      "given:Jane Ann",
+      "surname:Smith",
+    ]);
+  });
+});

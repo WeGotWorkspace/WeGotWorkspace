@@ -3,7 +3,7 @@ import { useForm, type UseFormReturn } from "react-hook-form";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { isApiError } from "@/lib/api/api-error";
-import { isFetchNetworkError } from "@/lib/offline/browser-online";
+import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { MailboxLoginsLimitedError } from "@/lib/api/wgw/calendar-reply-mailbox";
 import { incomingEmailLabels as labels } from "@/settings-core/src/settings-incoming-email-labels";
 import {
