@@ -37,6 +37,10 @@ return [
 
     'stores' => [
 
+        'apc' => [
+            'driver' => 'apc',
+        ],
+
         'array' => [
             'driver' => 'array',
             'serialize' => false,
