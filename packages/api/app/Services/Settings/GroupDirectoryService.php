@@ -182,6 +182,7 @@ final class GroupDirectoryService
     {
         $backend = new PrincipalBackend(DB::connection('wgw')->getPdo());
         $backend->setGroupMemberSet($groupUri, $members);
+        $this->teams->forget();
     }
 
     private function toMemberPrincipalUri(string $entry): string

@@ -32,17 +32,24 @@ final class WgwSettings
 
     public const TIMEZONE = 'timezone';
 
+    /** @var array<string, mixed>|null */
+    private ?array $normalized = null;
+
     /**
      * @return array<string, mixed>
      */
     public static function normalized(): array
     {
+        $settings = app(self::class);
+        if ($settings->normalized !== null) {
+            return $settings->normalized;
+        }
         $db = [];
         foreach (AppSetting::query()->get(['name', 'value']) as $row) {
             $db[(string) $row->name] = AppSetting::decodeValue((string) $row->value);
         }
 
-        return array_merge(self::defaults(), self::coerce($db));
+        return $settings->normalized = array_merge(self::defaults(), self::coerce($db));
     }
 
     /**

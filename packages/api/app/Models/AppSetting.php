@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\UsesWgwConnection;
+use App\Support\WgwSettings;
 use Database\Factories\AppSettingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +52,7 @@ final class AppSetting extends Model
             ['name' => $name],
             ['value' => self::encodeValue($value)]
         );
+        app()->forgetInstance(WgwSettings::class);
     }
 
     public static function encodeValue(mixed $value): string

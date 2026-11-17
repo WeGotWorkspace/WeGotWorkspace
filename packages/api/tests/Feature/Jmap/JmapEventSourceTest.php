@@ -300,6 +300,8 @@ final class JmapEventSourceTest extends WgwDatabaseTestCase
         $connection->disableQueryLog();
 
         $this->assertNotSame([], $queries);
+        $this->assertCount(1, preg_grep('/\bapp_settings\b/', $queries));
+        $this->assertCount(1, preg_grep('/\bgroupmembers\b/', $queries));
         foreach ($queries as $sql) {
             // Change logs and per-item rows: a state read must not touch them.
             $this->assertDoesNotMatchRegularExpression(
