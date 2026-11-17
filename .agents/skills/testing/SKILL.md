@@ -21,6 +21,7 @@ paths:
 | Storybook visual states | [storybook](../storybook/SKILL.md) |
 | Offline UI catalog (no API) | [storybook/offline-first.md](../storybook/offline-first.md) |
 | Code quality (F.I.R.S.T.) | [clean-code](../clean-code/SKILL.md) |
+| Nightly team simulation: install, run, replay, status, triage | [tools/team-sim/README.md](../../../tools/team-sim/README.md) — Scheduling and Triage sections |
 
 ## Commands
 
