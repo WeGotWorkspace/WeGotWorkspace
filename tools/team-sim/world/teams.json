@@ -1,0 +1,5 @@
+[
+  { "id": "studio", "name": "Studio", "members": ["maarten", "priya", "joost", "sanne", "lotte", "bas", "fatima", "tom", "eva", "daan"] },
+  { "id": "business", "name": "Business", "private": true, "members": ["maarten", "priya", "joost", "sanne"] },
+  { "id": "noordlicht", "name": "Noordlicht", "confidential": true, "members": ["joost", "lotte", "fatima", "eva"] }
+]

@@ -7,6 +7,18 @@
   @apply m-0 text-sm text-muted-foreground;
 }
 
+/* Holds the switch's place while settings load: the switch's own box, a spinner as tall. */
+.settings-availability__pending {
+  @apply inline-flex items-center justify-center;
+  inline-size: 2.75rem;
+  block-size: 1.5rem;
+}
+
+.settings-availability__pending .loading-spinner {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
+
 .settings-availability__error {
   @apply flex flex-wrap items-center gap-3;
 }

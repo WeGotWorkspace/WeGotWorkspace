@@ -255,8 +255,8 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
         self::assertSame([], $this->app->make(DriveGroupResolver::class)->allowedGroupSlugs('dave'));
         self::assertSame(
             [
-                ['id' => 'principals/groups/t1', 'displayName' => 'Team One'],
-                ['id' => 'principals/groups/t2', 'displayName' => 'Team Two'],
+                ['id' => 'principals/groups/t1', 'displayName' => 'Team One', 'memberCount' => 2],
+                ['id' => 'principals/groups/t2', 'displayName' => 'Team Two', 'memberCount' => 3],
             ],
             $this->app->make(GroupDirectoryService::class)->groupsForUser('alice'),
         );
@@ -282,7 +282,7 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
         $this->addPrincipalToGroup($unnamed, $this->users['dave']);
 
         self::assertSame(
-            [['id' => 'principals/groups/unnamed', 'displayName' => 'unnamed']],
+            [['id' => 'principals/groups/unnamed', 'displayName' => 'unnamed', 'memberCount' => 1]],
             $this->app->make(GroupDirectoryService::class)->groupsForUser('dave'),
         );
     }

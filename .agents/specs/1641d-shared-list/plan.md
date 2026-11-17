@@ -42,6 +42,7 @@ Draws from the Technical debt milestone (#14), step (d) of #1641. It displaces n
 ## Considered
 
 Considered: the existing Contacts windowing (`contacts-list-window.ts`), `@tanstack/react-virtual`, and CSS `content-visibility` alone.
+
 - **Chosen: generalise the Contacts windowing, with measured row sizes.**
   - Its math, its 80-row threshold, its overscan and its header rule are already tested and shipped.
   - Measuring is added because Notes, Tasks and Chat rows differ in height. Fixing their heights in CSS (the Contacts approach) would be a visible change.
@@ -89,6 +90,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 ## Chunks
 
 ### Chunk A: shared list + Notes binding
+
 - **Skill:** workspace
 - **Inputs:** Notes row memo and render-count test from #1721 — `path: packages/apps/src/notes-core/src/notes-list-row.tsx:63`. Contacts window math — `path: packages/apps/src/contacts-core/src/contacts-list-window.ts:62`
 - **Done when:**
@@ -101,6 +103,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Parallel with:** none
 
 ### Chunk B: Contacts onto the shared window
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/contacts-core/src/contacts-list-panel.tsx:221`
 - **Done when:** Contacts renders through `WorkspaceList`, with letter headers as header rows, its `<section>` per letter through `renderSection`, and its rem sizes as the estimate. It scrolls a newly opened contact into view (Contacts' behaviour today, through a `revealActive` option). `contacts-list-window.ts` and its test are deleted, and the measurement shows 0 long frames, as on `main`.
@@ -108,6 +111,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Parallel with:** none
 
 ### Chunk C: Tasks
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/tasks-core/src/tasks-list-row.tsx:62`, `path: packages/apps/e2e/helpers/tasks-matrix.ts:396`
 - **Done when:**
@@ -120,6 +124,7 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Parallel with:** none
 
 ### Chunk D: Drive list and grid
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/drive-core/src/drive-browser.tsx:419`
 - **Done when:**
@@ -132,13 +137,20 @@ None for chunk A. These were found while writing the spec. Each is a behaviour d
 - **Parallel with:** none
 
 ### Chunk E: Docs home
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/docs-core/src/docs-home-pane.tsx:411`
-- **Done when:** Docs home gets chunk D's windowed views through its existing reuse, and previews use the tiles-in-view hook as Drive does. `docs-home-browse.spec.ts` passes with 1000 docs.
+- **Done when:**
+  - Docs home gets chunk D's windowed views through its existing reuse.
+  - `docs-home-browse.spec.ts` covers 120 documents live, in list and grid: only a window of rows is mounted, the keyboard moves through them, Enter opens a document, and no `/files/content` request is made while browsing.
+  - `docs-home-pane-previews.test.tsx` covers 1000 documents in jsdom, with no tile byte reads.
+  - A live seed of 1000 documents was dropped as too slow for the live tier (decided by the overview session, 2026-11-16).
+- **Found while building (2026-11-16):** Docs home needs no tiles-in-view hook. A grid tile previews only images (`use-drive-grid-previews.ts`), and every Docs home view lists only `DOCS_HOME_LIST_EXTENSIONS` (`md`, `markdown`, `txt`, `docx`, `gdoc`), so its grid reads no file bytes at any length. Wiring the hook would only add a re-render per scroll. `docs-home-pane-previews.test.tsx` fails if Docs home ever lists a type with a tile preview.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/docs-core`, `e2e/docs-home-browse.spec.ts`, the measurement script
 - **Parallel with:** none
 
 ### Chunk F: Chat message list
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/chat-ui/src/chat-message-list.tsx:126`
 - **Done when:**

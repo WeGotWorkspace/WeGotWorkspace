@@ -7,6 +7,7 @@ namespace App\Services\Calendars;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Models\JmapCalendarEventState;
 use App\Services\VObject\VObjectPayloadGuard;
 use Closure;
 use Illuminate\Support\Facades\Log;
@@ -206,9 +207,10 @@ final class CalendarEventRepository
 
     /**
      * @param  (Closure(string): (array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}|null))|null  $locate  from ownedEventLocator() when showing many
+     * @param  array<string, JmapCalendarEventState>  $knownStates  from JmapCalendarEventStateService::statesFor() when showing many
      * @return array<string, mixed>
      */
-    public function show(string $username, string $eventId, ?Closure $locate = null): array
+    public function show(string $username, string $eventId, ?Closure $locate = null, array $knownStates = []): array
     {
         $located = $locate !== null ? $locate($eventId) : $this->mutations->findOwnedEvent($username, $eventId);
         if ($located === null) {
@@ -220,6 +222,7 @@ final class CalendarEventRepository
             $located['calendarUri'],
             $located['veventUid'],
             $username,
+            $knownStates,
         );
     }
 

@@ -9296,9 +9296,13 @@ export interface components {
             displayName: string;
             email: string;
         };
+        /** @description A Team the caller belongs to. */
         SettingsUserGroup: {
+            /** @description Group principal uri (principals/groups/…). */
             id: string;
             displayName: string;
+            /** @description How many members the Team has, the caller included. */
+            memberCount: number;
         };
         SettingsUserGroupList: components["schemas"]["SettingsUserGroup"][];
         SettingsStateResponse: {
@@ -12576,7 +12580,7 @@ export interface components {
         };
         /** @description Server-side ceilings for the room, advertised on the meeting join response. */
         RtcRoomLimits: {
-            /** @description Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15). */
+            /** @description Peers allowed in the room (`MEET_MAX_PEERS`, default 6, clamped 2-15). */
             maxPeers: number;
             /**
              * @description Highest camera profile Meet may select. Clients still pick the profile automatically.
@@ -12911,17 +12915,27 @@ export interface components {
             username: string;
             /** @description Folder that is read, `INBOX` by default. */
             folder: string;
+            /** @description The folder's Mailbox id, as Mailbox/get (urn:wgw:jmap:mail) returns it. */
+            folderId: string;
             passwordSet: boolean;
-            /** @description Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. Replies are only applied while it is known. */
+            /** @description Id of the mailbox's receiving server, learned from the newest messages when the settings are saved or tested. While it is known, a reply is applied only when that server's Authentication-Results header shows the sender is authenticated. */
             trustedServer: string | null;
+            /**
+             * @description How a reply's sender is authenticated: `receiving_server` uses the trusted receiving server's Authentication-Results header; `dkim` (no trusted server known) verifies the reply's own DKIM signature against the signer's key in DNS.
+             * @enum {string}
+             */
+            senderCheck: "receiving_server" | "dkim";
             /** @description False after repeated failed logins; saving the settings again turns reading back on. */
             active: boolean;
             /** Format: date-time */
             lastCheckedAt: string | null;
             /** Format: date-time */
             lastSuccessAt: string | null;
-            /** @enum {string|null} */
-            lastError: "auth_failed" | "connect_failed" | "tls_failed" | "folder_missing" | "host_not_allowed" | "protocol_error" | "untrusted_server_unknown" | null;
+            /**
+             * @description `dns_unavailable`: the last check stopped at a reply whose DKIM key could not be looked up; it is tried again on the next check. `untrusted_server_unknown` is no longer reported and only remains on a mailbox until its next check.
+             * @enum {string|null}
+             */
+            lastError: "auth_failed" | "connect_failed" | "tls_failed" | "folder_missing" | "host_not_allowed" | "protocol_error" | "dns_unavailable" | "untrusted_server_unknown" | null;
         };
         CalendarReplyMailboxState: {
             mailbox: components["schemas"]["CalendarReplyMailbox"] | null;
@@ -12936,9 +12950,39 @@ export interface components {
             /** @description Required on the first save. Left out or null keeps the stored password. */
             password?: string | null;
             folder?: string | null;
+            /** @description A Mailbox id from Mailbox/get; wins over `folder`. Looked up in the same login, 422 folder_missing when no folder has it. */
+            folderId?: string | null;
         };
         NotificationAckBatchRequest: {
             ids: string[];
+        };
+        /** @description Mailbox/get (vendor urn:wgw:jmap:mail) object: the RFC 8621 §2 Mailbox properties a read-only IMAP folder can carry. Ids derive from the IMAP name. */
+        MailMailbox: {
+            id: string;
+            name?: string;
+            parentId?: string | null;
+            /** @enum {string|null} */
+            role?: "inbox" | "all" | "archive" | "drafts" | "flagged" | "important" | "junk" | "sent" | "trash" | null;
+            sortOrder?: number;
+            myRights?: components["schemas"]["MailMailboxRights"];
+        };
+        /** @description RFC 8621 §2 MailboxRights; only mayReadItems is true. */
+        MailMailboxRights: {
+            mayReadItems: boolean;
+            mayAddItems: boolean;
+            mayRemoveItems: boolean;
+            maySetSeen: boolean;
+            maySetKeywords: boolean;
+            mayCreateChild: boolean;
+            mayRename: boolean;
+            mayDelete: boolean;
+            maySubmit: boolean;
+        };
+        /** @description Account object of urn:wgw:jmap:mail: the RFC 8621 §1.3.1 fields that apply to read-only Mailboxes. */
+        MailAccountCapability: {
+            maxMailboxDepth: null;
+            maxSizeMailboxName: number;
+            mayCreateTopLevelMailbox: boolean;
         };
     };
     responses: {

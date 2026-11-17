@@ -12,7 +12,9 @@
  *     --api-url http://127.0.0.1:9461 [--scenario all|open|scroll|keys|…] [--runs 3] [--cpu 4]
  *   Apps and their scenarios: notes (open, scroll, keys, type), contacts (open, scroll, keys, search),
  *   drive (open, scroll, keys, rename, search; `--drive-view grid|list`, `--drive-path "My Drive/…"`),
- *   tasks (open, scroll, keys, tick, type; `--tasks-list <list id>`).
+ *   tasks (open, scroll, keys, tick, type; `--tasks-list <list id>`),
+ *   docs (Docs home All Docs: open, scroll, keys; `--docs-view grid|list`),
+ *   chat (a DM's messages: open, scroll, receive; `--chat-dm <user>`, `--chat-newest "<text>"`).
  *
  * Each run uses a fresh browser context (no cache, no IndexedDB): a cold first visit.
  * Scenarios find rows by position on screen, never by DOM index, so the numbers
@@ -39,7 +41,10 @@ const { values } = parseArgs({
     json: { type: "boolean", default: false },
     "drive-view": { type: "string", default: "list" },
     "drive-path": { type: "string", default: "My Drive/List bench" },
+    "docs-view": { type: "string", default: "grid" },
     "tasks-list": { type: "string", default: "list-bench" },
+    "chat-dm": { type: "string", default: "member" },
+    "chat-newest": { type: "string", default: "Message 0997" },
   },
 });
 
@@ -83,13 +88,88 @@ async function framesBetween(page, from, to) {
   );
 }
 
-async function pageShape(page) {
+async function pageShape(page, rowSelector = ROW_SELECTOR) {
   return page.evaluate((rowSelector) => {
+    const lists = Array.from(document.querySelectorAll("[data-workspace-list-rows]"));
     return {
       nodes: document.getElementsByTagName("*").length,
       rows: document.querySelectorAll(rowSelector).length,
+      // Rows the windowed lists hold in all, mounted or not (`-` without one).
+      listRows: lists.length
+        ? lists.reduce(
+            (sum, list) => sum + Number(list.getAttribute("data-workspace-list-rows")),
+            0,
+          )
+        : "-",
     };
-  }, ROW_SELECTOR);
+  }, rowSelector);
+}
+
+/** A client message id: 26 characters of Crockford base32, time first. */
+function ulid() {
+  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+  let time = Date.now();
+  let head = "";
+  for (let i = 0; i < 10; i += 1) {
+    head = alphabet[time % 32] + head;
+    time = Math.floor(time / 32);
+  }
+  let tail = "";
+  for (let i = 0; i < 16; i += 1) tail += alphabet[Math.floor(Math.random() * 32)];
+  return head + tail;
+}
+
+/** The DM's messages URL and headers, as the other person. */
+async function dmPeerChannel() {
+  const api = `${values["api-url"]}/api/v1`;
+  const token = await tokenSession(values["api-url"], values["chat-dm"], values.password);
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const dm = await fetch(`${api}/chat/dms`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ principal: values.username }),
+  });
+  if (!dm.ok) throw new Error(`open DM: ${dm.status}`);
+  const { id } = await dm.json();
+  return { url: `${api}/chat/channels/${encodeURIComponent(id)}/messages`, headers };
+}
+
+/**
+ * The start of the DM's newest message, as plain text. Runs of `receive` add
+ * messages, and a windowed log does not mount old ones, so `--chat-newest` is
+ * only the fallback.
+ */
+async function newestChatText() {
+  const { url, headers } = await dmPeerChannel();
+  const res = await fetch(url, { headers });
+  if (!res.ok) return values["chat-newest"];
+  const { list } = await res.json();
+  const body = list?.at(-1)?.body;
+  return body
+    ? body
+        .split(/[*_`[\]]/)[0]
+        .trim()
+        .slice(0, 40)
+    : values["chat-newest"];
+}
+
+/** Posts a chat message as `--chat-dm` into its DM with the signed-in user. */
+async function postAsDmPeer(body) {
+  const { url, headers } = await dmPeerChannel();
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ id: ulid(), body }),
+  });
+  if (!res.ok) throw new Error(`post message: ${res.status}`);
+}
+
+/** The chat's scrolling message log. */
+async function scrollChat(page, top) {
+  await page.evaluate((top) => {
+    const log = document.querySelector(".chat-message-list__scroll");
+    if (log) log.scrollTop = top;
+  }, top);
 }
 
 /** The scrolling element around the app's list rows. */
@@ -246,6 +326,51 @@ const APPS = {
       },
     },
   },
+  docs: {
+    path: "/docs",
+    init: (viewMode) => {
+      localStorage.setItem("wgw.ui.docs.viewMode", viewMode);
+    },
+    get initArg() {
+      return values["docs-view"];
+    },
+    async ready(page) {
+      await page.locator(ROW_SELECTOR).first().waitFor({ timeout: 60_000 });
+      await page.getByText("Loading documents…").waitFor({ state: "detached", timeout: 60_000 });
+    },
+    scenarios: {
+      /** Cold open of All Docs: from navigation until the first page has painted. */
+      async open(page) {
+        await APPS.docs.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /**
+       * Scroll to the end until every page has loaded (50 documents a page), so the
+       * list grows to the whole account while it is scrolled.
+       */
+      async scroll(page) {
+        await APPS.docs.ready(page);
+        await page.waitForTimeout(1500);
+        const start = await now(page);
+        let steps = 0;
+        while (steps < 60 && (await page.locator(".drive-browser-load-more").count()) > 0) {
+          await page.evaluate(() => {
+            const scroller = document.querySelector(".docs-home-pane__scroll");
+            if (scroller) scroller.scrollTop = scroller.scrollHeight;
+          });
+          await page.waitForTimeout(300);
+          steps += 1;
+        }
+        return { start, interactions: steps };
+      },
+      /** Select a document, then ArrowDown 30 times: the selection follows. */
+      async keys(page) {
+        await APPS.docs.ready(page);
+        await page.waitForTimeout(1500);
+        return arrowDownThrough(page);
+      },
+    },
+  },
   contacts: {
     path: "/contacts",
     async ready(page) {
@@ -372,6 +497,54 @@ const APPS = {
       },
     },
   },
+  chat: {
+    get path() {
+      return `/meet/dms/${encodeURIComponent(values["chat-dm"])}`;
+    },
+    rowSelector: ".chat-message-list__scroll .chat-message",
+    /** The whole channel has synced: its newest message is on screen. */
+    async ready(page) {
+      await page
+        .getByText(await newestChatText(), { exact: false })
+        .first()
+        .waitFor({ timeout: 90_000 });
+    },
+    scenarios: {
+      /** Cold open of a long DM: from navigation until the newest messages have painted. */
+      async open(page) {
+        await APPS.chat.ready(page);
+        return { start: 0, interactions: 1 };
+      },
+      /** From the newest message, scroll up to the oldest in 20 steps. */
+      async scroll(page) {
+        await APPS.chat.ready(page);
+        await page.waitForTimeout(1500);
+        const start = await now(page);
+        const total = await page.evaluate(
+          () => document.querySelector(".chat-message-list__scroll")?.scrollHeight ?? 0,
+        );
+        for (let step = 1; step <= 20; step += 1) {
+          await scrollChat(page, total * (1 - step / 20));
+          await page.waitForTimeout(100);
+        }
+        return { start, interactions: 20 };
+      },
+      /** Five messages arrive from the other person, one a second, while at the newest. */
+      async receive(page) {
+        await APPS.chat.ready(page);
+        await page.waitForTimeout(1500);
+        const start = await now(page);
+        const run = Date.now().toString(36);
+        for (let n = 1; n <= 5; n += 1) {
+          const body = `Arriving ${run} ${n}`;
+          await postAsDmPeer(body);
+          await page.getByText(body, { exact: true }).first().waitFor({ timeout: 30_000 });
+          await page.waitForTimeout(1000);
+        }
+        return { start, interactions: 5 };
+      },
+    },
+  },
   notes: {
     path: "/notes",
     async ready(page) {
@@ -455,7 +628,7 @@ async function runOnce(browser, app, scenarioName, accessToken) {
   const end = (await now(page)) + TAIL_MS;
   await page.waitForTimeout(TAIL_MS);
   const frames = await framesBetween(page, start, end);
-  const shape = await pageShape(page);
+  const shape = await pageShape(page, app.rowSelector);
   await context.close();
   if (restore) await restoreTask(restore, accessToken);
   const durations = frames.map((frame) => Math.round(frame.duration));
@@ -485,7 +658,8 @@ async function main() {
           console.log(
             `${values.app} ${scenario} run ${run} (cpu ${values.cpu}x): ` +
               `${result.longFrames} / ${result.worstMs} / ${result.totalMs} ms ` +
-              `(long frames / worst / total), ${result.nodes} nodes, ${result.rows} rows mounted`,
+              `(long frames / worst / total), ${result.nodes} nodes, ${result.rows} rows mounted ` +
+              `of ${result.listRows} list rows`,
           );
         }
       }

@@ -73,7 +73,7 @@ const WORKSPACE_PWA_META: Record<WorkspacePwaAppKey, WorkspacePwaMeta> = {
   },
   meet: {
     title: "Meet",
-    description: "Video conferencing for up to 4 people.",
+    description: "Video conferencing for up to 6 people.",
     appTitle: "Meet",
     manifest: "/manifests/meet.webmanifest",
   },

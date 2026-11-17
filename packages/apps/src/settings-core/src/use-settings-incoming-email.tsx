@@ -3,7 +3,8 @@ import { useForm, type UseFormReturn } from "react-hook-form";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { isApiError } from "@/lib/api/api-error";
-import { isFetchNetworkError } from "@/lib/offline/browser-online";
+import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+import { MailboxLoginsLimitedError } from "@/lib/api/wgw/calendar-reply-mailbox";
 import { incomingEmailLabels as labels } from "@/settings-core/src/settings-incoming-email-labels";
 import {
   defaultIncomingMailboxOperations,
@@ -19,7 +20,7 @@ import {
   type ServerSettingsPhase,
 } from "@/settings-core/src/settings-server-load";
 
-export type IncomingEmailBusy = "save" | "check" | "disconnect" | null;
+export type IncomingEmailBusy = "connect" | "save" | "test" | "disconnect" | null;
 
 export type SettingsIncomingEmailController = {
   phase: ServerSettingsPhase;
@@ -27,11 +28,15 @@ export type SettingsIncomingEmailController = {
   mailbox: IncomingMailbox | null;
   form: UseFormReturn<IncomingEmailFormValues>;
   busy: IncomingEmailBusy;
-  /** Why the last save or check failed, shown next to the buttons. */
+  /** Why the last connect, save or check failed. */
   failure: string | null;
-  save: () => void;
+  /** First connect: logs in with the form as typed. */
+  connect: () => void;
+  /** Test connection: saves unsaved edits with a login, or logs in again to check the saved ones. */
   check: () => void;
-  disconnect: () => void;
+  /** A new password for the connected mailbox; resolves to why it failed, or null. */
+  changePassword: (password: string) => Promise<string | null>;
+  disconnect: () => Promise<void>;
   retry: () => void;
 };
 
@@ -41,8 +46,11 @@ export function mailboxFailureSentence(
   errors: Record<string, string> = labels.errors,
 ): string {
   if (isFetchNetworkError(error)) return labels.offline;
+  if (error instanceof MailboxLoginsLimitedError) {
+    return labels.loginsLimited(formatTime(Date.now() + error.retryAfterSeconds * 1000));
+  }
   if (!isApiError(error)) return labels.failed;
-  if (error.status === 429) return labels.tooMany;
+  if (error.status === 429) return labels.loginsLimited(formatTime(Date.now() + 60_000));
   if (error.status === 400) return labels.invalid;
   return (error.code && (errors[error.code] ?? labels.errors[error.code])) || labels.failed;
 }
@@ -98,15 +106,17 @@ export function useIncomingMailboxLoad(
 }
 
 /**
- * Settings → Incoming email (#1589). Not autosaved: saving logs in to the mailbox, so the
- * connection goes to the server when the user presses Connect or Save, and a failed login keeps
- * the form as typed with the reason next to the buttons.
+ * Settings → Incoming email (#1589). Connect logs in with what was typed; a failed login keeps
+ * the form as typed with the reason. Edits to a connected mailbox are saved by Test connection,
+ * which logs in again; nothing logs in by itself. The password changes in its own dialog.
  */
 export function useSettingsIncomingEmail(
   operations: IncomingMailboxOperations = defaultIncomingMailboxOperations(),
 ): SettingsIncomingEmailController {
   const { showSuccess } = useAppToast();
   const [mailbox, setMailbox] = useState<IncomingMailbox | null>(null);
+  const mailboxRef = useRef<IncomingMailbox | null>(null);
+  mailboxRef.current = mailbox;
   const [busy, setBusy] = useState<IncomingEmailBusy>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const form = useForm<IncomingEmailFormValues>({ defaultValues: incomingEmailToForm(null) });
@@ -128,66 +138,123 @@ export function useSettingsIncomingEmail(
     setPhase("ready");
   };
 
-  const run = async (kind: Exclude<IncomingEmailBusy, null>, action: () => Promise<void>) => {
+  /** Runs one request; the failure sentence is set, and also returned for a dialog. */
+  const run = async (
+    kind: Exclude<IncomingEmailBusy, null>,
+    action: () => Promise<void>,
+  ): Promise<string | null> => {
     setBusy(kind);
     setFailure(null);
     requestRef.current += 1;
     try {
       await action();
+      return null;
     } catch (error) {
-      setFailure(mailboxFailureSentence(error));
+      const sentence = mailboxFailureSentence(error);
+      setFailure(sentence);
+      return sentence;
     } finally {
       setBusy(null);
     }
   };
 
-  const save = form.handleSubmit((values) => {
-    if (!/^\d*$/.test(values.port.trim())) {
+  const connect = () => {
+    const values = form.getValues();
+    if (!portIsNumber(values)) {
       setFailure(labels.invalid);
       return;
     }
-    const update = incomingEmailUpdateFromForm(values, mailbox);
-    if (update && incomingEmailNeedsPasswordAgain(values, mailbox)) {
-      setFailure(labels.passwordAgain);
-      return;
-    }
+    const update = incomingEmailUpdateFromForm(values, null);
     if (!update) {
       setFailure(labels.required);
       return;
     }
-    const connected = mailbox !== null;
-    return run("save", async () => {
+    void run("connect", async () => {
       const next = await operationsRef.current.save(update);
       applyReady(next.mailbox);
-      if (connected) showSuccess(labels.saved);
-      // Only the connection test learns the receiving server; without it nothing is read yet.
-      else showSuccess(next.mailbox?.trustedServer ? labels.connected : labels.connectedWaiting);
+      showSuccess(labels.connected);
     });
-  });
+  };
 
-  const check = () =>
-    void run("check", async () => {
-      const next = await operationsRef.current.test();
+  // Each check is one login, and the server allows only a few in a row: nothing checks by
+  // itself, only this button.
+  const check = () => {
+    const saved = mailboxRef.current;
+    if (!saved) return;
+    const values = form.getValues();
+    // Read from the values, not formState: that only updates where a component subscribes.
+    if (sameFormValues(values, incomingEmailToForm(saved))) {
+      void run("test", async () => {
+        const next = await operationsRef.current.test();
+        applyReady(next.mailbox);
+        showSuccess(labels.checked);
+      });
+      return;
+    }
+    if (!portIsNumber(values)) {
+      setFailure(labels.invalid);
+      return;
+    }
+    if (incomingEmailNeedsPasswordAgain(values, saved)) {
+      setFailure(labels.passwordAgain);
+      return;
+    }
+    const update = incomingEmailUpdateFromForm(values, saved);
+    if (!update) {
+      setFailure(labels.requiredConnected);
+      return;
+    }
+    void run("save", async () => {
+      const next = await operationsRef.current.save(update);
       applyReady(next.mailbox);
-      showSuccess(labels.checked);
+      showSuccess(labels.saved);
     });
+  };
 
-  const disconnect = () =>
-    void run("disconnect", async () => {
+  const changePassword = async (password: string) => {
+    const saved = mailboxRef.current;
+    if (!saved) return labels.failed;
+    // The rows as they stand go along: a new mail server is saved with its password.
+    if (!portIsNumber(form.getValues())) return labels.invalid;
+    const update = incomingEmailUpdateFromForm({ ...form.getValues(), password }, saved);
+    if (!update) return labels.requiredConnected;
+    const failed = await run("save", async () => {
+      const next = await operationsRef.current.save(update);
+      applyReady(next.mailbox);
+      showSuccess(labels.passwordChanged);
+    });
+    // The dialog shows its own failure; the row keeps none.
+    if (failed) setFailure(null);
+    return failed;
+  };
+
+  const disconnect = async () => {
+    await run("disconnect", async () => {
       await operationsRef.current.disconnect();
       applyReady(null);
       showSuccess(labels.disconnected);
     });
-
-  return {
-    phase,
-    mailbox,
-    form,
-    busy,
-    failure,
-    save: () => void save(),
-    check,
-    disconnect,
-    retry,
   };
+
+  return { phase, mailbox, form, busy, failure, connect, check, changePassword, disconnect, retry };
+}
+
+/** An empty port means the usual one; anything else must be digits, not sent as typed. */
+function portIsNumber(values: IncomingEmailFormValues): boolean {
+  return /^\d*$/.test(values.port.trim());
+}
+
+function sameFormValues(a: IncomingEmailFormValues, b: IncomingEmailFormValues): boolean {
+  return (
+    a.host === b.host &&
+    a.security === b.security &&
+    a.port === b.port &&
+    a.username === b.username &&
+    a.password === b.password
+  );
+}
+
+/** "14:32", in the user's own clock. */
+function formatTime(ms: number): string {
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(ms);
 }

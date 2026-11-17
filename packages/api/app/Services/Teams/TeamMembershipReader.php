@@ -20,9 +20,10 @@ final class TeamMembershipReader
     private array $teams = [];
 
     /**
-     * The user's Teams, ordered by uri.
+     * The user's Teams, ordered by uri, with how many members each has (a correlated
+     * count in the same query).
      *
-     * @return list<array{uri: string, slug: string, displayName: string}>
+     * @return list<array{uri: string, slug: string, displayName: string, memberCount: int}>
      */
     public function teamsOf(string $username): array
     {
@@ -37,7 +38,15 @@ final class TeamMembershipReader
             ->where('g.uri', 'like', AdminConstants::GROUP_PREFIX.'%')
             ->distinct()
             ->orderBy('g.uri')
-            ->get(['g.uri as team_uri', 'g.displayname as team_name']);
+            ->select(['g.uri as team_uri', 'g.displayname as team_name'])
+            ->selectSub(
+                GroupMember::query()
+                    ->from('groupmembers as gm')
+                    ->selectRaw('count(*)')
+                    ->whereColumn('gm.principal_id', 'g.id'),
+                'member_count',
+            )
+            ->get();
 
         $teams = [];
         foreach ($rows as $row) {
@@ -46,6 +55,7 @@ final class TeamMembershipReader
                 'uri' => $uri,
                 'slug' => substr($uri, strlen(AdminConstants::GROUP_PREFIX)),
                 'displayName' => trim((string) $row->getAttribute('team_name')),
+                'memberCount' => (int) $row->getAttribute('member_count'),
             ];
         }
 

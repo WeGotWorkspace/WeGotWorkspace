@@ -99,6 +99,33 @@ final class JmapStateRowRaceTest extends WgwDatabaseTestCase
         $this->assertSame(1, JmapCalendarEventState::query()->where('event_id', 'evt-again')->count());
     }
 
+    public function test_calendar_event_prefetched_row_does_not_overwrite_a_newer_concurrent_write(): void
+    {
+        $service = app(JmapCalendarEventStateService::class);
+        JmapCalendarEventState::query()->create([
+            'username' => 'bob',
+            'event_id' => 'evt-stale',
+            'calendar_uri' => 'default',
+            'object_uri' => 'stale.ics',
+            'state_token' => 'oldtoken',
+            'etag' => 'etag-1',
+        ]);
+        $known = $service->statesFor('bob', ['evt-stale']);
+
+        JmapCalendarEventState::query()
+            ->where('username', 'bob')
+            ->where('event_id', 'evt-stale')
+            ->update(['etag' => 'etag-2', 'state_token' => 'newtoken']);
+
+        $object = (new CalendarObject)->forceFill(['uri' => 'stale.ics', 'etag' => 'etag-2']);
+        $event = $service->attachStateToken('bob', ['id' => 'evt-stale'], $object, 'default', $known);
+
+        $this->assertSame('newtoken', $event['state']);
+        $row = JmapCalendarEventState::query()->where('event_id', 'evt-stale')->firstOrFail();
+        $this->assertSame('newtoken', $row->state_token);
+        $this->assertSame('etag-2', $row->etag);
+    }
+
     /**
      * Inserts $row once, right after the first SELECT on the model's table: the moment
      * between our read (miss) and our insert in which a concurrent request wins.

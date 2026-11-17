@@ -1,0 +1,7 @@
+[
+  { "id": "vos", "org": "Bakkerij Vos", "contact": "Anouk Vos", "email": "anouk.vos@example.org", "phone": "+31 20 555 0101" },
+  { "id": "haven", "org": "Stichting Havenfestival", "contact": "Remco Dijkstra", "email": "remco.dijkstra@example.org", "phone": "+31 10 555 0144" },
+  { "id": "noordlicht", "org": "Noordlicht Pharma", "contact": "Dr. Ingrid Søndergaard", "email": "ingrid.sondergaard@example.org", "phone": "+45 33 55 0190", "confidential": true },
+  { "id": "fiets", "org": "De Fietsfabriek", "contact": "Youssef Bennani", "email": "youssef.bennani@example.org", "phone": "+31 30 555 0177" },
+  { "id": "zeeuws", "org": "Zeeuwse Zilte Zaken", "contact": "Marieke Ooms", "email": "marieke.ooms@example.org", "phone": "+31 118 555 012", "prospect": true }
+]

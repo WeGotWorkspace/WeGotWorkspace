@@ -395,9 +395,9 @@ final class NoteRepository
     /**
      * @return array<string, string>
      */
-    public function notebookSyncTokens(string $username): array
+    public function notebookSyncTokens(string $username, bool $provision = true): array
     {
-        return $this->notebooks->notebookSyncTokens($username);
+        return $this->notebooks->notebookSyncTokens($username, $provision);
     }
 
     /**

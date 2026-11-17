@@ -22,6 +22,11 @@ import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { readPushScopes, rememberPushScope } from "@/lib/notifications/push-scope";
 import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
+import {
+  ERROR_DIAGNOSTICS_DB_NAME,
+  appendErrorDiagnostic,
+  readErrorDiagnostics,
+} from "@/lib/diagnostics/error-diagnostics-store";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
 const SESSION_KIND_KEY = "wgw.api.session_kind";
@@ -247,6 +252,51 @@ describe("user-initiated logout", () => {
     await wgwLogout();
 
     await expect(readPushScopes()).resolves.toEqual([]);
+  });
+
+  it("clears the recent errors kept for Copy diagnostics (#2204)", async () => {
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await appendErrorDiagnostic({
+      time: "2026-11-16T10:00:00.000Z",
+      source: "error",
+      name: "TypeError",
+      message: "alice's last error",
+      stack: "",
+      app: "drive",
+      route: "/drive",
+      build: "test",
+      userAgent: "test",
+    });
+    expect(await indexedDbNames()).toContain(ERROR_DIAGNOSTICS_DB_NAME);
+
+    await wgwLogout();
+
+    expect(await indexedDbNames()).not.toContain(ERROR_DIAGNOSTICS_DB_NAME);
+    await expect(readErrorDiagnostics()).resolves.toEqual([]);
+  });
+
+  it("clears the recent errors when indexedDB.databases is missing", async () => {
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await appendErrorDiagnostic({
+      time: "2026-11-16T10:00:00.000Z",
+      source: "render",
+      name: "Error",
+      message: "kept until logout",
+      stack: "",
+      app: "docs",
+      route: "/docs",
+      build: "test",
+      userAgent: "test",
+    });
+    const databases = indexedDB.databases.bind(indexedDB);
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    try {
+      await wgwLogout();
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
+
+    await expect(readErrorDiagnostics()).resolves.toEqual([]);
   });
 
   it("still wipes when the service worker cannot be read", async () => {

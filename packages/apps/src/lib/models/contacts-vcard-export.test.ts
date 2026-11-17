@@ -271,3 +271,175 @@ describe("downloadMultipleContactsVCard", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith(fakeUrl);
   });
 });
+
+describe("contactCardToVCard addresses", () => {
+  function adrLine(card: ContactCard): string | undefined {
+    return contactCardToVCard(card)
+      .split("\r\n")
+      .find((line) => line.startsWith("ADR"));
+  }
+
+  it("writes street, locality, region, postcode and country from address components", () => {
+    const card = makeCard({
+      addresses: {
+        a1: {
+          "@type": "Address",
+          contexts: { work: true },
+          components: [
+            { "@type": "AddressComponent", kind: "number", value: "12" },
+            { "@type": "AddressComponent", kind: "name", value: "Main Street" },
+            { "@type": "AddressComponent", kind: "locality", value: "Utrecht" },
+            { "@type": "AddressComponent", kind: "region", value: "Utrecht" },
+            { "@type": "AddressComponent", kind: "postcode", value: "3511 AB" },
+            { "@type": "AddressComponent", kind: "country", value: "Netherlands" },
+          ],
+        },
+      },
+    } as unknown as Partial<ContactCard>);
+
+    expect(adrLine(card)).toBe(
+      "ADR;TYPE=WORK:;;12 Main Street;Utrecht;Utrecht;3511 AB;Netherlands",
+    );
+  });
+
+  it("reads the legacy flat street and locality fields when there are no components", () => {
+    const card = makeCard({
+      addresses: {
+        a1: {
+          "@type": "Address",
+          street: " 1 Canal Road ",
+          locality: "Leiden",
+          region: "South Holland",
+          postcode: "2311 AA",
+          country: "NL",
+        },
+      },
+    } as unknown as Partial<ContactCard>);
+
+    expect(adrLine(card)).toBe("ADR:;;1 Canal Road;Leiden;South Holland;2311 AA;NL");
+  });
+
+  it("falls back to the full address as the street and escapes its commas", () => {
+    const card = makeCard({
+      addresses: {
+        a1: { "@type": "Address", full: " 1 Infinite Loop, Cupertino " },
+      },
+    } as unknown as Partial<ContactCard>);
+
+    expect(adrLine(card)).toBe("ADR:;;1 Infinite Loop\\, Cupertino;;;;");
+  });
+
+  it("writes an empty ADR when the address has no readable parts", () => {
+    const card = makeCard({
+      addresses: { a1: { "@type": "Address", street: 42 } },
+    } as unknown as Partial<ContactCard>);
+
+    expect(adrLine(card)).toBe("ADR:;;;;;;");
+  });
+});
+
+describe("contactCardToVCard titles", () => {
+  it("exports only titles of kind title, skipping roles and blank names", () => {
+    const card = makeCard({
+      titles: {
+        t1: { "@type": "Title", name: "Engineer" },
+        t2: { "@type": "Title", kind: "role", name: "Team lead" },
+        t3: { "@type": "Title", kind: "title", name: "  " },
+        t4: { "@type": "Title", kind: "title", name: "Architect" },
+      },
+    } as unknown as Partial<ContactCard>);
+
+    const titles = contactCardToVCard(card)
+      .split("\r\n")
+      .filter((line) => line.startsWith("TITLE"));
+    expect(titles).toEqual(["TITLE:Engineer", "TITLE:Architect"]);
+  });
+});
+
+describe("contactCardToVCard line folding", () => {
+  it("folds lines longer than 75 characters into tab-led continuation lines", () => {
+    const note = "x".repeat(200);
+    const vcard = contactCardToVCard(
+      makeCard({ notes: { n1: { "@type": "Note", note } } } as unknown as Partial<ContactCard>),
+    );
+    const physical = vcard.split("\r\n");
+    const start = physical.findIndex((line) => line.startsWith("NOTE:"));
+
+    expect(physical[start]).toHaveLength(75);
+    expect(physical[start + 1]).toMatch(/^\t/);
+    expect(physical[start + 2]).toMatch(/^\t/);
+    for (const line of physical) expect(line.length).toBeLessThanOrEqual(75);
+    expect(vcard.replace(/\r\n\t/g, "")).toContain(`NOTE:${note}`);
+  });
+
+  it("leaves a line of exactly 75 characters unfolded", () => {
+    const note = "y".repeat(70);
+    const vcard = contactCardToVCard(
+      makeCard({ notes: { n1: { "@type": "Note", note } } } as unknown as Partial<ContactCard>),
+    );
+    expect(vcard.split("\r\n")).toContain(`NOTE:${note}`);
+  });
+});
+
+describe("contactCardToVCard birthdays", () => {
+  function bdayOf(date: unknown): string | undefined {
+    const card = makeCard({
+      anniversaries: { b1: { "@type": "Anniversary", kind: "birth", date } },
+    } as unknown as Partial<ContactCard>);
+    return contactCardToVCard(card)
+      .split("\r\n")
+      .find((line) => line.startsWith("BDAY"));
+  }
+
+  it("writes a timestamp birthday as its UTC date", () => {
+    expect(bdayOf({ "@type": "Timestamp", utc: "1990-05-17T08:30:00Z" })).toBe("BDAY:19900517");
+  });
+
+  it("omits BDAY for an unparseable timestamp", () => {
+    expect(bdayOf({ "@type": "Timestamp", utc: "not-a-date" })).toBeUndefined();
+  });
+
+  it("omits BDAY for a partial date with only a year", () => {
+    expect(bdayOf({ "@type": "PartialDate", year: 1990 })).toBeUndefined();
+  });
+
+  it("omits BDAY for a partial date with a month but no day", () => {
+    expect(bdayOf({ "@type": "PartialDate", year: 1990, month: 5 })).toBeUndefined();
+  });
+});
+
+describe("contactCardToVCard links", () => {
+  it("exports website links and skips contact-kind links", () => {
+    const card = makeCard({
+      links: {
+        l1: { "@type": "Link", kind: "contact", uri: "mailto:ada@example.test" },
+        l2: { "@type": "Link", uri: "https://ada.example.test" },
+      },
+    } as unknown as Partial<ContactCard>);
+    const urls = contactCardToVCard(card)
+      .split("\r\n")
+      .filter((line) => line.startsWith("URL"));
+    expect(urls).toEqual(["URL:https://ada.example.test"]);
+  });
+});
+
+describe("contactCardToVCard organizations, titles and typed channels", () => {
+  it("writes TITLE, ORG with units, typed EMAIL and TEL, and skips empty orgs and role titles", () => {
+    const card = makeCard({
+      titles: {
+        a: { name: "CEO", kind: "title" },
+        b: { name: "Boss", kind: "role" },
+        c: { kind: "title" },
+      },
+      organizations: { o1: {}, o2: { name: "Acme", units: [{ name: "R&D" }, {}] } },
+      emails: { e: { address: "a@b.test", contexts: { work: true } } },
+      phones: { p: { number: "1", contexts: { private: true }, features: { mobile: true } } },
+    } as unknown as Partial<ContactCard>);
+    const out = contactCardToVCard(card).split("\r\n");
+
+    expect(out.filter((line) => line.startsWith("TITLE"))).toEqual(["TITLE:CEO"]);
+    expect(out.filter((line) => line.startsWith("ORG"))).toEqual(["ORG:Acme;R&D"]);
+    expect(out).toContain("EMAIL;TYPE=WORK:a@b.test");
+    expect(out).toContain("TEL;TYPE=PRIVATE,MOBILE:1");
+  });
+});

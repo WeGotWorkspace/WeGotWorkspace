@@ -1,0 +1,10 @@
+[
+  { "id": "mention-assign", "google": "Docs", "app": "docs", "layers": ["api"], "tries": "@mention a colleague in a doc comment to hand over a to-do", "workaround": "posted it in the project chat" },
+  { "id": "suggest-edit", "google": "Docs", "app": "docs", "layers": ["ui"], "tries": "suggest a wording change that the author accepts, instead of editing", "workaround": "wrote the proposed text in a comment" },
+  { "id": "team-share", "google": "Shared drives", "app": "drive", "layers": ["api"], "tries": "put a file where the whole Team has it at once", "workaround": "posted a link in the channel" },
+  { "id": "find-a-time", "google": "Calendar", "app": "calendar", "layers": ["api"], "tries": "look at colleagues' calendars to find a free slot before inviting", "workaround": "asked in chat when people are free" },
+  { "id": "meet-in-invite", "google": "Calendar and Meet", "app": "calendar", "layers": ["api"], "tries": "add a video link to a calendar invite in one step", "workaround": "scheduled the call in Meet and pasted the link into the invite" },
+  { "id": "folder-drop", "google": "Drive", "app": "drive", "layers": ["ui", "api"], "tries": "drop a folder with subfolders into Drive in one go", "workaround": "created the folders by hand and uploaded file by file" },
+  { "id": "expiring-link", "google": "Drive", "app": "drive", "layers": ["ui", "api"], "tries": "share with a client by a link that expires", "workaround": "shared a password-protected link and noted to remove it later" },
+  { "id": "sheet-open", "google": "Sheets", "app": "drive", "layers": ["ui"], "tries": "open a planning sheet (exported .xlsx) from Drive and read it in the browser", "workaround": "downloaded it to open on the desk" }
+]

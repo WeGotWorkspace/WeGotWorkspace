@@ -11,7 +11,6 @@ use App\Services\Drive\DriveShareAccess;
 use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Drive\DriveSharePathScope;
 use App\Services\Drive\DriveShareRules;
-use App\Services\Teams\TeamMembershipReader;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -27,7 +26,7 @@ final class DriveShareRulesTest extends TestCase
         $this->rules = new DriveShareRules(
             new StoragePaths,
             new DriveSharePathScope(new StoragePaths),
-            new DriveShareOwnerReach(new DriveSharePathScope(new StoragePaths), new DriveGroupResolver(new TeamMembershipReader)),
+            new DriveShareOwnerReach(new DriveSharePathScope(new StoragePaths), app(DriveGroupResolver::class)),
             new CollabDocFormats,
             app(WgwStorage::class),
         );

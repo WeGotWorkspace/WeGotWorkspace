@@ -1,0 +1,5 @@
+{
+  "print": ["Verpakking_drukklaar", "Affiche_A1_def", "Folder_A5_CMYK", "Etalage_banner_300x100", "Catalogus_v3_print"],
+  "exports": ["moodboard", "logo-varianten", "homepage-ontwerp", "social-kit", "icon-set", "kleurenpalet", "presentatie-klant"],
+  "extensions": { "print": ".pdf", "exports": [".png", ".pdf", ".zip"] }
+}

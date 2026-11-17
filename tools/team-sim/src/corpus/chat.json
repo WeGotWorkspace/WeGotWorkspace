@@ -1,0 +1,50 @@
+{
+  "nl": [
+    "Goedemorgen! Wie pakt vandaag de klantcall op?",
+    "Ik heb de eerste schetsen in de map gezet 🎨",
+    "Kan iemand even meekijken naar de copy voor de homepage?",
+    "De klant wil de deadline een week naar voren halen 😬",
+    "Lunch om half één? 🥪",
+    "Feedback van de klant: logo mag iets brutaler.",
+    "Ik zit vandaag thuis, bereikbaar via chat.",
+    "Drukproef is binnen, kleuren wijken af. Ik bel de drukker.",
+    "Notulen van de kick-off staan in Notes.",
+    "Wie heeft de laatste versie van het moodboard?",
+    "Café-overleg verplaatst naar donderdag ☕",
+    "Prijsopgave verstuurd, nu afwachten.",
+    "Kunnen we de stand-up vandaag vijf minuten later doen?",
+    "Mooi werk op de presentatie, echt top 👏",
+    "Ik heb een vraag over het budget, even bellen?",
+    "De fotograaf komt maandag om tien uur.",
+    "Typografie: we gaan voor de schreefletter, akkoord?",
+    "Bestand is te groot voor de mail, ik deel een link.",
+    "Even een reminder: urenregistratie voor vrijdag.",
+    "Zijn de rechten op de stockfoto's geregeld?"
+  ],
+  "en": [
+    "Morning all! Who takes the client call today?",
+    "First sketches are in the folder 🎨",
+    "Could someone review the homepage copy?",
+    "Client wants to pull the deadline forward a week 😬",
+    "Lunch at half past twelve? 🥪",
+    "Client feedback: the logo can be a bit bolder.",
+    "Working from home today, reachable on chat.",
+    "Print proof is in, colours are off. Calling the printer.",
+    "Kick-off minutes are in Notes.",
+    "Who has the latest moodboard?",
+    "Moved the café sync to Thursday ☕",
+    "Quote sent, now we wait.",
+    "Can we push stand-up by five minutes today?",
+    "Great work on the deck 👏",
+    "Quick budget question, can we call?",
+    "The photographer arrives Monday at ten.",
+    "Typography: going with the serif, agreed?",
+    "File is too big for email, sharing a link.",
+    "Reminder: timesheets before Friday.",
+    "Are the stock photo licences sorted?"
+  ],
+  "replies": {
+    "nl": ["Top, dank je!", "Ik pak hem op.", "Klinkt goed 👍", "Kan ik morgen pas naar kijken.", "Eens, doen we zo.", "Hmm, even overleggen met de klant.", "Staat erin ✅"],
+    "en": ["Great, thanks!", "I'll pick it up.", "Sounds good 👍", "Can only look tomorrow.", "Agreed, let's do that.", "Hmm, let me check with the client.", "Done ✅"]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@wgw/team-sim",
+  "private": true,
+  "type": "module",
+  "description": "Nightly team simulation (#1981): a fictional agency uses the suite against a long-lived local instance.",
+  "bin": {
+    "sim": "bin/sim.mjs"
+  },
+  "scripts": {
+    "test": "node scripts/run-tests.mjs",
+    "sim": "node bin/sim.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.0"
+  }
+}

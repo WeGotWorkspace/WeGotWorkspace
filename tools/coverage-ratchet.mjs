@@ -18,6 +18,10 @@
  * escape hatch when the baseline was seeded above what CI measures.
  * `check --json` prints the machine-readable report on stdout and the human
  * report on stderr. Exit codes stay the same.
+ * `check --only=api` (or `--only=apps`) reads only that report and compares
+ * only that side's baseline keys. CI uses it when a merge-queue or pull
+ * request run skipped the other side's coverage job because nothing there
+ * changed (#1629). Without --only both reports are required.
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -391,25 +395,46 @@ function checkCoverage(current, baseline) {
 }
 
 /**
- * Both reports are required. A partial read must not look like a pass.
+ * Both reports are required unless `only` names one side. A partial read must
+ * not look like a pass.
+ * @param {"api" | "apps" | null} [only]
  * @returns {Map<string, {pct: number, statements: number}>}
  */
-function loadReports() {
-  let appsCoverage;
-  let apiCoverage;
-  try {
-    appsCoverage = parseAppsCoverage();
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`Apps coverage report is missing or unreadable: ${detail}`);
+function loadReports(only = null) {
+  let appsCoverage = new Map();
+  let apiCoverage = new Map();
+  if (only !== "api") {
+    try {
+      appsCoverage = parseAppsCoverage();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Apps coverage report is missing or unreadable: ${detail}`,
+      );
+    }
   }
-  try {
-    apiCoverage = parseApiCoverage();
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`API coverage report is missing or unreadable: ${detail}`);
+  if (only !== "apps") {
+    try {
+      apiCoverage = parseApiCoverage();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `API coverage report is missing or unreadable: ${detail}`,
+      );
+    }
   }
   return new Map([...appsCoverage, ...apiCoverage]);
+}
+
+/**
+ * The baseline keys one side owns; all keys when `only` is null.
+ * @param {Map<string, number>} baseline
+ * @param {"api" | "apps" | null} only
+ * @returns {Map<string, number>}
+ */
+function baselineForScope(baseline, only) {
+  if (only === null) return baseline;
+  return new Map([...baseline].filter(([key]) => scopeOf(key) === only));
 }
 
 /**
@@ -466,16 +491,16 @@ function exitCodeFor(report) {
   return 0;
 }
 
-function runCheck(json) {
+function runCheck(json, only) {
   let current;
   try {
-    current = loadReports();
+    current = loadReports(only);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(3);
   }
 
-  const baseline = readBaseline();
+  const baseline = baselineForScope(readBaseline(), only);
   let report;
   try {
     report = checkCoverage(current, baseline);
@@ -555,14 +580,20 @@ const args = process.argv.slice(2);
 const command = args.find((arg) => !arg.startsWith("--"));
 const json = args.includes("--json");
 const reseed = args.includes("--reseed");
-const knownFlags = new Set(["--json", "--reseed"]);
+const onlyFlags = new Map([
+  ["--only=api", "api"],
+  ["--only=apps", "apps"],
+]);
+const onlyArgs = args.filter((arg) => onlyFlags.has(arg));
+const only = onlyArgs.length === 1 ? onlyFlags.get(onlyArgs[0]) : null;
+const knownFlags = new Set(["--json", "--reseed", ...onlyFlags.keys()]);
 const unknown = args.filter(
   (arg) => arg.startsWith("--") && !knownFlags.has(arg),
 );
 
 function printUsage() {
   console.error(
-    "Usage: node tools/coverage-ratchet.mjs <check|update> [--json] [--reseed]",
+    "Usage: node tools/coverage-ratchet.mjs <check|update> [--json] [--reseed] [--only=api|--only=apps]",
   );
 }
 
@@ -577,11 +608,17 @@ if (reseed && command !== "update") {
   process.exit(3);
 }
 
+if (onlyArgs.length > 1 || (onlyArgs.length === 1 && command !== "check")) {
+  console.error("--only takes one side and is only valid with check");
+  printUsage();
+  process.exit(3);
+}
+
 if (command === "update" && json) {
   console.error("--json is only valid with check");
   printUsage();
   process.exit(3);
 }
 
-if (command === "check") runCheck(json);
+if (command === "check") runCheck(json, only);
 else runUpdate(reseed);

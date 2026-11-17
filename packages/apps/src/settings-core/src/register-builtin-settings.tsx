@@ -1,5 +1,6 @@
 import {
   Bot,
+  Bug,
   CalendarDays,
   CheckCircle2,
   Contact,
@@ -19,6 +20,10 @@ import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-
 import { SettingsCalendarAvailabilitySection } from "@/settings-core/src/settings-calendar-availability-section";
 import { SettingsCalendarReplyFolderSection } from "@/settings-core/src/settings-calendar-reply-folder-section";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
+import {
+  SettingsDiagnosticsPane,
+  settingsDiagnosticsLabels,
+} from "@/settings-core/src/settings-diagnostics-pane";
 import { SettingsDocsPane } from "@/settings-core/src/settings-docs-pane";
 import { docsPageSetupLabels } from "@/lib/docs-page-setup-labels";
 import {
@@ -62,16 +67,17 @@ export function registerBuiltinSettings(): void {
   registerPanel({
     id: "offline",
     label: "Offline",
-    description: "Offline content sync on this device",
+    description:
+      "Offline content sync on this device. Calendar, Contacts, Notes and Tasks are always available offline.",
     icon: <HardDrive className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "appearance",
     label: "Appearance",
     description: "Light or dark theme on this device",
     icon: <Palette className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "assistants",
@@ -138,6 +144,13 @@ export function registerBuiltinSettings(): void {
     appId: "meet",
   });
   registerPanel({
+    id: "diagnostics",
+    label: settingsDiagnosticsLabels.panel,
+    description: settingsDiagnosticsLabels.panelDescription,
+    icon: <Bug className="size-3.5" />,
+    group: "account",
+  });
+  registerPanel({
     id: "about",
     label: "About",
     description: "License and source code",
@@ -181,14 +194,14 @@ export function registerBuiltinSettings(): void {
     render: () => <SettingsCalendarPane />,
   });
   registerSlice({
-    id: "calendar-availability",
-    panelIds: ["calendar"],
-    render: () => <SettingsCalendarAvailabilitySection />,
-  });
-  registerSlice({
     id: "calendar-reply-folder",
     panelIds: ["calendar"],
     render: () => <SettingsCalendarReplyFolderSection />,
+  });
+  registerSlice({
+    id: "calendar-availability",
+    panelIds: ["calendar"],
+    render: () => <SettingsCalendarAvailabilitySection />,
   });
   registerSlice({
     id: "tasks-default-collection",
@@ -214,6 +227,11 @@ export function registerBuiltinSettings(): void {
     id: "meet-device",
     panelIds: ["meet"],
     render: () => <SettingsMeetPane />,
+  });
+  registerSlice({
+    id: "diagnostics",
+    panelIds: ["diagnostics"],
+    render: () => <SettingsDiagnosticsPane />,
   });
   registerSlice({
     id: "about",

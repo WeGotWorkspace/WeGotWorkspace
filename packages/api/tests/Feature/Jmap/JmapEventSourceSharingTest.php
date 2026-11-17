@@ -85,6 +85,7 @@ final class JmapEventSourceSharingTest extends WgwDatabaseTestCase
         $this->withBearer($alice)->patchJson('/api/v1/tasks/tasklists/errands', [
             'shareWith' => ['bob' => ['mayReadItems' => true]],
         ])->assertOk();
+        $this->withBearer($this->userBearerToken())->getJson('/api/v1/tasks/tasklists/changes')->assertOk();
         $bob = $this->readEventSource($this->userBearerToken());
         $carol = $this->readEventSource($this->issueBearerTokenFor('carol'));
 

@@ -85,7 +85,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
             throw new JmapMethodException('invalidArguments', 'depth must be null or a non-negative integer.');
         }
 
-        $roots = $this->accounts->rootsFor($username);
+        $roots = $this->accounts->ensureAccountIndexed($username);
         $candidates = $this->candidates($username, $filter, $roots, $depth ?? 0);
 
         $candidates = array_values(array_filter(
@@ -122,8 +122,6 @@ final class FileNodeQueryMethod implements JmapMethodInterface
      */
     private function candidates(string $username, array $filter, array $roots, int $depth): array
     {
-        $this->accounts->ensureAccountIndexed($username);
-
         if (($filter['isTopLevel'] ?? null) === true) {
             $nodes = [];
             foreach ($this->accounts->accountRootsFor($username) as $root) {
@@ -157,7 +155,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
         }
 
         // Unfiltered (or attribute-only) query: the whole visible set.
-        $this->accounts->reconcileVisibleTree($username);
+        $this->accounts->reconcileVisibleTree($roots);
 
         return $this->index->liveVisible($roots);
     }
@@ -169,17 +167,14 @@ final class FileNodeQueryMethod implements JmapMethodInterface
      */
     private function descendantsOf(JmapFileNode $parent, int $depth): array
     {
-        $this->index->reconcileDirectory((string) $parent->storage_key);
-
         $result = [];
-        $frontier = [[$parent, 0]];
+        $frontier = [[$this->index->reconcileDirectory($parent), 0]];
         while ($frontier !== []) {
-            [$dir, $level] = array_shift($frontier);
-            foreach ($this->index->liveChildren((string) $dir->node_id) as $child) {
+            [$children, $level] = array_shift($frontier);
+            foreach ($children as $child) {
                 $result[] = $child;
                 if ($child->is_dir && $level < $depth) {
-                    $this->index->reconcileDirectory((string) $child->storage_key);
-                    $frontier[] = [$child, $level + 1];
+                    $frontier[] = [$this->index->reconcileDirectory($child), $level + 1];
                 }
             }
         }

@@ -1,0 +1,21 @@
+@import "../../styles.css" reference;
+
+.wegotworkspace-error-boundary {
+  @apply flex min-h-screen items-center justify-center bg-background px-4;
+}
+
+.wegotworkspace-error-boundary__body {
+  @apply flex max-w-md flex-col items-center gap-4 text-center;
+}
+
+.wegotworkspace-error-boundary__title {
+  @apply text-xl font-semibold text-foreground;
+}
+
+.wegotworkspace-error-boundary__text {
+  @apply text-sm text-muted-foreground;
+}
+
+.wegotworkspace-error-boundary__text a {
+  @apply text-foreground underline underline-offset-2;
+}

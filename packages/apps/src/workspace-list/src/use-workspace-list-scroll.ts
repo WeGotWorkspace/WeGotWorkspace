@@ -1,5 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { listWindowRange, type ListWindowRange } from "@/workspace-list/src/workspace-list-window";
+import {
+  listWindowRange,
+  listWindowRangeAtEnd,
+  type ListWindowRange,
+} from "@/workspace-list/src/workspace-list-window";
 
 /** The nearest ancestor that scrolls vertically, or null (then nothing is windowed). */
 export function findListScroller(node: HTMLElement | null): HTMLElement | null {
@@ -47,24 +51,35 @@ function sameRange(a: ListWindowRange, b: ListWindowRange): boolean {
 /**
  * The window of rows to mount for the list's scroller. Re-renders only when the
  * range changes, not on every scroll event.
+ *
+ * While `followEnd` returns true, the window is the end of the list, whatever the
+ * scroll position says: a chat stuck to its newest message mounts the newest rows
+ * before it has scrolled there, so it never paints a spacer at the bottom.
  */
 export function useWorkspaceListScroll(
   listNode: HTMLElement | null,
   offsets: Float64Array,
   enabled: boolean,
+  followEnd?: () => boolean,
 ) {
   const count = offsets.length - 1;
+  const followEndRef = useRef(followEnd);
+  followEndRef.current = followEnd;
   // `undefined` until the list has looked for its scroller: render a first window
   // then, not every row. `null` means there is none (a story, a test): no window.
   const [scroller, setScroller] = useState<HTMLElement | null | undefined>(undefined);
-  const [range, setRange] = useState<ListWindowRange>(() => listWindowRange(offsets, 0, 0));
+  const [range, setRange] = useState<ListWindowRange>(() =>
+    followEnd?.() ? listWindowRangeAtEnd(offsets, 0) : listWindowRange(offsets, 0, 0),
+  );
   const offsetsRef = useRef(offsets);
   offsetsRef.current = offsets;
 
   const update = useCallback(() => {
     if (!scroller || !listNode) return;
     const position = readListScrollPosition(scroller, listRowsContainer(listNode));
-    const next = listWindowRange(offsetsRef.current, position.top, position.viewportHeight);
+    const next = followEndRef.current?.()
+      ? listWindowRangeAtEnd(offsetsRef.current, position.viewportHeight)
+      : listWindowRange(offsetsRef.current, position.top, position.viewportHeight);
     setRange((previous) => (sameRange(previous, next) ? previous : next));
   }, [listNode, scroller]);
 

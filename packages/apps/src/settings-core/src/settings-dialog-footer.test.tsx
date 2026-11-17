@@ -239,7 +239,7 @@ describe("settings dialog from the sidebar primary button's menu", () => {
         ".workspace-app-layout__main-header .view-header__title",
       );
       expect(heading).toBeInstanceOf(HTMLElement);
-      expect(heading?.textContent).toContain("Calendar");
+      expect(heading?.textContent).toContain("Apps");
       expect(document.activeElement).toBe(heading);
     });
     expect(primaryMenuTrigger()).toBeNull();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import { Card } from "@/card/src/card";
+import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,7 +67,7 @@ export function SettingsAssistantsPane({
         <p className="settings-assistants-pane__empty">Loading connected assistants…</p>
       ) : null}
       {!loading && grants.length === 0 ? (
-        <Card title="No assistants connected">
+        <SettingsPaneCard title="No assistants connected">
           <p className="settings-assistants-pane__empty">
             Connect Claude, ChatGPT, or Mistral using this instance as a custom MCP connector. You
             will sign in again on the instance. See the{" "}
@@ -76,7 +76,7 @@ export function SettingsAssistantsPane({
             </a>
             .
           </p>
-        </Card>
+        </SettingsPaneCard>
       ) : null}
       {grants.length > 0 ? (
         <div className="settings-assistants-pane__grants">

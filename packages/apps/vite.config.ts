@@ -6,6 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
+import { resolveWgwBuildVersion } from "./scripts/wgw-build-version";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const wgwMonorepoRoot = path.join(__dirname, "..", "..");
@@ -51,6 +52,8 @@ export default defineConfig(({ command, mode }) => {
     envDir: wgwMonorepoRoot,
     define: {
       __WGW_MOCKS__: JSON.stringify(mocksInBuild),
+      // Named in Copy diagnostics (#2204), so a bug report says which build failed.
+      __WGW_BUILD_VERSION__: JSON.stringify(resolveWgwBuildVersion(wgwMonorepoRoot)),
     },
     resolve: {
       alias: {

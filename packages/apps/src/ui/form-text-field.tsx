@@ -1,19 +1,28 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import type { FieldPath, FieldValues } from "react-hook-form";
 import { useFormContext } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/ui/input";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/ui/form";
 
 import "@/ui/field-label-row.css";
 
 export type FormTextFieldProps<TFieldValues extends FieldValues> = {
   name: FieldPath<TFieldValues>;
-  label: ReactNode;
-  /** Merged onto `FormItem` (layout, spacing). */
+  label: string;
+  /**
+   * `stacked` (default): caption above the input.
+   * `inline`: the suite settings row (`FieldLabelRow` inline): caption and description
+   * start, the input fills the end column.
+   */
+  layout?: "stacked" | "inline";
+  /** Quiet line under the caption (`inline` layout). */
+  description?: ReactNode;
+  /** Merged onto `FormItem` (stacked) or the row (inline). */
   itemClassName?: string;
-  /** Merged onto `FormLabel`. */
+  /** Merged onto the label. */
   labelClassName?: string;
 } & Omit<
   React.ComponentPropsWithoutRef<typeof Input>,
@@ -27,11 +36,52 @@ export type FormTextFieldProps<TFieldValues extends FieldValues> = {
 export function FormTextField<TFieldValues extends FieldValues>({
   name,
   label,
+  layout = "stacked",
+  description,
   itemClassName,
   labelClassName,
   ...inputProps
 }: FormTextFieldProps<TFieldValues>) {
   const { control } = useFormContext<TFieldValues>();
+  const inputId = useId();
+  const messageId = `${inputId}-message`;
+
+  if (layout === "inline") {
+    // No `FormItem` wrapper: inline rows sit side by side so the suite hairline runs between them.
+    return (
+      <FormField
+        control={control}
+        name={name}
+        render={({ field, fieldState }) => (
+          <FieldLabelRow
+            layout="inline"
+            fill
+            label={label}
+            description={description}
+            htmlFor={inputId}
+            className={itemClassName}
+            labelClassName={cn(fieldState.error && "text-destructive", labelClassName)}
+          >
+            {/* Input and message stack: the message sits under the field, not beside it. */}
+            <div className="flex w-full min-w-0 flex-col gap-1.5">
+              <Input
+                {...inputProps}
+                {...field}
+                id={inputId}
+                aria-invalid={Boolean(fieldState.error)}
+                aria-describedby={fieldState.error ? messageId : undefined}
+              />
+              {fieldState.error?.message ? (
+                <p id={messageId} className="m-0 text-[0.8rem] font-medium text-destructive">
+                  {fieldState.error.message}
+                </p>
+              ) : null}
+            </div>
+          </FieldLabelRow>
+        )}
+      />
+    );
+  }
 
   return (
     <FormField

@@ -1,0 +1,27 @@
+{
+  "sales": [
+    { "need": "Send the invoice for the intake", "workaround": "Invoice made in the accounting package outside the suite" },
+    { "need": "Track the sales pipeline stage per prospect", "workaround": "Kept a pipeline list in a Notes note" }
+  ],
+  "pm": [
+    { "need": "Log hours per project", "workaround": "Time sheet in a spreadsheet outside the suite" },
+    { "need": "See team capacity for next week at a glance", "workaround": "Opened every colleague's calendar one by one" },
+    { "need": "Gantt view of milestones", "workaround": "Milestones as all-day calendar events" }
+  ],
+  "strategist": [
+    { "need": "Run a short client survey", "workaround": "Survey tool outside the suite, results pasted into Docs" },
+    { "need": "Shared whiteboard during a workshop", "workaround": "Photo of a paper whiteboard uploaded to Drive" }
+  ],
+  "copywriter": [
+    { "need": "Dutch spelling and word count check", "workaround": "Copied text to an outside spell checker" },
+    { "need": "Suggest edits (track changes) in a client doc", "workaround": "Comments instead of suggestions" }
+  ],
+  "art-director": [
+    { "need": "Colour proof sign-off with the printer", "workaround": "Emailed the printer from a personal mail client" },
+    { "need": "Preview a 1 GB print PDF without downloading it", "workaround": "Downloaded it and opened it locally" }
+  ],
+  "designer": [
+    { "need": "Hand off the design file from the design tool", "workaround": "Exported PNGs and uploaded them to Drive" },
+    { "need": "See whether the client opened the share link", "workaround": "Asked the client by mail" }
+  ]
+}

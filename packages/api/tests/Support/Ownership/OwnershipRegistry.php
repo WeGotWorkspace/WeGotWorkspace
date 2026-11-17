@@ -132,6 +132,7 @@ final class OwnershipRegistry
             'PUT /calendars/reply-mailbox' => "Writes only the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
             'DELETE /calendars/reply-mailbox' => "Deletes only the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
             'POST /calendars/reply-mailbox/test' => "Tests only the caller's own stored mailbox (CalendarReplyMailboxApiTest).",
+            'JMAP Mailbox/get' => "Lists only the caller's own stored mailbox; another accountId is accountNotFound (CalendarReplyMailboxApiTest).",
         ];
         foreach ($selfOnly as $operation => $why) {
             $exempt[$operation] = ['reason' => ExemptionReason::SelfOnly, 'why' => $why];

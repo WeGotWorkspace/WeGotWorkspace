@@ -17,6 +17,7 @@ const FALLBACK_PROFILE_PANEL: SettingsPanel = {
 
 export type SettingsSidebarGroups = {
   account: SettingsPanel[];
+  device: SettingsPanel[];
   apps: SettingsPanel[];
 };
 
@@ -29,6 +30,7 @@ export function useSettingsSidebarModel(mcpEnabled: boolean): SettingsSidebarGro
     const nav = panelsForNav(reachabilityFromSettingsData({ mcpEnabled }));
     return {
       account: nav.filter((panel) => panel.group === "account"),
+      device: nav.filter((panel) => panel.group === "device"),
       apps: nav.filter((panel) => panel.group === "apps"),
     };
   }, [mcpEnabled]);

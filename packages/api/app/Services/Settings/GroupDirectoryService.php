@@ -127,7 +127,7 @@ final class GroupDirectoryService
     }
 
     /**
-     * @return list<array{id: string, displayName: string}>
+     * @return list<array{id: string, displayName: string, memberCount: int}>
      */
     public function groupsForUser(string $username): array
     {
@@ -136,6 +136,7 @@ final class GroupDirectoryService
             $groups[] = [
                 'id' => $team['uri'],
                 'displayName' => $team['displayName'] !== '' ? $team['displayName'] : basename($team['uri']),
+                'memberCount' => $team['memberCount'],
             ];
         }
 

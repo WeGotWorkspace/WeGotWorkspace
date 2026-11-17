@@ -142,3 +142,17 @@ export async function setTabOffline(tab: Tab, offline: boolean): Promise<void> {
     .evaluate((off) => window.dispatchEvent(new Event(off ? "offline" : "online")), offline)
     .catch(() => undefined);
 }
+
+/** A client message id for the chat API: 26 characters of Crockford base32, time first. */
+export function chatMessageId(): string {
+  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+  let time = Date.now();
+  let head = "";
+  for (let i = 0; i < 10; i += 1) {
+    head = alphabet[time % 32] + head;
+    time = Math.floor(time / 32);
+  }
+  let tail = "";
+  for (let i = 0; i < 16; i += 1) tail += alphabet[Math.floor(Math.random() * 32)];
+  return head + tail;
+}
