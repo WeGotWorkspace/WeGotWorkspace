@@ -16,7 +16,7 @@ final class TeamMembershipReader
 {
     private const USER_URI_PATTERN = '#^principals/([^/]+)$#';
 
-    /** @var array<string, list<array{uri: string, slug: string, displayName: string}>> */
+    /** @var array<string, list<array{uri: string, slug: string, displayName: string, memberCount: int}>> */
     private array $teams = [];
 
     /**
