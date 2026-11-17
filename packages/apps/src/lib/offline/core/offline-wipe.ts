@@ -94,9 +94,10 @@ async function releasePush(authorizedFetch: AuthorizedFetch): Promise<void> {
 
 /**
  * Close and delete every offline account database, every note and document
- * collab room, the recent errors kept for Copy diagnostics, and the remembered usernames. The account database includes the
- * outbox and every collab room, including document and note bodies that were
- * never saved. The logout screen counts that work and asks before it calls this.
+ * collab room, the recent errors kept for Copy diagnostics, and the remembered
+ * usernames. The account database includes the outbox and every collab room,
+ * including document and note bodies that were never saved. The logout screen
+ * counts that work and asks before it calls this.
  */
 export async function wipeOfflineAccountData(): Promise<void> {
   const Dexie = (await import("dexie")).default;
