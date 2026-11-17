@@ -4,7 +4,7 @@ import { expect, waitFor, within } from "storybook/test";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import { TooltipProvider } from "@/ui/tooltip";
-import { writeNoteTitle } from "@/text-editor-core/docs-collab/docs-collab-document-title";
+import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import {
   NOTE_TITLE_SELECTION_FIELD,
   encodeTitleSelection,

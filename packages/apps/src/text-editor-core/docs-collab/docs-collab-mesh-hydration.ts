@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 /**
  * HTTP bootstrap finished or the Y.Doc already has a body. Used to gate

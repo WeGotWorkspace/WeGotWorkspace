@@ -8,6 +8,7 @@ import {
   isLikelyEmail,
   isSessionEventInvitee,
   isSessionEventOrganizer,
+  inviteeForAttendee,
   listedInviteeAttendees,
   normalizeParticipationStatus,
   organizerAttendeeForList,
@@ -265,5 +266,76 @@ describe("calendar attendees", () => {
     expect(attendeeRoleFromRoles(["optional", ""])).toBe("optional");
     expect(attendeeRoleFromRoles(["attendee"])).toBe("required");
     expect(attendeeRoleFromRoles(undefined)).toBe("required");
+  });
+});
+
+describe("inviteeForAttendee", () => {
+  const ada = { username: "ada", email: "ada@example.test", name: "Ada" };
+  const bob = { username: "bob", email: "", name: "Bob" };
+
+  it("finds the teammate by email, ignoring case and a mailto: prefix", () => {
+    expect(inviteeForAttendee({ email: "MAILTO:Ada@Example.test" }, [bob, ada])).toBe(ada);
+  });
+
+  it("finds a teammate without an email by username", () => {
+    expect(inviteeForAttendee({ email: "bob" }, [ada, bob])).toBe(bob);
+  });
+
+  it("finds nobody for a blank address or an outsider", () => {
+    expect(inviteeForAttendee({ email: "  " }, [ada, bob])).toBeUndefined();
+    expect(inviteeForAttendee({ email: "eve@example.test" }, [ada, bob])).toBeUndefined();
+    expect(inviteeForAttendee({ email: "ada@example.test" })).toBeUndefined();
+  });
+});
+
+describe("calendar attendees edge rows", () => {
+  const organizer = {
+    email: "ada@example.test",
+    name: "Ada",
+    participationStatus: "accepted" as const,
+    isOrganizer: true,
+  };
+
+  it("does not list an invitee row that is the organizer under another address", () => {
+    const listed = listedInviteeAttendees(
+      [
+        organizer,
+        { email: "ada", name: "Ada", participationStatus: "accepted" },
+        { email: "bob@example.test", name: "Bob", participationStatus: "needs-action" },
+      ],
+      [{ username: "ada", email: "ada@example.test", name: "Ada" }],
+    );
+    expect(listed.map((row) => row.email)).toEqual(["bob@example.test"]);
+  });
+
+  it("skips a participant with no email or iMIP address", () => {
+    expect(
+      attendeesFromParticipants({
+        p1: { "@type": "Participant", name: "Nobody" },
+        p2: { "@type": "Participant", email: "bob@example.test", name: "Bob" },
+      }).map((row) => row.email),
+    ).toEqual(["bob@example.test"]);
+  });
+
+  it("writes the organizer once, skipping its own row and a row with its address", () => {
+    const participants = participantsFromAttendees(
+      [
+        organizer,
+        { email: "ADA@example.test", name: "Ada again", participationStatus: "accepted" },
+        { email: "bob@example.test", name: "Bob", participationStatus: "needs-action" },
+      ],
+      { email: "ada@example.test", name: "Ada" },
+    );
+    expect(Object.keys(participants ?? {})).toEqual(["org", "att1"]);
+    expect(participants?.att1?.email).toBe("bob@example.test");
+  });
+
+  it("has no organizer address for a session without email or username", () => {
+    expect(organizerAddress({})).toBeUndefined();
+    expect(organizerAddress({ email: " ", username: " " })).toBeUndefined();
+  });
+
+  it("is not equal when the lists differ in length", () => {
+    expect(attendeesEqual([organizer], [])).toBe(false);
   });
 });

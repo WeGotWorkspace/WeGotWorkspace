@@ -56,7 +56,31 @@ export function useDriveTilesInView(
         intersections.observe(tile);
       }
     };
-    const mutations = new MutationObserver(observeTiles);
+    // A windowed grid (#1641 step d) unmounts tiles as it scrolls: stop observing
+    // them, or the observer keeps every tile ever shown.
+    const forgetRemovedTiles = (records: MutationRecord[]) => {
+      let changed = false;
+      for (const record of records) {
+        for (const node of Array.from(record.removedNodes)) {
+          if (!(node instanceof Element)) continue;
+          const tiles = node.matches(`[${DRIVE_FILE_TILE_ID_ATTRIBUTE}]`)
+            ? [node]
+            : Array.from(node.querySelectorAll(`[${DRIVE_FILE_TILE_ID_ATTRIBUTE}]`));
+          for (const tile of tiles) {
+            if (tile.isConnected || !observed.has(tile)) continue;
+            observed.delete(tile);
+            intersections.unobserve(tile);
+            const id = tile.getAttribute(DRIVE_FILE_TILE_ID_ATTRIBUTE);
+            if (id && inView.delete(id)) changed = true;
+          }
+        }
+      }
+      if (changed) report();
+    };
+    const mutations = new MutationObserver((records) => {
+      forgetRemovedTiles(records);
+      observeTiles();
+    });
     mutations.observe(root, { childList: true, subtree: true });
     observeTiles();
     report();

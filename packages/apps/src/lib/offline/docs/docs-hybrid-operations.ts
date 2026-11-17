@@ -69,7 +69,7 @@ import {
   clearDocsCollabOfflinePersistence,
   restoreDocsCollabOfflinePersistence,
   type DocsCollabOfflinePersistenceSnapshot,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
+} from "@/lib/collab/docs-collab-persistence";
 
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;

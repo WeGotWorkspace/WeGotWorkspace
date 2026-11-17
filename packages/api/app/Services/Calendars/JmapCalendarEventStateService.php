@@ -21,6 +21,7 @@ final class JmapCalendarEventStateService
 {
     /**
      * @param  array<string, mixed>  $event
+     * @param  array<string, JmapCalendarEventState>  $knownStates  from statesFor() when reading many
      * @return array<string, mixed>
      */
     public function attachStateToken(
@@ -28,16 +29,27 @@ final class JmapCalendarEventStateService
         array $event,
         CalendarObject $object,
         string $calendarUri,
+        array $knownStates = [],
     ): array {
         $eventId = (string) ($event['id'] ?? '');
         if ($eventId === '') {
             return $event;
         }
 
-        $state = $this->ensureStateRow($username, $eventId, $object, $calendarUri);
+        // A miss still reads its row, as the collation matches event ids case-insensitively.
+        $state = $this->ensureStateRow($username, $eventId, $object, $calendarUri, $knownStates[$eventId] ?? null);
         $event['state'] = $state->state_token;
 
         return $event;
+    }
+
+    /**
+     * @param  list<string>  $eventIds
+     * @return array<string, JmapCalendarEventState>
+     */
+    public function statesFor(string $username, array $eventIds): array
+    {
+        return JmapCalendarEventState::query()->where('username', $username)->whereIn('event_id', $eventIds)->get()->keyBy('event_id')->all();
     }
 
     /**
@@ -96,29 +108,38 @@ final class JmapCalendarEventStateService
 
     /**
      * Ensures a state row exists and rotates state_token when the CalDAV etag changes (read path).
+     *
+     * firstOrCreate falls back to createOrFirst: when a concurrent request inserts the same
+     * (username, event_id) between our read and our insert, the UNIQUE violation is caught and
+     * the winner's row is returned instead of failing the JMAP call with serverFail.
      */
     private function ensureStateRow(
         string $username,
         string $eventId,
         CalendarObject $object,
         string $calendarUri,
+        ?JmapCalendarEventState $row,
     ): JmapCalendarEventState {
-        $row = JmapCalendarEventState::query()
-            ->where('username', $username)
-            ->where('event_id', $eventId)
-            ->first();
-
         $rawEtag = is_string($object->etag) ? $object->etag : null;
 
-        if ($row === null) {
-            return JmapCalendarEventState::query()->create([
-                'username' => $username,
-                'event_id' => $eventId,
+        // The snapshot predates the object read, so a write that landed in between
+        // may be newer. Only trust it when this call will not write it back.
+        if ($row !== null && $rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag) {
+            $row = null;
+        }
+
+        $row ??= JmapCalendarEventState::query()->firstOrCreate(
+            ['username' => $username, 'event_id' => $eventId],
+            fn (): array => [
                 'calendar_uri' => $calendarUri,
                 'object_uri' => (string) $object->uri,
                 'state_token' => $this->generateStateToken(),
                 'etag' => $rawEtag,
-            ]);
+            ],
+        );
+
+        if ($row->wasRecentlyCreated) {
+            return $row;
         }
 
         if ($rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag) {

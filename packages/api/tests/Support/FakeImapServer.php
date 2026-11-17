@@ -10,9 +10,10 @@ use App\Services\Calendars\Imip\ImapTransport;
 
 /**
  * In-memory IMAP server behind {@see ImapTransport} for tests: LOGIN,
- * STARTTLS, EXAMINE, UID SEARCH, UID FETCH and LOGOUT over a fixed set of
- * messages. Each message gives its size, header block, BODYSTRUCTURE text
- * and raw body sections. Every command the client sent is in `$commands`.
+ * STARTTLS, LIST, EXAMINE, UID SEARCH, UID FETCH and LOGOUT over a fixed set of
+ * messages. Each message gives its size, header block, BODYSTRUCTURE text,
+ * raw body sections and optionally the whole raw message (`BODY.PEEK[]`).
+ * Every command the client sent is in `$commands`.
  */
 final class FakeImapServer implements ImapTransport
 {
@@ -25,6 +26,9 @@ final class FakeImapServer implements ImapTransport
 
     public bool $tls = false;
 
+    /** How many body section fetches are answered with `* BYE` (a dropped connection). */
+    public int $byeOnSections = 0;
+
     private string $output = '';
 
     private string $pendingLiteralCommand = '';
@@ -32,7 +36,8 @@ final class FakeImapServer implements ImapTransport
     private int $pendingLiteralBytes = 0;
 
     /**
-     * @param  array<int, array{size?: int, headers: string, structure: string, sections?: array<string, string>}>  $messages
+     * @param  array<int, array{size?: int, headers: string, structure: string, sections?: array<string, string>, raw?: string}>  $messages
+     * @param  list<string>  $list  LIST replies after `* LIST `: `(flags) delimiter name`
      */
     public function __construct(
         public array $messages = [],
@@ -41,6 +46,7 @@ final class FakeImapServer implements ImapTransport
         public string $password = 'secret',
         public string $folder = 'INBOX',
         public bool $sendUidNext = true,
+        public array $list = ['(\\HasNoChildren) "/" "INBOX"'],
     ) {}
 
     public function open(ImapEndpoint $endpoint): void
@@ -121,6 +127,14 @@ final class FakeImapServer implements ImapTransport
                 ? $tag." OK Logged in\r\n"
                 : $tag." NO [AUTHENTICATIONFAILED] Invalid credentials\r\n";
         }
+        if ($upper === 'LIST "" "*"') {
+            $out = '';
+            foreach ($this->list as $entry) {
+                $out .= '* LIST '.$entry."\r\n";
+            }
+
+            return $out.$tag." OK List completed\r\n";
+        }
         if (str_starts_with($upper, 'EXAMINE ')) {
             if (trim(substr($command, 8), '"') !== $this->folder) {
                 return $tag." NO Mailbox does not exist\r\n";
@@ -181,7 +195,16 @@ final class FakeImapServer implements ImapTransport
             if (preg_match('/BODY\.PEEK\[(HEADER\.FIELDS \([^)]*\))\]/', $items, $header) === 1) {
                 $parts[] = 'BODY['.$header[1].'] {'.strlen($message['headers'])."}\r\n".$message['headers'];
             }
+            if (str_contains($items, 'BODY.PEEK[]')) {
+                $raw = $message['raw'] ?? '';
+                $parts[] = 'BODY[] {'.strlen($raw)."}\r\n".$raw;
+            }
             if (preg_match('/BODY\.PEEK\[([\d.]+)\]/', $items, $section) === 1) {
+                if ($this->byeOnSections > 0) {
+                    $this->byeOnSections--;
+
+                    return "* BYE Connection dropped\r\n";
+                }
                 $body = $message['sections'][$section[1]] ?? '';
                 $parts[] = 'BODY['.$section[1].'] {'.strlen($body)."}\r\n".$body;
             }

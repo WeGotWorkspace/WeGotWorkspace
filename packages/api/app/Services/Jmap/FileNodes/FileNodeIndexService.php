@@ -600,41 +600,46 @@ final class FileNodeIndexService
         }
     }
 
-    public function reconcileDirectory(string $dirKey): void
+    /** @return list<JmapFileNode> the directory's live children once reconciled */
+    public function reconcileDirectory(JmapFileNode $dirNode): array
     {
-        $this->markers->batch(fn () => $this->reconcileChildren($dirKey));
+        return $this->markers->batch(fn (): array => $this->reconcileChildren($dirNode));
     }
 
-    private function reconcileChildren(string $dirKey): void
+    /** @return list<JmapFileNode> */
+    private function reconcileChildren(JmapFileNode $dir): array
     {
-        $dirNode = $this->liveByKey($dirKey);
+        $dirNode = $this->liveByNodeId((string) $dir->node_id);
         if ($dirNode === null || ! $dirNode->is_dir) {
-            return;
+            return [];
         }
 
-        $disk = $this->storage->files();
         $onDisk = [];
-        foreach ($disk->directories($dirKey) as $childKey) {
-            $onDisk[$childKey] = true;
+        foreach ($this->storage->files()->listContents((string) $dirNode->storage_key) as $entry) {
+            $onDisk[$entry->path()] = true;
         }
-        foreach ($disk->files($dirKey) as $childKey) {
-            $onDisk[$childKey] = false;
+        $children = $this->liveChildren((string) $dirNode->node_id);
+        $childKeys = array_map(fn (JmapFileNode $child): string => (string) $child->storage_key, $children);
+        $unknown = array_values(array_filter(
+            array_diff(array_map('strval', array_keys($onDisk)), $childKeys),
+            fn (string $key): bool => ! $this->isHiddenKey($key),
+        ));
+        $indexed = $unknown === [] ? [] : JmapFileNode::query()
+            ->whereIn('storage_key', $unknown)->whereNull('deleted_at')->pluck('storage_key')->all();
+        $missing = array_diff($unknown, $indexed);
+        foreach ($missing as $childKey) {
+            // The default MySQL collation matches keys case- and accent-insensitively, so it decides.
+            if ($this->liveByKey($childKey) === null) {
+                $this->recordCreate($childKey);
+            }
         }
 
-        foreach ($onDisk as $childKey => $isDir) {
-            if ($this->isHiddenKey((string) $childKey)) {
-                continue;
-            }
-            if ($this->liveByKey((string) $childKey) === null) {
-                $this->recordCreate((string) $childKey);
-            }
+        $gone = array_filter($children, fn (JmapFileNode $child): bool => ! array_key_exists((string) $child->storage_key, $onDisk));
+        foreach ($gone as $child) {
+            $this->recordDelete((string) $child->storage_key);
         }
 
-        foreach ($this->liveChildren((string) $dirNode->node_id) as $child) {
-            if (! array_key_exists((string) $child->storage_key, $onDisk)) {
-                $this->recordDelete((string) $child->storage_key);
-            }
-        }
+        return $missing === [] && $gone === [] ? $children : $this->liveChildren((string) $dirNode->node_id);
     }
 
     public function pruneTombstones(int $retentionDays): int

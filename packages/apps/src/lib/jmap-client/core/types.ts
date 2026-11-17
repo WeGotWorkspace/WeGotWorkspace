@@ -17,6 +17,11 @@ export const NOTES_CAPABILITY = "urn:wgw:jmap:notes";
 export const CHAT_CAPABILITY = "urn:wgw:jmap:chat";
 /** WGW vendor capability (#1909): TeamMember/get and TeamMember/getAvailability. */
 export const AVAILABILITY_CAPABILITY = "urn:wgw:jmap:availability";
+/**
+ * WGW vendor capability: Mailbox/get over the IMAP mailbox connected in Settings, with
+ * RFC 8621 Mailbox objects. Becomes `urn:ietf:params:jmap:mail` once Email exists.
+ */
+export const MAIL_CAPABILITY = "urn:wgw:jmap:mail";
 /** RFC 9404 Blob/upload and Blob/get. */
 export const BLOB_CAPABILITY = "urn:ietf:params:jmap:blob";
 /** WGW extension (#1500): assemble one blob from parts in bounded steps. */

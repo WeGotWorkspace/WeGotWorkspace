@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BC_TAB_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import {
   applyTabPresenceMessage,
-  BC_TAB_ORIGIN,
   DocsCollabTabCoordinator,
   electLeaderTabId,
   electStickyDocsLeaderTabId,

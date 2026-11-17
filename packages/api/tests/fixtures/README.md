@@ -20,6 +20,15 @@ Real-world exports from groupware stacks (Horde, Nextcloud, Roundcube, Microsoft
 | `Calendars/Fastmail/` | [fastmail/Text-JSCalendar](https://github.com/fastmail/Text-JSCalendar) `testdata/icalendar/` | CPAN (Artistic/GPL) | Key-field golden JSON + ICS round-trip |
 | `Calendars/Interop/audriga/` | [audriga/jmap-php-icalendar_vcard](https://github.com/audriga/jmap-php-icalendar_vcard) `tests/resources/` | MIT | Parse + round-trip stability only |
 
+## DKIM
+
+| Directory | Source | License | Assertion style |
+|-----------|--------|---------|-----------------|
+| `Calendars/Dkim/rfc8463-football.eml` | [RFC 8463](https://www.rfc-editor.org/rfc/rfc8463) Appendix A.3, keys from A.2 | IETF Trust (code components) | Both signatures verify |
+| `Calendars/Dkim/reply-*.eml` | WGW-authored iMIP replies signed with [dkimpy](https://launchpad.net/dkimpy) 1.1.8 (RSA 2048 and Ed25519 keys made for this, private keys not kept) | Project | Verify; tampered copies fail |
+
+`dns.json` holds the TXT records the fake resolver serves. The `.eml` files are CRLF byte for byte (`.gitattributes` keeps git from converting them).
+
 ## Fastmail normative references
 
 - **Text::JSContact** ([CPAN Text-JSContact](https://metacpan.org/pod/Text::JSContact)) — RFC 9555 figure tests in `t/rfc9555.t` and `t/apple.t`

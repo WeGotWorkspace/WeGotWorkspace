@@ -54,6 +54,6 @@ final class HashStateCodec
      */
     public static function build(): string
     {
-        return PHP_VERSION.'|'.php_uname('m').'|'.PHP_INT_SIZE;
+        return PHP_VERSION.'|'.(function_exists('php_uname') ? php_uname('m') : '').'|'.PHP_INT_SIZE;
     }
 }

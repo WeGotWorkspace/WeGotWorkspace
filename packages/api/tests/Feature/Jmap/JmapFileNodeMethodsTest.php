@@ -12,6 +12,7 @@ use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
@@ -422,6 +423,41 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->jmap([
             ['FileNode/query', ['accountId' => 'bob', 'sort' => [['property' => 'size']]], 'c5'],
         ])->assertOk()->assertJsonPath('methodResponses.0.1.type', 'unsupportedSort');
+    }
+
+    public function test_opening_a_folder_runs_the_same_queries_however_many_entries_it_holds(): void
+    {
+        $this->seedPrivateFile('bob', 'Small/a.txt');
+        for ($i = 0; $i < 10; $i++) {
+            $this->seedPrivateFile('bob', 'Large/f'.$i.'.txt');
+        }
+        $nodes = $this->getAll();
+        $queriesToOpen = function (string $name) use ($nodes): int {
+            DB::connection('wgw')->flushQueryLog();
+            DB::connection('wgw')->enableQueryLog();
+            $this->jmap([
+                ['FileNode/query', ['accountId' => 'bob', 'filter' => ['parentId' => $this->nodeIdByName($nodes, $name)]], 'c0'],
+                ['FileNode/get', ['accountId' => 'bob', '#ids' => ['resultOf' => 'c0', 'name' => 'FileNode/query', 'path' => '/ids']], 'c1'],
+            ])->assertOk();
+
+            return count(DB::connection('wgw')->getQueryLog());
+        };
+
+        $this->assertSame($queriesToOpen('Small'), $queriesToOpen('Large'));
+    }
+
+    public function test_reconciling_a_folder_loaded_before_its_rename_keeps_its_children(): void
+    {
+        $this->seedPrivateFile('bob', 'Projects/plan.txt');
+        $nodes = $this->getAll();
+        $index = app(FileNodeIndexService::class);
+        $folder = $index->liveByNodeId($this->nodeIdByName($nodes, 'Projects'));
+        $this->jmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [(string) $folder?->node_id => ['name' => 'Archive']]], 'c0'],
+        ])->assertOk();
+
+        $this->assertCount(1, $index->reconcileDirectory($folder));
+        $this->assertNotNull($index->liveByNodeId($this->nodeIdByName($nodes, 'plan.txt')));
     }
 
     public function test_query_changes_is_cannot_calculate_changes(): void

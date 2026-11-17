@@ -79,6 +79,26 @@ export const MailStyleTouch: Story = {
   ),
 };
 
+/**
+ * Before a swipe, a touch row's actions sit behind it at zero width, so the row is
+ * exactly as tall as its content. This needs `react-swipeable-list`'s CSS, which
+ * `ListItem` imports itself: an app opened first gets no other copy (#2195).
+ */
+export const TouchSwipeActionsHidden: Story = {
+  ...MailStyleTouch,
+  tags: ["vitest-ci"],
+  play: async ({ canvasElement }) => {
+    const item = canvasElement.querySelector<HTMLElement>(".swipeable-list-item")!;
+    const content = item.querySelector<HTMLElement>(".swipeable-list-item__content")!;
+    const actions = [...item.querySelectorAll<HTMLElement>(".swipe-action")];
+    await expect(actions).toHaveLength(2);
+    for (const action of actions) {
+      await expect(action.getBoundingClientRect().width).toBe(0);
+    }
+    await expect(item.getBoundingClientRect().height).toBe(content.getBoundingClientRect().height);
+  },
+};
+
 const multiSelectRows = (args: Story["args"]) => (
   <div className="max-w-md" data-list-selection-mode="true">
     <ListItem {...args} id="ms-1" title="Selected note" isSelected selectionMode />

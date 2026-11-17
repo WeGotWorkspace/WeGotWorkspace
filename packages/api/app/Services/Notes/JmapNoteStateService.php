@@ -52,19 +52,14 @@ final class JmapNoteStateService
 
     private function persist(string $username, string $noteId, string $notebookUri, ?string $objectUri): void
     {
-        $row = JmapNoteState::query()
-            ->where('username', $username)
-            ->where('note_id', $noteId)
-            ->first();
+        // firstOrCreate falls back to createOrFirst: a concurrent insert of the same
+        // (username, note_id) is read back instead of being logged as a failure.
+        $row = JmapNoteState::query()->firstOrCreate(
+            ['username' => $username, 'note_id' => $noteId],
+            ['notebook_uri' => $notebookUri, 'object_uri' => $objectUri],
+        );
 
-        if ($row === null) {
-            JmapNoteState::query()->create([
-                'username' => $username,
-                'note_id' => $noteId,
-                'notebook_uri' => $notebookUri,
-                'object_uri' => $objectUri,
-            ]);
-
+        if ($row->wasRecentlyCreated) {
             return;
         }
 

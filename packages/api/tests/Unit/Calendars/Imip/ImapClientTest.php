@@ -28,6 +28,28 @@ final class ImapClientTest extends TestCase
         $this->assertSame(['STARTTLS', 'LOGIN "organizer@example.test" "***"', 'EXAMINE "INBOX"', 'UID SEARCH UID 4:*', 'UID SEARCH UID 10:*'], $server->verbs());
     }
 
+    public function test_folders_lists_names_that_open_inbox_first(): void
+    {
+        $server = new FakeImapServer(list: [
+            '(\\HasNoChildren) "/" "Work"',
+            '(\\Noselect \\HasChildren) "/" "[Gmail]"',
+            '(\\HasNoChildren) "/" "archive 10"',
+            '(\\HasNoChildren) "/" "inbox"',
+            '(\\HasNoChildren) "/" "&AMk-t&AOk-"',
+            '(\\HasNoChildren) "/" "archive 9"',
+            '(\\NonExistent) "/" "Gone"',
+        ]);
+        $client = new ImapClient($server);
+        $client->connect($this->endpoint(), 'organizer@example.test', 'secret');
+
+        $folders = $client->folders();
+
+        $this->assertSame(['INBOX', 'archive 9', 'archive 10', 'Work', "\u{c9}t\u{e9}"], array_map(static fn ($folder) => $folder->name, $folders));
+        $this->assertSame('/', $folders[0]->delimiter);
+        $this->assertSame(['\\hasnochildren'], $folders[0]->flags);
+        $this->assertSame(['LOGIN "organizer@example.test" "***"', 'LIST "" "*"'], $server->verbs());
+    }
+
     public function test_highest_uid_without_uidnext(): void
     {
         $server = new FakeImapServer(messages: [5 => $this->message()], sendUidNext: false);
@@ -90,7 +112,20 @@ final class ImapClientTest extends TestCase
         $this->assertSame('a@example.com', $summary->headers->first('from'));
         $this->assertSame('1', $summary->calendarPart?->section);
         $this->assertSame("BEGIN:VCALENDAR\r\n", $client->section(7, '1'));
-        $this->assertStringContainsString('BODY.PEEK[HEADER.FIELDS (FROM SENDER MESSAGE-ID AUTHENTICATION-RESULTS)]', $server->verbs()[2]);
+        $this->assertStringContainsString('BODY.PEEK[HEADER.FIELDS (FROM SENDER MESSAGE-ID AUTHENTICATION-RESULTS DKIM-SIGNATURE)]', $server->verbs()[2]);
+    }
+
+    public function test_whole_message_is_read_byte_for_byte_without_marking_it_read(): void
+    {
+        $raw = "DKIM-Signature: v=1; a=rsa-sha256;\r\n b=abc\r\nFrom: a@example.com\r\n\r\nLine one \r\n\r\n{12}\r\n)\r\n";
+        $server = new FakeImapServer(messages: [7 => ['raw' => $raw] + $this->message()]);
+        $client = new ImapClient($server);
+        $client->connect($this->endpoint(), 'organizer@example.test', 'secret');
+        $client->examine('INBOX');
+
+        $this->assertSame($raw, $client->message(7));
+        $this->assertNull($client->message(8));
+        $this->assertSame('UID FETCH 7 (UID BODY.PEEK[])', $server->verbs()[2]);
     }
 
     private function endpoint(string $security = ImapEndpoint::SECURITY_SSL): ImapEndpoint

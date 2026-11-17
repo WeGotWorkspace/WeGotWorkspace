@@ -20,7 +20,7 @@ import {
 } from "@/lib/offline/core/offline-session";
 import { setContactsSyncConflictListener } from "@/lib/offline/contacts/contacts-sync-conflicts";
 import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict-queue";
-import { useOfflineReconnectFlush } from "@/lib/offline/core/use-offline-reconnect-flush";
+import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import type { ContactsUIData } from "@/lib/models/contacts-types";

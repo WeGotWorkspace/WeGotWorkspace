@@ -54,7 +54,7 @@ import {
   decodeCollabTicketPayload,
   type DocsCollabTicketJwk,
 } from "@/text-editor-core/docs-collab/docs-collab-ticket";
-import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { collabErrorStatus } from "@/lib/collab/docs-collab-utils";
 
 const DC_LABEL = "collab";
 

@@ -1,6 +1,6 @@
 import * as Y from "yjs";
-import { NOTE_TITLE_YTEXT_KEY, noteTitleIsInDoc } from "./docs-collab-document-title";
-import { colorForName } from "./docs-collab-utils";
+import { NOTE_TITLE_YTEXT_KEY, noteTitleIsInDoc } from "@/lib/collab/docs-collab-document-title";
+import { colorForName } from "@/lib/collab/docs-collab-utils";
 
 /**
  * Awareness field for the title caret. Separate from the y-prosemirror

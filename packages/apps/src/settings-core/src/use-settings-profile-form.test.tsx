@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingsUIData } from "@/lib/models/settings-types";
 import { useSettingsProfileForm } from "@/settings-core/src/use-settings-profile-form";
 
-const { completeLogout, countUnsynced } = vi.hoisted(() => ({
+const { completeLogout, countUnsynced, toast } = vi.hoisted(() => ({
   completeLogout: vi.fn(async () => "member_login" as const),
   countUnsynced: vi.fn(async () => 0),
+  toast: { show: vi.fn(), dismiss: vi.fn(), showSuccess: vi.fn(), showError: vi.fn() },
 }));
 
-vi.mock("@/hooks/use-run-with-app-toast", () => ({
-  useRunWithAppToast: () => async (work: () => Promise<unknown>) => work(),
+vi.mock("@/hooks/use-app-toast", () => ({
+  useAppToast: () => toast,
 }));
 
 vi.mock("@/lib/api/wgw/http", () => ({
@@ -40,11 +41,13 @@ function createSaveProfileMock() {
 describe("useSettingsProfileForm", () => {
   beforeEach(() => {
     completeLogout.mockClear();
+    toast.showSuccess.mockClear();
+    toast.showError.mockClear();
     countUnsynced.mockReset();
     countUnsynced.mockResolvedValue(0);
   });
 
-  it("calls saveProfile with OpenAPI-shaped identity fields", async () => {
+  it("saves only the display name", async () => {
     const saveProfile = createSaveProfileMock();
 
     const { result } = renderHook(() =>
@@ -55,11 +58,13 @@ describe("useSettingsProfileForm", () => {
     );
 
     act(() => {
-      result.current.form.setValue("displayName", "Alice Updated", { shouldDirty: true });
+      result.current.displayNameForm.setValue("displayName", "Alice Updated", {
+        shouldDirty: true,
+      });
     });
 
     await act(async () => {
-      await result.current.saveProfile();
+      await result.current.saveDisplayName();
     });
 
     await waitFor(() => {
@@ -67,11 +72,69 @@ describe("useSettingsProfileForm", () => {
         displayName: "Alice Updated",
       });
     });
+    expect(result.current.displayNameForm.formState.isDirty).toBe(false);
     expect(completeLogout).not.toHaveBeenCalled();
     expect(countUnsynced).not.toHaveBeenCalled();
   });
 
-  it("includes password in the request when a new password is set", async () => {
+  it("changes the email with the current password and shows the new address", async () => {
+    const saveProfile = vi.fn().mockResolvedValue({
+      user: { ...baseUser, email: "alice@new.example" },
+      groups: [],
+      logoutUrl: "/logout",
+      mcpEnabled: true,
+    } satisfies SettingsUIData);
+    const { result } = renderHook(() =>
+      useSettingsProfileForm({ user: baseUser, operations: { saveProfile } }),
+    );
+
+    act(() => result.current.openEmailDialog());
+    expect(result.current.emailDialogOpen).toBe(true);
+    act(() => {
+      result.current.emailForm.setValue("email", "alice@new.example");
+      result.current.emailForm.setValue("currentPassword", "secret");
+    });
+
+    await act(async () => {
+      await result.current.changeEmail();
+    });
+
+    expect(saveProfile).toHaveBeenCalledWith({
+      email: "alice@new.example",
+      currentPassword: "secret",
+    });
+    expect(result.current.email).toBe("alice@new.example");
+    expect(result.current.emailDialogOpen).toBe(false);
+    expect(toast.showSuccess).toHaveBeenCalledOnce();
+  });
+
+  it("marks a wrong current password on the field", async () => {
+    const saveProfile = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error("Forbidden"), { status: 403 }));
+    const { result } = renderHook(() =>
+      useSettingsProfileForm({ user: baseUser, operations: { saveProfile } }),
+    );
+
+    act(() => result.current.openEmailDialog());
+    act(() => {
+      result.current.emailForm.setValue("email", "alice@new.example");
+      result.current.emailForm.setValue("currentPassword", "wrong");
+    });
+
+    await act(async () => {
+      await result.current.changeEmail();
+    });
+
+    expect(result.current.emailForm.getFieldState("currentPassword").error?.message).toBe(
+      "Current password is incorrect",
+    );
+    expect(result.current.emailDialogOpen).toBe(true);
+    expect(result.current.email).toBe(baseUser.email);
+    expect(toast.showError).not.toHaveBeenCalled();
+  });
+
+  it("changes the password and signs this device out", async () => {
     const saveProfile = createSaveProfileMock();
 
     const { result } = renderHook(() =>
@@ -82,9 +145,8 @@ describe("useSettingsProfileForm", () => {
     );
 
     act(() => {
-      result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
+      result.current.passwordForm.setValue("newPassword", "hunter2hunter");
+      result.current.passwordForm.setValue("currentPassword", "secret");
     });
 
     const assign = vi.fn();
@@ -94,24 +156,21 @@ describe("useSettingsProfileForm", () => {
     });
 
     await act(async () => {
-      await result.current.saveProfile();
+      await result.current.changePassword();
     });
 
     await waitFor(() => {
-      expect(saveProfile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          displayName: "Alice Example",
-          password: "hunter2hunter",
-          currentPassword: "secret",
-        }),
-      );
+      expect(saveProfile).toHaveBeenCalledWith({
+        password: "hunter2hunter",
+        currentPassword: "secret",
+      });
     });
     expect(completeLogout).toHaveBeenCalledOnce();
     expect(assign).toHaveBeenCalledWith("/login");
     expect(result.current.unsyncedDiscard).toBeNull();
   });
 
-  it("asks before saving a password change that would discard unsynced changes", async () => {
+  it("asks before changing a password that would discard unsynced changes", async () => {
     countUnsynced.mockResolvedValue(2);
     const saveProfile = createSaveProfileMock();
     const { result } = renderHook(() =>
@@ -122,13 +181,12 @@ describe("useSettingsProfileForm", () => {
     );
 
     act(() => {
-      result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
+      result.current.passwordForm.setValue("newPassword", "hunter2hunter");
+      result.current.passwordForm.setValue("currentPassword", "secret");
     });
 
     let finished = false;
-    const pending = result.current.saveProfile().then(() => {
+    const pending = result.current.changePassword().then(() => {
       finished = true;
     });
 
@@ -160,12 +218,11 @@ describe("useSettingsProfileForm", () => {
     );
 
     act(() => {
-      result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
+      result.current.passwordForm.setValue("newPassword", "hunter2hunter");
+      result.current.passwordForm.setValue("currentPassword", "secret");
     });
 
-    const pending = result.current.saveProfile();
+    const pending = result.current.changePassword();
     await waitFor(() => {
       expect(result.current.unsyncedDiscard?.description).toBe(
         "This device has 1 unsynced change. It will be discarded.",
@@ -193,12 +250,11 @@ describe("useSettingsProfileForm", () => {
     );
 
     act(() => {
-      result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
+      result.current.passwordForm.setValue("newPassword", "hunter2hunter");
+      result.current.passwordForm.setValue("currentPassword", "secret");
     });
 
-    const pending = result.current.saveProfile();
+    const pending = result.current.changePassword();
     await waitFor(() => {
       expect(result.current.unsyncedDiscard?.description).toBe(
         "Unsynced changes on this device will be discarded.",
@@ -224,12 +280,11 @@ describe("useSettingsProfileForm", () => {
     );
 
     act(() => {
-      result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
-      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
+      result.current.passwordForm.setValue("newPassword", "hunter2hunter");
+      result.current.passwordForm.setValue("currentPassword", "secret");
     });
 
-    const pending = result.current.saveProfile();
+    const pending = result.current.changePassword();
     await waitFor(() => {
       expect(result.current.unsyncedDiscard).not.toBeNull();
     });

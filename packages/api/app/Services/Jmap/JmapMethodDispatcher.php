@@ -42,6 +42,7 @@ use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
 use App\Services\Jmap\Methods\FileNodeQueryMethod;
 use App\Services\Jmap\Methods\FileNodeSetMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
+use App\Services\Jmap\Methods\MailboxGetMethod;
 use App\Services\Jmap\Methods\NotebookChangesMethod;
 use App\Services\Jmap\Methods\NotebookGetMethod;
 use App\Services\Jmap\Methods\NotebookSetMethod;
@@ -127,6 +128,8 @@ final class JmapMethodDispatcher
         // urn:wgw:jmap:availability (vendor Team availability, #1909)
         TeamMemberGetMethod::class,
         TeamMemberGetAvailabilityMethod::class,
+        // urn:wgw:jmap:mail (vendor; Mailboxes of the connected IMAP mailbox)
+        MailboxGetMethod::class,
         // urn:ietf:params:jmap:quota (RFC 9425; one Drive quota per writable root)
         QuotaGetMethod::class,
         QuotaChangesMethod::class,

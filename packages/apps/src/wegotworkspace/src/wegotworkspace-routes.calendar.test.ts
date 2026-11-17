@@ -1,13 +1,13 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
-import { createWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-routes";
+import { createMockWeGotWorkspaceRouter } from "@/wegotworkspace/src/wegotworkspace-mock-routes";
 
 describe("wegotworkspace calendar routes", () => {
   it("matches view and date on direct /calendar/:view/:date loads", async () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar/week/2026-08-17"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const match = router.state.matches.find((entry) => entry.params.view && entry.params.date);
@@ -19,7 +19,7 @@ describe("wegotworkspace calendar routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar/list/day/2026-08-17"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     const match = router.state.matches.find((entry) => entry.params.view && entry.params.date);
@@ -31,7 +31,7 @@ describe("wegotworkspace calendar routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar/month/2026-08-17"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
     expect(router.state.location.pathname).toBe("/calendar/month/2026-08-17");
 
@@ -47,7 +47,7 @@ describe("wegotworkspace calendar routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar/rsvp/demo-token"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     expect(router.state.location.pathname).toBe("/calendar/rsvp/demo-token");
@@ -59,7 +59,7 @@ describe("wegotworkspace calendar routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar/week/2026-08-17?q=standup"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     expect(router.state.location.pathname).toBe("/calendar/week/2026-08-17");
@@ -70,7 +70,7 @@ describe("wegotworkspace calendar routes", () => {
     const history = createMemoryHistory({
       initialEntries: ["/calendar"],
     });
-    const router = createWeGotWorkspaceRouter({ mode: "mock", history });
+    const router = createMockWeGotWorkspaceRouter(history);
     await router.load();
 
     expect(router.state.location.pathname).toBe("/calendar");

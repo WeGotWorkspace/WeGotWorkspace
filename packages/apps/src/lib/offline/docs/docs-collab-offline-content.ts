@@ -1,15 +1,9 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
+import { loadCollabContentCodec } from "@/lib/collab/collab-content-codec";
 import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
-import {
-  docsCollabReadNames,
-  docsCollabRoomKey,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import {
-  collabDocumentFormat,
-  isYDocEmpty,
-} from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { docsCollabReadNames, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
+import { collabDocumentFormat, isYDocEmpty } from "@/lib/collab/docs-collab-utils";
 
 async function readCollabRoomContent(roomKey: string, apiPath: string): Promise<string | null> {
   const ydoc = new Y.Doc();
@@ -18,6 +12,7 @@ async function readCollabRoomContent(roomKey: string, apiPath: string): Promise<
     await persistence.whenSynced;
     if (isYDocEmpty(ydoc)) return null;
     const format = collabDocumentFormat(apiPath);
+    const { readContentFromYDoc } = await loadCollabContentCodec();
     return readContentFromYDoc(ydoc, format);
   } catch {
     return null;

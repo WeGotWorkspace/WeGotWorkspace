@@ -10,6 +10,8 @@ use App\Services\Calendars\HostIpResolver;
 use App\Services\Calendars\Imip\ImapEndpoint;
 use App\Services\Calendars\Imip\ImapTransport;
 use App\Services\Calendars\Imip\ImipEndpointResolver;
+use App\Services\Calendars\Imip\ImipMailboxObjects;
+use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
@@ -17,7 +19,8 @@ use Tests\Support\FakeImapServer;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * `GET|PUT|DELETE /api/v1/calendars/reply-mailbox` and `POST .../test` (#1589).
+ * `GET|PUT|DELETE /api/v1/calendars/reply-mailbox` and `POST .../test` (#1589), and
+ * Mailbox/get (vendor urn:wgw:jmap:mail) over the same stored mailbox.
  */
 final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
 {
@@ -63,6 +66,7 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
             ->assertJsonPath('mailbox.folder', 'INBOX')
             ->assertJsonPath('mailbox.passwordSet', true)
             ->assertJsonPath('mailbox.trustedServer', 'mx.receiver.test')
+            ->assertJsonPath('mailbox.senderCheck', 'receiving_server')
             ->assertJsonPath('mailbox.active', true)
             ->assertJsonPath('mailbox.lastError', null);
         $this->assertStringNotContainsString('mailbox-pass', (string) $response->getContent());
@@ -73,6 +77,17 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
             'mailbox-pass',
             (string) $this->withBearer($this->token)->getJson('/api/v1/calendars/reply-mailbox')->getContent(),
         );
+    }
+
+    public function test_a_mailbox_whose_server_does_not_stamp_mail_is_checked_by_dkim(): void
+    {
+        $this->allowAnyHost();
+        $this->server->messages[1]['headers'] = "From: a@example.test\r\n\r\n";
+
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk()
+            ->assertJsonPath('mailbox.trustedServer', null)
+            ->assertJsonPath('mailbox.senderCheck', 'dkim')
+            ->assertJsonPath('mailbox.lastError', null);
     }
 
     public function test_first_save_needs_a_password(): void
@@ -158,6 +173,108 @@ final class CalendarReplyMailboxApiTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('mailbox.active', true)
             ->assertJsonPath('mailbox.lastError', null);
+    }
+
+    public function test_mailbox_get_lists_the_stored_mailbox_as_jmap_mailboxes(): void
+    {
+        $this->allowAnyHost();
+        $session = $this->withBearer($this->token)->getJson('/api/v1/jmap/session')->assertOk();
+        $this->assertSame(
+            ['maxMailboxDepth' => null, 'maxSizeMailboxName' => 255, 'mayCreateTopLevelMailbox' => false],
+            $session->json('accounts.bob.accountCapabilities')[JmapCapabilities::MAIL] ?? null,
+        );
+
+        $none = $this->mailboxGet(['ids' => null]);
+        $this->assertSame([], $none[1]['list'], 'no mailbox connected: no Mailboxes');
+
+        $this->server->list = ['(\\HasChildren) "/" "INBOX"', '(\\HasNoChildren) "/" "INBOX/Replies"', '(\\Sent) "/" "Sent"'];
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk();
+
+        $all = $this->mailboxGet(['ids' => null, 'properties' => ['name', 'parentId', 'role']]);
+        $this->assertSame('Mailbox/get', $all[0]);
+        $this->assertSame('bob', $all[1]['accountId']);
+        $this->assertNotSame('', $all[1]['state']);
+        $inboxId = ImipMailboxObjects::id('INBOX');
+        $this->assertSame([
+            ['id' => $inboxId, 'name' => 'INBOX', 'parentId' => null, 'role' => 'inbox'],
+            ['id' => ImipMailboxObjects::id('INBOX/Replies'), 'name' => 'Replies', 'parentId' => $inboxId, 'role' => null],
+            ['id' => ImipMailboxObjects::id('Sent'), 'name' => 'Sent', 'parentId' => null, 'role' => 'sent'],
+        ], $all[1]['list']);
+
+        $some = $this->mailboxGet(['ids' => [$inboxId, 'Mnope']]);
+        $this->assertSame([$inboxId], array_column($some[1]['list'], 'id'));
+        $this->assertSame(['Mnope'], $some[1]['notFound']);
+    }
+
+    public function test_mailbox_get_is_only_the_callers_own_account(): void
+    {
+        $this->allowAnyHost();
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk();
+
+        $response = $this->withBearer($this->issueBearerTokenFor('alice'))->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::MAIL],
+            'methodCalls' => [['Mailbox/get', ['accountId' => 'bob', 'ids' => null], 'c0']],
+        ])->assertOk()->json('methodResponses.0');
+
+        $this->assertSame('error', $response[0]);
+        $this->assertSame('accountNotFound', $response[1]['type']);
+        $this->assertSame(1, $this->server->opens, 'only bob\'s own save logged in');
+    }
+
+    public function test_mailbox_get_counts_as_a_mailbox_login(): void
+    {
+        $this->allowAnyHost();
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk();
+        for ($i = 0; $i < 9; $i++) {
+            $this->assertSame('Mailbox/get', $this->mailboxGet(['ids' => null])[0]);
+        }
+
+        $limited = $this->mailboxGet(['ids' => null]);
+        $this->assertSame('error', $limited[0]);
+        $this->assertSame('serverUnavailable', $limited[1]['type']);
+        $this->assertGreaterThan(0, $limited[1]['retryAfter']);
+    }
+
+    public function test_mailbox_get_says_why_the_mailbox_cannot_be_opened(): void
+    {
+        $this->allowAnyHost();
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk();
+        $this->server->password = 'changed-elsewhere';
+
+        $failed = $this->mailboxGet(['ids' => null]);
+        $this->assertSame('error', $failed[0]);
+        $this->assertSame('serverFail', $failed[1]['type']);
+        $this->assertSame('auth_failed', $failed[1]['code']);
+    }
+
+    public function test_a_folder_is_chosen_by_mailbox_id(): void
+    {
+        $this->allowAnyHost();
+        $this->putMailbox(['password' => 'mailbox-pass'])->assertOk()
+            ->assertJsonPath('mailbox.folderId', ImipMailboxObjects::id('INBOX'));
+
+        $this->server->list = ['(\\HasNoChildren) "/" "INBOX"', '(\\HasNoChildren) "/" "Calendar replies"'];
+        $this->server->folder = 'Calendar replies';
+        $this->putMailbox(['folderId' => ImipMailboxObjects::id('Calendar replies')])
+            ->assertOk()
+            ->assertJsonPath('mailbox.folder', 'Calendar replies')
+            ->assertJsonPath('mailbox.folderId', ImipMailboxObjects::id('Calendar replies'));
+
+        $this->putMailbox(['folderId' => 'Mgone'])->assertStatus(422)->assertJsonPath('code', 'folder_missing');
+        $this->putMailbox(['folderId' => 'not an id'])->assertStatus(400);
+        $this->assertSame('Calendar replies', CalendarReplyMailbox::query()->find('bob')?->folder);
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function mailboxGet(array $args): array
+    {
+        return $this->withBearer($this->token)->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::MAIL],
+            'methodCalls' => [['Mailbox/get', ['accountId' => 'bob', ...$args], 'c0']],
+        ])->assertOk()->json('methodResponses.0');
     }
 
     public function test_disconnect_removes_the_mailbox(): void

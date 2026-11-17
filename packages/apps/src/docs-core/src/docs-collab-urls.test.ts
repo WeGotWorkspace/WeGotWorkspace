@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
-import { saveDocument } from "@/text-editor-core/docs-collab/docs-collab-server-io";
+import { saveDocument } from "@/lib/collab/docs-collab-server-io";
 import { buildDocsCollabUrls, buildDocsEditorUrls } from "./docs-collab-urls";
 
 const LONG_NAME = "a".repeat(250 - "users/alice/docs/".length - ".md".length);

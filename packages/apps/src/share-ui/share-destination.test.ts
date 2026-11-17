@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  isShareTargetFile,
   shareDestination,
   shareDestinationHref,
   shareDestinationRoute,
@@ -60,13 +59,6 @@ describe("shareFileShouldDownload", () => {
     expect(shareFileShouldDownload("/users/bob/readme.txt")).toBe(false);
     expect(shareFileShouldDownload("/users/bob/photo.png")).toBe(false);
     expect(shareFileShouldDownload("/users/bob/plan.pdf")).toBe(false);
-  });
-});
-
-describe("isShareTargetFile", () => {
-  it("detects file targets by extension", () => {
-    expect(isShareTargetFile("/users/bob/contacts.vcf")).toBe(true);
-    expect(isShareTargetFile("/users/bob/Projects")).toBe(false);
   });
 });
 

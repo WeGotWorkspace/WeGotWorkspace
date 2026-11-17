@@ -153,7 +153,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'error' => 'Method not allowed.',
                 'code' => 'method_not_allowed',
-            ], 405);
+            ], 405, $e->getHeaders());
         });
         $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->is('api/*')) {

@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
+import { ChatMessageRow } from "@/chat-ui/src/chat-message-row";
 import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
 import { ChatStoryScope } from "@/chat-ui/stories/chat-story-scope";
 import {
@@ -161,6 +162,31 @@ export const Deleted: Story = {
   },
 };
 
+export const Sending: Story = {
+  args: {
+    message: { ...CHAT_STORY_MESSAGE_PLAIN, syncState: "pending" },
+    currentUserId: CHAT_STORY_CURRENT_USER_ID,
+    actions,
+    presence: CHAT_STORY_AUTHOR_PRESENCE["ada.lovelace"],
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Sending…")).toBeInTheDocument();
+  },
+};
+
+export const NotSent: Story = {
+  name: "Not sent",
+  args: {
+    message: { ...CHAT_STORY_MESSAGE_PLAIN, syncState: "failed" },
+    currentUserId: CHAT_STORY_CURRENT_USER_ID,
+    actions,
+    presence: CHAT_STORY_AUTHOR_PRESENCE["ada.lovelace"],
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Not sent")).toBeInTheDocument();
+  },
+};
+
 export const InternalPreview: Story = {
   name: "Internal preview",
   args: {
@@ -191,5 +217,52 @@ export const MissingPreview: Story = {
     actions,
     presence: CHAT_STORY_AUTHOR_PRESENCE["grace.hopper"],
     onToggleReaction: fn(),
+  },
+};
+
+/**
+ * `ChatMessageRow`: how the windowed log places a message. A run of one author
+ * has one avatar; its follow-ups sit tight under it, and the next run starts
+ * after a gap. The spacing comes from the row's flags, not from its neighbours.
+ */
+export const RowsInARun: Story = {
+  name: "Rows in a run",
+  render: () => {
+    const run = [
+      { ...CHAT_STORY_MESSAGE_PLAIN, id: "run-1", body: "First message of the run." },
+      { ...CHAT_STORY_MESSAGE_PLAIN, id: "run-2", body: "A follow-up, no avatar." },
+    ];
+    const next = { ...CHAT_STORY_MESSAGE_EDITED, id: "run-3", body: "The next author's run." };
+    return (
+      <div className="chat-ui chat-message-list">
+        {run.map((message, index) => (
+          <ChatMessageRow
+            key={message.id}
+            message={message}
+            currentUserId={CHAT_STORY_CURRENT_USER_ID}
+            continuation={index > 0}
+            beforeContinuation={index === 0}
+            groupStart={false}
+            editing={false}
+            allowThread
+          />
+        ))}
+        <ChatMessageRow
+          message={next}
+          currentUserId={CHAT_STORY_CURRENT_USER_ID}
+          continuation={false}
+          beforeContinuation={false}
+          groupStart
+          editing={false}
+          allowThread
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const rows = canvasElement.querySelectorAll(".chat-message-list__row");
+    await expect(rows).toHaveLength(3);
+    await expect(rows[1]?.querySelector(".chat-message__avatar")).toBeNull();
+    await expect(rows[2]).toHaveClass("chat-message-list__row--group-start");
   },
 };

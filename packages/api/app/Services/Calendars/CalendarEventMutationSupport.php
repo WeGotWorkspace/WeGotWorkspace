@@ -16,6 +16,9 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Services\VObject\ICalendarUidGroupSplitter;
 use App\Services\VObject\VObjectPayloadGuard;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
@@ -613,29 +616,69 @@ final class CalendarEventMutationSupport
      */
     public function findOwnedEvent(string $username, string $eventId, bool $lock = false): ?array
     {
-        $parsed = CalendarConversionSupport::parseEventId($eventId);
-        $eventUri = CalendarEventMapper::eventUriFromId($eventId);
         $principalUris = $this->calendars->accessiblePrincipalUris($username);
-        $query = CalendarObject::query()
-            ->where('uri', $eventUri)
-            ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
-                $query->whereIn('principaluri', $principalUris);
-            });
+        $query = $this->accessibleObjects([CalendarEventMapper::eventUriFromId($eventId)], $principalUris);
         if ($lock) {
             $query->lockForUpdate();
         }
         $object = $query->first();
 
-        if ($object === null) {
-            return null;
-        }
+        return $object === null ? null : $this->locateInObject(
+            $username, $eventId, $object, $this->calendars->accessibleVeventInstances($username), $principalUris,
+        );
+    }
+
+    /**
+     * findOwnedEvent for many ids: the caller's access and the objects are read once, then each
+     * id is located on its own call so a failing one only fails itself.
+     *
+     * @param  list<string>  $eventIds
+     * @return Closure(string): (array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}|null)
+     */
+    public function ownedEventLocator(string $username, array $eventIds): Closure
+    {
+        $principalUris = $this->calendars->accessiblePrincipalUris($username);
+        $objects = $this->accessibleObjects(array_map(CalendarEventMapper::eventUriFromId(...), $eventIds), $principalUris)
+            ->orderBy('id')->get()->unique('uri')->keyBy('uri');
+        $listed = $objects->isEmpty() ? new Collection : $this->calendars->accessibleVeventInstances($username);
+
+        return function (string $eventId) use ($username, $objects, $listed, $principalUris): ?array {
+            $object = $objects->get(CalendarEventMapper::eventUriFromId($eventId));
+
+            // A miss goes to the database, whose default collation matches the uri case-insensitively.
+            return $object === null ? $this->findOwnedEvent($username, $eventId) : $this->locateInObject($username, $eventId, $object, $listed, $principalUris);
+        };
+    }
+
+    /**
+     * @param  list<string>  $eventUris
+     * @param  list<string>  $principalUris
+     * @return Builder<CalendarObject>
+     */
+    private function accessibleObjects(array $eventUris, array $principalUris): Builder
+    {
+        return CalendarObject::query()
+            ->whereIn('uri', $eventUris)
+            ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
+                $query->whereIn('principaluri', $principalUris);
+            });
+    }
+
+    /**
+     * @param  Collection<int, CalendarInstance>  $listed
+     * @param  list<string>  $principalUris
+     * @return array{object: CalendarObject, instance: CalendarInstance, calendarUri: string, veventUid: string|null}|null
+     */
+    private function locateInObject(string $username, string $eventId, CalendarObject $object, Collection $listed, array $principalUris): ?array
+    {
+        $parsed = CalendarConversionSupport::parseEventId($eventId);
 
         // The caller can reach one calendar through several instances (own,
         // group, direct share). Resolve through the instance the calendar list
         // shows. When the list has none for this calendar, take the one with
         // the most rights. A dismissed or hidden share is skipped either way.
         $calendarId = (int) $object->calendarid;
-        $instance = $this->calendars->accessibleVeventInstances($username)
+        $instance = $listed
             ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
             ?? $this->collectionAccess->visibleHighestAccess(
                 $username,

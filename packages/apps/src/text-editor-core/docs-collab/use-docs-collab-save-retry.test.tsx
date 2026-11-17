@@ -5,7 +5,7 @@ import type { MutableRefObject } from "react";
 import * as Y from "yjs";
 import type { DocsCollabSessionRefs } from "./docs-collab-types";
 import { SAVE_DELAY_MS, SAVE_MAX_WAIT_MS } from "./docs-collab-save-queue";
-import { CollabHttpError } from "./docs-collab-utils";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 
 const persistCollabSave = vi.hoisted(() => vi.fn());
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { NOTE_TITLE_YTEXT_KEY, writeNoteTitle } from "./docs-collab-document-title";
+import { NOTE_TITLE_YTEXT_KEY, writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import {
   NOTE_TITLE_SELECTION_FIELD,
   decodeTitleSelection,

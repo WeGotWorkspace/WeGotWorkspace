@@ -1,4 +1,33 @@
 {
+  "SettingsUserGroup": {
+    "type": "object",
+    "description": "A Team the caller belongs to.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Group principal uri (principals/groups/\u2026)."
+      },
+      "displayName": {
+        "type": "string"
+      },
+      "memberCount": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many members the Team has, the caller included."
+      }
+    },
+    "required": [
+      "id",
+      "displayName",
+      "memberCount"
+    ]
+  },
+  "SettingsUserGroupList": {
+    "type": "array",
+    "items": {
+      "$ref": "#/components/schemas/SettingsUserGroup"
+    }
+  },
   "SettingsStateResponse": {
     "type": "object",
     "properties": {

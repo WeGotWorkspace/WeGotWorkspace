@@ -1,14 +1,14 @@
 import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
-import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
-import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import { rememberSidecarEtag, sidecarPrecondition } from "@/lib/collab/docs-collab-etag";
+import { loadYjsSnapshot, saveDocument } from "@/lib/collab/docs-collab-server-io";
 import type { DocsCollabUrls } from "./docs-collab-types";
 import {
   isExternalWriteRefusal,
   isServerDivergenceError,
   SERVER_ORIGIN,
-} from "./docs-collab-utils";
+} from "@/lib/collab/docs-collab-utils";
 
 export type CollabSaveAttempt = {
   urls: DocsCollabUrls;

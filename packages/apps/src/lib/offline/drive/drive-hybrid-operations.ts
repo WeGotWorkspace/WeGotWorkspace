@@ -12,7 +12,7 @@ import {
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
-import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import { clearDocsCollabOfflinePersistence } from "@/lib/collab/docs-collab-persistence";
 import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import {
   applyDocsStarToggle,
@@ -179,7 +179,7 @@ export function createHybridDriveOperations(
           cachedBootstrap = nextBootstrap;
           await writeDriveBootstrapToCache(username, nextBootstrap);
           rememberOfflineDriveUsername(username);
-          await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
+          await refreshDriveDirectoryCache(username, data);
           return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -201,7 +201,7 @@ export function createHybridDriveOperations(
             cachedBootstrap = { ...cachedBootstrap, data };
             await writeDriveBootstrapToCache(username, cachedBootstrap);
           }
-          await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
+          await refreshDriveDirectoryCache(username, data);
           return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -223,7 +223,7 @@ export function createHybridDriveOperations(
       if (readBrowserOnline()) {
         try {
           const data = await live.listDirectory(target, opts);
-          await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
+          await refreshDriveDirectoryCache(username, data);
           return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);

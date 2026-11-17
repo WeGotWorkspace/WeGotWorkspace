@@ -24,6 +24,10 @@ export { useWorkspaceAppSettingsEntry } from "./use-workspace-app-settings-entry
 export { useWorkspaceAppSettingsMenuItem } from "@/app-sidebar/src/app-sidebar-primary";
 export { notifySettingsSliceSaved, subscribeSettingsSliceSaved } from "@/lib/settings-slice-saved";
 export {
-  settingsProfileFormSchema,
-  type SettingsProfileFormValues,
+  settingsDisplayNameFormSchema,
+  settingsEmailFormSchemaFor,
+  settingsPasswordFormSchema,
+  type SettingsDisplayNameFormValues,
+  type SettingsEmailFormValues,
+  type SettingsPasswordFormValues,
 } from "./settings-profile-form-schema";

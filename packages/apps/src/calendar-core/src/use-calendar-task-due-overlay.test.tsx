@@ -26,7 +26,7 @@ vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: () => mockReadOnline(),
 }));
 
-vi.mock("@/lib/offline/core/use-offline-reconnect-flush", () => ({
+vi.mock("@/hooks/use-offline-reconnect-flush", () => ({
   useOfflineReconnectFlush: ({
     enabled,
     flush,
