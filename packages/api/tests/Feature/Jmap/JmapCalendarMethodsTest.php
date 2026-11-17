@@ -210,7 +210,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
         $this->assertSame(['missing-event'], $args['notFound']);
     }
 
-    public function test_calendar_event_get_reads_calendar_access_once_however_many_ids_it_gets(): void
+    public function test_calendar_event_get_reads_calendar_access_and_event_states_once_however_many_ids_it_gets(): void
     {
         $ids = [];
         for ($i = 0; $i < 5; $i++) {
@@ -222,7 +222,7 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
             $this->jmap([['CalendarEvent/get', ['accountId' => 'bob', 'ids' => $ids], 'c0']])
                 ->assertOk()->assertJsonCount(count($ids), 'methodResponses.0.1.list');
 
-            return count(array_filter(DB::getQueryLog(), fn (array $query): bool => str_contains($query['query'], 'calendarinstances')));
+            return count(array_filter(DB::getQueryLog(), fn (array $query): bool => preg_match('/calendarinstances|jmap_calendar_event_states/', $query['query']) === 1));
         };
 
         // The first request also provisions bob's collections.
