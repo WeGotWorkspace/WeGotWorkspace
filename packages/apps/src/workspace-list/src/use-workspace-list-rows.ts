@@ -46,6 +46,12 @@ export type WorkspaceListRowsOptions<T> = {
   windowAfter?: number;
   /** A row's key for an item id in the DOM, when a row holds several items (a grid). */
   keyOfItemId?: (id: string) => string | undefined;
+  /**
+   * While it returns true, the window shows the end of the list, whatever the scroll
+   * position says (a chat stuck to its newest message). Read on every window update,
+   * so a function over a ref costs no render.
+   */
+  followEnd?: () => boolean;
 };
 
 const workspaceListDefaultSpacer = (size: number, key: string) =>
@@ -110,6 +116,7 @@ export function useWorkspaceListRows<T>({
   animateReorder = true,
   windowAfter,
   keyOfItemId,
+  followEnd,
 }: WorkspaceListRowsOptions<T>) {
   const keys = useMemo(() => items.map(getKey), [getKey, items]);
   const pinned = useMemo(
@@ -124,6 +131,7 @@ export function useWorkspaceListRows<T>({
     pinnedKeys: pinned,
     windowAfter,
     keyOfItemId,
+    followEnd,
   });
   // The full key list: a moving window changes which rows are mounted, and
   // feeding only those would look like a reorder. Section headers do not animate.

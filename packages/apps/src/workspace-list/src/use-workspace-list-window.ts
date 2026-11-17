@@ -27,6 +27,8 @@ export type UseWorkspaceListWindowArgs<T> = {
    * tile to its row; by default the id is the key.
    */
   keyOfItemId?: (id: string) => string | undefined;
+  /** While true, window the end of the list whatever the scroll position (a chat at its newest). */
+  followEnd?: () => boolean;
 };
 
 const NO_SEGMENTS: ListWindowSegment[] = [];
@@ -43,6 +45,7 @@ export function useWorkspaceListWindow<T>({
   pinnedKeys,
   windowAfter = WORKSPACE_LIST_WINDOW_AFTER,
   keyOfItemId,
+  followEnd,
 }: UseWorkspaceListWindowArgs<T>) {
   const enabled = items.length > windowAfter;
   const listRef = useRef<HTMLElement | null>(null);
@@ -59,7 +62,7 @@ export function useWorkspaceListWindow<T>({
     [enabled, items],
   );
   const { offsets, measuredRef, bump } = useWorkspaceListRowSizes(keys, estimates, enabled);
-  const { scroller, range } = useWorkspaceListScroll(listNode, offsets, enabled);
+  const { scroller, range } = useWorkspaceListScroll(listNode, offsets, enabled, followEnd);
   const { focusedKey, draggingKey } = useWorkspaceListPinnedKeys(listNode, enabled);
 
   const keyIndex = useMemo(() => {

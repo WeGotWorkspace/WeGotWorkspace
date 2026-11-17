@@ -24,11 +24,6 @@
   }
 }
 
-/* One author's run reads as one block: tight inside, list padding around it. */
-.chat-message:has(+ .chat-message--continuation) {
-  @apply pb-1;
-}
-
 /* No z-index on the row itself: a hovered row stays under the sticky day
    headers (z-[5]); only its floating actions rise above them (see below). */
 .chat-message:hover,
