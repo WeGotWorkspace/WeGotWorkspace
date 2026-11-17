@@ -19,10 +19,11 @@ Conversations attached to something: a chat channel, a document, a task. Every t
      - a task's current list.
    - Someone who gains access sees the whole thread, and someone who loses access sees none of it.
    - There is no per-period access: a new Team member reads the history like everyone else.
+   - Writing can need more than reading. For a task, read access to the list reads the thread, and commenting, replying and reacting need write access (#2173, product owner 2026-11-17).
 4. **History stays with its audience.** A thread is keyed on the subject *and* the place that sets its audience.
    - For a task that place is the list. Moving a task to another list starts a fresh thread, and the old entries are never shown to the new list's audience.
    - Every read and write goes through the subject's **current** key. An entry id or a reply parent from an old key answers 404 or 422, so an old scope's entries cannot be read or changed from the new one.
-   - Entries whose task has left that list, by a delete or a move, stay hidden under the old key. They are purged 30 days after the task left, unless it comes back. The shared purge asks the subject type whether the subject still exists in that scope, so a live thread of any app is never purged. A task that just sits in its list is never purged. A CalDAV `MOVE` counts as a move. A native client's delete-then-create counts as a delete plus a new task.
+   - Entries whose task has left that list, by a delete or a move, stay hidden under the old key and show again if it comes back. There is no time-based purge; they are deleted when their scope is deleted (for tasks, when the owner deletes the list). A CalDAV `MOVE` counts as a move. A native client's delete-then-create counts as a delete plus a new task.
    - Docs differs today: a document's threads follow it into another owner's pool (`DocsThreadPathSync`). Whether Docs should follow rule 4 is an open product question. #2173 does not change Docs.
 5. **Pools are per owner.** A domain keeps one hidden pool per owner (a user or a Team). Docs uses `docs-threads`, and tasks use `task-threads`. Chat is the exception: each channel or DM is its own collection, because the channel is the subject. An index table makes listing a thread one query.
 6. **Activity entries are data, written by the server.**
@@ -44,7 +45,7 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 | Collection | one per channel or DM (`chat-…`, `dm-…`) | `docs-threads` pool per owner | `task-threads` pool per owner (kind `thread_pool`) |
 | Built on | own repository and routes | own repository and routes | the shared thread service, through the `task` subject type |
 | Subject key | the channel | the document path, which moves with the doc | list `calendarid` + task UID |
-| Access | channel membership | Drive share (`mayView` / `mayComment`) | the task's current list (read access can comment) |
+| Access | channel membership | Drive share (`mayView` / `mayComment`) | the task's current list (read access reads; write access comments) |
 | Edit / delete | the author / tombstone | none | the author / tombstone |
 | Mentions stored | yes | no (regex for subscribing only) | yes |
 | Activity entries | no | no | yes (server-written) |
@@ -57,9 +58,9 @@ Threads are a shared layer. An app plugs in a **subject type**: the thing a thre
 
 - **Backend:** `App\Services\Threads`.
   - Converter core (#2173 chunk A): `ThreadEntryJournal` for the properties in rule 1, `ThreadReactions` to toggle a reaction, `ThreadAuthorNames` for display names. Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
-  - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, existence for the purge, notification actions), and `ThreadSubjectRegistry`.
-  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` with the daily `threads:purge-orphans`, the `ThreadEntry` push state, `ThreadNotifier` and `ThreadActivityWriter`.
-  - `thread_index` and `thread_subject` are generic (`subject_type`, `subject_key`, `subject_scope`).
+  - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, notification actions), and `ThreadSubjectRegistry`.
+  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` (deleting a scope's entries), the `ThreadEntry` push state, `ThreadNotifier` and `ThreadActivityWriter`.
+  - `thread_index` is generic (`subject_type`, `subject_key`, `subject_scope`).
 - **Frontend:**
   - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread`, the activity row and its formatter;
   - `lib/api/wgw/threads.ts`, the shared API client;
@@ -72,8 +73,8 @@ Threads are a shared layer. An app plugs in a **subject type**: the thing a thre
 
 For example comments on notes, with the notebook as scope. Nothing shared changes; the app adds:
 
-1. A server subject type: how to find the subject and check access, its scope, its audience, who follows it, the scopes a user can read, and whether a subject still exists in a scope. Register it.
-2. Calls to `ThreadLifecycle` from the app's delete and move paths (`left`, `returned`, `scopeDeleted`), and a decision on what a move does (rule 4).
+1. A server subject type: how to find the subject and check access, its scope, its audience, who follows it, the scopes a user can read. Register it.
+2. A call to `ThreadLifecycle::scopeDeleted` when a scope is deleted, and a decision on what a move does (rule 4).
 3. Its two notification actions (`<app>.thread_activity`, `<app>.mentioned`) with copy in both formatters.
 4. A client adapter, and `ThreadPanel` mounted where the subject is shown.
 5. Optional: field changes for the activity log, and field labels in the adapter.

@@ -74,6 +74,9 @@ See spec.md, Non-goals.
 - **A read-only offline state** (cached thread, composer disabled) was the first proposal. The product owner chose offline commenting on 2026-11-16. Chat's outbox flush is Meet-specific code, but the core outbox it runs on is shared, so chunk H builds one shared threads flush (`lib/offline/threads/`) on the core outbox and copies Chat's row shapes, not its code.
 - **Dropping a queued comment whose task is gone**, as Chat drops a send to a deleted channel, was rejected. A comment is the author's own text; it stays "Not sent" with Copy and Discard.
 - **Placing an offline comment at the time it was written** was rejected. Other people would get it in the thread's past, below entries they already read. The server's arrival time is used.
+- **Read access is enough to comment** (the Goal's first wording) was rejected by the product owner on 2026-11-17. Commenting, replying and reacting need write access to the list; read-only people read along.
+- **A 30-day purge of entries left under an old key** (a `thread_subject` table with a leave time, leave hooks on every delete and move path, and a daily `threads:purge-orphans` job that also stamped keys a hook missed) was the earlier design. The product owner dropped it on 2026-11-17 as moving parts for little gain. Hidden entries now stay until the owner deletes the list. Cost: comments on deleted tasks keep using storage; they are small text entries and stay hidden.
+- **Showing activity rows by default** was the first proposal. The product owner chose comments only by default on 2026-11-17; "Show changes" turns the rows on.
 
 ## Affected packages
 
@@ -92,7 +95,10 @@ See spec.md, Non-goals.
 ## Open decisions
 
 - [x] Thread history is keyed on the list, so any move starts fresh. Product owner, 2026-11-16: agreed, and every move in the web app says what happens to the comments. It affects chunks B and E.
-- [x] Read access is enough to comment (Goal wording). It affects chunk B only.
+- [x] Commenting, replying and reacting need write access to the list; read access only reads. Product owner, 2026-11-17 (it reverses the Goal's first wording). It affects chunks B, E and H.
+- [x] No time-based purge: entries left under an old key stay hidden until the owner deletes the list. Product owner, 2026-11-17. It affects chunk B.
+- [x] The thread shows comments only by default; "Show changes" turns activity rows on. Product owner, 2026-11-17. It affects chunk G.
+- [x] No moderation and no alarm logging in this Epic; notifications go to assignees, earlier participants and mentioned people only. Product owner, 2026-11-17.
 - [x] Mentions and comment notifications are in scope. Product owner, 2026-11-16. It affects chunk D.
 - [x] Commenting works offline through a shared threads outbox. Product owner, 2026-11-16. It adds chunk H and the `scopeId` check in chunk B.
 - [x] Threads are a shared layer with Tasks as its first subject type, so another app can reuse it. Product owner, 2026-11-16. It shapes chunks B to H.
@@ -105,13 +111,13 @@ See spec.md, Non-goals.
   - new golden-ICS tests in `path: packages/api/tests/Unit/Threads/ThreadEntryGoldenIcsTest.php`, assertion `test_chat_and_docs_bytes_unchanged` (written before the move, chunk A).
 - **Docs comment permissions do not change.** Proof: `path: packages/api/tests/Feature/Docs/DocsThreadsTest.php`, assertion `test_comment_sharee_can_persist_view_only_cannot`.
 - **Thread pools never show up over CalDAV.** A wrong change would expose comments to every native client. Proof: `path: packages/api/tests/Feature/Dav/ChatCollectionsDavExposureTest.php`, assertion `test_docs_thread_pool_is_dav_invisible_while_notes_stay_dav_visible`, plus a new `test_thread_pool_is_dav_invisible` in the same file (chunk B).
-- **The shared thread layer has no task code.** A wrong change would tie the layer to tasks again, and the next app would copy it. Proof: `path: packages/api/tests/Feature/Threads/ThreadServiceWithFakeSubjectTest.php`, assertion `test_post_list_react_and_purge_work_for_a_non_task_subject` (new, chunk B); `path: packages/apps/src/thread-ui/thread-panel.test.tsx`, assertion `renders and posts for a non-task adapter` (new, chunk E); `cmd: git grep -n -E 'Services\\Tasks|tasks-core|offline/tasks' packages/api/app/Services/Threads packages/apps/src/thread-ui packages/apps/src/lib/offline/threads` returns nothing (no shared file imports task code).
+- **The shared thread layer has no task code.** A wrong change would tie the layer to tasks again, and the next app would copy it. Proof: `path: packages/api/tests/Feature/Threads/ThreadServiceWithFakeSubjectTest.php`, assertion `test_post_list_and_react_work_for_a_non_task_subject` (new, chunk B); `path: packages/apps/src/thread-ui/thread-panel.test.tsx`, assertion `renders and posts for a non-task adapter` (new, chunk E); `cmd: git grep -n -E 'Services\\Tasks|tasks-core|offline/tasks' packages/api/app/Services/Threads packages/apps/src/thread-ui packages/apps/src/lib/offline/threads` returns nothing (no shared file imports task code).
 - **A viewer never sees entries written under another list.** A wrong change would leak a private list's history to a Team after a move. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_moved_task_shows_a_fresh_thread_to_the_new_audience` (new, chunk B).
 - **Someone who cannot see the task gets 404 on every thread route, including reactions and changes.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_every_thread_route_is_404_without_list_access` (new, chunk B).
 - **Nobody can edit, delete or create an activity entry through the API.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_activity_entries_are_read_only` (new, chunk B).
 - **A failed or unauthorized CalDAV write logs no activity.** Proof: `path: packages/api/tests/Feature/Tasks/TaskChangeObserverPluginTest.php`, assertion `test_forbidden_caldav_put_on_read_only_list_notifies_nobody` (#2172), extended in chunk F with an activity assertion.
 - **A thread hook failure never fails the task write.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_thread_hook_failure_keeps_the_task_write` (new, chunk B).
-- **A native client's move never destroys or leaks a thread.** A CalDAV `MOVE` acts like a REST move. A `DELETE` then `PUT` keeps the source entries under the source key until the 30-day purge, and shows them to nobody else. A wrong change would delete a thread for good on an Apple or Thunderbird move, or show list A's history in list B. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertions `test_caldav_move_writes_moved_here_and_keeps_source_entries`, `test_delete_then_put_elsewhere_starts_fresh_and_keeps_source_entries`, `test_purge_removes_orphan_entries_after_30_days_only`, `test_thread_of_task_untouched_for_40_days_survives_purge`, `test_task_untouched_for_40_days_then_deleted_or_moved_keeps_source_entries_30_more_days`, `test_writing_the_uid_back_clears_the_leave_time`, `test_purge_stamps_keys_with_entries_but_no_leave_time_and_purges_them_30_days_later` (new, chunk B).
+- **A native client's move never destroys or leaks a thread.** A CalDAV `MOVE` acts like a REST move. A `DELETE` then `PUT` keeps the source entries under the source key, and shows them to nobody else. A wrong change would delete a thread for good on an Apple or Thunderbird move, or show list A's history in list B. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertions `test_caldav_move_writes_moved_here_and_keeps_source_entries`, `test_delete_then_put_elsewhere_starts_fresh_and_keeps_source_entries`, `test_writing_the_uid_back_shows_the_old_entries_again`, `test_deleted_task_entries_stay_until_the_owner_deletes_the_list` (new, chunk B).
 - **Push state never changes for lists the user cannot read.** A wrong change would leak the timing of activity in another person's private list. Proof: `path: packages/api/tests/Feature/Jmap/JmapEventSourceThreadTest.php`, assertion `test_state_ignores_threads_in_unreadable_lists_of_the_same_pool` (new, chunk C).
 - **Only the owner deleting a list removes its thread entries.** Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadLifecycleTest.php`, assertion `test_sharee_dismiss_keeps_thread_entries` (new, chunk B).
 - **No idle polling is added.** The thread panel polls only while it is open, visible and push is down. Proof: `path: packages/apps/src/thread-ui/use-thread.test.ts`, assertion `does not poll while push is up or the panel is closed` (new, chunk E).
@@ -120,7 +126,7 @@ See spec.md, Non-goals.
 - **An entry under another key can never be read or written through the subject's routes.** A wrong change would let someone who can see the task in list B react to, reply to or edit an entry left in list A. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_entry_from_another_list_is_404_and_is_not_written` (new, chunk B).
 - **A retry after a move never stores a comment twice.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_retry_of_a_stored_id_after_a_move_is_already_stored_and_writes_nothing` (new, chunk B): the caller cannot read the old list, and the new list's entry count stays the same; plus `test_a_ulid_taken_by_another_person_gets_a_fresh_id` (new, chunk B).
 - **An offline comment never sorts into the thread's past.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_entries_sort_by_arrival_not_by_ulid_time` (new, chunk B).
-- **The shared purge never stamps or deletes a subject that still exists.** A wrong change would delete live threads of any non-task app 30 days after their first comment. Proof: `path: packages/api/tests/Feature/Threads/ThreadServiceWithFakeSubjectTest.php`, assertion `test_purge_does_not_stamp_a_live_non_task_subject` (new, chunk B).
+- **Someone with read-only access to the list can read the thread but write nothing.** A wrong change would let a passive share comment, react or edit. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_read_only_sharee_reads_but_every_write_is_403` (new, chunk B); `path: packages/apps/src/thread-ui/thread-panel.test.tsx`, assertion `shows no composer, reply or reaction picker when the adapter cannot post` (new, chunk E).
 - **Queued rows behind a comment that is not sent are not lost.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `holds rows queued behind a comment that stays not sent` (new, chunk H).
 - **A queued comment is never dropped silently.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps the text of a comment whose task is gone` (new, chunk H).
 - **After chunk A, main still works with no task-thread code.** Proof: `cmd: pnpm test:api-done-gate`.
@@ -151,7 +157,7 @@ See spec.md, Non-goals.
   - CalDAV `MOVE` (`EventDispatchPlugin.php:29`, `FlysystemDirectory.php:11`);
   - #2172's audience, change set and observer.
 - **Done when:**
-  - In `App\Services\Threads`: `ThreadSubjectType`, `ThreadSubjectRegistry`, `CollectionKind::ThreadPool` (DAV-hidden) with a shared provisioner, the shared repository, `ThreadsController` with the routes from spec.md in OpenAPI, and `ThreadLifecycle` with the `threads:purge-orphans` command.
+  - In `App\Services\Threads`: `ThreadSubjectType`, `ThreadSubjectRegistry`, `CollectionKind::ThreadPool` (DAV-hidden) with a shared provisioner, the shared repository, `ThreadsController` with the routes from spec.md in OpenAPI, and `ThreadLifecycle` with `scopeDeleted()`.
   - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered, and the task delete and move paths calling `ThreadLifecycle`.
   - The shared layer passes its tests with the test-only subject type (the "no task code" invariant).
   - The task access, move, delete, list-delete and limit rules are tested.
@@ -159,7 +165,8 @@ See spec.md, Non-goals.
   - Entry routes and `parentId` accept only entries under the subject's current key (404 or 422 otherwise, nothing written).
   - Lists sort and page by `(created_at, uid)`.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
-  - The 30-day orphan purge command is scheduled daily. It purges only keys whose `subject_left_at` is older than 30 days and whose subject type's `existsInScope` is false (for tasks: the UID is not in the list). It stamps a missed key only when its leave time is null and `existsInScope` is false. Every leave hook (delete, REST move, CalDAV `DELETE`, CalDAV `MOVE`) upserts the key's row and sets that timestamp, and any write of the UID into the list clears it. Keys a hook missed are found from the entries, stamped on one run, and purged 30 days later.
+  - There is no purge job. A task delete or move deletes no entries; only the owner's list delete calls `scopeDeleted()`.
+  - Every write route answers 403 without `canPost`; for tasks that is write access to the list.
   - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
   - `docs/architecture/tasks.md` gets "Decision 18 — Task threads".
   - The B invariants pass.
@@ -248,7 +255,7 @@ See spec.md, Non-goals.
 - **Done when:**
   - `thread-ui/format-thread-activity.ts` is pure and takes field labels from the adapter, with Vitest for every task field, merged entries, a removed person, the locale and time zone, and a stub adapter's own field.
   - `ThreadActivityRow` exists.
-  - The "Show changes" toggle is remembered per user in localStorage, wrapped in try/catch.
+  - The "Show changes" toggle is off by default and remembered per user in localStorage, wrapped in try/catch.
   - Stories cover them.
 - **Verify with:** `pnpm test:apps-done-gate`
 - **Parallel with:** none (after E and F)
@@ -258,7 +265,8 @@ See spec.md, Non-goals.
 - **Done when:**
   - The verifier, prompted from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md), returns `PASS` or `PASS_WITH_NITS`.
   - A two-user browser e2e on a Team list: A comments and mentions B, B gets the notification and replies, and A sees the reply without reloading.
-  - A renames the task and sets the priority, and both rows show in B's language.
+  - A renames the task and sets the priority. B sees only comments, turns on "Show changes", and both rows show in B's language.
+  - C, with read-only access to the list, reads the thread and sees no composer.
   - A moves the task to a private list; the confirm says the comments stay behind. B no longer sees the task. A sees a fresh thread with "moved here".
   - B goes offline, comments, goes online, and A sees the comment once.
   - A Chat and Docs comment smoke test still passes.

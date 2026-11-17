@@ -1,4 +1,4 @@
-Source: #2173 (body-hash: 9a0aefb3)
+Source: #2173 (body-hash: 57eb7d2a)
 Goal: WeGotWorkspace/Product#87
 
 # Discussion thread and activity log on a task
@@ -10,7 +10,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **One thread model for Chat, Docs and Tasks.** Chat messages and Docs comments are each one VJOURNAL per message in a DAV-hidden collection. Their converters and repositories are near-copies: ULID, body limit, `RELATED-TO`, reactions OR-set, reaction toggle and display names. Chunk A moves those shared parts into one backend module, `App\Services\Threads`. Chat and Docs then call it. Their stored ICS and their API stay **byte-for-byte the same**. Task threads are built on the module from the start.
 - **Built for any app, with Tasks as the first user** (product owner, 2026-11-16). Comments on notes, or on something in an app that does not exist yet, must reuse this work instead of copying it. So everything that is not about tasks lives in shared code, on the server and in the web app:
   - **The thread subject.** A *subject* is the thing a thread is about (a task). Its *scope* is the place that sets who can see it (the task's list). Each app registers one small **subject type** that answers the questions only that app can answer: does this subject exist, which scope is it in now, who may read and post, who is in the audience, and who should hear about new comments. The server side is `App\Services\Threads\Subjects\ThreadSubjectType`; the web app side is a `ThreadSubjectAdapter` in `packages/apps/src/thread-ui/`.
-  - **Shared on the server** (`App\Services\Threads`): the pool and its provisioner, the entry repository (post, reply, edit, delete, react, list, changes, limits, idempotency), the REST controller and routes, access checks through the subject type, the leave-and-purge lifecycle, the `ThreadEntry` push state, grouped notifications, and the activity writer with its merge rule.
+  - **Shared on the server** (`App\Services\Threads`): the pool and its provisioner, the entry repository (post, reply, edit, delete, react, list, changes, limits, idempotency), the REST controller and routes, access checks through the subject type, the lifecycle (list delete), the `ThreadEntry` push state, grouped notifications, and the activity writer with its merge rule.
   - **Shared in the web app** (`thread-ui/` and `lib/offline/threads/`): the thread panel with its layout, composer and timeline, the `useThread` hook (fetch, push, polling rule), the API client, the activity row and formatter, the offline read cache and the offline outbox.
   - **Tasks only** (`App\Services\Tasks\Threads\TaskThreadSubject`, `tasks-core`): the task subject type, the calls into the lifecycle from task delete and move paths, the mapping from #2172's task change set to activity entries, the two notification actions and their copy, the field labels for activity rows, the move wording, and the place in the detail view where the panel is mounted.
   - Adding threads to another app is then one subject type on each side, its lifecycle calls, its notification copy and a place to mount the panel. `docs/architecture/threads.md` keeps that checklist.
@@ -27,15 +27,17 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 
   Comments and replies carry stored mentions (`X-WGW-MENTIONS`, as in Chat), reactions (`X-WGW-REACTIONS`), edits (`SEQUENCE`, `LAST-MODIFIED`) and tombstones (`STATUS:CANCELLED`, body cleared), all as Chat does today.
 - **Who sees and writes.**
-  - Reading and writing both follow the task's current list. Anyone who can see the task can read the thread, comment, reply and react. This follows the Goal, the same rule as "can see the task".
+  - Reading and writing both follow the task's current list. Anyone who can see the task can read the thread.
+  - **Commenting needs write access to the list** (product owner, 2026-11-17). Comment, reply, react, and edit or delete your own messages all need it. Someone with read-only access reads along: the panel shows the thread without a composer, reply action or reaction picker. Read access alone was the first proposal, from the Goal's first wording; the product owner rejected it, because commenting is not reading.
   - Only the author can edit or delete their own comment or reply.
   - Nobody can edit or delete an activity entry.
   - Access is checked on every request against `CalendarCollectionAccess`. Nothing is copied per viewer.
 - **History belongs to the list.**
   - A person who joins a Team later sees the whole thread. A person who leaves loses all of it.
   - When a task moves to another list, the key no longer matches the old entries, so the new list's audience never sees them. This holds for any other list, the same owner's included. The new thread starts with one activity entry, "moved here from another list". It never names the old list.
-  - Old entries stay under the old key, where nobody sees them. They are deleted with that list, or by the 30-day purge below. If the task moves back within 30 days, they show again to that list's audience, who saw them before.
-  - Deleting a task does not delete its thread at once. The entries stay under the list's key, where nobody can see them because there is no task. When the task leaves the list, by a delete or a move, the server records that moment on the key (`subject_left_at`). A daily job purges a key only when that moment is more than 30 days ago **and** no task with that UID is in that list. A task that simply sits unchanged in its list never has a leave time, so its thread is never purged. This makes an undo, or a native client's delete-then-create, safe (see Lifecycle hooks).
+  - Old entries stay under the old key, where nobody sees them. If the task ever moves back, they show again to that list's audience, who saw them before.
+  - Deleting a task does not delete its thread. The entries stay under the list's key, where nobody can see them because there is no task. This makes an undo, or a native client's delete-then-create, safe (see Lifecycle hooks).
+  - **No time-based purge** (product owner, 2026-11-17). Hidden entries are removed only when the list's owner deletes the list. A daily job that purged them 30 days after the task left was the first proposal; it was dropped as moving parts for little gain. The cost is storage for comments on deleted tasks, which are small text entries.
   - Native clients move tasks in two ways, and both are covered under Lifecycle hooks:
     - a CalDAV `MOVE` counts as a move;
     - a `DELETE` in one list followed by a `PUT` in another counts as a delete plus a new task.
@@ -57,7 +59,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Quick edits are merged (see Technical constraints).
 - **Thread panel UI.** `ThreadPanel` lives in `thread-ui/` and knows nothing about tasks. Tasks mounts it in the task detail view below the fields, as in the product owner's mockup ([mockup-task-detail.webp](./mockup-task-detail.webp), 2026-11-16).
   - One timeline in time order: comments with their replies, and activity rows.
-  - A "Show changes" toggle, on by default, shows activity rows; turning it off hides them.
+  - A "Show changes" toggle, **off by default** (product owner, 2026-11-17), shows activity rows when turned on. By default the panel shows comments only.
   - The composer is the chat-ui composer, with mentions limited to the list audience.
   - Messages and reactions use chat-ui and the shared reaction picker.
   - The activity row and its formatter live in `thread-ui/` too. The formatter takes field labels and value renderers from the subject adapter, so another app brings only its own field names.
@@ -74,15 +76,17 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - Changing how Docs threads follow a document to another owner (`DocsThreadPathSync`). That is flagged in threads.md as a product question for Docs, not changed here.
 - Moderation: owners deleting other people's comments
 - Restoring a thread when a task moves to a list with another audience
+- Purging the hidden entries of deleted or moved tasks by age (product owner, 2026-11-17). They go when the list is deleted.
+- Logging alarm changes (product owner, 2026-11-17)
 
 ## Affected packages
 
 - `packages/api`:
-  - new `app/Services/Threads/*` (shared converter, reactions, names, index; subject types and their registry; pool, repository, lifecycle and purge, notifier, activity writer);
+  - new `app/Services/Threads/*` (shared converter, reactions, names, index; subject types and their registry; pool, repository, lifecycle, notifier, activity writer);
   - Chat and Docs converters and repositories (delegate to the converter core, no behaviour change);
   - new `app/Services/Tasks/Threads/*` (the task subject type and the change-set mapping only);
   - `CollectionKind` (new case `thread_pool`);
-  - migrations (`thread_index`, `thread_subject`);
+  - migration (`thread_index`);
   - the shared REST controller `ThreadsController` and its routes;
   - OpenAPI;
   - `JmapPushStateResolver` (new type);
@@ -116,8 +120,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `ThreadReactions::toggle(array $set, string $emoji, string $username): array` replaces the two private `toggleReactionSet` copies.
 - `ThreadAuthorNames` replaces the two `displayNames` helpers.
 - **Golden tests first.** Before the move, chunk A adds tests that pin the ICS each domain writes today for fixed input: a comment, a reply, an edit, a tombstone, reactions and mentions. After the move the bytes are the same. The existing unit and feature tests stay unchanged.
-- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (scope + subject id), `subject_scope` (the list calendarid for tasks, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq` and `activity_field` (nullable). A small `thread_subject` table holds one row per `subject_type` and key, with `subject_left_at` (nullable).
-  - No column names a task. Only task threads use the tables in this Epic.
+- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (scope + subject id), `subject_scope` (the list calendarid for tasks, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq` and `activity_field` (nullable).   - No column names a task. Only task threads use the tables in this Epic.
   - `docs_thread_index` stays. Moving Docs onto `thread_index` is a follow-up named in threads.md.
 
 ### Thread subjects (chunk B)
@@ -128,7 +131,6 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - `audience(ThreadSubject): list<username>`, for mentions and the notification filter;
   - `followers(ThreadSubject): list<username>`, the people who always hear about new comments (for tasks: the assignees from #2172);
   - `readableScopes(string $username): list<string>`, for the push state;
-  - `existsInScope(string $scope, string $subjectId): bool`, for the purge;
   - `notificationActions(): {activity, mentioned}` and `navigate(ThreadSubject)`, so the shared notifier sends the app's own actions and opens the right screen.
 - `ThreadSubjectRegistry` maps a type name to its implementation. It is filled in a service provider; an unknown type answers 404.
 - `TaskThreadSubject` is the only implementation in this Epic. It resolves a task through the same accessible-list lookup as the task routes, uses the list as scope, `TaskListAudience` (#2172) as audience, and `CalendarCollectionAccess::accessibleInstances` for the readable scopes.
@@ -156,30 +158,27 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `POST …/entries/{entryId}/reactions` with `{emoji}` toggles a reaction. The emoji set is the shared one.
 - `GET …/changes?since=<state>` returns the changed and removed entry ids.
 - **Access:**
-  - Every route asks the subject type to resolve the subject. 404 if the caller cannot see it. For tasks, read access to the list is enough to post (`canPost`).
+  - Every route asks the subject type to resolve the subject. 404 if the caller cannot see it. Every write (post, reply, react, edit, delete) also needs `canPost`, or it answers 403 and writes nothing. For tasks, `canPost` is write access to the list; read access is enough for `canRead`.
   - **Entries are scoped to the current key.** A pool holds every list of its owner, plus hidden entries under old keys. List, changes, `PATCH`, `DELETE` and `…/reactions` load an entry only when its key is the resolved subject's type, current scope and id. Any other `entryId` answers 404 and nothing is written, so someone who can see a task in list B cannot read, edit or react to an entry left in list A, or in another list of the same pool. Docs has the same guard today (`requireRootOnPath`, `DocsThreadRepository.php:364`).
   - A task in a multi-VTODO file is addressed by its UID, as in the task routes.
 - **Limits:**
   - a body of at most 65 536 bytes (`MAX_BODY_BYTES`, the same in Chat and Docs);
   - at most 5 000 entries per thread. A post past that gets 409 `thread_full`.
   - Activity entries are pruned oldest first beyond 1 000 per thread, and comments are never pruned. Pruning makes room, so automatic activity never hits the limit.
-- **Lifecycle hooks.** The shared `ThreadLifecycle` has three calls, keyed by subject type, scope and subject id: `left()` sets `subject_left_at` (upserting the `thread_subject` row), `returned()` clears it, and `scopeDeleted()` deletes every entry in a scope. The purge and its stamping of missed keys are shared too; they ask the subject type's `existsInScope`. What follows is how Tasks calls them.
-  - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted at once. The entries stay under the list's key. The delete hook sets `subject_left_at = now` on the key.
-  - **Leave time.** `subject_left_at` is set on the **source** key by every hook where the task leaves a list: the task-delete hook (REST, MCP, CalDAV `DELETE`), the REST, MCP or web-app move hook, and the CalDAV `MOVE` hook. Any write that puts that UID in that list again clears it: a create, a `PUT`, or a move back. The hook **upserts** the key's `thread_subject` row, because a task deleted before anyone commented has none.
-  - **Purge.** `threads:purge-orphans` (daily, every subject type) deletes the entries of a key only when `subject_left_at` is older than 30 days **and** the subject type's `existsInScope` is false. For tasks, `existsInScope` is "a calendar object with that UID exists in that list". Comments and task edits do not touch `subject_left_at`, so a thread on a task that nobody edits for months stays. The purge deletes the key's `thread_subject` row together with its entries.
-  - **Missed leave hooks.** A leave hook can fail without failing the task write, which would leave a key with entries, no task in the list and a null leave time. On each run the purge first finds keys **from the entries in `thread_index`**, not from `thread_subject`, whose leave time is null and whose subject type's `existsInScope` is false, and stamps `subject_left_at = now` on them, upserting the `thread_subject` row. A subject that still exists is never stamped, whatever its type. A later run then purges them 30 days on.
+- **Lifecycle hooks.** The shared `ThreadLifecycle` has one call, `scopeDeleted()`, which deletes every entry in a scope. There is no time-based purge (product owner, 2026-11-17): entries left under an old key stay hidden until their scope is deleted. What follows is how Tasks uses it.
+  - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted. The entries stay under the list's key, hidden because there is no task. If the same UID is written to that list again, they show again.
   - **List deleted:** only when the **owner** deletes it, `scopeDeleted()` deletes every entry whose `X-WGW-SUBJECT-SCOPE` is that list. `TaskListRepository::delete` only dismisses a sharee's copy (`dismissIfSharee`), and that deletes nothing.
-  - **Move through REST, MCP or the web app** (`taskListId` in the change set): the "moved here" activity entry is written under the new key, and the old entries stay under the old key until the 30-day purge.
+  - **Move through REST, MCP or the web app** (`taskListId` in the change set): the "moved here" activity entry is written under the new key, and the old entries stay under the old key.
   - **CalDAV `MOVE`** of a task object to another list: Sabre copies and then deletes in one request, because calendars are not `IMoveTarget`. The observer turns `afterMethod:MOVE` (source and destination both in task lists, 2xx) into the same `moved` change set as a REST move. The destination gets "moved here", and the source's entries stay under the source key.
-  - **CalDAV `DELETE` in list A, then `PUT` of the same UID in list B** (two requests, as some clients do it): these cannot be told apart from a real delete and a new task. B gets a `created` entry. A's entries stay under A's key, and the 30-day purge removes them unless the task comes back to A.
-  - **The same UID `PUT` back into list A within 30 days** (undo, or a move back by a delete-then-create client): A's old entries show again, followed by a `created` entry.
-  - These hooks run after the task write has committed. A failure is logged and retried by the next write. It never fails the task write.
+  - **CalDAV `DELETE` in list A, then `PUT` of the same UID in list B** (two requests, as some clients do it): these cannot be told apart from a real delete and a new task. B gets a `created` entry. A's entries stay under A's key.
+  - **The same UID `PUT` back into list A** (undo, or a move back by a delete-then-create client): A's old entries show again, followed by a `created` entry.
+  - The "moved here" and `created` entries are written after the task write has committed. A failure is logged and never fails the task write.
 
 ### Push and live updates (chunk C)
 
 - `ThreadEntry` is added to `JmapPushStateResolver::TYPES`, with source `threads`.
   - The state is a hash over `max(thread_index.modseq)` per **readable scope**, over every registered subject type's `readableScopes` for the user. For tasks that is every list in `CalendarCollectionAccess::accessibleInstances`. A comment in an owner's private list therefore changes nothing for a sharee of another list in the same pool: no timing leak and no extra refetch.
-  - `thread_index.modseq` is bumped on every insert, edit, reaction and tombstone of an entry. A purge needs no state change, because purged entries belong to no visible task.
+  - `thread_index.modseq` is bumped on every insert, edit, reaction and tombstone of an entry. Deleting a list's entries needs no state change, because the list is gone.
   - Computing the state is one indexed query over `thread_index` (`subject_type`, `subject_scope`, `modseq`).
   - Nothing is added to the idle request load: the client asks for the type only while a thread panel is open.
 
@@ -226,7 +225,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Move confirmation.** Every move path in the web app states what happens to the thread:
   - The single-task confirm from the detail view (`requestMoveTask`) keeps its title and adds a second sentence to the description: "Comments and history stay in “{old list}”. People in “{new list}” start with an empty thread."
   - The multi-select "Move to list" dialog shows the same sentence under its description, in the plural.
-  - Dragging tasks onto a list in the sidebar has no confirm today. Its "Moved" toast gains the same short line, and its Undo moves the task back, which shows the old thread again (within 30 days, see Lifecycle hooks).
+  - Dragging tasks onto a list in the sidebar has no confirm today. Its "Moved" toast gains the same short line, and its Undo moves the task back, which shows the old thread again.
   - The copy is the same whether or not the thread has comments, so the client needs no thread count for it.
 - **Offline.**
   - Offline support is shared, in `lib/offline/threads/`, one domain for every subject type, keyed by subject type and id.
@@ -239,16 +238,18 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Only on 409 `subject_moved` does the panel also offer to post it where the subject is now ("Post in the new list" for tasks), when the author can see it there. That resends the **same** ULID with the current `scopeId`, so it can never make a second copy.
   - On 409 `already_stored` the comment did land, in the earlier scope, before the subject moved and the answer was lost. The local copy stays as "Kept in the previous list", with "Copy text" and "Discard", and no offer to post it again.
   - **Rows behind a comment that is not sent are held.** Replies, edits, deletes and reactions queued behind a send stay queued and are not sent while that comment is "Not sent"; the flush skips them instead of letting them 404 and lose local state. "Discard" removes them together with the comment. Posting in the new place sends the comment first, then those rows against its id. A row that still answers 404 because its target is not in the current thread stays "Not sent" too, with Copy and Discard, and never writes to the old scope.
+  - The composer shows only when the cached subject says the user may post. A comment queued before the user lost write access answers 403 and stays "Not sent", as below.
   - Comments queue only for subjects whose thread is in the cache. A task whose thread was never opened online shows "Connect to load the conversation", as the assignee picker does.
 
 ## Edge cases
 
-- **A task in a list the viewer can only read.** They can read the thread and comment (Goal), but cannot edit the task.
+- **A task in a list the viewer can only read.** They can read the thread, but cannot comment, reply, react or edit the task. The panel has no composer.
+- **Someone loses write access but keeps read access.** Their earlier comments stay, with their name. They can no longer edit or delete them.
 - **Someone who left the Team.** Their comments stay, with their name. Notifications skip them, because they are outside the audience. Mentions of them are not stored.
 - **A deleted user.** Their entries show "Former member". The display-name helper already falls back.
 - **The same task UID in two lists** (a copy made by a native client). The key includes the list, so the two threads are separate.
-- **A task moves A → B → A within 30 days, through the web app, MCP, REST or a CalDAV `MOVE`.** The thread in A shows its old entries again, followed by the "moved here" entry. After 30 days away, A's old entries are gone and A starts fresh. The thread in B stays under B's key and is deleted when B is deleted.
-- **The same round trip from a client that deletes and re-creates.** B gets `created`, not "moved here". Back in A within 30 days, A's old entries show again, followed by `created`. After 30 days A's old entries are gone.
+- **A task moves A → B → A, through the web app, MCP, REST or a CalDAV `MOVE`.** The thread in A shows its old entries again, followed by the "moved here" entry, however long the task was away. The thread in B stays under B's key and is deleted when B is deleted.
+- **The same round trip from a client that deletes and re-creates.** B gets `created`, not "moved here". Back in A, A's old entries show again, followed by `created`.
 - **A multi-VTODO file.** Entries are keyed by the VTODO UID, not the file.
 - **A recurring task.** One thread for the series. Changes to one occurrence's override are logged as the master's field with `{occurrence: <recurrenceId>}`.
 - **A CalDAV client rewrites the whole VTODO with no real change.** The change set is empty and nothing is logged.
@@ -256,7 +257,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **A tombstoned root with replies.** The root shows "Comment deleted" and its replies stay.
 - **A mention of someone who loses access later.** The stored mention stays and renders as plain text.
 - **Pruning activity** never removes the "created" or "moved here" entries.
-- **A second app gets threads later** (for example Notes, with a notebook as scope). It adds a subject type on each side, calls `ThreadLifecycle` from its delete and move paths, adds its two notification actions and mounts `ThreadPanel`. No shared table, route, push type or panel changes.
+- **A second app gets threads later** (for example Notes, with a notebook as scope). It adds a subject type on each side, calls `ThreadLifecycle::scopeDeleted` when a scope is deleted, adds its two notification actions and mounts `ThreadPanel`. No shared table, route, push type or panel changes.
 - **A comment written offline, then the same tab goes online twice or two tabs flush at once.** The client ULID makes the second send a no-op, so the comment shows once.
 - **Someone moves the task while the author is offline.** The queued comment gets 409 `subject_moved`. It stays "Not sent" in the author's panel, and the author chooses to post it in the new list or discard it.
 - **A reply queued offline to a root that was deleted meanwhile.** It is posted; the root shows "Comment deleted" with the reply under it, as online.
