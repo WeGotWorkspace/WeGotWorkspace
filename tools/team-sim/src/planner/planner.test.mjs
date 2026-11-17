@@ -93,6 +93,18 @@ test("every app is used through both layers on a weekday", () => {
   }
 });
 
+test("weekend nights still touch every app, through the browser where that persona uses the web", () => {
+  for (let i = 0; i < 70; i += 1) {
+    const date = addDays("2026-11-12", i);
+    if (!isWeekend(date)) continue;
+    const plan = planNight({ world, date, snapshot });
+    for (const app of ["chat", "docs", "notes", "tasks", "calendar", "contacts", "drive", "meet"]) {
+      assert.ok(plan.actions.some((a) => a.app === app && ["api", "dav"].includes(a.layer)), `${date} ${app} api`);
+      if (world.appMode(plan.ui[0], app) === "web") assert.ok(plan.actions.some((a) => a.app === app && a.layer === "ui"), `${date} ${app} ui`);
+    }
+  }
+});
+
 test("the DAV-only persona never uses the web calendar", () => {
   for (let i = 0; i < 20; i += 1) {
     const plan = planNight({ world, date: addDays("2026-11-12", i), snapshot });

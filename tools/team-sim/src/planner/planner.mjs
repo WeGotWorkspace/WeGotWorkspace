@@ -44,10 +44,9 @@ export function planNight({ world, date, snapshot = { objects: [], driveBytes: 0
     if (ctx.rng.chance(light ? 0.05 : 0.18)) KINDS.gap(ctx, persona, null, ctx.rng.int(0, WORKDAY_MINUTES - 1));
   }
 
-  if (!light) {
-    traitActions(ctx, present, ui, projects);
-    fillCoverage(ctx, present, ui, projects);
-  }
+  if (!light) traitActions(ctx, present, ui, projects);
+  // Weekends too: one small pass so every app is still touched through both layers.
+  fillCoverage(ctx, present, ui, projects, light);
   // Since the move from Google: habits and leftovers from the export. Own stream, so the rest of the plan does not shift.
   googleActions({ b, world, date, rng: rng.fork("google"), present, ui, projects, light, all: options.habits === "all" });
 
@@ -142,13 +141,18 @@ function traitActions(ctx, present, ui, projects) {
   if (rest[1]) flag(rest[1], { secondTab: true });
 }
 
-/** Every app is used through both layers each night; the browser personas touch every app. */
-function fillCoverage(ctx, present, ui, projects) {
+/**
+ * Every app is used through both layers each night; the browser personas touch every app.
+ * On a light (weekend) night this adds at most one action per app and layer.
+ */
+function fillCoverage(ctx, present, ui, projects, light = false) {
   const { b, world, date, rng } = ctx;
   const projectOf = (p) =>
     projects.find((x) => world.projectMembersOn(x, date).includes(p) && x.phase !== "intake") ??
     (world.teamsOf(p).includes("business") ? projects.find((x) => world.projectMembersOn(x, date).includes(p)) : null) ??
     (world.persona(p).role === "sales" ? projects.find((x) => x.phase === "intake") : null) ??
+    // Weekend: only two people work, so borrow any running project their team can read.
+    (light ? projects.find((x) => x.phase !== "intake" && world.canRead(p, x.team)) : null) ??
     null;
   const has = (app, layer) => b.actions.some((a) => a.app === app && (layer === "api" ? a.layer === "api" || a.layer === "dav" : a.layer === "ui"));
   const apiPeople = present.filter((p) => !ui.includes(p));
@@ -158,13 +162,19 @@ function fillCoverage(ctx, present, ui, projects) {
       fill(ctx, persona, projectOf(persona), FILL_KIND[app], rng.int(30, 480));
     }
     if (!has(app, "ui") && ui.length) {
-      const persona = ["contacts", "calendar", "tasks"].includes(app) ? ui.find((p) => world.appMode(p, app) === "web") ?? ui[0] : rng.pick(ui);
+      const webOnly = ["contacts", "calendar", "tasks"].includes(app);
+      const persona = webOnly ? ui.find((p) => world.appMode(p, app) === "web") ?? (light ? null : ui[0]) : rng.pick(ui);
+      if (!persona) continue;
       const kind = UI_FILL_KIND[app];
       if (kind === "meet.call") {
         const project = projectOf(persona);
         b.add({ persona, kind, minute: rng.int(300, 420), params: { project: project?.id ?? null, guest: project ? world.client(project.client).contact : "Gast", guestEmail: project ? world.client(project.client).email : null } });
       } else {
-        fill(ctx, persona, projectOf(persona), kind, rng.int(30, 480));
+        const project = projectOf(persona);
+        const minute = rng.int(30, 480);
+        const done = fill(ctx, persona, project, kind, minute);
+        // No doc to edit yet: the fill created one over the API, so edit that one in the browser.
+        if (done && light && kind === "doc.edit" && done.layer !== "ui") KINDS["doc.edit"](ctx, persona, project, minute + 5);
       }
     }
   }
