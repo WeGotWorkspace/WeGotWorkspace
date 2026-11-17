@@ -34,15 +34,6 @@
   @apply mx-0 flex min-h-full flex-1 flex-col w-full max-w-none px-0 py-0;
 }
 
-/*
- * Bell lives in the header (sibling of scroll). Unread badge is severity red
- * (`--color-error`) with accent-foreground ink — not the Dark accent.
- */
-.drive-workspace .app-sidebar__notifications {
-  --notification-inbox-badge-bg: var(--color-error);
-  --notification-inbox-badge-fg: var(--workspace-accent-foreground);
-}
-
 .drive-workspace .drive-main-pane {
   @apply flex min-h-0 flex-1 flex-col min-w-0 relative w-full;
   background-color: var(--workspace-surface);

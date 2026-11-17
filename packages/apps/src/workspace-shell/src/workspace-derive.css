@@ -102,22 +102,22 @@
 
   /*
    * Selected (sidebar rows, list rows, tiles, pressed toggles): one flat wash of
-   * sky in both themes (`--scheme-selection-*`). Mixed in oklab: white paper has no
-   * real hue, and an oklch mix with it swings the sky towards pink.
+   * brand blue in both themes (`--scheme-selection-*`). Mixed in oklab: white paper has no
+   * real hue, and an oklch mix with it swings the blue towards pink.
    */
   --workspace-selected-background: color-mix(
     in oklab,
     var(--scheme-selection) var(--scheme-selection-strength),
     var(--workspace-surface)
   );
-  /* A hovered list row (Notes, Tasks, Contacts, Drive): a lighter step of the same sky. */
+  /* A hovered list row (Notes, Tasks, Contacts, Drive): a lighter step of the same blue. */
   --workspace-hover-background: color-mix(
     in oklab,
     var(--scheme-selection) var(--scheme-selection-hover-strength),
     var(--workspace-surface)
   );
   /* A ghost control (ghost dropdown, ghost field, an empty done ring) under the
-     pointer or while typing: a faint ink wash, not the sky of a list row. */
+     pointer or while typing: a faint ink wash, not the blue of a list row. */
   --workspace-ghost-hover-background: color-mix(
     in oklab,
     var(--workspace-foreground) 6%,
@@ -128,8 +128,8 @@
   --workspace-selected-color: var(--workspace-foreground);
   /*
    * Selection marks: one solid fill in the selected wash's own colour at a stronger
-   * mix (bright sky). Editor task checkboxes fill with it
-   * (dark check: a deep shade of that same colour); multi-selected list items, Drive
+   * mix (brand blue). Editor task checkboxes fill with it
+   * (white check); multi-selected list items, Drive
    * rows and tiles show it as a thick bar just inside their leading edge (no checkboxes there).
    */
   --workspace-selected-mark-border: color-mix(
@@ -138,7 +138,7 @@
     var(--workspace-surface)
   );
   --workspace-selected-mark-background: var(--workspace-selected-mark-border);
-  --workspace-selected-mark-color: color-mix(in oklch, var(--scheme-selection) 25%, black);
+  --workspace-selected-mark-color: white;
   --workspace-selected-bar-width: 0.25rem;
   --workspace-selected-bar-inset: 0.375rem;
   /* Unchecked: an empty ring (the editor's task checkboxes). */
@@ -189,7 +189,7 @@
   --segmented-control-active-fg: var(--button-active-color);
 
   /* Off: a light tint of the text ink (surface lightness, chroma stripped, hue omitted
-     so paper does not pull it). On: the selection mark (bright sky), like a selected
+     so paper does not pull it). On: the selection mark (brand blue), like a selected
      row or a checked task. */
   --switch-off-bg: color-mix(
     in oklch,

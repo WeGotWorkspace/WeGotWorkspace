@@ -125,11 +125,13 @@ export const Unread: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("heading", { name: "Notifications" })).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Mute notification sound" })).toBeInTheDocument();
-    await expect(body.getByRole("button", { name: "Mark all read" })).toBeInTheDocument();
-    await expect(body.getAllByText("Meet").length).toBe(1);
-    await expect(body.getAllByText("Calendar").length).toBeGreaterThanOrEqual(2);
-    await expect(body.getByText("Docs")).toBeInTheDocument();
-    await expect(body.getByText("Tasks")).toBeInTheDocument();
+    await expect(body.getByRole("button", { name: "Mark all as read" })).toBeInTheDocument();
+    // App shows as the icon badge (or the icon itself for reminders), not a text label.
+    const apps = Array.from(
+      canvasElement.ownerDocument.querySelectorAll<HTMLElement>(".notification-inbox-tray__row"),
+    ).map((row) => row.dataset.app);
+    await expect(apps).toEqual(["meet", "calendar", "calendar", "docs", "tasks"]);
+    await expect(body.getByText("Esc to dismiss")).toBeInTheDocument();
     await expect(
       body.getByText((_, el) =>
         Boolean(
@@ -175,7 +177,7 @@ export const Unread: Story = {
     await expect(body.queryByText("Andrea sent you a direct message")).not.toBeInTheDocument();
     await userEvent.click(body.getByRole("button", { name: "Mute notification sound" }));
     await expect(args.onToggleSoundMute).toHaveBeenCalled();
-    await userEvent.click(body.getByRole("button", { name: "Mark all read" }));
+    await userEvent.click(body.getByRole("button", { name: "Mark all as read" }));
     await expect(args.onMarkAllRead).toHaveBeenCalled();
   },
 };
@@ -197,7 +199,10 @@ export const SoundMuted: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Notifications (5 unread)" }));
+    const bell = canvas.getByRole("button", { name: "Notifications (5 unread), sound muted" });
+    await expect(bell).toHaveAttribute("data-muted");
+    await expect(bell.querySelector(".lucide-bell-off")).not.toBeNull();
+    await userEvent.click(bell);
     const body = within(canvasElement.ownerDocument.body);
     await expect(
       body.getByRole("button", { name: "Unmute notification sound" }),
@@ -218,6 +223,16 @@ export const EnableAlerts: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("button", { name: "Enable alerts" })).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Mute notification sound" })).toBeInTheDocument();
-    await expect(body.getByRole("button", { name: "Mark all read" })).toBeInTheDocument();
+    await expect(body.getByRole("button", { name: "Mark all as read" })).toBeInTheDocument();
+  },
+};
+
+/** Unread and read rows together — read rows drop the dot and wash. */
+export const MixedReadState: Story = {
+  args: {
+    items: UNREAD_ITEMS.map((item, index) =>
+      index >= 2 ? { ...item, readAt: minutesAgo(1) } : item,
+    ),
+    unreadCount: 2,
   },
 };
