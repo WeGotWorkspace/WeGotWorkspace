@@ -38,8 +38,9 @@ Product decisions (2026-11-16): the description stays **plain text** (no Markdow
 ## Affected packages
 
 - `packages/api`:
+  - a shared core for live text on CalDAV objects, `Services/Collab/CollabTextState.php` plus the per-app `CollabTextFields` interface (see Shared server core). `NoteCollaborativeWrite` and `NoteYjsProjection` move onto it with no change in behaviour;
   - new migration and model `task_yjs_state`;
-  - new `Services/Tasks/TaskTextCollaboration.php` (read, outside-write check, collaborative write) and `Services/Tasks/TaskTextProjection.php` (the content tag, the analogue of `NoteYjsProjection`);
+  - new `Services/Tasks/TaskTextCollaboration.php` (the task routes on top of the core) and `Services/Tasks/TaskTextFields.php` (which text a VTODO component holds);
   - `TasksController` (three actions on the new sub-resource) and a new form request `TaskTextPutRequest`;
   - `routes/api.php`;
   - `Services/Collab/CollabJoinAuthorizer.php` (the `task:` room shape);
@@ -70,6 +71,23 @@ Product decisions (2026-11-16): the description stays **plain text** (no Markdow
 - A note whose UID starts with `task:` can no longer open a room. Notes created by the app have UUIDs; a foreign journal with that UID is not a supported case (Decision 17 of `notes.md`).
 - The rest of the join is unchanged: the per-poll re-check (`assertStillMayJoin`) ends the session when read access goes away, `refreshAccess` narrows the ticket when write access goes, `MAX_PEERS_PER_ROOM` stays 20, and peers drop updates from a peer whose ticket says `read`.
 
+### Shared server core
+
+Notes and Tasks use one server core for live text, not two copies. Today the Notes rules live in `NoteCollaborativeWrite` (the state precondition and the unseen-outside-write guard) and `NoteYjsProjection` (the content tag, "is this an outside write", "does the header name this text"). A Tasks copy of both would be the same code with other field names.
+
+- **`App\Services\Collab\CollabTextState`** holds every rule that does not depend on the app:
+  - the content tag: `sha1` of the fields joined with `"\0"`, in the order the app gives. Notes passes `[body, title ?? '']`, which is today's `hashContent`, so stored Notes tags stay valid;
+  - the state precondition (`428`, `412` on `If-Match` or `If-None-Match: *`), moved from `NoteCollaborativeWrite::assertStatePrecondition`;
+  - "is this an outside write" (object ETag moved and content tag differs) and "does `X-Wgw-External-Write` name this text" (never `*`), moved from `NoteYjsProjection`;
+  - the locked transaction: `lockForUpdate()` on the object row, then on the state row, re-read both;
+  - storing the state row (state bytes, object ETag, content tag) and the 256 KiB cap;
+  - the outside chain (append a link, the chain's end, clear, drop the row past 20 links). It is opt-in: a state model without an `outside_chain` column never gets one, so Notes keeps exactly the behaviour it has.
+- **`CollabTextFields`** is the one thing each app supplies: which state model and row belong to an object, and which ordered text fields an object holds. Notes reads the first VJOURNAL `DESCRIPTION` and `SUMMARY` through `NoteIcsConverter`. Tasks reads the VTODO component with the row's `vtodo_uid` (`DESCRIPTION` and `SUMMARY`) and normalises nothing on the server.
+- **`NoteCollaborativeWrite` and `NoteYjsProjection` become thin callers** of the core in the first chunk, before any Tasks code exists. Nothing a Notes client sees changes: the same tags, headers, status codes and error codes. The existing Notes collab tests are the proof and are not edited.
+- **The tables stay separate** (`note_yjs_state`, `task_yjs_state`). One table would need a data migration of every stored Notes state for no change anyone sees; the code is what is shared. The task migration copies the Notes migration's `MEDIUMBLOB` step.
+- **Docs is not part of this core.** `DocYjsStateStore` keys a Drive path, not a CalDAV object row, and has its own replace flow. Moving Docs onto the core is a possible follow-up, not this Epic.
+- **The client is shared already.** `plainTextOps`, `mergeOutsideChain`, the rebase and the text-fields shape live in `text-editor-core/docs-collab` next to the Notes and Docs shapes, and the field binding and carets are the generalised Notes title code. Tasks adds only its room hook and its detail view wiring.
+
 ### Stored state
 
 - `task_yjs_state`: `id`, `calendar_object_id` (FK to `calendarobjects.id`, `ON DELETE CASCADE`), `vtodo_uid` (the component's real `UID`, also for a single-VTODO object, so the row still matches after a native client adds a second VTODO and the REST id becomes `uri#uid`), `state` (binary; widened to `MEDIUMBLOB` on MySQL as the `note_yjs_state` migration does, because Laravel's `binary()` is a 64 KiB `BLOB` and the cap below is 256 KiB), `object_etag`, `content_etag`, `outside_chain` (JSON, see below), timestamps. Unique `(calendar_object_id, vtodo_uid)`. Otherwise the same shape and rules as `note_yjs_state`.
@@ -93,8 +111,8 @@ New sub-resource under the existing `wgw.tasks` middleware group. `{taskId}` is 
 - `PUT /api/v1/tasks/items/{taskId}/text`: the framed payload Notes uses (`FramedPayload`: `documentLen`, `yjsLen`, optional `title`), where the document part is the description. Write access to the list.
   - `If-Match` on the state tag, or `If-None-Match: *` when the client saw no state. No precondition while a state exists: `428`. A mismatch: `412`.
   - **A first save** (no state row, `If-None-Match: *`) must name in `X-Wgw-External-Write` the content tag it seeded or rebased from: the `ETag` of the `GET …/text` it read. Under the lock, if the object's content tag differs from that tag (Reminders wrote between that read and this save), it answers `409 external_write` and writes nothing; the client re-reads and takes the no-state rebase (Reconcile). Without this, every task's first save, and the first save after a move, could write over a native edit, because there is no chain yet to compare with.
-  - **Under the lock**, a save with a state row compares the locked object's content tag with the chain's end. If they differ (a native `PUT` committed but its hook has not run yet), it appends that text as a link, commits the link, and answers `409 external_write` without writing. Otherwise, while the chain is not empty, the save must name the last link's tag in `X-Wgw-External-Write`, or it gets `409 external_write`. This is the guard `NoteCollaborativeWrite::assertNoUnseenExternalWrite` already has, keyed on the chain's end; it proves the client merged every outside text before writing over it.
-  - **Locked write.** The text `PUT` takes the locks above (as `NoteCollaborativeWrite::put` does for notes), re-reads the ICS from the locked row, checks the state precondition and the chain guard, builds the new ICS **from the locked read**, writes the object and writes the state row. `rewriteOwnedTask` takes the locked object as input for every caller (spec above); the text `PUT` skips only the object `If-Match`, because the state tag is its precondition.
+  - **Under the lock**, a save with a state row compares the locked object's content tag with the chain's end. If they differ (a native `PUT` committed but its hook has not run yet), it appends that text as a link, commits the link, and answers `409 external_write` without writing. Otherwise, while the chain is not empty, the save must name the last link's tag in `X-Wgw-External-Write`, or it gets `409 external_write`. This is the guard Notes has today (`NoteCollaborativeWrite::assertNoUnseenExternalWrite`, moved into the shared core), keyed on the chain's end; it proves the client merged every outside text before writing over it.
+  - **Locked write.** The text `PUT` takes the locks above through the shared core's locked transaction (the one `NoteCollaborativeWrite::put` uses after chunk A0), re-reads the ICS from the locked row, checks the state precondition and the chain guard, builds the new ICS **from the locked read**, writes the object and writes the state row. `rewriteOwnedTask` takes the locked object as input for every caller (spec above); the text `PUT` skips only the object `If-Match`, because the state tag is its precondition.
   - The text is applied as a patch of `title` and `description` (`""` removes `DESCRIPTION`) through that shared path, so the list write check, multi-VTODO component handling, search index, #2172's task change set, #798's status notification logic and #2173's activity writer all run, exactly as for a REST `PATCH`. The state tag is the precondition instead of the object `If-Match`.
   - **A blank title is never saved.** A blank or whitespace-only `title` gets `422 title_required` (`TaskPatchRequest` requires `min:1` today). The client does not send one: see Client session, "Blank title".
   - The state row is written in the same transaction as the object, with the new `object_etag`, `content_etag` and an emptied chain. Writing the state row is the **last** write to the chain in that transaction, so no link of the text this save stored survives it.

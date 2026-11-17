@@ -85,6 +85,9 @@ Considered: the Notes collab stack (`useDocsCollab`, `NoteYjsProjection`, the ti
 - **The task id (object URI) as room key** — rejected: URIs are chosen by clients and not unique across lists, so a former viewer could join a room by recreating the URI in their own list. `calendarid` + UID, issued by the server, is unique and the same for every sharee.
 - **Keeping title and description in the task outbox next to the room** — rejected: two write paths for one field would race, and the outbox's whole-field `412` would undo the merge.
 - **#2173's same-actor merge unchanged** — rejected: with two people typing in turn every save would start a new entry.
+- **Task copies of `NoteCollaborativeWrite` and `NoteYjsProjection`** (the earlier drafts) — rejected by the product owner (2026-11-17): the precondition, the outside-write guard, the content tag and the locked write are the same rules with other field names. One core in `Services/Collab` serves both apps; each app only says which fields an object holds. Notes moves onto it first, with no change in behaviour.
+- **One state table for Notes and Tasks** — rejected: it needs a data migration of every stored Notes state and changes nothing anyone sees. The code is shared; the tables stay apart.
+- **Moving Docs (`DocYjsStateStore`) onto the same core now** — deferred: Docs keys a Drive path, not a CalDAV row, and has its own replace flow. A follow-up once two apps use the core.
 
 ## Affected packages
 
@@ -94,11 +97,11 @@ Considered: the Notes collab stack (`useDocsCollab`, `NoteYjsProjection`, the ti
 
 ## Dependencies
 
-1. Chunks A, B and D can start at once.
+1. Chunks A0, B and D can start at once. Chunk A needs A0.
 2. Chunk C needs A (the endpoints and room authorization) and B (the session shape and the field binding).
 3. Chunk E needs #2173's chunk F (the activity writer) on main. Until then, E is a change to #2173's spec and lands with that chunk instead.
 4. Chunk F (architecture docs) goes with C.
-5. Chunk V runs after A–D (and E when it is in).
+5. Chunk V runs after A0–D (and E when it is in).
 
 ## Open decisions
 
@@ -107,24 +110,40 @@ None — every choice for this work is made. Product questions raised during rev
 ## Invariants
 
 - Notes keeps its outside-write prompt; only the text-fields shape never prompts. A wrong change to `decideExternalWrite` would silently overwrite a Notes user's unsaved text. Proof: `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-external-write.test.ts` assertion `asks the person when local work would otherwise be overwritten`.
-- A Notes collab save still refuses an unseen outside write. Sharing the projection with tasks must not loosen it. Proof: `path: packages/api/tests/Feature/Notes/NotesCollabExternalWriteTest.php`.
+- A Notes collab save still refuses an unseen outside write. Moving Notes onto the shared core must not loosen it. Proof: `path: packages/api/tests/Feature/Notes/NotesCollabExternalWriteTest.php`.
 - Note rooms and Drive rooms authorize as before after the `task:` shape is added. A wrong prefix order would send a note or Drive path to the task branch, or a task UID with a slash to the Drive branch. Proof: `path: packages/api/tests/Feature/Collab/CollabJoinAuthorizationTest.php` assertions `test_join_denied_for_other_users_note_room_without_notebook_share` and `test_join_denied_for_room_matching_neither_known_form`.
 - A task `PATCH` with `title` or `description` from REST, MCP or a native client keeps working and keeps its ETag precondition. Proof: `path: packages/api/tests/Feature/Tasks/TaskInPlaceUpdateTest.php`, `path: packages/api/tests/Feature/Mcp/McpTasksToolsTest.php`.
 - Without the live API (mock, Storybook) the detail view saves title and description through the 600 ms autosave as today. Proof: `path: packages/apps/src/tasks-core/src/tasks-detail-view.test.tsx`.
 - A real conflict still reaches the conflict dialog: a `412` where the server changed a patched field is not retried. Proof: `path: packages/apps/src/lib/offline/tasks/tasks-outbox-flush.test.ts` assertion on `etagMismatches` equal to `[task.id]`.
+- After chunk A0 alone, Notes behaves exactly as before and nothing calls the chain. Proof: `cmd: cd packages/api && composer done-gate`.
 - After chunk A alone, main works: the endpoints exist and nothing calls them. Proof: `cmd: cd packages/api && composer done-gate`.
 - After chunk B alone, Notes and Docs behave as before, because the new shape is opt-in. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/text-editor-core/docs-collab src/note-detail-view`.
 - After chunk D alone, the outbox and autosave only retry more often; nothing else changes. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/lib/offline/tasks src/tasks-core`.
 
 ## Chunks
 
+### Chunk A0: Shared live-text core, Notes moved onto it
+
+- **id:** `chunk-a0-collab-text-core`
+- **Skill:** api
+- **Inputs:** the Notes rules to move — `path: app/Services/Notes/NoteCollaborativeWrite.php:37`, `path: app/Services/Notes/NoteCollaborativeWrite.php:126`, `path: app/Services/Notes/NoteCollaborativeWrite.php:142`, `path: app/Services/Notes/NoteYjsProjection.php:23`, `path: app/Services/Notes/NoteYjsProjection.php:47`, `path: app/Services/Notes/NoteYjsProjection.php:79`; the shared collab helpers already there — `path: app/Services/Collab/CollabExternalWrite.php:11`, `path: app/Services/Collab/YjsBytes.php:16`, `path: app/Services/Collab/DocCollabDocumentService.php:100`
+- **Done when:**
+  - `Services/Collab/CollabTextState.php` and the `CollabTextFields` interface exist as in spec.md (Shared server core), with the outside chain opt-in by state model.
+  - `NoteCollaborativeWrite` and `NoteYjsProjection` call the core and keep no copy of its rules; `NoteTextFields` supplies body and title.
+  - Unit tests for the core: content tag order, precondition codes, the header never matching `*`, metadata-only writes not counting as outside writes, the chain append, end, clear and cap on a test model with an `outside_chain` column.
+  - Every existing Notes collab test passes unedited; a stored Notes content tag from before the change still matches.
+  - No duplicate block between `Services/Notes` and `Services/Collab` (the copy-paste ratchet stays green).
+- **Verify with:** `cd packages/api && composer done-gate` (or `php scripts/done-gate.php` when the local run hits the 900 s limit)
+- **Parallel with:** `chunk-b-collab-text-fields`, `chunk-d-disjoint-retry`
+
 ### Chunk A: Task text resource, stored state and room authorization
 
 - **id:** `chunk-a-api-task-text`
 - **Skill:** api, security
-- **Inputs:** the Notes write and projection to mirror — `path: app/Services/Notes/NoteCollaborativeWrite.php:37`, `path: app/Services/Notes/NoteYjsProjection.php:47`; the shared task write path — `path: app/Services/Tasks/TaskRepository.php:249`; the join authorizer — `path: app/Services/Collab/CollabJoinAuthorizer.php:38`; the routes — `path: routes/api.php:287`
+- **Inputs:** the shared core from chunk A0 (`Services/Collab/CollabTextState.php`), with `NoteCollaborativeWrite` as the example caller — `path: app/Services/Notes/NoteCollaborativeWrite.php:37`; the shared task write path — `path: app/Services/Tasks/TaskRepository.php:249`; the join authorizer — `path: app/Services/Collab/CollabJoinAuthorizer.php:38`; the routes — `path: routes/api.php:287`
 - **Done when:**
   - Migration and model `task_yjs_state` as in spec.md (Stored state), FK cascade, unique `(calendar_object_id, vtodo_uid)`.
+  - `TaskTextCollaboration` and `TaskTextFields` use the chunk A0 core for the precondition, the outside-write guard, the content tag, the locked write and the chain; they hold no copy of those rules.
   - `GET …/text`, `GET …/text?format=yjs` and `PUT …/text` behave as in spec.md (API), including `204` with no state, `428`, `412`, `409 external_write`, `413 state_too_large`, `422` over the field limits, `403` on a read-only list, `404` for a task the caller cannot see.
   - Every task object write (`rewriteOwnedTask` for `PATCH`, `PUT`, MCP and move; the text `PUT`; chain appends from the CalDAV hook and the `?format=yjs` repair) runs in one `wgw` transaction with `lockForUpdate()` on the object row and then the state row, re-reads both, and checks `If-Match` on the locked row. Tests (drive each race with a test hook between the unlocked lookup and the write):
     - a status `PATCH` whose read happens before a text `PUT` takes the lock and whose write runs after the `PUT` commits gets `412`, the saved text is still there, and a follow-up `PATCH` with the new ETag stores the status beside it;
@@ -232,6 +251,7 @@ None — every choice for this work is made. Product questions raised during rev
 
 ## Test plan
 
+- [ ] Shared core: unit tests for `CollabTextState`; the Notes collab tests pass unedited after Notes moves onto it
 - [ ] API: OpenAPI → failing feature tests for `/text` (preconditions, outside write, limits, access, URI collision) → implement → `composer done-gate`
 - [ ] Collab lib: Vitest on `plainTextOps`, plain seed, `mergeOutsideChain` convergence and idempotence (two links, both arrival orders), the text-fields emptiness test, rebase, line ends
 - [ ] UI: mock-tier Storybook for carets and read-only; Vitest for `useTaskTextCollab` contracts (RTL), the form without title and description, and the disjoint-field retry
