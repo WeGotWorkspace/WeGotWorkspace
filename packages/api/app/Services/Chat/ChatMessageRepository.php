@@ -15,6 +15,8 @@ use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Chat\Conversion\ChatMessageJournalConverter;
 use App\Services\Notify\ChatMentionedNotify;
+use App\Services\Threads\ThreadAuthorNames;
+use App\Services\Threads\ThreadReactions;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
@@ -313,7 +315,7 @@ final class ChatMessageRepository
                 throw new ApiHttpException(400, 'Cannot react to a deleted message.', 'bad_request');
             }
 
-            $reactions = $this->toggleReactionSet($message['reactions'] ?? [], $emoji, $username);
+            $reactions = ThreadReactions::toggle($message['reactions'] ?? [], $emoji, $username);
             $ics = $this->converter->applyReactions($this->rawIcs($locked), $reactions);
             $this->backends->calBackend()->updateCalendarObject(
                 [(int) $instance->calendarid, (int) $instance->id],
@@ -464,36 +466,6 @@ final class ChatMessageRepository
     }
 
     /**
-     * @param  list<array{emoji: string, authors: list<string>}>  $reactions
-     * @return list<array{emoji: string, authors: list<string>}>
-     */
-    private function toggleReactionSet(array $reactions, string $emoji, string $username): array
-    {
-        $result = [];
-        $found = false;
-        foreach ($reactions as $reaction) {
-            if ($reaction['emoji'] !== $emoji) {
-                $result[] = $reaction;
-
-                continue;
-            }
-            $found = true;
-            $authors = array_map('strval', $reaction['authors']);
-            $authors = in_array($username, $authors, true)
-                ? array_values(array_diff($authors, [$username]))
-                : [...$authors, $username];
-            if ($authors !== []) {
-                $result[] = ['emoji' => $emoji, 'authors' => $authors];
-            }
-        }
-        if (! $found) {
-            $result[] = ['emoji' => $emoji, 'authors' => [$username]];
-        }
-
-        return $result;
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function presentSingle(CalendarObject $object, CalendarInstance $instance): array
@@ -523,7 +495,7 @@ final class ChatMessageRepository
             }
         }
 
-        $names = $this->displayNames(array_values(array_unique(array_map(
+        $names = ThreadAuthorNames::lookup(array_values(array_unique(array_map(
             static fn (array $message): string => (string) ($message['authorId'] ?? ''),
             $window,
         ))));
@@ -548,30 +520,6 @@ final class ChatMessageRepository
         }
 
         return $presented;
-    }
-
-    /**
-     * @param  list<string>  $usernames
-     * @return array<string, string>
-     */
-    private function displayNames(array $usernames): array
-    {
-        $usernames = array_values(array_filter($usernames, static fn (string $name): bool => $name !== ''));
-        if ($usernames === []) {
-            return [];
-        }
-
-        $names = [];
-        $principals = Principal::query()
-            ->whereIn('uri', array_map(static fn (string $name): string => 'principals/'.$name, $usernames))
-            ->get(['uri', 'displayname']);
-        foreach ($principals as $principal) {
-            $username = substr((string) $principal->uri, strlen('principals/'));
-            $display = trim((string) ($principal->displayname ?? ''));
-            $names[$username] = $display !== '' ? $display : $username;
-        }
-
-        return $names;
     }
 
     /**
@@ -686,7 +634,7 @@ final class ChatMessageRepository
             ->where('calendarid', (int) $instance->calendarid)
             ->value('kind');
         $kind = is_string($kind) && $kind !== '' ? $kind : ChatChannelMeta::KIND_CHANNEL;
-        $displayNames = $this->displayNames([$authorUsername]);
+        $displayNames = ThreadAuthorNames::lookup([$authorUsername]);
 
         return ChatMessagePostedNotify::eventData(
             (string) $instance->uri,
