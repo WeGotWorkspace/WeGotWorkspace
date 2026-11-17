@@ -14,7 +14,8 @@
 .notification-inbox-tray__trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--notification-inbox-badge-bg, var(--workspace-selected-mark-background));
+  /* Full brand blue: the 80% mark mix on white paper leaves white 10px text under 4.5:1. */
+  background-color: var(--notification-inbox-badge-bg, var(--scheme-selection));
   color: var(--notification-inbox-badge-fg, var(--workspace-selected-mark-color));
 }
 
