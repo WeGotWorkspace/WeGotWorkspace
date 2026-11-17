@@ -1,6 +1,7 @@
 import {
   createRoute,
   createRouter,
+  ErrorComponent,
   lazyRouteComponent,
   Outlet,
   redirect,
@@ -693,6 +694,9 @@ export function createWeGotWorkspaceRouter({
     defaultNotFoundComponent: WeGotWorkspaceNotFound,
     // A route that fails to render or load shows the router's error view; keep the error
     // for Copy diagnostics (#2204). Expected failures are skipped by the recorder.
+    // `defaultOnCatch` only runs through a per-match boundary, which the router installs
+    // only when an error component is set.
+    defaultErrorComponent: ErrorComponent,
     defaultOnCatch: (error) => {
       void recordUnexpectedError(error, "route");
     },
