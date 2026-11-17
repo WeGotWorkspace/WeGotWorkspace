@@ -7,6 +7,8 @@ namespace Tests\Feature\Dav;
 use App\Dav\Auth\VerifiedPasswordMemory;
 use App\Models\User;
 use App\Support\WgwSettings;
+use Illuminate\Cache\ApcStore;
+use Illuminate\Cache\Events\CacheHit;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +22,9 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
     /** @var list<string|null> */
     private array $rememberedIn = [];
 
+    /** Reads that found a remembered entry. */
+    private int $remembered = 0;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,6 +32,11 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
         Event::listen(KeyWritten::class, function (KeyWritten $event): void {
             if (str_starts_with($event->key, 'dav-basic-verified:')) {
                 $this->rememberedIn[] = $event->storeName;
+            }
+        });
+        Event::listen(CacheHit::class, function (CacheHit $event): void {
+            if (str_starts_with($event->key, 'dav-basic-verified:')) {
+                $this->remembered++;
             }
         });
 
@@ -118,6 +128,18 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
         $this->dav('bob', 'secret')->assertStatus(207);
 
         $this->assertSame(['array'], $this->rememberedIn);
+        $this->assertSame(1, $this->remembered);
+    }
+
+    public function test_the_default_memory_is_apcu_or_nothing(): void
+    {
+        $store = app(VerifiedPasswordMemory::class)->store();
+
+        if (extension_loaded('apcu') && apcu_enabled()) {
+            $this->assertInstanceOf(ApcStore::class, $store?->getStore());
+        } else {
+            $this->assertNull($store);
+        }
     }
 
     public function test_without_apcu_dav_basic_auth_verifies_every_time_and_writes_nothing(): void
@@ -136,7 +158,9 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
         $this->rememberIn(Cache::store('array'));
         $this->dav('bob', 'secret')->assertStatus(207);
 
+        // The stored entry is read, and it still refuses a different password.
         $this->dav('bob', 'wrong')->assertStatus(401);
+        $this->assertSame(1, $this->remembered);
     }
 
     public function test_remembered_dav_credential_is_refused_after_a_password_change(): void
@@ -145,7 +169,9 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
         $this->dav('bob', 'secret')->assertStatus(207);
         User::query()->where('username', 'bob')->update(['digest' => password_hash('changed', PASSWORD_DEFAULT)]);
 
+        // The entry from before the change is read and refused: the digest is part of it.
         $this->dav('bob', 'secret')->assertStatus(401);
+        $this->assertSame(1, $this->remembered);
         $this->dav('bob', 'changed')->assertStatus(207);
     }
 
@@ -153,8 +179,11 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
     {
         $this->rememberIn(Cache::store('array'));
         $this->dav('bob', 'secret')->assertStatus(207);
+        $this->dav('bob', 'secret')->assertStatus(207);
+        $this->assertSame(1, $this->remembered);
         User::query()->where('username', 'bob')->update(['enabled' => false]);
 
+        // A remembered password does not skip the enabled check.
         $this->dav('bob', 'secret')->assertStatus(401);
     }
 
