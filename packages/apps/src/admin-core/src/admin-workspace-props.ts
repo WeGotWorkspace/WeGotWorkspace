@@ -11,7 +11,7 @@ export type AdminWorkspaceProps = {
   /** Deep-link / story initial section when `section` is uncontrolled. */
   initialSection?: AdminSection;
   /** Invoked when the user chooses a sidebar section; navigation is owned by the app shell. */
-  onSectionChange?: (section: AdminSection) => void;
+  onSectionChange?: (section: AdminSection, options?: { replace?: boolean }) => void;
   /** Invoked when the user chooses log out; navigation is owned by the app shell. */
   onLogout?: () => void;
   className?: string;

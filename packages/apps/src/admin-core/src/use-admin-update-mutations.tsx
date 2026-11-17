@@ -51,6 +51,8 @@ export function useAdminUpdateMutations({
       switched = true;
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not change the update channel"));
+      // Reject too, so the autosave tag stays Unsaved.
+      throw error;
     } finally {
       setSavingUpdateChannel(false);
     }

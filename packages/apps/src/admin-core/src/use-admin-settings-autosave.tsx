@@ -20,8 +20,15 @@ export type AdminSettingsEditor = {
   choose: (patch: Patch) => void;
   /** Typing in a field: saves after a short pause, or at once when the field is left. */
   type: (patch: Patch) => void;
+  /**
+   * Typing in a field that must not save half-typed (secrets, limits): updates the form and
+   * saves only when the field is left.
+   */
+  hold: (patch: Patch) => void;
   /** Leaving a field (blur, Enter): saves what is still waiting, at once. */
   commit: () => void;
+  /** Runs `task` after every save already started; drops the save still waiting on the timer. */
+  afterSaves: (task: () => Promise<void>) => Promise<void>;
 };
 
 const AdminSettingsEditorContext = createContext<AdminSettingsEditor | null>(null);
@@ -42,6 +49,7 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const typedRef = useRef(false);
+  const heldRef = useRef(false);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const runningRef = useRef(0);
   const [busy, setBusy] = useState(false);
@@ -54,7 +62,13 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
     runningRef.current += 1;
     queueRef.current = queueRef.current
       // Read the form when the save starts: it holds every edit made until then.
-      .then(() => saveRef.current(formRef.current))
+      .then(() => {
+        const form = formRef.current;
+        // A secret still being typed waits for its field to be left; the stored one stays.
+        return saveRef.current(
+          heldRef.current ? { ...form, mailDeliverySmtpPassword: "", turnSecret: "" } : form,
+        );
+      })
       .then((ok) => setFailed(!ok))
       .finally(() => {
         runningRef.current -= 1;
@@ -88,12 +102,34 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
     [schedule, setForm],
   );
 
+  const hold = useCallback(
+    (patch: Patch) => {
+      typedRef.current = true;
+      heldRef.current = true;
+      setForm((prev) => ({ ...prev, ...patch }));
+      setBusy(true);
+    },
+    [setForm],
+  );
+
   const commit = useCallback(() => {
-    if (!typedRef.current || timerRef.current === undefined) return;
+    if (!typedRef.current || (timerRef.current === undefined && !heldRef.current)) return;
     typedRef.current = false;
+    heldRef.current = false;
     // After this render, so the save reads the last keystroke.
     schedule(0);
   }, [schedule]);
+
+  const afterSaves = useCallback((task: () => Promise<void>) => {
+    clearTimeout(timerRef.current);
+    timerRef.current = undefined;
+    typedRef.current = false;
+    heldRef.current = false;
+    if (runningRef.current === 0) setBusy(false);
+    const run = queueRef.current.then(task);
+    queueRef.current = run.catch(() => {});
+    return run;
+  }, []);
 
   // A pending save still runs when Admin closes.
   useEffect(() => flush, [flush]);
@@ -101,7 +137,10 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
   const status: AutosaveStatus = busy ? "saving" : failed ? "unsaved" : "saved";
   useReportAutosaveStatus(status);
 
-  return useMemo(() => ({ choose, type, commit }), [choose, type, commit]);
+  return useMemo(
+    () => ({ choose, type, hold, commit, afterSaves }),
+    [choose, type, hold, commit, afterSaves],
+  );
 }
 
 /**

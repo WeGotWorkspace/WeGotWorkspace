@@ -74,7 +74,7 @@ export function adminSecurityChecks({
       ? {
           id: "https",
           title: "HTTPS",
-          description: "This site opens over https://.",
+          description: "This site opens over a secure connection.",
           severity: "ok",
         }
       : {
@@ -87,6 +87,13 @@ export function adminSecurityChecks({
         },
   );
 
+  function reachableMessage(directories: readonly string[]): string {
+    if (directories.includes("wgw-content")) {
+      return `${directories.join(", ")} can be downloaded from the web, including the database and keys.`;
+    }
+    return `${directories.join(", ")} can be downloaded from the web.`;
+  }
+
   const dataDirPublished = take("data_dir_published");
   checks.push(
     dataDirPublished || reachableDirectories.length > 0
@@ -95,7 +102,7 @@ export function adminSecurityChecks({
           title: "Web root isolation",
           description:
             reachableDirectories.length > 0
-              ? `${reachableDirectories.join(", ")} can be downloaded from the web, including the database and keys.`
+              ? reachableMessage(reachableDirectories)
               : "The data directory is inside the public web root; database files could be exposed.",
           severity: "critical",
           fixUrl: WEB_ROOT_DOCS_URL,

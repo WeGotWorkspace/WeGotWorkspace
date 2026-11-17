@@ -46,7 +46,7 @@ export function AdminRealtimeCollaborationPane({
   controller,
 }: AdminRealtimeCollaborationPaneProps) {
   const form = controller.settingsForm;
-  const { choose, type } = useAdminSettingsEditor();
+  const { choose, type, hold, afterSaves } = useAdminSettingsEditor();
   const relayReady = form.turnSecretSet && splitIceUrlRows(form.turnUrls).some((url) => url !== "");
 
   return (
@@ -102,13 +102,13 @@ export function AdminRealtimeCollaborationPane({
               variant="password"
               autoComplete="new-password"
               value={form.turnSecret}
-              onChange={(event) => type({ turnSecret: event.target.value })}
+              onChange={(event) => hold({ turnSecret: event.target.value })}
             />
             {form.turnSecretSet ? (
               <Button
                 label="Clear"
                 variant="ghost"
-                onClick={() => void controller.actions.clearTurnSecret()}
+                onClick={() => void afterSaves(() => controller.actions.clearTurnSecret())}
               />
             ) : null}
           </span>

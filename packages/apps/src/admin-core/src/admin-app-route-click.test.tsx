@@ -112,6 +112,6 @@ describe("AdminApp over http", { timeout: 15_000 }, () => {
   it("passes the HTTPS check on https or localhost", async () => {
     vi.stubGlobal("isSecureContext", true);
     await renderAdminApp("/admin/health");
-    expect(await screen.findByText("This site opens over https://.")).toBeTruthy();
+    expect(await screen.findByText("This site opens over a secure connection.")).toBeTruthy();
   });
 });

@@ -101,7 +101,7 @@ export function AdminUpdatesPane({
       setConfirmEdgeOpen(true);
       return;
     }
-    void trackSave(() => controller.actions.setUpdateChannel(channel));
+    trackSave(() => controller.actions.setUpdateChannel(channel)).catch(() => {});
   };
   const updateLogRows = useMemo(
     () =>
@@ -363,7 +363,7 @@ export function AdminUpdatesPane({
               className={buttonVariants({ variant: "destructive" })}
               onClick={() => {
                 setConfirmEdgeOpen(false);
-                void trackSave(() => controller.actions.setUpdateChannel("edge"));
+                trackSave(() => controller.actions.setUpdateChannel("edge")).catch(() => {});
               }}
             >
               Switch to edge

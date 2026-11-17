@@ -33,7 +33,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
   const capability = delivery.capability;
   const form = controller.settingsForm;
   const [testSendOpen, setTestSendOpen] = useState(false);
-  const { choose, type } = useAdminSettingsEditor();
+  const { choose, type, hold, afterSaves } = useAdminSettingsEditor();
   const lastTest = delivery.lastTestSend;
   const usesPlaceholderFrom = capability.canSubmit && !capability.probes.fromConfigured;
 
@@ -180,13 +180,15 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
               variant="password"
               autoComplete="new-password"
               value={form.mailDeliverySmtpPassword}
-              onChange={(event) => type({ mailDeliverySmtpPassword: event.target.value })}
+              onChange={(event) => hold({ mailDeliverySmtpPassword: event.target.value })}
             />
             {delivery.config.smtpPasswordSet ? (
               <Button
                 label="Clear"
                 variant="ghost"
-                onClick={() => void controller.actions.clearMailDeliverySmtpPassword()}
+                onClick={() =>
+                  void afterSaves(() => controller.actions.clearMailDeliverySmtpPassword())
+                }
               />
             ) : null}
           </span>
@@ -212,7 +214,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             min={1}
             className="admin-number-input"
             value={form.imipHourlyLimit}
-            onChange={(event) => type({ imipHourlyLimit: event.target.value })}
+            onChange={(event) => hold({ imipHourlyLimit: event.target.value })}
           />
         </FieldLabelRow>
         <FieldLabelRow
@@ -227,7 +229,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             min={1}
             className="admin-number-input"
             value={form.imipDailyLimit}
-            onChange={(event) => type({ imipDailyLimit: event.target.value })}
+            onChange={(event) => hold({ imipDailyLimit: event.target.value })}
           />
         </FieldLabelRow>
       </WorkspacePageSection>

@@ -46,6 +46,14 @@ export function useAdminShell({
     ? requestedSection
     : ADMIN_DEFAULT_SECTION;
 
+  // The address follows the section on screen (also once installChannel arrives as docker).
+  useEffect(() => {
+    if (section === requestedSection) return;
+    if (!isControlled) setInternalSection(section);
+    onSectionChange?.(section, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, requestedSection]);
+
   useEffect(() => {
     setUsers(data.users);
     setCurrentUser(data.currentUser);
