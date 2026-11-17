@@ -12,8 +12,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - **The thread subject.** A *subject* is the thing a thread is about (a task). Its *scope* is the place that sets who can see it (the task's list). Each app registers one small **subject type** that answers the questions only that app can answer: does this subject exist, which scope is it in now, who may read and post, who is in the audience, and who should hear about new comments. The server side is `App\Services\Threads\Subjects\ThreadSubjectType`; the web app side is a `ThreadSubjectAdapter` in `packages/apps/src/thread-ui/`.
   - **Shared on the server** (`App\Services\Threads`): the pool and its provisioner, the entry repository (post, reply, edit, delete, react, list, changes, limits, idempotency), the REST controller and routes, access checks through the subject type, the lifecycle (list delete), the `ThreadEntry` push state, grouped notifications, and the activity writer with its merge rule.
   - **Shared in the web app** (`thread-ui/` and `lib/offline/threads/`): the thread panel with its layout, composer and timeline, the `useThread` hook (fetch, push, polling rule), the API client, the activity row and formatter, the offline read cache and the offline outbox.
-  - **Tasks only** (`App\Services\Tasks\Threads\TaskThreadSubject`, `tasks-core`): the task subject type, the calls into the lifecycle from task delete and move paths, the mapping from #2172's task change set to activity entries, the two notification actions and their copy, the field labels for activity rows, the move wording, and the place in the detail view where the panel is mounted.
-  - Adding threads to another app is then one subject type on each side, its lifecycle calls, its notification copy and a place to mount the panel. `docs/architecture/threads.md` keeps that checklist.
+  - **Tasks only** (`App\Services\Tasks\Threads\TaskThreadSubject`, `tasks-core`): the task subject type, the call into the lifecycle from the owner's list delete, the mapping from #2172's task change set to activity entries, the two notification actions and their copy, the field labels for activity rows, the move wording, and the place in the detail view where the panel is mounted.
+  - Adding threads to another app is then one subject type on each side, a `scopeDeleted` call when a scope is deleted, its notification copy and a place to mount the panel. `docs/architecture/threads.md` keeps that checklist.
   - Chat and Docs keep their own repositories and routes in this Epic. Chunk A gives them the shared converter core; moving them onto subject types is a follow-up named in threads.md.
 - **Thread storage.** A new collection kind `thread_pool`, shared by every subject type:
   - VJOURNAL only, hidden over DAV;
@@ -120,7 +120,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `ThreadReactions::toggle(array $set, string $emoji, string $username): array` replaces the two private `toggleReactionSet` copies.
 - `ThreadAuthorNames` replaces the two `displayNames` helpers.
 - **Golden tests first.** Before the move, chunk A adds tests that pin the ICS each domain writes today for fixed input: a comment, a reply, an edit, a tombstone, reactions and mentions. After the move the bytes are the same. The existing unit and feature tests stay unchanged.
-- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (scope + subject id), `subject_scope` (the list calendarid for tasks, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq` and `activity_field` (nullable).   - No column names a task. Only task threads use the tables in this Epic.
+- `thread_index` (new table) holds `uid`, `pool_calendarid`, `subject_type` (`task`), `subject_key` (scope + subject id), `subject_scope` (the list calendarid for tasks, indexed), `kind`, `parent_uid`, `author`, `created_at`, `modseq` and `activity_field` (nullable).
+  - No column names a task. Only task threads use the table in this Epic.
   - `docs_thread_index` stays. Moving Docs onto `thread_index` is a follow-up named in threads.md.
 
 ### Thread subjects (chunk B)
@@ -142,14 +143,16 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `GET …/entries`:
   - It returns entries in time order, 200 per page, with a cursor. Order and cursor are by `(created_at, uid)`, never by the ULID alone: the ULID holds the client's clock, and an offline comment must sort by when it arrived.
   - Each entry has `id`, `kind`, `parentId`, `author` (`username`, `displayName`), `body` (null for activity and tombstones), `mentions`, `reactions`, `createdAt`, `editedAt`, `deletedAt` and `activity`.
-  - It also returns a thread `state` for `/changes`.
+  - It also returns a thread `state` for `/changes`, and `canPost` for the caller, so every app's panel can hide the write controls without working it out on its own.
 - `POST …/entries` with `{id, body, parentId?, mentions?, scopeId?}`:
   - `id` is a client ULID. A ULID that is already an entry of **this subject by the caller**, under any key, follows the retry order below and never gets a fresh id, also when the caller can no longer read the earlier scope. Any other ULID that is already taken (an entry of another subject, or another person's entry) is stored under a fresh id in the answer, as in Chat; the response then looks like any new comment, so it reveals nothing about the other entry.
   - `scopeId` is the scope the writer saw the subject in (for a task, its list). The web app always sends it, so a comment queued offline never lands in front of a new audience without its author knowing. Callers that omit it post to the current scope.
-  - A retry is resolved in this order, and none of these cases writes anything:
-    - the caller's own entry with that ULID is under the subject's **current** key: 200 with that entry (an idempotent retry);
-    - the caller's own entry with that ULID is under **another** key of the same subject (an earlier scope): 409 `already_stored`, with no entry in the body, because the caller may not read that scope any more;
-    - the ULID is not stored and `scopeId` is not the current scope: 409 `subject_moved`.
+  - A post is resolved in this order. Only the last step writes:
+    - the caller's own entry with that ULID is under the subject's **current** key: 200 with that entry (an idempotent retry), also without `canPost`;
+    - the caller's own entry with that ULID is under **another** key of the same subject (an earlier scope): 409 `already_stored`, with no entry in the body, because the caller may not read that scope any more; also without `canPost`;
+    - the caller has no `canPost`: 403, also when `scopeId` is stale;
+    - the ULID is not stored and `scopeId` is not the current scope: 409 `subject_moved`;
+    - otherwise the entry is stored.
   - A `parentId` must be a root entry under the subject's current key. A reply, an activity entry, or an id from another key is rejected with 422 and nothing is stored.
   - A mention outside the subject's audience is dropped from the stored mentions, but the text stays.
 - `PATCH …/entries/{entryId}` with `{body}` and `DELETE …/entries/{entryId}` (tombstone):
@@ -158,16 +161,16 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - `POST …/entries/{entryId}/reactions` with `{emoji}` toggles a reaction. The emoji set is the shared one.
 - `GET …/changes?since=<state>` returns the changed and removed entry ids.
 - **Access:**
-  - Every route asks the subject type to resolve the subject. 404 if the caller cannot see it. Every write (post, reply, react, edit, delete) also needs `canPost`, or it answers 403 and writes nothing. For tasks, `canPost` is write access to the list; read access is enough for `canRead`.
+  - Every route asks the subject type to resolve the subject. 404 if the caller cannot see it. Every write (post, reply, react, edit, delete) also needs `canPost`, or it answers 403 and writes nothing. The one exception is a retry of the caller's own stored ULID, which follows the post order above and writes nothing. For tasks, `canPost` is write access to the list; read access is enough for `canRead`.
   - **Entries are scoped to the current key.** A pool holds every list of its owner, plus hidden entries under old keys. List, changes, `PATCH`, `DELETE` and `…/reactions` load an entry only when its key is the resolved subject's type, current scope and id. Any other `entryId` answers 404 and nothing is written, so someone who can see a task in list B cannot read, edit or react to an entry left in list A, or in another list of the same pool. Docs has the same guard today (`requireRootOnPath`, `DocsThreadRepository.php:364`).
   - A task in a multi-VTODO file is addressed by its UID, as in the task routes.
 - **Limits:**
   - a body of at most 65 536 bytes (`MAX_BODY_BYTES`, the same in Chat and Docs);
   - at most 5 000 entries per thread. A post past that gets 409 `thread_full`.
   - Activity entries are pruned oldest first beyond 1 000 per thread, and comments are never pruned. Pruning makes room, so automatic activity never hits the limit.
-- **Lifecycle hooks.** The shared `ThreadLifecycle` has one call, `scopeDeleted()`, which deletes every entry in a scope. There is no time-based purge (product owner, 2026-11-17): entries left under an old key stay hidden until their scope is deleted. What follows is how Tasks uses it.
+- **Lifecycle hooks.** The shared `ThreadLifecycle` has one call, `scopeDeleted(string $subjectType, string $scope)`, which deletes every entry of that subject type in that scope. `thread_index` is shared by every subject type, so one app's scope id can never remove another app's entries. There is no time-based purge (product owner, 2026-11-17): entries left under an old key stay hidden until their scope is deleted. What follows is how Tasks uses it.
   - **Task deleted** (REST, MCP, or the CalDAV observer's "deleted" change set): nothing is deleted. The entries stay under the list's key, hidden because there is no task. If the same UID is written to that list again, they show again.
-  - **List deleted:** only when the **owner** deletes it, `scopeDeleted()` deletes every entry whose `X-WGW-SUBJECT-SCOPE` is that list. `TaskListRepository::delete` only dismisses a sharee's copy (`dismissIfSharee`), and that deletes nothing.
+  - **List deleted:** only when the **owner** deletes it, `scopeDeleted('task', <list calendarid>)` deletes every task entry whose `X-WGW-SUBJECT-SCOPE` is that list. Task delete and move paths do not call `ThreadLifecycle`. `TaskListRepository::delete` only dismisses a sharee's copy (`dismissIfSharee`), and that deletes nothing.
   - **Move through REST, MCP or the web app** (`taskListId` in the change set): the "moved here" activity entry is written under the new key, and the old entries stay under the old key.
   - **CalDAV `MOVE`** of a task object to another list: Sabre copies and then deletes in one request, because calendars are not `IMoveTarget`. The observer turns `afterMethod:MOVE` (source and destination both in task lists, 2xx) into the same `moved` change set as a REST move. The destination gets "moved here", and the source's entries stay under the source key.
   - **CalDAV `DELETE` in list A, then `PUT` of the same UID in list B** (two requests, as some clients do it): these cannot be told apart from a real delete and a new task. B gets a `created` entry. A's entries stay under A's key.
@@ -212,7 +215,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Thread panel** (`thread-ui/thread-panel.tsx`, with `useThread`), mounted below the detail fields in `TasksDetailView`.
   - The newest entries are at the bottom. The composer is at the bottom and sticky inside the panel.
   - "Reply" opens an inline reply list under its root.
-  - Edit and delete come from the message menu, for your own messages only.
+  - Edit and delete come from the message menu, for your own messages only, and only while the adapter says the user may post.
 - **Composer and mentions.**
   - It is `ChatComposer` from chat-ui.
   - The mention source comes from the adapter. For tasks it is the list audience, from #2172 chunk C's audience cache.

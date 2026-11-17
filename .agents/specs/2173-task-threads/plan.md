@@ -126,7 +126,7 @@ See spec.md, Non-goals.
 - **An entry under another key can never be read or written through the subject's routes.** A wrong change would let someone who can see the task in list B react to, reply to or edit an entry left in list A. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_entry_from_another_list_is_404_and_is_not_written` (new, chunk B).
 - **A retry after a move never stores a comment twice.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_retry_of_a_stored_id_after_a_move_is_already_stored_and_writes_nothing` (new, chunk B): the caller cannot read the old list, and the new list's entry count stays the same; plus `test_a_ulid_taken_by_another_person_gets_a_fresh_id` (new, chunk B).
 - **An offline comment never sorts into the thread's past.** Proof: `path: packages/api/tests/Feature/Threads/ThreadApiTest.php`, assertion `test_entries_sort_by_arrival_not_by_ulid_time` (new, chunk B).
-- **Someone with read-only access to the list can read the thread but write nothing.** A wrong change would let a passive share comment, react or edit. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertion `test_read_only_sharee_reads_but_every_write_is_403` (new, chunk B); `path: packages/apps/src/thread-ui/thread-panel.test.tsx`, assertion `shows no composer, reply or reaction picker when the adapter cannot post` (new, chunk E).
+- **Someone with read-only access to the list can read the thread but write nothing.** A wrong change would let a passive share comment, react or edit. Proof: `path: packages/api/tests/Feature/Tasks/TaskThreadAccessTest.php`, assertions `test_read_only_sharee_reads_but_every_write_is_403` and `test_read_only_retry_of_the_callers_own_ulid_returns_200_or_already_stored` (new, chunk B); `path: packages/apps/src/thread-ui/thread-panel.test.tsx`, assertion `shows no composer, reply, reaction picker, edit or delete when the adapter cannot post` (new, chunk E).
 - **Queued rows behind a comment that is not sent are not lost.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `holds rows queued behind a comment that stays not sent` (new, chunk H).
 - **A queued comment is never dropped silently.** Proof: `path: packages/apps/src/lib/offline/threads/threads-outbox-flush.test.ts`, assertion `keeps the text of a comment whose task is gone` (new, chunk H).
 - **After chunk A, main still works with no task-thread code.** Proof: `cmd: pnpm test:api-done-gate`.
@@ -158,15 +158,15 @@ See spec.md, Non-goals.
   - #2172's audience, change set and observer.
 - **Done when:**
   - In `App\Services\Threads`: `ThreadSubjectType`, `ThreadSubjectRegistry`, `CollectionKind::ThreadPool` (DAV-hidden) with a shared provisioner, the shared repository, `ThreadsController` with the routes from spec.md in OpenAPI, and `ThreadLifecycle` with `scopeDeleted()`.
-  - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered, and the task delete and move paths calling `ThreadLifecycle`.
+  - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered; the owner's list delete calls `ThreadLifecycle::scopeDeleted('task', …)`, and the move paths write "moved here".
   - The shared layer passes its tests with the test-only subject type (the "no task code" invariant).
   - The task access, move, delete, list-delete and limit rules are tested.
   - `POST …/entries` follows the retry order in spec.md: 200 for the caller's own ULID under the current key, 409 `already_stored` for the caller's own ULID under an earlier key, 409 `subject_moved` for a new ULID with a stale `scopeId`; none of them writes. A ULID already stored for this subject by the caller is never replaced with a fresh id, including when the caller cannot read the earlier scope; a fresh id is only for a ULID taken by another subject or another person.
   - Entry routes and `parentId` accept only entries under the subject's current key (404 or 422 otherwise, nothing written).
   - Lists sort and page by `(created_at, uid)`.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.
-  - There is no purge job. A task delete or move deletes no entries; only the owner's list delete calls `scopeDeleted()`.
-  - Every write route answers 403 without `canPost`; for tasks that is write access to the list.
+  - There is no purge job. A task delete or move deletes no entries; only the owner's list delete calls `scopeDeleted()`, which deletes only that subject type's entries in that scope (`test_scope_deleted_keeps_other_subject_types_in_the_same_scope` with the test-only subject type).
+  - Every write route answers 403 without `canPost`; for tasks that is write access to the list. A retry of the caller's own stored ULID is answered by the post order first (200 or 409 `already_stored`), and a new ULID without `canPost` is 403 even with a stale `scopeId` (`test_read_only_retry_of_the_callers_own_ulid_returns_200_or_already_stored`). `GET …/entries` returns `canPost`.
   - The native-client move cases from spec.md (CalDAV `MOVE`; `DELETE` then `PUT`) are tested.
   - `docs/architecture/tasks.md` gets "Decision 18 — Task threads".
   - The B invariants pass.

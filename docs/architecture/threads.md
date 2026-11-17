@@ -74,7 +74,7 @@ Threads are a shared layer. An app plugs in a **subject type**: the thing a thre
 For example comments on notes, with the notebook as scope. Nothing shared changes; the app adds:
 
 1. A server subject type: how to find the subject and check access, its scope, its audience, who follows it, the scopes a user can read. Register it.
-2. A call to `ThreadLifecycle::scopeDeleted` when a scope is deleted, and a decision on what a move does (rule 4).
+2. A call to `ThreadLifecycle::scopeDeleted($subjectType, $scope)` when a scope is deleted (it removes only that subject type's entries), and a decision on what a move does (rule 4).
 3. Its two notification actions (`<app>.thread_activity`, `<app>.mentioned`) with copy in both formatters.
 4. A client adapter, and `ThreadPanel` mounted where the subject is shown.
 5. Optional: field changes for the activity log, and field labels in the adapter.
