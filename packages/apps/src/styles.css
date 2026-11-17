@@ -448,7 +448,7 @@
   --track-ins-edge: oklch(0.72 0.19 150 / 0.55);
   --track-del-fg: oklch(0.8 0.1 15);
   --track-del-bg: oklch(0.65 0.2 20 / 0.14);
-  /* Sky selection: flat wash plus a hairline that follows the radius. */
+  /* Brand-blue selection: flat wash plus a hairline that follows the radius. */
   --scheme-selection: var(--color-we-got-blue);
   --scheme-selection-strength: 18%;
   --scheme-selection-hover-strength: 9%;

@@ -79,13 +79,13 @@
 
 .notification-inbox-tray__header {
   /* Left inset = row inset (`--notification-inbox-inset`): heading and dots share one edge. */
-  @apply flex items-center justify-between gap-3 py-3.5 pr-4;
+  @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3.5 pr-4;
   padding-left: var(--notification-inbox-inset);
   border-bottom: 1px solid var(--notification-inbox-divider);
 }
 
 .notification-inbox-tray__heading {
-  @apply flex items-center gap-2 text-base font-semibold leading-none text-foreground;
+  @apply flex min-w-0 items-center gap-2 text-base font-semibold leading-none text-foreground;
 }
 
 .notification-inbox-tray__heading-text {
@@ -118,6 +118,7 @@
 
 .notification-inbox-tray__row[data-unread="true"] {
   background-color: var(--notification-inbox-unread-bg);
+  --notification-inbox-badge-ring: var(--notification-inbox-unread-bg);
 }
 
 .notification-inbox-tray__row:has(.notification-inbox-tray__open:hover),
@@ -128,7 +129,7 @@
   );
 }
 
-/* Whole row opens; the check button sits beside it (no nested buttons). */
+/* Whole row is one open button (no second control). */
 .notification-inbox-tray__open {
   @apply flex min-w-0 flex-1 items-start gap-3.5 py-4 pr-5 text-left outline-none;
   padding-left: var(--notification-inbox-inset);
@@ -155,7 +156,7 @@
 
 .notification-inbox-tray__app-badge {
   @apply absolute -bottom-1 -right-1 flex size-5 items-center justify-center overflow-hidden rounded-[6px];
-  box-shadow: 0 0 0 2px var(--workspace-surface);
+  box-shadow: 0 0 0 2px var(--notification-inbox-badge-ring, var(--workspace-surface));
 }
 
 .notification-inbox-tray__app-badge-icon {

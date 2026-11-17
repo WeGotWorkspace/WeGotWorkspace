@@ -63,7 +63,7 @@ export function NotificationInboxTray({
         className="notification-inbox-tray__popover"
         aria-label="Notifications"
         onOpenAutoFocus={(event) => {
-          // Keep focus on the bell; autofocusing Mark all read opens its tooltip.
+          // Keep focus on the bell; autofocusing Mark all as read would move focus off the trigger.
           event.preventDefault();
         }}
       >
@@ -81,6 +81,7 @@ export function NotificationInboxTray({
             <Button
               icon={<CheckCheck aria-hidden />}
               label="Mark all as read"
+              className="shrink-0"
               variant="outline"
               size="sm"
               onClick={onMarkAllRead}
