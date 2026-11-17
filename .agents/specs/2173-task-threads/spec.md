@@ -28,7 +28,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   Comments and replies carry stored mentions (`X-WGW-MENTIONS`, as in Chat), reactions (`X-WGW-REACTIONS`), edits (`SEQUENCE`, `LAST-MODIFIED`) and tombstones (`STATUS:CANCELLED`, body cleared), all as Chat does today.
 - **Who sees and writes.**
   - Reading and writing both follow the task's current list. Anyone who can see the task can read the thread.
-  - **Commenting needs write access to the list** (product owner, 2026-11-17). Comment, reply, react, and edit or delete your own messages all need it. Someone with read-only access reads along: the panel shows the thread without a composer, reply action or reaction picker. Read access alone was the first proposal, from the Goal's first wording; the product owner rejected it, because commenting is not reading.
+  - **Commenting needs write access to the list** (product owner, 2026-11-17). Comment, reply, react, and edit or delete your own messages all need it. Someone with read-only access reads along: the panel shows the thread without a composer, reply action, reaction picker, or edit and delete. Read access alone was the first proposal, from the Goal's first wording; the product owner rejected it, because commenting is not reading.
   - Only the author can edit or delete their own comment or reply.
   - Nobody can edit or delete an activity entry.
   - Access is checked on every request against `CalendarCollectionAccess`. Nothing is copied per viewer.
@@ -151,8 +151,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
     - the caller's own entry with that ULID is under the subject's **current** key: 200 with that entry (an idempotent retry), also without `canPost`;
     - the caller's own entry with that ULID is under **another** key of the same subject (an earlier scope): 409 `already_stored`, with no entry in the body, because the caller may not read that scope any more; also without `canPost`;
     - the caller has no `canPost`: 403, also when `scopeId` is stale;
-    - the ULID is not stored and `scopeId` is not the current scope: 409 `subject_moved`;
-    - otherwise the entry is stored.
+    - `scopeId` is present and not the current scope: 409 `subject_moved`. This holds for every post that is not the caller's own stored entry, also when the ULID is taken by another person or subject;
+    - otherwise the entry is stored, under a fresh id when the ULID is taken by another person or subject.
   - A `parentId` must be a root entry under the subject's current key. A reply, an activity entry, or an id from another key is rejected with 422 and nothing is stored.
   - A mention outside the subject's audience is dropped from the stored mentions, but the text stays.
 - `PATCH …/entries/{entryId}` with `{body}` and `DELETE …/entries/{entryId}` (tombstone):
@@ -241,7 +241,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Only on 409 `subject_moved` does the panel also offer to post it where the subject is now ("Post in the new list" for tasks), when the author can see it there. That resends the **same** ULID with the current `scopeId`, so it can never make a second copy.
   - On 409 `already_stored` the comment did land, in the earlier scope, before the subject moved and the answer was lost. The local copy stays as "Kept in the previous list", with "Copy text" and "Discard", and no offer to post it again.
   - **Rows behind a comment that is not sent are held.** Replies, edits, deletes and reactions queued behind a send stay queued and are not sent while that comment is "Not sent"; the flush skips them instead of letting them 404 and lose local state. "Discard" removes them together with the comment. Posting in the new place sends the comment first, then those rows against its id. A row that still answers 404 because its target is not in the current thread stays "Not sent" too, with Copy and Discard, and never writes to the old scope.
-  - The composer shows only when the cached subject says the user may post. A comment queued before the user lost write access answers 403 and stays "Not sent", as below.
+  - The composer shows only when the cached subject says the user may post. A comment queued before the user lost write access answers 403 and stays "Not sent", as above.
   - Comments queue only for subjects whose thread is in the cache. A task whose thread was never opened online shows "Connect to load the conversation", as the assignee picker does.
 
 ## Edge cases

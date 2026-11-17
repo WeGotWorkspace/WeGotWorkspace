@@ -161,7 +161,7 @@ See spec.md, Non-goals.
   - In `App\Services\Tasks\Threads`: `TaskThreadSubject`, registered; the owner's list delete calls `ThreadLifecycle::scopeDeleted('task', …)`, and the move paths write "moved here".
   - The shared layer passes its tests with the test-only subject type (the "no task code" invariant).
   - The task access, move, delete, list-delete and limit rules are tested.
-  - `POST …/entries` follows the retry order in spec.md: 200 for the caller's own ULID under the current key, 409 `already_stored` for the caller's own ULID under an earlier key, 409 `subject_moved` for a new ULID with a stale `scopeId`; none of them writes. A ULID already stored for this subject by the caller is never replaced with a fresh id, including when the caller cannot read the earlier scope; a fresh id is only for a ULID taken by another subject or another person.
+  - `POST …/entries` follows the post order in spec.md: 200 for the caller's own ULID under the current key, 409 `already_stored` for the caller's own ULID under an earlier key, 403 without `canPost`, then 409 `subject_moved` for any other post with a stale `scopeId`; none of them writes. A ULID already stored for this subject by the caller is never replaced with a fresh id, including when the caller cannot read the earlier scope; a fresh id is only for a ULID taken by another subject or another person.
   - Entry routes and `parentId` accept only entries under the subject's current key (404 or 422 otherwise, nothing written).
   - Lists sort and page by `(created_at, uid)`.
   - #2172's observer handles `afterMethod:MOVE` between task lists as a `moved` change set. #2172 leaves `MOVE` out on purpose, so this chunk adds it.

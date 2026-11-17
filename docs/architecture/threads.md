@@ -19,7 +19,7 @@ Conversations attached to something: a chat channel, a document, a task. Every t
      - a task's current list.
    - Someone who gains access sees the whole thread, and someone who loses access sees none of it.
    - There is no per-period access: a new Team member reads the history like everyone else.
-   - Writing can need more than reading. For a task, read access to the list reads the thread, and commenting, replying and reacting need write access (#2173, product owner 2026-11-17). A retry of the caller's own stored entry writes nothing, so it is answered before the write check: 200, or 409 `already_stored` under an earlier key, also without write access. A new entry without write access gets 403, also when its scope is stale.
+   - Writing can need more than reading. For a task, read access to the list reads the thread, and commenting, replying, reacting, and editing or deleting your own messages need write access (#2173, product owner 2026-11-17). A retry of the caller's own stored entry writes nothing, so it is answered before the write check: 200, or 409 `already_stored` under an earlier key, also without write access. A new entry without write access gets 403, also when its scope is stale.
 4. **History stays with its audience.** A thread is keyed on the subject *and* the place that sets its audience.
    - For a task that place is the list. Moving a task to another list starts a fresh thread, and the old entries are never shown to the new list's audience.
    - Every read and write goes through the subject's **current** key. An entry id or a reply parent from an old key answers 404 or 422, so an old scope's entries cannot be read or changed from the new one.
