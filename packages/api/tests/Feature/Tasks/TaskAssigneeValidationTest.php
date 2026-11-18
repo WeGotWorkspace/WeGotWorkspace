@@ -208,6 +208,63 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertSame(['org', 'u:dave'], array_keys($moved));
     }
 
+    public function test_a_move_drops_an_address_of_a_reader_of_the_new_list(): void
+    {
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'dave' => ['mayWriteAll' => false],
+        ]])->assertOk();
+
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => [
+            'e:dave@example.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $this->moveTask('bob', $taskId, $shed);
+
+        $this->assertNoDave('bob', $taskId);
+    }
+
+    public function test_a_move_drops_an_address_the_actor_could_not_assign_on_the_new_list(): void
+    {
+        // alice and dave share no Team and dave does not own Shed.
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'alice' => ['mayWriteAll' => true],
+            'dave' => ['mayWriteAll' => true],
+        ]])->assertOk();
+
+        $taskId = $this->createTask();
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $etag = (string) $this->asUser('alice')->getJson($url)->assertOk()->json('etag');
+        $this->asUser('alice')->patchJson($url, ['participants' => [
+            'e:dave@example.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
+        ]], $this->withIfMatch($etag))->assertOk();
+
+        $this->moveTask('alice', $taskId, $shed);
+
+        $this->assertNoDave('alice', $taskId);
+    }
+
+    private function moveTask(string $user, string $taskId, string $listId): void
+    {
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $task = $this->asUser($user)->getJson($url)->assertOk()->json();
+        $this->asUser($user)->putJson($url, [
+            'taskListIds' => [$listId => true],
+            'title' => (string) $task['title'],
+            'participants' => $task['participants'],
+        ], $this->withIfMatch((string) $task['etag']))->assertOk();
+    }
+
+    private function assertNoDave(string $user, string $taskId): void
+    {
+        $participants = $this->asUser($user)->getJson('/api/v1/tasks/items/'.$taskId)->assertOk()->json('participants') ?? [];
+        $this->assertArrayNotHasKey('u:dave', $participants);
+        $this->assertArrayNotHasKey('e:dave@example.test', $participants);
+        $this->assertStringNotContainsString('dave@example.test', $this->storedIcs($taskId));
+    }
+
     public function test_adding_a_reader_or_outsider_is_422(): void
     {
         $taskId = $this->createTask();

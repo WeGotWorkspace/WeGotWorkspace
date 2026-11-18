@@ -24,7 +24,7 @@ use App\Services\Teams\TeamColleagues;
  * only within the target list's audience, and the actor can assign only
  * themselves, the list owner or someone they share a Team with (the picker's
  * rule). The organizer (`roles: owner`) is set by the server only: the actor
- * when a task first gets an attendee, the mover when a move leaves it outside
+ * when a write first assigns someone, the mover when a move leaves it outside
  * the target audience. A payload cannot add or replace one.
  */
 final class TaskAssigneeGuard
@@ -129,9 +129,10 @@ final class TaskAssigneeGuard
         $canonical = $this->withCheckedUsers($canonical, $added, $members, $target, $actor);
         $moved = $source !== null && (int) $source->calendarid !== (int) $target->calendarid;
         if ($moved) {
-            $canonical = $this->onlyTargetAudience($canonical, $members);
+            $canonical = $this->onlyTargetAudience($canonical, $members, $actor, $target);
         }
-        $after['participants'] = $this->withOrganizer($canonical, $stored, $members, $actor, $moved, $added !== []);
+        $assigns = array_filter($added, static fn (string $id): bool => isset($canonical[$id])) !== [];
+        $after['participants'] = $this->withOrganizer($canonical, $stored, $members, $actor, $moved, $assigns);
 
         return $after;
     }
@@ -203,23 +204,13 @@ final class TaskAssigneeGuard
         CalendarInstance $target,
         string $actor,
     ): array {
-        $owners = null;
         foreach ($added as $id) {
             $username = TaskConversionSupport::usernameFromParticipantId($id);
             if ($username === null) {
                 continue;
             }
             $member = $members()[$username] ?? null;
-            if ($member === null || $member['access'] !== TaskListAudience::ACCESS_WRITE) {
-                throw $this->invalidParticipant();
-            }
-            // The picker's rule: the actor, the list owner, or someone the actor
-            // shares a Team with. Anyone else gets the same refusal, so a person
-            // sharee cannot read a Team member's profile by guessing a username.
-            $owners ??= array_flip($this->audience->ownerUsernames($target));
-            if ($username !== $actor
-                && ! isset($owners[$username])
-                && ! $this->colleagues->sharesTeamIgnoringAdminRole($actor, $username)) {
+            if ($member === null || ! $this->mayAssign($member, $actor, $target)) {
                 throw $this->invalidParticipant();
             }
             $participants[$id] = [
@@ -233,6 +224,28 @@ final class TaskAssigneeGuard
         }
 
         return $participants;
+    }
+
+    /**
+     * The picker's rule: write access, and the member is the actor, the list
+     * owner, or someone the actor shares a Team with. Anyone else gets the same
+     * refusal, so a person sharee cannot read a Team member's profile by
+     * guessing a username.
+     *
+     * @param  array{username: string, displayName: string, email: string|null, access: 'read'|'write'}  $member
+     */
+    private function mayAssign(array $member, string $actor, CalendarInstance $target): bool
+    {
+        if ($member['access'] !== TaskListAudience::ACCESS_WRITE) {
+            return false;
+        }
+        $username = $member['username'];
+        if ($username === $actor) {
+            return true;
+        }
+
+        return in_array($username, $this->audience->ownerUsernames($target), true)
+            || $this->colleagues->sharesTeamIgnoringAdminRole($actor, $username);
     }
 
     /**
@@ -349,17 +362,19 @@ final class TaskAssigneeGuard
     /**
      * A task moved to a list with another audience keeps only the assignees
      * who can see that list (#2172, finding 6): the name and address of anyone
-     * else stay behind with the source list, as do outside addresses.
+     * else stay behind with the source list, as do outside addresses. A stored
+     * address stays only when it is that of a member the actor could assign
+     * there, so a move cannot turn it into an assignee the guard would refuse.
      *
      * @param  array<string, array<string, mixed>>  $participants
      * @param  \Closure(): array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
      * @return array<string, array<string, mixed>>
      */
-    private function onlyTargetAudience(array $participants, \Closure $members): array
+    private function onlyTargetAudience(array $participants, \Closure $members, string $actor, CalendarInstance $target): array
     {
         return array_filter(
             $participants,
-            static function (array $entry, string $id) use ($members): bool {
+            function (array $entry, string $id) use ($members, $actor, $target): bool {
                 if (TaskConversionSupport::isOwnerParticipant($entry)) {
                     return true;
                 }
@@ -373,7 +388,9 @@ final class TaskAssigneeGuard
                 // An address of someone in the new audience reads as that person there.
                 $email = substr($id, strlen(TaskConversionSupport::EMAIL_ID_PREFIX));
 
-                return TaskParticipantDirectory::memberForEmail($members(), $email) !== null;
+                $member = TaskParticipantDirectory::memberForEmail($members(), $email);
+
+                return $member !== null && $this->mayAssign($member, $actor, $target);
             },
             ARRAY_FILTER_USE_BOTH,
         );
