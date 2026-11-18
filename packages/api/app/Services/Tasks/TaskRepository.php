@@ -11,6 +11,7 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\GroupMember;
+use App\Models\TaskYjsState;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Collab\CollabTextState;
@@ -360,6 +361,19 @@ final class TaskRepository
                     $this->backends->calBackend()->updateCalendarObject($sourceIds, $objectUri, $ics);
                 } else {
                     $this->backends->calBackend()->createCalendarObject([(int) $target->calendarid, (int) $target->id], $objectUri, $ics);
+                    $moved = $this->findObjectInCalendar((int) $target->calendarid, $objectUri);
+                    if ($moved !== null) {
+                        // The delete below cascades the state rows; carry them over.
+                        foreach (TaskYjsState::query()->where('calendar_object_id', (int) $object->id)->get() as $row) {
+                            TaskYjsState::query()->create([
+                                'calendar_object_id' => (int) $moved->id,
+                                'vtodo_uid' => $row->vtodo_uid,
+                                'state' => $this->textCore->stateBytes($row),
+                                'object_etag' => $row->object_etag,
+                                'content_etag' => $row->content_etag,
+                            ]);
+                        }
+                    }
                     $this->backends->calBackend()->deleteCalendarObject($sourceIds, $objectUri);
                 }
 
@@ -474,43 +488,49 @@ final class TaskRepository
         }
 
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
         $instance = $located['instance'];
-        $object = $located['object'];
-        $objectUri = (string) $object->uri;
+        $vtodoUid = $located['vtodoUid'];
+        $objectUri = (string) $located['object']->uri;
         $calendarIdPair = [(int) $instance->calendarid, (int) $instance->id];
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
 
-        if ($located['vtodoUid'] !== null) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            $remaining = $this->mapper->removeVtodoFromIcs($raw, $located['vtodoUid']);
-            if ($remaining === null) {
+        // Under the live-text core's lock the precondition and the remaining
+        // ICS come from the locked row, so a text save that landed after the
+        // lookup is neither overwritten nor deleted past a stale If-Match.
+        $fileRemains = $this->textCore->locked(
+            $this->textFields->forComponent($vtodoUid),
+            $located['object'],
+            'Task not found.',
+            function (CalendarObject $object, ?Model $state) use (
+                $ifMatch, $ifUnmodifiedSince, $requirePrecondition, $vtodoUid, $calendarIdPair, $objectUri,
+            ): bool {
+                $this->assertObjectPreconditions($object, $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
+
+                if ($vtodoUid !== null) {
+                    $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                    $remaining = $this->mapper->removeVtodoFromIcs($raw, $vtodoUid);
+                    if ($remaining !== null) {
+                        $this->backends->calBackend()->updateCalendarObject($calendarIdPair, $objectUri, $remaining);
+                        $state?->delete();
+
+                        return true;
+                    }
+                }
                 $this->backends->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
-                $this->searchIndexSync->sync(
-                    'tasks',
-                    fn () => $this->searchIndexer->deleteDavPath($davPath),
-                    $davPath,
-                    $username,
-                );
-            } else {
-                $this->backends->calBackend()->updateCalendarObject($calendarIdPair, $objectUri, $remaining);
-                $this->searchIndexSync->sync(
-                    'tasks',
-                    fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
-                    $davPath,
-                    $username,
-                );
-            }
-        } else {
-            $this->backends->calBackend()->deleteCalendarObject($calendarIdPair, $objectUri);
-            $this->searchIndexSync->sync(
-                'tasks',
-                fn () => $this->searchIndexer->deleteDavPath($davPath),
-                $davPath,
-                $username,
-            );
-        }
+
+                return false;
+            },
+        );
+
+        $this->searchIndexSync->sync(
+            'tasks',
+            $fileRemains
+                ? fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath)
+                : fn () => $this->searchIndexer->deleteDavPath($davPath),
+            $davPath,
+            $username,
+        );
 
         return ['ok' => true];
     }

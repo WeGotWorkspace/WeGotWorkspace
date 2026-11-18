@@ -238,6 +238,67 @@ final class TaskTextCollaborationTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('STATUS:COMPLETED', (string) $this->object()->calendardata);
     }
 
+    public function test_a_task_id_with_a_urn_uid_reaches_the_text_routes(): void
+    {
+        $uid = 'urn:uuid:9a1b2c3d-0000-4000-8000-000000000001';
+        $this->taskId = $this->seedTaskViaPdo('bob', 'urn.ics', $this->todo('First', 'One', $uid));
+        $current = (string) CalendarObject::query()->where('uri', 'urn.ics')->firstOrFail()->calendardata;
+        $second = "BEGIN:VTODO\r\nUID:urn:uuid:9a1b2c3d-0000-4000-8000-000000000002\r\nSUMMARY:Second\r\nEND:VTODO\r\n";
+        $this->updateTaskViaPdo('bob', 'urn.ics', str_replace("END:VCALENDAR\r\n", $second."END:VCALENDAR\r\n", $current));
+
+        $this->taskId = 'urn.ics#'.$uid;
+        $this->readText()->assertOk()->assertJsonPath('title', 'First');
+        $this->firstSave('First', 'Typed')->assertOk();
+        $this->showTask();
+    }
+
+    public function test_moving_a_task_keeps_its_state(): void
+    {
+        $this->firstSave('Plan', 'Typed')->assertOk();
+        $workId = (string) $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->postJson('/api/v1/tasks/tasklists', ['name' => 'Work'])
+            ->assertCreated()
+            ->json('id');
+        $etag = (string) $this->showTask()->json('etag');
+
+        $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->withHeader('If-Match', $etag)
+            ->putJson($this->taskUrl(), ['taskListIds' => [$workId => true], 'title' => 'Plan', 'description' => 'Typed'])
+            ->assertOk()
+            ->assertJsonPath('taskListId', $workId);
+
+        $state = $this->readState()->assertOk();
+        $this->assertSame(self::STATE, $state->getContent());
+        $state->assertHeaderMissing(CollabExternalWrite::HEADER);
+    }
+
+    public function test_a_delete_with_a_stale_etag_is_refused_and_keeps_the_other_tasks_text(): void
+    {
+        $this->taskId = $this->seedTaskViaPdo('bob', 'multi.ics', $this->todo('First', 'One', 'multi-first'));
+        $current = (string) CalendarObject::query()->where('uri', 'multi.ics')->firstOrFail()->calendardata;
+        $second = "BEGIN:VTODO\r\nUID:multi-second\r\nSUMMARY:Second\r\nEND:VTODO\r\n";
+        $this->updateTaskViaPdo('bob', 'multi.ics', str_replace("END:VCALENDAR\r\n", $second."END:VCALENDAR\r\n", $current));
+
+        $this->taskId = 'multi#multi-second';
+        $staleEtag = (string) $this->showTask()->json('etag');
+        $this->taskId = 'multi#multi-first';
+        $this->firstSave('First', 'Typed')->assertOk();
+
+        $this->taskId = 'multi#multi-second';
+        $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->withHeader('If-Match', $staleEtag)
+            ->deleteJson($this->taskUrl())
+            ->assertStatus(412);
+
+        $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->withHeader('If-Match', (string) $this->showTask()->json('etag'))
+            ->deleteJson($this->taskUrl())
+            ->assertOk();
+        $this->taskId = 'multi#multi-first';
+        $this->assertSame('Typed', $this->readText()->json('description'));
+        $this->readState()->assertOk();
+    }
+
     private function todo(string $summary, string $description, string $uid = self::UID): string
     {
         return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//Reminders//EN\r\nBEGIN:VTODO\r\nUID:{$uid}\r\n"

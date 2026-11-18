@@ -282,17 +282,17 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         Route::get('tasks/items', [TasksController::class, 'index']);
         Route::post('tasks/items', [TasksController::class, 'store']);
         Route::get('tasks/items/{taskId}', [TasksController::class, 'show'])
-            ->where('taskId', '[A-Za-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#:-]+');
         Route::put('tasks/items/{taskId}', [TasksController::class, 'update'])
-            ->where('taskId', '[A-Za-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#:-]+');
         Route::patch('tasks/items/{taskId}', [TasksController::class, 'patch'])
-            ->where('taskId', '[A-Za-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#:-]+');
         Route::delete('tasks/items/{taskId}', [TasksController::class, 'destroy'])
-            ->where('taskId', '[A-Za-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#:-]+');
         Route::get('tasks/items/{taskId}/text', [TaskTextController::class, 'show'])
-            ->where('taskId', '[A-Za-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#:-]+');
         Route::put('tasks/items/{taskId}/text', [TaskTextController::class, 'update'])
-            ->where('taskId', '[A-Za-z0-9_.#-]+');
+            ->where('taskId', '[A-Za-z0-9_.#:-]+');
     });
 
     Route::get('notes/notebooks/changes', [NotebooksController::class, 'changes']);
