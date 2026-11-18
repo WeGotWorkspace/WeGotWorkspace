@@ -11,7 +11,6 @@ export const calendarReplyFolderLabels = {
   folder: "Folder",
   folderHint: "Where replies arrive",
   foldersLoading: "Loading folders…",
-  folderSaved: "Folder saved",
   folderMissing: "This folder does not exist in your mailbox.",
   loading: "Loading invitation reply settings…",
   offline: "Invitation reply settings need a connection. They load again when you are back online.",
