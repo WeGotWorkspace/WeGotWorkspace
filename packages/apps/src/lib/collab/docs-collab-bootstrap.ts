@@ -8,7 +8,14 @@ import { isCollabDocumentGoneError } from "./docs-collab-utils";
 export const SNAPSHOT_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
 
 export type SnapshotOutcome =
-  | { kind: "snapshot"; update: Uint8Array; etag: string | null; externalWrite: boolean }
+  | {
+      kind: "snapshot";
+      update: Uint8Array;
+      etag: string | null;
+      externalWrite: boolean;
+      /** Content tag of the text the state was written from (Notes, Tasks). */
+      contentTag?: string | null;
+    }
   /** The server answered 204: there is genuinely no sidecar. Seeding is safe. */
   | {
       kind: "absent";
@@ -80,6 +87,7 @@ async function loadSnapshotWithRetry(
         update: snapshot.update,
         etag: snapshot.etag,
         externalWrite: snapshot.externalWrite === true,
+        ...(snapshot.contentTag ? { contentTag: snapshot.contentTag } : {}),
       };
     } catch (error) {
       lastError = error;

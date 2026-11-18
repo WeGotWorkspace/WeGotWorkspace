@@ -23,7 +23,8 @@ import {
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
 import { fetchYjsSnapshot, loadCollabText } from "@/lib/collab/docs-collab-server-io";
-import { decideExternalWrite, replaceDocumentWithExternalText } from "./docs-collab-external-write";
+import { replaceDocumentWithExternalText } from "./docs-collab-external-write";
+import { decideBootstrapAction, decideMergeAction } from "./docs-collab-snapshot-check";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
@@ -86,6 +87,11 @@ type UseDocsCollabJoinOptions = {
   setPendingSync: (pending: boolean) => void;
   setFailedSync: (failed: boolean) => void;
 };
+
+/** This client's own edits since its last landed save. */
+function hasPendingLocalWork(refs: DocsCollabSessionRefs): boolean {
+  return refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
+}
 
 export function useDocsCollabJoin({
   refs,
@@ -232,12 +238,14 @@ export function useDocsCollabJoin({
       const snapshot = await fetchYjsSnapshot(urls.yjsUrl, authToken);
       rememberSidecarEtag(room, snapshot.etag);
       if (!snapshot.update) return false;
-
-      const pendingLocalWork =
-        refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-      const action = decideExternalWrite(snapshot.externalWrite === true, pendingLocalWork);
+      const { action, readText } = await decideMergeAction(snapshot, snapshot.update, {
+        documentUrl: urls.documentUrl,
+        authToken,
+        format: documentFormat,
+        pendingLocalWork: hasPendingLocalWork(refs),
+      });
       if (action === "prompt") {
-        const text = await loadCollabText(urls.documentUrl, authToken);
+        const text = await readText();
         refs.externalWriteSeenRef.current = text.etag ?? null;
         refs.externalWriteHoldRef.current = true;
         urls.onExternalWrite?.({
@@ -248,7 +256,7 @@ export function useDocsCollabJoin({
         return false;
       }
       if (action === "rebuild") {
-        const text = await loadCollabText(urls.documentUrl, authToken);
+        const text = await readText();
         refs.externalWriteSeenRef.current = text.etag ?? null;
         replaceDocumentWithExternalText(
           ydoc,
@@ -326,12 +334,10 @@ export function useDocsCollabJoin({
       let restoredLocalState = false;
       let keptLocalEdits = false;
       if (snapshot.kind === "snapshot") {
-        const pendingLocalWork =
-          refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-        // Without the text there is nothing to rebuild from or to ask about.
-        const action = load.markdownError
-          ? "adopt"
-          : decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
+        const action = decideBootstrapAction(snapshot, load, loadedTitle, loadedEtag, {
+          format: documentFormat,
+          pendingLocalWork: hasPendingLocalWork(refs),
+        });
         rememberSidecarEtag(room, snapshot.etag);
         if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {

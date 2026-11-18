@@ -6230,6 +6230,8 @@ export interface paths {
                     headers: {
                         /** @description VJOURNAL entity tag on the JSON representation. format=yjs returns the sha1 of the state bytes, and only when a state row exists. Those tags are not interchangeable. */
                         ETag?: string;
+                        /** @description On format=yjs: the content tag (as contentEtag on the JSON GET) of the text the stored Yjs state was written from. A client checks the state against the text only when this equals the contentEtag it read, so a save landing between the two reads is not mistaken for an outside write. Absent when there is no state row. */
+                        "X-Wgw-Content-Tag"?: string;
                         /** @description Present with value 1 on format=yjs when the journal ETag moved on and SUMMARY or DESCRIPTION is no longer the text the stored Yjs state was written from. Absent when there is no state row, when the journal ETag still matches, and when only tags, a move, or archive changed the journal. The body is still the stored Yjs bytes. The read does not rewrite them. */
                         "X-Wgw-External-Write"?: string;
                         [name: string]: unknown;
