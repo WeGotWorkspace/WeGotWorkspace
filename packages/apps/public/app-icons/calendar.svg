@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-prince, #962fa8))"/>
-<rect width="60" height="13" fill="var(--app-icon-layer-foreground, var(--color-we-got-prince-tint, #e7ccec))"/>
-<path fill="var(--app-icon-layer-foreground, var(--color-we-got-prince-tint, #e7ccec))" d="M15 40.002a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 40.002m0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6M15 22a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 22m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 22m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 22"/>
+<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-sand, #ba9689))"/>
+<rect width="46" height="2.5" x="7" y="12.75" fill="var(--app-icon-layer-foreground, var(--color-we-got-dark, #003311))" rx="1.25"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-dark, #003311))" fill-rule="evenodd" d="M16.2 14a3.8 3.8 0 1 0 7.6 0 3.8 3.8 0 1 0-7.6 0m20 0a3.8 3.8 0 1 0 7.6 0 3.8 3.8 0 1 0-7.6 0M10.4 29a3.6 3.6 0 1 0 7.2 0 3.6 3.6 0 1 0-7.2 0m16 0a3.6 3.6 0 1 0 7.2 0 3.6 3.6 0 1 0-7.2 0m16 0a3.6 3.6 0 1 0 7.2 0 3.6 3.6 0 1 0-7.2 0M10.4 44a3.6 3.6 0 1 0 7.2 0 3.6 3.6 0 1 0-7.2 0m32 0a3.6 3.6 0 1 0 7.2 0 3.6 3.6 0 1 0-7.2 0M30 39.2a4.8 4.8 0 1 0 0 9.6 4.8 4.8 0 0 0 0-9.6m0 2.4a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8"/>
 </svg>
