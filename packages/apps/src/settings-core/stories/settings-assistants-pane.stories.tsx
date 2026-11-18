@@ -1,9 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import {
-  SETTINGS_AUTHORIZED_ASSISTANTS_TITLE,
-  SettingsAssistantsPane,
-} from "@/settings-core/src/settings-assistants-pane";
+import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { MCP_ASSISTANT_DATA_WARNING_TITLE } from "@/settings-core/src/mcp-assistant-data-warning";
 import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -147,18 +144,16 @@ export const Connected: Story = {
   render: () => <AssistantsHarness grants={sampleGrants} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(`${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (3)`)).toBeTruthy();
-    await expect(canvas.getByText("Claude")).toBeTruthy();
+    await expect(canvas.getByRole("heading", { name: "Claude" })).toBeTruthy();
     await expect(canvas.getByText("claude.ai")).toBeTruthy();
-    await expect(canvas.getAllByText("Claude Code")).toHaveLength(1);
+    await expect(canvas.getAllByRole("heading", { name: "Claude Code" })).toHaveLength(1);
     await expect(canvas.getByText("Local app")).toBeTruthy();
     await expect(
       canvas.getByRole("button", { name: "Revoke all Claude Code connections" }),
     ).toBeTruthy();
-    await expect(canvas.getByText("3 connections")).toBeTruthy();
     await expect(canvas.getByText("Firefox on Linux")).toBeTruthy();
     await expect(canvas.getByText("Unknown browser")).toBeTruthy();
-    await expect(canvas.getByText(/^Connected .* · Not used yet$/)).toBeTruthy();
+    await expect(canvas.getByText(/^Connected .* · (Not used yet|Active .*)$/)).toBeTruthy();
     await expect(canvas.queryByRole("button", { name: "Connect assistant" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "Revoke ChatGPT" })).toBeTruthy();
     await expect(canvas.queryByText(MCP_ASSISTANT_DATA_WARNING_TITLE)).toBeNull();

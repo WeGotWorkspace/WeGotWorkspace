@@ -1,4 +1,4 @@
-import { Bot } from "lucide-react";
+import { KeyRound, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { buildMcpEndpointUrl } from "@/lib/mcp-endpoint";
@@ -47,10 +47,6 @@ export function SettingsAssistantsPane({
   const { confirmDialog, requestConfirm } = useConfirmDialog();
   const endpointUrl = mcpEndpointUrl ?? buildMcpEndpointUrl();
   const groups = groupMcpGrants(grants);
-  const title =
-    groups.length > 0
-      ? `${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (${groups.length})`
-      : SETTINGS_AUTHORIZED_ASSISTANTS_TITLE;
 
   const confirmRevoke = (group: McpAssistantGroup, connections: SettingsMcpGrant[]) => {
     const all = connections.length > 1;
@@ -82,36 +78,40 @@ export function SettingsAssistantsPane({
           }
         />
       </SettingsPaneCard>
-      <SettingsPaneCard title={title} icon={<Bot aria-hidden />}>
-        {error ? (
-          <p className="settings-assistants-pane__error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {loading && grants.length === 0 ? (
-          <p className="settings-assistants-pane__empty">Loading AI assistants…</p>
-        ) : null}
-        {!loading && grants.length === 0 ? (
+      {error ? (
+        <p className="settings-assistants-pane__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {grants.length === 0 ? (
+        <SettingsPaneCard title={SETTINGS_AUTHORIZED_ASSISTANTS_TITLE}>
           <p className="settings-assistants-pane__empty">
-            No assistants yet. Add the connection URL in your assistant to connect it.
+            {loading
+              ? "Loading AI assistants…"
+              : "No assistants yet. Add the connection URL in your assistant to connect it."}
           </p>
-        ) : null}
-        {groups.map((group) => (
-          <AssistantRow
-            key={group.key}
-            group={group}
-            now={now}
-            revokingId={revokingId}
-            onRevoke={(connections) => confirmRevoke(group, connections)}
-          />
-        ))}
-      </SettingsPaneCard>
+        </SettingsPaneCard>
+      ) : null}
+      {groups.map((group) => (
+        <AssistantSection
+          key={group.key}
+          group={group}
+          now={now}
+          revokingId={revokingId}
+          onRevoke={(connections) => confirmRevoke(group, connections)}
+        />
+      ))}
       {confirmDialog}
     </>
   );
 }
 
-function AssistantRow({
+/**
+ * One assistant product as a page section: its name as the title (source at the
+ * end), then what it may do per app, then its connections. One connection or
+ * many, the layout is the same; Revoke all only appears with more than one.
+ */
+function AssistantSection({
   group,
   now,
   revokingId,
@@ -123,9 +123,7 @@ function AssistantRow({
   onRevoke: (connections: SettingsMcpGrant[]) => void;
 }) {
   const { connections } = group;
-  const single = connections.length === 1;
   const sharedScopes = connectionsShareScopes(connections);
-  const busy = connections.some((grant) => grant.clientId === revokingId);
   const shareCalls = connections
     .flatMap((grant) => grant.shareCalls)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -133,51 +131,62 @@ function AssistantRow({
   const showSource = group.source !== "" && group.source !== group.name;
 
   return (
-    <FieldLabelRow
-      layout="inline"
+    <SettingsPaneCard
       className="settings-assistant"
-      label={group.name}
-      labelAccessory={showSource ? <Tag label={group.source} /> : undefined}
-      description={
-        single
-          ? connectionMetaParts(connections[0], now ?? new Date()).join(" · ")
-          : `${connections.length} connections`
-      }
-      below={
-        <div className="settings-assistant__below">
-          {sharedScopes ? <AccessRows scopes={connections[0].scopes} /> : null}
-          {single ? null : (
-            <div className="settings-assistant__connections">
-              {connections.map((grant) => (
-                <ConnectionRow
-                  key={grant.clientId}
-                  grant={grant}
-                  name={group.name}
-                  now={now}
-                  showScopes={!sharedScopes}
-                  disabled={grant.clientId === revokingId}
-                  onRevoke={() => onRevoke([grant])}
-                />
-              ))}
-            </div>
-          )}
-          <ShareActivity calls={shareCalls} />
-        </div>
-      }
+      title={group.name}
+      titleAccessory={showSource ? <Tag label={group.source} /> : undefined}
     >
-      <RevokeButton
-        label={single ? "Revoke" : "Revoke all"}
-        ariaLabel={single ? `Revoke ${group.name}` : `Revoke all ${group.name} connections`}
-        disabled={busy}
-        onClick={() => onRevoke(connections)}
-      />
-    </FieldLabelRow>
+      {sharedScopes ? (
+        <>
+          <FieldLabelRow
+            layout="inline"
+            section
+            className="settings-assistant__heading"
+            label="Permissions"
+            icon={<KeyRound aria-hidden />}
+          >
+            {null}
+          </FieldLabelRow>
+          <AccessRows scopes={connections[0].scopes} />
+        </>
+      ) : null}
+      <FieldLabelRow
+        layout="inline"
+        section
+        className="settings-assistant__heading"
+        label="Connections"
+        icon={<MonitorSmartphone aria-hidden />}
+      >
+        {connections.length > 1 ? (
+          <RevokeButton
+            label="Revoke all"
+            ariaLabel={`Revoke all ${group.name} connections`}
+            disabled={connections.some((grant) => grant.clientId === revokingId)}
+            onClick={() => onRevoke(connections)}
+          />
+        ) : null}
+      </FieldLabelRow>
+      {connections.map((grant) => (
+        <ConnectionRow
+          key={grant.clientId}
+          grant={grant}
+          name={group.name}
+          single={connections.length === 1}
+          now={now}
+          showScopes={!sharedScopes}
+          disabled={grant.clientId === revokingId}
+          onRevoke={() => onRevoke([grant])}
+        />
+      ))}
+      <ShareActivity calls={shareCalls} />
+    </SettingsPaneCard>
   );
 }
 
 function ConnectionRow({
   grant,
   name,
+  single,
   now,
   showScopes,
   disabled,
@@ -185,6 +194,7 @@ function ConnectionRow({
 }: {
   grant: SettingsMcpGrant;
   name: string;
+  single: boolean;
   now?: Date;
   showScopes: boolean;
   disabled: boolean;
@@ -204,7 +214,7 @@ function ConnectionRow({
     >
       <RevokeButton
         label="Revoke"
-        ariaLabel={`Revoke ${name}, ${via ?? "unknown browser"}`}
+        ariaLabel={single ? `Revoke ${name}` : `Revoke ${name}, ${via ?? "unknown browser"}`}
         disabled={disabled}
         onClick={onRevoke}
       />
@@ -245,7 +255,7 @@ function AccessRows({ scopes }: { scopes: string[] }) {
   const apps = mcpAppAccess(scopes);
   if (apps.length === 0) return null;
   return (
-    <div className="settings-assistant__access">
+    <>
       {apps.map((access) => (
         <FieldLabelRow
           key={access.app}
@@ -261,6 +271,6 @@ function AccessRows({ scopes }: { scopes: string[] }) {
           </span>
         </FieldLabelRow>
       ))}
-    </div>
+    </>
   );
 }

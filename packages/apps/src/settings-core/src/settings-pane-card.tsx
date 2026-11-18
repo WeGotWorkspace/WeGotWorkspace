@@ -5,18 +5,29 @@ import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 export function SettingsPaneCard({
   title,
   icon,
+  titleAccessory,
   action,
+  className,
   children,
 }: {
   title?: string;
   /** Marks the section, like the section rows in dialogs (Team access, Public link). */
   icon?: ReactNode;
+  /** Right after the title, such as a source tag. */
+  titleAccessory?: ReactNode;
+  className?: string;
   /** End of the title row, such as a status tag. */
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <WorkspacePageSection className="settings-pane-card" title={title} icon={icon} action={action}>
+    <WorkspacePageSection
+      className={className ? `settings-pane-card ${className}` : "settings-pane-card"}
+      title={title}
+      icon={icon}
+      titleAccessory={titleAccessory}
+      action={action}
+    >
       {children}
     </WorkspacePageSection>
   );

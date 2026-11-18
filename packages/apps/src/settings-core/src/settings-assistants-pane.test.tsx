@@ -69,14 +69,20 @@ function appRows(): string[] {
   });
 }
 
-/** Captions of the assistant rows (the product names). */
+/** Section titles of the assistants (the product names). */
 function assistantNames(): string[] {
-  return [...document.querySelectorAll(".settings-assistant > * .field-label-row__label")]
-    .filter(
-      (label) =>
-        label.closest(".settings-assistant__app, .settings-assistant__connection") === null,
-    )
-    .map((label) => label.textContent ?? "");
+  return [...document.querySelectorAll(".settings-assistant .card__title")].map(
+    (title) => title.textContent ?? "",
+  );
+}
+
+/** Each connection row as "Browser: description". */
+function connectionRows(): string[] {
+  return [...document.querySelectorAll(".settings-assistant__connection")].map((row) => {
+    const label = row.querySelector(".field-label-row__label")?.textContent ?? "";
+    const description = row.querySelector(".field-label-row__description")?.textContent ?? "";
+    return `${label}: ${description}`;
+  });
 }
 
 function renderPane(ui: ReactElement) {
@@ -112,10 +118,14 @@ describe("SettingsAssistantsPane", () => {
     renderAssistantsPane({
       grants: [grant({ scopes: ["drive.read", "calendar.read", "calendar.write"] })],
     });
-    expect(screen.getByText(`${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (1)`)).toBeTruthy();
     expect(assistantNames()).toEqual(["Claude"]);
     expect(screen.getByText("claude.ai")).toBeTruthy();
-    expect(screen.getByText(/^Safari on Mac · Approved (12 Nov|Nov 12) · Active /)).toBeTruthy();
+    expect(screen.getByText("Permissions")).toBeTruthy();
+    expect(screen.getByText("Connections")).toBeTruthy();
+    expect(connectionRows()).toEqual([
+      expect.stringMatching(/^Safari on Mac: Approved (12 Nov|Nov 12) · Active /),
+    ]);
+    expect(screen.queryByRole("button", { name: /Revoke all/ })).toBeNull();
     expect(appRows()).toEqual(["Calendar: Read, Write", "Drive: Read"]);
     expect(screen.getByRole("button", { name: "Revoke Claude" })).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();
@@ -142,12 +152,12 @@ describe("SettingsAssistantsPane", () => {
         }),
       ],
     });
-    expect(screen.getByText(`${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (1)`)).toBeTruthy();
     expect(assistantNames()).toEqual(["Claude Code"]);
     expect(screen.getByText("Local app")).toBeTruthy();
-    expect(screen.getByText("2 connections")).toBeTruthy();
-    expect(screen.getByText("Firefox on Linux")).toBeTruthy();
-    expect(screen.getByText(/^Approved (12 Nov|Nov 12) · Not used yet$/)).toBeTruthy();
+    expect(connectionRows()).toEqual([
+      expect.stringMatching(/^Safari on Mac: Approved (12 Nov|Nov 12) · Active /),
+      expect.stringMatching(/^Firefox on Linux: Approved (12 Nov|Nov 12) · Not used yet$/),
+    ]);
     expect(appRows()).toEqual(["Drive: Read"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Revoke Claude Code, Firefox on Linux" }));
@@ -181,7 +191,9 @@ describe("SettingsAssistantsPane", () => {
         grant({ approvedAt: null, approvedUserAgent: null, connectedAt: "2026-10-01T09:00:00Z" }),
       ],
     });
-    expect(screen.getByText(/^Connected (1 Oct|Oct 1) · Active /)).toBeTruthy();
+    expect(connectionRows()).toEqual([
+      expect.stringMatching(/^Unknown browser: Connected (1 Oct|Oct 1) · Active /),
+    ]);
   });
 
   it("shows a grant holding only retired mail scopes so it can be revoked", () => {
