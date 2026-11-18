@@ -46,12 +46,6 @@ final class TaskThreadHooks
         });
     }
 
-    /** The list changed owner and kept its calendarid: its entries follow into the new owner's pool. */
-    public function listTransferred(int $calendarId, string $newOwnerUri): void
-    {
-        $this->guard('list_transferred', (string) $calendarId, fn () => app(ThreadLifecycle::class)->scopeTransferred(TaskThreadSubject::TYPE, (string) $calendarId, $newOwnerUri));
-    }
-
     /** The owner deleted the list: its task threads go with it. */
     public function listDeleted(int $calendarId): void
     {
