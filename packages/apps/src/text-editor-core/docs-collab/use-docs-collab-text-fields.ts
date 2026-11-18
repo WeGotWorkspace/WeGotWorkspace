@@ -132,12 +132,14 @@ export function useDocsCollabTextFields({
       const stored = snapshot.kind === "snapshot" ? snapshot : null;
       if (!stored && (snapshot.kind !== "absent" || isTextFieldsEmpty(ydoc))) return null;
       rememberSidecarEtag(room, stored?.etag ?? null);
-      const keptLocalEdits = refs.localDirtySinceLastSaveRef.current;
+      // A restored pending flag counts: the edit is in the local doc, not on the server.
+      const pendingLocalWork = hasPendingLocalWork(refs);
       const result = reread(ydoc, stored ?? { update: null }, served);
-      if (result === "prompt") return { settlement: "prompted", keptLocalEdits };
+      if (result === "prompt") return { settlement: "prompted", keptLocalEdits: pendingLocalWork };
       refs.seedDoneRef.current = true;
       // A replacement is the server's text: nothing to save.
-      return { settlement: result === "replaced" ? "replaced" : "adopted", keptLocalEdits };
+      if (result === "replaced") return { settlement: "replaced", keptLocalEdits: false };
+      return { settlement: "adopted", keptLocalEdits: pendingLocalWork };
     },
     [reread, refs, room, textFields],
   );
