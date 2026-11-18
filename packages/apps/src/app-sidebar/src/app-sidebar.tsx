@@ -1,6 +1,8 @@
 import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef } from "react";
 import { AppRail } from "@/app-rail/src/app-rail";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
+import { APP_SWITCH_PRODUCT_APPS } from "@/app-switch-button/src/app-switch-menu-apps";
+import { useRouterState } from "@tanstack/react-router";
 import { bindOpenSidebarStatusBar } from "@/app-sidebar/src/sidebar-status-bar";
 import { cn } from "@/lib/utils";
 import {
@@ -42,7 +44,11 @@ export type AppSidebarProps = {
  */
 function AppSidebarNotifications() {
   const inbox = useNotificationsInbox();
+  const path = useRouterState({ select: (r) => r.location.pathname });
   if (!inbox) return null;
+  const currentApp = APP_SWITCH_PRODUCT_APPS.find(
+    (app) => path === app.to || path.startsWith(`${app.to}/`),
+  );
   return (
     <div className="app-sidebar__notifications">
       <NotificationInboxTray
@@ -55,6 +61,8 @@ function AppSidebarNotifications() {
         soundMuted={inbox.soundMuted}
         onToggleSoundMute={inbox.onToggleSoundMute}
         unreadArrivalNonce={inbox.unreadArrivalNonce}
+        currentAppId={currentApp?.id}
+        onMarkReadWhere={(match) => void inbox.markReadWhere(match)}
       />
     </div>
   );

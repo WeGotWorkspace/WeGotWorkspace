@@ -1,5 +1,8 @@
-import { Bell, BellOff, BellRing, CheckCheck, Volume2, VolumeX } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Bell, BellOff, BellRing, CheckCheck, LayoutGrid, Volume2, VolumeX } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
+import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import { CollectionGhostButton } from "@/ui/collection-ghost-select";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import {
@@ -25,7 +28,35 @@ export type NotificationInboxTrayProps = {
   onToggleSoundMute?: () => void;
   /** From inbox context — restarts the unread badge pulse when it increments. */
   unreadArrivalNonce?: number;
+  /**
+   * The app the user is in. When set, the header offers "All apps" vs this app.
+   * Omit on home and in apps that raise no notifications.
+   */
+  currentAppId?: WorkspaceAppId;
+  /** Marks the matching unread rows read; used by "Mark all as read" in the app scope. */
+  onMarkReadWhere?: (match: (item: NotificationInboxItem) => boolean) => void;
 };
+
+type InboxScope = "all" | "app";
+
+const SCOPE_STORAGE_KEY = "wgw.notifications.tray-scope";
+
+/** Device-local convenience: the tray reopens on the scope last picked. */
+function readStoredScope(): InboxScope {
+  try {
+    return window.localStorage.getItem(SCOPE_STORAGE_KEY) === "app" ? "app" : "all";
+  } catch {
+    return "all";
+  }
+}
+
+function storeScope(scope: InboxScope): void {
+  try {
+    window.localStorage.setItem(SCOPE_STORAGE_KEY, scope);
+  } catch {
+    // Private mode or blocked storage: the scope just resets on reload.
+  }
+}
 
 export function NotificationInboxTray({
   items,
@@ -37,9 +68,43 @@ export function NotificationInboxTray({
   soundMuted = false,
   onToggleSoundMute,
   unreadArrivalNonce = 0,
+  currentAppId,
+  onMarkReadWhere,
 }: NotificationInboxTrayProps) {
-  const unreadLabel = unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications";
+  const [storedScope, setStoredScope] = useState<InboxScope>(readStoredScope);
+  const scope: InboxScope = currentAppId ? storedScope : "all";
+  const appItems = useMemo(
+    () =>
+      currentAppId ? items.filter((item) => notificationInboxAppId(item) === currentAppId) : items,
+    [items, currentAppId],
+  );
+  const appUnreadCount = useMemo(
+    () => appItems.filter((item) => item.readAt == null).length,
+    [appItems],
+  );
+  const shownItems = scope === "app" ? appItems : items;
+  const shownUnreadCount = scope === "app" ? appUnreadCount : unreadCount;
+  const currentAppName = currentAppId ? notificationInboxDomainLabel(currentAppId) : "";
+  // The bell counts what the tray lists: every app, or only this one.
+  const unreadScopeLabel =
+    scope === "app"
+      ? `${shownUnreadCount} unread in ${currentAppName}`
+      : `${shownUnreadCount} unread`;
+  const unreadLabel =
+    shownUnreadCount > 0 ? `Notifications (${unreadScopeLabel})` : "Notifications";
   const label = soundMuted ? `${unreadLabel}, sound muted` : unreadLabel;
+  const canMarkShownRead = scope === "app" ? Boolean(onMarkReadWhere) : Boolean(onMarkAllRead);
+  const pickScope = (next: InboxScope) => {
+    setStoredScope(next);
+    storeScope(next);
+  };
+  const markShownRead = () => {
+    if (scope === "app" && currentAppId) {
+      onMarkReadWhere?.((item) => notificationInboxAppId(item) === currentAppId);
+      return;
+    }
+    onMarkAllRead?.();
+  };
   const pulseAttr = useInboxBadgePulseAttr(unreadArrivalNonce);
   const showPushToggle = Boolean(onEnablePush) && !pushEnabled;
 
@@ -53,13 +118,14 @@ export function NotificationInboxTray({
           size="md"
           showTooltip={false}
           className="notification-inbox-tray__trigger"
-          data-count={unreadCount > 0 ? String(unreadCount) : undefined}
+          data-count={shownUnreadCount > 0 ? String(shownUnreadCount) : undefined}
           data-pulse={pulseAttr}
           data-muted={soundMuted ? "" : undefined}
         />
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        frost
         className="notification-inbox-tray__popover"
         aria-label="Notifications"
         onOpenAutoFocus={(event) => {
@@ -68,38 +134,8 @@ export function NotificationInboxTray({
         }}
       >
         <div className="notification-inbox-tray__header">
-          <div className="notification-inbox-tray__heading">
-            <h2 className="notification-inbox-tray__heading-text">Notifications</h2>
-            {unreadCount > 0 ? (
-              <span className="notification-inbox-tray__count">
-                {unreadCount}
-                <span className="sr-only"> unread</span>
-              </span>
-            ) : null}
-          </div>
-          {onMarkAllRead ? (
-            <Button
-              icon={<CheckCheck aria-hidden />}
-              label="Mark all as read"
-              className="shrink-0"
-              variant="outline"
-              size="sm"
-              onClick={onMarkAllRead}
-              disabled={unreadCount === 0}
-            />
-          ) : null}
-        </div>
-        {items.length === 0 ? (
-          <p className="notification-inbox-tray__empty">You're all caught up.</p>
-        ) : (
-          <ul className="notification-inbox-tray__list">
-            {items.map((item) => (
-              <NotificationInboxRow key={item.id} item={item} onOpenItem={onOpenItem} />
-            ))}
-          </ul>
-        )}
-        <div className="notification-inbox-tray__footer">
-          <div className="notification-inbox-tray__footer-actions">
+          <h2 className="notification-inbox-tray__heading">Notifications</h2>
+          <div className="notification-inbox-tray__header-actions">
             {showPushToggle ? (
               <IconButton
                 icon={<BellRing aria-hidden />}
@@ -118,10 +154,82 @@ export function NotificationInboxTray({
                 onClick={onToggleSoundMute}
               />
             ) : null}
+            {currentAppId ? (
+              <DropdownMenu
+                align="end"
+                trigger={
+                  <CollectionGhostButton
+                    className="notification-inbox-tray__scope"
+                    aria-label={
+                      scope === "app"
+                        ? `Showing ${currentAppName} notifications, change`
+                        : "Showing notifications from all apps, change"
+                    }
+                    leading={
+                      scope === "app" ? (
+                        <WorkspaceAppIcon
+                          appId={currentAppId}
+                          className="notification-inbox-tray__scope-icon"
+                        />
+                      ) : (
+                        <LayoutGrid className="notification-inbox-tray__scope-icon" aria-hidden />
+                      )
+                    }
+                    label={null}
+                  />
+                }
+                items={[
+                  {
+                    id: "all",
+                    label: "All apps",
+                    icon: <LayoutGrid className="size-4" aria-hidden />,
+                    badge: unreadCount > 0 ? unreadCount : undefined,
+                    checked: scope === "all",
+                    selected: scope === "all",
+                    onClick: () => pickScope("all"),
+                  },
+                  {
+                    id: "app",
+                    label: currentAppName,
+                    icon: (
+                      <WorkspaceAppIcon appId={currentAppId} className="size-4 rounded-[4px]" />
+                    ),
+                    badge: appUnreadCount > 0 ? appUnreadCount : undefined,
+                    checked: scope === "app",
+                    selected: scope === "app",
+                    onClick: () => pickScope("app"),
+                  },
+                ]}
+              />
+            ) : null}
           </div>
+        </div>
+        {shownItems.length === 0 ? (
+          <p className="notification-inbox-tray__empty">
+            {scope === "app" ? `Nothing in ${currentAppName} yet.` : "You're all caught up."}
+          </p>
+        ) : (
+          <ul className="notification-inbox-tray__list">
+            {shownItems.map((item) => (
+              <NotificationInboxRow key={item.id} item={item} onOpenItem={onOpenItem} />
+            ))}
+          </ul>
+        )}
+        <div className="notification-inbox-tray__footer">
           <span className="notification-inbox-tray__hint" aria-hidden>
             Esc to dismiss
           </span>
+          {canMarkShownRead ? (
+            <Button
+              icon={<CheckCheck aria-hidden />}
+              label="Mark all as read"
+              className="shrink-0"
+              variant="outline"
+              size="sm"
+              onClick={markShownRead}
+              disabled={shownUnreadCount === 0}
+            />
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>
