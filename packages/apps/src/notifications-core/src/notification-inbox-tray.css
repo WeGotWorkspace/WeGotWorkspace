@@ -74,7 +74,17 @@
   --notification-inbox-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
   /* Shared left edge for the heading and the unread dots. */
   --notification-inbox-inset: 1.5rem;
+  /* Reserved end column of a row: time + "Mark as read", plus the gap before it. */
+  --notification-inbox-aside: 4.25rem;
   @apply flex w-[28rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-0;
+}
+
+/* Phones: the tray spans the screen (8px gutters) instead of hanging off the bell. */
+@media (max-width: 40rem) {
+  .notification-inbox-tray__popover {
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
 }
 
 .notification-inbox-tray__header {
@@ -145,10 +155,41 @@ img.notification-inbox-tray__scope-icon {
   );
 }
 
-/* Whole row is one open button (no second control). */
+/* The row is one open button; an unread row adds "Mark as read" over the time. */
 .notification-inbox-tray__open {
-  @apply flex min-w-0 flex-1 items-start gap-3.5 py-4 pr-5 text-left outline-none;
+  @apply flex min-w-0 flex-1 items-start gap-3.5 py-4 text-left outline-none;
   padding-left: var(--notification-inbox-inset);
+  padding-right: var(--notification-inbox-aside);
+}
+
+/*
+ * The row's end column: the time, and under it "Mark as read" on an unread row.
+ * The open button reserves the column's width as padding, so title and body stop
+ * short of it and a click beside the time still opens the row.
+ */
+.notification-inbox-tray__aside {
+  @apply absolute right-4 top-4 flex flex-col items-end gap-0.5;
+  pointer-events: none;
+}
+
+/*
+ * With a pointer the button shows on hover or keyboard focus, so a resting list
+ * stays quiet. Touch has no hover: there it is always shown, at a 40px target.
+ */
+.notification-inbox-tray__read {
+  @apply -mr-2 opacity-0;
+  pointer-events: auto;
+}
+
+.notification-inbox-tray__row:hover .notification-inbox-tray__read,
+.notification-inbox-tray__row:focus-within .notification-inbox-tray__read {
+  @apply opacity-100;
+}
+
+@media (hover: none) {
+  .notification-inbox-tray__read {
+    @apply size-10 opacity-100;
+  }
 }
 
 .notification-inbox-tray__dot {

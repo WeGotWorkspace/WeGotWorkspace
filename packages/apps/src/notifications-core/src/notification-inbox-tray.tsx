@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { Bell, BellOff, BellRing, CheckCheck, LayoutGrid, Volume2, VolumeX } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  BellRing,
+  Check,
+  CheckCheck,
+  LayoutGrid,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import { CollectionGhostButton } from "@/ui/collection-ghost-select";
@@ -125,6 +134,8 @@ export function NotificationInboxTray({
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        // Keeps the phone-width tray (see CSS) an even 8px off both screen edges.
+        collisionPadding={8}
         frost
         className="notification-inbox-tray__popover"
         aria-label="Notifications"
@@ -211,7 +222,16 @@ export function NotificationInboxTray({
         ) : (
           <ul className="notification-inbox-tray__list">
             {shownItems.map((item) => (
-              <NotificationInboxRow key={item.id} item={item} onOpenItem={onOpenItem} />
+              <NotificationInboxRow
+                key={item.id}
+                item={item}
+                onOpenItem={onOpenItem}
+                onMarkRead={
+                  onMarkReadWhere
+                    ? (target) => onMarkReadWhere((candidate) => candidate.id === target.id)
+                    : undefined
+                }
+              />
             ))}
           </ul>
         )}
@@ -244,9 +264,12 @@ function actorKey(item: NotificationInboxItem, actor: string): string {
 function NotificationInboxRow({
   item,
   onOpenItem,
+  onMarkRead,
 }: {
   item: NotificationInboxItem;
   onOpenItem: (item: NotificationInboxItem) => void;
+  /** Marks this one row read without opening it. */
+  onMarkRead?: (item: NotificationInboxItem) => void;
 }) {
   const unread = item.readAt == null;
   const appId = notificationInboxAppId(item);
@@ -297,19 +320,32 @@ function NotificationInboxRow({
               )}
               <span className="sr-only">, {domain}</span>
             </span>
-            {time ? (
-              <time
-                className="notification-inbox-tray__time"
-                dateTime={item.createdAt ?? undefined}
-                title={absoluteTime}
-              >
-                {time}
-              </time>
-            ) : null}
           </span>
           {body ? <span className="notification-inbox-tray__row-body">{body}</span> : null}
         </span>
       </button>
+      {/* Own column: the text stops short of it, so the button never covers a word. */}
+      <span className="notification-inbox-tray__aside">
+        {time ? (
+          <time
+            className="notification-inbox-tray__time"
+            dateTime={item.createdAt ?? undefined}
+            title={absoluteTime}
+          >
+            {time}
+          </time>
+        ) : null}
+        {unread && onMarkRead ? (
+          <IconButton
+            icon={<Check aria-hidden />}
+            label="Mark as read"
+            variant="ghost"
+            size="sm"
+            className="notification-inbox-tray__read"
+            onClick={() => onMarkRead(item)}
+          />
+        ) : null}
+      </span>
     </li>
   );
 }
