@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Threads;
 
 use App\Exceptions\ApiHttpException;
+use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\ThreadIndex;
 use Illuminate\Database\Eloquent\Builder;
@@ -204,6 +205,11 @@ final class ThreadRepository
         $pool = $this->pools->find($subject->type, $subject->poolOwner);
         if ($pool === null) {
             return ['oldState' => $old, 'newState' => $old, 'changed' => [], 'removed' => [], 'hasMoreChanges' => false];
+        }
+        // A state above the pool's own token came from another pool (the thread
+        // moved with its list): new entries would land below it and be missed.
+        if ((int) $old > (int) Calendar::query()->whereKey((int) $pool->calendarid)->value('synctoken')) {
+            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
         }
 
         $rows = array_values($this->threadRows($pool, $subject)

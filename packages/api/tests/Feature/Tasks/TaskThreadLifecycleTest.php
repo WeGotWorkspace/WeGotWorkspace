@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Tasks;
 
 use App\Models\ThreadIndex;
+use App\Services\Threads\ThreadLifecycle;
 use App\Services\Threads\ThreadRepository;
 use Tests\Support\TasksTestFixtures as BaseTaskFixtures;
 use Tests\Support\Threads\TaskThreadFixtures;
@@ -118,6 +119,52 @@ final class TaskThreadLifecycleTest extends WgwDatabaseTestCase
         $this->comment('bob', $taskId, 'Before the Team', ['id' => $id])->assertOk()->assertJsonPath('id', $id);
         $this->comment('alice', $taskId, 'After the Team')->assertCreated();
         $this->assertSame(['Before the Team', 'After the Team'], array_column($this->entries('bob', $taskId), 'body'));
+        $this->assertSame(1, ThreadIndex::query()->distinct()->count('pool_calendarid'));
+    }
+
+    public function test_stale_changes_state_after_a_transfer_is_never_an_empty_answer(): void
+    {
+        $other = $this->createList('bob', 'Other');
+        $otherTask = $this->createTask('bob', $other, 'Eggs');
+        for ($i = 0; $i < 6; $i++) {
+            $this->comment('bob', $otherTask, 'Noise '.$i)->assertCreated();
+        }
+        $taskId = $this->createTask('bob', $this->listId, 'Milk');
+        $this->comment('bob', $taskId, 'Before the Team')->assertCreated();
+        $state = (string) $this->asUser('bob')->getJson($this->threadUrl($taskId, 'entries'))->assertOk()->json('state');
+
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['groupSlug' => 'crew'])->assertOk();
+        $new = $this->comment('alice', $taskId, 'After the Team')->assertCreated()->json('id');
+
+        $response = $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since='.$state);
+        if ($response->status() === 200) {
+            $this->assertContains($new, $response->json('changed'));
+        } else {
+            $response->assertStatus(400)->assertJsonPath('code', 'cannotCalculateChanges');
+        }
+    }
+
+    public function test_failed_rehome_rolls_the_owner_change_back(): void
+    {
+        $taskId = $this->createTask('bob', $this->listId, 'Milk');
+        $this->comment('bob', $taskId, 'Kept')->assertCreated();
+        $this->app->bind(ThreadLifecycle::class, static fn () => new class
+        {
+            public function scopeOwnerChanged(): void
+            {
+                throw new \RuntimeException('pool down');
+            }
+        });
+
+        $this->withoutExceptionHandling();
+        try {
+            $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['groupSlug' => 'crew']);
+            $this->fail('The owner change should fail.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('pool down', $e->getMessage());
+        }
+
+        $this->assertSame(['Kept'], array_column($this->entries('bob', $taskId), 'body'));
         $this->assertSame(1, ThreadIndex::query()->distinct()->count('pool_calendarid'));
     }
 

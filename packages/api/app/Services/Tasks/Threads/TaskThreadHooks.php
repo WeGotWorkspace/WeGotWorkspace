@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\Log;
  * - Only the owner deleting a list removes its entries.
  * - Giving a list to another owner moves its entries into that owner's pool.
  *
- * It runs after the task write has committed and never fails it.
+ * The move and delete hooks run after the task write and never fail it. The
+ * owner-change hook runs inside the list update's transaction and does fail it.
  */
 final class TaskThreadHooks
 {
@@ -52,10 +53,13 @@ final class TaskThreadHooks
         $this->guard('list_deleted', (string) $calendarId, fn () => app(ThreadLifecycle::class)->scopeDeleted(TaskThreadSubject::TYPE, (string) $calendarId));
     }
 
-    /** The list was given to another owner (a Team): its threads move to that owner's pool. */
+    /**
+     * The list was given to another owner (a Team): its threads move to that owner's pool.
+     * Not guarded: a failure must roll the owner change back, or the thread looks empty for good.
+     */
     public function listOwnerChanged(int $calendarId, string $newOwnerUri): void
     {
-        $this->guard('list_owner_changed', (string) $calendarId, fn () => app(ThreadLifecycle::class)->scopeOwnerChanged(TaskThreadSubject::TYPE, (string) $calendarId, $newOwnerUri));
+        app(ThreadLifecycle::class)->scopeOwnerChanged(TaskThreadSubject::TYPE, (string) $calendarId, $newOwnerUri);
     }
 
     private function guard(string $hook, ?string $id, \Closure $run): void

@@ -31,21 +31,27 @@ final class ThreadLifecycle
      */
     public function scopeOwnerChanged(string $subjectType, string $scope, string $newOwnerUri): void
     {
-        $target = $this->pools->ensure($subjectType, $newOwnerUri);
-        $byPool = [];
-        foreach (ThreadIndex::query()
+        $rows = ThreadIndex::query()
             ->where('subject_type', $subjectType)
             ->where('subject_scope', $scope)
-            ->where('pool_calendarid', '!=', (int) $target->calendarid)
             ->orderBy('id')
-            ->get() as $row) {
-            $byPool[$row->pool_calendarid][] = $row;
+            ->get();
+        if ($rows->isEmpty()) {
+            return;
         }
-        foreach ($byPool as $calendarId => $rows) {
-            $from = $this->ownerInstance($calendarId);
-            if ($from !== null) {
-                $this->store->moveRows($from, $target, $rows);
+        $target = $this->pools->ensure($subjectType, $newOwnerUri);
+        $byPool = [];
+        foreach ($rows as $row) {
+            if ((int) $row->pool_calendarid !== (int) $target->calendarid) {
+                $byPool[$row->pool_calendarid][] = $row;
             }
+        }
+        foreach ($byPool as $calendarId => $moving) {
+            $from = $this->ownerInstance($calendarId);
+            if ($from === null) {
+                throw new \RuntimeException('Thread pool '.$calendarId.' has no owner instance.');
+            }
+            $this->store->moveRows($from, $target, $moving);
         }
     }
 
