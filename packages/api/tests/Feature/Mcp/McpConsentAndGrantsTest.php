@@ -233,6 +233,7 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
             (string) $calls[0]['createdAt'],
         );
         $this->assertSame('cal-19', $calls[0]['target']);
+        $this->assertSame('2026-10-05T12:00:00+00:00', $list->json('grants.0.lastUsedAt'));
         $tools = array_column($calls, 'tool');
         $this->assertNotContains('drive_write', $tools);
         $this->assertNotContains('docs_share', $tools);

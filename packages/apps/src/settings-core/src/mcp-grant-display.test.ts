@@ -113,6 +113,13 @@ describe("mcpAppAccess", () => {
     ]);
   });
 
+  it("shows Notes for the legacy docs grant", () => {
+    expect(mcpAppAccess(["docs"])).toEqual([
+      { app: "Docs", actions: ["Read", "Write"] },
+      { app: "Notes", actions: ["Read", "Write"] },
+    ]);
+  });
+
   it("sorts apps alphabetically", () => {
     expect(
       mcpAppAccess(["tasks.read", "notes.read", "contacts.read", "calendar.read"]).map(

@@ -156,7 +156,9 @@ describe("SettingsAssistantsPane", () => {
     ]);
     expect(appRows()).toEqual(["Drive: Read"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Revoke Claude Code, Firefox on Linux" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Revoke Claude Code, Firefox on Linux, Approved / }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Revoke access" }));
     await waitFor(() => expect(revokeAll).toHaveBeenCalledWith(["cc-2"]));
 

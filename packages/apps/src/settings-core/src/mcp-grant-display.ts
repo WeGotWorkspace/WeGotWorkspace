@@ -138,6 +138,12 @@ export function mcpAppAccess(scopes: readonly string[]): McpAppAccess[] {
     );
     return { app: group.label, actions: ordered };
   });
+  // The legacy "docs" id also authorizes Notes (read and write).
+  if (scopes.includes("docs")) {
+    const notes = rows.find((row) => row.app === "Notes");
+    if (notes) notes.actions = ["Read", "Write"];
+    else rows.push({ app: "Notes", actions: ["Read", "Write"] });
+  }
   // Alphabetical, the catch-all Other last.
   return rows.sort((a, b) =>
     a.app === OTHER_GROUP ? 1 : b.app === OTHER_GROUP ? -1 : a.app.localeCompare(b.app),

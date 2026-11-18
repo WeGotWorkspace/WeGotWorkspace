@@ -193,7 +193,11 @@ function ConnectionRow({
       below={showScopes ? <AccessRows scopes={grant.scopes} /> : undefined}
     >
       <RevokeButton
-        label={single ? `Revoke ${name}` : `Revoke ${name}, ${via ?? "unknown browser"}`}
+        label={
+          single
+            ? `Revoke ${name}`
+            : `Revoke ${name}, ${[via ?? "unknown browser", parts[via ? 1 : 0]].join(", ")}`
+        }
         disabled={disabled}
         onClick={onRevoke}
       />
