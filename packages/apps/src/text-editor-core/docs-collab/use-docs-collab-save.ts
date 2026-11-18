@@ -114,7 +114,7 @@ export function useDocsCollabSave({
       return false;
     }
     const ydoc = refs.ydocRef.current;
-    const body = collabSaveBody(ydoc, refs);
+    const body = collabSaveBody(ydoc, refs, urls.holdSave);
     if (!ydoc || !body) return false;
     const { markdown } = body;
     const signature = docSignature(markdown, ydoc);

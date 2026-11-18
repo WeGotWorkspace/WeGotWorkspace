@@ -5,7 +5,6 @@ import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-f
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotebookSelect } from "@/project-dialog/src/notebook-select";
 import { Checkbox } from "@/ui/checkbox";
-import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
@@ -14,6 +13,11 @@ import { isTaskCompleted } from "@/lib/models/task-fields";
 import { taskListDotColor } from "@/lib/models/task-lists";
 import { taskFieldControls, type TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { useTaskEditForm } from "@/tasks-core/src/use-task-edit-form";
+import { Callout } from "@/callout/src/callout";
+import { TaskDescriptionField } from "@/tasks-core/src/task-description-field";
+import { TaskTextSession, useTaskTextSession } from "@/tasks-core/src/task-text-session";
+import type { TaskTextCollabConfig } from "@/tasks-core/src/use-task-text-collab";
+import type { TextFieldsText } from "@/text-editor-core/docs-collab/docs-collab-text-fields";
 // The done box shares the list row's mark styles.
 import "@/tasks-core/src/tasks-list-panel.css";
 
@@ -35,6 +39,15 @@ type TasksDetailViewProps = {
   onCreateList?: () => void;
   /** Asks before the task moves to another list; `move` applies it. */
   onConfirmMove?: (listName: string, move: () => void) => void;
+  /**
+   * The live room for the title and description (#2208). While it is open
+   * they are typed together and saved by the room; the other fields keep the
+   * autosave. Without it (mock, Storybook, a queued create) both autosave.
+   */
+  textCollab?: TaskTextCollabConfig;
+  /** The room refused this person: the fields are read-only, with a notice. */
+  textAccessLost?: boolean;
+  onLiveText?: (taskId: string, text: TextFieldsText, unsaved: boolean) => void;
 };
 
 /**
@@ -52,13 +65,100 @@ export function TasksDetailView({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
+  textCollab,
+  textAccessLost = false,
+  onLiveText,
 }: TasksDetailViewProps) {
+  const view = (
+    <TasksDetailForm
+      task={task}
+      L={L}
+      taskLists={taskLists}
+      allTaskLists={allTaskLists}
+      readOnly={readOnly}
+      textReadOnly={readOnly || textAccessLost}
+      inRoom={textCollab != null && !textAccessLost}
+      onSave={onSave}
+      onToggleComplete={onToggleComplete}
+      onCreateList={onCreateList}
+      onConfirmMove={onConfirmMove}
+    />
+  );
+  return (
+    <>
+      {textAccessLost ? (
+        <Callout
+          severity="warning"
+          title={L.liveTextAccessLostTitle}
+          message={L.liveTextAccessLost}
+        />
+      ) : null}
+      {textCollab && !textAccessLost ? (
+        <TaskTextSession
+          key={textCollab.urls.room}
+          collab={textCollab}
+          task={task}
+          L={L}
+          onLiveText={onLiveText}
+        >
+          {view}
+        </TaskTextSession>
+      ) : (
+        view
+      )}
+    </>
+  );
+}
+
+/** Why the room holds its save (a blank title, a field over its limit). */
+function TaskTextHoldHint() {
+  const hold = useTaskTextSession()?.hold;
+  if (!hold) return null;
+  return (
+    <p role="status" className="m-0 text-[0.8rem] font-medium text-destructive">
+      {hold}
+    </p>
+  );
+}
+
+function TasksDetailForm({
+  task,
+  L,
+  taskLists,
+  allTaskLists,
+  readOnly,
+  textReadOnly,
+  inRoom,
+  onSave,
+  onToggleComplete,
+  onCreateList,
+  onConfirmMove,
+}: Omit<TasksDetailViewProps, "textCollab" | "textAccessLost" | "onLiveText"> & {
+  textReadOnly: boolean;
+  /** The room saves the title and description: the autosave leaves them out. */
+  inRoom: boolean;
+}) {
   const [form, setForm] = useTaskEditForm(task, readOnly);
   const formRef = useRef(form);
   formRef.current = form;
   const pendingRef = useRef<{ taskId: string; timer: ReturnType<typeof setTimeout> } | null>(null);
-  const onSaveRef = useRef(onSave);
-  onSaveRef.current = onSave;
+  const taskRef = useRef(task);
+  taskRef.current = task;
+  const inRoomRef = useRef(inRoom);
+  inRoomRef.current = inRoom;
+  // In a room the title and description are the room's: the autosave sends
+  // the task's own copy of them, so its patch never names either.
+  const onSaveProp = useRef(onSave);
+  onSaveProp.current = onSave;
+  const onSaveRef = useRef((taskId: string, value: TasksTaskFormValue) => {
+    if (!inRoomRef.current) return onSaveProp.current(taskId, value);
+    const own = taskRef.current;
+    onSaveProp.current(taskId, {
+      ...value,
+      title: own.title ?? "",
+      description: own.description ?? "",
+    });
+  });
 
   const flush = useCallback(() => {
     const pending = pendingRef.current;
@@ -145,9 +245,14 @@ export function TasksDetailView({
       titlePlaceholder={L.addTaskName}
       titleLeading={completeControl}
       onTitleChange={
-        readOnly ? undefined : (title) => update((prev) => ({ ...prev, title }), "later")
+        textReadOnly
+          ? undefined
+          : inRoom
+            ? // The room's text, shown in the form; the room saves it.
+              (title) => setForm((prev) => ({ ...prev, title }))
+            : (title) => update((prev) => ({ ...prev, title }), "later")
       }
-      readOnly={readOnly}
+      readOnly={textReadOnly}
       showTags={false}
       tags={[]}
       eyebrow={
@@ -172,19 +277,14 @@ export function TasksDetailView({
         />
       }
     >
-      <TextareaAutosize
-        className="tasks-detail-view__notes note-detail-view__notes note-detail-view__body-start"
+      <TaskTextHoldHint />
+      <TaskDescriptionField
         value={form.description}
-        onChange={(event) =>
-          update((prev) => ({ ...prev, description: event.target.value }), "later")
-        }
-        onBlur={flush}
         placeholder={L.detailNotesPlaceholder}
-        aria-label={L.descriptionLabel}
-        readOnly={readOnly}
-        minRows={2}
-        // Grows with the notes, however long: the pane scrolls, not the field.
-        maxRows={Number.POSITIVE_INFINITY}
+        label={L.descriptionLabel}
+        readOnly={textReadOnly}
+        onChange={(description) => update((prev) => ({ ...prev, description }), "later")}
+        onBlur={flush}
       />
       <DetailFieldList className="tasks-detail-view__fields">
         <TasksDetailField icon={<CircleCheck />} title={L.addTaskStatus}>

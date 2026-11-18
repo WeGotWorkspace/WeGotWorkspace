@@ -81,6 +81,12 @@ export type DocsCollabUrls = {
   documentShape?: "text-fields";
   /** The title a text-fields document seeds with offline, before the server answers. */
   seedTitle?: string;
+  /**
+   * True while the document holds text the server would refuse (a blank task
+   * title, a field over its limit): the save waits, the edit stays unsaved,
+   * and the next edit tries again. The app shows why.
+   */
+  holdSave?: () => boolean;
   onPersistForbidden?: () => void;
   /**
    * The server answered 404: the document was deleted, or this account lost read
