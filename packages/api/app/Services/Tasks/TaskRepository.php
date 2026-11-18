@@ -540,12 +540,8 @@ final class TaskRepository
         array $before,
         array $after,
     ): void {
-        $from = isset($before['workflowStatus']) && is_string($before['workflowStatus'])
-            ? $before['workflowStatus']
-            : null;
-        $to = isset($after['workflowStatus']) && is_string($after['workflowStatus'])
-            ? $after['workflowStatus']
-            : null;
+        $from = is_string($before['workflowStatus'] ?? null) ? $before['workflowStatus'] : null;
+        $to = is_string($after['workflowStatus'] ?? null) ? $after['workflowStatus'] : null;
         if ($to === null || $from === $to) {
             return;
         }
