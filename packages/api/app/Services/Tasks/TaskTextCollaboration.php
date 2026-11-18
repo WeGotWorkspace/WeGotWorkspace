@@ -34,6 +34,9 @@ final class TaskTextCollaboration
     {
         [$object, $fields] = $this->locate($username, $taskId);
         $text = $fields->text($object);
+        if ($text['uid'] === '') {
+            throw new ApiHttpException(404, 'Task not found.', 'not_found');
+        }
 
         return [
             'title' => $text['title'],

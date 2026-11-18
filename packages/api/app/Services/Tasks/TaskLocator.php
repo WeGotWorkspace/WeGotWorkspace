@@ -41,19 +41,26 @@ final class TaskLocator
         $calendarId = (int) $matches[1];
         $uid = $matches[2];
 
-        $instance = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
-            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId);
+        $instance = $this->instanceFor(
+            $username,
+            $calendarId,
+            CalendarInstance::query()
+                ->where('calendarid', $calendarId)
+                ->whereIn('principaluri', $this->accessiblePrincipalUris($username))
+                ->pluck('id')
+                ->all(),
+        );
         if ($instance === null) {
             return null;
         }
 
-        // A second VTODO in a file is not the object's own `uid`; the UID check
-        // below reads the component, so a LIKE match elsewhere does not count.
+        // A second VTODO in a file is not the object's own `uid`. A wildcard in
+        // the UID only widens the LIKE; the component check below decides.
         $candidates = CalendarObject::query()
             ->where('calendarid', $calendarId)
             ->where(function ($query) use ($uid): void {
                 $query->where('uid', $uid)
-                    ->orWhere('calendardata', 'like', '%'.addcslashes($uid, '%_\\').'%');
+                    ->orWhere('calendardata', 'like', '%'.$uid.'%');
             })
             ->orderBy('id')
             ->get();
@@ -103,19 +110,11 @@ final class TaskLocator
             return null;
         }
 
-        // Resolve through the instance the task list overview shows. When it has
-        // none for this list, take the strongest instance of this object's own
-        // list. A dismissed or hidden share is skipped either way.
-        $calendarId = (int) $object->calendarid;
-        $instance = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
-            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
-            ?? $this->collectionAccess->visibleHighestAccess(
-                $username,
-                CalendarInstance::query()
-                    ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
-                    ->orderBy('id')
-                    ->get(),
-            )->first();
+        $instance = $this->instanceFor(
+            $username,
+            (int) $object->calendarid,
+            $rows->where('id', $objectId)->pluck('instance_id')->all(),
+        );
         if ($instance === null) {
             return null;
         }
@@ -126,6 +125,23 @@ final class TaskLocator
             'taskListUri' => $this->taskLists->apiIdForInstance($instance),
             'vtodoUid' => $vtodoUid,
         ];
+    }
+
+    /**
+     * The instance a task in this calendar is reached through: the one the
+     * task list overview shows, else the strongest of the given instances of
+     * this list. A dismissed or hidden share is skipped either way.
+     *
+     * @param  array<mixed>  $candidateInstanceIds
+     */
+    private function instanceFor(string $username, int $calendarId, array $candidateInstanceIds): ?CalendarInstance
+    {
+        return $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
+            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
+            ?? $this->collectionAccess->visibleHighestAccess(
+                $username,
+                CalendarInstance::query()->whereIn('id', $candidateInstanceIds)->orderBy('id')->get(),
+            )->first();
     }
 
     /**

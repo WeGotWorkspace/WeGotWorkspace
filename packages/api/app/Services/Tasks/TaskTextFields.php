@@ -32,11 +32,10 @@ final class TaskTextFields implements CollabTextFields
     /** @return array{title: string, description: string, uid: string} */
     public function text(CalendarObject $object): array
     {
+        // A VTODO without a UID (only a row written straight to the database)
+        // has no state row and no room; its other writes still work.
         $task = $this->mapper->toTask($object, '', $this->vtodoUid) ?? [];
         $uid = is_string($task['uid'] ?? null) ? $task['uid'] : '';
-        if ($uid === '') {
-            throw new ApiHttpException(404, 'Task not found.', 'not_found');
-        }
 
         return [
             'title' => is_string($task['title'] ?? null) ? $task['title'] : '',
@@ -56,17 +55,23 @@ final class TaskTextFields implements CollabTextFields
     #[\Override]
     public function findState(CalendarObject $object): ?TaskYjsState
     {
-        return TaskYjsState::query()
+        $uid = $this->text($object)['uid'];
+
+        return $uid === '' ? null : TaskYjsState::query()
             ->where('calendar_object_id', (int) $object->id)
-            ->where('vtodo_uid', $this->text($object)['uid'])
+            ->where('vtodo_uid', $uid)
             ->first();
     }
 
     #[\Override]
     public function storeState(CalendarObject $object, array $columns): void
     {
+        $uid = $this->text($object)['uid'];
+        if ($uid === '') {
+            throw new ApiHttpException(404, 'Task not found.', 'not_found');
+        }
         TaskYjsState::query()->updateOrCreate(
-            ['calendar_object_id' => (int) $object->id, 'vtodo_uid' => $this->text($object)['uid']],
+            ['calendar_object_id' => (int) $object->id, 'vtodo_uid' => $uid],
             $columns,
         );
     }

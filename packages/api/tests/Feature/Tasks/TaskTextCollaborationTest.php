@@ -299,6 +299,66 @@ final class TaskTextCollaborationTest extends WgwDatabaseTestCase
         $this->readState()->assertOk();
     }
 
+    public function test_deleting_one_vtodo_keeps_a_text_save_that_landed_after_its_lookup(): void
+    {
+        $first = 'first-of-two';
+        $this->taskId = $this->seedTaskViaPdo('bob', 'pair.ics', $this->todo('First', 'One', $first));
+        $this->addSecondVtodo('pair.ics', 'second-of-two');
+        $this->taskId = 'pair#'.$first;
+        $this->firstSave('First', 'Saved')->assertOk();
+        $this->taskId = 'pair#second-of-two';
+        $this->firstSave('Second', 'Other')->assertOk();
+        $etag = (string) $this->showTask()->json('etag');
+
+        // The first task's text save lands between the delete's lookup and its lock.
+        $this->taskId = 'pair#'.$first;
+        $this->interleave(fn () => $this->save('First', 'Typed meanwhile', ['If-Match' => $this->stateTag()])->assertOk());
+        $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->withHeader('If-Match', $etag)
+            ->deleteJson('/api/v1/tasks/items/'.rawurlencode('pair#second-of-two'))
+            ->assertStatus(412);
+        $this->flushHeaders();
+        $this->assertSame('Typed meanwhile', $this->readText()->json('description'));
+
+        $etag = (string) $this->showTask()->json('etag');
+        $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->withHeader('If-Match', $etag)
+            ->deleteJson('/api/v1/tasks/items/'.rawurlencode('pair#second-of-two'))
+            ->assertOk();
+        $this->flushHeaders();
+        $this->assertSame('Typed meanwhile', $this->readText()->json('description'));
+        $this->assertSame([$first], TaskYjsState::query()->pluck('vtodo_uid')->all());
+    }
+
+    public function test_a_vtodo_without_a_uid_still_takes_ordinary_writes(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//Raw//EN\r\nBEGIN:VTODO\r\nSUMMARY:No UID\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
+        $this->taskId = $this->seedTaskViaPdo('bob', 'no-uid.ics', $ics);
+
+        $this->patchTask(['workflowStatus' => 'completed']);
+        $this->readText()->assertNotFound();
+    }
+
+    /** Run `$write` once, the next time a task row is read: between a write's lookup and its lock. */
+    private function interleave(callable $write): void
+    {
+        $done = false;
+        CalendarObject::retrieved(function () use (&$done, $write): void {
+            if ($done) {
+                return;
+            }
+            $done = true;
+            $write();
+        });
+    }
+
+    private function addSecondVtodo(string $objectUri, string $uid): void
+    {
+        $current = (string) CalendarObject::query()->where('uri', $objectUri)->firstOrFail()->calendardata;
+        $second = "BEGIN:VTODO\r\nUID:{$uid}\r\nDTSTAMP:20261118T000000Z\r\nSUMMARY:Second\r\nEND:VTODO\r\n";
+        $this->updateTaskViaPdo('bob', $objectUri, str_replace("END:VCALENDAR\r\n", $second."END:VCALENDAR\r\n", $current));
+    }
+
     private function todo(string $summary, string $description, string $uid = self::UID): string
     {
         return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//Reminders//EN\r\nBEGIN:VTODO\r\nUID:{$uid}\r\n"
