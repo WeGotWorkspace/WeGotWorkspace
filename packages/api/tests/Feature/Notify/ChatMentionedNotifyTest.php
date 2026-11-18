@@ -62,6 +62,26 @@ final class ChatMentionedNotifyTest extends WgwDatabaseTestCase
         $this->assertSame('Alice mentioned you in #general', $bob->title);
     }
 
+    public function test_mention_display_name_comes_from_the_server_not_the_client(): void
+    {
+        $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'General', 'kind' => 'channel',
+        ])->assertCreated()->json('id');
+        $this->asUser('alice')->patchJson('/api/v1/chat/channels/'.$channelId, [
+            'shareWith' => ['bob' => ['mayWriteAll' => true]],
+        ])->assertOk();
+
+        $created = $this->asUser('alice')->postJson('/api/v1/chat/channels/'.$channelId.'/messages', [
+            'id' => $this->ulid('AC'),
+            'body' => 'hey @Alice (Admin)',
+            'mentions' => [['id' => 'BOB', 'displayName' => 'Alice (Admin)'], ['id' => 'bob']],
+        ])->assertCreated()->json();
+
+        $this->assertSame([['id' => 'bob', 'displayName' => 'Bob']], $created['mentions']);
+        $listed = $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$channelId.'/messages')->assertOk()->json('list');
+        $this->assertSame([['id' => 'bob', 'displayName' => 'Bob']], $listed[0]['mentions']);
+    }
+
     public function test_unknown_mention_token_ignored(): void
     {
         $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
