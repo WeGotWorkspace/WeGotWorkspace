@@ -44,6 +44,8 @@ export type NotificationInboxTrayProps = {
   currentAppId?: WorkspaceAppId;
   /** Marks the matching unread rows read; used by "Mark all as read" in the app scope. */
   onMarkReadWhere?: (match: (item: NotificationInboxItem) => boolean) => void;
+  /** Where the tray opens from the bell: below it (sidebar header) or beside it (app rail). */
+  popoverSide?: "bottom" | "right";
 };
 
 type InboxScope = "all" | "app";
@@ -79,6 +81,7 @@ export function NotificationInboxTray({
   unreadArrivalNonce = 0,
   currentAppId,
   onMarkReadWhere,
+  popoverSide = "bottom",
 }: NotificationInboxTrayProps) {
   const [storedScope, setStoredScope] = useState<InboxScope>(readStoredScope);
   const scope: InboxScope = currentAppId ? storedScope : "all";
@@ -134,6 +137,7 @@ export function NotificationInboxTray({
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        side={popoverSide}
         // Keeps the phone-width tray (see CSS) an even 8px off both screen edges.
         collisionPadding={8}
         frost
@@ -201,7 +205,8 @@ export function NotificationInboxTray({
                   },
                   {
                     id: "app",
-                    label: currentAppName,
+                    // Not the app's name: the choice sticks while the app changes.
+                    label: "Current app",
                     icon: (
                       <WorkspaceAppIcon appId={currentAppId} className="size-4 rounded-[4px]" />
                     ),
