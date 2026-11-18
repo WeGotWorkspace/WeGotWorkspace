@@ -95,7 +95,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - Attendees the task already has pass through unchecked within its list:
   - `e:` attendees from native clients;
   - people who lost access.
-- A REST or MCP **move to another list** (each task list is its own CalDAV collection, so this is any change of `taskListIds`) keeps only the assignees in the target list's audience, including an `e:` address that is the email of someone in it (it then reads as that person). Everyone else is dropped with their name and address, `e:` addresses included, so nothing about them reaches the new audience (product owner, 2026-11-18, review finding 6). This follows live text, whose state does not move, and threads, whose messages stay with the source list.
+- A REST or MCP **move to another list** (each task list is its own CalDAV collection, so this is any change of `taskListIds`) keeps only the assignees in the target list's audience, including an `e:` address of someone in it whom the mover could assign there (write access, and the mover, the list owner or a Team colleague of the mover); it then reads as that person. Everyone else is dropped with their name and address, `e:` addresses included, so nothing about them reaches the new audience (product owner, 2026-11-18, review finding 6). This follows live text, whose state does not move, and threads, whose messages stay with the source list.
 - So a full `PUT` that resends the stored `participants`, a move, and a save of a task that carries a Thunderbird attendee all succeed.
 - A patch that uses a positional `attN` key gets 422 `stale_participant_id`. No client sends one today, because there is no assignee UI, so only third-party API callers can hit this.
 
