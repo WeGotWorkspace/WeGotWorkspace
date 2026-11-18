@@ -356,7 +356,11 @@ export function NotesWorkspace({
   // Empty detail = no multi-select and no selected note. Do not use `!!active`
   // alone: cmd/ctrl-deselect and view selection-reset clear selectedIds while
   // leaving a stale activeId — list looks unselected but the action bar stayed.
-  const showSingleNoteDetail = selectedIds.length === 1 && !!active && selectedIds[0] === active.id;
+  // Do not require `selectedIds[0] === active.id` either: a click selects the row
+  // at once and opens the note in a transition, so for one render the two differ.
+  // Requiring a match swapped the open note for the empty state and back (a flash);
+  // the previous note stays up until the new one is ready, as in Contacts.
+  const showSingleNoteDetail = selectedIds.length === 1 && !!active;
   const notesDetailTint =
     showSingleNoteDetail && active ? notebookDisplayColor(active, notebookCollections) : undefined;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;

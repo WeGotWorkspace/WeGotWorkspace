@@ -60,6 +60,8 @@ export type NoteTextEditorBodyProps = {
 type NoteCollabContextValue = ReturnType<typeof useDocsCollab> & {
   localDisplayName: string;
   trackChangesUserKey: string;
+  /** The note's last known body: shown read-only until the collab session is up. */
+  initialMarkdown: string;
 };
 
 const NoteCollabContext = createContext<NoteCollabContextValue | null>(null);
@@ -159,10 +161,19 @@ export function NoteCollabSession({
       ...collab,
       localDisplayName,
       trackChangesUserKey: `${userName}:${urls.room ?? ""}`,
+      initialMarkdown,
       onMarkdownChange,
       registerMarkdownGetter,
     }),
-    [collab, localDisplayName, userName, urls.room, onMarkdownChange, registerMarkdownGetter],
+    [
+      collab,
+      localDisplayName,
+      userName,
+      urls.room,
+      initialMarkdown,
+      onMarkdownChange,
+      registerMarkdownGetter,
+    ],
   );
 
   return (
@@ -239,6 +250,7 @@ export function NoteCollabEditorSurface({
     session,
     awaitingContent,
     trackChangesUserKey,
+    initialMarkdown,
     onMarkdownChange,
     registerMarkdownGetter,
   } = useNoteCollabContext();
@@ -251,7 +263,11 @@ export function NoteCollabEditorSurface({
   );
 
   if (!session) {
-    return <div className={cn("note-text-editor-body text-editor", className)} aria-busy="true" />;
+    // The session joins a moment after the note opens. An empty body here read as
+    // the text vanishing and coming back, so the last known body stands in, read-only.
+    return (
+      <NoteSoloBody initialMarkdown={initialMarkdown} editable={false} className={className} />
+    );
   }
 
   return (
