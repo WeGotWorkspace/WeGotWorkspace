@@ -23,14 +23,15 @@ const normalize = (text: string): string => text.replace(/\r\n?/g, "\n").trimEnd
  *
  * Only text-fields resources (Notes, Tasks) are checked: they serve a title,
  * and their content tag covers exactly this title and body. A Drive
- * document (`title === null`) is not checked.
+ * document (raw markdown, no title field) is not checked. A note whose title
+ * is null (a journal without SUMMARY) still has its body compared.
  */
 export function checkSnapshotText(
   update: Uint8Array,
-  text: { markdown: string; title: string | null },
+  text: { markdown: string; title: string | null; titled?: boolean },
   format: TextEditorContentFormat,
 ): SnapshotTextCheck {
-  if (text.title === null) return "match";
+  if (text.title === null && text.titled !== true) return "match";
   if (!isReadableYjsUpdate(update)) return "undecodable";
   const scratch = new Y.Doc();
   try {
@@ -38,7 +39,8 @@ export function checkSnapshotText(
     const markdown = readContentFromYDoc(scratch, format);
     // A doc without a title type leaves the server title alone on save.
     const title = readNoteTitle(scratch, text.title);
-    return normalize(markdown) === normalize(text.markdown) && title === text.title
+    const serverTitle = text.title ?? "";
+    return normalize(markdown) === normalize(text.markdown) && title === serverTitle
       ? "match"
       : "mismatch";
   } catch {

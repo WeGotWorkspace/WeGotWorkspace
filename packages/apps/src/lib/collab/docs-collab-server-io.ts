@@ -27,6 +27,8 @@ export type CollabText = {
   markdown: string;
   /** Set when the JSON note carries a title. A markdown file leaves it null. */
   title: string | null;
+  /** The JSON note has a title field, also when its value is null (a journal without SUMMARY). */
+  titled?: boolean;
   /** Entity tag of this text representation. A save names it after an outside write. */
   etag?: string | null;
 };
@@ -54,8 +56,10 @@ export async function loadCollabText(documentUrl: string, authToken?: string): P
     const title = typeof data.title === "string" ? data.title : null;
     // A JSON representation whose own tag also moves with metadata names its text separately.
     if (typeof data.contentEtag === "string") etag = data.contentEtag;
-    if (typeof data.markdown === "string") return { markdown: data.markdown, title, etag };
-    if (typeof data.body === "string") return { markdown: data.body, title, etag };
+    if (typeof data.markdown === "string")
+      return { markdown: data.markdown, title, titled: "title" in data, etag };
+    if (typeof data.body === "string")
+      return { markdown: data.body, title, titled: "title" in data, etag };
     throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);
   }
   return { markdown: await res.text(), title: null, etag };

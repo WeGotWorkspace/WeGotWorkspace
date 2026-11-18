@@ -22,9 +22,14 @@ import {
   markRoomServerSuccess,
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
-import { fetchYjsSnapshot, loadCollabText } from "@/lib/collab/docs-collab-server-io";
+import {
+  fetchYjsSnapshot,
+  loadCollabText,
+  type CollabText,
+} from "@/lib/collab/docs-collab-server-io";
 import { decideExternalWrite, replaceDocumentWithExternalText } from "./docs-collab-external-write";
 import { checkSnapshotText } from "./docs-collab-snapshot-check";
+import { loadStableTextCheck } from "./docs-collab-stable-text-check";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
@@ -238,10 +243,23 @@ export function useDocsCollabJoin({
         refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
       // Without the flag, the state is still only adopted when it holds the
       // server text (#2208); otherwise it is handled as an outside write.
-      const checked =
-        snapshot.externalWrite === true ? null : await loadCollabText(urls.documentUrl, authToken);
-      const unlikeText =
-        checked !== null && checkSnapshotText(snapshot.update, checked, documentFormat) !== "match";
+      // Only a snapshot and text that come from one save count: the snapshot
+      // is read again after the text, and a moved tag means a peer saved in
+      // between, which is no outside write. A failed text read adopts.
+      let checked: CollabText | null = null;
+      let unlikeText = false;
+      if (snapshot.externalWrite !== true) {
+        const stable = await loadStableTextCheck(
+          { update: snapshot.update, etag: snapshot.etag },
+          urls,
+          authToken,
+          documentFormat,
+        );
+        if (stable?.mismatch) {
+          checked = stable.text;
+          unlikeText = true;
+        }
+      }
       const action = decideExternalWrite(
         snapshot.externalWrite === true || unlikeText,
         pendingLocalWork,
@@ -289,11 +307,14 @@ export function useDocsCollabJoin({
       if (!ydoc || !isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
       let loadedTitle: string | null = null;
+      let loadedTitled = false;
+      let loadedMarkdown: string | null = null;
       let loadedEtag: string | null = null;
       const load = await loadBootstrapInParallel({
         loadMarkdown: async () => {
           const text = await loadCollabText(urls.documentUrl, authToken);
           loadedTitle = text.title;
+          loadedTitled = text.titled === true;
           loadedEtag = text.etag ?? null;
           return text.markdown;
         },
@@ -341,14 +362,31 @@ export function useDocsCollabJoin({
         // Without the text there is nothing to rebuild from or to ask about.
         // A state that does not hold the server text, or cannot be read, is
         // handled as an outside write (#2208).
-        const unlikeText =
+        // The text read ran next to the snapshot read, so a difference is
+        // confirmed against one save first (see loadStableTextCheck).
+        let unlikeText = false;
+        if (
           !load.markdownError &&
           !snapshot.externalWrite &&
           checkSnapshotText(
             snapshot.update,
-            { markdown: load.markdown, title: loadedTitle },
+            { markdown: load.markdown, title: loadedTitle, titled: loadedTitled },
             documentFormat,
-          ) !== "match";
+          ) !== "match"
+        ) {
+          const stable = await loadStableTextCheck(
+            { update: snapshot.update, etag: snapshot.etag },
+            urls,
+            authToken,
+            documentFormat,
+          );
+          if (stable?.mismatch) {
+            unlikeText = true;
+            loadedTitle = stable.text.title;
+            loadedEtag = stable.text.etag ?? null;
+            loadedMarkdown = stable.text.markdown;
+          }
+        }
         const action = load.markdownError
           ? "adopt"
           : decideExternalWrite(snapshot.externalWrite || unlikeText, pendingLocalWork);
@@ -357,7 +395,7 @@ export function useDocsCollabJoin({
         if (action === "prompt") {
           refs.externalWriteHoldRef.current = true;
           urls.onExternalWrite?.({
-            markdown: load.markdown,
+            markdown: loadedMarkdown ?? load.markdown,
             title: loadedTitle,
             serverState: snapshot.update,
           });
@@ -365,12 +403,12 @@ export function useDocsCollabJoin({
         } else if (action === "rebuild") {
           replaceDocumentWithExternalText(
             ydoc,
-            load.markdown,
+            loadedMarkdown ?? load.markdown,
             loadedTitle,
             documentFormat,
             snapshot.update,
           );
-          refs.markdownOverrideRef.current = load.markdown;
+          refs.markdownOverrideRef.current = loadedMarkdown ?? load.markdown;
           refs.externalWriteHoldRef.current = false;
           refs.seedDoneRef.current = true;
           settlement = "rebuilt";
