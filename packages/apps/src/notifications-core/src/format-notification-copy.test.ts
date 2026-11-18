@@ -153,6 +153,21 @@ describe("formatNotificationCopy", () => {
 
     expect(
       formatNotificationCopy({
+        domain: "tasks",
+        action: "assigned",
+        title: "legacy",
+        body: null,
+        data: { actor: "Bob", summary: "Buy milk" },
+      }),
+    ).toEqual({
+      title: "Bob assigned you Buy milk",
+      titleActor: "Bob",
+      titleRest: " assigned you Buy milk",
+      body: null,
+    });
+
+    expect(
+      formatNotificationCopy({
         domain: "chat",
         action: "mentioned",
         title: "legacy",
