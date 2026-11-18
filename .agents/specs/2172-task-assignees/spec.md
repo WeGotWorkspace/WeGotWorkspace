@@ -11,7 +11,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
   - Each person on the instance gets a **stable participant id** (`u:<username>`) instead of the positional `att1`, `att2`. A patch can then add or remove one assignee without touching the others.
   - Each assignee is written as `ATTENDEE;CN=<display name>;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;X-WGW-USERNAME=<username>:mailto:<email>`.
   - `X-WGW-USERNAME` keeps the mapping when someone's email changes.
-  - Assignment never adds or changes `ORGANIZER`. An existing `ORGANIZER` from another client is kept as is.
+  - **The organizer** (product owner, 2026-11-18). The first time a VTODO gets an `ATTENDEE` and has no `ORGANIZER`, the server sets `ORGANIZER` to the acting user: their address, with `CN` = display name. It is always a person, never a Team. This happens server-side, so REST, MCP and the web app behave the same. After that the stored `ORGANIZER` stays, including one another client set. A CalDAV PUT cannot change or drop it either: the server puts the stored line back. The one exception is a move to a list whose audience the organizer is not in; the mover then becomes the organizer.
 - **The list audience.** One server-side resolver answers who can see a list, with their access level:
   - the owner;
   - every member of an owning Team;
@@ -36,10 +36,10 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 
 - Sharing a list by assigning someone. The assignee must already have write access (Product#56 shares lists).
 - Guests and external email addresses as assignees from the web app
-- Mail, push or iMIP on assignment. There is no iTIP for VTODO, see plan.md, What exists.
+- Mail, push or iMIP on assignment. RFC 5546 defines iTIP for VTODO, but Sabre does not run it for VTODO (see plan.md, What exists). We deliberately choose no iTIP for tasks: the `ORGANIZER` only records who assigned first.
 - Per-assignee progress, accept or decline
 - Changing #798's status-change recipients
-- An `ORGANIZER` model for tasks ("assigned by")
+- An "assigned by" view in the app. The `ORGANIZER` is stored (see Goal) but not shown yet.
 - Activity entries for assignment changes. They are in Epic #2173, which reads this Epic's change set.
 
 ## Affected packages
@@ -86,7 +86,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - An added attendee is a **user** when its id is `u:<username>`, or its email is the email of someone in the **target** list's audience (that is how a read would show it). Each added user must be in that audience with write access, and must be the actor, the list owner, or someone the actor shares a Team with (`TeamColleagues::sharesTeamIgnoringAdminRole`), the same rule as the picker. The target is the list the task is in after the write, so a move is checked against the new list. Otherwise the write fails with 422 `invalid_participant` and one fixed sentence that names nobody, so a refusal tells nothing about who has an account or profile (product owner, 2026-11-18, review finding 4).
 - An added attendee that is **not a user** (`e:<email>` for any address that is no one's in the target audience, whether or not it has an account elsewhere) passes, on creates and edits alike. This keeps today's behaviour for API callers and native-client data. Such an attendee is never notified. The web app's picker offers no way to add one.
 - For a user, the server writes the `mailto:` and the `CN` from the user's own principal (email and display name). It ignores any email or name in the payload, so a caller cannot send `u:alice` with someone else's address.
-- The organizer (`roles: ["owner"]`, id `org`) is kept as stored. A REST or MCP write cannot add one or replace it: a new owner entry is 422 `invalid_participant`, and a resent `org` keeps the stored values.
+- The organizer (`roles: ["owner"]`, id `org`) is set by the server, never by the payload. A REST or MCP write cannot add one or replace it: a new owner entry is 422 `invalid_participant`, and a resent or omitted `org` keeps the stored values. With no stored organizer, the first write that leaves the task with an attendee adds `org` = the actor (profile address and display name). On a move, an organizer whose address is not in the target audience is replaced by the actor. A CalDAV PUT gets the stored `ORGANIZER` line back on every VTODO of the same `UID` and `RECURRENCE-ID`; the rest of the body is stored as sent.
 - An ICS import removes `X-WGW-USERNAME` from every `ATTENDEE`, so a file names people by address only and reads through the audience rule above.
 - **Rescue of parked writes** (`rescueBody` in `tasks-parked-writes.ts`) creates a task anew in another list, often after the person lost access to the old one. Before posting, it keeps only `u:` attendees in the target list's audience with write access (from the audience cache of chunk C; with no cached audience, only the person's own `u:` entry). Everything else is dropped: `e:` addresses (they would carry an address from the old list to a new audience, product owner 2026-11-18, review finding 6), positional `attN` ids from a task parked before chunk A, and the organizer. The parked snapshot can be older than the deploy, so the server must never see an id it would treat as an unchecked user. The client cannot know about accounts outside the audience, so an `e:` address that has since become such an account can still get 422 `invalid_participant`. Rescue then retries once with no attendees except the person's own `u:` entry if the parked task had one (it never adds the person), which is always allowed in a list they can write to. It reads no ids from the error, so any number of such addresses costs one retry, not a task parked for good; the rare price is that the other attendees are not carried over. A task with a Thunderbird attendee is therefore still rescued.
 - Attendees the task already has pass through unchecked within its list:

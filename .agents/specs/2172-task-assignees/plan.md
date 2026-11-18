@@ -37,7 +37,7 @@ See spec.md, Non-goals.
 - **Notifications pipeline.**
   - The allow-list. `path: packages/api/app/Events/NotifyListener.php:30`
   - The actor is skipped. `path: packages/api/app/Events/NotifyListener.php:57`
-- **No iTIP or iMIP for VTODO.**
+- **No iTIP or iMIP for VTODO in this app.** RFC 5546 defines iTIP for VTODO; Sabre and this app do not run it.
   - The app's scheduling handles VEVENT only. `path: packages/api/app/Services/Calendars/CalendarSchedulingService.php:72`
   - `WgwSchedulePlugin` overrides only free/busy. `path: packages/api/app/Dav/Server/WgwSchedulePlugin.php:20`
   - The vobject iTIP broker skips other components. `cmd: grep -n "VEVENT" packages/api/vendor/sabre/vobject/lib/ITip/Broker.php` (vendor copy, sabre/vobject 4.6.1 per `composer.lock`)
@@ -60,7 +60,7 @@ See spec.md, Non-goals.
 ## Considered
 
 - **The existing component.** `participants`, already mapped to ATTENDEE, is the storage. A new `X-WGW-ASSIGNEE` property was rejected: native clients that show task attendees (Thunderbird, jtx Board) would not see it, and the converter already round-trips ATTENDEE.
-- **Writing an ORGANIZER with the first assignment** was rejected. In clients that treat an organised item as an invitation, a non-organiser could not edit the task. And the server has no iTIP for VTODO to make the organiser mean anything.
+- **Writing no ORGANIZER** was the first choice. The product owner reversed it on 2026-11-18: the first assignment sets `ORGANIZER` = the actor, and it stays fixed (see spec.md, Goal). The cost: a client that treats an organised item as an invitation may limit edits for non-organisers. Chunk E checks Thunderbird, jtx Board and Apple Reminders. Per-assignee progress and iTIP stay out.
 - **Reusing `listAclOwnerUsernames` as the audience** was rejected. It leaves out sharees, and changing it would change #798's recipients. A new resolver is added. #798 keeps its function.
 - **Allowing read-only viewers as assignees** was rejected. They cannot tick the task off. The Epic's "people who can see the list" is narrowed to "can edit the list". The product owner confirmed this on 2026-11-16, and the Epic now says so.
 - **Notifying from `EventDispatchPlugin`** was rejected, because it has no before/after content. A separate observer plugin computes the change set. `EventDispatchPlugin` stays as it is.
@@ -83,7 +83,7 @@ See spec.md, Non-goals.
 ## Open decisions
 
 - [x] Assignees need write access to the list. Confirmed by the product owner on 2026-11-16 (read-only viewers cannot be assigned); it only changes chunk A's validation and C's picker state.
-- [x] No ORGANIZER is written. Also listed under "Decisions to review".
+- [x] The first assignment sets ORGANIZER = the actor; it stays fixed, except a move out of the organizer's reach makes the mover the organizer (product owner, 2026-11-18).
 - [x] The members endpoint answers writers only and filters by the caller's Teams (#1915). This came from the review loop (2026-11-14): otherwise a person sharee would see the names and emails of a Team they are not in. It is the conservative choice and is listed for the product owner; it only changes chunk A.
 
 ## Invariants
