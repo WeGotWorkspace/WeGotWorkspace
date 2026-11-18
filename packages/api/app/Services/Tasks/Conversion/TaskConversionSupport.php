@@ -440,6 +440,10 @@ final class TaskConversionSupport
             if (! is_string($name) || ! is_string($value) || trim($value) === '') {
                 continue;
             }
+            // Mapped properties have their own fields (and guards); icsProps only carries the rest.
+            if (in_array(strtoupper($name), self::KNOWN_VTODO_PROPERTIES, true)) {
+                continue;
+            }
             $todo->add(strtoupper($name), $value);
         }
     }

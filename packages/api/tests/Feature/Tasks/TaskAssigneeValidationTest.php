@@ -166,9 +166,31 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
                 'title' => 'Moved',
                 'participants' => ['u:dave' => ['@type' => 'Participant', 'roles' => ['attendee'], 'email' => 'dave@example.test']],
             ]],
-        ]);
+        ])->assertOk();
 
         $this->assertStringNotContainsString('ATTENDEE', $this->storedIcs($taskId));
+    }
+
+    public function test_ics_props_cannot_add_an_attendee(): void
+    {
+        $taskId = $this->createTask();
+
+        $response = $this->patchTask($taskId, ['icsProps' => ['ATTENDEE' => 'mailto:dave@example.test']])->assertOk();
+
+        $this->assertStringNotContainsString('ATTENDEE', $this->storedIcs($taskId));
+        $this->assertEmpty($response->json('participants') ?? []);
+    }
+
+    public function test_ics_props_cannot_add_an_organizer_on_create(): void
+    {
+        $taskId = (string) $this->asUser('bob')->postJson('/api/v1/tasks/items', [
+            ...$this->sampleTaskCreatePayload($this->listId),
+            'icsProps' => ['ORGANIZER' => 'mailto:dave@example.test', 'X-CUSTOM-PROP' => 'kept'],
+        ])->assertCreated()->json('id');
+
+        $ics = $this->storedIcs($taskId);
+        $this->assertStringNotContainsString('ORGANIZER', $ics);
+        $this->assertStringContainsString('X-CUSTOM-PROP:kept', $ics);
     }
 
     public function test_move_keeps_assignees_without_access_in_the_target_list(): void
