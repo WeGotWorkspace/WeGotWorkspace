@@ -243,7 +243,8 @@ See spec.md, Non-goals.
 - **Verify with:** `pnpm test:apps-done-gate`
 - **Parallel with:** E (own UI PR)
 
-### Chunk F: Activity writer (parked, 2026-11-18)
+### Chunk F: Activity writer
+- **Status:** parked (2026-11-18): comments only for now; the storage format stays.
 - **Skill:** api, security
 - **Inputs:**
   - #2172's `TaskChangeSet` and `TaskChangeObserverPlugin`;
@@ -260,7 +261,8 @@ See spec.md, Non-goals.
 - **Verify with:** `pnpm test:api-done-gate`
 - **Parallel with:** none (after B)
 
-### Chunk G: Activity rows (parked, 2026-11-18)
+### Chunk G: Activity rows
+- **Status:** parked (2026-11-18): comments only for now; the storage format stays.
 - **Skill:** apps-ui
 - **Inputs:** chunk E's panel; the entry format from chunk F.
 - **Done when:**
