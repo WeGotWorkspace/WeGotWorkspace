@@ -85,7 +85,7 @@ export function useAdminSettingsMutations({
   const clearMailDeliverySmtpPassword = async (form: AdminSettingsFormState = settingsForm) => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
-      return;
+      throw new Error("Admin API is not ready yet");
     }
     try {
       const sent = { ...form, mailDeliverySmtpPassword: "" };
@@ -98,13 +98,14 @@ export function useAdminSettingsMutations({
       showSuccess("Stored SMTP password cleared");
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not clear SMTP password"));
+      throw error;
     }
   };
 
   const clearTurnSecret = async (form: AdminSettingsFormState = settingsForm) => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
-      return;
+      throw new Error("Admin API is not ready yet");
     }
     try {
       const sent = { ...form, turnSecret: "" };
@@ -116,6 +117,7 @@ export function useAdminSettingsMutations({
       showSuccess("Stored TURN secret cleared");
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not clear TURN secret"));
+      throw error;
     }
   };
 

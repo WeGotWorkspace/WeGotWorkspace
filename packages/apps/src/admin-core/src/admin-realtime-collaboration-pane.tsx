@@ -68,6 +68,7 @@ export function AdminRealtimeCollaborationPane({
         <AdminStunUrlsField
           value={form.stunUrls}
           onChange={(stunUrls) => type({ stunUrls })}
+          onRemove={(stunUrls) => choose({ stunUrls })}
           onRestore={(stunUrls) => choose({ stunUrls })}
         />
         <FieldLabelRow
@@ -82,7 +83,8 @@ export function AdminRealtimeCollaborationPane({
             label="TURN servers"
             itemLabel="TURN URL"
             value={form.turnUrls}
-            onChange={(turnUrls) => type({ turnUrls: turnUrls })}
+            onChange={(turnUrls) => type({ turnUrls })}
+            onRemove={(turnUrls) => choose({ turnUrls })}
           />
         </FieldLabelRow>
         <FieldLabelRow

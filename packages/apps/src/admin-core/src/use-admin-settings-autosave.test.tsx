@@ -14,12 +14,25 @@ import {
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 
+const reported = vi.hoisted(() => ({ last: "saved" as string }));
+vi.mock("@/ui/autosave-status", () => ({
+  useReportAutosaveStatus: (status: string) => {
+    reported.last = status;
+  },
+}));
+
 const INITIAL = buildAdminSettingsFormState(createAdminAppBootstrap().data);
 
 type Save = (sent: AdminSettingsFormState) => Promise<boolean>;
 
-function Fields({ form, onClear }: { form: AdminSettingsFormState; onClear?: () => void }) {
-  const { type, clear } = useAdminSettingsEditor();
+function Fields({
+  form,
+  onClear,
+}: {
+  form: AdminSettingsFormState;
+  onClear?: () => void | Promise<void>;
+}) {
+  const { type, choose, clear } = useAdminSettingsEditor();
   return (
     <>
       <input
@@ -29,6 +42,14 @@ function Fields({ form, onClear }: { form: AdminSettingsFormState; onClear?: () 
       />
       <button type="button" onClick={() => clear("turnSecret", async () => onClear?.())}>
         Clear
+      </button>
+      <input
+        aria-label="STUN"
+        value={form.stunUrls}
+        onChange={(event) => type({ stunUrls: event.target.value })}
+      />
+      <button type="button" onClick={() => choose({ stunUrls: "stun:b" })}>
+        Remove
       </button>
       <input
         aria-label="Per day"
@@ -45,7 +66,7 @@ function Fields({ form, onClear }: { form: AdminSettingsFormState; onClear?: () 
 }
 
 /** The server: stores what it gets, never echoes the secret (like the API). */
-function Harness({ save, onClear }: { save: Save; onClear?: () => void }) {
+function Harness({ save, onClear }: { save: Save; onClear?: () => void | Promise<void> }) {
   const [form, setForm] = useState(INITIAL);
   const controller = {
     settingsForm: form,
@@ -138,5 +159,40 @@ describe("AdminSettingsAutosave", () => {
 
     expect(order).toEqual(["save:typed", "clear"]);
     expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the list without a removed URL, and keeps it out of later saves", async () => {
+    const save = vi.fn<Save>().mockResolvedValue(true);
+    render(<Harness save={save} />);
+    const stun = screen.getByLabelText("STUN");
+
+    fireEvent.change(stun, { target: { value: "stun:a,stun:b" } });
+    fireEvent.blur(stun);
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await pause();
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0]?.[0].stunUrls).toBe("stun:b");
+
+    fireEvent.change(screen.getByLabelText("Realm"), { target: { value: "Office" } });
+    await pause();
+    expect(save.mock.calls[1]?.[0].stunUrls).toBe("stun:b");
+  });
+
+  it("shows Unsaved when a Clear fails", async () => {
+    const save = vi.fn<Save>().mockResolvedValue(true);
+    render(
+      <Harness
+        save={save}
+        onClear={async () => {
+          throw new Error("no");
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await pause(10);
+
+    expect(reported.last).toBe("unsaved");
   });
 });

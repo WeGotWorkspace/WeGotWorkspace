@@ -20,6 +20,8 @@ export type AdminStunUrlsFieldProps = {
   value: string;
   /** Typing in the fields (saved when the field is left). */
   onChange: (value: string) => void;
+  /** Remove a URL: saves after the short pause, like a choice. */
+  onRemove?: (value: string) => void;
   /** Restore default, confirmed: saves at once. */
   onRestore: (value: string) => void;
 };
@@ -33,7 +35,12 @@ function sameUrls(a: readonly string[], b: readonly string[]): boolean {
  * server the default is, a warning when it is empty, and a confirmed way back
  * to the default.
  */
-export function AdminStunUrlsField({ value, onChange, onRestore }: AdminStunUrlsFieldProps) {
+export function AdminStunUrlsField({
+  value,
+  onChange,
+  onRemove,
+  onRestore,
+}: AdminStunUrlsFieldProps) {
   const [confirmRestore, setConfirmRestore] = useState(false);
   const urls = parseUrlList(value, "stun");
   const isDefault = sameUrls(urls, DEFAULT_PUBLIC_STUN_URLS);
@@ -61,6 +68,7 @@ export function AdminStunUrlsField({ value, onChange, onRestore }: AdminStunUrls
             itemLabel="STUN URL"
             value={value}
             onChange={onChange}
+            onRemove={onRemove}
           />
           {!isDefault ? (
             <Button
