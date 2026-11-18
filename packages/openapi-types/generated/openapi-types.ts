@@ -12403,7 +12403,17 @@ export interface components {
             clientId: string;
             clientName: string;
             clientOrigin: string;
+            /**
+             * @description How the client registered: `cimd` = client ID metadata document (name and origin come from the vendor's HTTPS metadata), `dcr` = dynamic client registration (name chosen by the client itself; a new client per registration).
+             * @enum {string}
+             */
+            clientRegistration: "cimd" | "dcr";
+            /** @description When the user connected this client: the recorded approval, else the first token issued for it. */
             connectedAt: string;
+            /** @description When the user approved this client on the consent page. Null for grants approved before approvals were recorded. */
+            approvedAt: string | null;
+            /** @description User agent of the browser the user approved this client in (max 512 characters). No IP address is stored. */
+            approvedUserAgent: string | null;
             scopes: string[];
             lastUsedAt?: string | null;
             /** @description Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first. */

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Auth\UserSessionRevoker;
 use App\Services\Drive\DriveShareRevoker;
 use App\Services\Installer\InstallerSeeder;
+use App\Services\Mcp\McpConsentRecorder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Teams\TeamMembershipReader;
 use App\Support\AppPaths;
@@ -182,6 +183,7 @@ final class AdminUserProvisionerService
         $this->sessions->revokeAll($username);
         User::query()->where('username', $username)->delete();
         CalendarReplyMailbox::query()->where('username', $username)->delete();
+        app(McpConsentRecorder::class)->forgetUser($username);
 
         $userFiles = rtrim($this->paths->dataDir(), '/').'/files/users/'.$username;
         if (is_dir($userFiles)) {

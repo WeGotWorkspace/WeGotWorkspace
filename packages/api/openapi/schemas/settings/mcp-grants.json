@@ -1,21 +1,59 @@
 {
   "SettingsMcpGrant": {
     "type": "object",
-    "required": ["clientId", "clientName", "clientOrigin", "connectedAt", "scopes", "shareCalls"],
+    "required": [
+      "clientId",
+      "clientName",
+      "clientOrigin",
+      "clientRegistration",
+      "connectedAt",
+      "approvedAt",
+      "approvedUserAgent",
+      "scopes",
+      "shareCalls"
+    ],
     "properties": {
-      "clientId": { "type": "string" },
-      "clientName": { "type": "string" },
-      "clientOrigin": { "type": "string" },
-      "connectedAt": { "type": "string" },
+      "clientId": {
+        "type": "string"
+      },
+      "clientName": {
+        "type": "string"
+      },
+      "clientOrigin": {
+        "type": "string"
+      },
+      "clientRegistration": {
+        "type": "string",
+        "enum": ["cimd", "dcr"],
+        "description": "How the client registered: `cimd` = client ID metadata document (name and origin come from the vendor's HTTPS metadata), `dcr` = dynamic client registration (name chosen by the client itself; a new client per registration)."
+      },
+      "connectedAt": {
+        "type": "string",
+        "description": "When the user connected this client: the recorded approval, else the first token issued for it."
+      },
+      "approvedAt": {
+        "type": ["string", "null"],
+        "description": "When the user approved this client on the consent page. Null for grants approved before approvals were recorded."
+      },
+      "approvedUserAgent": {
+        "type": ["string", "null"],
+        "description": "User agent of the browser the user approved this client in (max 512 characters). No IP address is stored."
+      },
       "scopes": {
         "type": "array",
-        "items": { "type": "string" }
+        "items": {
+          "type": "string"
+        }
       },
-      "lastUsedAt": { "type": ["string", "null"] },
+      "lastUsedAt": {
+        "type": ["string", "null"]
+      },
       "shareCalls": {
         "type": "array",
         "description": "Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first.",
-        "items": { "$ref": "#/components/schemas/SettingsMcpShareCall" }
+        "items": {
+          "$ref": "#/components/schemas/SettingsMcpShareCall"
+        }
       }
     }
   },
@@ -23,10 +61,18 @@
     "type": "object",
     "required": ["tool", "outcome", "createdAt"],
     "properties": {
-      "tool": { "type": "string" },
-      "outcome": { "type": "string" },
-      "createdAt": { "type": "string" },
-      "target": { "type": ["string", "null"] }
+      "tool": {
+        "type": "string"
+      },
+      "outcome": {
+        "type": "string"
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "target": {
+        "type": ["string", "null"]
+      }
     }
   },
   "SettingsMcpGrantList": {
@@ -35,7 +81,9 @@
     "properties": {
       "grants": {
         "type": "array",
-        "items": { "$ref": "#/components/schemas/SettingsMcpGrant" }
+        "items": {
+          "$ref": "#/components/schemas/SettingsMcpGrant"
+        }
       }
     }
   }
