@@ -139,8 +139,9 @@ export function useDocsCollabTextFields({
       const result = reread(ydoc, stored ?? { update: null }, served);
       if (result === "prompt") return { settlement: "prompted", keptLocalEdits: pendingLocalWork };
       refs.seedDoneRef.current = true;
-      // A replacement is the server's text: nothing to save.
-      if (result === "replaced") return { settlement: "replaced", keptLocalEdits: false };
+      // A replacement or a first seed is the server's text: nothing to save.
+      // `replaced` also clears the loading status, which a 204 never would.
+      if (result === "replaced" || result === "seeded") return { settlement: "replaced", keptLocalEdits: false };
       return { settlement: "adopted", keptLocalEdits: pendingLocalWork };
     },
     [reread, refs, room, textFields],
