@@ -12554,6 +12554,296 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "ThreadEntryAuthor": {
+                "type": "object",
+                "required": [
+                    "username",
+                    "displayName"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "description": "Author principal username."
+                    },
+                    "displayName": {
+                        "type": "string",
+                        "description": "Current display name; the username when the account is gone."
+                    }
+                }
+            },
+            "ThreadEntryMention": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "displayName"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Mentioned principal username."
+                    },
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ThreadEntryReaction": {
+                "type": "object",
+                "required": [
+                    "emoji",
+                    "authors"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "emoji": {
+                        "type": "string"
+                    },
+                    "authors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Usernames that added this emoji."
+                    }
+                }
+            },
+            "ThreadEntry": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "kind",
+                    "parentId",
+                    "author",
+                    "body",
+                    "mentions",
+                    "reactions",
+                    "createdAt",
+                    "editedAt",
+                    "deletedAt",
+                    "activity"
+                ],
+                "additionalProperties": false,
+                "description": "One entry of a shared thread (#2173): a comment, a reply or a server-written activity entry.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "ULID (VJOURNAL UID). The client's id, or a fresh one when that id was taken."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "comment",
+                            "reply",
+                            "activity"
+                        ]
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The root comment of a reply."
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/ThreadEntryAuthor"
+                    },
+                    "body": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null for activity entries and deleted entries."
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ThreadEntryMention"
+                        }
+                    },
+                    "reactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ThreadEntryReaction"
+                        }
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "description": "Server arrival time, UTC."
+                    },
+                    "editedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "deletedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "activity": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true,
+                        "description": "For activity entries: {field, from, to} or {field, added, removed}. Rendered by the client."
+                    }
+                }
+            },
+            "ThreadEntryList": {
+                "type": "object",
+                "required": [
+                    "list",
+                    "nextCursor",
+                    "state",
+                    "canPost"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "list": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ThreadEntry"
+                        },
+                        "description": "In arrival order, at most 200 per page."
+                    },
+                    "nextCursor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Pass as `cursor` for the next page; null on the last page."
+                    },
+                    "state": {
+                        "type": "string",
+                        "description": "Thread state for `/changes`."
+                    },
+                    "canPost": {
+                        "type": "boolean",
+                        "description": "Whether the caller may comment, reply, react, edit and delete their own entries."
+                    }
+                }
+            },
+            "ThreadEntryCreate": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "body"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Client ULID. Retrying the same id is idempotent."
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "At most 65 536 bytes."
+                    },
+                    "parentId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A root comment under the subject's current key."
+                    },
+                    "scopeId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The scope the writer saw the subject in (for a task, its list id). A stale one answers 409 subject_moved."
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "maxItems": 50,
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "id"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "displayName": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": "Mentions outside the subject's audience are not stored."
+                    }
+                }
+            },
+            "ThreadEntryPatch": {
+                "type": "object",
+                "required": [
+                    "body"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "body": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ThreadReactionToggle": {
+                "type": "object",
+                "required": [
+                    "emoji"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "emoji": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    }
+                }
+            },
+            "ThreadChangesResponse": {
+                "type": "object",
+                "required": [
+                    "oldState",
+                    "newState",
+                    "changed",
+                    "removed",
+                    "hasMoreChanges"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "oldState": {
+                        "type": "string"
+                    },
+                    "newState": {
+                        "type": "string"
+                    },
+                    "changed": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Entry ids created or changed since oldState."
+                    },
+                    "removed": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "hasMoreChanges": {
+                        "type": "boolean"
+                    }
+                }
             }
         },
         "responses": {
@@ -22319,6 +22609,449 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/threads/{subjectType}/{subjectId}/entries": {
+            "get": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "List a thread's entries",
+                "description": "Entries under the subject's current key, in arrival order (created_at, uid). 404 when the caller cannot see the subject.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "subjectType",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A registered subject type, such as `task`."
+                    },
+                    {
+                        "name": "subjectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The subject's id in its own app (for a task, its task id)."
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "`nextCursor` of the previous page."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Entries, thread state and canPost",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadEntryList"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Post a comment or reply",
+                "description": "Resolved in order: the caller's own id under the current key replays (200); under an earlier key is 409 already_stored; 403 without canPost; 409 subject_moved for a stale scopeId; then 201. Also 409 thread_full past 5 000 entries, 422 for a parentId that is not a root comment here.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "subjectType",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A registered subject type, such as `task`."
+                    },
+                    {
+                        "name": "subjectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The subject's id in its own app (for a task, its task id)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Idempotent retry of the caller's own entry",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadEntry"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Stored entry",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadEntry"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    },
+                    "422": {
+                        "description": "parentId is not a root comment under the current key",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ThreadEntryCreate"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/threads/{subjectType}/{subjectId}/entries/{entryId}": {
+            "patch": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Edit your own comment",
+                "description": "Author only (403), comments and replies only (409 for activity and deleted entries), needs canPost.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "subjectType",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A registered subject type, such as `task`."
+                    },
+                    {
+                        "name": "subjectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The subject's id in its own app (for a task, its task id)."
+                    },
+                    {
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Entry ULID under the subject's current key."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated entry",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadEntry"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ThreadEntryPatch"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Delete your own comment",
+                "description": "Leaves a tombstone; replies stay. Author only, needs canPost, 409 for activity entries. Idempotent.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "subjectType",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A registered subject type, such as `task`."
+                    },
+                    {
+                        "name": "subjectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The subject's id in its own app (for a task, its task id)."
+                    },
+                    {
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Entry ULID under the subject's current key."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tombstoned entry",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadEntry"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/threads/{subjectType}/{subjectId}/entries/{entryId}/reactions": {
+            "post": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Toggle a reaction",
+                "description": "Adds or removes the caller's emoji. Needs canPost; 409 on activity entries.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "subjectType",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A registered subject type, such as `task`."
+                    },
+                    {
+                        "name": "subjectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The subject's id in its own app (for a task, its task id)."
+                    },
+                    {
+                        "name": "entryId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Entry ULID under the subject's current key."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated entry",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadEntry"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ThreadReactionToggle"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/threads/{subjectType}/{subjectId}/changes": {
+            "get": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Thread changes since a state",
+                "description": "Entry ids changed under the subject's current key since `since`.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "subjectType",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A registered subject type, such as `task`."
+                    },
+                    {
+                        "name": "subjectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The subject's id in its own app (for a task, its task id)."
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A `state` or `newState` from earlier."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Changed entry ids",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ThreadChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
             }
         }
     }

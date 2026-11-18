@@ -13,6 +13,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Threads\ThreadPoolUris;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -85,8 +86,8 @@ final class CalDavCollections
 
     /**
      * Prefixes that belong to another app. No other collection may be created
-     * on them: chat-/dm- would shadow Meet rooms, and docs-threads would block
-     * the thread pool for that principal.
+     * on them: chat-/dm- would shadow Meet rooms, and docs-threads or a shared
+     * thread pool uri (`task-threads`) would block that pool for the principal.
      */
     public function reservedPrefixOwner(string $uri): ?CollectionKind
     {
@@ -95,6 +96,9 @@ final class CalDavCollections
         }
         if (str_starts_with($uri, DocsThreadCollectionUris::POOL_URI)) {
             return CollectionKind::DocsThreadPool;
+        }
+        if (ThreadPoolUris::isPoolUri($uri)) {
+            return CollectionKind::ThreadPool;
         }
 
         return null;

@@ -19,6 +19,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use App\Services\Tasks\Threads\TaskThreadHooks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -40,6 +41,7 @@ final class TaskListRepository
         private readonly WgwCalendarBackendFactory $backends,
         private readonly CalDavCollections $collections,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
+        private readonly TaskThreadHooks $threadHooks = new TaskThreadHooks,
     ) {}
 
     /** @return array<mixed> */
@@ -209,7 +211,10 @@ final class TaskListRepository
             throw new ApiHttpException(409, 'Task list contains tasks.', 'taskListHasContents');
         }
 
+        $calendarId = (int) $instance->calendarid;
         $this->backends->calBackend()->deleteCalendar($this->collections->backendId($instance));
+        // Only the owner's delete reaches here; a sharee only dismissed above (#2173).
+        $this->threadHooks->listDeleted($calendarId);
 
         return ['ok' => true];
     }

@@ -20,18 +20,20 @@ enum CollectionKind: string
     case Notebook = 'notebook';
     case ChatChannel = 'chat_channel';
     case DocsThreadPool = 'docs_thread_pool';
+    /** A shared thread pool, one per owner and subject type (#2173, docs/architecture/threads.md). */
+    case ThreadPool = 'thread_pool';
 
     /** Families that never surface over WebDAV. Notes stay visible by design. */
     public function davHidden(): bool
     {
-        return in_array($this, [self::ChatChannel, self::DocsThreadPool], true);
+        return in_array($this, [self::ChatChannel, self::DocsThreadPool, self::ThreadPool], true);
     }
 
     /**
      * Sharees get their own copy of the name and colour when a collection is
      * shared. For these kinds an owner's later rename or recolour reaches every
-     * copy the sharee did not change (#1822). Chat channels and the docs thread
-     * pool have no sharee copies a person names.
+     * copy the sharee did not change (#1822). Chat channels and the thread pools
+     * have no sharee copies a person names.
      */
     public function shareesFollowOwnerAppearance(): bool
     {
@@ -48,7 +50,7 @@ enum CollectionKind: string
         return match ($this) {
             self::EventCalendar => $hasEvent,
             self::TaskList => $hasTodo && ! $hasEvent,
-            self::Notebook, self::ChatChannel, self::DocsThreadPool => $hasJournal && ! $hasEvent && ! $hasTodo,
+            self::Notebook, self::ChatChannel, self::DocsThreadPool, self::ThreadPool => $hasJournal && ! $hasEvent && ! $hasTodo,
         };
     }
 

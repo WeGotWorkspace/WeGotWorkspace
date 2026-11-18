@@ -8943,6 +8943,304 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/threads/{subjectType}/{subjectId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a thread's entries
+         * @description Entries under the subject's current key, in arrival order (created_at, uid). 404 when the caller cannot see the subject.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `nextCursor` of the previous page. */
+                    cursor?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description A registered subject type, such as `task`. */
+                    subjectType: string;
+                    /** @description The subject's id in its own app (for a task, its task id). */
+                    subjectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Entries, thread state and canPost */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadEntryList"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        /**
+         * Post a comment or reply
+         * @description Resolved in order: the caller's own id under the current key replays (200); under an earlier key is 409 already_stored; 403 without canPost; 409 subject_moved for a stale scopeId; then 201. Also 409 thread_full past 5 000 entries, 422 for a parentId that is not a root comment here.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description A registered subject type, such as `task`. */
+                    subjectType: string;
+                    /** @description The subject's id in its own app (for a task, its task id). */
+                    subjectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ThreadEntryCreate"];
+                };
+            };
+            responses: {
+                /** @description Idempotent retry of the caller's own entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadEntry"];
+                    };
+                };
+                /** @description Stored entry */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadEntry"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+                /** @description parentId is not a root comment under the current key */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/threads/{subjectType}/{subjectId}/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete your own comment
+         * @description Leaves a tombstone; replies stay. Author only, needs canPost, 409 for activity entries. Idempotent.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description A registered subject type, such as `task`. */
+                    subjectType: string;
+                    /** @description The subject's id in its own app (for a task, its task id). */
+                    subjectId: string;
+                    /** @description Entry ULID under the subject's current key. */
+                    entryId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tombstoned entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadEntry"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Edit your own comment
+         * @description Author only (403), comments and replies only (409 for activity and deleted entries), needs canPost.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description A registered subject type, such as `task`. */
+                    subjectType: string;
+                    /** @description The subject's id in its own app (for a task, its task id). */
+                    subjectId: string;
+                    /** @description Entry ULID under the subject's current key. */
+                    entryId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ThreadEntryPatch"];
+                };
+            };
+            responses: {
+                /** @description Updated entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadEntry"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+            };
+        };
+        trace?: never;
+    };
+    "/threads/{subjectType}/{subjectId}/entries/{entryId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle a reaction
+         * @description Adds or removes the caller's emoji. Needs canPost; 409 on activity entries.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description A registered subject type, such as `task`. */
+                    subjectType: string;
+                    /** @description The subject's id in its own app (for a task, its task id). */
+                    subjectId: string;
+                    /** @description Entry ULID under the subject's current key. */
+                    entryId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ThreadReactionToggle"];
+                };
+            };
+            responses: {
+                /** @description Updated entry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadEntry"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/threads/{subjectType}/{subjectId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Thread changes since a state
+         * @description Entry ids changed under the subject's current key since `since`.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description A `state` or `newState` from earlier. */
+                    since?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description A registered subject type, such as `task`. */
+                    subjectType: string;
+                    /** @description The subject's id in its own app (for a task, its task id). */
+                    subjectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Changed entry ids */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ThreadChangesResponse"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -13064,6 +13362,83 @@ export interface components {
         };
         TaskListMembersResponse: {
             list: components["schemas"]["TaskListMember"][];
+        };
+        ThreadEntryAuthor: {
+            /** @description Author principal username. */
+            username: string;
+            /** @description Current display name; the username when the account is gone. */
+            displayName: string;
+        };
+        ThreadEntryMention: {
+            /** @description Mentioned principal username. */
+            id: string;
+            displayName: string;
+        };
+        ThreadEntryReaction: {
+            emoji: string;
+            /** @description Usernames that added this emoji. */
+            authors: string[];
+        };
+        /** @description One entry of a shared thread (#2173): a comment, a reply or a server-written activity entry. */
+        ThreadEntry: {
+            /** @description ULID (VJOURNAL UID). The client's id, or a fresh one when that id was taken. */
+            id: string;
+            /** @enum {string} */
+            kind: "comment" | "reply" | "activity";
+            /** @description The root comment of a reply. */
+            parentId: string | null;
+            author: components["schemas"]["ThreadEntryAuthor"];
+            /** @description Null for activity entries and deleted entries. */
+            body: string | null;
+            mentions: components["schemas"]["ThreadEntryMention"][];
+            reactions: components["schemas"]["ThreadEntryReaction"][];
+            /** @description Server arrival time, UTC. */
+            createdAt: string;
+            editedAt: string | null;
+            deletedAt: string | null;
+            /** @description For activity entries: {field, from, to} or {field, added, removed}. Rendered by the client. */
+            activity: {
+                [key: string]: unknown;
+            } | null;
+        };
+        ThreadEntryList: {
+            /** @description In arrival order, at most 200 per page. */
+            list: components["schemas"]["ThreadEntry"][];
+            /** @description Pass as `cursor` for the next page; null on the last page. */
+            nextCursor: string | null;
+            /** @description Thread state for `/changes`. */
+            state: string;
+            /** @description Whether the caller may comment, reply, react, edit and delete their own entries. */
+            canPost: boolean;
+        };
+        ThreadEntryCreate: {
+            /** @description Client ULID. Retrying the same id is idempotent. */
+            id: string;
+            /** @description At most 65 536 bytes. */
+            body: string;
+            /** @description A root comment under the subject's current key. */
+            parentId?: string | null;
+            /** @description The scope the writer saw the subject in (for a task, its list id). A stale one answers 409 subject_moved. */
+            scopeId?: string | null;
+            /** @description Mentions outside the subject's audience are not stored. */
+            mentions?: {
+                id: string;
+                displayName?: string | null;
+            }[];
+        };
+        ThreadEntryPatch: {
+            body: string;
+        };
+        ThreadReactionToggle: {
+            emoji: string;
+        };
+        ThreadChangesResponse: {
+            oldState: string;
+            newState: string;
+            /** @description Entry ids created or changed since oldState. */
+            changed: string[];
+            removed: string[];
+            hasMoreChanges: boolean;
         };
     };
     responses: {

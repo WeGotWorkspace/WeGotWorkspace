@@ -129,6 +129,23 @@ final class TaskRepository
         return ['ids' => $ids, 'total' => $total];
     }
 
+    /**
+     * The task and the list instance $username sees it through, or null when
+     * they cannot see it. For the task thread subject (#2173).
+     *
+     * @return array{instance: CalendarInstance, task: array<string, mixed>}|null
+     */
+    public function locate(string $username, string $taskId): ?array
+    {
+        $located = $this->findOwnedTask($username, $taskId);
+        if ($located === null) {
+            return null;
+        }
+        $task = $this->mapper->toTask($located['object'], $located['taskListUri'], $located['vtodoUid']);
+
+        return $task === null ? null : ['instance' => $located['instance'], 'task' => $task];
+    }
+
     /** @return array<string, mixed> */
     public function show(string $username, string $taskId): array
     {

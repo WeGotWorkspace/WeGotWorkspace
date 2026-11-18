@@ -6,6 +6,7 @@ namespace Tests\Feature\Dav;
 
 use App\Models\CalendarInstance;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -185,6 +186,28 @@ final class ChatCollectionsDavExposureTest extends WgwDatabaseTestCase
             'CONTENT_TYPE' => 'application/xml',
         ]);
         $shadow->assertForbidden();
+    }
+
+    public function test_thread_pool_is_dav_invisible(): void
+    {
+        $this->setAppSetting(WgwSettings::TASKS_ENABLED, true);
+        $listId = (string) $this->asUser('alice')->postJson('/api/v1/tasks/tasklists', ['name' => 'Chores'])->assertCreated()->json('id');
+        $taskId = (string) $this->asUser('alice')
+            ->postJson('/api/v1/tasks/items', ['title' => 'Bins', 'taskListIds' => [$listId => true]])
+            ->assertCreated()
+            ->json('id');
+        $entryId = '01J6Y6M0R2V9GKJ4W1T8Q3ZBF1';
+        $this->asUser('alice')->postJson('/api/v1/threads/task/'.rawurlencode($taskId).'/entries', ['id' => $entryId, 'body' => 'a comment'])
+            ->assertCreated();
+
+        $home = $this->dav('PROPFIND', '/calendars/alice/', depth: '1');
+        $home->assertStatus(207);
+        $this->assertStringNotContainsString('task-threads', (string) $home->getContent());
+        $this->dav('PROPFIND', '/calendars/alice/task-threads/', depth: '1')->assertNotFound();
+        $this->dav('GET', '/calendars/alice/task-threads/'.$entryId.'.ics')->assertNotFound();
+        $this->dav('MKCOL', '/calendars/alice/notes-threads/', $this->mkcolCalendarXml(), [
+            'CONTENT_TYPE' => 'application/xml',
+        ])->assertForbidden();
     }
 
     private function asUser(string $username)

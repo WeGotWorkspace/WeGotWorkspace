@@ -27,8 +27,10 @@ use App\Services\Jmap\Guest\GuestJmapAccounts;
 use App\Services\Jmap\Guest\GuestJmapGateway;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
+use App\Services\Tasks\Threads\TaskThreadSubject;
 use App\Services\Teams\TeamColleagues;
 use App\Services\Teams\TeamMembershipReader;
+use App\Services\Threads\ThreadSubjectRegistry;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
@@ -141,6 +143,13 @@ final class WgwServiceProvider extends ServiceProvider
                 array_map($app->make(...), JmapBlobGarbageCollector::CHECKERS),
             ),
         );
+        // Thread subject types (#2173). Another app with threads registers here.
+        $this->app->singleton(ThreadSubjectRegistry::class, function ($app): ThreadSubjectRegistry {
+            $registry = new ThreadSubjectRegistry;
+            $registry->register($app->make(TaskThreadSubject::class));
+
+            return $registry;
+        });
     }
 
     public function boot(): void
