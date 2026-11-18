@@ -140,9 +140,10 @@ export function rereadTextFields(
   }
 
   // The served text is still the one this document last took (directly, or
-  // from a peer's quiet replacement over the mesh): this person typed on top
-  // of the current server text. The local work stands and saves; nothing to ask.
-  if (pendingLocalWork && base && servedMatchesBase(base, text, contentTag)) return "unchanged";
+  // from a peer's quiet replacement over the mesh). What differs is typing on
+  // top of it, this person's or a peer's: it stands, and its typist saves it.
+  // Replacing would only move that typing in front of a fresh seed.
+  if (base && servedMatchesBase(base, text, contentTag)) return "unchanged";
 
   if (pendingLocalWork) return "prompt";
 
