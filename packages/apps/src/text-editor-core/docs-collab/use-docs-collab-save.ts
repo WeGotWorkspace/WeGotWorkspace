@@ -1,13 +1,13 @@
 import { useCallback, useRef } from "react";
+import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
-import { collabSaveBody } from "./docs-collab-save-body";
+import { collabSaveBody, pendingSignatureBody } from "./docs-collab-save-body";
 import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
-import { isTextFieldsDoc, readTextFields } from "./docs-collab-text-fields";
 import {
   computeShouldPersist,
   SAVE_DELAY_MS,
@@ -81,23 +81,7 @@ export function useDocsCollabSave({
   );
 
   const markPendingWhenUnsaved = useCallback(async (): Promise<void> => {
-    const ydoc = refs.ydocRef.current;
-    const getMd = refs.getMarkdownRef.current;
-    const textFields = !!ydoc && isTextFieldsDoc(ydoc);
-    if (!ydoc || (!getMd && !textFields) || !refs.localDirtySinceLastSaveRef.current) return;
-    const signature = docSignature(
-      textFields ? readTextFields(ydoc).description : (getMd?.() ?? ""),
-      ydoc,
-    );
-    if (
-      !shouldMarkPendingWhenUnsaved(
-        refs.localDirtySinceLastSaveRef.current,
-        signature,
-        refs.lastSuccessfulSaveSignatureRef.current,
-      )
-    ) {
-      return;
-    }
+    if (unsavedSignature(refs) === null) return;
     await updatePendingState(true, false);
   }, [refs, updatePendingState]);
 
@@ -157,11 +141,8 @@ export function useDocsCollabSave({
       refs.externalWriteSeenRef.current = null;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
-      // A text-fields save keeps the vector from the send: typing since is not in it.
       const success = saveSuccessState(
-        body.textFields && savedMarkdown === markdown
-          ? signature
-          : docSignature(savedMarkdown, ydoc),
+        landedSignature(body.textFields, { markdown, signature }, savedMarkdown, ydoc),
       );
       // Typed while this save was on its way: still dirty, saved by the next round.
       if (baseCandidate) await baseCandidate.landed(savedMarkdown);
@@ -291,4 +272,31 @@ function terminalSaveFailure(error: unknown): DocsCollabSaveTerminalKind | null 
   if (collabErrorStatus(error) === 403) return "forbidden";
   if (isCollabPayloadTooLarge(error)) return "too-large";
   return null;
+}
+
+/** A text-fields save keeps the vector from the send: typing since is not in it. */
+function landedSignature(
+  textFields: boolean,
+  sent: { markdown: string; signature: string },
+  savedMarkdown: string,
+  ydoc: Y.Doc,
+): string {
+  return textFields && savedMarkdown === sent.markdown
+    ? sent.signature
+    : docSignature(savedMarkdown, ydoc);
+}
+
+/** The document's signature when it holds edits the last save did not carry, else null. */
+function unsavedSignature(refs: DocsCollabSessionRefs): string | null {
+  const ydoc = refs.ydocRef.current;
+  if (!ydoc || !refs.localDirtySinceLastSaveRef.current) return null;
+  const body = pendingSignatureBody(ydoc, refs.getMarkdownRef.current);
+  if (body === null) return null;
+  const signature = docSignature(body, ydoc);
+  const unsaved = shouldMarkPendingWhenUnsaved(
+    refs.localDirtySinceLastSaveRef.current,
+    signature,
+    refs.lastSuccessfulSaveSignatureRef.current,
+  );
+  return unsaved ? signature : null;
 }

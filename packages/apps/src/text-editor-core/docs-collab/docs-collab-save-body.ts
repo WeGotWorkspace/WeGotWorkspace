@@ -97,3 +97,15 @@ function textFieldsSaveBase(ydoc: Y.Doc): { landed: (savedDescription: string) =
     },
   };
 }
+
+/**
+ * The save body a pending-flag signature is taken from: a text-fields
+ * document's description, or the editor's markdown. Null when neither exists.
+ */
+export function pendingSignatureBody(
+  ydoc: Y.Doc,
+  getMarkdown: (() => string) | null,
+): string | null {
+  if (isTextFieldsDoc(ydoc)) return readTextFields(ydoc).description;
+  return getMarkdown ? getMarkdown() : null;
+}
