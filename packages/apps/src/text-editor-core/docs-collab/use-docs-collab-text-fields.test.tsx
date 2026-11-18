@@ -114,7 +114,7 @@ describe("useDocsCollabTextFields settleBootstrap", () => {
         snapshot: { kind: "absent" },
       });
       // Typing can follow at once: the room holds the server text and its base.
-      expect(settled).toEqual({ settlement: "adopted", keptLocalEdits: false });
+      expect(settled).toEqual({ settlement: "replaced", keptLocalEdits: false });
       expect(refs.seedDoneRef.current).toBe(true);
       expect(readTextFields(doc)).toEqual(served);
       expect(readTextFieldsBase(doc)?.title).toBe("Buy milk");
