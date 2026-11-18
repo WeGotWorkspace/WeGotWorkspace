@@ -102,6 +102,14 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
                 )->variant('reshare');
 
                 $cases[] = self::listDeleteCase($actor, $scope, $visible, $sharee);
+
+                // Only people who can edit the list may see who can be assigned (#2172).
+                $cases[] = OwnershipCase::of(
+                    'GET /tasks/tasklists/{taskListId}/members',
+                    $actor,
+                    $scope,
+                    ! $visible ? Outcome::NotFound : ($readOnly ? Outcome::Forbidden : Outcome::Allowed),
+                );
             }
 
             foreach ([Scope::OwnUser, Scope::OwnGroup] as $scope) {
@@ -127,6 +135,7 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'PATCH /tasks/tasklists/{taskListId}',
             'DELETE /tasks/tasklists/{taskListId}',
             'POST /tasks/tasklists',
+            'GET /tasks/tasklists/{taskListId}/members',
         ]) as $op) {
             $cases[] = OwnershipCase::of($op, Actor::Anonymous, Scope::OtherUser, Outcome::Unauthenticated);
         }
@@ -197,6 +206,7 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'GET /tasks/tasklists' => $this->runListIndex($case, $target),
             'GET /tasks/tasklists/changes' => $this->runListChanges($case, $target),
             'GET /tasks/tasklists/{taskListId}' => $this->runListShow($case, $target),
+            'GET /tasks/tasklists/{taskListId}/members' => $this->runListMembers($case, $target),
             'PATCH /tasks/tasklists/{taskListId}' => $this->runListPatch($case, $target),
             'DELETE /tasks/tasklists/{taskListId}' => $this->runListDelete($case, $target),
             'GET /tasks/items' => $this->runItemIndex($case, $target),
@@ -443,6 +453,18 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         $this->assertRestOutcome($response, $case);
         if ($case->outcome === Outcome::Allowed) {
             $this->assertSame($target['name'], $response->json('name'), $case->key());
+        }
+    }
+
+    /**
+     * @param  array{owner: string, name: string, ownerListId: string, actorListId: string, taskId: string}  $target
+     */
+    private function runListMembers(OwnershipCase $case, array $target): void
+    {
+        $response = $this->requestAs($case->actor, 'GET', '/tasks/tasklists/'.$target['actorListId'].'/members');
+        $this->assertRestOutcome($response, $case);
+        if ($case->outcome === Outcome::Allowed) {
+            $this->assertIsArray($response->json('list'), $case->key());
         }
     }
 

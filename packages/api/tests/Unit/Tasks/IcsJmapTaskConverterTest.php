@@ -250,7 +250,7 @@ final class IcsJmapTaskConverterTest extends TestCase
 
         $roundTrip = $this->reader->tasksFromIcs($roundTripIcs);
         $this->assertSame('Alice', $roundTrip[0]['participants']['org']['name']);
-        $this->assertSame('accepted', $roundTrip[0]['participants']['att1']['participationStatus']);
+        $this->assertSame('accepted', $roundTrip[0]['participants']['e:bob@example.com']['participationStatus']);
     }
 
     public function test_priority_round_trip_preserves_ical_values(): void

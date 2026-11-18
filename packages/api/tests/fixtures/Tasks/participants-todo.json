@@ -22,11 +22,12 @@
       "email": "alice@example.com",
       "roles": ["owner"]
     },
-    "att1": {
+    "e:bob@example.com": {
       "@type": "Participant",
       "name": "Bob",
       "email": "bob@example.com",
       "roles": ["attendee"],
+      "username": null,
       "participationStatus": "accepted"
     }
   }

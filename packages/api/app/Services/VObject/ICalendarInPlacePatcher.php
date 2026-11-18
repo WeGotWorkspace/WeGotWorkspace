@@ -97,12 +97,20 @@ final class ICalendarInPlacePatcher
         $baselineRendered = array_map(static fn (Property $p): string => $p->serialize(), $baselineProps);
 
         $used = [];
+        $usedStored = [];
         $result = [];
         foreach ($generatedProps as $property) {
             $match = $aligned ? self::firstUnused($baselineRendered, $property->serialize(), $used) : null;
             if ($match !== null) {
                 $used[$match] = true;
                 $result[] = $storedProps[$match];
+
+                continue;
+            }
+            $storedTwin = $aligned ? null : self::unchangedStoredTwin($storedProps, $baselineRendered, $property, $usedStored);
+            if ($storedTwin !== null) {
+                $usedStored[$storedTwin] = true;
+                $result[] = $storedProps[$storedTwin];
 
                 continue;
             }
@@ -121,12 +129,58 @@ final class ICalendarInPlacePatcher
             $result[] = $copy;
         }
 
+        if (! $aligned) {
+            $result = [...$result, ...self::duplicatesOfKept($storedProps, $usedStored)];
+        }
+
         foreach ($storedProps as $property) {
             $stored->remove($property);
         }
         foreach ($result as $property) {
             $stored->add($property);
         }
+    }
+
+    /**
+     * When the stored group does not line up with the baseline (one person written
+     * twice reads as one participant, #2172), an instance the edit did not change
+     * keeps the first stored line with the same value.
+     *
+     * @param  list<Property>  $storedProps
+     * @param  list<string>  $baselineRendered
+     * @param  array<int, true>  $usedStored
+     */
+    private static function unchangedStoredTwin(array $storedProps, array $baselineRendered, Property $property, array $usedStored): ?int
+    {
+        if (! in_array($property->serialize(), $baselineRendered, true)) {
+            return null;
+        }
+
+        return self::sameValueIndex($storedProps, $property, $usedStored);
+    }
+
+    /**
+     * Stored lines that repeat the value of a kept line belong to an unchanged
+     * instance and stay as they were.
+     *
+     * @param  list<Property>  $storedProps
+     * @param  array<int, true>  $usedStored
+     * @return list<Property>
+     */
+    private static function duplicatesOfKept(array $storedProps, array $usedStored): array
+    {
+        $keptValues = [];
+        foreach (array_keys($usedStored) as $index) {
+            $keptValues[strtolower(trim((string) $storedProps[$index]->getValue()))] = true;
+        }
+        $duplicates = [];
+        foreach ($storedProps as $index => $property) {
+            if (! isset($usedStored[$index]) && isset($keptValues[strtolower(trim((string) $property->getValue()))])) {
+                $duplicates[] = $property;
+            }
+        }
+
+        return $duplicates;
     }
 
     /**

@@ -1106,6 +1106,53 @@
         },
         "additionalProperties": false
       },
+      "TaskListMember": {
+        "type": "object",
+        "required": [
+          "username",
+          "displayName",
+          "email",
+          "access"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ],
+            "description": "`read` people are shown but cannot be assigned"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskListMembersResponse": {
+        "type": "object",
+        "required": [
+          "list"
+        ],
+        "properties": {
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskListMember"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "TaskParticipant": {
         "type": "object",
         "required": [
@@ -1142,6 +1189,13 @@
           },
           "language": {
             "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Set by the server; ignored on writes. The account of a `u:<username>` participant (#2172); null for an `e:<email>` participant or the organizer. Participant ids are `u:<username>`, `e:<lowercased email>` or `org`. An assignee is any participant with role `attendee`."
           }
         },
         "additionalProperties": false
@@ -6874,6 +6928,16 @@
           },
           "413": {
             "$ref": "#/components/responses/JmapPayloadTooLarge"
+          },
+          "422": {
+            "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user",
@@ -6937,6 +7001,49 @@
         },
         "x-wgw-access": "user",
         "description": "Import the VTODO UID groups of an ICS file into a writable task list. Each group's ICS is stored as-is (RELATED-TO, VALARM, RRULE and unknown properties are kept). Same whole-body cap as calendar import (MAX_ICS_IMPORT_BYTES, 512 KiB) → 413 payload_too_large. Each group is checked for the 64-component cap and the recurrence guard; a group whose UID already exists in the list is not overwritten (code already_exists). Failing groups appear in errors[] and siblings still import. 201 when at least one task was imported; when groups were found but none imported the response is 400 with the TaskImportResponse body. A file without VTODOs is 400 bad_request. skipped.events counts VEVENT UID groups that were not imported."
+      }
+    },
+    "/tasks/tasklists/{taskListId}/members": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "People who can be assigned to tasks in a task list",
+        "description": "The list audience (owner, owning Team members, visible sharees with Team grants expanded), narrowed to people the caller shares a Team with plus the caller and the list owner. Only a caller who can edit the list may ask. `read` people cannot be assigned. Not cached; Team changes show on the next call.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "taskListId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "People who can see the list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListMembersResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        },
+        "x-wgw-access": "user"
       }
     },
     "/tasks/items/query": {
@@ -7091,6 +7198,16 @@
           },
           "413": {
             "$ref": "#/components/responses/JmapPayloadTooLarge"
+          },
+          "422": {
+            "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -7154,6 +7271,16 @@
           },
           "413": {
             "$ref": "#/components/responses/JmapPayloadTooLarge"
+          },
+          "422": {
+            "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"

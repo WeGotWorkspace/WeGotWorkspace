@@ -101,6 +101,48 @@ final class TaskRoundTripLossTest extends TestCase
         $this->assertStringNotContainsString('CN=org@ex.com', $out);
     }
 
+    /** #2172: assigning one person adds one line and leaves the other attendee lines as stored. */
+    public function test_assigning_one_person_keeps_the_other_attendee_lines(): void
+    {
+        $bob = "ATTENDEE;CN=Bob;ROLE=OPT-PARTICIPANT;RSVP=TRUE;SCHEDULE-AGENT=CLIENT;PARTSTAT=NEEDS-ACTION:mailto:bob@ex.com\r\n";
+        $out = $this->patch($this->todo("ORGANIZER;SCHEDULE-AGENT=CLIENT:mailto:org@ex.com\r\n".$bob), ['participants' => [
+            'u:carol' => ['@type' => 'Participant', 'name' => 'Carol', 'email' => 'carol@ex.com', 'roles' => ['attendee']],
+        ]]);
+
+        $out = str_replace("\r\n ", '', $out);
+        $this->assertStringContainsString($bob, $out);
+        $this->assertStringContainsString("ORGANIZER;SCHEDULE-AGENT=CLIENT:mailto:org@ex.com\r\n", $out);
+        $this->assertStringContainsString(
+            "ATTENDEE;CN=Carol;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;X-WGW-USERNAME=carol:mailto:carol@ex.com\r\n",
+            $out,
+        );
+    }
+
+    /** #2172: one person written twice keeps both lines when someone else is assigned. */
+    public function test_duplicate_attendee_lines_survive_assigning_someone_else(): void
+    {
+        $first = "ATTENDEE;RSVP=TRUE:mailto:Bob@ex.com\r\n";
+        $second = "ATTENDEE;X-JTX=1:mailto:bob@ex.com\r\n";
+        $out = $this->patch($this->todo($first.$second), ['participants' => [
+            'u:carol' => ['@type' => 'Participant', 'name' => 'Carol', 'email' => 'carol@ex.com', 'roles' => ['attendee']],
+        ]]);
+
+        $this->assertStringContainsString($first, $out);
+        $this->assertStringContainsString($second, $out);
+        $this->assertStringContainsString('X-WGW-USERNAME=carol', str_replace("\r\n ", '', $out));
+    }
+
+    /** #2172: unassigning one person removes only their line. */
+    public function test_unassigning_one_person_keeps_the_other_lines(): void
+    {
+        $guest = "ATTENDEE;CN=Guest;RSVP=TRUE:mailto:guest@ex.com\r\n";
+        $carol = "ATTENDEE;CN=Carol;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;X-WGW-USERNAME=carol:mailto:carol@ex.com\r\n";
+        $out = $this->patch($this->todo($guest.$carol), ['participants' => ['u:carol' => null]]);
+
+        $this->assertStringContainsString($guest, $out);
+        $this->assertStringNotContainsString('carol', $out);
+    }
+
     /** RT-T6 (fixed for unrelated edits by #1392): a DISPLAY alarm keeps DESCRIPTION and UID. */
     public function test_rt_t6_display_alarm_survives_a_title_edit(): void
     {
@@ -144,12 +186,20 @@ final class TaskRoundTripLossTest extends TestCase
     /** Mirrors TaskRepository::patch for a single-VTODO object, including the in-place patch (#1392). */
     private function patchTitle(string $ics): string
     {
+        return $this->patch($ics, ['title' => 'Renamed']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     */
+    private function patch(string $ics, array $patch): string
+    {
         $existing = $this->converter->tasksFromIcs($ics, 't1.ics', 'inbox')[0];
 
         return ICalendarInPlacePatcher::patch(
             $ics,
             $this->converter->icsFromTask($existing),
-            $this->converter->icsFromTask(ConversionSupport::deepMergeTaskPatch($existing, ['title' => 'Renamed'])),
+            $this->converter->icsFromTask(ConversionSupport::deepMergeTaskPatch($existing, $patch)),
         );
     }
 }
