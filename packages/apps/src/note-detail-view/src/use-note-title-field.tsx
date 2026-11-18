@@ -10,6 +10,7 @@ import {
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import {
+  NOTE_TITLE_YTEXT_KEY,
   noteTitleIsInDoc,
   readNoteTitle,
   writeNoteTitle,
@@ -73,6 +74,8 @@ type UseNoteTitleFieldOptions = {
    * still loading). Must save the title: nothing else will.
    */
   onTitleEdit?: (title: string) => void;
+  /** The `Y.Text` the field binds to. Notes' title (`note-title`) by default. */
+  ytextKey?: string;
 };
 
 /**
@@ -89,25 +92,26 @@ export function useNoteTitleField(options: UseNoteTitleFieldOptions): {
   const onTitleChangeRef = useRef(options.onTitleChange);
   onTitleChangeRef.current = options.onTitleChange;
   const fallback = options.storedTitle ?? options.title;
+  const key = options.ytextKey ?? NOTE_TITLE_YTEXT_KEY;
 
   const subscribe = useCallback(
     (notify: () => void) => {
       if (!ydoc) return () => {};
       const onUpdate = () => {
         notify();
-        if (!noteTitleIsInDoc(ydoc)) return;
-        onTitleChangeRef.current?.(readNoteTitle(ydoc));
+        if (!noteTitleIsInDoc(ydoc, key)) return;
+        onTitleChangeRef.current?.(readNoteTitle(ydoc, null, key));
       };
       ydoc.on("update", onUpdate);
       return () => {
         ydoc.off("update", onUpdate);
       };
     },
-    [ydoc],
+    [key, ydoc],
   );
   const getSnapshot = useCallback(
-    () => (ydoc ? readNoteTitle(ydoc, fallback) : options.title),
-    [fallback, options.title, ydoc],
+    () => (ydoc ? readNoteTitle(ydoc, fallback, key) : options.title),
+    [fallback, key, options.title, ydoc],
   );
 
   const value = useSyncExternalStore(subscribe, getSnapshot, () => options.title);
@@ -117,7 +121,7 @@ export function useNoteTitleField(options: UseNoteTitleFieldOptions): {
   const onChange = editable
     ? (next: string) => {
         if (ydoc) {
-          writeNoteTitle(ydoc, next);
+          writeNoteTitle(ydoc, next, key);
           onLocalTitleEdit?.();
           return;
         }
