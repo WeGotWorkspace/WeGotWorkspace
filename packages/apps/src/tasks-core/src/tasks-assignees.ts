@@ -40,15 +40,17 @@ export function taskAssignees(
     if (!isAssigneeEntry(id, participant)) continue;
     const key = id.toLowerCase();
     const member = byId.get(key);
-    const email = participant!.email?.trim() || member?.email || null;
+    // The audience is the account's own profile: it wins over what the line says,
+    // so a CalDAV client cannot show one person under another's name.
+    const email = member?.email || participant!.email?.trim() || null;
     const access: TaskAssigneeAccess = !key.startsWith("u:")
       ? "external"
       : members === null
         ? "unknown"
         : (member?.access ?? "none");
     const name =
-      participant!.name?.trim() ||
       member?.displayName ||
+      participant!.name?.trim() ||
       email ||
       participant!.username ||
       id.replace(/^[ue]:/, "");

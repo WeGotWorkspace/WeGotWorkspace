@@ -49,8 +49,9 @@ type Participants = NonNullable<Task["participants"]>;
  * The assignees a rescued task may keep in its new list (#2172):
  * - a `u:` person in the target's cached audience with write access, or, when
  *   nothing is cached, only the rescuer's own `u:` entry;
- * - an `e:` address that matches no one in that audience;
- * - nothing else (positional `attN` ids, the organizer).
+ * - nothing else: `e:` addresses (an address from the old list must not reach a
+ *   new audience, security review of 2026-11-18), positional `attN` ids and
+ *   the organizer.
  */
 export function rescueParticipants(
   participants: Task["participants"],
@@ -61,15 +62,10 @@ export function rescueParticipants(
   const writers = new Set(
     (members ?? []).filter((m) => m.access === "write").map((m) => `u:${m.username.toLowerCase()}`),
   );
-  const audienceEmails = new Set(
-    (members ?? []).map((m) => m.email?.trim().toLowerCase()).filter((e): e is string => !!e),
-  );
   const kept: Participants = {};
   for (const [id, entry] of Object.entries(participants ?? {})) {
     const key = id.toLowerCase();
-    if (key.startsWith("u:")) {
-      if (members === null ? key === own : writers.has(key)) kept[id] = entry;
-    } else if (key.startsWith("e:") && !audienceEmails.has(key.slice(2))) {
+    if (key.startsWith("u:") && (members === null ? key === own : writers.has(key))) {
       kept[id] = entry;
     }
   }

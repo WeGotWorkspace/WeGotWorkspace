@@ -41,6 +41,21 @@ describe("taskAssignees", () => {
     ]);
   });
 
+  it("shows an audience member with their own profile, not the line's name", () => {
+    const spoofed = {
+      "u:alex": {
+        "@type": "Participant",
+        name: "Robin",
+        email: "robin@example.org",
+        roles: ["attendee"],
+      },
+    } as NonNullable<Task["participants"]>;
+    expect(taskAssignees(spoofed, [alex])[0]).toMatchObject({
+      name: "Alex Morgan",
+      email: "alex@example.org",
+    });
+  });
+
   it("leaves access unknown without an audience", () => {
     expect(taskAssignees(participants).map((assignee) => assignee.access)).toEqual([
       "unknown",

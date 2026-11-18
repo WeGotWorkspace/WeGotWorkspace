@@ -114,18 +114,15 @@ describe("tasksRescueOperations", () => {
       { username: "dave", email: null, displayName: "Dave", access: "read" },
     ] as Parameters<typeof rescueParticipants>[1];
 
-    it("keeps write members and outside addresses, drops the rest", () => {
+    it("keeps write members only, so no address leaves the old list", () => {
       expect(Object.keys(rescueParticipants(participants, members, username) ?? {})).toEqual([
         "u:rescue-user",
-        "e:outside@example.org",
       ]);
     });
 
-    it("keeps only the own u: entry and addresses when no audience is cached", () => {
+    it("keeps only the own u: entry when no audience is cached", () => {
       expect(Object.keys(rescueParticipants(participants, null, username) ?? {})).toEqual([
         "u:rescue-user",
-        "e:outside@example.org",
-        "e:carol@example.org",
       ]);
     });
 
@@ -143,9 +140,7 @@ describe("tasksRescueOperations", () => {
           "e:outside@example.org": { "@type": "Participant", name: "Outside" },
         } as ParkedTask["item"]["participants"],
       });
-      expect(createTask.mock.calls[0]![0].participants).toEqual({
-        "e:outside@example.org": { "@type": "Participant", name: "Outside" },
-      });
+      expect(createTask.mock.calls[0]![0]).not.toHaveProperty("participants");
     });
 
     it("retries once with only the own entry after invalid_participant", async () => {
@@ -169,15 +164,25 @@ describe("tasksRescueOperations", () => {
       const createTask = vi
         .fn(async (_body: TaskCreate) => first)
         .mockRejectedValueOnce(new ApiError("Invalid", 422, "invalid_participant"));
-      const operations = tasksRescueOperations({ createTask }, { username });
+      const operations = tasksRescueOperations(
+        { createTask },
+        {
+          username,
+          readCachedMembers: async () => [
+            { username: "x", email: null, displayName: "X", access: "write" as const },
+            { username: "y", email: null, displayName: "Y", access: "write" as const },
+          ],
+        },
+      );
       await operations.createItemIn("keep", {
         ...first,
         participants: {
-          "e:x@example.org": { "@type": "Participant", name: "X" },
-          "e:y@example.org": { "@type": "Participant", name: "Y" },
+          "u:x": { "@type": "Participant", name: "X" },
+          "u:y": { "@type": "Participant", name: "Y" },
         } as ParkedTask["item"]["participants"],
       });
       expect(createTask).toHaveBeenCalledTimes(2);
+      expect(Object.keys(createTask.mock.calls[0]![0].participants ?? {})).toEqual(["u:x", "u:y"]);
       expect(createTask.mock.calls[1]![0]).not.toHaveProperty("participants");
     });
 
