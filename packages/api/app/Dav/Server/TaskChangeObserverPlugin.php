@@ -101,10 +101,10 @@ final class TaskChangeObserverPlugin extends ServerPlugin
             $instance = $pending['instance'];
             $listId = $this->taskLists->apiIdForInstance($instance);
             $objectUri = basename($path);
-            $before = $this->tasksByUid($pending['raw'], $objectUri, $listId);
+            $before = $this->tasksByUid($pending['raw'], $objectUri, $listId, $instance);
             $after = strtoupper($request->getMethod()) === 'DELETE'
                 ? []
-                : $this->tasksByUid($this->storedRaw($instance, $objectUri), $objectUri, $listId);
+                : $this->tasksByUid($this->storedRaw($instance, $objectUri), $objectUri, $listId, $instance);
             // Resolved here, inside the guard, so a reaction that cannot even be
             // built is logged like any other failure instead of failing the PUT.
             $reactions = app(TaskChangeReactions::class);
@@ -150,10 +150,10 @@ final class TaskChangeObserverPlugin extends ServerPlugin
             }
             $before = $pending === null
                 ? []
-                : $this->tasksByUid($pending['raw'], basename($source), $this->taskLists->apiIdForInstance($pending['instance']));
+                : $this->tasksByUid($pending['raw'], basename($source), $this->taskLists->apiIdForInstance($pending['instance']), $pending['instance']);
             $after = $target === null
                 ? []
-                : $this->tasksByUid($this->storedRaw($target, basename($destination)), basename($destination), $this->taskLists->apiIdForInstance($target));
+                : $this->tasksByUid($this->storedRaw($target, basename($destination)), basename($destination), $this->taskLists->apiIdForInstance($target), $target);
             $reactions = app(TaskChangeReactions::class);
             foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $uid) {
                 // The destination list once the task is there; the source list for a move out.
@@ -240,7 +240,7 @@ final class TaskChangeObserverPlugin extends ServerPlugin
     /**
      * @return array<string, array<string, mixed>>
      */
-    private function tasksByUid(?string $raw, string $objectUri, string $listId): array
+    private function tasksByUid(?string $raw, string $objectUri, string $listId, CalendarInstance $instance): array
     {
         if ($raw === null || trim($raw) === '') {
             return [];
@@ -248,6 +248,8 @@ final class TaskChangeObserverPlugin extends ServerPlugin
         $object = new CalendarObject;
         $object->uri = $objectUri;
         $object->calendardata = $raw;
+        // The list's audience decides who an attendee address stands for.
+        $object->calendarid = (int) $instance->calendarid;
         $byUid = [];
         foreach ($this->mapper->toTasks($object, $listId) as $task) {
             $uid = is_string($task['uid'] ?? null) ? $task['uid'] : '';

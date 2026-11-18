@@ -61,6 +61,21 @@ final class TasksImportTest extends WgwDatabaseTestCase
         }
     }
 
+    public function test_an_imported_attendee_cannot_claim_an_account(): void
+    {
+        // #2172: only the app writes X-WGW-USERNAME; a file names people by address.
+        $todo = "BEGIN:VTODO\r\nUID:claim@example.test\r\nSUMMARY:Claimed\r\n"
+            ."ATTENDEE;X-WGW-USERNAME=carol;CN=Carol:mailto:someone@outside.test\r\nX-VENDOR-FLAG:keep-me\r\nEND:VTODO";
+
+        $participants = $this->importIcs($this->calendar($todo))->assertCreated()->json('list.0.participants');
+
+        $this->assertSame(['e:someone@outside.test'], array_keys($participants));
+        $this->assertNull($participants['e:someone@outside.test']['username']);
+        $stored = $this->storedIcs('claim@example.test');
+        $this->assertStringNotContainsString('X-WGW-USERNAME', $stored);
+        $this->assertStringContainsString('X-VENDOR-FLAG:keep-me', $stored);
+    }
+
     public function test_due_time_zone_is_carried_into_the_group(): void
     {
         $zone = "BEGIN:VTIMEZONE\r\nTZID:Europe/Amsterdam\r\nBEGIN:STANDARD\r\nDTSTART:19701025T030000\r\n"

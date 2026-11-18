@@ -172,7 +172,7 @@ final class TaskRepository
     {
         $instance = $this->resolveTaskListFromPayload($username, $payload);
         $this->collectionAccess->assertCollectionWritable($instance, 'This task list is read-only.');
-        $taskPayload = $this->assignees->prepare(null, $this->normalizeTaskPayload($payload), $instance);
+        $taskPayload = $this->assignees->prepare(null, $this->normalizeTaskPayload($payload), $instance, $username);
         $objectUri = $this->allocateObjectUri((int) $instance->calendarid, $taskPayload);
         $ics = $this->mapper->toIcs($taskPayload);
 
@@ -328,6 +328,8 @@ final class TaskRepository
             $existingTask,
             $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask),
             $target,
+            $username,
+            $instance,
         );
         $taskPayload['id'] = $existingTask['id'];
         $taskPayload['taskListId'] = $targetListUri;

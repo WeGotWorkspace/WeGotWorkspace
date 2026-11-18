@@ -13,8 +13,8 @@ use Illuminate\Support\Str;
 final class TaskMapper
 {
     public function __construct(
+        private readonly TaskParticipantDirectory $participants,
         private readonly IcsJmapTaskConverter $converter = new IcsJmapTaskConverter,
-        private readonly TaskParticipantDirectory $participants = new TaskParticipantDirectory,
     ) {}
 
     /**
@@ -23,8 +23,9 @@ final class TaskMapper
     public function toTasks(CalendarObject $object, string $taskListUri): array
     {
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $calendarId = (int) $object->calendarid;
         $tasks = array_map(
-            $this->participants->resolveTask(...),
+            fn (array $task): array => $this->participants->resolveTask($task, $calendarId),
             $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri),
         );
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
@@ -62,7 +63,7 @@ final class TaskMapper
         if ($task === null) {
             return null;
         }
-        $task = $this->participants->resolveTask($task);
+        $task = $this->participants->resolveTask($task, (int) $object->calendarid);
 
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
         if ($etag !== null) {

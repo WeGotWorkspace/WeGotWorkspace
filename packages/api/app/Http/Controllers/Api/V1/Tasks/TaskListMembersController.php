@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Tasks;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Tasks\TaskAssigneeGuard;
 use App\Services\Tasks\TaskListAudience;
 use App\Services\Tasks\TaskListRepository;
 use App\Services\Teams\TeamColleagues;
@@ -19,8 +20,8 @@ use Illuminate\Http\Request;
  * Only someone who can edit the list may ask: they are the only people who
  * can assign. The list is the list audience, narrowed to people the caller
  * shares a Team with (Epic #1915), plus the caller and the list owner, so a
- * person sharee does not learn the members of a Team they are not in. The API
- * still accepts any audience member with write access as an assignee.
+ * person sharee does not learn the members of a Team they are not in.
+ * {@see TaskAssigneeGuard} applies the same rule to writes.
  */
 final class TaskListMembersController
 {
