@@ -8,10 +8,11 @@ import {
   CircleX,
   Clock,
   LayoutList,
+  UserCheck,
 } from "lucide-react";
 import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { defaultTaskListId } from "@/tasks-core/src/tasks-task-utils";
+import { ASSIGNED_TO_ME_VIEW, defaultTaskListId } from "@/tasks-core/src/tasks-task-utils";
 import {
   canWriteTaskList,
   isInboxTaskList,
@@ -72,6 +73,12 @@ export function useTasksSidebarModel({
         icon: <CircleAlert className="size-3.5" />,
         selected: view === "state:overdue",
         onClick: () => selectView("state:overdue"),
+      },
+      {
+        label: labels.stateAssignedToMe,
+        icon: <UserCheck className="size-3.5" />,
+        selected: view === ASSIGNED_TO_ME_VIEW,
+        onClick: () => selectView(ASSIGNED_TO_ME_VIEW),
       },
     ],
     [labels, selectView, view],
