@@ -89,6 +89,7 @@ test("two people type a task's title and notes together", async ({ browser }) =>
     expect(outside.status).toBe(200);
     await expect(notes(owner)).toHaveValue("From REST", { timeout: LIVE_MS });
     await expect(notes(mate)).toHaveValue("From REST", { timeout: LIVE_MS });
+    console.log(events.filter((line) => line.includes("DBG")).join("\n"));
     for (const tab of [owner, mate]) {
       const dialogs = await tab.getByRole("dialog").allInnerTexts();
       console.log(tab.tag, "dialogs:", JSON.stringify(dialogs));
@@ -119,10 +120,10 @@ test("two people type a task's title and notes together", async ({ browser }) =>
     const text = await api(OWNER, "GET", `/tasks/items/${encodeURIComponent(task.id)}/text`);
     expect((text.json as { description?: string }).description).toBe("From REST!");
 
-    console.log(events.join("\n"));
     const unexpected = events.filter((line) => !line.includes(" 412:") && !line.includes("204"));
     expect(unexpected).toEqual([]);
   } finally {
+    console.log("EVENTS\n" + events.map((line) => line.slice(0, 300)).join("\n"));
     for (const context of contexts) await context.close();
     await cleanUpCase(id);
   }
