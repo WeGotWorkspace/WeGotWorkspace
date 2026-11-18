@@ -339,6 +339,28 @@ final class TaskTextCollaborationTest extends WgwDatabaseTestCase
         $this->readText()->assertNotFound();
     }
 
+    public function test_an_id_naming_a_vtodo_the_file_lacks_is_not_found_and_changes_nothing(): void
+    {
+        $this->taskId = $this->seedTaskViaPdo('bob', 'pair.ics', $this->todo('First', 'One', 'first-of-two'));
+        $this->addSecondVtodo('pair.ics', 'second-of-two');
+        $this->taskId = 'pair#first-of-two';
+        $this->firstSave('First', 'Saved')->assertOk();
+        $this->taskId = 'pair#second-of-two';
+        $this->firstSave('Second', 'Other')->assertOk();
+        $before = (string) CalendarObject::query()->where('uri', 'pair.ics')->firstOrFail()->calendardata;
+        $etag = (string) $this->showTask()->json('etag');
+
+        $this->taskId = 'pair#no-such-uid';
+        $this->withBearer($this->issueBearerTokenFor('bob'))
+            ->withHeader('If-Match', $etag)
+            ->deleteJson($this->taskUrl())
+            ->assertNotFound();
+        $this->readState()->assertNotFound();
+
+        $this->assertSame($before, (string) CalendarObject::query()->where('uri', 'pair.ics')->firstOrFail()->calendardata);
+        $this->assertSame(2, TaskYjsState::query()->count());
+    }
+
     /** Run `$write` once, the next time a task row is read: between a write's lookup and its lock. */
     private function interleave(callable $write): void
     {

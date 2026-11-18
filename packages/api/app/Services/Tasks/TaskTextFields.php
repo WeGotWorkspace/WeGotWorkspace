@@ -34,7 +34,12 @@ final class TaskTextFields implements CollabTextFields
     {
         // A VTODO without a UID (only a row written straight to the database)
         // has no state row and no room; its other writes still work.
-        $task = $this->mapper->toTask($object, '', $this->vtodoUid) ?? [];
+        $task = $this->mapper->toTask($object, '', $this->vtodoUid);
+        if ($task === null && $this->vtodoUid !== null) {
+            // The id names a component the file does not hold.
+            throw new ApiHttpException(404, 'Task not found.', 'not_found');
+        }
+        $task ??= [];
         $uid = is_string($task['uid'] ?? null) ? $task['uid'] : '';
 
         return [
