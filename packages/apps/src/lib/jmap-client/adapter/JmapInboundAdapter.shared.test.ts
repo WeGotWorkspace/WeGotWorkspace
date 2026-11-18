@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { JmapInboundAdapter, SHARED_ROUND_WAIT_MS } from "./JmapInboundAdapter";
 import { FakeSyncBrowser, type FakeSyncTab } from "./mock/fake-sync-tabs";
@@ -13,6 +14,9 @@ class TabAdapter extends JmapInboundAdapter {
   pulledFrom: string[] = [];
   /** The cache write the next pull starts and does not wait for. */
   nextWrite: Promise<unknown> | undefined;
+  /** True while the server has pruned its change log: a pull then fails. */
+  changeLogExpired = false;
+  relists = 0;
   repaints = 0;
   protected readonly pushTypes = ["Note"];
   protected get jmapClient(): JmapClient {
@@ -29,11 +33,20 @@ class TabAdapter extends JmapInboundAdapter {
   }
   protected async pullChanges(): Promise<void> {
     this.pulledFrom.push(this.cursor ?? "");
+    if (this.changeLogExpired) {
+      throw new JmapMethodError("Note/changes", "c0", { type: "cannotCalculateChanges" });
+    }
     this.#states.set("Note", server.state);
     if (this.nextWrite) this.ingesting(this.nextWrite);
     this.nextWrite = undefined;
   }
-  protected async refetchAll(): Promise<void> {}
+  /** The full re-list writes everything to the shared cache and stores the server's state. */
+  protected async refetchAll(): Promise<void> {
+    this.relists += 1;
+    this.#states.set("Note", server.state);
+    if (this.nextWrite) this.ingesting(this.nextWrite);
+    this.nextWrite = undefined;
+  }
   protected reportSyncError(): void {}
 }
 
@@ -254,6 +267,33 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     expect(a.adapter.repaints).toBeGreaterThan(0);
     a.adapter.stopPolling();
     b.adapter.stopPolling();
+  });
+
+  // Every tab's re-list covers the same records (Calendar: the same bootstrap
+  // window), so one re-list into the shared cache serves every tab.
+  it("after an expired change log the syncing tab re-lists once; the other tab repaints from the cache", async () => {
+    const { a, b } = await twoTabs();
+    let written!: () => void;
+    a.adapter.changeLogExpired = true;
+    a.adapter.nextWrite = new Promise<void>((resolve) => (written = resolve));
+    server.state = "n9";
+
+    const inB = b.adapter.syncIfStale({ Note: "n9" });
+    const inA = a.adapter.syncIfStale({ Note: "n9" });
+    await settle();
+    await expect(inA).resolves.toBe(true);
+    // Not before the re-listed records are in the cache.
+    expect(b.adapter.repaints).toBe(0);
+
+    written();
+    await settle();
+    await expect(inB).resolves.toBe(true);
+    expect(a.adapter.relists).toBe(1);
+    expect(b.adapter.repaints).toBe(1);
+    expect(b.adapter.relists).toBe(0);
+    expect(b.adapter.pulledFrom).toEqual([]);
+    // The other tab continues from the re-list, not from its expired cursor.
+    expect(b.adapter.cursor).toBe("n9");
   });
 
   it("a tab that stops sharing syncs for itself again", async () => {

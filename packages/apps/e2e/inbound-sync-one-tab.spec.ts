@@ -230,8 +230,8 @@ type Shows = (tab: Page, text: string, timeout: number) => Promise<void>;
  * Writes until every tab shows a write: after that each tab's first load is
  * done and its adapter has taken its seat. A write that lands during a tab's
  * first load can be missed for a reason that is not this spec's subject (the
- * load fetched its list before the write and stores it after), so it is
- * tried again.
+ * load fetched its list before the write and stores it after, #2256), so it
+ * is tried again.
  */
 async function warmUp(
   tabs: Page[],
