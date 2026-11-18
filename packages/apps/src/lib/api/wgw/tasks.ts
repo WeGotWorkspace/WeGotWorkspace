@@ -6,6 +6,8 @@ import type {
   TaskImportResponse,
   TaskList,
   TaskListCreate,
+  TaskListMember,
+  TaskListMembersResponse,
   TaskListPatch,
   TaskPatch,
   TaskTaskListListResponse,
@@ -312,4 +314,18 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
     data: { taskLists, tasks, groups },
     session,
   };
+}
+
+/** Who can see a list and how (#2172 audience): for mentions and names in a task thread. */
+export async function listTaskListMembers(
+  taskListId: string,
+  opts?: { signal?: AbortSignal },
+): Promise<TaskListMember[]> {
+  const json = (await requestTasksJson(
+    `/tasks/tasklists/${encodeURIComponent(taskListId)}/members`,
+    "GET",
+    undefined,
+    opts,
+  )) as Partial<TaskListMembersResponse> | undefined;
+  return Array.isArray(json?.list) ? json.list : [];
 }

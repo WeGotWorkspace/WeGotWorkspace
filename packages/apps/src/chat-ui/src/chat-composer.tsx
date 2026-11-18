@@ -1,6 +1,7 @@
-import { useCallback, useRef, type MouseEvent } from "react";
+import { useCallback, useRef, type MouseEvent, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Send, X } from "lucide-react";
+import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
@@ -9,7 +10,7 @@ import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import { ChatMentionMenu } from "@/chat-ui/src/chat-mention-menu";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { parseChatMentions } from "@/chat-ui/src/chat-mention-utils";
-import { shouldSendChatOnEnter } from "@/chat-ui/src/chat-send-on-enter";
+import { shouldSendChatOnEnter, shouldSendOnModEnter } from "@/chat-ui/src/chat-send-on-enter";
 import type { ChatMentionPrincipal, ChatSendPayload } from "@/lib/models/chat-types";
 import { useChatComposerMentions } from "@/chat-ui/src/use-chat-composer-mentions";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,13 @@ export type ChatComposerProps = {
    * `false` when it empties, blurs, or a message is sent. Callers throttle.
    */
   onTypingChange?: (typing: boolean) => void;
+  /** `enter` (Chat) sends on Enter; `mod-enter` (thread comments) on ⌘Enter / Ctrl+Enter. */
+  sendKey?: "enter" | "mod-enter";
+  /** A text send button ("Comment") instead of the send icon, with its shortcut shown. */
+  submitLabel?: string;
+  submitShortcut?: string;
+  /** Before the input, e.g. the author's avatar. */
+  leading?: ReactNode;
   className?: string;
 };
 
@@ -40,6 +48,10 @@ export function ChatComposer({
   onSend,
   onCancel,
   onTypingChange,
+  sendKey = "enter",
+  submitLabel,
+  submitShortcut,
+  leading,
   className,
 }: ChatComposerProps) {
   const onSendRef = useRef(onSend);
@@ -48,6 +60,8 @@ export function ChatComposer({
   onCancelRef.current = onCancel;
   const onTypingChangeRef = useRef(onTypingChange);
   onTypingChangeRef.current = onTypingChange;
+  const sendKeyRef = useRef(sendKey);
+  sendKeyRef.current = sendKey;
   const mentionKeyRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
   const editorRef = useRef<Editor | null>(null);
 
@@ -88,7 +102,11 @@ export function ChatComposer({
           return true;
         }
         const current = editorRef.current;
-        if (current && shouldSendChatOnEnter(event)) {
+        const sends =
+          sendKeyRef.current === "mod-enter"
+            ? shouldSendOnModEnter(event)
+            : shouldSendChatOnEnter(event);
+        if (current && sends) {
           event.preventDefault();
           submit(current);
           return true;
@@ -109,7 +127,10 @@ export function ChatComposer({
   // One line to start, growing with the text. Markdown comes from typing (`**bold**`,
   // `- list`) and the editor shortcuts; there is no format bar.
   return (
-    <div className={cn("chat-ui chat-composer", className)}>
+    <div
+      className={cn("chat-ui chat-composer", leading ? "chat-composer--leading" : null, className)}
+    >
+      {leading ? <div className="chat-composer__leading">{leading}</div> : null}
       <div className="chat-composer__card" onMouseDown={onCardMouseDown}>
         {mentions.query ? (
           <div className="chat-composer__mentions">
@@ -136,16 +157,36 @@ export function ChatComposer({
               disabled={disabled}
             />
           ) : null}
-          <IconButton
-            label={chatUiLabels.send}
-            icon={<Send />}
-            size="md"
-            variant="ghost"
-            onClick={() => {
-              if (editor) submit(editor);
-            }}
-            disabled={disabled}
-          />
+          {submitLabel ? (
+            <Button
+              className="chat-composer__submit"
+              variant="outline"
+              size="md"
+              onClick={() => {
+                if (editor) submit(editor);
+              }}
+              disabled={disabled}
+              aria-keyshortcuts={sendKey === "mod-enter" ? "Meta+Enter Control+Enter" : "Enter"}
+            >
+              {submitLabel}
+              {submitShortcut ? (
+                <kbd className="chat-composer__shortcut" aria-hidden>
+                  {submitShortcut}
+                </kbd>
+              ) : null}
+            </Button>
+          ) : (
+            <IconButton
+              label={chatUiLabels.send}
+              icon={<Send />}
+              size="md"
+              variant="ghost"
+              onClick={() => {
+                if (editor) submit(editor);
+              }}
+              disabled={disabled}
+            />
+          )}
         </div>
       </div>
     </div>

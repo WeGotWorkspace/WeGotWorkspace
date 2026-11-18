@@ -14,6 +14,8 @@ export type ChatReactionBarProps = {
   reactions?: ChatReaction[];
   currentUserId: string;
   onToggleReaction: (emoji: string) => void;
+  /** Shows the counts only: no toggling and no picker (a reader without write access). */
+  readOnly?: boolean;
   className?: string;
 };
 
@@ -36,6 +38,7 @@ export function ChatReactionBar({
   reactions,
   currentUserId,
   onToggleReaction,
+  readOnly = false,
   className,
 }: ChatReactionBarProps) {
   const visibleReactions = useMemo(
@@ -58,6 +61,7 @@ export function ChatReactionBar({
             className="chat-reaction-bar__reaction"
             data-reacted={reacted ? "true" : "false"}
             aria-pressed={reacted}
+            disabled={readOnly}
             onClick={(event) => {
               event.stopPropagation();
               onToggleReaction(emoji);
@@ -70,20 +74,22 @@ export function ChatReactionBar({
           </button>
         );
       })}
-      <ReactionPicker
-        trigger={
-          <button
-            type="button"
-            className="chat-reaction-bar__reaction chat-reaction-bar__reaction--add"
-            aria-label={chatUiLabels.react}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Smile className="chat-reaction-bar__reaction-add-icon" aria-hidden />
-          </button>
-        }
-        isPicked={(emoji) => userReacted(reactions, emoji, currentUserId)}
-        onPick={onToggleReaction}
-      />
+      {readOnly ? null : (
+        <ReactionPicker
+          trigger={
+            <button
+              type="button"
+              className="chat-reaction-bar__reaction chat-reaction-bar__reaction--add"
+              aria-label={chatUiLabels.react}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Smile className="chat-reaction-bar__reaction-add-icon" aria-hidden />
+            </button>
+          }
+          isPicked={(emoji) => userReacted(reactions, emoji, currentUserId)}
+          onPick={onToggleReaction}
+        />
+      )}
     </div>
   );
 }

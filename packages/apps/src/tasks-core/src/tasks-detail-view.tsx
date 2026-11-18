@@ -34,7 +34,9 @@ type TasksDetailViewProps = {
   onToggleComplete: (taskId: string) => void;
   onCreateList?: () => void;
   /** Asks before the task moves to another list; `move` applies it. */
-  onConfirmMove?: (listName: string, move: () => void) => void;
+  onConfirmMove?: (listName: string, move: () => void, fromListName?: string) => void;
+  /** Under the fields: the task's comments (#2173). */
+  footer?: ReactNode;
 };
 
 /**
@@ -52,6 +54,7 @@ export function TasksDetailView({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
+  footer,
 }: TasksDetailViewProps) {
   const [form, setForm] = useTaskEditForm(task, readOnly);
   const formRef = useRef(form);
@@ -165,7 +168,8 @@ export function TasksDetailView({
           onNotebookChange={(list) => {
             if (list.id === form.listId) return;
             const move = () => update((prev) => ({ ...prev, listId: list.id }), "now");
-            if (onConfirmMove) onConfirmMove(list.name, move);
+            if (onConfirmMove)
+              onConfirmMove(list.name, move, taskListName(form.listId, allTaskLists));
             else move();
           }}
           onCreateNotebook={readOnly ? undefined : onCreateList}
@@ -207,6 +211,7 @@ export function TasksDetailView({
           </TasksDetailField>
         ))}
       </DetailFieldList>
+      {footer}
     </NoteDetailView>
   );
 }

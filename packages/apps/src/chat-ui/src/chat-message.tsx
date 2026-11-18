@@ -22,7 +22,10 @@ import {
   omitChatNestedThreadActions,
 } from "@/chat-ui/src/chat-thread-actions";
 import { chatThreadReplyCountLabel } from "@/chat-ui/src/chat-thread-reply-count";
-import { highlightChatMentionsMarkdown } from "@/chat-ui/src/chat-mention-utils";
+import {
+  escapeMarkdownHtml,
+  highlightChatMentionsMarkdown,
+} from "@/chat-ui/src/chat-mention-utils";
 import { formatChatTime, formatChatTimeShort } from "@/chat-ui/src/chat-message-group";
 import type {
   ChatMessage as ChatMessageModel,
@@ -48,6 +51,12 @@ export type ChatMessageProps = {
   editing?: boolean;
   actions?: ChatMessageAction[];
   onToggleReaction?: (emoji: string) => void;
+  /** Replaces the clock time in the header (thread comments: "2h ago"); the full date shows on hover. */
+  formatTime?: (createdAt: number) => string;
+  /** Inline HTML in the body shows as text instead of being parsed (thread comments). */
+  htmlAsText?: boolean;
+  /** Shows reactions without toggling them, when there is no `onToggleReaction`. */
+  reactionsReadOnly?: boolean;
   /** Opens the thread from the replies chip under the body. */
   onOpenThread?: () => void;
   /** False inside ThreadPanel — one level only (main → thread). */
@@ -61,12 +70,17 @@ export type ChatMessageProps = {
 function ChatMarkdownBody({
   content,
   mentions,
+  htmlAsText = false,
 }: {
   content: string;
   mentions: ChatMessageModel["mentions"];
+  htmlAsText?: boolean;
 }) {
   const editor = useTextEditor({
-    content: highlightChatMentionsMarkdown(content, mentions),
+    content: highlightChatMentionsMarkdown(
+      htmlAsText ? escapeMarkdownHtml(content) : content,
+      mentions,
+    ),
     format: "markdown",
     editable: false,
   });
@@ -94,6 +108,9 @@ export function ChatMessage({
   editing = false,
   actions,
   onToggleReaction,
+  reactionsReadOnly = false,
+  htmlAsText = false,
+  formatTime,
   onOpenThread,
   allowThread = true,
   presence,
@@ -103,7 +120,8 @@ export function ChatMessage({
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const deleted = Boolean(message.deletedAt);
   const showHeader = !continuation;
-  const showReactions = !deleted && message.reactions.length > 0 && onToggleReaction;
+  const showReactions =
+    !deleted && message.reactions.length > 0 && (Boolean(onToggleReaction) || reactionsReadOnly);
   const replyCount = message.replyCount ?? 0;
   const threadAllowed = allowThread && chatMessageCanOpenThread(message);
   const showReplies = !deleted && !editing && threadAllowed && replyCount > 0;
@@ -179,8 +197,9 @@ export function ChatMessage({
             <time
               className="chat-message__time"
               dateTime={new Date(message.createdAt).toISOString()}
+              title={formatTime ? new Date(message.createdAt).toLocaleString() : undefined}
             >
-              {formatChatTime(message.createdAt)}
+              {formatTime ? formatTime(message.createdAt) : formatChatTime(message.createdAt)}
             </time>
             {message.editedAt ? (
               <span className="chat-message__edited">{chatUiLabels.edited}</span>
@@ -197,7 +216,14 @@ export function ChatMessage({
           editComposer
         ) : (
           <div className="chat-message__body">
-            <ChatMarkdownBody content={message.body} mentions={message.mentions} />
+            <ChatMarkdownBody
+              // The read-only editor takes its content at mount: a new body (an edit,
+              // here or from someone else) mounts a fresh one.
+              key={message.body}
+              content={message.body}
+              mentions={message.mentions}
+              htmlAsText={htmlAsText}
+            />
           </div>
         )}
         {message.syncState && !editing ? <ChatMessageSync state={message.syncState} /> : null}
@@ -210,12 +236,13 @@ export function ChatMessage({
         ) : null}
         {showReactions || showReplies ? (
           <div className="chat-message__footer">
-            {showReactions && onToggleReaction ? (
+            {showReactions ? (
               <ChatReactionBar
                 className="chat-message__reactions"
                 reactions={message.reactions}
                 currentUserId={currentUserId}
-                onToggleReaction={onToggleReaction}
+                onToggleReaction={onToggleReaction ?? (() => {})}
+                readOnly={!onToggleReaction}
               />
             ) : null}
             {showReplies ? (

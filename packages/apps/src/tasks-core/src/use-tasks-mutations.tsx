@@ -197,10 +197,10 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
 
   /** The open task's list switcher: confirm before the move, as Notes and Contacts do. */
   const requestMoveTask = useCallback(
-    (listName: string, move: () => void) => {
+    (listName: string, move: () => void, fromListName?: string) => {
       requestConfirm({
         title: L.moveTaskTitle,
-        description: L.moveTaskDescription(listName),
+        description: L.moveTaskDescription(listName, fromListName),
         confirmLabel: L.moveConfirm,
         cancelLabel: L.cancel,
         onConfirm: move,

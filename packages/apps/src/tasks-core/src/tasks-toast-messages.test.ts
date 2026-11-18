@@ -31,8 +31,12 @@ describe("tasks toast messages", () => {
   });
 
   it("formats move toasts", () => {
-    expect(tasksMoveToastMessage(1, "Work", defaultTasksLabels)).toBe("Moved to Work");
-    expect(tasksMoveToastMessage(2, "Work", defaultTasksLabels)).toBe("Moved 2 tasks to Work");
+    expect(tasksMoveToastMessage(1, "Work", defaultTasksLabels)).toBe(
+      "Moved to Work. Its comments stay in the old list.",
+    );
+    expect(tasksMoveToastMessage(2, "Work", defaultTasksLabels)).toBe(
+      "Moved 2 tasks to Work. Their comments stay in the old lists.",
+    );
   });
 });
 

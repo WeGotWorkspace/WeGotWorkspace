@@ -133,6 +133,7 @@ export type TasksUILabels = {
   toastSaved: string;
   toastTaskAdded: string;
   toastTaskUpdated: string;
+  /** Includes that comments stay in the old list (#2173). */
   toastTaskMoved: (count: number, listName: string) => string;
   toastCompleteUndone: string;
   toastDeleteUndone: string;
@@ -164,7 +165,8 @@ export type TasksUILabels = {
   moveConfirm: string;
   /** Moving the open task to another list (same confirm as Notes and Contacts). */
   moveTaskTitle: string;
-  moveTaskDescription: (listName: string) => string;
+  /** Names where the comments stay (#2173): `fromListName` is the task's list now. */
+  moveTaskDescription: (listName: string, fromListName?: string) => string;
   deleteSelectedTitle: (count: number) => string;
   deleteSelectedBody: (count: number) => string;
   toastTasksCompleted: (count: number) => string;
@@ -341,7 +343,9 @@ export const defaultTasksLabels: TasksUILabels = {
   toastTaskAdded: "Task added",
   toastTaskUpdated: "Task updated",
   toastTaskMoved: (count, listName) =>
-    count === 1 ? `Moved to ${listName}` : `Moved ${count} tasks to ${listName}`,
+    count === 1
+      ? `Moved to ${listName}. Its comments stay in the old list.`
+      : `Moved ${count} tasks to ${listName}. Their comments stay in the old lists.`,
   toastCompleteUndone: "Completion undone.",
   toastDeleteUndone: "Deletion undone.",
   toastMoveUndone: "Move undone.",
@@ -363,11 +367,15 @@ export const defaultTasksLabels: TasksUILabels = {
   selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
   selectionComplete: "Mark complete",
   selectionMoveToList: "Move to list",
-  selectionMoveDescription: "Choose a list for the selected tasks.",
+  selectionMoveDescription:
+    "Choose a list for the selected tasks. Their comments stay in the lists they are in now; people in the new list start with empty threads.",
   selectionDone: workspaceLabels.dialog.done,
   moveConfirm: workspaceLabels.dialog.move,
   moveTaskTitle: "Move task?",
-  moveTaskDescription: (listName) => `Move this task to “${listName}”?`,
+  moveTaskDescription: (listName, fromListName) =>
+    fromListName
+      ? `Move this task to “${listName}”? Comments stay in “${fromListName}”. People in “${listName}” start with an empty thread.`
+      : `Move this task to “${listName}”? Its comments stay in the current list. People in “${listName}” start with an empty thread.`,
   deleteSelectedTitle: (count) => (count === 1 ? "Delete task?" : `Delete ${count} tasks?`),
   deleteSelectedBody: (count) =>
     count === 1

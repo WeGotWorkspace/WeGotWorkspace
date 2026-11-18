@@ -140,3 +140,17 @@ export function highlightChatMentionsMarkdown(
 
   return result;
 }
+
+/**
+ * Inline HTML in a body shows as text (thread comments, #2173): each `<`
+ * outside a code span or fence becomes the markdown escape `\<`, so
+ * `<img onerror=…>` is never parsed as a tag. Code already shows `<` as is.
+ */
+export function escapeMarkdownHtml(body: string): string {
+  return body
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/)
+    .map((part, index) =>
+      index % 2 === 1 ? part : part.replace(/\\?</g, (match) => (match === "<" ? "\\<" : match)),
+    )
+    .join("");
+}

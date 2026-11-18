@@ -43,3 +43,25 @@
 .chat-composer__mentions {
   @apply px-2 pt-2;
 }
+
+/* With an avatar before it (thread comments, #2173): avatar, then the card. */
+.chat-composer--leading {
+  @apply flex-row items-end gap-3;
+}
+
+.chat-composer--leading .chat-composer__card {
+  @apply flex-1;
+}
+
+.chat-composer__leading {
+  @apply flex shrink-0 items-center pb-1.5;
+}
+
+.chat-composer__submit {
+  @apply shrink-0 gap-2;
+}
+
+.chat-composer__shortcut {
+  @apply font-sans text-xs font-normal;
+  color: var(--chat-muted, var(--workspace-label-color));
+}
