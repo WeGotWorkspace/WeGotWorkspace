@@ -3,8 +3,9 @@
 .notification-inbox-tray__trigger {
   @apply relative;
   /*
-   * Unread count is severity red (`--color-error`), not workspace accent (Dark).
-   * `--notification-inbox-badge-*` when set, else error / accent-foreground label.
+   * Unread count wears the full suite brand blue (`--scheme-selection`); the unread dot on tray
+   * rows uses the softer 80% selection-mark mix.
+   * `--notification-inbox-badge-*` override it per surface.
    * Glyph and button stroke stay parent-owned (sidebar icon chrome /
    * `--app-sidebar-border-color`); do not pin them here.
    */
@@ -13,8 +14,14 @@
 .notification-inbox-tray__trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--notification-inbox-badge-bg, var(--color-error));
-  color: var(--notification-inbox-badge-fg, var(--workspace-accent-foreground));
+  /* Full brand blue: the 80% mark mix on white paper leaves white 10px text under 4.5:1. */
+  background-color: var(--notification-inbox-badge-bg, var(--scheme-selection));
+  color: var(--notification-inbox-badge-fg, var(--workspace-selected-mark-color));
+}
+
+/* Sound muted: the bell glyph steps back (BellOff), the count stays readable. */
+.notification-inbox-tray__trigger[data-muted] .button__icon {
+  color: var(--notification-inbox-muted-glyph, color-mix(in oklch, currentColor 60%, transparent));
 }
 
 .notification-inbox-tray__trigger:not([data-count])::after {
@@ -49,113 +56,151 @@
   }
 }
 
+/*
+ * Tray tokens. Unread uses the suite selection mark (brand blue), as on
+ * multi-select bars and checked tasks. Amber stays for offline / needs attention.
+ */
 .notification-inbox-tray__popover {
   --popover: var(--workspace-surface);
   --popover-foreground: var(--workspace-foreground);
-  @apply w-96 p-0;
+  --notification-inbox-muted: color-mix(
+    in oklch,
+    var(--workspace-foreground) 64%,
+    var(--workspace-surface)
+  );
+  --notification-inbox-divider: color-mix(in oklab, var(--workspace-foreground) 9%, transparent);
+  --notification-inbox-unread-dot: var(--workspace-selected-mark-background);
+  /* Unread rows: a light blue wash (the hovered-list-row step of the selection). */
+  --notification-inbox-unread-bg: var(--workspace-hover-background);
+  --notification-inbox-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
+  /* Shared left edge for the heading and the unread dots. */
+  --notification-inbox-inset: 1.5rem;
+  @apply flex w-[28rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-0;
 }
 
-/* Match list row / empty horizontal inset so title and icons share one edge. */
 .notification-inbox-tray__header {
-  @apply border-b px-3 py-1.5;
+  /* Left inset = row inset (`--notification-inbox-inset`): heading and dots share one edge. */
+  @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3.5 pr-4;
+  padding-left: var(--notification-inbox-inset);
+  border-bottom: 1px solid var(--notification-inbox-divider);
 }
 
-/* Compact ViewHeader chrome inside the tray popover. */
-.notification-inbox-tray__header .view-header {
-  @apply gap-2;
+.notification-inbox-tray__heading {
+  @apply flex min-w-0 items-center gap-2 text-base font-semibold leading-none text-foreground;
 }
 
-.notification-inbox-tray__header .view-header__title {
-  @apply text-sm md:text-sm;
+.notification-inbox-tray__heading-text {
+  @apply m-0 text-[length:inherit] font-[inherit] leading-[inherit];
 }
 
-.notification-inbox-tray__header .view-header__actions {
-  @apply flex items-center gap-1;
+.notification-inbox-tray__count {
+  @apply inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-semibold tabular-nums;
+  background-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+  color: var(--workspace-foreground);
 }
 
 .notification-inbox-tray__empty {
-  @apply px-3 py-6 text-sm;
-  color: color-mix(in oklch, var(--workspace-foreground) 68%, var(--workspace-surface));
+  @apply px-4 py-8 text-center text-sm;
+  color: var(--notification-inbox-muted);
 }
 
 .notification-inbox-tray__list {
-  @apply max-h-96 list-none overflow-y-auto p-0;
+  @apply m-0 max-h-[28rem] list-none overflow-y-auto p-0;
 }
 
 .notification-inbox-tray__row {
-  @apply flex w-full items-start gap-3 px-3 py-3 text-left;
+  @apply relative flex items-start;
+  border-bottom: 1px solid var(--notification-inbox-divider);
 }
 
-.notification-inbox-tray__row:hover,
-.notification-inbox-tray__row:focus-visible {
-  @apply outline-none;
-  /* Same ink wash for hover and keyboard focus — no emerald outline ring. */
-  background-color: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
+.notification-inbox-tray__row:last-child {
+  border-bottom: 0;
 }
 
-.notification-inbox-tray__icon {
-  @apply shrink-0 pt-0.5;
+.notification-inbox-tray__row[data-unread="true"] {
+  background-color: var(--notification-inbox-unread-bg);
+  --notification-inbox-badge-ring: var(--notification-inbox-unread-bg);
 }
 
-/* Same corner radius as sidebar app-switch icons (`.workspace-app-icon--switch-trigger`). */
-.notification-inbox-tray__app-icon {
-  @apply size-9 overflow-hidden rounded-[6px];
+.notification-inbox-tray__row:has(.notification-inbox-tray__open:hover),
+.notification-inbox-tray__row:has(.notification-inbox-tray__open:focus-visible) {
+  background-image: linear-gradient(
+    var(--notification-inbox-hover-bg),
+    var(--notification-inbox-hover-bg)
+  );
+}
+
+/* Whole row is one open button (no second control). */
+.notification-inbox-tray__open {
+  @apply flex min-w-0 flex-1 items-start gap-3.5 py-4 pr-5 text-left outline-none;
+  padding-left: var(--notification-inbox-inset);
+}
+
+.notification-inbox-tray__dot {
+  /* Extra space before the avatar so the dot reads as its own column. */
+  @apply mr-1.5 mt-[1.125rem] size-2 shrink-0 rounded-full;
+  background-color: transparent;
+}
+
+.notification-inbox-tray__row[data-unread="true"] .notification-inbox-tray__dot {
+  background-color: var(--notification-inbox-unread-dot);
+}
+
+.notification-inbox-tray__mark {
+  @apply relative shrink-0;
+}
+
+/* App icon on its own (reminders, no actor) — same footprint as an xl avatar. */
+.notification-inbox-tray__mark > .notification-inbox-tray__app-icon {
+  @apply block size-11 overflow-hidden rounded-[10px];
+}
+
+.notification-inbox-tray__app-badge {
+  @apply absolute -bottom-1 -right-1 flex size-5 items-center justify-center overflow-hidden rounded-[6px];
+  box-shadow: 0 0 0 2px var(--notification-inbox-badge-ring, var(--workspace-surface));
+}
+
+.notification-inbox-tray__app-badge-icon {
+  @apply block size-5;
 }
 
 .notification-inbox-tray__main {
-  @apply flex min-w-0 flex-1 flex-col gap-0.5;
+  @apply flex min-w-0 flex-1 flex-col gap-1;
 }
 
-.notification-inbox-tray__meta {
-  @apply flex items-baseline justify-between gap-2;
+.notification-inbox-tray__title-line {
+  @apply flex items-baseline justify-between gap-3;
 }
 
-/*
- * Domain is a clear product label (title case in TS), not muddy small-caps.
- * Time stays quieter so domain/time read as chrome above the bold title.
- */
-.notification-inbox-tray__domain {
-  @apply text-xs font-semibold tracking-normal text-foreground;
+.notification-inbox-tray__row-title {
+  @apply min-w-0 text-sm font-normal leading-snug text-foreground;
+}
+
+.notification-inbox-tray__row-title--plain,
+.notification-inbox-tray__title-actor {
+  @apply font-semibold;
 }
 
 .notification-inbox-tray__time {
   @apply shrink-0 text-xs tabular-nums;
-  color: color-mix(in oklch, var(--workspace-foreground) 68%, var(--workspace-surface));
-}
-
-.notification-inbox-tray__row-title {
-  @apply block text-sm font-normal leading-snug text-foreground;
-}
-
-.notification-inbox-tray__row-title--plain {
-  @apply font-bold;
-}
-
-.notification-inbox-tray__title-actor {
-  @apply font-bold;
-}
-
-.notification-inbox-tray__title-rest {
-  @apply font-normal;
-}
-
-.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__row-title {
-  @apply text-foreground/80;
-}
-
-.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__row-title--plain {
-  @apply font-semibold;
-}
-
-.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__title-actor {
-  @apply font-semibold;
-}
-
-.notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__domain {
-  color: color-mix(in oklch, var(--workspace-foreground) 68%, var(--workspace-surface));
+  color: var(--notification-inbox-muted);
 }
 
 .notification-inbox-tray__row-body {
   @apply line-clamp-2 text-sm leading-snug;
-  color: color-mix(in oklch, var(--workspace-foreground) 68%, var(--workspace-surface));
+  color: var(--notification-inbox-muted);
+}
+
+.notification-inbox-tray__footer {
+  @apply flex min-h-11 items-center justify-between gap-3 px-4 py-2;
+  border-top: 1px solid var(--notification-inbox-divider);
+}
+
+.notification-inbox-tray__footer-actions {
+  @apply flex items-center gap-1;
+}
+
+.notification-inbox-tray__hint {
+  @apply pr-1 text-xs;
+  color: var(--notification-inbox-muted);
 }

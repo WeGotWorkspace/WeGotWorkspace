@@ -60,7 +60,7 @@ export const COLOR_COMPONENT_CONTRACT = [
   "--app-sidebar-color",
   "--app-sidebar-border-color",
   "--workspace-divider-color",
-  /* Selection and hover: the suite sky in both themes (`--scheme-selection-*`). */
+  /* Selection and hover: brand blue in both themes (`--scheme-selection-*`). */
   "--scheme-selection",
   "--workspace-selected-background",
   "--workspace-selected-color",
