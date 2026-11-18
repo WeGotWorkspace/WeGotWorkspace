@@ -14,21 +14,40 @@ import type { AdminSettingsFormState } from "@/admin-core/src/admin-settings-for
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 type Patch = Partial<AdminSettingsFormState>;
+type FormKey = keyof AdminSettingsFormState;
+
+/**
+ * Fields that save only when the admin leaves them (blur, Enter), never on a pause: a
+ * half-typed secret, limit, port, path or server list must not reach the server (a
+ * prefix of a password would replace the real one; a daily limit of "1" caps the hourly
+ * one). Until then, other saves send their last saved value.
+ */
+export const ADMIN_SAVE_ON_LEAVE: ReadonlySet<FormKey> = new Set<FormKey>([
+  "mailDeliverySmtpPassword",
+  "turnSecret",
+  "imipHourlyLimit",
+  "imipDailyLimit",
+  "mailDeliverySmtpPort",
+  "baseUri",
+  "stunUrls",
+  "turnUrls",
+]);
 
 export type AdminSettingsEditor = {
   /** A choice (switch, dropdown, restore default): saves after a short pause. */
   choose: (patch: Patch) => void;
-  /** Typing in a field: saves after a short pause, or at once when the field is left. */
-  type: (patch: Patch) => void;
   /**
-   * Typing in a field that must not save half-typed (secrets, limits): updates the form and
-   * saves only when the field is left.
+   * Typing in a field: saves after a short pause, or at once when the field is left.
+   * Fields in {@link ADMIN_SAVE_ON_LEAVE} wait for the field to be left.
    */
-  hold: (patch: Patch) => void;
+  type: (patch: Patch) => void;
   /** Leaving a field (blur, Enter): saves what is still waiting, at once. */
   commit: () => void;
-  /** Runs `task` after every save already started; drops the save still waiting on the timer. */
-  afterSaves: (task: () => Promise<void>) => Promise<void>;
+  /**
+   * Clears a stored value (`Clear` next to a secret) after every save already on its way,
+   * so a save started by leaving the field cannot land after the clear.
+   */
+  clear: (key: FormKey, action: (form: AdminSettingsFormState) => Promise<unknown>) => void;
 };
 
 const AdminSettingsEditorContext = createContext<AdminSettingsEditor | null>(null);
@@ -37,8 +56,7 @@ const AdminSettingsEditorContext = createContext<AdminSettingsEditor | null>(nul
  * Server settings save themselves (suite norm, like Settings): every change saves after
  * {@link FORM_AUTOSAVE_DELAY_MS}, and leaving a text field saves at once. The tag shows
  * Saving from the first keystroke. Saves run one after the other, and a pending one still
- * runs when the page changes. Reports Saving / Saved / Unsaved to the
- * surrounding {@link AutosaveStatusProvider}.
+ * runs when the page changes.
  */
 function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettingsEditor {
   const formRef = useRef(controller.settingsForm);
@@ -49,32 +67,52 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const typedRef = useRef(false);
-  const heldRef = useRef(false);
+  /** Save-on-leave fields being edited, with the value last saved. */
+  const leaveRef = useRef(new Map<FormKey, unknown>());
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const runningRef = useRef(0);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  /** The form to send: save-on-leave fields not left yet keep their saved value. */
+  const payload = useCallback(
+    (): AdminSettingsFormState => ({
+      ...formRef.current,
+      ...(Object.fromEntries(leaveRef.current) as Patch),
+    }),
+    [],
+  );
+
+  const settle = useCallback(() => {
+    if (runningRef.current === 0 && timerRef.current === undefined && leaveRef.current.size === 0) {
+      setBusy(false);
+    }
+  }, []);
+
+  const enqueue = useCallback(
+    (work: () => Promise<unknown>) => {
+      runningRef.current += 1;
+      queueRef.current = queueRef.current
+        .then(async () => {
+          await work();
+        })
+        // One failed step must not stop the ones after it (each reports its own error).
+        .catch(() => setFailed(true))
+        .finally(() => {
+          runningRef.current -= 1;
+          settle();
+        });
+    },
+    [settle],
+  );
+
   const flush = useCallback(() => {
     if (timerRef.current === undefined) return;
     clearTimeout(timerRef.current);
     timerRef.current = undefined;
-    runningRef.current += 1;
-    queueRef.current = queueRef.current
-      // Read the form when the save starts: it holds every edit made until then.
-      .then(() => {
-        const form = formRef.current;
-        // A secret still being typed waits for its field to be left; the stored one stays.
-        return saveRef.current(
-          heldRef.current ? { ...form, mailDeliverySmtpPassword: "", turnSecret: "" } : form,
-        );
-      })
-      .then((ok) => setFailed(!ok))
-      .finally(() => {
-        runningRef.current -= 1;
-        if (runningRef.current === 0 && timerRef.current === undefined) setBusy(false);
-      });
-  }, []);
+    // Read the form when the save starts: it holds every edit made until then.
+    enqueue(() => saveRef.current(payload()).then((ok) => setFailed(!ok)));
+  }, [enqueue, payload]);
 
   const schedule = useCallback(
     (delay: number) => {
@@ -87,6 +125,7 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
 
   const choose = useCallback(
     (patch: Patch) => {
+      for (const key of Object.keys(patch) as FormKey[]) leaveRef.current.delete(key);
       setForm((prev) => ({ ...prev, ...patch }));
       schedule(FORM_AUTOSAVE_DELAY_MS);
     },
@@ -96,40 +135,39 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
   const type = useCallback(
     (patch: Patch) => {
       typedRef.current = true;
+      let onLeave = true;
+      for (const key of Object.keys(patch) as FormKey[]) {
+        if (!ADMIN_SAVE_ON_LEAVE.has(key)) {
+          onLeave = false;
+        } else if (!leaveRef.current.has(key)) {
+          leaveRef.current.set(key, formRef.current[key]);
+        }
+      }
       setForm((prev) => ({ ...prev, ...patch }));
-      schedule(FORM_AUTOSAVE_DELAY_MS);
+      if (onLeave) setBusy(true);
+      else schedule(FORM_AUTOSAVE_DELAY_MS);
     },
     [schedule, setForm],
   );
 
-  const hold = useCallback(
-    (patch: Patch) => {
-      typedRef.current = true;
-      heldRef.current = true;
-      setForm((prev) => ({ ...prev, ...patch }));
-      setBusy(true);
-    },
-    [setForm],
-  );
-
   const commit = useCallback(() => {
-    if (!typedRef.current || (timerRef.current === undefined && !heldRef.current)) return;
+    if (!typedRef.current) return;
     typedRef.current = false;
-    heldRef.current = false;
+    leaveRef.current.clear();
     // After this render, so the save reads the last keystroke.
     schedule(0);
   }, [schedule]);
 
-  const afterSaves = useCallback((task: () => Promise<void>) => {
-    clearTimeout(timerRef.current);
-    timerRef.current = undefined;
-    typedRef.current = false;
-    heldRef.current = false;
-    if (runningRef.current === 0) setBusy(false);
-    const run = queueRef.current.then(task);
-    queueRef.current = run.catch(() => {});
-    return run;
-  }, []);
+  const clear = useCallback(
+    (key: FormKey, action: (form: AdminSettingsFormState) => Promise<unknown>) => {
+      leaveRef.current.delete(key);
+      setBusy(true);
+      // A save waiting on its timer (leaving the field to click Clear) goes first.
+      flush();
+      enqueue(() => action(payload()));
+    },
+    [enqueue, flush, payload],
+  );
 
   // A pending save still runs when Admin closes.
   useEffect(() => flush, [flush]);
@@ -137,10 +175,7 @@ function useAdminSettingsAutosave(controller: AdminControllerState): AdminSettin
   const status: AutosaveStatus = busy ? "saving" : failed ? "unsaved" : "saved";
   useReportAutosaveStatus(status);
 
-  return useMemo(
-    () => ({ choose, type, hold, commit, afterSaves }),
-    [choose, type, hold, commit, afterSaves],
-  );
+  return useMemo(() => ({ choose, type, commit, clear }), [choose, type, commit, clear]);
 }
 
 /**

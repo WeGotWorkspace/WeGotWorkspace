@@ -81,20 +81,19 @@ export function useAdminSettingsMutations({
     }
   };
 
-  const clearMailDeliverySmtpPassword = async () => {
+  /** `form`: what the autosave would send now (Admin passes it; fields being typed keep). */
+  const clearMailDeliverySmtpPassword = async (form: AdminSettingsFormState = settingsForm) => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
       return;
     }
     try {
-      const next = await operations.saveSettings(
-        adminSettingsFormToMap({
-          ...settingsForm,
-          mailDeliverySmtpPassword: "",
-        }),
-        { clearSmtpPassword: true },
-      );
-      setSettingsForm(buildAdminSettingsFormState(next));
+      const sent = { ...form, mailDeliverySmtpPassword: "" };
+      const next = await operations.saveSettings(adminSettingsFormToMap(sent), {
+        clearSmtpPassword: true,
+      });
+      const stored = buildAdminSettingsFormState(next);
+      setSettingsForm((current) => mergeStoredSettings(current, sent, stored));
       setMailDelivery(next.mailDelivery);
       showSuccess("Stored SMTP password cleared");
     } catch (error) {
@@ -102,17 +101,18 @@ export function useAdminSettingsMutations({
     }
   };
 
-  const clearTurnSecret = async () => {
+  const clearTurnSecret = async (form: AdminSettingsFormState = settingsForm) => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
       return;
     }
     try {
-      const next = await operations.saveSettings(
-        adminSettingsFormToMap({ ...settingsForm, turnSecret: "" }),
-        { clearTurnSecret: true },
-      );
-      setSettingsForm(buildAdminSettingsFormState(next));
+      const sent = { ...form, turnSecret: "" };
+      const next = await operations.saveSettings(adminSettingsFormToMap(sent), {
+        clearTurnSecret: true,
+      });
+      const stored = buildAdminSettingsFormState(next);
+      setSettingsForm((current) => mergeStoredSettings(current, sent, stored));
       showSuccess("Stored TURN secret cleared");
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not clear TURN secret"));

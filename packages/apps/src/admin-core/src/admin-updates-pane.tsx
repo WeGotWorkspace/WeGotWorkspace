@@ -95,13 +95,20 @@ export function AdminUpdatesPane({
       : UPDATE_CHANNEL_NOTES[updateChannel];
   const [confirmEdgeOpen, setConfirmEdgeOpen] = useState(false);
   const trackSave = useTrackAutosave();
+  // The tag shows Unsaved when the switch failed (the error toast says why).
+  const saveChannel = (channel: AdminUpdateChannel) =>
+    void trackSave(async () => {
+      if (!(await controller.actions.setUpdateChannel(channel))) {
+        throw new Error("Update channel not saved");
+      }
+    }).catch(() => {});
   // Edge cannot be undone once an edge build is installed, so it is never one click.
   const chooseUpdateChannel = (channel: AdminUpdateChannel) => {
     if (channel === "edge" && updateChannel !== "edge") {
       setConfirmEdgeOpen(true);
       return;
     }
-    trackSave(() => controller.actions.setUpdateChannel(channel)).catch(() => {});
+    saveChannel(channel);
   };
   const updateLogRows = useMemo(
     () =>
@@ -363,7 +370,7 @@ export function AdminUpdatesPane({
               className={buttonVariants({ variant: "destructive" })}
               onClick={() => {
                 setConfirmEdgeOpen(false);
-                trackSave(() => controller.actions.setUpdateChannel("edge")).catch(() => {});
+                saveChannel("edge");
               }}
             >
               Switch to edge

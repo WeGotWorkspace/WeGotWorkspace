@@ -17,6 +17,15 @@ const DOCS = "https://github.com/WeGotWorkspace/wegotworkspace/blob/main";
 const HTTPS_DOCS_URL = `${DOCS}/docs/getting-started.md#requirement-https`;
 const WEB_ROOT_DOCS_URL = `${DOCS}/INSTALL.md#move-an-existing-data-directory-out-of-the-web-root`;
 
+/** Only the data directory holds the database and keys; other folders hold code. */
+function reachableMessage(directories: readonly string[]): string {
+  const list = directories.join(", ");
+  const verb = directories.length === 1 ? "is" : "are";
+  return directories.includes("wgw-content")
+    ? `${list} ${verb} reachable from the web. The data directory, including the database and private keys, can be downloaded.`
+    : `${list} ${verb} reachable from the web.`;
+}
+
 export type SecuritySeverity = "critical" | "warning" | "notice" | "ok";
 
 const SEVERITY_TAG: Record<SecuritySeverity, { label: string; tone?: TagTone }> = {
@@ -74,7 +83,10 @@ export function adminSecurityChecks({
       ? {
           id: "https",
           title: "HTTPS",
-          description: "This site opens over a secure connection.",
+          // http://localhost is a secure context too, but it is not https.
+          description: origin.startsWith("http:")
+            ? "This site opens on this computer, which the browser treats as secure. Use https:// on the public address."
+            : "This site opens over https://.",
           severity: "ok",
         }
       : {
@@ -86,13 +98,6 @@ export function adminSecurityChecks({
           fixUrl: HTTPS_DOCS_URL,
         },
   );
-
-  function reachableMessage(directories: readonly string[]): string {
-    if (directories.includes("wgw-content")) {
-      return `${directories.join(", ")} can be downloaded from the web, including the database and keys.`;
-    }
-    return `${directories.join(", ")} can be downloaded from the web.`;
-  }
 
   const dataDirPublished = take("data_dir_published");
   checks.push(
@@ -155,9 +160,9 @@ export function adminSecurityChecks({
       title: "Public host address",
       description: appUrlLocal
         ? local
-          ? "APP_URL is a local address. Password reset emails stay paused until you open Admin on the public address."
+          ? "APP_URL is a local address, so password reset emails stay paused. Open Admin on the public address, or set APP_URL in packages/api/.env (Docker: api.env on the config volume)."
           : "APP_URL is a local address. Password reset emails stay paused."
-        : "APP_URL is not set. Password reset emails are off.",
+        : "APP_URL is not set, so password reset emails are off. Set it here, or in packages/api/.env (Docker: api.env on the config volume).",
       // Working on a local machine, the admin cannot fix it from here: inform, do not alarm.
       severity: local ? "notice" : "warning",
       useAddress,

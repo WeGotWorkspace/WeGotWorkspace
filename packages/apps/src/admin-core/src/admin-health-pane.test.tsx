@@ -64,8 +64,21 @@ describe("adminSecurityChecks", () => {
       (check) => check.id === "web-root",
     );
     expect(webRoot?.severity).toBe("critical");
-    expect(webRoot?.description).toMatch(/^packages, vendor can be downloaded/);
+    expect(webRoot?.description).toBe("packages, vendor are reachable from the web.");
     expect(webRoot?.fixUrl).toMatch(/INSTALL\.md/);
+  });
+
+  it("names the database and keys only when the data directory is reachable", () => {
+    const webRoot = checks({ reachableDirectories: ["wgw-content"] }).find(
+      (check) => check.id === "web-root",
+    );
+    expect(webRoot?.description).toMatch(/database and private keys, can be downloaded/);
+  });
+
+  it("does not call http://localhost https", () => {
+    const https = checks({ origin: "http://localhost:8080" }).find((check) => check.id === "https");
+    expect(https?.severity).toBe("ok");
+    expect(https?.description).toMatch(/^This site opens on this computer/);
   });
 
   it("offers the public address plus the install base for an unset APP_URL", () => {

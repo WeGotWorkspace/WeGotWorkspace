@@ -40,24 +40,24 @@ export function useAdminUpdateMutations({
     }
   };
 
-  const setUpdateChannel = async (channel: AdminUpdateChannel) => {
-    if (channel === updates.updateChannel) return;
+  /** Resolves true once the channel is saved (or already set), false when it was not. */
+  const setUpdateChannel = async (channel: AdminUpdateChannel): Promise<boolean> => {
+    if (channel === updates.updateChannel) return true;
     setSavingUpdateChannel(true);
     let switched = false;
     try {
       const next = await operations?.setUpdateChannel(channel);
-      if (!next) return;
+      if (!next) return false;
       setUpdates(next);
       switched = true;
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not change the update channel"));
-      // Reject too, so the autosave tag stays Unsaved.
-      throw error;
     } finally {
       setSavingUpdateChannel(false);
     }
     // The API drops the previous channel's check: look at the new feed now.
-    if (switched) await checkUpdates();
+    if (switched) void checkUpdates();
+    return switched;
   };
 
   /** Re-fetch update state (including server checks) without running POST /updates/check. */

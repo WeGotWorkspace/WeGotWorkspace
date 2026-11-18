@@ -1,109 +1,142 @@
-import { act, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import {
   buildAdminSettingsFormState,
+  mergeStoredSettings,
   type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
 import {
   AdminSettingsAutosave,
   useAdminSettingsEditor,
-  type AdminSettingsEditor,
 } from "@/admin-core/src/use-admin-settings-autosave";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 
-function setup() {
-  const autosaveSettings = vi.fn(async (_form: AdminSettingsFormState) => true);
-  const hook = { result: { current: {} as { form: AdminSettingsFormState } } };
-  const editor = { result: { current: {} as AdminSettingsEditor } };
-  function Probe() {
-    editor.result.current = useAdminSettingsEditor();
-    return null;
-  }
-  function Harness() {
-    const [settingsForm, setSettingsForm] = useState(() =>
-      buildAdminSettingsFormState(createAdminAppBootstrap().data),
-    );
-    hook.result.current = { form: settingsForm };
-    const controller = {
-      settingsForm,
-      setSettingsForm,
-      actions: { autosaveSettings },
-    } as unknown as AdminControllerState;
-    return (
-      <AdminSettingsAutosave controller={controller}>
-        <Probe />
-      </AdminSettingsAutosave>
-    );
-  }
-  render(<Harness />);
-  return { hook, editor, autosaveSettings };
+const INITIAL = buildAdminSettingsFormState(createAdminAppBootstrap().data);
+
+type Save = (sent: AdminSettingsFormState) => Promise<boolean>;
+
+function Fields({ form, onClear }: { form: AdminSettingsFormState; onClear?: () => void }) {
+  const { type, clear } = useAdminSettingsEditor();
+  return (
+    <>
+      <input
+        aria-label="TURN secret"
+        value={form.turnSecret}
+        onChange={(event) => type({ turnSecret: event.target.value })}
+      />
+      <button type="button" onClick={() => clear("turnSecret", async () => onClear?.())}>
+        Clear
+      </button>
+      <input
+        aria-label="Per day"
+        value={form.imipDailyLimit}
+        onChange={(event) => type({ imipDailyLimit: event.target.value })}
+      />
+      <input
+        aria-label="Realm"
+        value={form.authRealm}
+        onChange={(event) => type({ authRealm: event.target.value })}
+      />
+    </>
+  );
 }
 
-describe("admin settings autosave", () => {
-  it("saves a held secret only when the field is left", async () => {
-    vi.useFakeTimers();
-    const { hook, editor, autosaveSettings } = setup();
-    act(() => editor.result.current.hold({ mailDeliverySmtpPassword: "abc" }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(FORM_AUTOSAVE_DELAY_MS * 3);
-    });
-    expect(autosaveSettings).not.toHaveBeenCalled();
-    expect(hook.result.current.form.mailDeliverySmtpPassword).toBe("abc");
-    act(() => editor.result.current.hold({ mailDeliverySmtpPassword: "abcdef" }));
-    act(() => editor.result.current.commit());
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(FORM_AUTOSAVE_DELAY_MS);
-    });
-    expect(autosaveSettings).toHaveBeenCalledTimes(1);
-    expect(autosaveSettings.mock.calls[0][0].mailDeliverySmtpPassword).toBe("abcdef");
-    vi.useRealTimers();
+/** The server: stores what it gets, never echoes the secret (like the API). */
+function Harness({ save, onClear }: { save: Save; onClear?: () => void }) {
+  const [form, setForm] = useState(INITIAL);
+  const controller = {
+    settingsForm: form,
+    setSettingsForm: setForm,
+    actions: {
+      autosaveSettings: async (sent: AdminSettingsFormState) => {
+        const ok = await save(sent);
+        setForm((current) => mergeStoredSettings(current, sent, { ...sent, turnSecret: "" }));
+        return ok;
+      },
+    },
+  } as unknown as AdminControllerState;
+  return (
+    <AdminSettingsAutosave controller={controller}>
+      <Fields form={form} onClear={onClear} />
+    </AdminSettingsAutosave>
+  );
+}
+
+async function pause(ms = FORM_AUTOSAVE_DELAY_MS + 100) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
+describe("AdminSettingsAutosave", () => {
+  it("never sends a half-typed secret: it saves once, whole, when the field is left", async () => {
+    const save = vi.fn<Save>().mockResolvedValue(true);
+    render(<Harness save={save} />);
+    const secret = screen.getByLabelText("TURN secret");
+
+    fireEvent.change(secret, { target: { value: "abc" } });
+    await pause();
+    expect(save).not.toHaveBeenCalled();
+    expect((secret as HTMLInputElement).value).toBe("abc");
+
+    fireEvent.change(secret, { target: { value: "abcdef" } });
+    fireEvent.blur(secret);
+    await pause(10);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0]?.[0].turnSecret).toBe("abcdef");
   });
 
-  it("keeps a secret still being typed out of another field's save", async () => {
-    vi.useFakeTimers();
-    const { editor, autosaveSettings } = setup();
-    act(() => editor.result.current.hold({ turnSecret: "part" }));
-    act(() => editor.result.current.type({ mailDeliveryFrom: "new-from@b.test" }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(FORM_AUTOSAVE_DELAY_MS);
-    });
-    expect(autosaveSettings).toHaveBeenCalledTimes(1);
-    expect(autosaveSettings.mock.calls[0][0].turnSecret).toBe("");
-    expect(autosaveSettings.mock.calls[0][0].mailDeliveryFrom).toBe("new-from@b.test");
-    vi.useRealTimers();
+  it("does not send a half-typed daily limit (it would cap the hourly one)", async () => {
+    const save = vi.fn<Save>().mockResolvedValue(true);
+    render(<Harness save={save} />);
+
+    fireEvent.change(screen.getByLabelText("Per day"), { target: { value: "1" } });
+    await pause();
+    expect(save).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Per day") as HTMLInputElement).value).toBe("1");
   });
 
-  it("does not save a half-typed limit before the field is left", async () => {
-    vi.useFakeTimers();
-    const { hook, editor, autosaveSettings } = setup();
-    act(() => editor.result.current.hold({ imipDailyLimit: "1" }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(FORM_AUTOSAVE_DELAY_MS * 3);
-    });
-    expect(autosaveSettings).not.toHaveBeenCalled();
-    expect(hook.result.current.form.imipDailyLimit).toBe("1");
-    vi.useRealTimers();
+  it("saves other fields on a pause, with the saved value of a field still being typed", async () => {
+    const save = vi.fn<Save>().mockResolvedValue(true);
+    render(<Harness save={save} />);
+
+    fireEvent.change(screen.getByLabelText("TURN secret"), { target: { value: "half" } });
+    fireEvent.change(screen.getByLabelText("Realm"), { target: { value: "Office" } });
+    await pause();
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0]?.[0]).toMatchObject({ authRealm: "Office", turnSecret: "" });
+    // The draft stays under the cursor.
+    expect((screen.getByLabelText("TURN secret") as HTMLInputElement).value).toBe("half");
   });
 
-  it("runs a clear after the saves already started and drops the waiting one", async () => {
-    vi.useFakeTimers();
-    const { editor, autosaveSettings } = setup();
+  it("runs Clear after the save started by leaving the field", async () => {
     const order: string[] = [];
-    autosaveSettings.mockImplementation(async () => {
-      order.push("save");
+    const save = vi.fn<Save>(async (sent) => {
+      order.push(`save:${sent.turnSecret}`);
       return true;
     });
-    act(() => editor.result.current.type({ mailDeliveryFrom: "x@y.test" }));
-    await act(async () => {
-      await editor.result.current.afterSaves(async () => {
-        order.push("clear");
-      });
-      await vi.advanceTimersByTimeAsync(FORM_AUTOSAVE_DELAY_MS * 2);
-    });
-    expect(order).toEqual(["clear"]);
-    vi.useRealTimers();
+    render(<Harness save={save} onClear={() => order.push("clear")} />);
+    const secret = screen.getByLabelText("TURN secret");
+
+    fireEvent.change(secret, { target: { value: "typed" } });
+    fireEvent.blur(secret);
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await pause(10);
+
+    expect(order).toEqual(["save:typed", "clear"]);
+    expect(save).toHaveBeenCalledTimes(1);
   });
 });
