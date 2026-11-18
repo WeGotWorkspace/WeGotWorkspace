@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
 import {
   ThreadRequestError,
   type ThreadClient,
@@ -8,20 +7,19 @@ import {
   type ThreadSubjectAdapter,
 } from "@/lib/models/thread-types";
 import { readThreadCache, writeThreadCache } from "@/lib/offline/threads/thread-cache";
+import {
+  groupThread,
+  type ThreadSendFailure,
+  type ThreadStatus,
+  type ThreadViewEntry,
+} from "@/thread-ui/src/thread-view";
+import { useThreadWrites } from "@/thread-ui/src/use-thread-writes";
 
 /** How often an open thread asks `/changes`, until the `ThreadEntry` push type lands (chunk C). */
 export const THREAD_POLL_MS = 15_000;
 
-/** Why a comment did not land; the panel shows it next to "Not sent". */
-export type ThreadSendFailure = "gone" | "forbidden" | "moved" | "invalid" | "network";
-
-export type ThreadViewEntry = ThreadEntry & {
-  /** Sent by this tab, not taken by the server yet. */
-  pending?: boolean;
-  failed?: ThreadSendFailure;
-};
-
-export type ThreadStatus = "loading" | "ready" | "gone" | "offline" | "error";
+export type { ThreadSendFailure, ThreadStatus, ThreadViewEntry } from "@/thread-ui/src/thread-view";
+export { failureOf } from "@/thread-ui/src/thread-view";
 
 export type UseThreadResult = {
   status: ThreadStatus;
@@ -45,19 +43,6 @@ export type UseThreadResult = {
   clearWriteError: () => void;
   refresh: () => Promise<void>;
 };
-
-export function failureOf(error: unknown): ThreadSendFailure {
-  if (!(error instanceof ThreadRequestError)) return "network";
-  if (error.status === 404) return "gone";
-  if (error.status === 403) return "forbidden";
-  if (error.status === 409 && error.code === "subject_moved") return "moved";
-  return "invalid";
-}
-
-function byTime(a: ThreadEntry, b: ThreadEntry): number {
-  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
 
 /**
  * One subject's thread: loads it, keeps it fresh while it is on screen, and
@@ -88,10 +73,16 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
   const landedAt = useRef(new Map<string, number>());
   const controllerRef = useRef<AbortController | null>(null);
 
-  const upsert = useCallback((entry: ThreadViewEntry) => {
-    landedAt.current.set(entry.id, ++writeSeq.current);
-    setEntries((previous) => new Map(previous).set(entry.id, entry));
+  const markLanded = useCallback((entryId: string) => {
+    landedAt.current.set(entryId, ++writeSeq.current);
   }, []);
+  const upsert = useCallback(
+    (entry: ThreadViewEntry) => {
+      markLanded(entry.id);
+      setEntries((previous) => new Map(previous).set(entry.id, entry));
+    },
+    [markLanded],
+  );
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -118,6 +109,8 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
         if (!landedDuringLoad) stateRef.current = head.state;
         setServerCanPost(head.canPost);
         setLastUpdated(null);
+        // A clean reload means the thread on screen is the server's: the last write error is moot.
+        setWriteError(null);
         setEntries((previous) => {
           const next = new Map<string, ThreadViewEntry>();
           for (const entry of list) next.set(entry.id, entry);
@@ -165,7 +158,14 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
     const subjectAtStart = subjectRef.current;
     try {
       const changes = await client.changes(subjectAtStart, since, signal);
-      if (signal?.aborted || subjectRef.current !== subjectAtStart) return;
+      const current = subjectRef.current;
+      // A new adapter object (people loaded, session patched) is still the same subject.
+      if (
+        signal?.aborted ||
+        current.type !== subjectAtStart.type ||
+        current.id !== subjectAtStart.id
+      )
+        return;
       if (changes.changed.length > 0 || changes.removed.length > 0 || changes.hasMoreChanges) {
         await load(signal);
       } else {
@@ -207,121 +207,19 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
     };
   }, [refresh, subjectKey]);
 
-  const send = useCallback(
-    async (local: ThreadViewEntry) => {
-      upsert({ ...local, pending: true, failed: undefined });
-      try {
-        const saved = await client.post(subjectRef.current, {
-          id: local.id,
-          body: local.body ?? "",
-          parentId: local.parentId,
-          scopeId: adapterRef.current.scopeId,
-          mentions: local.mentions.map((mention) => ({ id: mention.id })),
-        });
-        landedAt.current.set(saved.id, ++writeSeq.current);
-        setEntries((previous) => {
-          const next = new Map(previous);
-          next.delete(local.id);
-          next.set(saved.id, saved);
-          return next;
-        });
-      } catch (error) {
-        upsert({ ...local, pending: false, failed: failureOf(error) });
-      }
-    },
-    [client, upsert],
-  );
+  const writes = useThreadWrites({
+    client,
+    subjectRef,
+    adapterRef,
+    entriesRef,
+    setEntries,
+    setWriteError,
+    markLanded,
+    upsert,
+    load: () => load(),
+  });
 
-  const post = useCallback(
-    async (body: string, mentions: { id: string }[], parentId: string | null = null) => {
-      const me = adapterRef.current.me;
-      const local: ThreadViewEntry = {
-        id: createChatMessageUlid(),
-        kind: parentId ? "reply" : "comment",
-        parentId,
-        author: { username: me.id, displayName: me.displayName },
-        body,
-        mentions: mentions.map((mention) => ({
-          id: mention.id,
-          displayName:
-            adapterRef.current.people.find((person) => person.id === mention.id)?.displayName ??
-            mention.id,
-        })),
-        reactions: [],
-        createdAt: new Date().toISOString(),
-        editedAt: null,
-        deletedAt: null,
-        activity: null,
-      };
-      await send(local);
-    },
-    [send],
-  );
-
-  const retry = useCallback(
-    async (entryId: string) => {
-      const local = entriesRef.current.get(entryId);
-      if (local) await send(local);
-    },
-    [send],
-  );
-
-  const discard = useCallback((entryId: string) => {
-    setEntries((previous) => {
-      const next = new Map(previous);
-      for (const entry of previous.values()) {
-        if (entry.id === entryId || (entry.parentId === entryId && entry.failed))
-          next.delete(entry.id);
-      }
-      return next;
-    });
-  }, []);
-
-  const write = useCallback(
-    async (run: () => Promise<ThreadEntry>): Promise<boolean> => {
-      setWriteError(null);
-      try {
-        upsert(await run());
-        return true;
-      } catch (error) {
-        setWriteError(failureOf(error));
-        if (error instanceof ThreadRequestError && (error.status === 403 || error.status === 404)) {
-          await load();
-        }
-        return false;
-      }
-    },
-    [load, upsert],
-  );
-
-  const edit = useCallback(
-    (entryId: string, body: string) => write(() => client.edit(subjectRef.current, entryId, body)),
-    [client, write],
-  );
-  const remove = useCallback(
-    (entryId: string) => write(() => client.remove(subjectRef.current, entryId)),
-    [client, write],
-  );
-  const react = useCallback(
-    (entryId: string, emoji: string) =>
-      write(() => client.react(subjectRef.current, entryId, emoji)),
-    [client, write],
-  );
-
-  const { roots, count } = useMemo(() => {
-    const visible = [...entries.values()].filter((entry) => entry.kind !== "activity").sort(byTime);
-    const repliesOf = new Map<string, ThreadViewEntry[]>();
-    for (const entry of visible) {
-      if (entry.kind === "reply" && entry.parentId) {
-        repliesOf.set(entry.parentId, [...(repliesOf.get(entry.parentId) ?? []), entry]);
-      }
-    }
-    const rootList = visible
-      .filter((entry) => entry.kind === "comment")
-      .map((entry) => ({ entry, replies: repliesOf.get(entry.id) ?? [] }));
-    const total = visible.filter((entry) => !entry.deletedAt).length;
-    return { roots: rootList, count: total };
-  }, [entries]);
+  const { roots, count } = useMemo(() => groupThread(entries), [entries]);
 
   return {
     status,
@@ -329,12 +227,7 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
     count,
     lastUpdated,
     canPost: adapter.canPost && serverCanPost,
-    post,
-    retry,
-    discard,
-    edit,
-    remove,
-    react,
+    ...writes,
     writeError,
     clearWriteError,
     refresh,
