@@ -99,7 +99,10 @@ final class JmapToIcsTaskConverter
 
         foreach (TaskConversionSupport::writableRecurrenceOverrides($task) as $recurrenceId => $patch) {
             $overrideTask = TaskConversionSupport::mergeTaskPatch($task, $patch);
+            // Assignees live on the master (#2172): the assignee guard only
+            // checks the top-level map, so an override never writes participants.
             unset(
+                $overrideTask['participants'],
                 $overrideTask['recurrenceRules'],
                 $overrideTask['recurrenceOverrides'],
                 $overrideTask['excludedRecurrenceDates'],

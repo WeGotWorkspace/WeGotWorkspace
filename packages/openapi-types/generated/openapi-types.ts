@@ -3967,6 +3967,15 @@ export interface paths {
                 403: components["responses"]["JmapForbidden"];
                 409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
+                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -4046,6 +4055,15 @@ export interface paths {
                 409: components["responses"]["JmapConflict"];
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
+                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         post?: never;
@@ -4112,6 +4130,15 @@ export interface paths {
                 404: components["responses"]["JmapNotFound"];
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
+                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         trace?: never;
@@ -8889,6 +8916,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/tasklists/{taskListId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * People who can be assigned to tasks in a task list
+         * @description The list audience (owner, owning Team members, visible sharees with Team grants expanded), narrowed to people the caller shares a Team with plus the caller and the list owner. Only a caller who can edit the list may ask. `read` people cannot be assigned. Not cached; Team changes show on the next call.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    taskListId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description People who can see the list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TaskListMembersResponse"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11217,6 +11287,8 @@ export interface components {
             participationStatus?: string;
             kind?: string;
             language?: string;
+            /** @description Set by the server; ignored on writes. The account of a `u:<username>` participant (#2172); null for an `e:<email>` participant or the organizer. Participant ids are `u:<username>`, `e:<lowercased email>` or `org`. An assignee is any participant with role `attendee`. */
+            username?: string | null;
         };
         Task: {
             /** @enum {string} */
@@ -12995,6 +13067,19 @@ export interface components {
             maxMailboxDepth: null;
             maxSizeMailboxName: number;
             mayCreateTopLevelMailbox: boolean;
+        };
+        TaskListMember: {
+            username: string;
+            displayName: string;
+            email: string | null;
+            /**
+             * @description `read` people are shown but cannot be assigned
+             * @enum {string}
+             */
+            access: "read" | "write";
+        };
+        TaskListMembersResponse: {
+            list: components["schemas"]["TaskListMember"][];
         };
     };
     responses: {
