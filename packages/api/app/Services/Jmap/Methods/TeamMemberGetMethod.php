@@ -20,12 +20,12 @@ final class TeamMemberGetMethod implements JmapMethodInterface
 
     public function __construct(private readonly AvailabilityTeamMembers $members) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'TeamMember/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::AVAILABILITY;
     }

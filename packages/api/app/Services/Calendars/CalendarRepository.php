@@ -347,6 +347,22 @@ final class CalendarRepository
     }
 
     /**
+     * Calendar api id => synctoken of the given accessible calendar instances.
+     *
+     * @param  iterable<CalendarInstance>  $instances
+     * @return array<string, string>
+     */
+    public function syncTokensFor(iterable $instances): array
+    {
+        $tokens = [];
+        foreach ($instances as $instance) {
+            $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
+        }
+
+        return $tokens;
+    }
+
+    /**
      * @return Collection<int, CalendarInstance>
      */
     public function accessibleVeventInstances(string $username)

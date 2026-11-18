@@ -21,12 +21,12 @@ final class MailboxGetMethod implements JmapMethodInterface
 
     public function __construct(private readonly ImipMailboxFolders $folders) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Mailbox/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::MAIL;
     }
