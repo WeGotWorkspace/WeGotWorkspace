@@ -18,6 +18,8 @@ class TabAdapter extends JmapInboundAdapter {
   changeLogExpired = false;
   /** True: a pull stores the new state, then throws (a `Note/get` that fails after `Note/changes`). */
   throwAfterStore = false;
+  /** True: a pull throws before it stores a state (a network failure). */
+  throwBeforeStore = false;
   relists = 0;
   repaints = 0;
   protected readonly pushTypes = ["Note"];
@@ -38,6 +40,7 @@ class TabAdapter extends JmapInboundAdapter {
     if (this.changeLogExpired) {
       throw new JmapMethodError("Note/changes", "c0", { type: "cannotCalculateChanges" });
     }
+    if (this.throwBeforeStore) throw new Error("network down");
     this.#states.set("Note", server.state);
     if (this.throwAfterStore) throw new Error("Note/get failed");
     if (this.nextWrite) this.ingesting(this.nextWrite);
@@ -265,6 +268,37 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     await a.adapter.sync();
     await settle();
     expect(a.adapter.pulledFrom).toEqual(["n1", "n1"]);
+    expect(a.adapter.cursor).toBe("n2");
+  });
+
+  it("rounds that fail before storing a state do not use up the rewind budget", async () => {
+    const { a } = await twoTabs();
+    server.state = "n2";
+    a.adapter.throwBeforeStore = true;
+    for (let round = 0; round < MAX_REWOUND_ROUNDS; round += 1) {
+      expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
+    }
+    a.adapter.throwBeforeStore = false;
+    a.adapter.throwAfterStore = true;
+    expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
+    expect(a.adapter.cursor).toBe("n1");
+
+    a.adapter.throwAfterStore = false;
+    await a.adapter.sync();
+    await settle();
+    expect(a.adapter.pulledFrom.at(-1)).toBe("n1");
+    expect(a.adapter.cursor).toBe("n2");
+  });
+
+  it("store-then-throw rounds stop rewinding after the cap", async () => {
+    const { a } = await twoTabs();
+    server.state = "n2";
+    a.adapter.throwAfterStore = true;
+    for (let round = 0; round < MAX_REWOUND_ROUNDS; round += 1) {
+      expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
+      expect(a.adapter.cursor).toBe("n1");
+    }
+    expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
     expect(a.adapter.cursor).toBe("n2");
   });
 

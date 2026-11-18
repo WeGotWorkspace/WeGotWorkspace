@@ -247,9 +247,11 @@ export abstract class JmapInboundAdapter {
   /**
    * A round that threw may have stored a new state inside `/changes` before its
    * cache write failed: put the cursor back so the change is read again. Counts
-   * toward {@link MAX_REWOUND_ROUNDS}, after which the cursor stays.
+   * toward {@link MAX_REWOUND_ROUNDS}, after which the cursor stays. A round
+   * that failed before it stored a state moved nothing and does not count.
    */
   #rewind(before: Record<string, string>): void {
+    if (JSON.stringify(this.#cursor()) === JSON.stringify(before)) return;
     if (this.#rewoundRounds >= MAX_REWOUND_ROUNDS) {
       this.#rewoundRounds = 0;
       return;
