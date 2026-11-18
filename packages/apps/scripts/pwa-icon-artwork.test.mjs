@@ -4,11 +4,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { assertFullBleedSquare } from "./pwa-icon-full-bleed.mjs";
-import { svgForRasterization } from "./pwa-icon-raster.mjs";
+import { roundedFaviconSvg, svgForRasterization } from "./pwa-icon-raster.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sourceDir = join(here, "../src/assets/app-icons");
 const pwaDir = join(here, "../public/pwa-icons");
+const uiDir = join(here, "../public/app-icons");
 
 function paeth(a, b, c) {
   const p = a + b - c;
@@ -82,11 +83,11 @@ function decodePng(path) {
 
 const BRAND_ICON_TOKEN = {
   admin: "--color-we-got-dark",
-  calendar: "--color-we-got-prince",
+  calendar: "--color-we-got-sand",
   contacts: "--color-we-got-sky",
   docs: "--color-we-got-blue",
   drive: "--color-we-got-brat",
-  meet: "--color-we-got-sand",
+  meet: "--color-we-got-prince",
   notes: "--color-we-got-yellow",
   settings: "--color-we-got-dark",
   sheets: "--color-we-got-brat",
@@ -106,6 +107,19 @@ describe("svgForRasterization", () => {
   it("keeps a single-level white fallback", () => {
     expect(svgForRasterization('<rect fill="var(--app-icon-layer-foreground, #ffffff)"/>')).toBe(
       '<rect fill="#ffffff"/>',
+    );
+  });
+});
+
+describe("roundedFaviconSvg", () => {
+  it("clips the full-bleed tile to a sixth of its side", () => {
+    const out = roundedFaviconSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">\n<rect width="60" height="60" fill="#000"/>\n</svg>\n',
+    );
+    expect(out).toBe(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">\n' +
+        '<clipPath id="favicon-tile"><rect width="60" height="60" rx="10"/></clipPath>\n' +
+        '<g clip-path="url(#favicon-tile)">\n<rect width="60" height="60" fill="#000"/>\n</g>\n</svg>\n',
     );
   });
 });
@@ -157,16 +171,18 @@ describe("PWA icon artwork", () => {
     }
   });
 
-  it("keeps maskable icons the same full-bleed tile as the 512 PNG", () => {
-    const maskable = readdirSync(pwaDir).filter((name) => name.endsWith("-512-maskable.png"));
-    expect(maskable.length).toBeGreaterThan(0);
-
-    for (const name of maskable) {
-      const app = name.slice(0, -"-512-maskable.png".length);
-      const anyIcon = readFileSync(join(pwaDir, `${app}-512.png`));
-      const mask = readFileSync(join(pwaDir, name));
-      expect(mask.equals(anyIcon), `${name} must match ${app}-512.png`).toBe(true);
+  it("ships a rounded favicon next to every install icon", () => {
+    const pngApps = readdirSync(pwaDir)
+      .filter((name) => name.endsWith("-512.png"))
+      .map((name) => name.slice(0, -"-512.png".length));
+    expect(pngApps.length).toBeGreaterThan(0);
+    for (const app of pngApps) {
+      const favicon = readFileSync(join(uiDir, `${app}-favicon.svg`), "utf8");
+      expect(favicon, app).toContain('<rect width="60" height="60" rx="10"/>');
+      expect(favicon, app).toContain('<g clip-path="url(#favicon-tile)">');
+      expect(favicon, app).toMatch(/var\(--color-we-got-[\w-]+, #[0-9a-f]{6}\)/);
     }
+    expect(readdirSync(pwaDir).filter((name) => name.includes("maskable"))).toEqual([]);
   });
 
   it("writes opaque RGB PNGs at 180, 192, and 512", () => {

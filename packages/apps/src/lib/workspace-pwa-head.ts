@@ -2,7 +2,7 @@ import { createPwaHead } from "@/lib/pwa-head";
 import pwaIconCacheVersion from "@/lib/pwa-icon-cache-version.json";
 import {
   workspaceAppIconAppleTouchSrc,
-  workspaceAppIconUiSrc,
+  workspaceAppIconFaviconSrc,
   type WorkspaceAppId,
 } from "@/lib/workspace-app-icons";
 
@@ -98,8 +98,8 @@ function workspacePwaAppleTouchSrc(app: WorkspacePwaAppKey): string {
 
 function workspacePwaIconSvgSrc(app: WorkspacePwaAppKey): string {
   return app === "home"
-    ? cacheBust("/app-icons/home-pwa.svg")
-    : cacheBust(workspaceAppIconUiSrc(app));
+    ? cacheBust("/app-icons/home-favicon.svg")
+    : cacheBust(workspaceAppIconFaviconSrc(app));
 }
 
 export function createWorkspacePwaHead(
