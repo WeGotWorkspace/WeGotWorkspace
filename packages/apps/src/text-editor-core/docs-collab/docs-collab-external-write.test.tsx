@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { readNoteTitle } from "@/lib/collab/docs-collab-document-title";
+import { readNoteTitle, writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
 import { isRemoteUpdateOrigin } from "@/lib/collab/docs-collab-utils";
 import {
@@ -70,6 +70,33 @@ describe("replaceDocumentWithExternalText", () => {
     });
     expect(readContentFromYDoc(ydoc).trim()).toBe("same text");
     ydoc.destroy();
+  });
+
+  it("keeps the title when a rebuild repeats after the person edited it (unreadable state)", () => {
+    const garbage = new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", garbage);
+    writeNoteTitle(ydoc, "U");
+    replaceDocumentWithExternalText(ydoc, "other", "T", "markdown", garbage, {
+      dropLocalWork: true,
+    });
+    expect(readNoteTitle(ydoc)).toBe("T");
+    ydoc.destroy();
+  });
+
+  it("keeps the title when a rebuild repeats after the person edited it (readable state)", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "stored", "markdown", "s");
+    const state = Y.encodeStateAsUpdate(server);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", state);
+    writeNoteTitle(ydoc, "U");
+    replaceDocumentWithExternalText(ydoc, "other", "T", "markdown", state, {
+      dropLocalWork: true,
+    });
+    expect(readNoteTitle(ydoc)).toBe("T");
+    ydoc.destroy();
+    server.destroy();
   });
 
   it("replaces the stale document with the outside text", () => {

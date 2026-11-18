@@ -67,7 +67,7 @@ export function replaceDocumentWithExternalText(
   const seeded = new Yjs.Doc();
   const salt = serverStateVector.join(",");
   applyContentSeedToYDoc(seeded, markdown, format, salt);
-  writeSeedTitle(seeded, title, salt);
+  writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(
     ydoc,
     Yjs.encodeStateAsUpdate(seeded),
@@ -116,10 +116,13 @@ function reseedOverUnreadableState(
   const local = Yjs.decodeStateVector(Yjs.encodeStateVector(ydoc));
   const base = `unreadable:${serverState.length}:${hash}`;
   let salt = base;
-  for (let n = 1; local.has(seedClientId(format, markdown, salt)); n += 1) salt = `${base}#${n}`;
+  const taken = (s: string): boolean =>
+    local.has(seedClientId(format, markdown, s)) ||
+    (title !== null && local.has(titleSeedId(title, s, markdown)));
+  for (let n = 1; taken(salt); n += 1) salt = `${base}#${n}`;
   const seeded = new Yjs.Doc();
   applyContentSeedToYDoc(seeded, markdown, format, salt);
-  writeSeedTitle(seeded, title, salt);
+  writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), EXTERNAL_REBUILD_ORIGIN);
   seeded.destroy();
 }
@@ -129,8 +132,13 @@ function reseedOverUnreadableState(
  * the seed's salt: two clients rebuilding the same text write the same title
  * item, not one each (which would show the title twice).
  */
-function writeSeedTitle(seeded: Y.Doc, title: string | null, salt: string): void {
+function titleSeedId(title: string, salt: string, markdown: string): number {
+  // Keyed on the body too: the title seed collides only when the body seed does.
+  return seedClientId("note-title", title, `${salt}\u0000${markdown}`);
+}
+
+function writeSeedTitle(seeded: Y.Doc, title: string | null, salt: string, markdown: string): void {
   if (title === null) return;
-  seeded.clientID = seedClientId("note-title", title, salt);
+  seeded.clientID = titleSeedId(title, salt, markdown);
   writeNoteTitle(seeded, title);
 }
