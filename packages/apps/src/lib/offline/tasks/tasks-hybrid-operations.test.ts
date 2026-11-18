@@ -9,7 +9,10 @@ import {
 } from "@/lib/offline/tasks/tasks-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { tasksItemsTable, tasksListsTable } from "@/lib/offline/tasks/tasks-schema";
-import { createHybridTasksOperations } from "@/lib/offline/tasks/tasks-hybrid-operations";
+import {
+  createHybridTasksOperations,
+  getTasksSyncRunner,
+} from "@/lib/offline/tasks/tasks-hybrid-operations";
 
 const username = "alice";
 const bootstrap = createTasksAppBootstrap({
@@ -51,10 +54,11 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
     patchTask: vi.fn(),
     getTask: vi.fn(),
     patchTaskList: vi.fn(),
+    putTask: vi.fn(),
   };
 });
 
-import { createTask, patchTask, patchTaskList } from "@/lib/api/wgw/tasks";
+import { createTask, patchTask, patchTaskList, putTask } from "@/lib/api/wgw/tasks";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 describe("createHybridTasksOperations", () => {
@@ -156,6 +160,29 @@ describe("createHybridTasksOperations", () => {
     expect(vi.mocked(patchTask).mock.calls.map((call) => call[1])).toEqual([
       { participants: { "u:bob": null, "u:alice": bob } },
     ]);
+  });
+
+  it("sends an online patch queued while a flush of an earlier move is in flight (#2104)", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridTasksOperations(username);
+    await operations.moveTaskToList(task.id, task.taskListId === "work" ? "default" : "work");
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    let resolvePut: (value: Task) => void = () => undefined;
+    vi.mocked(putTask).mockImplementation(
+      () => new Promise<Task>((resolve) => (resolvePut = resolve)),
+    );
+    vi.mocked(patchTask).mockImplementation(async () => ({ ...task, etag: "etag-3" }) as Task);
+    const flush = getTasksSyncRunner(username).flush();
+    await vi.waitFor(() => expect(putTask).toHaveBeenCalled());
+
+    await operations.patchTask(task.id, { title: "Renamed" });
+    resolvePut({ ...task, etag: "etag-2" } as Task);
+    await flush;
+
+    await vi.waitFor(() => expect(patchTask).toHaveBeenCalled());
+    expect(vi.mocked(patchTask).mock.calls.map((call) => call[1])).toEqual([{ title: "Renamed" }]);
+    await vi.waitFor(async () => expect(await listOutboxMutations(username)).toEqual([]));
   });
 
   it("queues patch when live API fails with a network error", async () => {

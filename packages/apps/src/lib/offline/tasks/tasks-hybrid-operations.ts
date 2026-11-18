@@ -335,7 +335,7 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
       }
       if (await hasQueuedTaskWrite(username, taskId)) {
         const queued = await queueOfflinePatch(username, taskId, patch, existing, opts);
-        void runner.flush();
+        void runner.flushAfterWrite();
         return queued;
       }
       const etag = concurrencyEtag(existing, opts);
