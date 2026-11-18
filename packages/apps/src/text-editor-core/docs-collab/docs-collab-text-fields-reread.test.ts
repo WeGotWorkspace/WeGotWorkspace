@@ -370,3 +370,36 @@ describe("text-fields stale writers", () => {
     expect(readTextFields(doc)).toEqual(OAT);
   });
 });
+
+describe("rereadTextFields: typing a peer already saved", () => {
+  it("is not unsaved work: an outside write replaces it quietly", () => {
+    const typist = seeded();
+    const peer = copyOf(typist);
+    typist.getText(TEXT_FIELDS_BODY).insert(8, "!");
+    syncBoth(typist, peer);
+
+    // The peer saved everything, the typing included; then an outside writer changed the text.
+    const result = rereadTextFields(
+      typist,
+      read(SOY, "o3", { storedState: stateOf(peer), externalWrite: true }),
+      { pendingLocalWork: true },
+    );
+
+    expect(result).toBe("replaced");
+    expect(readTextFields(typist)).toEqual(SOY);
+  });
+
+  it("still asks when this client typed something the stored state lacks", () => {
+    const typist = seeded();
+    const peer = copyOf(typist);
+    typist.getText(TEXT_FIELDS_BODY).insert(8, "!");
+
+    const result = rereadTextFields(
+      typist,
+      read(SOY, "o3", { storedState: stateOf(peer), externalWrite: true }),
+      { pendingLocalWork: true },
+    );
+
+    expect(result).toBe("prompt");
+  });
+});

@@ -62,6 +62,20 @@ function servedMatchesBase(
 }
 
 /**
+ * Every item this client wrote is in the stored state: a peer's save carried
+ * this person's typing (two people in one room), so a later outside write
+ * replaces it quietly instead of asking (#2208, live e2e).
+ */
+function storedHoldsOwnWork(doc: Y.Doc, stored: Uint8Array): boolean {
+  try {
+    const vector = Y.decodeStateVector(Y.encodeStateVectorFromUpdate(stored));
+    return (vector.get(doc.clientID) ?? 0) >= Y.getState(doc.store, doc.clientID);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The text-fields re-read (spec.md, The re-read): the first matching case
  * runs, the others do not. Pending local work is the caller's: this client's
  * own edits since its last landed save.
@@ -70,12 +84,14 @@ export function rereadTextFields(
   doc: Y.Doc,
   read: TextFieldsServerRead,
   {
-    pendingLocalWork,
+    pendingLocalWork: pendingFlag,
     loadedStateVector,
   }: { pendingLocalWork: boolean; loadedStateVector?: ReadonlyMap<number, number> },
 ): TextFieldsRereadResult {
   const { storedState, text, contentTag, objectEtag } = read;
   const stored = storedState && storedState.byteLength > 0 ? storedState : null;
+  // Typing a peer already saved is not this person's unsaved work any more.
+  const pendingLocalWork = pendingFlag && !(stored && storedHoldsOwnWork(doc, stored));
   // A state that does not hold the served text, or cannot be read, is an
   // outside write too (#2208, security review). The text is compared only
   // when both reads are one save; a save between them adopts.
