@@ -22193,6 +22193,25 @@
                 },
                 "x-wgw-access": "user"
             }
+        },
+        "/admin/updates/progress": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Update progress only (lock, phase, progress): no checks, no backup listing",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Update progress"
+                    }
+                },
+                "x-wgw-access": "admin"
+            }
         }
     }
 }

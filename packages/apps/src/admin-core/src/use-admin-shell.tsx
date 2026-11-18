@@ -4,9 +4,9 @@ import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props
 import { ADMIN_DEFAULT_SECTION, resolveAdminSection } from "@/admin-core/src/admin-section";
 import {
   buildAdminSettingsFormState,
-  mergePendingApplyPoll,
   type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
+import { useAdminUpdatePoll } from "@/admin-core/src/use-admin-update-poll";
 import { useAdminSidebarModel } from "@/admin-core/src/use-admin-sidebar-model";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 
@@ -76,65 +76,12 @@ export function useAdminShell({
     setSecurityWarnings(next.securityWarnings);
   };
 
-  useEffect(() => {
-    const refreshProgress = operations?.refreshUpdateState;
-    const refreshAll = operations?.refreshState;
-    if (!refreshProgress && !refreshAll) return;
-    let cancelled = false;
-    let timeoutId: number | null = null;
-
-    const poll = async () => {
-      try {
-        if (refreshProgress) {
-          const nextUpdates = await refreshProgress();
-          if (!cancelled) {
-            setUpdates((prev) => {
-              if (applyRequestPendingRef.current && !nextUpdates.inProgress) {
-                return mergePendingApplyPoll(prev, nextUpdates);
-              }
-              return nextUpdates;
-            });
-          }
-        } else if (refreshAll) {
-          const next = await refreshAll();
-          if (!cancelled) {
-            setUpdates((prev) => {
-              if (applyRequestPendingRef.current && !next.updates.inProgress) {
-                return mergePendingApplyPoll(prev, next.updates);
-              }
-              return next.updates;
-            });
-            setUpdateLogLines(next.updateLogLines);
-          }
-        }
-      } catch {
-        // Keep showing existing progress if a poll fails temporarily.
-      }
-    };
-
-    const schedulePoll = () => {
-      if (cancelled) return;
-      timeoutId = window.setTimeout(
-        () => {
-          void poll().finally(() => {
-            schedulePoll();
-          });
-        },
-        updates.inProgress ? 2000 : 4000,
-      );
-    };
-
-    void poll().finally(() => {
-      schedulePoll();
-    });
-
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [updates.inProgress, operations?.refreshState, operations?.refreshUpdateState]);
+  useAdminUpdatePoll({
+    operations,
+    inProgress: updates.inProgress,
+    setUpdates,
+    applyRequestPendingRef,
+  });
 
   useEffect(() => {
     const refresh = operations?.refreshSearchReindexState;
