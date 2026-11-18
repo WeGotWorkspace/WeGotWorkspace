@@ -1179,6 +1179,25 @@ describe("useDocsCollabJoin text-fields shape", () => {
     await close(hook);
   });
 
+  it("keeps an offline edit on a 204 when the served text is what the document took", async () => {
+    const onExternalWrite = vi.fn();
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/own-work-204", onExternalWrite);
+    act(() => {
+      doc.getText(TEXT_FIELDS_BODY).insert(8, "!");
+    });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(readTextFields(doc).description).toBe("Buy milk!");
+    expect(onExternalWrite).not.toHaveBeenCalled();
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(false);
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    await close(hook);
+  });
+
   it("marks typing in the title as local work", async () => {
     serve({ state: null, title: "Groceries", description: "Buy milk" });
     const { hook, doc } = await open("tasks/title-typing");

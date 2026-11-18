@@ -26,6 +26,7 @@ import { replaceDocumentWithExternalText } from "./docs-collab-external-write";
 import { decideBootstrapAction, decideMergeAction } from "./docs-collab-snapshot-check";
 import { settleMergeAction } from "./docs-collab-merge-settle";
 import { EXTERNAL_REPLACE_ORIGIN } from "./docs-collab-text-fields";
+import { hasPendingLocalWork } from "./use-docs-collab-session-refs";
 import { useDocsCollabTextFields } from "./use-docs-collab-text-fields";
 import {
   adoptServerSnapshot,
@@ -89,11 +90,6 @@ type UseDocsCollabJoinOptions = {
   setPendingSync: (pending: boolean) => void;
   setFailedSync: (failed: boolean) => void;
 };
-
-/** This client's own edits since its last landed save. */
-function hasPendingLocalWork(refs: DocsCollabSessionRefs): boolean {
-  return refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-}
 
 export function useDocsCollabJoin({
   refs,

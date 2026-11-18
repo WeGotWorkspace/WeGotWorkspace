@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
@@ -153,7 +152,12 @@ export function useDocsCollabSave({
       refs.externalWriteSeenRef.current = null;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
-      const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
+      // A text-fields save keeps the vector from the send: typing since is not in it.
+      const success = saveSuccessState(
+        body.textFields && savedMarkdown === markdown
+          ? signature
+          : docSignature(savedMarkdown, ydoc),
+      );
       // Typed while this save was on its way: still dirty, saved by the next round.
       if (baseCandidate) await baseCandidate.landed(savedMarkdown);
       const editedSince = body.editedSince(savedMarkdown, refs.getMarkdownRef.current);
@@ -162,7 +166,7 @@ export function useDocsCollabSave({
       refs.saveTerminalKindRef.current = null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
       refs.nextSaveAttemptAtRef.current = success.nextSaveAttemptAt ?? 0;
-      await updatePendingState(false, false);
+      await updatePendingState(editedSince && body.textFields, false);
       setLastSavedAt(new Date().toISOString());
       setDocStatus("");
       urls.onPersistSuccess?.(savedMarkdown);
