@@ -10,7 +10,7 @@ A `POST /api/v1/jmap` or `POST /api/v1/jmap/upload/{accountId}` call (and the gu
 | `ms` | Whole request, from PHP's request start until the log is written. |
 | `db_ms`, `db_queries` | Time and count of database queries, plus `COMMIT`s. |
 | `db_commit_ms` | The `COMMIT` share of `db_ms` (where a Galera cluster certifies writes). |
-| `storage_ms`, `storage_ops` | Operations on the `wgw_data`, `wgw_files` and `wgw_notes` disks, and the raw appends, truncates and renames of `LocalDiskFiles`. Hashing during an append is not counted. |
+| `storage_ms`, `storage_ops` | Operations on the `wgw_data`, `wgw_files` and `wgw_notes` disks, and the raw appends, truncates and renames of `LocalDiskFiles`. Hashing during an assembly append is not counted; a streamed upload hashes while it writes, so that hashing does count. |
 | `other_ms` | `ms − db_ms − storage_ms`: PHP work, hashing, reading a stream opened from a disk, network calls such as IMAP. |
 | `methods` | One `{name, ms, db_ms, storage_ms}` per JMAP method call, in order. Only registered method names; never arguments, ids or results. |
 
