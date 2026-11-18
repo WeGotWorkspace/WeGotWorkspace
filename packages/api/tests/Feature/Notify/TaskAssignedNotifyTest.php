@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Notify;
 
+use App\Models\GroupMember;
 use App\Models\Notification;
+use App\Models\Principal;
 use App\Services\Notify\NotifiedRecipients;
 use App\Services\Notify\TaskAssignedNotify;
+use App\Services\Notify\TaskAssignedRateLimiter;
+use App\Services\Tasks\TaskChangeSet;
+use App\Services\Tasks\TaskListRepository;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\TasksTestFixtures;
@@ -131,6 +136,64 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
 
         // #798: the owner hears of it, the actor does not, and nobody is "assigned" again.
         $this->assertSame(['bob'], Notification::query()->where('action', 'status_changed')->pluck('principal')->all());
+        $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
+    }
+
+    public function test_notices_from_one_actor_to_one_recipient_are_capped(): void
+    {
+        // Each new task with alice is a new notice; the pair budget stops the flood.
+        for ($i = 0; $i < TaskAssignedRateLimiter::PAIR_LIMIT + 3; $i++) {
+            $this->asUser('bob')->postJson('/api/v1/tasks/items', [
+                ...$this->sampleTaskCreatePayload($this->listId),
+                'title' => 'Chore '.$i,
+                'participants' => ['u:alice' => $this->attendee()],
+            ])->assertCreated();
+        }
+
+        $this->assertSame(
+            TaskAssignedRateLimiter::PAIR_LIMIT,
+            Notification::query()->where('action', TaskAssignedNotify::ACTION)->where('principal', 'alice')->count(),
+        );
+    }
+
+    public function test_reassigning_over_and_over_stops_marking_the_notice_unread(): void
+    {
+        $taskId = $this->createTask();
+        for ($i = 0; $i < TaskAssignedRateLimiter::PAIR_LIMIT; $i++) {
+            $this->assign($taskId, ['u:alice' => $this->attendee()])->assertOk();
+            $this->assign($taskId, ['u:alice' => null])->assertOk();
+        }
+        Notification::query()->where('action', TaskAssignedNotify::ACTION)->update(['read_at' => now()]);
+
+        $this->assign($taskId, ['u:alice' => $this->attendee()])
+            ->assertOk()
+            ->assertJsonPath('participants.u:alice.username', 'alice');
+
+        $this->assertNotNull(Notification::query()->where('action', TaskAssignedNotify::ACTION)->firstOrFail()->read_at);
+    }
+
+    public function test_someone_removed_from_the_team_is_not_notified(): void
+    {
+        // dave could edit the list through Team "side" until he left it.
+        $this->seedWgwUser('dave', displayName: 'Dave', email: 'dave@example.test');
+        $this->seedSharedTeam('side', 'bob', 'dave');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['shareWith' => [
+            'alice' => ['mayWriteAll' => true],
+            'carol' => ['mayWriteAll' => false],
+            'groups/side' => ['mayWriteAll' => true],
+        ]])->assertOk();
+        $team = Principal::query()->where('uri', 'principals/groups/side')->firstOrFail();
+        $dave = Principal::forUsername('dave');
+        $this->assertNotNull($dave);
+        GroupMember::query()->where('principal_id', $team->id)->where('member_id', $dave->id)->delete();
+
+        $list = app(TaskListRepository::class)->findAccessibleTaskList('bob', $this->listId);
+        $this->assertNotNull($list);
+        $before = ['id' => 'task-1', 'title' => 'Buy milk'];
+        $after = [...$before, 'participants' => ['u:dave' => ['@type' => 'Participant', 'roles' => ['attendee'], 'username' => 'dave']]];
+
+        app(TaskAssignedNotify::class)->notify('bob', $list, $after, TaskChangeSet::between($before, $after));
+
         $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 

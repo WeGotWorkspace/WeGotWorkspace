@@ -7,7 +7,7 @@ namespace Tests\Feature\Tasks;
 use App\Models\CalendarInstance;
 use App\Models\Notification;
 use App\Services\Notify\TaskAssignedNotify;
-use App\Services\Tasks\TaskListAudience;
+use App\Services\Notify\TaskAssignedRateLimiter;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -122,7 +122,7 @@ final class TaskChangeObserverPluginTest extends WgwDatabaseTestCase
 
     public function test_observer_exception_does_not_fail_the_put(): void
     {
-        $this->app->bind(TaskListAudience::class, static fn () => throw new \RuntimeException('audience down'));
+        $this->app->bind(TaskAssignedRateLimiter::class, static fn () => throw new \RuntimeException('limiter down'));
 
         $this->davPut('bob', $this->bobListUri, 'milk.ics', $this->vtodo('milk-1', ['alice@example.test']))->assertCreated();
 
