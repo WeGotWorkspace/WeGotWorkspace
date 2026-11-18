@@ -9197,6 +9197,13 @@ export interface paths {
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
                 409: components["responses"]["JmapConflict"];
+                /** @description A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         delete?: never;
