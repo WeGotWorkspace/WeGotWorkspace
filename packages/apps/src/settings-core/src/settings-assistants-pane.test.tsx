@@ -2,7 +2,7 @@ const previousTimeZone = process.env.TZ;
 process.env.TZ = "Europe/Amsterdam";
 
 import type { ReactElement } from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import {
@@ -60,6 +60,25 @@ function assistantsState(overrides: Partial<SettingsMcpGrantsState> = {}): Setti
   };
 }
 
+/** Each app row as "App: Read, Write", in order. */
+function appRows(): string[] {
+  return [...document.querySelectorAll(".settings-assistant__app")].map((row) => {
+    const app = row.querySelector(".field-label-row__label")?.textContent ?? "";
+    const actions = [...row.querySelectorAll(".tag")].map((tag) => tag.textContent?.trim());
+    return `${app}: ${actions.join(", ")}`;
+  });
+}
+
+/** Captions of the assistant rows (the product names). */
+function assistantNames(): string[] {
+  return [...document.querySelectorAll(".settings-assistant > * .field-label-row__label")]
+    .filter(
+      (label) =>
+        label.closest(".settings-assistant__app, .settings-assistant__connection") === null,
+    )
+    .map((label) => label.textContent ?? "");
+}
+
 function renderPane(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
 }
@@ -83,19 +102,10 @@ describe("SettingsAssistantsPane", () => {
     expect(screen.getByRole("button", { name: shareLabels.copyLink })).toBeTruthy();
     expect(screen.getByText(SETTINGS_AUTHORIZED_ASSISTANTS_TITLE)).toBeTruthy();
     expect(screen.getByText(/No assistants yet/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Connect guide" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect assistant" })).toBeNull();
     expect(screen.queryByText(MCP_ASSISTANT_DATA_WARNING_TITLE)).toBeNull();
     expect(screen.queryByText(MCP_ASSISTANT_DATA_WARNING_CONSENT_MESSAGE)).toBeNull();
-  });
-
-  it("opens the connect dialog with the URL, the steps and the guide", () => {
-    renderAssistantsPane();
-    fireEvent.click(screen.getByRole("button", { name: "Connect assistant" }));
-    const dialog = screen.getByRole("dialog", { name: "Connect an assistant" });
-    expect(within(dialog).getByRole("textbox", { name: "Connection URL" })).toBeTruthy();
-    expect(within(dialog).getByText(/claude mcp add --transport http wegotworkspace/)).toBeTruthy();
-    expect(within(dialog).getByRole("link", { name: /Connect guide/ })).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
-    expect(screen.queryByRole("dialog", { name: "Connect an assistant" })).toBeNull();
   });
 
   it("shows one assistant with where and when it was approved, and access per app", () => {
@@ -103,11 +113,10 @@ describe("SettingsAssistantsPane", () => {
       grants: [grant({ scopes: ["drive.read", "calendar.read", "calendar.write"] })],
     });
     expect(screen.getByText(`${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (1)`)).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Claude" })).toBeTruthy();
+    expect(assistantNames()).toEqual(["Claude"]);
     expect(screen.getByText("claude.ai")).toBeTruthy();
     expect(screen.getByText(/^Safari on Mac · Approved (12 Nov|Nov 12) · Active /)).toBeTruthy();
-    expect(screen.getByText("Calendar · Read and write")).toBeTruthy();
-    expect(screen.getByText("Drive · Read only")).toBeTruthy();
+    expect(appRows()).toEqual(["Calendar: Read, Write", "Drive: Read"]);
     expect(screen.getByRole("button", { name: "Revoke Claude" })).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();
   });
@@ -134,12 +143,12 @@ describe("SettingsAssistantsPane", () => {
       ],
     });
     expect(screen.getByText(`${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (1)`)).toBeTruthy();
-    expect(screen.getAllByRole("heading", { name: "Claude Code" })).toHaveLength(1);
+    expect(assistantNames()).toEqual(["Claude Code"]);
     expect(screen.getByText("Local app")).toBeTruthy();
-    expect(
-      screen.getByText(/^Firefox on Linux · Approved (12 Nov|Nov 12) · Not used yet$/),
-    ).toBeTruthy();
-    expect(screen.getAllByText("Drive · Read only")).toHaveLength(1);
+    expect(screen.getByText("2 connections")).toBeTruthy();
+    expect(screen.getByText("Firefox on Linux")).toBeTruthy();
+    expect(screen.getByText(/^Approved (12 Nov|Nov 12) · Not used yet$/)).toBeTruthy();
+    expect(appRows()).toEqual(["Drive: Read"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Revoke Claude Code, Firefox on Linux" }));
     fireEvent.click(await screen.findByRole("button", { name: "Revoke access" }));
@@ -162,7 +171,7 @@ describe("SettingsAssistantsPane", () => {
         }),
       ],
     });
-    expect(screen.getAllByRole("heading", { name: "Claude" })).toHaveLength(2);
+    expect(assistantNames()).toEqual(["Claude", "Claude"]);
     expect(screen.getByText("claude.example")).toBeTruthy();
   });
 
@@ -179,7 +188,7 @@ describe("SettingsAssistantsPane", () => {
     renderAssistantsPane({
       grants: [grant({ clientName: "Old mail assistant", scopes: ["mail.read", "mail.send"] })],
     });
-    expect(screen.getByText("Other · mail.read, mail.send")).toBeTruthy();
+    expect(appRows()).toEqual(["Other: mail.read, mail.send"]);
     expect(screen.getByRole("button", { name: "Revoke Old mail assistant" })).toBeTruthy();
   });
 
@@ -187,8 +196,7 @@ describe("SettingsAssistantsPane", () => {
     renderAssistantsPane({
       grants: [grant({ scopes: ["drive.read", "offline_access", "settings"] })],
     });
-    expect(screen.getByText("Drive · Read only")).toBeTruthy();
-    expect(screen.getByText("Profile · Read only")).toBeTruthy();
+    expect(appRows()).toEqual(["Drive: Read", "Profile: Read"]);
     expect(screen.queryByText(/offline_access|Stay connected/)).toBeNull();
   });
 
@@ -225,7 +233,7 @@ describe("SettingsAssistantsPane", () => {
 
   it("names a grant without a client name after its host", () => {
     renderAssistantsPane({ grants: [grant({ clientName: "" })] });
-    expect(screen.getByRole("heading", { name: "claude.ai" })).toBeTruthy();
+    expect(assistantNames()).toEqual(["claude.ai"]);
     expect(screen.getByRole("button", { name: "Revoke claude.ai" })).toBeTruthy();
   });
 });

@@ -4,8 +4,7 @@ import {
   connectionsShareScopes,
   formatActiveAgo,
   groupMcpGrants,
-  mcpAccessLabel,
-  mcpAccessTags,
+  mcpAppAccess,
   mcpGrantSource,
   userAgentLabel,
 } from "@/settings-core/src/mcp-grant-display";
@@ -95,21 +94,31 @@ describe("groupMcpGrants", () => {
   });
 });
 
-describe("access labels", () => {
-  it("reads as a short sentence per app", () => {
-    expect(mcpAccessLabel(["Read"])).toBe("Read only");
-    expect(mcpAccessLabel(["Write"])).toBe("Write only");
-    expect(mcpAccessLabel(["Read", "Write"])).toBe("Read and write");
-    expect(mcpAccessLabel(["Read", "Write", "Share"])).toBe("Read, write and share");
-    expect(mcpAccessLabel(["Read and write"])).toBe("Read and write");
+describe("mcpAppAccess", () => {
+  it("lists the actions per app, legacy and retired ids included", () => {
+    expect(
+      mcpAppAccess([
+        "calendar.read",
+        "calendar.write",
+        "drive",
+        "drive.share",
+        "docs.read",
+        "mail.read",
+      ]),
+    ).toEqual([
+      { app: "Calendar", actions: ["Read", "Write"] },
+      { app: "Docs", actions: ["Read"] },
+      { app: "Drive", actions: ["Read", "Write", "Share"] },
+      { app: "Other", actions: ["mail.read"] },
+    ]);
   });
 
-  it("makes one tag per app, legacy and retired ids included", () => {
+  it("sorts apps alphabetically", () => {
     expect(
-      mcpAccessTags(["calendar.read", "calendar.write", "drive", "mail.read"]).map(
-        (tag) => tag.label,
+      mcpAppAccess(["tasks.read", "notes.read", "contacts.read", "calendar.read"]).map(
+        (row) => row.app,
       ),
-    ).toEqual(["Calendar · Read and write", "Drive · Read and write", "Other · mail.read"]);
+    ).toEqual(["Calendar", "Contacts", "Notes", "Tasks"]);
   });
 
   it("knows when connections share their scopes", () => {

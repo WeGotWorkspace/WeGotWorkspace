@@ -15,10 +15,17 @@ export type McpEndpointUrlRowProps = {
   url: string;
   inputId?: string;
   className?: string;
+  /** Quiet line under the caption, such as where to paste the URL. */
+  description?: ReactNode;
 };
 
-/** Readonly MCP connection URL with copy — shared by Admin and Settings. */
-export function McpEndpointUrlRow({ url, inputId, className }: McpEndpointUrlRowProps): ReactNode {
+/** Readonly MCP connection URL with copy, as an inline settings row — shared by Admin and Settings. */
+export function McpEndpointUrlRow({
+  url,
+  inputId,
+  className,
+  description,
+}: McpEndpointUrlRowProps): ReactNode {
   const reactId = useId();
   const fieldId = inputId ?? `mcp-endpoint${reactId.replace(/:/g, "")}`;
   const { showSuccess } = useAppToast();
@@ -32,7 +39,13 @@ export function McpEndpointUrlRow({ url, inputId, className }: McpEndpointUrlRow
 
   return (
     <div className={cn("mcp-endpoint-url-row", "share-dialog", className)}>
-      <FieldLabelRow label="Connection URL" htmlFor={fieldId}>
+      <FieldLabelRow
+        layout="inline"
+        fill
+        label="Connection URL"
+        description={description}
+        htmlFor={fieldId}
+      >
         <div className="share-dialog__link-row">
           <ShareDialogInput
             id={fieldId}

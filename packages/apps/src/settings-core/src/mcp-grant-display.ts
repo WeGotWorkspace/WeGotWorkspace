@@ -110,43 +110,38 @@ export function userAgentLabel(userAgent: string | null | undefined): string | n
   return browser ?? (system ? `Browser on ${system}` : null);
 }
 
-function actionWords(actionLabels: string[]): string[] {
-  const words = new Set<string>();
-  for (const label of actionLabels) {
-    for (const word of label.toLowerCase().split(/\s+and\s+/)) words.add(word);
-  }
-  return ["read", "write", "share"].filter((word) => words.has(word));
-}
-
-function sentenceList(words: string[]): string {
-  if (words.length <= 1) return words.join("");
-  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
-}
-
-/** Access per app for one grant: "Read only", "Read and write", "Read, write and share". */
-export function mcpAccessLabel(actionLabels: string[]): string {
-  const words = actionWords(actionLabels);
-  if (words.length === 0) return actionLabels.join(", ");
-  if (words.length === 1 && words[0] === "read") return "Read only";
-  if (words.length === 1 && words[0] === "write") return "Write only";
-  const text = sentenceList(words);
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 const OTHER_GROUP = "Other";
 
-export type McpAccessTag = { label: string; app: string };
+const ACTION_ORDER = ["Read", "Write", "Share"];
 
-/** One tag per app the grant reaches, e.g. { app: "Calendar", label: "Calendar · Read and write" }. */
-export function mcpAccessTags(scopes: readonly string[]): McpAccessTag[] {
-  return groupMcpScopeIds([...scopes]).map((group) => {
-    // Scopes outside the app catalog (retired mail ids): name them as they are.
-    const access =
-      group.label === OTHER_GROUP
-        ? group.scopes.map((scope) => scope.id).join(", ")
-        : mcpAccessLabel(group.scopes.map((scope) => mcpScopeActionLabel(scope.id)));
-    return { app: group.label, label: `${group.label} · ${access}` };
+/** One app the grant reaches and what it may do there, e.g. { app: "Calendar", actions: ["Read", "Write"] }. */
+export type McpAppAccess = { app: string; actions: string[] };
+
+/**
+ * Access per app, as rows sorted by app name: Read / Write / Share tags. Legacy combined ids
+ * ("Read and write") split into their parts; scopes outside the app catalog
+ * (retired mail ids) keep their id so an old grant stays recognisable.
+ */
+export function mcpAppAccess(scopes: readonly string[]): McpAppAccess[] {
+  const rows = groupMcpScopeIds([...scopes]).map((group) => {
+    if (group.label === OTHER_GROUP) {
+      return { app: group.label, actions: group.scopes.map((scope) => scope.id) };
+    }
+    const actions = new Set<string>();
+    for (const scope of group.scopes) {
+      for (const part of mcpScopeActionLabel(scope.id).split(/\s+and\s+/i)) {
+        actions.add(part.charAt(0).toUpperCase() + part.slice(1).toLowerCase());
+      }
+    }
+    const ordered = [...actions].sort(
+      (a, b) => (ACTION_ORDER.indexOf(a) + 1 || 99) - (ACTION_ORDER.indexOf(b) + 1 || 99),
+    );
+    return { app: group.label, actions: ordered };
   });
+  // Alphabetical, the catch-all Other last.
+  return rows.sort((a, b) =>
+    a.app === OTHER_GROUP ? 1 : b.app === OTHER_GROUP ? -1 : a.app.localeCompare(b.app),
+  );
 }
 
 /** True when every connection of the group has the same scopes (then the tags show once). */

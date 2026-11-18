@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, within } from "storybook/test";
 import {
   SETTINGS_AUTHORIZED_ASSISTANTS_TITLE,
   SettingsAssistantsPane,
@@ -148,29 +148,20 @@ export const Connected: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(`${SETTINGS_AUTHORIZED_ASSISTANTS_TITLE} (3)`)).toBeTruthy();
-    await expect(canvas.getByRole("heading", { name: "Claude" })).toBeTruthy();
+    await expect(canvas.getByText("Claude")).toBeTruthy();
     await expect(canvas.getByText("claude.ai")).toBeTruthy();
-    await expect(canvas.getAllByRole("heading", { name: "Claude Code" })).toHaveLength(1);
+    await expect(canvas.getAllByText("Claude Code")).toHaveLength(1);
     await expect(canvas.getByText("Local app")).toBeTruthy();
     await expect(
       canvas.getByRole("button", { name: "Revoke all Claude Code connections" }),
     ).toBeTruthy();
-    await expect(canvas.getByText(/^Firefox on Linux · /)).toBeTruthy();
+    await expect(canvas.getByText("3 connections")).toBeTruthy();
+    await expect(canvas.getByText("Firefox on Linux")).toBeTruthy();
+    await expect(canvas.getByText("Unknown browser")).toBeTruthy();
     await expect(canvas.getByText(/^Connected .* · Not used yet$/)).toBeTruthy();
+    await expect(canvas.queryByRole("button", { name: "Connect assistant" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "Revoke ChatGPT" })).toBeTruthy();
     await expect(canvas.queryByText(MCP_ASSISTANT_DATA_WARNING_TITLE)).toBeNull();
-  },
-};
-
-export const ConnectDialog: Story = {
-  render: () => <AssistantsHarness grants={sampleGrants} />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Connect assistant" }));
-    const dialog = within(canvasElement.ownerDocument.body).getByRole("dialog", {
-      name: "Connect an assistant",
-    });
-    await expect(within(dialog).getByRole("link", { name: /Connect guide/ })).toBeTruthy();
   },
 };
 
