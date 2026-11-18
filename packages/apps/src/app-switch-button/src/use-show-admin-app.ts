@@ -15,7 +15,10 @@ let lastKnownShowAdmin: boolean | null = null;
  * answer and re-check; mock mode: visible immediately.
  */
 export function useShowAdminApp(): boolean {
-  const [showAdmin, setShowAdmin] = useState(() => lastKnownShowAdmin ?? !wgwLiveApiEnabled());
+  // Mock mode stays "visible at once"; only the live check starts from the last answer.
+  const [showAdmin, setShowAdmin] = useState(() =>
+    wgwLiveApiEnabled() ? (lastKnownShowAdmin ?? false) : true,
+  );
 
   useEffect(() => {
     let cancelled = false;

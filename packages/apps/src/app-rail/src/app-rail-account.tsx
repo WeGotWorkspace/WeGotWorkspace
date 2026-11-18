@@ -56,15 +56,13 @@ function AppRailAccount({ name, initials, onLogout }: AppRailAccountProps) {
     <DropdownMenu
       align="start"
       trigger={
-        <AccountTrigger
-          hint={`${avatarName} (${connectivityLabel})`}
-          aria-label={`${avatarName}, ${connectivityLabel}. Account menu`}
-        >
+        <AccountTrigger hint={`${avatarName} (${connectivityLabel})`}>
+          {/* The avatar names the button: its initials are visible text, so the name comes from content. */}
           <UserAvatar
             displayName={avatarName}
             compact
             presence={online ? "online" : "away"}
-            ariaLabel=""
+            ariaLabel={`${avatarName}, ${connectivityLabel}. Account menu`}
           />
         </AccountTrigger>
       }

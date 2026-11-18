@@ -100,8 +100,9 @@ export const Default: Story = {
 };
 
 /**
- * `settingsAppId`: the app's Settings is the last option of the primary button's
- * menu, after the app's own create options.
+ * `settingsAppId`: beside the app rail the app's Settings is the header button
+ * where the bell used to sit (the bell moved to the rail), so the primary
+ * button's menu keeps only the app's own create options.
  */
 export const WithAppSettings: Story = {
   tags: ["vitest-ci"],
@@ -125,9 +126,9 @@ export const WithAppSettings: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "More create actions" }));
     const menu = await within(document.body).findByRole("menu");
     const options = within(menu).getAllByRole("menuitem");
-    await expect(options.map((option) => option.textContent)).toEqual(["New notebook", "Settings"]);
-    await expect(menu.querySelector('[role="separator"]')).not.toBeNull();
+    await expect(options.map((option) => option.textContent)).toEqual(["New notebook"]);
     await userEvent.keyboard("{Escape}");
+    await expect(canvas.getByRole("button", { name: "Settings" })).toBeVisible();
   },
 };
 
