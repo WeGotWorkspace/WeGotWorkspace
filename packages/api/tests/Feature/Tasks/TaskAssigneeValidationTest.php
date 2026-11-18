@@ -172,6 +172,42 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('ATTENDEE', $ics);
     }
 
+    public function test_an_edit_that_assigns_nobody_names_no_organizer(): void
+    {
+        // A CalDAV client wrote the attendee without an organizer.
+        $taskId = $this->seedTaskViaPdo('bob', 'no-org.ics', $this->vtodoWith(
+            "ATTENDEE;CN=Alice:mailto:alice@example.test\r\n"
+        ), $this->listId);
+
+        $this->patchTask($taskId, ['title' => 'Renamed'])->assertOk();
+
+        $this->assertStringNotContainsString('ORGANIZER', $this->storedIcs($taskId));
+    }
+
+    public function test_a_move_keeps_an_address_of_someone_in_the_new_audience(): void
+    {
+        // dave is not in Groceries, so his address is an e: there; he can edit Shed.
+        $this->seedSharedTeam('side', 'bob', 'dave');
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'dave' => ['mayWriteAll' => true],
+        ]])->assertOk();
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => [
+            'e:dave@example.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $task = $this->asUser('bob')->getJson($url)->assertOk()->json();
+        $moved = $this->asUser('bob')->putJson($url, [
+            'taskListIds' => [$shed => true],
+            'title' => (string) $task['title'],
+            'participants' => $task['participants'],
+        ], $this->withIfMatch((string) $task['etag']))->assertOk()->json('participants');
+
+        $this->assertSame(['org', 'u:dave'], array_keys($moved));
+    }
+
     public function test_adding_a_reader_or_outsider_is_422(): void
     {
         $taskId = $this->createTask();

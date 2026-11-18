@@ -131,7 +131,7 @@ final class TaskAssigneeGuard
         if ($moved) {
             $canonical = $this->onlyTargetAudience($canonical, $members);
         }
-        $after['participants'] = $this->withOrganizer($canonical, $stored, $members, $actor, $moved);
+        $after['participants'] = $this->withOrganizer($canonical, $stored, $members, $actor, $moved, $added !== []);
 
         return $after;
     }
@@ -238,7 +238,8 @@ final class TaskAssigneeGuard
     /**
      * The organizer of a task with assignees (#2172, product owner 2026-11-18):
      * - once stored, it stays, whatever the payload sends or leaves out;
-     * - the first time a task gets an attendee and has none, it is the actor;
+     * - when a write assigns someone and the task has none, it is the actor
+     *   (a rename of a task whose attendees came from CalDAV names nobody);
      * - after a move to another audience, it becomes the actor when the stored
      *   organizer's address is no one's in the target audience.
      * The actor is always a person (a username), never a Team.
@@ -248,8 +249,14 @@ final class TaskAssigneeGuard
      * @param  \Closure(): array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
      * @return array<string, array<string, mixed>>
      */
-    private function withOrganizer(array $participants, array $stored, \Closure $members, string $actor, bool $moved): array
-    {
+    private function withOrganizer(
+        array $participants,
+        array $stored,
+        \Closure $members,
+        string $actor,
+        bool $moved,
+        bool $assigns,
+    ): array {
         $organizerId = self::organizerId($participants);
         $storedId = self::organizerId($stored);
         if ($organizerId === null && $storedId !== null && is_array($stored[$storedId])) {
@@ -274,7 +281,8 @@ final class TaskAssigneeGuard
 
             return ['org' => $replacement] + $participants;
         }
-        if (! self::hasAttendee($participants)) {
+        if (! $assigns) {
+            // Only a write that assigns someone names the organizer.
             return $participants;
         }
         $replacement = self::actorOrganizer($members(), $actor);
@@ -339,20 +347,6 @@ final class TaskAssigneeGuard
     }
 
     /**
-     * @param  array<string, array<string, mixed>>  $participants
-     */
-    private static function hasAttendee(array $participants): bool
-    {
-        foreach ($participants as $entry) {
-            if (! TaskConversionSupport::isOwnerParticipant($entry)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * A task moved to a list with another audience keeps only the assignees
      * who can see that list (#2172, finding 6): the name and address of anyone
      * else stay behind with the source list, as do outside addresses.
@@ -370,8 +364,16 @@ final class TaskAssigneeGuard
                     return true;
                 }
                 $username = TaskConversionSupport::usernameFromParticipantId($id);
+                if ($username !== null) {
+                    return isset($members()[$username]);
+                }
+                if (! str_starts_with($id, TaskConversionSupport::EMAIL_ID_PREFIX)) {
+                    return false;
+                }
+                // An address of someone in the new audience reads as that person there.
+                $email = substr($id, strlen(TaskConversionSupport::EMAIL_ID_PREFIX));
 
-                return $username !== null && isset($members()[$username]);
+                return TaskParticipantDirectory::memberForEmail($members(), $email) !== null;
             },
             ARRAY_FILTER_USE_BOTH,
         );
