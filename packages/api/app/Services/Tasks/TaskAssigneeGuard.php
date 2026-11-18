@@ -78,10 +78,14 @@ final class TaskAssigneeGuard
         ?CalendarInstance $source = null,
     ): array {
         $participants = $after['participants'] ?? null;
-        if (! is_array($participants)) {
-            return $after;
-        }
         $stored = is_array($before['participants'] ?? null) ? $before['participants'] : [];
+        if (! is_array($participants)) {
+            if (self::organizerId($stored) === null) {
+                return $after;
+            }
+            // A write that leaves the map out must not shed the stored organizer.
+            $participants = [];
+        }
         $audience = null;
         $members = function () use (&$audience, $target): array {
             return $audience ??= $this->audience->forList($target);
@@ -259,25 +263,65 @@ final class TaskAssigneeGuard
             }
             $email = is_string($participants[$organizerId]['email'] ?? null) ? $participants[$organizerId]['email'] : '';
             $email = (string) preg_replace('/^mailto:/i', '', trim($email));
-            if (TaskParticipantDirectory::memberForEmail($members(), $email) !== null) {
+            if (self::inAudience($members(), $email)) {
+                return $participants;
+            }
+            $replacement = self::actorOrganizer($members(), $actor);
+            if ($replacement === null) {
                 return $participants;
             }
             unset($participants[$organizerId]);
-        } elseif (! self::hasAttendee($participants)) {
+
+            return ['org' => $replacement] + $participants;
+        }
+        if (! self::hasAttendee($participants)) {
             return $participants;
         }
+        $replacement = self::actorOrganizer($members(), $actor);
 
-        $member = $members()[$actor] ?? null;
-        if ($member === null || $member['email'] === null) {
-            return $participants;
+        return $replacement === null ? $participants : ['org' => $replacement] + $participants;
+    }
+
+    /**
+     * @param  array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
+     * @return array<string, mixed>|null
+     */
+    private static function actorOrganizer(array $members, string $actor): ?array
+    {
+        $member = $members[$actor] ?? null;
+        if ($member === null) {
+            return null;
         }
 
-        return ['org' => [
+        return [
             '@type' => 'Participant',
             'name' => $member['displayName'],
-            'email' => $member['email'],
+            'email' => $member['email'] ?? $member['username'],
             'roles' => ['owner'],
-        ]] + $participants;
+        ];
+    }
+
+    /**
+     * An address is in the audience when it is a member's email or username.
+     *
+     * @param  array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
+     */
+    private static function inAudience(array $members, string $address): bool
+    {
+        $address = strtolower(trim($address));
+        if ($address === '') {
+            return false;
+        }
+        if (TaskParticipantDirectory::memberForEmail($members, $address) !== null) {
+            return true;
+        }
+        foreach ($members as $member) {
+            if (strtolower($member['username']) === $address) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

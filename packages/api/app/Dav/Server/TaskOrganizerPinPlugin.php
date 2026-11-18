@@ -66,27 +66,74 @@ final class TaskOrganizerPinPlugin extends ServerPlugin
         }
 
         $changed = false;
+        $unmatched = [];
+        $matchedKeys = [];
         foreach ($incoming->select('VTODO') as $todo) {
             if (! $todo instanceof Component) {
                 continue;
             }
-            $stored = $organizers[self::key($todo)] ?? null;
+            $key = self::key($todo);
+            $stored = $organizers[$key] ?? null;
             if ($stored === null) {
+                $unmatched[] = $todo;
+
                 continue;
             }
-            $current = $todo->select('ORGANIZER')[0] ?? null;
-            if ($current instanceof Property && $current->serialize() === $stored->serialize()) {
-                continue;
+            $matchedKeys[$key] = true;
+            $changed = self::pin($todo, $stored) || $changed;
+        }
+
+        // A changed UID or an added RECURRENCE-ID must not shed the organizer:
+        // the one component that stands for the task takes the master's line.
+        $master = self::masterOrganizer($organizers);
+        if ($master !== null && $unmatched !== []) {
+            $target = null;
+            if (count($unmatched) === 1 && count($matchedKeys) === 0) {
+                $target = $unmatched[0];
+            } elseif (count($unmatched) >= 1 && array_filter(array_keys($matchedKeys), static fn ($k): bool => str_ends_with((string) $k, "\n")) === []) {
+                $plain = array_values(array_filter(
+                    $unmatched,
+                    static fn (Component $todo): bool => ! isset($todo->{'RECURRENCE-ID'}),
+                ));
+                $target = count($plain) === 1 ? $plain[0] : null;
             }
-            $todo->remove('ORGANIZER');
-            $todo->add(clone $stored);
-            $changed = true;
+            if ($target !== null) {
+                $changed = self::pin($target, $master) || $changed;
+            }
         }
 
         if ($changed) {
             $data = $incoming->serialize();
             $modified = true;
         }
+    }
+
+    private static function pin(Component $todo, Property $stored): bool
+    {
+        $current = $todo->select('ORGANIZER')[0] ?? null;
+        if ($current instanceof Property && $current->serialize() === $stored->serialize()) {
+            return false;
+        }
+        $todo->remove('ORGANIZER');
+        $todo->add(clone $stored);
+
+        return true;
+    }
+
+    /**
+     * The organizer of the master VTODO, else the only stored one.
+     *
+     * @param  array<string, Property>  $organizers
+     */
+    private static function masterOrganizer(array $organizers): ?Property
+    {
+        foreach ($organizers as $key => $organizer) {
+            if (str_ends_with((string) $key, "\n")) {
+                return $organizer;
+            }
+        }
+
+        return count($organizers) === 1 ? reset($organizers) : null;
     }
 
     /**

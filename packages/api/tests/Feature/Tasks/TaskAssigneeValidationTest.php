@@ -115,6 +115,63 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('alice', $this->storedIcs($taskId));
     }
 
+    public function test_an_actor_without_an_email_becomes_the_organizer_by_username(): void
+    {
+        Principal::query()->where('uri', 'principals/alice')->update(['email' => null]);
+        $taskId = $this->createTask();
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $etag = (string) $this->asUser('alice')->getJson($url)->assertOk()->json('etag');
+
+        $this->asUser('alice')->patchJson($url, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']],
+        ]], $this->withIfMatch($etag))->assertOk()->assertJsonPath('participants.org.email', 'alice');
+
+        $this->assertMatchesRegularExpression('/^ORGANIZER[^\n]*:mailto:alice\r?$/m', $this->storedIcs($taskId));
+    }
+
+    public function test_a_move_by_an_actor_without_an_email_makes_them_the_organizer_by_username(): void
+    {
+        $taskId = $this->createTask();
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $etag = (string) $this->asUser('alice')->getJson($url)->assertOk()->json('etag');
+        $this->asUser('alice')->patchJson($url, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']],
+            'u:bob' => ['@type' => 'Participant', 'roles' => ['attendee']],
+        ]], $this->withIfMatch($etag))->assertOk()->assertJsonPath('participants.org.email', 'alice@example.test');
+        Principal::query()->where('uri', 'principals/bob')->update(['email' => null]);
+
+        $task = $this->asUser('bob')->getJson($url)->assertOk()->json();
+        $moved = $this->asUser('bob')->putJson($url, [
+            'taskListIds' => [InboxTaskListProvisioner::URI => true],
+            'title' => (string) $task['title'],
+            'participants' => $task['participants'],
+        ], $this->withIfMatch((string) $task['etag']))->assertOk()->json('participants');
+
+        $this->assertSame('bob', $moved['org']['email']);
+        $ics = $this->storedIcs($taskId);
+        $this->assertMatchesRegularExpression('/^ORGANIZER[^\n]*:mailto:bob\r?$/m', $ics);
+        $this->assertStringNotContainsString('alice', $ics);
+    }
+
+    public function test_a_put_without_participants_keeps_the_organizer_and_drops_the_assignees(): void
+    {
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => ['u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']]]])->assertOk();
+
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $task = $this->asUser('bob')->getJson($url)->assertOk()->json();
+        $this->asUser('bob')->putJson($url, [
+            'taskListIds' => [$this->listId => true],
+            'title' => (string) $task['title'],
+        ], $this->withIfMatch((string) $task['etag']))
+            ->assertOk()
+            ->assertJsonPath('participants.org.email', 'bob@example.test');
+
+        $ics = $this->storedIcs($taskId);
+        $this->assertMatchesRegularExpression('/^ORGANIZER[^\n]*:mailto:bob@example\.test\r?$/m', $ics);
+        $this->assertStringNotContainsString('ATTENDEE', $ics);
+    }
+
     public function test_adding_a_reader_or_outsider_is_422(): void
     {
         $taskId = $this->createTask();

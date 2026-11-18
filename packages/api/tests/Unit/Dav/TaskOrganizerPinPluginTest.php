@@ -54,6 +54,31 @@ final class TaskOrganizerPinPluginTest extends TestCase
         $this->assertStringContainsString('carol@example.test', (string) $new);
     }
 
+    public function test_a_changed_uid_keeps_the_stored_organizer(): void
+    {
+        $data = $this->todo('ORGANIZER:mailto:mallory@example.test', 'Renamed', 'pin-2');
+        $modified = false;
+
+        $this->plugin()->beforeWriteContent('calendars/bob/tasks/a.ics', $this->node($this->todo(self::STORED_ORGANIZER)), $data, $modified);
+
+        $this->assertTrue($modified);
+        $this->assertStringContainsString(self::STORED_ORGANIZER, (string) $data);
+        $this->assertStringNotContainsString('mallory', (string) $data);
+        $this->assertStringContainsString('SUMMARY:Renamed', (string) $data);
+    }
+
+    public function test_an_added_recurrence_id_keeps_the_stored_organizer(): void
+    {
+        $data = $this->todo('ORGANIZER:mailto:mallory@example.test', 'Renamed', 'pin-1', "RECURRENCE-ID:20260102T000000Z\r\n");
+        $modified = false;
+
+        $this->plugin()->beforeWriteContent('calendars/bob/tasks/a.ics', $this->node($this->todo(self::STORED_ORGANIZER)), $data, $modified);
+
+        $this->assertTrue($modified);
+        $this->assertStringContainsString(self::STORED_ORGANIZER, (string) $data);
+        $this->assertStringNotContainsString('mallory', (string) $data);
+    }
+
     private function plugin(): TaskOrganizerPinPlugin
     {
         return new TaskOrganizerPinPlugin;
@@ -67,10 +92,10 @@ final class TaskOrganizerPinPluginTest extends TestCase
         return $node;
     }
 
-    private function todo(string $organizer, string $summary = 'Buy milk'): string
+    private function todo(string $organizer, string $summary = 'Buy milk', string $uid = 'pin-1', string $extra = ''): string
     {
-        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\nBEGIN:VTODO\r\nUID:pin-1\r\n"
-            ."DTSTAMP:20260101T000000Z\r\nSUMMARY:{$summary}\r\n"
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\nBEGIN:VTODO\r\nUID:{$uid}\r\n"
+            ."DTSTAMP:20260101T000000Z\r\nSUMMARY:{$summary}\r\n{$extra}"
             .($organizer !== '' ? $organizer."\r\n" : '')
             ."ATTENDEE;CN=Alice:mailto:alice@example.test\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
     }
