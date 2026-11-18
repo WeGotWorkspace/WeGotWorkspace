@@ -203,6 +203,27 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('ORGANIZER', $this->storedIcs($taskId));
     }
 
+    public function test_ics_props_value_with_a_line_break_cannot_add_an_attendee_on_create(): void
+    {
+        $response = $this->asUser('bob')->postJson('/api/v1/tasks/items', [
+            ...$this->sampleTaskCreatePayload($this->listId),
+            'icsProps' => ['URL' => "http://x\nATTENDEE:mailto:dave@example.test"],
+        ])->assertCreated();
+
+        $this->assertDoesNotMatchRegularExpression('/^ATTENDEE[;:]/m', $this->storedIcs((string) $response->json('id')));
+        $this->assertEmpty($response->json('participants') ?? []);
+    }
+
+    public function test_ics_props_value_with_a_line_break_cannot_add_an_attendee_on_patch(): void
+    {
+        $taskId = $this->createTask();
+
+        $response = $this->patchTask($taskId, ['icsProps' => ['REPEAT' => "1\nATTENDEE:mailto:dave@example.test"]])->assertOk();
+
+        $this->assertDoesNotMatchRegularExpression('/^ATTENDEE[;:]/m', $this->storedIcs($taskId));
+        $this->assertEmpty($response->json('participants') ?? []);
+    }
+
     public function test_ics_props_cannot_add_an_organizer_on_create(): void
     {
         $taskId = (string) $this->asUser('bob')->postJson('/api/v1/tasks/items', [

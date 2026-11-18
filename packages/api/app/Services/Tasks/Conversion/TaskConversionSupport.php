@@ -449,6 +449,10 @@ final class TaskConversionSupport
             if (in_array($name, self::KNOWN_VTODO_PROPERTIES, true)) {
                 continue;
             }
+            // Non-text value types write a raw line break, which the parser reads as its own property.
+            if (strpbrk($value, "\r\n") !== false) {
+                continue;
+            }
             $todo->add($name, $value);
         }
     }
