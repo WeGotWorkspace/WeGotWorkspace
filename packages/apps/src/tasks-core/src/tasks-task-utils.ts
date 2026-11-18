@@ -169,8 +169,10 @@ export type TaskViewer = {
 
 /**
  * True when the viewer is an assignee: a participant with the id `u:<username>`,
- * or an attendee with the viewer's email (a native client wrote it before the
- * server knew the address). The owner (ORGANIZER) is not an assignee.
+ * or an `e:` attendee with the viewer's email (a native client wrote it before the
+ * server knew the address). A `u:` id is someone's account, so it never matches by
+ * email: a CalDAV line can name one account with another person's address. The
+ * owner (ORGANIZER) is not an assignee.
  */
 export function isTaskAssignedTo(task: Task, viewer: TaskViewer | undefined): boolean {
   const username = viewer?.username?.trim().toLowerCase();
@@ -178,7 +180,9 @@ export function isTaskAssignedTo(task: Task, viewer: TaskViewer | undefined): bo
   if (!username && !email) return false;
   for (const [id, participant] of Object.entries(task.participants ?? {})) {
     if (!participant) continue;
-    if (username && id.toLowerCase() === `u:${username}`) return true;
+    const key = id.toLowerCase();
+    if (username && key === `u:${username}`) return true;
+    if (key.startsWith("u:")) continue;
     const roles = participant.roles ?? [];
     const participantEmail = participant.email?.trim().toLowerCase();
     if (email && participantEmail === email && roles.includes("attendee")) return true;

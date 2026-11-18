@@ -471,6 +471,23 @@ describe("Assigned to me (#2172)", () => {
     ]);
   });
 
+  it("never matches someone else's account by email", () => {
+    // A CalDAV line can name mallory's account with alice's address.
+    const spoofed: Task = {
+      ...tasks[0]!,
+      id: "spoofed",
+      participants: {
+        "u:mallory": {
+          "@type": "Participant",
+          name: "Alice",
+          email: "alice@example.test",
+          roles: ["attendee"],
+        },
+      },
+    };
+    expect(isTaskAssignedTo(spoofed, me)).toBe(false);
+  });
+
   it("matches nothing without a viewer", () => {
     expect(filterTasksByView(tasks, ASSIGNED_TO_ME_VIEW)).toEqual([]);
     expect(isTaskAssignedTo(tasks[0], { username: "", email: "" })).toBe(false);
