@@ -10,7 +10,6 @@ import {
 import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import {
-  isTextFieldsEmpty,
   markTextFieldsDoc,
   observeTextFieldsSeeds,
   seedTextFields,
@@ -121,8 +120,11 @@ export function useDocsCollabTextFields({
 
   /**
    * The bootstrap re-read of a text-fields document. `null` when the shared
-   * path runs instead: another shape, a failed text read, or an empty document
-   * with no state (the shared seed takes that).
+   * path runs instead: another shape, a failed text read, or a stored state
+   * that did not load. An empty document with no state seeds from the served
+   * text here: a task with empty notes has no seed string for the shared path,
+   * and typing before a later re-read seeded it was never seeded at all. Two
+   * clients' seeds of one text are byte-identical, so a peer's copy merges.
    */
   const settleBootstrap = useCallback(
     (ydoc: Y.Doc, load: BootstrapLoad): TextFieldsBootstrapSettlement | null => {
@@ -130,7 +132,7 @@ export function useDocsCollabTextFields({
       const served = servedRef.current;
       if (!textFields || load.markdownError || !served) return null;
       const stored = snapshot.kind === "snapshot" ? snapshot : null;
-      if (!stored && (snapshot.kind !== "absent" || isTextFieldsEmpty(ydoc))) return null;
+      if (!stored && snapshot.kind !== "absent") return null;
       rememberSidecarEtag(room, stored?.etag ?? null);
       // A restored pending flag counts: the edit is in the local doc, not on the server.
       const pendingLocalWork = hasPendingLocalWork(refs);

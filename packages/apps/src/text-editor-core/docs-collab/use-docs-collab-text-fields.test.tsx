@@ -6,6 +6,8 @@ import type { BootstrapLoad } from "@/lib/collab/docs-collab-bootstrap";
 import {
   TEXT_FIELDS_TITLE,
   observeTextFieldsSeeds,
+  readTextFields,
+  readTextFieldsBase,
   seedTextFields,
 } from "./docs-collab-text-fields";
 import type { DocsCollabSessionRefs } from "./docs-collab-types";
@@ -72,5 +74,57 @@ describe("useDocsCollabTextFields settleBootstrap", () => {
   it("reports no local edits when nothing is pending", () => {
     const settled = bootstrapWith({ dirty: false, pendingKey: false });
     expect(settled?.keptLocalEdits).toBe(false);
+  });
+
+  it("seeds an empty document with no stored state, a title with no notes included", () => {
+    const served = { title: "Buy milk", description: "" };
+    function open(): Y.Doc {
+      const doc = new Y.Doc();
+      const refs = {
+        localDirtySinceLastSaveRef: { current: false },
+        pendingServerSaveRef: { current: false },
+        externalWriteHoldRef: { current: false },
+        externalWriteSeenRef: { current: null },
+        seedDoneRef: { current: false },
+      } as unknown as DocsCollabSessionRefs;
+      const { result } = renderHook(() =>
+        useDocsCollabTextFields({
+          refs,
+          room: "task-uid-2",
+          urls: {
+            signalUrl: "/events",
+            documentUrl: "/tasks/2",
+            yjsUrl: "/y",
+            room: "t2",
+            documentShape: "text-fields",
+          },
+          documentFormat: "markdown",
+          loadedStateRef: { current: null },
+        }),
+      );
+      result.current.noteServed({
+        markdown: served.description,
+        title: served.title,
+        etag: '"tag"',
+        objectEtag: "e1",
+      });
+      const settled = result.current.settleBootstrap(doc, {
+        markdown: served.description,
+        markdownError: null,
+        snapshot: { kind: "absent" },
+      });
+      // Typing can follow at once: the room holds the server text and its base.
+      expect(settled).toEqual({ settlement: "adopted", keptLocalEdits: false });
+      expect(refs.seedDoneRef.current).toBe(true);
+      expect(readTextFields(doc)).toEqual(served);
+      expect(readTextFieldsBase(doc)?.title).toBe("Buy milk");
+      return doc;
+    }
+
+    // Two people opening it at once seed the same bytes: one title, not two.
+    const owner = open();
+    const mate = open();
+    Y.applyUpdate(owner, Y.encodeStateAsUpdate(mate), "mesh");
+    expect(readTextFields(owner)).toEqual(served);
   });
 });
