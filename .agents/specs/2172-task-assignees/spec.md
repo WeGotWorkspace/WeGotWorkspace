@@ -69,8 +69,10 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 ### Storage and ids
 
 - `participantsFromVtodo` reads ids as follows:
-  - an `ATTENDEE` with `X-WGW-USERNAME`, or whose `mailto:` matches a principal email, reads as `u:<username>`;
+  - an `ATTENDEE` with `X-WGW-USERNAME` reads as `u:<username>`;
+  - an `ATTENDEE` whose `mailto:` is the email of someone **in the list audience** reads as that person's `u:<username>`. An address of anyone outside the audience is never looked up, so a task cannot tell whether an address has an account here (security review of 2026-11-18);
   - any other attendee reads as `e:<lowercased email>`;
+  - a `u:` participant who is in the list audience reads with the name and email of their own profile, whatever the stored line says, so a CalDAV client cannot show one person under another's name. A `u:` participant outside the audience reads as stored; no profile is looked up for them;
   - `ORGANIZER` keeps the id `org`.
 
   `writeParticipantsToVtodo` writes them back in the same form.
@@ -81,15 +83,17 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 ### Validation
 
 - The server checks only the attendee ids that **this write adds**. That set is the participant ids with role `attendee` in the merged result, minus those in the stored task before the write. On a create there is no stored task, so every attendee counts as added.
-- An added attendee is a **user** when its id is `u:<username>`, or its email matches a user's email (that is how a read would show it). Each added user must be in the audience of the **target** list with write access. The target is the list the task is in after the write, so a move is checked against the new list. Otherwise the write fails with 422 `invalid_participant`. Its `error` sentence names every rejected id for a person reading it; clients classify on the status and `code` only, as every API error requires, and never parse the sentence.
-- An added attendee that is **not a user** (`e:<email>` for an address no account has) passes, on creates and edits alike. This keeps today's behaviour for API callers and native-client data. Such an attendee is never notified. The web app's picker offers no way to add one.
+- An added attendee is a **user** when its id is `u:<username>`, or its email is the email of someone in the **target** list's audience (that is how a read would show it). Each added user must be in that audience with write access, and must be the actor, the list owner, or someone the actor shares a Team with (`TeamColleagues::sharesTeamIgnoringAdminRole`), the same rule as the picker. The target is the list the task is in after the write, so a move is checked against the new list. Otherwise the write fails with 422 `invalid_participant` and one fixed sentence that names nobody, so a refusal tells nothing about who has an account or profile (product owner, 2026-11-18, review finding 4).
+- An added attendee that is **not a user** (`e:<email>` for any address that is no one's in the target audience, whether or not it has an account elsewhere) passes, on creates and edits alike. This keeps today's behaviour for API callers and native-client data. Such an attendee is never notified. The web app's picker offers no way to add one.
 - For a user, the server writes the `mailto:` and the `CN` from the user's own principal (email and display name). It ignores any email or name in the payload, so a caller cannot send `u:alice` with someone else's address.
-- **Rescue of parked writes** (`rescueBody` in `tasks-parked-writes.ts`) creates a task anew in another list, often after the person lost access to the old one. Before posting, it keeps only two kinds of attendee: `u:` attendees in the target list's audience with write access (from the audience cache of chunk C; with no cached audience, only the person's own `u:` entry), and `e:` attendees whose email is not the email of any person in that cached audience. Everything else is dropped: positional `attN` ids from a task parked before chunk A, and `e:` ids that may since have become accounts. The parked snapshot can be older than the deploy, so the server must never see an id it would treat as an unchecked user. The client cannot know about accounts outside the audience, so an `e:` address that has since become such an account can still get 422 `invalid_participant`. Rescue then retries once with no attendees except the person's own `u:` entry if the parked task had one (it never adds the person), which is always allowed in a list they can write to. It reads no ids from the error, so any number of such addresses costs one retry, not a task parked for good; the rare price is that the other attendees are not carried over. A task with a Thunderbird attendee is therefore still rescued.
-- Attendees the task already has pass through unchecked, whatever they are:
+- The organizer (`roles: ["owner"]`, id `org`) is kept as stored. A REST or MCP write cannot add one or replace it: a new owner entry is 422 `invalid_participant`, and a resent `org` keeps the stored values.
+- An ICS import removes `X-WGW-USERNAME` from every `ATTENDEE`, so a file names people by address only and reads through the audience rule above.
+- **Rescue of parked writes** (`rescueBody` in `tasks-parked-writes.ts`) creates a task anew in another list, often after the person lost access to the old one. Before posting, it keeps only `u:` attendees in the target list's audience with write access (from the audience cache of chunk C; with no cached audience, only the person's own `u:` entry). Everything else is dropped: `e:` addresses (they would carry an address from the old list to a new audience, product owner 2026-11-18, review finding 6), positional `attN` ids from a task parked before chunk A, and the organizer. The parked snapshot can be older than the deploy, so the server must never see an id it would treat as an unchecked user. The client cannot know about accounts outside the audience, so an `e:` address that has since become such an account can still get 422 `invalid_participant`. Rescue then retries once with no attendees except the person's own `u:` entry if the parked task had one (it never adds the person), which is always allowed in a list they can write to. It reads no ids from the error, so any number of such addresses costs one retry, not a task parked for good; the rare price is that the other attendees are not carried over. A task with a Thunderbird attendee is therefore still rescued.
+- Attendees the task already has pass through unchecked within its list:
   - `e:` attendees from native clients;
-  - people who lost access;
-  - assignees who are outside the new list's audience after a move.
-- So a full `PUT` that resends the stored `participants`, a move to a list where an assignee has no access, and a save of a task that carries a Thunderbird attendee all succeed.
+  - people who lost access.
+- A **move to a list in another calendar** keeps only the assignees in the target list's audience. Everyone else is dropped with their name and address, `e:` addresses included, so nothing about them reaches the new audience (product owner, 2026-11-18, review finding 6). This follows live text, whose state does not move, and threads, whose messages stay with the source list.
+- So a full `PUT` that resends the stored `participants`, a move, and a save of a task that carries a Thunderbird attendee all succeed.
 - A patch that uses a positional `attN` key gets 422 `stale_participant_id`. No client sends one today, because there is no assignee UI, so only third-party API callers can hit this.
 
 ### Audience resolver
@@ -104,7 +108,7 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 - The resolver is per request and is not cached across requests. Team membership changes must show on the next call.
 - `GET /api/v1/tasks/tasklists/{id}/members`:
   - It answers only a caller with **write** access to the list, the only people who can assign. A caller who cannot see the list gets 404, the same as an unknown list. A read-only caller gets 403. Assignee names on a task come from the task's own participants, so readers do not need this endpoint.
-  - The picker list is deliberately narrower than validation, which accepts the whole audience with write access. The API therefore still accepts an assignee the picker hides (another client may add them), and implementers should not "fix" that mismatch.
+  - Validation uses the same rule as the picker list (see Validation), so the API refuses an assignee the picker hides, with a refusal that names nobody.
   - It returns the audience **filtered to people the caller may see** under the Teams rule (#1915): `TeamColleagues::sharesTeamIgnoringAdminRole`, plus the caller and the list owner. Without this filter, a person sharee who is not in the owning Team would get the names and emails of Team members they share no Team with. That is the "DM rail and share dialogs" row of the surface table in `TeamColleagues`, not the attendee-picker row.
   - It never lists people outside the audience. Admins get no wider list here. The "finds everyone" rule (#1915) applies to invite pickers, not to assignees.
 
@@ -163,7 +167,8 @@ Technical translation of Epic #2172. Written against `origin/main` at `db6a4f161
 ## Edge cases
 
 - **An assignee later loses access.** They left the Team, or the share was removed. They stay on the task, because the data is kept for native clients and for when they get access back. The UI shows them greyed with "No longer has access". They get no further notifications, and the task drops out of their "Assigned to me" because they can't see the list.
-- **A task moves to another list.** Assignees stay. Those not in the new list's audience show as "No longer has access". Moving sends no new `tasks.assigned` notice, because nobody was newly added.
+- **A task moves to another list.** Assignees in the new list's audience stay; the rest are removed, with their name and address. Moving sends no new `tasks.assigned` notice, because nobody was newly added.
+- **Notice volume.** `tasks.assigned` is rate limited per actor, per recipient, and per actor and recipient pair, so assigning someone over and over, or creating many tasks for them (over REST, MCP or CalDAV), cannot flood them. Notices over the limit are dropped; the assignment itself is stored.
 - **Self-assign** is allowed. No notification is sent, because the actor is skipped.
 - **An assignee in a native client.** Thunderbird or jtx Board adds an `ATTENDEE` with an unknown email. The server stores it and the web app shows the email as the name. No notification, and the web app's picker can remove it.
 - **The same person written twice** (same email, different case): reading merges them into one `u:` entry, which takes its parameters from the first of those lines in file order. An unrelated edit leaves both lines as they are. Only when that person is unassigned or reassigned from the web app are their lines rewritten. The first line's parameters survive, and the duplicate is removed.
