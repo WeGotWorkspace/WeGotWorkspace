@@ -149,7 +149,14 @@ describe("AdminSettingsAutosave", () => {
       order.push(`save:${sent.turnSecret}`);
       return true;
     });
-    render(<Harness save={save} onClear={() => order.push("clear")} />);
+    render(
+      <Harness
+        save={save}
+        onClear={() => {
+          order.push("clear");
+        }}
+      />,
+    );
     const secret = screen.getByLabelText("TURN secret");
 
     fireEvent.change(secret, { target: { value: "typed" } });

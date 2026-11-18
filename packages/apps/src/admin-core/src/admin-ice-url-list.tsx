@@ -14,7 +14,7 @@ export type AdminIceUrlListProps = {
   /** Stored as one comma-separated string, so the settings contract is unchanged. */
   value: string;
   onChange: (value: string) => void;
-  /** Remove is a choice, not typing: saves at once-ish. Defaults to `onChange`. */
+  /** Remove is a choice, not typing: saves after the short pause, like a choice. Defaults to `onChange`. */
   onRemove?: (value: string) => void;
   max?: number;
 };
