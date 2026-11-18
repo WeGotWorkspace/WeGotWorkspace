@@ -1,6 +1,10 @@
 import { memo, type ReactNode } from "react";
 import { ChatThreadPanel } from "@/chat-ui/src/chat-thread-panel";
-import type { ChatAuthorPresenceMap, ChatMentionPrincipal } from "@/lib/models/chat-types";
+import type {
+  ChatAuthorPresenceMap,
+  ChatMentionPrincipal,
+  ChatSendPayload,
+} from "@/lib/models/chat-types";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { ChatMessage } from "@/lib/models/meet-types";
 
@@ -24,7 +28,7 @@ export const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
   mentionPrincipals: ChatMentionPrincipal[];
   authorPresence?: ChatAuthorPresenceMap;
   onClose?: () => void;
-  onSendReply?: (parentId: string, body: string) => void;
+  onSendReply?: (parentId: string, payload: ChatSendPayload) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   parentEditing?: boolean;
   parentEditComposer?: ReactNode;
@@ -45,7 +49,7 @@ export const MeetWorkspaceThread = memo(function MeetWorkspaceThread({
       parentEditing={parentEditing}
       parentEditComposer={parentEditComposer}
       onClose={onClose}
-      onSend={onSendReply ? (payload) => onSendReply(parent.id, payload.body) : undefined}
+      onSend={onSendReply ? (payload) => onSendReply(parent.id, payload) : undefined}
       onToggleReaction={onToggleReaction}
       onCaughtUpChange={onCaughtUpChange}
       actionsForMessage={(message) => {
