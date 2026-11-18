@@ -1,4 +1,4 @@
-import { memo, useMemo, type MouseEvent } from "react";
+import { memo, useEffect, useMemo, type MouseEvent } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { prefersReducedMotion } from "@/lib/view-transition";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
@@ -12,6 +12,7 @@ import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-c
 import { notificationInboxAppId } from "@/notifications-core/src/notification-inbox-row-meta";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { lastAppLocation, rememberAppLocation } from "@/app-rail/src/last-app-location";
 import "@/app-rail/src/app-rail.css";
 
 type AppRailItemProps = {
@@ -28,16 +29,25 @@ type AppRailItemProps = {
  * transition around the whole navigation. Returns false when the browser should
  * handle the click itself (new tab, no API, reduced motion).
  */
-function useAppSwitchTransition(to: AppSwitchMenuApp["to"]) {
+function useAppSwitch(app: AppSwitchMenuApp) {
   const router = useRouter();
   return (event: MouseEvent<HTMLAnchorElement>) => {
     const plainClick =
       event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
-    if (!plainClick || typeof document.startViewTransition !== "function") return;
-    if (prefersReducedMotion()) return;
+    if (!plainClick) return;
     event.preventDefault();
+    // Back to where the user left this app; its start screen the first time.
+    const last = lastAppLocation(app.id);
+    const go = () =>
+      last
+        ? router.navigate({ to: last.pathname, search: router.options.parseSearch(last.searchStr) })
+        : router.navigate({ to: app.to });
+    if (typeof document.startViewTransition !== "function" || prefersReducedMotion()) {
+      void go();
+      return;
+    }
     document.startViewTransition(async () => {
-      await router.navigate({ to });
+      await go();
       // Let React commit the new app before the browser takes the "after" snapshot.
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -45,15 +55,16 @@ function useAppSwitchTransition(to: AppSwitchMenuApp["to"]) {
 }
 
 function AppRailItem({ app, current, unread }: AppRailItemProps) {
-  const switchWithTransition = useAppSwitchTransition(app.to);
+  const switchApp = useAppSwitch(app);
   return (
     <li className="app-rail__item">
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
             to={app.to}
-            // App switch cross-fades (View Transitions); the rail itself holds still (see CSS).
-            onClick={current ? undefined : switchWithTransition}
+            // Another app: back to its last spot, cross-faded (the rail holds still, see CSS).
+            // The current app's own tile is a plain link to its start screen.
+            onClick={current ? undefined : switchApp}
             className="app-rail__link"
             aria-label={unread ? `${app.label}, new notifications` : app.label}
             aria-current={current ? "page" : undefined}
@@ -101,31 +112,42 @@ export const AppRail = memo(function AppRail({
     }
     return apps;
   }, [inboxItems]);
+  const searchStr = useRouterState({ select: (r) => r.location.searchStr });
+  // Keep the current app's last spot up to date for the way back.
+  useEffect(() => {
+    const here = [...APP_SWITCH_PRODUCT_APPS, ...appSwitchUtilityApps(true)].find(
+      (app) => path === app.to || path.startsWith(`${app.to}/`),
+    );
+    if (here) rememberAppLocation(here.id, { pathname: path, searchStr });
+  }, [path, searchStr]);
   const isCurrent = (app: AppSwitchMenuApp) => path === app.to || path.startsWith(`${app.to}/`);
 
   return (
     <nav className="app-rail" aria-label="Apps">
       <div className="app-rail__notifications" ref={notificationsSlotRef} />
-      <ul className="app-rail__list">
-        {APP_SWITCH_PRODUCT_APPS.map((app) => (
-          <AppRailItem
-            key={app.id}
-            app={app}
-            current={isCurrent(app)}
-            unread={unreadApps.has(app.id)}
-          />
-        ))}
-      </ul>
-      <ul className="app-rail__list app-rail__list--utility">
-        {[...appSwitchUtilityApps(showAdmin)].sort(byRailUtilityOrder).map((app) => (
-          <AppRailItem
-            key={app.id}
-            app={app}
-            current={isCurrent(app)}
-            unread={unreadApps.has(app.id)}
-          />
-        ))}
-      </ul>
+      {/* Tiles scroll when the screen is short; the bell above and the account below stay put. */}
+      <div className="app-rail__scroll">
+        <ul className="app-rail__list">
+          {APP_SWITCH_PRODUCT_APPS.map((app) => (
+            <AppRailItem
+              key={app.id}
+              app={app}
+              current={isCurrent(app)}
+              unread={unreadApps.has(app.id)}
+            />
+          ))}
+        </ul>
+        <ul className="app-rail__list app-rail__list--utility">
+          {[...appSwitchUtilityApps(showAdmin)].sort(byRailUtilityOrder).map((app) => (
+            <AppRailItem
+              key={app.id}
+              app={app}
+              current={isCurrent(app)}
+              unread={unreadApps.has(app.id)}
+            />
+          ))}
+        </ul>
+      </div>
       <div className="app-rail__account" ref={accountSlotRef} />
     </nav>
   );

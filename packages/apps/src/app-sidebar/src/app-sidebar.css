@@ -105,6 +105,15 @@
   padding-bottom: calc(var(--app-sidebar-footer-height, 0px) + 0.5rem);
 }
 
+/* The list still scrolls (wheel, touch, keyboard); only the scrollbar is not drawn. */
+.app-sidebar__sections {
+  scrollbar-width: none;
+}
+
+.app-sidebar__sections::-webkit-scrollbar {
+  display: none;
+}
+
 /* Sections are separated by space only (no hairline); same total gap as before. */
 .app-sidebar__sections > .sidebar-section + .sidebar-section {
   @apply mt-7;

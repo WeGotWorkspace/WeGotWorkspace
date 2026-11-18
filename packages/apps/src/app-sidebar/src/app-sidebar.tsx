@@ -120,8 +120,10 @@ export function AppSidebar({
   const footerRef = useRef<HTMLElement>(null);
   const [railAccountSlot, setRailAccountSlot] = useState<HTMLElement | null>(null);
   const [railNotificationsSlot, setRailNotificationsSlot] = useState<HTMLElement | null>(null);
-  // One live bell: at the top of the app rail where the rail shows, else in the header.
-  const bellInRail = useAppRailVisible() && !appSwitchDisabled && railNotificationsSlot != null;
+  // One live bell: at the top of the app rail. Home and install have no rail and keep it in the header.
+  const bellInRail = !appSwitchDisabled && railNotificationsSlot != null;
+  // Beside a docked rail the tray opens to its right; in the drawer it drops below the bell.
+  const railDocked = useAppRailVisible();
   useEffect(() => bindOpenSidebarStatusBar(sidebarRef.current, open), [open]);
   // The footer floats over the list so rows scroll under the frosted account card.
   useEffect(
@@ -138,7 +140,7 @@ export function AppSidebar({
   return (
     <>
       {bellInRail && railNotificationsSlot
-        ? createPortal(<AppSidebarNotifications inRail />, railNotificationsSlot)
+        ? createPortal(<AppSidebarNotifications inRail={railDocked} />, railNotificationsSlot)
         : null}
       {appSwitchDisabled ? null : (
         <AppRail
