@@ -35,12 +35,12 @@ final class ContactCardChangesMethod implements JmapMethodInterface
         private readonly JmapContactStateService $states,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ContactCard/changes';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CONTACTS;
     }

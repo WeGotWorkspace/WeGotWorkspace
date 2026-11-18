@@ -319,29 +319,14 @@
   @apply min-w-0 max-w-full;
 }
 
+/* The shared list table (`ui/list-table.css`), with fixed columns. */
 .drive-workspace .drive-list-table {
-  @apply w-full min-w-0 table-fixed text-sm;
-  border-collapse: separate;
-  /* A hair of air so adjacent rounded selections stay apart. The list's spacer
-     row subtracts it (drive-list-spacer.tsx). */
-  --drive-list-row-gap: 0.125rem;
-  border-spacing: 0 var(--drive-list-row-gap);
-  /* Titles in the same ink as sidebar items. */
-  color: var(--workspace-item-color, var(--workspace-foreground));
+  @apply table-fixed;
 }
 
 .drive-workspace .drive-list-col-name {
   width: 100%;
   min-width: 0;
-}
-
-/* Row inset: first and last cell, headers included, so labels line up with values. */
-.drive-workspace .drive-list-table :is(th, td):first-child {
-  padding-inline-start: var(--list-row-padding-x, 1rem);
-}
-
-.drive-workspace .drive-list-table :is(th, td):last-child {
-  padding-inline-end: var(--list-row-padding-x, 1rem);
 }
 
 .drive-workspace .drive-list-col-offline {
@@ -369,45 +354,11 @@
   width: 6.5rem;
 }
 
-.drive-workspace .drive-list-head {
-  @apply text-left;
-}
-
-/* Header row: the shared sticky frosted bar (`ui/list-head-bar.css`). */
-.drive-workspace .drive-list-head__cell {
-  @apply py-0 text-left truncate;
-  height: var(--list-row-height, 3rem);
-}
-
-/* The sort button's hover pill reaches past the cell by its own padding; a clipping
-   cell cut it off on one side. Its label truncates by itself. */
-.drive-workspace .drive-list-head__cell:has(> .sortable-column-header) {
-  overflow: visible;
-}
-
-.drive-workspace .drive-list-head__cell--align-end {
-  text-align: right;
-}
-
-/*
- * Rows are rounded like sidebar items, without separators. Fills sit on the row
- * (one box across all cells); the clip rounds them.
- */
-.drive-workspace .drive-list-row {
-  @apply cursor-default transition-colors;
-  clip-path: inset(0 round var(--list-row-radius, 0.625rem));
-}
-
 .drive-workspace
   .drive-list-row:not(.drive-list-row--selected):not(.drive-list-row--active):not(
     .drive-list-row--drop-target
   ):hover {
   background-color: var(--drive-item-hover-background);
-}
-
-/* A row reached by keyboard (Tab, ↑/↓): the suite focus ring, inside the clip. */
-.drive-workspace .drive-list-row {
-  outline: none;
 }
 
 /* Stands in for unmounted rows (#1641 step d): no padding, no hairline. The
@@ -424,24 +375,9 @@
   border: 0;
 }
 
-.drive-workspace .drive-list-row:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
-  border-radius: var(--list-row-radius, 0.625rem);
-}
-
 .drive-workspace .drive-list-row__name {
   @apply relative;
   transition: padding-inline-start 180ms ease;
-}
-
-.drive-workspace .drive-list-row > td {
-  height: var(--list-row-height, 3rem);
-}
-
-/* Same hairline as the sidebar edge between rows. */
-.drive-workspace .drive-list-row:not(:last-child) > td {
-  border-bottom: 1px solid var(--workspace-divider-color);
 }
 
 .drive-workspace .drive-list-row--drop-target {
@@ -496,10 +432,6 @@
 
 .drive-workspace .drive-shared-indicator__label {
   @apply text-xs font-medium;
-}
-
-.drive-workspace .drive-list-muted {
-  color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
 }
 
 .drive-workspace .drive-list-folder-icon {

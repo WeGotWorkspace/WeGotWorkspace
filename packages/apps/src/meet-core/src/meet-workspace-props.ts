@@ -7,6 +7,7 @@ import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import type { MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { ChatMessage, MeetChatOperations, MeetUIData } from "@/lib/models/meet-types";
+import type { ChatSendPayload } from "@/lib/models/chat-types";
 import type { MeetThreadCallLayout } from "@/meet-core/src/meet-thread-placement";
 import type { MeetUpcomingMeeting } from "@/meet-core/src/meet-calendar-meeting";
 
@@ -91,7 +92,7 @@ export type MeetWorkspaceProps = {
   threadPanel?: ReactNode;
   onOpenThread?: (message: ChatMessage) => void;
   onCloseThread?: () => void;
-  onSendThreadReply?: (parentId: string, body: string) => void;
+  onSendThreadReply?: (parentId: string, payload: ChatSendPayload) => void;
   onCaughtUpChange?: (caughtUp: boolean) => void;
   /** Calendar events with a Meet URL (in progress or future), already sorted by start. */
   upcomingMeetings?: MeetUpcomingMeeting[];

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
-import { Card } from "@/card/src/card";
+import { KeyRound, Pencil, Plus, Trash2, User, Users } from "lucide-react";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { Tag } from "@/tag/src/tag";
 import { Switch } from "@/ui/switch";
@@ -57,8 +57,9 @@ export function AdminUsersPane({
 
   return (
     <>
-      <Card
+      <WorkspacePageSection
         title="Users"
+        icon={<User aria-hidden />}
         action={
           <IconActionButton label="New user" onClick={onNewUser}>
             <Plus className="size-4" />
@@ -129,9 +130,10 @@ export function AdminUsersPane({
             );
           })}
         </ul>
-      </Card>
-      <Card
+      </WorkspacePageSection>
+      <WorkspacePageSection
         title="Teams"
+        icon={<Users aria-hidden />}
         action={
           <IconActionButton label="New team" onClick={onNewGroup}>
             <Plus className="size-4" />
@@ -164,7 +166,7 @@ export function AdminUsersPane({
             </li>
           ))}
         </ul>
-      </Card>
+      </WorkspacePageSection>
 
       <AlertDialog
         open={pendingEnabled !== null}

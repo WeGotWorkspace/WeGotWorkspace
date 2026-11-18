@@ -188,13 +188,7 @@ final class CalendarEventRepository
      */
     public function calendarSyncTokens(string $username): array
     {
-        $tokens = [];
-        $instances = $this->calendars->accessibleVeventInstances($username);
-        foreach ($instances as $instance) {
-            $tokens[$this->calendars->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
-        }
-
-        return $tokens;
+        return $this->calendars->syncTokensFor($this->calendars->accessibleVeventInstances($username));
     }
 
     /**

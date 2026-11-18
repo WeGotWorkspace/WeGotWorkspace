@@ -65,6 +65,7 @@ use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TaskImportController;
+use App\Http\Controllers\Api\V1\Tasks\TaskListMembersController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Controllers\Api\V1\Tasks\TaskTextController;
 use App\Http\Middleware\CspReportBodyLimit;
@@ -276,6 +277,8 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         Route::patch('tasks/tasklists/{taskListId}', [TaskCalendarsController::class, 'update'])
             ->where('taskListId', '[a-z0-9_-]+');
         Route::delete('tasks/tasklists/{taskListId}', [TaskCalendarsController::class, 'destroy'])
+            ->where('taskListId', '[a-z0-9_-]+');
+        Route::get('tasks/tasklists/{taskListId}/members', TaskListMembersController::class)
             ->where('taskListId', '[a-z0-9_-]+');
         Route::post('tasks/items/query', [TasksController::class, 'query']);
         Route::post('tasks/items/import', TaskImportController::class);

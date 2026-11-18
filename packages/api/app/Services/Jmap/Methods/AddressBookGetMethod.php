@@ -22,12 +22,12 @@ final class AddressBookGetMethod implements JmapMethodInterface
 
     public function __construct(private readonly AddressBookRepository $books) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'AddressBook/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CONTACTS;
     }

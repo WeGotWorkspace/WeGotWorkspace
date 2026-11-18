@@ -28,12 +28,12 @@ final class NoteQueryMethod implements JmapMethodInterface
         private readonly JournalObjectIds $journalIds,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Note/query';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::NOTES;
     }

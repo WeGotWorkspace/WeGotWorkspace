@@ -48,8 +48,27 @@ describe("useMeetChatSession sendChannel", () => {
     const send = result.current.sendChannel({ body: "hello", mentions: [] });
 
     expect(send.echoId).toBe(CLIENT_ULID);
-    expect(sendMessage).toHaveBeenCalledWith("chat-general", "hello", { messageId: CLIENT_ULID });
+    expect(sendMessage).toHaveBeenCalledWith("chat-general", "hello", {
+      messageId: CLIENT_ULID,
+      mentions: [],
+    });
     expect((await send.saved)?.id).toBe(CLIENT_ULID);
+  });
+
+  it("hands the composer's mentions to the create call (#2247)", async () => {
+    const mentions = [{ id: "sam", displayName: "Sam de Vries" }];
+    const sendMessage = vi.fn(
+      async (channelId: string, body: string, opts?: { messageId?: string }) =>
+        savedRow(opts?.messageId ?? "m1", channelId, body),
+    );
+    const { result } = renderChatSession({ newMessageId: () => CLIENT_ULID, sendMessage });
+
+    await result.current.sendChannel({ body: "hi @Sam", mentions }).saved;
+
+    expect(sendMessage).toHaveBeenCalledWith("chat-general", "hi @Sam", {
+      messageId: CLIENT_ULID,
+      mentions,
+    });
   });
 
   it("offers no echo id when nothing mints a real message id", async () => {

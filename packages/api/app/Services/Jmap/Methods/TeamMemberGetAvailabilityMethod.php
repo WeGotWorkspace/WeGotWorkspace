@@ -25,12 +25,12 @@ final class TeamMemberGetAvailabilityMethod implements JmapMethodInterface
         private readonly AvailabilityExcludedEvent $excludedEvent,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'TeamMember/getAvailability';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::AVAILABILITY;
     }

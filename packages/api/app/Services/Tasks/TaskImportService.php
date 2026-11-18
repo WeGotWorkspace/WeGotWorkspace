@@ -13,11 +13,13 @@ use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\RecurrenceRuleGuard;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Services\Tasks\Conversion\TaskConversionSupport;
 use App\Services\VObject\ICalendarUidGroupSplitter;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\Property;
 
 /**
  * Import the VTODO UID groups of an ICS file into one task list (#1624).
@@ -103,6 +105,7 @@ final class TaskImportService
         $calendar = $guard->readICalendar($group['ics'], self::DOMAIN);
         RecurrenceRuleGuard::assertAllowed($calendar);
         self::assertHasUid($calendar);
+        $group['ics'] = self::withoutAccountClaims($calendar, $group['ics']);
 
         $calendarId = (int) $instance->calendarid;
         [$objectUri, $tasks] = DB::connection('wgw')->transaction(
@@ -129,7 +132,7 @@ final class TaskImportService
                     throw new ApiHttpException(500, 'Could not load imported task.', 'server_error');
                 }
 
-                return [$objectUri, $this->mapper->toTasks($object, $listId)];
+                return [$objectUri, $this->mapper->forViewer($username)->toTasks($object, $listId)];
             },
         );
 
@@ -150,6 +153,27 @@ final class TaskImportService
                 throw new ApiHttpException(400, 'This task has no UID.', 'bad_request');
             }
         }
+    }
+
+    /**
+     * An imported file cannot say which account an attendee is (#2172): the
+     * {@see TaskConversionSupport::USERNAME_PARAMETER} the app writes is removed,
+     * so the attendee reads by address, matched only within the list audience.
+     * The ICS is stored as-is when no attendee carries it.
+     */
+    private static function withoutAccountClaims(VCalendar $calendar, string $ics): string
+    {
+        $changed = false;
+        foreach ($calendar->select('VTODO') as $todo) {
+            foreach ($todo->select('ATTENDEE') as $attendee) {
+                if ($attendee instanceof Property && isset($attendee[TaskConversionSupport::USERNAME_PARAMETER])) {
+                    unset($attendee[TaskConversionSupport::USERNAME_PARAMETER]);
+                    $changed = true;
+                }
+            }
+        }
+
+        return $changed ? $calendar->serialize() : $ics;
     }
 
     private function assertUidIsNew(int $calendarId, string $uid): void

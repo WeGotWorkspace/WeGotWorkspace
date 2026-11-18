@@ -54,6 +54,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'mcp_audit_events',
             'mcp_sessions',
             'docs_thread_index',
+            'thread_index',
             'notifications',
             'notification_deliveries',
             'notification_markers',

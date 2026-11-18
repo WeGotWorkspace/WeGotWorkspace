@@ -133,10 +133,21 @@ final class Calendar extends Model
      */
     public function scopeOfKind(Builder $query, CollectionKind $kind): void
     {
+        $this->scopeOfKinds($query, [$kind]);
+    }
+
+    /**
+     * Collections of any of the given kinds.
+     *
+     * @param  Builder<Calendar>  $query
+     * @param  list<CollectionKind>  $kinds
+     */
+    public function scopeOfKinds(Builder $query, array $kinds): void
+    {
         $query->whereExists(
             fn ($sub) => $sub->from('calendar_collection_meta')
                 ->whereColumn('calendar_collection_meta.calendarid', 'calendars.id')
-                ->where('calendar_collection_meta.kind', $kind->value)
+                ->whereIn('calendar_collection_meta.kind', array_map(static fn (CollectionKind $kind): string => $kind->value, $kinds))
         );
     }
 }

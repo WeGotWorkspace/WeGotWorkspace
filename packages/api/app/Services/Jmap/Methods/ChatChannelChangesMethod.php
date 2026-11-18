@@ -22,12 +22,12 @@ final class ChatChannelChangesMethod implements JmapMethodInterface
 
     public function __construct(private readonly ChatChannelRepository $channels) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ChatChannel/changes';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CHAT;
     }

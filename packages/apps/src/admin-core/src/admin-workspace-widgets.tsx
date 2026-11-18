@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { IconButton } from "@/button/src/button";
-import { BooleanSegmentedControl } from "@/segmented-control/src/segmented-control";
+import { FieldLabelRow } from "@/ui/field-label-row";
+import { Switch } from "@/ui/switch";
 
 export function IconActionButton({
   label,
@@ -26,6 +27,7 @@ export function IconActionButton({
   );
 }
 
+/** A switch row: caption and description start, switch end (suite inline row). */
 export function FeatureRow({
   label,
   desc,
@@ -39,24 +41,19 @@ export function FeatureRow({
   value: boolean;
   onChange: (next: boolean) => void;
   disabled?: boolean;
-  /** Optional chip next to the title (for example a washed warning Tag). */
+  /** Optional chip right after the caption (for example a washed warning Tag). */
   labelAccessory?: ReactNode;
 }) {
+  const id = useId();
   return (
-    <div className="admin-feature-row">
-      <div className="min-w-0">
-        <div className="admin-feature-row__title-row">
-          <div className="admin-feature-row__title">{label}</div>
-          {labelAccessory}
-        </div>
-        {desc ? <div className="admin-feature-row__desc">{desc}</div> : null}
-      </div>
-      <BooleanSegmentedControl
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        aria-label={`${label} enabled`}
-      />
-    </div>
+    <FieldLabelRow
+      layout="inline"
+      label={label}
+      labelAccessory={labelAccessory}
+      description={desc}
+      htmlFor={id}
+    >
+      <Switch id={id} checked={value} onCheckedChange={onChange} disabled={disabled} />
+    </FieldLabelRow>
   );
 }

@@ -99,6 +99,47 @@ describe("replaceDocumentWithExternalText", () => {
     server.destroy();
   });
 
+  it("keeps title and body when the same text is rebuilt with dropLocalWork (readable state)", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "stored", "markdown", "s");
+    const state = Y.encodeStateAsUpdate(server);
+    const run = (): Y.Doc => {
+      const d = new Y.Doc();
+      replaceDocumentWithExternalText(d, "same text", "T", "markdown", state);
+      writeNoteTitle(d, "U");
+      replaceDocumentWithExternalText(d, "same text", "T", "markdown", state, {
+        dropLocalWork: true,
+      });
+      return d;
+    };
+    const first = run();
+    const second = run();
+    expect(readNoteTitle(first)).toBe("T");
+    expect(readContentFromYDoc(first)).toBe("same text");
+    Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
+    expect(readNoteTitle(first)).toBe("T");
+    expect(readContentFromYDoc(first).match(/same text/g)).toHaveLength(1);
+    first.destroy();
+    second.destroy();
+    server.destroy();
+  });
+
+  it("restores a deleted seeded body when the same text is rebuilt with dropLocalWork", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "stored", "markdown", "s");
+    const state = Y.encodeStateAsUpdate(server);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", state);
+    ydoc.getXmlFragment("default").delete(0, ydoc.getXmlFragment("default").length);
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", state, {
+      dropLocalWork: true,
+    });
+    expect(readContentFromYDoc(ydoc)).toBe("same text");
+    expect(readNoteTitle(ydoc)).toBe("T");
+    ydoc.destroy();
+    server.destroy();
+  });
+
   it("replaces the stale document with the outside text", () => {
     const ydoc = new Y.Doc();
     const paragraph = new Y.XmlElement("paragraph");

@@ -322,7 +322,8 @@ final class TasksCalDavInteropTest extends WgwDatabaseTestCase
 
         $response->assertOk()
             ->assertJsonPath('participants.org.email', 'alice@example.com')
-            ->assertJsonPath('participants.att1.email', 'bob@example.com');
+            // Stable ids (#2172): no account has this address, so it reads as e:<email>.
+            ->assertJsonPath('participants', fn (array $participants): bool => ($participants['e:bob@example.com']['email'] ?? null) === 'bob@example.com');
     }
 
     public function test_rest_create_with_ics_props_persists_to_caldav(): void

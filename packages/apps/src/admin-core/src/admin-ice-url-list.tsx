@@ -14,6 +14,8 @@ export type AdminIceUrlListProps = {
   /** Stored as one comma-separated string, so the settings contract is unchanged. */
   value: string;
   onChange: (value: string) => void;
+  /** Remove is a choice, not typing: saves after the short pause, like a choice. Defaults to `onChange`. */
+  onRemove?: (value: string) => void;
   max?: number;
 };
 
@@ -27,6 +29,7 @@ export function AdminIceUrlList({
   itemLabel,
   value,
   onChange,
+  onRemove = onChange,
   max = MAX_ICE_URLS_PER_KIND,
 }: AdminIceUrlListProps) {
   const [commaRefused, setCommaRefused] = useState(false);
@@ -71,7 +74,7 @@ export function AdminIceUrlList({
                 label={`Remove ${name}`}
                 icon={<Trash2 className="size-3.5" aria-hidden />}
                 variant="outline"
-                onClick={() => onChange(rows.filter((_, row) => row !== index).join(","))}
+                onClick={() => onRemove(rows.filter((_, row) => row !== index).join(","))}
               />
             ) : null}
           </div>

@@ -130,3 +130,28 @@ export function AutosaveStatusTag(): ReactNode {
     </span>
   );
 }
+
+/**
+ * For a pane that saves in its own way (a device setting, one API call per choice): wrap
+ * each save, and the surface's tag shows Saving while it runs, then Saved, or Unsaved when
+ * it failed. Forms use `useFormAutosave` instead.
+ */
+export function useTrackAutosave(): <T>(work: () => Promise<T> | T) => Promise<T> {
+  const [running, setRunning] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useReportAutosaveStatus(running > 0 ? "saving" : failed ? "unsaved" : "saved");
+
+  return useCallback(async <T,>(work: () => Promise<T> | T): Promise<T> => {
+    setRunning((count) => count + 1);
+    try {
+      const result = await work();
+      setFailed(false);
+      return result;
+    } catch (error) {
+      setFailed(true);
+      throw error;
+    } finally {
+      setRunning((count) => count - 1);
+    }
+  }, []);
+}

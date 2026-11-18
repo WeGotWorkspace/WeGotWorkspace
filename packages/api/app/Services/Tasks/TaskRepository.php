@@ -38,6 +38,7 @@ final class TaskRepository
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CollabTextState $textCore,
         private readonly TaskTextFields $textFields,
+        private readonly TaskAssigneeGuard $assignees,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
@@ -63,7 +64,7 @@ final class TaskRepository
         $tasks = [];
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
                     $tasks[] = $task;
                 }
             } catch (ApiHttpException $e) {
@@ -104,7 +105,7 @@ final class TaskRepository
         $total = 0;
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
                     if ($uidFilter !== null && ($task['uid'] ?? null) !== $uidFilter) {
                         continue;
                     }
@@ -136,7 +137,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
-        $task = $this->mapper->toTask(
+        $task = $this->mapper->forViewer($username)->toTask(
             $located['object'],
             $located['taskListUri'],
             $located['vtodoUid'],
@@ -156,7 +157,7 @@ final class TaskRepository
     {
         $instance = $this->resolveTaskListFromPayload($username, $payload);
         $this->collectionAccess->assertCollectionWritable($instance, 'This task list is read-only.');
-        $taskPayload = $this->normalizeTaskPayload($payload);
+        $taskPayload = $this->assignees->prepare(null, $this->normalizeTaskPayload($payload), $instance, $username);
         $objectUri = $this->allocateObjectUri((int) $instance->calendarid, $taskPayload);
         $ics = $this->mapper->toIcs($taskPayload);
 
@@ -186,7 +187,7 @@ final class TaskRepository
         }
 
         $taskListId = $this->taskListUriForInstance($instance);
-        $task = $this->mapper->toTask($object, $taskListId);
+        $task = $this->mapper->forViewer($username)->toTask($object, $taskListId);
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
         }
@@ -216,7 +217,7 @@ final class TaskRepository
             ->where('componenttype', 'VTODO')
             ->first();
 
-        return $object === null ? null : $this->mapper->toTask($object, $this->taskListUriForInstance($instance));
+        return $object === null ? null : $this->mapper->forViewer($username)->toTask($object, $this->taskListUriForInstance($instance));
     }
 
     /**
@@ -255,6 +256,8 @@ final class TaskRepository
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
     ): array {
+        $this->assignees->assertPatchUsesStableIds($patch);
+
         return $this->rewriteOwnedTask(
             $username,
             $taskId,
@@ -339,7 +342,7 @@ final class TaskRepository
                 $targetListId, $guard, $afterWrite, $instance, $vtodoUid, $objectUri, $taskListId,
             ): array {
                 $this->assertObjectPreconditions($object, $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
-                $existingTask = $this->mapper->toTask($object, $taskListId, $vtodoUid);
+                $existingTask = $this->mapper->forViewer($username)->toTask($object, $taskListId, $vtodoUid);
                 if ($existingTask === null) {
                     throw new ApiHttpException(404, 'Task not found.', 'not_found');
                 }
@@ -348,7 +351,13 @@ final class TaskRepository
                 }
 
                 $target = $this->resolveMoveTarget($username, $targetListId, $instance, $objectUri, $vtodoUid);
-                $taskPayload = $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask);
+                $taskPayload = $this->assignees->prepare(
+                    $existingTask,
+                    $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask),
+                    $target,
+                    $username,
+                    $instance,
+                );
                 $taskPayload['id'] = $existingTask['id'];
                 $taskPayload['taskListId'] = $this->taskListUriForInstance($target);
                 $taskPayload['uid'] = $existingTask['uid'];
@@ -399,7 +408,7 @@ final class TaskRepository
             $username,
         );
 
-        $task = $this->mapper->toTask($updated, $targetListUri, $vtodoUid);
+        $task = $this->mapper->forViewer($username)->toTask($updated, $targetListUri, $vtodoUid);
         if ($task === null) {
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }

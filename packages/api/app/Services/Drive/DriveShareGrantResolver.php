@@ -181,8 +181,19 @@ final class DriveShareGrantResolver
      */
     public function memberShareRootPaths(string $username, array $groupSlugs): array
     {
+        return $this->shareRootPathsOf($this->liveMemberGrants($username, $groupSlugs));
+    }
+
+    /**
+     * The distinct normalized share paths of the given grants.
+     *
+     * @param  list<DriveShareGrant>  $grants  from {@see liveMemberGrants()}
+     * @return list<string>
+     */
+    public function shareRootPathsOf(array $grants): array
+    {
         $paths = [];
-        foreach ($this->liveMemberGrants($username, $groupSlugs) as $grant) {
+        foreach ($grants as $grant) {
             $share = $grant->share;
             if ($share !== null) {
                 $paths[$this->scope->normalize((string) $share->path)] = true;

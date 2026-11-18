@@ -71,5 +71,52 @@
       "list": { "type": "array", "items": { "$ref": "#/components/schemas/TaskList" } }
     },
     "additionalProperties": false
+  },
+  "TaskListMember": {
+    "type": "object",
+    "required": [
+      "username",
+      "displayName",
+      "email",
+      "access"
+    ],
+    "properties": {
+      "username": {
+        "type": "string"
+      },
+      "displayName": {
+        "type": "string"
+      },
+      "email": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "access": {
+        "type": "string",
+        "enum": [
+          "read",
+          "write"
+        ],
+        "description": "`read` people are shown but cannot be assigned"
+      }
+    },
+    "additionalProperties": false
+  },
+  "TaskListMembersResponse": {
+    "type": "object",
+    "required": [
+      "list"
+    ],
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TaskListMember"
+        }
+      }
+    },
+    "additionalProperties": false
   }
 }

@@ -90,7 +90,11 @@ export function replaceDocumentWithExternalText(
   Yjs.applyUpdate(ydoc, serverState, SERVER_ORIGIN);
   const serverStateVector = Yjs.encodeStateVectorFromUpdate(serverState);
   const seeded = new Yjs.Doc();
-  const salt = serverStateVector.join(",");
+  const baseSalt = serverStateVector.join(",");
+  // A quiet rebuild keeps the state-vector salt so peers merge. Dropping local
+  // work deletes the seeded items again, so the salt moves on while this
+  // document already holds either seed id (Yjs never recreates deleted items).
+  const salt = dropLocalWork ? freeSalt(ydoc, markdown, title, format, baseSalt) : baseSalt;
   applyContentSeedToYDoc(seeded, markdown, format, salt);
   writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(
@@ -138,18 +142,28 @@ function reseedOverUnreadableState(
   // Seed ids are 32 bits: two unreadable payloads can share one. A seed whose
   // id the document already holds would map onto deleted items and leave the
   // text blank, so the salt moves on until the id is new to this document.
-  const local = Yjs.decodeStateVector(Yjs.encodeStateVector(ydoc));
-  const base = `unreadable:${serverState.length}:${hash}`;
-  let salt = base;
-  const taken = (s: string): boolean =>
-    local.has(seedClientId(format, markdown, s)) ||
-    (title !== null && local.has(titleSeedId(title, s, markdown)));
-  for (let n = 1; taken(salt); n += 1) salt = `${base}#${n}`;
+  const salt = freeSalt(ydoc, markdown, title, format, `unreadable:${serverState.length}:${hash}`);
   const seeded = new Yjs.Doc();
   applyContentSeedToYDoc(seeded, markdown, format, salt);
   writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), EXTERNAL_REBUILD_ORIGIN);
   seeded.destroy();
+}
+
+function freeSalt(
+  ydoc: Y.Doc,
+  markdown: string,
+  title: string | null,
+  format: TextEditorContentFormat,
+  base: string,
+): string {
+  const local = Yjs.decodeStateVector(Yjs.encodeStateVector(ydoc));
+  const taken = (s: string): boolean =>
+    local.has(seedClientId(format, markdown, s)) ||
+    (title !== null && local.has(titleSeedId(title, s, markdown)));
+  let salt = base;
+  for (let n = 1; taken(salt); n += 1) salt = `${base}#${n}`;
+  return salt;
 }
 
 /**

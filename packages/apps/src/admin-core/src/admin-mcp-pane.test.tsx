@@ -5,7 +5,7 @@ import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { createMockAdminOperations } from "@/admin-core/src/admin-mock-operations";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
-import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import { AdminPaneScope } from "@/admin-core/stories/admin-story-scope";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import type { AdminAPIOperations } from "@/lib/models/admin-types";
 import { shareLabels } from "@/share-ui/share-labels";
@@ -56,9 +56,9 @@ function Harness({
   const controller = useAdminController({ data: bootstrap.data, operations });
   return (
     <TooltipProvider>
-      <AdminStoryScope>
+      <AdminPaneScope controller={controller}>
         <AdminMcpPane controller={controller} mcpEndpointUrl={STORY_MCP_ENDPOINT_URL} />
-      </AdminStoryScope>
+      </AdminPaneScope>
     </TooltipProvider>
   );
 }
@@ -69,7 +69,7 @@ function connectionUrlField() {
 
 function assistantsSwitch() {
   return screen.getByRole("switch", {
-    name: "Allow connected assistants enabled",
+    name: "Allow connected assistants",
     hidden: true,
   });
 }
@@ -78,10 +78,9 @@ describe("AdminMcpPane", () => {
   it("renders the kill-switch row off by default", () => {
     const saveSpy = vi.fn<AdminAPIOperations["saveSettings"]>();
     render(<Harness saveSpy={saveSpy} />);
-    expect(screen.getByText("Connected assistants")).toBeTruthy();
     expect(
       screen.getByText(
-        "People can connect Claude, ChatGPT, or Mistral. Turning this off disconnects them for everyone.",
+        "People choose for themselves in Settings. Turning this off disconnects everyone.",
       ),
     ).toBeTruthy();
     expect(screen.getByText("Allow connected assistants")).toBeTruthy();
