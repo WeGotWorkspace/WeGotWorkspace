@@ -17,7 +17,7 @@ use Tests\Support\WgwDatabaseTestCase;
  *   Thunderbird wrote them. The fixture is hand-written in Thunderbird 158's
  *   shape (see its README), not a capture.
  * - On the real Apple Reminders capture, an assign from the web app adds one
- *   ATTENDEE and keeps everything Reminders wrote.
+ *   ATTENDEE and the assigner as ORGANIZER, and keeps everything Reminders wrote.
  */
 final class TaskAssigneesInteropTest extends WgwDatabaseTestCase
 {
@@ -97,7 +97,9 @@ final class TaskAssigneesInteropTest extends WgwDatabaseTestCase
         $this->assertSame(1, substr_count($stored, 'BEGIN:VTIMEZONE'));
         $this->assertSame(1, substr_count($stored, "\r\nATTENDEE"));
         $this->assertStringContainsString('X-WGW-USERNAME=alice', $stored);
-        $this->assertStringNotContainsString('ORGANIZER', $stored);
+        // The capture has no organizer, so the first assignment makes bob, who assigned, the organizer.
+        $this->assertSame(1, substr_count($stored, "\r\nORGANIZER"));
+        $this->assertMatchesRegularExpression('/\r\nORGANIZER;[^\r]*:mailto:bob@example\.test\r\n/', $stored);
     }
 
     public function test_a_username_claim_that_contradicts_the_address_and_name_reads_as_the_named_account(): void
