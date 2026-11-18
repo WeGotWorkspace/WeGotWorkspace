@@ -424,3 +424,23 @@ describe("rereadTextFields: typing on top of an outside write a peer already too
     expect(readTextFields(typist).description).toBe("Buy soy milk!");
   });
 });
+
+describe("rereadTextFields: a late re-read of the text the document already took", () => {
+  it("leaves typing on top of it where it is, with or without pending work", () => {
+    const peer = seeded();
+    const typist = copyOf(peer);
+    replaceTextFields(peer, SOY, { contentTag: '"o2-tag"', objectEtag: "o2", storedState: null });
+    syncBoth(peer, typist);
+    typist.getText(TEXT_FIELDS_BODY).insert(12, "!");
+
+    for (const pendingLocalWork of [false, true]) {
+      const result = rereadTextFields(
+        typist,
+        read(SOY, "o2", { storedState: stateOf(seeded()), externalWrite: true }),
+        { pendingLocalWork },
+      );
+      expect(result).toBe("unchanged");
+      expect(readTextFields(typist).description).toBe("Buy soy milk!");
+    }
+  });
+});
