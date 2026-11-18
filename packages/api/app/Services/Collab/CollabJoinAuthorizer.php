@@ -10,6 +10,7 @@ use App\Services\Notes\Conversion\NoteJournalConverter;
 use App\Services\Notes\NoteArchiveGuard;
 use App\Services\Notes\NoteRepository;
 use App\Services\Rtc\Signaling\RtcPeerAccess;
+use App\Services\Tasks\TaskLocator;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -17,24 +18,57 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  *
  * Joining exposes the roster and offer/answer mailbox, which is all a peer
  * needs to receive Yjs document sync — so joining mirrors document read
- * access. Decoded rooms have two known shapes: a drive virtual path (any
- * room containing a slash — the docs app strips the leading `/`, so both
- * `/groups/team/doc.md` and `groups/team/doc.md` arrive here) or a note
- * VJOURNAL UID (no slash at all).
+ * access. Decoded rooms have three known shapes, tested in this order: a
+ * task's live text, `task:<calendarid>:<vtodo-uid>` (#2208; the UID may hold
+ * a slash); a drive virtual path (any room containing a slash — the docs app
+ * strips the leading `/`, so both `/groups/team/doc.md` and
+ * `groups/team/doc.md` arrive here); or a note VJOURNAL UID (no slash).
  */
 final class CollabJoinAuthorizer
 {
+    private const TASK_PREFIX = 'task:';
+
     public function __construct(
         private DriveShareAuthorizer $driveShares,
         private NoteRepository $notes,
         private NoteJournalConverter $converter,
+        private TaskLocator $tasks,
     ) {}
+
+    /**
+     * `assertMayJoin` and `accessFor` in one step: denies, or returns the
+     * right to store. A task room resolves its task once per request.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return 'read'|'comment'|'write'
+     */
+    public function authorize(string $room, array $principal): string
+    {
+        if (str_starts_with($room, self::TASK_PREFIX)) {
+            $task = $this->tasks->findForRoom($principal['username'], $room);
+            if ($task === null) {
+                $this->deny();
+            }
+
+            return $this->writeUnlessReadOnly($task['instance']->access);
+        }
+        $this->assertMayJoin($room, $principal);
+
+        return $this->accessFor($room, $principal);
+    }
 
     /**
      * @param  array{username: string, role: string}  $principal
      */
     public function assertMayJoin(string $room, array $principal): void
     {
+        if (str_starts_with($room, self::TASK_PREFIX)) {
+            if ($this->tasks->findForRoom($principal['username'], $room) === null) {
+                $this->deny();
+            }
+
+            return;
+        }
         if (str_contains($room, '/')) {
             $this->assertMayReadDrivePath('/'.ltrim($room, '/'), $principal);
 
@@ -54,6 +88,11 @@ final class CollabJoinAuthorizer
      */
     public function accessFor(string $room, array $principal): string
     {
+        if (str_starts_with($room, self::TASK_PREFIX)) {
+            $task = $this->tasks->findForRoom($principal['username'], $room);
+
+            return $task === null ? RtcPeerAccess::READ : $this->writeUnlessReadOnly($task['instance']->access);
+        }
         if (str_contains($room, '/')) {
             $rights = $this->driveShares->effectiveRights('/'.ltrim($room, '/'), $principal);
             if ($rights['mayEditContent']) {
@@ -72,7 +111,14 @@ final class CollabJoinAuthorizer
         if (NoteArchiveGuard::isArchived($this->converter, $note['object'])) {
             return RtcPeerAccess::READ;
         }
-        $access = (int) ($note['instance']->access ?? SharingPlugin::ACCESS_SHAREDOWNER);
+
+        return $this->writeUnlessReadOnly($note['instance']->access);
+    }
+
+    /** @return 'read'|'write' */
+    private function writeUnlessReadOnly(mixed $access): string
+    {
+        $access = (int) ($access ?? SharingPlugin::ACCESS_SHAREDOWNER);
 
         return $access === SharingPlugin::ACCESS_READ ? RtcPeerAccess::READ : RtcPeerAccess::WRITE;
     }

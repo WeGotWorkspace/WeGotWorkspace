@@ -91,6 +91,28 @@ describe("flushMeetChatOutbox", () => {
     vi.restoreAllMocks();
   });
 
+  it("replays a queued send with its mention list (#2247)", async () => {
+    const mentions = [{ id: "sam", displayName: "Sam de Vries" }];
+    await upsertChatMessageInCache(username, pendingMessage(ULID_A, "hi @Sam"), true);
+    await enqueueChatSend(username, {
+      messageId: ULID_A,
+      channelId: "chat-general",
+      body: "hi @Sam",
+      parentId: null,
+      mentions,
+    });
+    vi.mocked(sendChatMessage).mockImplementation(async (_channelId, body) =>
+      wireMessage(body.id, body.body),
+    );
+
+    await flushMeetChatOutbox(username);
+
+    expect(sendChatMessage).toHaveBeenCalledWith(
+      "chat-general",
+      expect.objectContaining({ id: ULID_A, mentions }),
+    );
+  });
+
   it("replays queued ops oldest-first and clears pendingSync", async () => {
     await upsertChatMessageInCache(username, pendingMessage(ULID_A, "queued send"), true);
     await enqueueChatSend(username, {

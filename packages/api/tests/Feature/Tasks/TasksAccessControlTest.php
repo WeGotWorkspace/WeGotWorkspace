@@ -28,6 +28,9 @@ final class TasksAccessControlTest extends WgwDatabaseTestCase
         $this->getJson('/api/v1/tasks/items?taskListId='.InboxTaskListProvisioner::URI)->assertUnauthorized();
         $this->postJson('/api/v1/tasks/items/query', ['filter' => ['inTaskList' => InboxTaskListProvisioner::URI]])->assertUnauthorized();
         $this->postJson('/api/v1/tasks/items', [])->assertUnauthorized();
+        $this->getJson('/api/v1/tasks/items/some-task/text')->assertUnauthorized();
+        $this->get('/api/v1/tasks/items/some-task/text?format=yjs')->assertUnauthorized();
+        $this->putJson('/api/v1/tasks/items/some-task/text', [])->assertUnauthorized();
     }
 
     public function test_capabilities_returns_jmap_subset(): void
@@ -57,5 +60,8 @@ final class TasksAccessControlTest extends WgwDatabaseTestCase
         $this->withBearer($token)->getJson('/api/v1/tasks/tasklists')->assertForbidden();
         $this->withBearer($token)->getJson('/api/v1/tasks/items?taskListId='.InboxTaskListProvisioner::URI)->assertForbidden();
         $this->withBearer($token)->postJson('/api/v1/tasks/items', [])->assertForbidden();
+        $this->withBearer($token)->getJson('/api/v1/tasks/items/some-task/text')->assertForbidden();
+        $this->withBearer($token)->get('/api/v1/tasks/items/some-task/text?format=yjs')->assertForbidden();
+        $this->withBearer($token)->putJson('/api/v1/tasks/items/some-task/text', [])->assertForbidden();
     }
 }
