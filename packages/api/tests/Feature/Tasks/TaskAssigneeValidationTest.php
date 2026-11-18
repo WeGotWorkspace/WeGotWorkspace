@@ -61,7 +61,58 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $ics = $this->storedIcs($taskId);
         $this->assertStringContainsString('X-WGW-USERNAME=alice', $ics);
         $this->assertStringContainsString('mailto:alice@example.test', $ics);
-        $this->assertStringNotContainsString('ORGANIZER', $ics);
+        // The first assignee makes the actor the organizer (#2172, 2026-11-18).
+        $this->assertMatchesRegularExpression('/^ORGANIZER;CN=Bob:mailto:bob@example\.test/m', $ics);
+    }
+
+    public function test_the_organizer_stays_when_someone_else_assigns_later(): void
+    {
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => ['u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']]]])
+            ->assertOk()
+            ->assertJsonPath('participants.org.email', 'bob@example.test');
+
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $etag = (string) $this->asUser('alice')->getJson($url)->assertOk()->json('etag');
+        $this->asUser('alice')->patchJson($url, ['participants' => [
+            'u:bob' => ['@type' => 'Participant', 'roles' => ['attendee']],
+            'u:alice' => null,
+        ]], $this->withIfMatch($etag))
+            ->assertOk()
+            ->assertJsonPath('participants.org.email', 'bob@example.test')
+            ->assertJsonPath('participants.org.roles', ['owner']);
+    }
+
+    public function test_a_task_without_assignees_gets_no_organizer(): void
+    {
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['title' => 'Renamed'])->assertOk()->assertJsonMissingPath('participants');
+
+        $this->assertStringNotContainsString('ORGANIZER', $this->storedIcs($taskId));
+    }
+
+    public function test_a_move_out_of_the_organizers_reach_makes_the_mover_the_organizer(): void
+    {
+        // alice assigns herself in Groceries, so she is the organizer.
+        $taskId = $this->createTask();
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $etag = (string) $this->asUser('alice')->getJson($url)->assertOk()->json('etag');
+        $this->asUser('alice')->patchJson($url, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']],
+            'u:bob' => ['@type' => 'Participant', 'roles' => ['attendee']],
+        ]], $this->withIfMatch($etag))->assertOk()->assertJsonPath('participants.org.email', 'alice@example.test');
+
+        // bob moves it to his inbox, which alice cannot see.
+        $task = $this->asUser('bob')->getJson($url)->assertOk()->json();
+        $moved = $this->asUser('bob')->putJson($url, [
+            'taskListIds' => [InboxTaskListProvisioner::URI => true],
+            'title' => (string) $task['title'],
+            'participants' => $task['participants'],
+        ], $this->withIfMatch((string) $task['etag']))->assertOk()->json('participants');
+
+        $this->assertSame(['org', 'u:bob'], array_keys($moved));
+        $this->assertSame('bob@example.test', $moved['org']['email']);
+        $this->assertStringNotContainsString('alice', $this->storedIcs($taskId));
     }
 
     public function test_adding_a_reader_or_outsider_is_422(): void
@@ -96,7 +147,7 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
                 'participants' => ['p1' => ['@type' => 'Participant', 'email' => $email, 'name' => 'Guest', 'roles' => ['attendee']]],
             ])->assertCreated()->json('participants');
 
-            $this->assertSame(['e:'.$email], array_keys($participants));
+            $this->assertSame(['org', 'e:'.$email], array_keys($participants));
             $this->assertNull($participants['e:'.$email]['username']);
             $this->assertSame('Guest', $participants['e:'.$email]['name']);
         }
@@ -207,7 +258,7 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
             'participants' => ['p1' => ['@type' => 'Participant', 'email' => 'Guest@Outside.test', 'roles' => ['attendee']]],
         ])->assertCreated()->json('participants');
 
-        $this->assertSame(['e:guest@outside.test'], array_keys($participants));
+        $this->assertSame(['org', 'e:guest@outside.test'], array_keys($participants));
         $this->assertSame('Guest@Outside.test', $participants['e:guest@outside.test']['email']);
         $this->assertNull($participants['e:guest@outside.test']['username']);
     }
@@ -374,7 +425,8 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
             ->assertJsonPath('taskListId', InboxTaskListProvisioner::URI)
             ->json();
 
-        $this->assertSame(['u:bob'], array_keys($moved['participants']));
+        $this->assertSame(['org', 'u:bob'], array_keys($moved['participants']));
+        $this->assertSame('bob@example.test', $moved['participants']['org']['email']);
         $ics = $this->storedIcs($taskId);
         $this->assertStringNotContainsString('alice', $ics);
         $this->assertStringNotContainsString('guest@outside.test', $ics);
@@ -388,7 +440,7 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         ]])->assertOk();
 
         $participants = $this->patchTask($taskId, ['title' => 'Renamed'])->assertOk()->json('participants');
-        $this->assertSame(['e:guest@outside.test'], array_keys($participants));
+        $this->assertSame(['org', 'e:guest@outside.test'], array_keys($participants));
     }
 
     public function test_a_person_sharee_cannot_assign_a_team_member_they_share_no_team_with(): void

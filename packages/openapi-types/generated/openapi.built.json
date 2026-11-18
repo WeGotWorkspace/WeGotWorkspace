@@ -16268,7 +16268,7 @@
                         "$ref": "#/components/responses/JmapPayloadTooLarge"
                     },
                     "422": {
-                        "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list (the sentence names every rejected id for people; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
+                        "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16393,7 +16393,7 @@
                         "$ref": "#/components/responses/JmapPayloadTooLarge"
                     },
                     "422": {
-                        "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list (the sentence names every rejected id for people; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
+                        "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -16468,7 +16468,7 @@
                         "$ref": "#/components/responses/JmapPayloadTooLarge"
                     },
                     "422": {
-                        "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list (the sentence names every rejected id for people; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
+                        "description": "`invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id.",
                         "content": {
                             "application/json": {
                                 "schema": {

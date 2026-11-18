@@ -3967,7 +3967,7 @@ export interface paths {
                 403: components["responses"]["JmapForbidden"];
                 409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
-                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list (the sentence names every rejected id for people; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
+                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4055,7 +4055,7 @@ export interface paths {
                 409: components["responses"]["JmapConflict"];
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
-                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list (the sentence names every rejected id for people; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
+                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4130,7 +4130,7 @@ export interface paths {
                 404: components["responses"]["JmapNotFound"];
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
-                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list (the sentence names every rejected id for people; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
+                /** @description `invalid_participant`: the write adds an assignee who cannot edit the target list, whom the caller may not assign (only themselves, the list owner or a Team colleague), or an organizer (one fixed sentence that names nobody; classify on status and `code` only). `stale_participant_id` (PATCH only): a positional `attN` participant id. */
                 422: {
                     headers: {
                         [name: string]: unknown;

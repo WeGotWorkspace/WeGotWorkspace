@@ -23,9 +23,9 @@ use App\Services\Teams\TeamColleagues;
  * own profile, whatever the payload says. An address is matched to a user
  * only within the target list's audience, and the actor can assign only
  * themselves, the list owner or someone they share a Team with (the picker's
- * rule). The organizer (`roles: owner`) is kept as stored; a write cannot add
- * or replace one. A move to a list with another audience drops the assignees
- * who cannot see the target list.
+ * rule). The organizer (`roles: owner`) is set by the server only: the actor
+ * when a task first gets an attendee, the mover when a move leaves it outside
+ * the target audience. A payload cannot add or replace one.
  */
 final class TaskAssigneeGuard
 {
@@ -121,11 +121,13 @@ final class TaskAssigneeGuard
             }
         }
 
-        $canonical = $this->withCheckedUsers($canonical, $added, $members, $target, strtolower(trim($actor)));
-        if ($source !== null && (int) $source->calendarid !== (int) $target->calendarid) {
+        $actor = strtolower(trim($actor));
+        $canonical = $this->withCheckedUsers($canonical, $added, $members, $target, $actor);
+        $moved = $source !== null && (int) $source->calendarid !== (int) $target->calendarid;
+        if ($moved) {
             $canonical = $this->onlyTargetAudience($canonical, $members);
         }
-        $after['participants'] = $canonical;
+        $after['participants'] = $this->withOrganizer($canonical, $stored, $members, $actor, $moved);
 
         return $after;
     }
@@ -227,6 +229,83 @@ final class TaskAssigneeGuard
         }
 
         return $participants;
+    }
+
+    /**
+     * The organizer of a task with assignees (#2172, product owner 2026-11-18):
+     * - once stored, it stays, whatever the payload sends or leaves out;
+     * - the first time a task gets an attendee and has none, it is the actor;
+     * - after a move to another audience, it becomes the actor when the stored
+     *   organizer's address is no one's in the target audience.
+     * The actor is always a person (a username), never a Team.
+     *
+     * @param  array<string, array<string, mixed>>  $participants
+     * @param  array<string, mixed>  $stored
+     * @param  \Closure(): array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
+     * @return array<string, array<string, mixed>>
+     */
+    private function withOrganizer(array $participants, array $stored, \Closure $members, string $actor, bool $moved): array
+    {
+        $organizerId = self::organizerId($participants);
+        $storedId = self::organizerId($stored);
+        if ($organizerId === null && $storedId !== null && is_array($stored[$storedId])) {
+            $participants = [$storedId => $stored[$storedId]] + $participants;
+            $organizerId = $storedId;
+        }
+
+        if ($organizerId !== null) {
+            if (! $moved) {
+                return $participants;
+            }
+            $email = is_string($participants[$organizerId]['email'] ?? null) ? $participants[$organizerId]['email'] : '';
+            $email = (string) preg_replace('/^mailto:/i', '', trim($email));
+            if (TaskParticipantDirectory::memberForEmail($members(), $email) !== null) {
+                return $participants;
+            }
+            unset($participants[$organizerId]);
+        } elseif (! self::hasAttendee($participants)) {
+            return $participants;
+        }
+
+        $member = $members()[$actor] ?? null;
+        if ($member === null || $member['email'] === null) {
+            return $participants;
+        }
+
+        return ['org' => [
+            '@type' => 'Participant',
+            'name' => $member['displayName'],
+            'email' => $member['email'],
+            'roles' => ['owner'],
+        ]] + $participants;
+    }
+
+    /**
+     * @param  array<string, mixed>  $participants
+     */
+    private static function organizerId(array $participants): ?string
+    {
+        foreach ($participants as $id => $entry) {
+            if (is_array($entry) && TaskConversionSupport::isOwnerParticipant($entry)) {
+                return (string) $id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $participants
+     */
+    private static function hasAttendee(array $participants): bool
+    {
+        foreach ($participants as $entry) {
+            if (! TaskConversionSupport::isOwnerParticipant($entry)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
