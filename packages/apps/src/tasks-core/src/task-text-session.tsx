@@ -172,7 +172,10 @@ export function TaskTextSession({
       const current = readTextFields(ydoc);
       if (current.title.trim() !== "") return;
       const base = readTextFieldsBase(ydoc)?.title ?? served.title;
-      if (base.trim() !== "") writeNoteTitle(ydoc, base);
+      if (base.trim() === "") return;
+      writeNoteTitle(ydoc, base);
+      // Nothing saves, so no push puts the stored title back on the list row.
+      onLiveTextRef.current?.(taskId, readTextFields(ydoc), false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ydoc]);

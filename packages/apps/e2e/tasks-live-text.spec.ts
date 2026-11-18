@@ -154,3 +154,72 @@ test("two people type a task's title and notes together", async ({ browser }) =>
     await cleanUpCase(id);
   }
 });
+
+test("typing offline reaches the server, and an outside edit meanwhile asks once", async ({
+  browser,
+}) => {
+  const id = `off${Date.now().toString(36)}`;
+  await ensureTasksTeam();
+  const events: string[] = [];
+  const contexts: BrowserContext[] = [];
+
+  try {
+    const listId = await createList(`L ${id}`);
+    await shareList(listId, TEAMMATE, "write");
+    const task = await createTask(listId, `Plan trip ${id}`);
+
+    const ownerContext = await openUser(browser, OWNER);
+    const mateContext = await openUser(browser, TEAMMATE);
+    contexts.push(ownerContext, mateContext);
+    const owner = await openTasksTab(ownerContext, "owner", events);
+    const mate = await openTasksTab(mateContext, "mate", events, TEAMMATE);
+    await openTask(owner, task.title);
+    await openTask(mate, task.title);
+
+    await notes(owner).click();
+    await notes(owner).pressSequentially("Pack");
+    await expect(notes(mate)).toHaveValue("Pack", { timeout: LIVE_MS });
+    await expect
+      .poll(async () => (await serverTask(task.id))?.description ?? "", { timeout: LIVE_MS })
+      .toBe("Pack");
+
+    // Typed offline, saved on reconnect, and shown to the teammate.
+    await ownerContext.setOffline(true);
+    await notes(owner).click();
+    await notes(owner).press("End");
+    await notes(owner).pressSequentially(" offline");
+    await ownerContext.setOffline(false);
+    await expect
+      .poll(async () => (await serverTask(task.id))?.description ?? "", { timeout: LIVE_MS })
+      .toMatch(/ offline$/);
+    await expect(notes(mate)).toHaveValue(/ offline$/, { timeout: LIVE_MS });
+
+    // Typed offline while the text is changed from outside: the owner is asked.
+    await ownerContext.setOffline(true);
+    await notes(owner).click();
+    await notes(owner).press("End");
+    await notes(owner).pressSequentially(" mine");
+    const outside = await patchTask(task.id, { description: "Outside" });
+    expect(outside.status).toBe(200);
+    await ownerContext.setOffline(false);
+
+    await expect(
+      owner.getByRole("dialog").filter({ hasText: "This task was changed elsewhere" }),
+    ).toBeVisible({ timeout: LIVE_MS });
+    await expect(mate.getByRole("dialog")).toHaveCount(0);
+
+    await owner.getByRole("button", { name: "Keep mine" }).click();
+    await expect(owner.getByRole("dialog")).toHaveCount(0, { timeout: LIVE_MS });
+    await expect
+      .poll(async () => (await serverTask(task.id))?.description ?? "", { timeout: LIVE_MS })
+      .toMatch(/ mine$/);
+    const settled = (await serverTask(task.id))?.description ?? "";
+    await expect(notes(owner)).toHaveValue(settled, { timeout: LIVE_MS });
+    await expect(notes(mate)).toHaveValue(settled, { timeout: LIVE_MS });
+    await expect(owner.getByRole("dialog")).toHaveCount(0);
+    await expect(mate.getByRole("dialog")).toHaveCount(0);
+  } finally {
+    for (const context of contexts) await context.close();
+    await cleanUpCase(id);
+  }
+});

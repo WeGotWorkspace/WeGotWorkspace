@@ -416,8 +416,8 @@ export function TasksWorkspace({
               taskLists={activeTaskWritable ? writableTaskLists : taskLists}
               allTaskLists={taskLists}
               readOnly={!activeTaskWritable}
-              onSave={(taskId, value) => {
-                void autosaveTask(taskId, value);
+              onSave={(taskId, value, opts) => {
+                void autosaveTask(taskId, value, opts);
               }}
               onToggleComplete={toggleTaskComplete}
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
