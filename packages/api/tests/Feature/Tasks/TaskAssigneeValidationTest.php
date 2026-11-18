@@ -210,6 +210,8 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
 
     public function test_a_move_drops_an_address_of_a_reader_of_the_new_list(): void
     {
+        // bob may only share with a Team colleague.
+        $this->seedSharedTeam('side', 'bob', 'dave');
         $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
         $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
             'dave' => ['mayWriteAll' => false],
@@ -227,7 +229,8 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
 
     public function test_a_move_drops_an_address_the_actor_could_not_assign_on_the_new_list(): void
     {
-        // alice and dave share no Team and dave does not own Shed.
+        // alice and dave share no Team and dave does not own Shed; bob may only share with a Team colleague.
+        $this->seedSharedTeam('side', 'bob', 'dave');
         $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
         $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
             'alice' => ['mayWriteAll' => true],
@@ -241,7 +244,11 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
             'e:dave@example.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
         ]], $this->withIfMatch($etag))->assertOk();
 
-        $this->moveTask('alice', $taskId, $shed);
+        // alice sees the shared list under her own id.
+        $aliceShed = collect($this->asUser('alice')->getJson('/api/v1/tasks/tasklists')->assertOk()->json('list'))
+            ->firstWhere('name', 'Shed')['id'] ?? null;
+        $this->assertIsString($aliceShed);
+        $this->moveTask('alice', $taskId, $aliceShed);
 
         $this->assertNoDave('alice', $taskId);
     }
