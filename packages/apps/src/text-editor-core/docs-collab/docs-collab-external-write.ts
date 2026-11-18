@@ -57,6 +57,10 @@ export function replaceDocumentWithExternalText(
   serverState: Uint8Array,
   { dropLocalWork = false }: { dropLocalWork?: boolean } = {},
 ): void {
+  if (!isReadableYjsUpdate(serverState)) {
+    reseedOverUnreadableState(ydoc, markdown, title, format, serverState);
+    return;
+  }
   Yjs.applyUpdate(ydoc, serverState, SERVER_ORIGIN);
   const serverStateVector = Yjs.encodeStateVectorFromUpdate(serverState);
   const seeded = new Yjs.Doc();
@@ -68,5 +72,45 @@ export function replaceDocumentWithExternalText(
     EXTERNAL_REBUILD_ORIGIN,
     dropLocalWork ? undefined : Yjs.decodeStateVector(serverStateVector),
   );
+  seeded.destroy();
+}
+
+/**
+ * Bytes a client can apply in full: they decode, and no struct waits for a
+ * parent the bytes never deliver. The server stores a writer's state without
+ * reading it (#2208), so a stored state can be neither.
+ */
+export function isReadableYjsUpdate(update: Uint8Array): boolean {
+  const scratch = new Yjs.Doc();
+  try {
+    Yjs.applyUpdate(scratch, update);
+    return scratch.store.pendingStructs === null && scratch.store.pendingDs === null;
+  } catch {
+    return false;
+  } finally {
+    scratch.destroy();
+  }
+}
+
+/**
+ * The rebuild for a stored state no client can read: nothing of it is
+ * applied, every item the document holds is deleted (as with the person's
+ * own "use the other version"), and the outside text is seeded. The seed id
+ * comes from the unreadable bytes, so every client that reads them seeds the
+ * same items, and they never match an earlier seed of the same text.
+ */
+function reseedOverUnreadableState(
+  ydoc: Y.Doc,
+  markdown: string,
+  title: string | null,
+  format: TextEditorContentFormat,
+  serverState: Uint8Array,
+): void {
+  let hash = 0x811c9dc5;
+  for (const byte of serverState) hash = Math.imul(hash ^ byte, 0x01000193) >>> 0;
+  const seeded = new Yjs.Doc();
+  applyContentSeedToYDoc(seeded, markdown, format, `unreadable:${serverState.length}:${hash}`);
+  if (title !== null) writeNoteTitle(seeded, title);
+  adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), EXTERNAL_REBUILD_ORIGIN);
   seeded.destroy();
 }
