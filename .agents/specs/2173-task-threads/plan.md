@@ -97,7 +97,8 @@ See spec.md, Non-goals.
 - [x] Thread history is keyed on the list, so any move starts fresh. Product owner, 2026-11-16: agreed, and every move in the web app says what happens to the comments. It affects chunks B and E.
 - [x] Commenting, replying and reacting need write access to the list; read access only reads. Product owner, 2026-11-17 (it reverses the Goal's first wording). It affects chunks B, E and H.
 - [x] No time-based purge: entries left under an old key stay hidden until the owner deletes the list. Product owner, 2026-11-17. It affects chunk B.
-- [x] The thread shows comments only by default; "Show changes" turns activity rows on. Product owner, 2026-11-17. It affects chunk G.
+- [x] ~~The thread shows comments only by default; "Show changes" turns activity rows on.~~ Product owner, 2026-11-17, replaced on 2026-11-18: the thread shows comments only, with no toggle; the activity log (chunks F and G) is parked. The entry format stays.
+- [x] One shared thread composer for Tasks, Chat and Docs, with the same mentions, emoji and reactions, send key and limits, and no attachments. Product owner, 2026-11-18. It adds chunk I and moves "Docs cards on the shared composer" from follow-up into this Epic.
 - [x] No moderation and no alarm logging in this Epic; notifications go to assignees, earlier participants and mentioned people only. Product owner, 2026-11-17.
 - [x] Mentions and comment notifications are in scope. Product owner, 2026-11-16. It affects chunk D.
 - [x] Commenting works offline through a shared threads outbox. Product owner, 2026-11-16. It adds chunk H and the `scopeId` check in chunk B.
@@ -232,7 +233,17 @@ See spec.md, Non-goals.
 - **Verify with:** `pnpm test:apps-done-gate`
 - **Parallel with:** F, G (after B and E)
 
-### Chunk F: Activity writer
+### Chunk I: One shared thread composer
+- **Skill:** apps-ui, accessibility
+- **Inputs:** chat-ui's `ChatComposer` and mention menu; the Docs comment cards' reply input; the shared reaction picker.
+- **Done when:**
+  - One `ThreadComposer` component, used by the task thread panel, Chat and Docs comment cards. Same mention menu, emoji, send key (⌘↵ / Ctrl+Enter, Enter in Chat as today) and body limit. No attachment button.
+  - Chat and Docs work as before: their existing Vitest and e2e specs pass unchanged, and a cold-browser check of both is in the PR.
+  - Stories for the composer: empty, with a mention menu open, at the limit, read-only (not rendered).
+- **Verify with:** `pnpm test:apps-done-gate`
+- **Parallel with:** E (own UI PR)
+
+### Chunk F: Activity writer (parked, 2026-11-18)
 - **Skill:** api, security
 - **Inputs:**
   - #2172's `TaskChangeSet` and `TaskChangeObserverPlugin`;
@@ -249,7 +260,7 @@ See spec.md, Non-goals.
 - **Verify with:** `pnpm test:api-done-gate`
 - **Parallel with:** none (after B)
 
-### Chunk G: Activity rows
+### Chunk G: Activity rows (parked, 2026-11-18)
 - **Skill:** apps-ui
 - **Inputs:** chunk E's panel; the entry format from chunk F.
 - **Done when:**
@@ -265,7 +276,7 @@ See spec.md, Non-goals.
 - **Done when:**
   - The verifier, prompted from [developer/multitask-verifier.md](../../skills/developer/multitask-verifier.md), returns `PASS` or `PASS_WITH_NITS`.
   - A two-user browser e2e on a Team list: A comments and mentions B, B gets the notification and replies, and A sees the reply without reloading.
-  - A renames the task and sets the priority. B sees only comments, turns on "Show changes", and both rows show in B's language.
+  - A renames the task and sets the priority. B sees only comments; no activity rows show (chunks F and G are parked).
   - C, with read-only access to the list, reads the thread and sees no composer.
   - A moves the task to a private list; the confirm says the comments stay behind. B no longer sees the task. A sees a fresh thread with "moved here".
   - B goes offline, comments, goes online, and A sees the comment once.

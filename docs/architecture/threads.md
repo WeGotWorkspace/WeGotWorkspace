@@ -65,9 +65,9 @@ Threads are a shared layer. An app plugs in a **subject type**: the thing a thre
   - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread`, the activity row and its formatter;
   - `lib/api/wgw/threads.ts`, the shared API client;
   - `lib/offline/threads/`, one offline domain for the read cache and the outbox of every subject type;
-  - the chat-ui composer, mention menu, message and reaction bar, and the shared `reaction-picker` and `user-avatar`.
+  - `ThreadComposer`, the one comment input Tasks, Chat and Docs share (product owner, 2026-11-18): the same mention menu, emoji and reactions, send key and limits, and no attachments; plus the chat-ui message and reaction bar, and the shared `reaction-picker` and `user-avatar`.
 
-  Docs cards still have their own reply input. Moving them onto the chat composer is a follow-up.
+  The task thread shows comments only for now (2026-11-18). The activity log (writer and rows) is parked; its entry format stays.
 
 ## Adding threads to another app
 

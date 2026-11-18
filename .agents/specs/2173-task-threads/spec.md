@@ -11,7 +11,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Built for any app, with Tasks as the first user** (product owner, 2026-11-16). Comments on notes, or on something in an app that does not exist yet, must reuse this work instead of copying it. So everything that is not about tasks lives in shared code, on the server and in the web app:
   - **The thread subject.** A *subject* is the thing a thread is about (a task). Its *scope* is the place that sets who can see it (the task's list). Each app registers one small **subject type** that answers the questions only that app can answer: does this subject exist, which scope is it in now, who may read and post, who is in the audience, and who should hear about new comments. The server side is `App\Services\Threads\Subjects\ThreadSubjectType`; the web app side is a `ThreadSubjectAdapter` in `packages/apps/src/thread-ui/`.
   - **Shared on the server** (`App\Services\Threads`): the pool and its provisioner, the entry repository (post, reply, edit, delete, react, list, changes, limits, idempotency), the REST controller and routes, access checks through the subject type, the lifecycle (list delete), the `ThreadEntry` push state, grouped notifications, and the activity writer with its merge rule.
-  - **Shared in the web app** (`thread-ui/` and `lib/offline/threads/`): the thread panel with its layout, composer and timeline, the `useThread` hook (fetch, push, polling rule), the API client, the activity row and formatter, the offline read cache and the offline outbox.
+  - **Shared in the web app** (`thread-ui/` and `lib/offline/threads/`): the thread panel with its layout, composer and timeline, the `useThread` hook (fetch, push, polling rule), the API client, the offline read cache and the offline outbox. The activity row and formatter come later (chunk G, parked).
   - **Tasks only** (`App\Services\Tasks\Threads\TaskThreadSubject`, `tasks-core`): the task subject type, the call into the lifecycle from the owner's list delete, the mapping from #2172's task change set to activity entries, the two notification actions and their copy, the field labels for activity rows, the move wording, and the place in the detail view where the panel is mounted.
   - Adding threads to another app is then one subject type on each side, a `scopeDeleted` call when a scope is deleted, its notification copy and a place to mount the panel. `docs/architecture/threads.md` keeps that checklist.
   - Chat and Docs keep their own repositories and routes in this Epic. Chunk A gives them the shared converter core; moving them onto subject types is a follow-up named in threads.md.
@@ -52,15 +52,15 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - Activity entries never notify. #798 and #2172 own the notices for status and assignment.
   - Mentions and both notices are in scope by the product owner's decision of 2026-11-16, although the Goal first listed them as non-goals.
 - **Commenting works offline** (product owner, 2026-11-16). Comments, replies, edits and deletes of your own messages, and reactions are queued in the shared threads outbox while offline and sent once the connection is back. The client ULID makes each send idempotent, as in Chat. See UI, Offline.
-- **Activity log (chunks F and G).**
+- **Activity log (chunks F and G) — parked** (product owner, 2026-11-18). The panel shows comments only for now. The entry format below stays, so the log can come later without a migration; chunks F and G wait until the product owner picks them up.
   - The server turns #2172's `TaskChangeSet`, computed for REST, MCP and CalDAV writes, into activity entries in the same thread.
   - Each entry stores data, not text: `X-WGW-ACTIVITY` is JSON `{field, from, to}` or `{field, added, removed}`, plus the actor and time.
   - The client renders it in the reader's language and time zone, for example "Anna changed the title to 'Moodboard v2' · 1 Jan, 22:21".
   - Quick edits are merged (see Technical constraints).
 - **Thread panel UI.** `ThreadPanel` lives in `thread-ui/` and knows nothing about tasks. Tasks mounts it in the task detail view below the fields, as in the product owner's mockup ([mockup-task-detail.webp](./mockup-task-detail.webp), 2026-11-16).
-  - One timeline in time order: comments with their replies, and activity rows.
-  - A "Show changes" toggle, **off by default** (product owner, 2026-11-17), shows activity rows when turned on. By default the panel shows comments only.
-  - The composer is the chat-ui composer, with mentions limited to the list audience.
+  - One timeline in time order: comments, each with one level of replies.
+  - **Comments only** (product owner, 2026-11-18). No "Show changes" toggle and no activity rows for now; activity entries the server returns are not shown. The heading counts comments and replies.
+  - The composer is the **one shared thread composer** (`ThreadComposer`) that Tasks, Chat and Docs all use (product owner, 2026-11-18): the same mentions, emoji and reactions, send key (⌘↵ / Ctrl+Enter) and limits. Mentions are limited to the list audience. **No attachments**: no paperclip in a thread composer.
   - Messages and reactions use chat-ui and the shared reaction picker.
   - The activity row and its formatter live in `thread-ui/` too. The formatter takes field labels and value renderers from the subject adapter, so another app brings only its own field names.
 
@@ -71,7 +71,8 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - Guest comments
 - Mail or push when the app is closed (Product#32)
 - MCP tools for task threads. That is a follow-up: the REST service is MCP-ready, with no web-only logic.
-- Moving Docs threads onto `ThreadEntry` push, or giving Docs the chat composer. These are follow-ups this design allows. Docs keeps its 4 s polling in this Epic.
+- Moving Docs threads onto `ThreadEntry` push. That is a follow-up this design allows. Docs keeps its 4 s polling in this Epic. (Giving Docs the shared composer moved into scope on 2026-11-18, chunk I.)
+- Attachments in thread comments (product owner, 2026-11-18).
 - An activity log for Docs or Chat. The entry format allows it later.
 - Changing how Docs threads follow a document to another owner (`DocsThreadPathSync`). That is flagged in threads.md as a product question for Docs, not changed here.
 - Moderation: owners deleting other people's comments
@@ -217,12 +218,12 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
   - "Reply" opens an inline reply list under its root.
   - Edit and delete come from the message menu, for your own messages only, and only while the adapter says the user may post.
 - **Composer and mentions.**
-  - It is `ChatComposer` from chat-ui.
+  - It is the shared `ThreadComposer` (chunk I), which Chat and Docs use too. It has no attachment button.
   - The mention source comes from the adapter. For tasks it is the list audience, from #2172 chunk C's audience cache.
 - **Activity row** (chunk G) in `thread-ui/thread-activity-row.tsx`, with the formatter in `thread-ui/format-thread-activity.ts`.
   - The formatter is pure. It takes the entry, the people map, the locale, the time zone and the subject adapter's field labels and value renderers. Tasks supplies labels for its fields; the shared part renders `created`, `moved`, sets and dates. It is covered by Vitest for every field, merged entries and the removed-person case.
 - **Layout** (from the mockup):
-  - The panel starts under a divider below the last field row, headed "Activity". The "Show changes" toggle sits at the right of that heading.
+  - The panel starts under a divider below the last field row, headed "Activity" with the number of comments and replies. There is no "Show changes" toggle for now (2026-11-18).
   - Each entry shows the author's avatar, name and relative time ("2h ago", with the full date on hover), then the body.
   - The composer is the last row: the current user's avatar, a one-line input "Write a comment…" that grows as you type, and a "Comment" button with its shortcut (⌘↵ / Ctrl+Enter). Typing `@` opens the mention menu; the placeholder hints at it. The mockup's "M to mention" is read as `@`, because a plain letter cannot open a menu in a text field.
 - **Move confirmation.** Every move path in the web app states what happens to the thread:
