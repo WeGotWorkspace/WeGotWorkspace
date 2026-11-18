@@ -183,6 +183,9 @@ final class NotesController
             'ETag' => $snapshot['etag'],
             'X-Content-Type-Options' => 'nosniff',
         ];
+        if ($snapshot['contentTag'] !== null) {
+            $headers[CollabExternalWrite::CONTENT_TAG_HEADER] = $snapshot['contentTag'];
+        }
         if ($snapshot['externalWrite']) {
             // A 304 would hide the signal. The state bytes are unchanged, and
             // the client must still see that they are not an ancestor.

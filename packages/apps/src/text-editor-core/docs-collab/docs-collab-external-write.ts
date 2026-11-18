@@ -4,6 +4,7 @@ import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor
 import { adoptServerSnapshot } from "@/lib/collab/docs-collab-bootstrap";
 import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
+import { seedClientId } from "./docs-collab-seed";
 import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 export type ExternalWriteDetail = {
@@ -64,8 +65,9 @@ export function replaceDocumentWithExternalText(
   Yjs.applyUpdate(ydoc, serverState, SERVER_ORIGIN);
   const serverStateVector = Yjs.encodeStateVectorFromUpdate(serverState);
   const seeded = new Yjs.Doc();
-  applyContentSeedToYDoc(seeded, markdown, format, serverStateVector.join(","));
-  if (title !== null) writeNoteTitle(seeded, title);
+  const salt = serverStateVector.join(",");
+  applyContentSeedToYDoc(seeded, markdown, format, salt);
+  writeSeedTitle(seeded, title, salt);
   adoptServerSnapshot(
     ydoc,
     Yjs.encodeStateAsUpdate(seeded),
@@ -108,9 +110,27 @@ function reseedOverUnreadableState(
 ): void {
   let hash = 0x811c9dc5;
   for (const byte of serverState) hash = Math.imul(hash ^ byte, 0x01000193) >>> 0;
+  // Seed ids are 32 bits: two unreadable payloads can share one. A seed whose
+  // id the document already holds would map onto deleted items and leave the
+  // text blank, so the salt moves on until the id is new to this document.
+  const local = Yjs.decodeStateVector(Yjs.encodeStateVector(ydoc));
+  const base = `unreadable:${serverState.length}:${hash}`;
+  let salt = base;
+  for (let n = 1; local.has(seedClientId(format, markdown, salt)); n += 1) salt = `${base}#${n}`;
   const seeded = new Yjs.Doc();
-  applyContentSeedToYDoc(seeded, markdown, format, `unreadable:${serverState.length}:${hash}`);
-  if (title !== null) writeNoteTitle(seeded, title);
+  applyContentSeedToYDoc(seeded, markdown, format, salt);
+  writeSeedTitle(seeded, title, salt);
   adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), EXTERNAL_REBUILD_ORIGIN);
   seeded.destroy();
+}
+
+/**
+ * The title of a rebuild seed, written with a client id from the title and
+ * the seed's salt: two clients rebuilding the same text write the same title
+ * item, not one each (which would show the title twice).
+ */
+function writeSeedTitle(seeded: Y.Doc, title: string | null, salt: string): void {
+  if (title === null) return;
+  seeded.clientID = seedClientId("note-title", title, salt);
+  writeNoteTitle(seeded, title);
 }

@@ -760,25 +760,38 @@ describe("useDocsCollabJoin server bootstrap", () => {
  * that does not hold the served text, or cannot be read, is not adopted.
  */
 describe("useDocsCollabJoin stored state that does not hold the served text", () => {
-  function stubTextFields(state: Uint8Array, body: string, title: string): void {
+  function stubTextFields(
+    state: Uint8Array,
+    body: string,
+    title: string | null,
+    {
+      stateTag = '"text-1"',
+      textTag = '"text-1"',
+      textFails = false,
+    }: { stateTag?: string | null; textTag?: string; textFails?: boolean } = {},
+  ): void {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         if (String(input).includes("format=yjs")) {
           return new Response(state as unknown as BodyInit, {
             status: 200,
-            headers: { ETag: '"sidecar-1"' },
+            headers: {
+              ETag: '"sidecar-1"',
+              ...(stateTag ? { "X-Wgw-Content-Tag": stateTag } : {}),
+            },
           });
         }
-        return Response.json({ body, title }, { headers: { ETag: '"text-1"' } });
+        if (textFails) return new Response("unavailable", { status: 503 });
+        return Response.json({ body, title }, { headers: { ETag: textTag } });
       }),
     );
   }
 
-  function stateWith(body: string, title: string): Uint8Array {
+  function stateWith(body: string, title: string | null): Uint8Array {
     const doc = new Y.Doc();
     writeBody(doc, body);
-    writeNoteTitle(doc, title);
+    if (title !== null) writeNoteTitle(doc, title);
     const update = Y.encodeStateAsUpdate(doc);
     doc.destroy();
     return update;
@@ -840,6 +853,88 @@ describe("useDocsCollabJoin stored state that does not hold the served text", ()
     expect(readNoteTitle(doc)).toBe("Plan");
     expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
     close(hook);
+  });
+
+  it("adopts on bootstrap when the state and the text are not one save", async () => {
+    // A peer saved between the two reads: the text is newer than the state.
+    stubTextFields(stateWith("Same", "Plan"), "Same and more\n", "Plan", {
+      stateTag: '"text-1"',
+      textTag: '"text-2"',
+    });
+    const { hook, doc } = await open("notes/state-race-bootstrap.md");
+
+    expect(bodyText(doc)).toBe("Same");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(false);
+    close(hook);
+  });
+
+  it("adopts a state with no content tag without reading it against the text", async () => {
+    stubTextFields(stateWith("Planted", "Other"), "Real\n", "Plan", { stateTag: null });
+    const { hook, doc } = await open("notes/state-untagged.md");
+
+    expect(bodyText(doc)).toBe("Planted");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    close(hook);
+  });
+
+  it("checks the body of a note with no title", async () => {
+    stubTextFields(stateWith("Same", null), "Same\n", null);
+    const matching = await open("notes/untitled-match.md");
+    expect(bodyText(matching.doc)).toBe("Same");
+    expect(matching.hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    close(matching.hook);
+
+    stubTextFields(stateWith("Planted", null), "Real\n", null);
+    const planted = await open("notes/untitled-planted.md");
+    expect(bodyText(planted.doc)).toBe("Real");
+    expect(planted.hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    close(planted.hook);
+  });
+
+  it("adopts on a reconnect merge when the text read is a newer save", async () => {
+    const writer = new Y.Doc();
+    const body = writeBody(writer, "Same");
+    writeNoteTitle(writer, "Plan");
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same\n", "Plan");
+    const { hook, doc } = await open("notes/state-race-merge.md");
+    body.insert(4, " again");
+    vi.unstubAllGlobals();
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same again and more\n", "Plan", {
+      stateTag: '"text-2"',
+      textTag: '"text-3"',
+    });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(bodyText(doc)).toBe("Same again");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(false);
+    close(hook);
+    writer.destroy();
+  });
+
+  it("still applies the state on a reconnect merge when the text cannot be read", async () => {
+    const writer = new Y.Doc();
+    const body = writeBody(writer, "Same");
+    writeNoteTitle(writer, "Plan");
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same\n", "Plan");
+    const { hook, doc } = await open("notes/state-text-fails.md");
+    body.insert(4, " again");
+    vi.unstubAllGlobals();
+    stubTextFields(Y.encodeStateAsUpdate(writer), "", "Plan", { textFails: true });
+
+    let merged = false;
+    await act(async () => {
+      merged = await hook.result.current.mergeServerState("token");
+    });
+
+    expect(merged).toBe(true);
+    expect(bodyText(doc)).toBe("Same again");
+    close(hook);
+    writer.destroy();
   });
 
   it("does not adopt another text on a reconnect merge either", async () => {
