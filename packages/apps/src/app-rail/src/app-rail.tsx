@@ -1,5 +1,6 @@
-import { memo, useMemo } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { memo, useMemo, type MouseEvent } from "react";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { prefersReducedMotion } from "@/lib/view-transition";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import {
   APP_SWITCH_PRODUCT_APPS,
@@ -20,13 +21,39 @@ type AppRailItemProps = {
   unread: boolean;
 };
 
+/**
+ * App switch as one View Transition: the old app cross-fades into the new one
+ * once it has loaded. The router's own `viewTransition` link option is lost on
+ * the redirect every app does (`/notes` to `/notes/all`), so the rail runs the
+ * transition around the whole navigation. Returns false when the browser should
+ * handle the click itself (new tab, no API, reduced motion).
+ */
+function useAppSwitchTransition(to: AppSwitchMenuApp["to"]) {
+  const router = useRouter();
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    const plainClick =
+      event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+    if (!plainClick || typeof document.startViewTransition !== "function") return;
+    if (prefersReducedMotion()) return;
+    event.preventDefault();
+    document.startViewTransition(async () => {
+      await router.navigate({ to });
+      // Let React commit the new app before the browser takes the "after" snapshot.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  };
+}
+
 function AppRailItem({ app, current, unread }: AppRailItemProps) {
+  const switchWithTransition = useAppSwitchTransition(app.to);
   return (
     <li className="app-rail__item">
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
             to={app.to}
+            // App switch cross-fades (View Transitions); the rail itself holds still (see CSS).
+            onClick={current ? undefined : switchWithTransition}
             className="app-rail__link"
             aria-label={unread ? `${app.label}, new notifications` : app.label}
             aria-current={current ? "page" : undefined}
@@ -47,7 +74,22 @@ function AppRailItem({ app, current, unread }: AppRailItemProps) {
  * on wide landscape viewports (see `app-rail.css`); below that the sidebar
  * header's AppSwitchButton is the switcher.
  */
-export const AppRail = memo(function AppRail() {
+type AppRailProps = {
+  /** Receives the bottom slot element that the sidebar's account footer fills. */
+  accountSlotRef?: (element: HTMLElement | null) => void;
+  /** Receives the top slot element: the sidebar mounts the notifications bell there. */
+  notificationsSlotRef?: (element: HTMLElement | null) => void;
+};
+
+/** Settings before Admin: everyone has the first, only admins the second. */
+function byRailUtilityOrder(a: AppSwitchMenuApp, b: AppSwitchMenuApp): number {
+  return Number(a.id !== "settings") - Number(b.id !== "settings");
+}
+
+export const AppRail = memo(function AppRail({
+  accountSlotRef,
+  notificationsSlotRef,
+}: AppRailProps) {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const showAdmin = useShowAdminApp();
   const inbox = useNotificationsInbox();
@@ -63,6 +105,7 @@ export const AppRail = memo(function AppRail() {
 
   return (
     <nav className="app-rail" aria-label="Apps">
+      <div className="app-rail__notifications" ref={notificationsSlotRef} />
       <ul className="app-rail__list">
         {APP_SWITCH_PRODUCT_APPS.map((app) => (
           <AppRailItem
@@ -74,7 +117,7 @@ export const AppRail = memo(function AppRail() {
         ))}
       </ul>
       <ul className="app-rail__list app-rail__list--utility">
-        {appSwitchUtilityApps(showAdmin).map((app) => (
+        {[...appSwitchUtilityApps(showAdmin)].sort(byRailUtilityOrder).map((app) => (
           <AppRailItem
             key={app.id}
             app={app}
@@ -83,6 +126,7 @@ export const AppRail = memo(function AppRail() {
           />
         ))}
       </ul>
+      <div className="app-rail__account" ref={accountSlotRef} />
     </nav>
   );
 });

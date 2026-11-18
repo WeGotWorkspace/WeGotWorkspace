@@ -18,12 +18,18 @@
      * The z-index drop waits for the slide, so an opening sidebar still comes
      * out from under the rail.
      */
-    @apply relative z-30 flex shrink-0 flex-col items-center justify-between gap-4;
+    @apply relative z-30 flex shrink-0 flex-col items-center gap-4;
     transition: z-index 0s var(--panel-overlay-duration);
     inline-size: calc(var(--app-rail-width) + env(safe-area-inset-left, 0px));
     padding-inline-start: env(safe-area-inset-left, 0px);
-    /* First tile tops with the header controls of every column. */
-    padding-block-start: calc(var(--workspace-header-padding-y) + env(safe-area-inset-top, 0px));
+    /*
+     * First tile centres on the header controls of every column. Its 44px hit
+     * area is taller than a 40px control, so it starts half the difference higher.
+     */
+    padding-block-start: calc(
+      var(--workspace-header-padding-y) - (2.75rem - var(--workspace-header-control-height)) / 2 +
+        env(safe-area-inset-top, 0px)
+    );
     padding-block-end: calc(1rem + env(safe-area-inset-bottom, 0px));
     /* Same paper as the main / detail pane; the sidebar floats between them. */
     background-color: var(--workspace-main-bg, var(--workspace-surface));
@@ -51,6 +57,83 @@
     inline-size: 100%;
   }
 
+  /*
+   * Notifications bell, first in the rail: a 40px control centred in the same
+   * 44px row as a tile, so it sits on the header line of every column.
+   */
+  .app-rail__notifications {
+    @apply flex items-center justify-center;
+    block-size: 2.75rem;
+    /*
+     * Puts the first app tile on the sidebar's primary button: the rest of the
+     * header strip below the bell, plus the button's 0.5rem top gap, less the
+     * rail's own 1rem gap and the tile row's extra height over a control.
+     */
+    margin-block-end: calc(
+      var(--workspace-header-padding-y) - 0.5rem -
+        (2.75rem - var(--workspace-header-control-height))
+    );
+  }
+
+  .app-rail__notifications:empty {
+    display: none;
+  }
+
+  /* The bell is always in view here, so the closed-sidebar toggle drops its unread dot. */
+  .app-rail ~ * .workspace-sidebar-toggle[data-unread]::after {
+    content: none;
+  }
+
+  /* Signed-in user, pinned to the foot of the rail. */
+  .app-rail__account {
+    @apply flex justify-center;
+    margin-block-start: auto;
+    /* Punch the presence pip out of the rail's paper. */
+    --user-avatar-presence-ring: var(--workspace-main-bg, var(--workspace-surface));
+  }
+
+  .app-rail__account-trigger {
+    @apply flex items-center justify-center rounded-xl outline-none transition-[scale] focus-visible:ring-2 focus-visible:ring-ring;
+    block-size: 2.75rem;
+    inline-size: 2.75rem;
+    cursor: pointer;
+  }
+
+  /* Hover is the avatar's own hover fill (its rounded square), not a wash around it. */
+  .app-rail__account-trigger .user-avatar__mark {
+    transition: background-color 150ms ease;
+  }
+
+  .app-rail__account-trigger:hover .user-avatar__mark,
+  .app-rail__account-trigger[data-state="open"] .user-avatar__mark {
+    /* One clear step up from the resting fill, in both themes. */
+    background-color: color-mix(in oklab, var(--workspace-foreground) 18%, transparent);
+  }
+
+  .app-rail__account-trigger:active {
+    scale: 0.94;
+  }
+
+  /* The account moved to the rail: the sidebar's own account card steps out. */
+  .app-rail ~ .app-sidebar .workspace-sidebar-account-footer,
+  .app-rail ~ .app-sidebar .workspace-app-layout__user-footer {
+    display: none;
+  }
+
+  /* Settings and Admin: a short hairline in the gap sets them apart from the apps. */
+  .app-rail__list--utility {
+    @apply relative;
+  }
+
+  .app-rail__list--utility::before {
+    content: "";
+    @apply absolute;
+    inset-block-start: -0.5rem;
+    inset-inline: 1rem;
+    block-size: 1px;
+    background-color: var(--workspace-divider-color);
+  }
+
   .app-rail__item {
     @apply relative flex justify-center;
     inline-size: 100%;
@@ -61,7 +144,7 @@
     /* 44px hit area around the 36px tile. */
     block-size: 2.75rem;
     inline-size: 2.75rem;
-    opacity: 0.55;
+    opacity: 0.42;
   }
 
   .app-rail__link:hover,
@@ -88,7 +171,7 @@
   }
 
   .app-rail__link[data-unread]:not(:hover, :focus-visible, [aria-current="page"]) .app-rail__icon {
-    opacity: 0.55;
+    opacity: 0.42;
   }
 
   .app-rail__dot {
@@ -125,11 +208,49 @@
   .app-rail ~ .app-sidebar .app-switch-button__trigger {
     pointer-events: none;
     min-block-size: var(--workspace-header-control-height);
+    /* No tile to top-align any more: the name centres on the bell and the rail tile. */
+    padding-block: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .app-rail__link {
     transition: none;
+  }
+}
+
+/*
+ * App switch from the rail: the page cross-fades, the rail keeps its own
+ * snapshot so it does not fade with it. Only the rail's links start a
+ * View Transition, so this touches no other navigation.
+ */
+@media (min-width: 72.5rem) and (orientation: landscape) {
+  .app-rail {
+    view-transition-name: app-rail;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease;
+}
+
+::view-transition-group(app-rail) {
+  animation: none;
+}
+
+::view-transition-old(app-rail) {
+  display: none;
+}
+
+::view-transition-new(app-rail) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }

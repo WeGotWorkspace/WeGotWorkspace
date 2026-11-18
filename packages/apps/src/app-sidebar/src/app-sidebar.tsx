@@ -1,5 +1,15 @@
-import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { AppRail } from "@/app-rail/src/app-rail";
+import { AppRailAccountSlotContext } from "@/app-rail/src/app-rail-account";
+import { useAppRailVisible } from "@/app-rail/src/use-app-rail-visible";
+import { createPortal } from "react-dom";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
 import { APP_SWITCH_PRODUCT_APPS } from "@/app-switch-button/src/app-switch-menu-apps";
 import { useRouterState } from "@tanstack/react-router";
@@ -14,7 +24,11 @@ import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-c
 import "@/app-sidebar/src/app-sidebar.css";
 import { publishElementHeight } from "@/lib/publish-element-height";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
-import { AppSidebarPrimaryProvider } from "@/app-sidebar/src/app-sidebar-primary";
+import {
+  AppSidebarPrimaryProvider,
+  useWorkspaceAppSettingsMenuItem,
+} from "@/app-sidebar/src/app-sidebar-primary";
+import { IconButton } from "@/button/src/button";
 
 export type AppSidebarProps = {
   open: boolean;
@@ -42,7 +56,7 @@ export type AppSidebarProps = {
  * Inbox tray alone — kept below the lockup so unread / presence-driven inbox
  * refreshes do not re-render {@link AppSwitchButton} or rewrite the inlined SVG.
  */
-function AppSidebarNotifications() {
+function AppSidebarNotifications({ inRail = false }: { inRail?: boolean }) {
   const inbox = useNotificationsInbox();
   const path = useRouterState({ select: (r) => r.location.pathname });
   if (!inbox) return null;
@@ -63,6 +77,28 @@ function AppSidebarNotifications() {
         unreadArrivalNonce={inbox.unreadArrivalNonce}
         currentAppId={currentApp?.id}
         onMarkReadWhere={(match) => void inbox.markReadWhere(match)}
+        popoverSide={inRail ? "right" : "bottom"}
+      />
+    </div>
+  );
+}
+
+/**
+ * The app's Settings as a header button. Beside the app rail the bell moved to
+ * the rail; Settings takes its place and leaves the primary button's menu.
+ * Nothing for an app without a settings panel.
+ */
+function AppSidebarSettingsButton({ appId }: { appId: WorkspaceAppId }) {
+  const item = useWorkspaceAppSettingsMenuItem(appId);
+  if (!item) return null;
+  return (
+    <div className="app-sidebar__notifications">
+      <IconButton
+        icon={item.icon}
+        label={typeof item.label === "string" ? item.label : "Settings"}
+        variant="outline"
+        size="md"
+        onClick={item.onClick}
       />
     </div>
   );
@@ -82,6 +118,10 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
+  const [railAccountSlot, setRailAccountSlot] = useState<HTMLElement | null>(null);
+  const [railNotificationsSlot, setRailNotificationsSlot] = useState<HTMLElement | null>(null);
+  // One live bell: at the top of the app rail where the rail shows, else in the header.
+  const bellInRail = useAppRailVisible() && !appSwitchDisabled && railNotificationsSlot != null;
   useEffect(() => bindOpenSidebarStatusBar(sidebarRef.current, open), [open]);
   // The footer floats over the list so rows scroll under the frosted account card.
   useEffect(
@@ -97,7 +137,15 @@ export function AppSidebar({
 
   return (
     <>
-      {appSwitchDisabled ? null : <AppRail />}
+      {bellInRail && railNotificationsSlot
+        ? createPortal(<AppSidebarNotifications inRail />, railNotificationsSlot)
+        : null}
+      {appSwitchDisabled ? null : (
+        <AppRail
+          accountSlotRef={setRailAccountSlot}
+          notificationsSlotRef={setRailNotificationsSlot}
+        />
+      )}
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
       <aside
         ref={sidebarRef}
@@ -109,14 +157,20 @@ export function AppSidebar({
           <div className="app-sidebar__header-main">
             <AppSwitchButton disabled={appSwitchDisabled} subtitle={appSwitchSubtitle} />
           </div>
-          <AppSidebarNotifications />
+          {bellInRail ? (
+            settingsAppId ? (
+              <AppSidebarSettingsButton appId={settingsAppId} />
+            ) : null
+          ) : (
+            <AppSidebarNotifications />
+          )}
         </header>
 
         <div className="app-sidebar__scroll">
           <div className="app-sidebar__scroll-surface" style={scrollSurfaceStyle}>
             {primaryButton != null ? (
               <div className="app-sidebar__primary-button">
-                <AppSidebarPrimaryProvider settingsAppId={settingsAppId}>
+                <AppSidebarPrimaryProvider settingsAppId={bellInRail ? undefined : settingsAppId}>
                   {primaryButton}
                 </AppSidebarPrimaryProvider>
               </div>
@@ -127,7 +181,9 @@ export function AppSidebar({
 
         {footer ? (
           <footer ref={footerRef} className="app-sidebar__footer">
-            {footer}
+            <AppRailAccountSlotContext.Provider value={railAccountSlot}>
+              {footer}
+            </AppRailAccountSlotContext.Provider>
           </footer>
         ) : null}
       </aside>
