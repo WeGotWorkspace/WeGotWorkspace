@@ -100,14 +100,6 @@ final class TaskAssigneesInteropTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('ORGANIZER', $stored);
     }
 
-    private function fixture(string $path): string
-    {
-        $ics = file_get_contents($path);
-        $this->assertIsString($ics);
-
-        return $ics;
-    }
-
     public function test_a_username_claim_that_contradicts_the_address_and_name_reads_as_the_named_account(): void
     {
         // A CalDAV client writes alice's account with carol's name and address.
@@ -125,6 +117,14 @@ final class TaskAssigneesInteropTest extends WgwDatabaseTestCase
         $this->assertSame(['u:alice'], array_keys($participants));
         $this->assertSame('Alice', $participants['u:alice']['name']);
         $this->assertSame('alice@example.test', $participants['u:alice']['email']);
+    }
+
+    private function fixture(string $path): string
+    {
+        $ics = file_get_contents($path);
+        $this->assertIsString($ics);
+
+        return $ics;
     }
 
     private function stored(string $objectUri): string
