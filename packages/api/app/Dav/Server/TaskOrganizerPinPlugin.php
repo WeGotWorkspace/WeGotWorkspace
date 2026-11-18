@@ -90,7 +90,7 @@ final class TaskOrganizerPinPlugin extends ServerPlugin
             $target = null;
             if (count($unmatched) === 1 && count($matchedKeys) === 0) {
                 $target = $unmatched[0];
-            } elseif (count($unmatched) >= 1 && array_filter(array_keys($matchedKeys), static fn ($k): bool => str_ends_with((string) $k, "\n")) === []) {
+            } elseif (array_filter(array_keys($matchedKeys), static fn ($k): bool => str_ends_with((string) $k, "\n")) === []) {
                 $plain = array_values(array_filter(
                     $unmatched,
                     static fn (Component $todo): bool => ! isset($todo->{'RECURRENCE-ID'}),
