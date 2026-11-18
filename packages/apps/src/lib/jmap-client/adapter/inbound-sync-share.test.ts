@@ -47,6 +47,20 @@ describe("inboundSyncShare", () => {
     expect(c.owns()).toBe(true);
   });
 
+  it("of two tabs that open together, the one that waits knows it follows the other", async () => {
+    const browser = new FakeSyncBrowser();
+    // Both join before the lock is granted, so both see it free.
+    const a = join(browser.tab("a"));
+    const b = join(browser.tab("b"));
+    await settleTabs();
+    expect(a.owns()).toBe(true);
+
+    a.leave();
+    await settleTabs();
+
+    expect(b.onOwn).toHaveBeenCalledWith(true);
+  });
+
   it("a hidden owner hands over to a visible tab", async () => {
     const browser = new FakeSyncBrowser();
     const tabA = browser.tab("a");

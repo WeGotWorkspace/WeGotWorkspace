@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
-import { JmapInboundAdapter, SHARED_ROUND_WAIT_MS } from "./JmapInboundAdapter";
+import { JmapInboundAdapter, MAX_REWOUND_ROUNDS, SHARED_ROUND_WAIT_MS } from "./JmapInboundAdapter";
 import { FakeSyncBrowser, type FakeSyncTab } from "./mock/fake-sync-tabs";
 
 /** The server's Note state; a remote change moves it on. */
@@ -246,6 +246,29 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     expect(a.adapter.cursor).toBe("n2");
     expect(b.adapter.cursor).toBe("n2");
     expect(b.adapter.repaints).toBe(1);
+  });
+
+  // A record that can never be written must not be pulled again without end.
+  it("a cache write that keeps failing stops rewinding after a few rounds", async () => {
+    const { a, b } = await twoTabs();
+    server.state = "n2";
+    for (let round = 0; round < MAX_REWOUND_ROUNDS; round += 1) {
+      a.adapter.nextWrite = Promise.reject(new Error("quota"));
+      expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
+      expect(a.adapter.cursor).toBe("n1");
+    }
+
+    a.adapter.nextWrite = Promise.reject(new Error("quota"));
+    expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(true);
+    await settle();
+
+    expect(a.adapter.cursor).toBe("n2");
+    expect(b.adapter.cursor).toBe("n2");
+    // The next failure starts a new count.
+    server.state = "n3";
+    a.adapter.nextWrite = Promise.reject(new Error("quota"));
+    expect(await a.adapter.syncIfStale({ Note: "n3" })).toBe(false);
+    expect(a.adapter.cursor).toBe("n2");
   });
 
   it("owner hidden while push is down: the visible tab takes over and its poll runs", async () => {

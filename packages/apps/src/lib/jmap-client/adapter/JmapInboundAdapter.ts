@@ -13,6 +13,14 @@ import { syncIfStale } from "./sync-if-stale.js";
 export const SHARED_ROUND_WAIT_MS = 5_000;
 
 /**
+ * How many rounds in a row may rewind the cursor after a failed cache write.
+ * A record that can never be written would otherwise be pulled again on every
+ * poll and every push, without end. After this many tries the cursor moves on,
+ * as it did before #2252, and the record is missing until it changes again.
+ */
+export const MAX_REWOUND_ROUNDS = 3;
+
+/**
  * What every inbound JMAP adapter shares: one `/changes` round (`sync`), the
  * push entry point (`syncIfStale`, #1661) and the fallback poll that skips
  * while the tab is hidden. A subclass pulls its own types in `pullChanges`
@@ -35,6 +43,8 @@ export abstract class JmapInboundAdapter {
   #sharedCursor = "";
   /** Cache writes that failed so far; a round that sees it grow rewinds its cursor. */
   #ingestFailures = 0;
+  /** Rounds in a row that rewound the cursor (see {@link MAX_REWOUND_ROUNDS}). */
+  #rewoundRounds = 0;
   /** Pushes this tab is behind on, waiting for the syncing tab's round. */
   #roundWaiters = new Set<(heard: boolean) => void>();
 
@@ -232,7 +242,8 @@ export abstract class JmapInboundAdapter {
   /**
    * Wait for the round's cache writes. When one failed, put the cursor back to
    * where the round started, so the next poll and push read the change again,
-   * share nothing, and report the round as failed.
+   * share nothing, and report the round as failed. After
+   * {@link MAX_REWOUND_ROUNDS} such rounds in a row the cursor moves on.
    */
   async #settleIngests(
     before: Record<string, string>,
@@ -240,10 +251,13 @@ export abstract class JmapInboundAdapter {
     forPush: boolean,
   ): Promise<boolean> {
     await Promise.allSettled([...this.#ingests]);
-    if (this.#ingestFailures === failures) {
+    const failed = this.#ingestFailures !== failures;
+    if (!failed || this.#rewoundRounds >= MAX_REWOUND_ROUNDS) {
+      this.#rewoundRounds = 0;
       this.#shareRound(forPush);
       return true;
     }
+    this.#rewoundRounds += 1;
     for (const [type, state] of Object.entries(before)) {
       this.jmapClient.setState(this.accountId, type, state);
     }

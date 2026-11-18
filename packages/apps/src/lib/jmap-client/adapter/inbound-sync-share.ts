@@ -88,11 +88,17 @@ export function inboundSyncShare(options: InboundSyncShareOptions): InboundSyncS
       let stopped = false;
       let owning = false;
       let leave: () => void = () => undefined;
-      /** Whether another tab held the sync lock when this one joined; unknown counts as yes. */
+      /**
+       * Whether another tab may have synced before this one gets the lock: the
+       * lock was held when this tab joined (unknown counts as yes), or another
+       * tab has spoken since. Two tabs that open together both see the lock
+       * free; the one that waits hears the other.
+       */
       let follows: Promise<boolean> = locks
         .query()
         .then((snapshot) => (snapshot.held ?? []).some((lock) => lock.name === name))
         .catch(() => true);
+      let heardOtherTab = false;
 
       const otherTabVisible = async (): Promise<boolean> => {
         const visible = await heldLockSuffixes(locks, visiblePrefix).catch(() => null);
@@ -112,7 +118,7 @@ export function inboundSyncShare(options: InboundSyncShareOptions): InboundSyncS
       const lead = (): (() => void) => {
         let held = true;
         void (async () => {
-          const tookOver = await follows;
+          const tookOver = (await follows) || heardOtherTab;
           if (!visibility.visible() && (await otherTabVisible())) {
             if (held) handOver();
             return;
@@ -155,6 +161,7 @@ export function inboundSyncShare(options: InboundSyncShareOptions): InboundSyncS
       const stopVisibility = visibility.subscribe(syncVisible);
       const stopTopic = topic.subscribe((message) => {
         if (message.name !== name || message.tabId === tabId) return;
+        heardOtherTab = true;
         if (message.kind === "round") handlers.onRound(message.states);
         else if (message.kind === "visible") void handOverIfHidden(true);
         else if (visibility.visible()) say("visible");
