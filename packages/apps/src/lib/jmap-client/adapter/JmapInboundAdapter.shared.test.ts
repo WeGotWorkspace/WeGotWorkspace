@@ -16,6 +16,8 @@ class TabAdapter extends JmapInboundAdapter {
   nextWrite: Promise<unknown> | undefined;
   /** True while the server has pruned its change log: a pull then fails. */
   changeLogExpired = false;
+  /** True: a pull stores the new state, then throws (a `Note/get` that fails after `Note/changes`). */
+  throwAfterStore = false;
   relists = 0;
   repaints = 0;
   protected readonly pushTypes = ["Note"];
@@ -37,6 +39,7 @@ class TabAdapter extends JmapInboundAdapter {
       throw new JmapMethodError("Note/changes", "c0", { type: "cannotCalculateChanges" });
     }
     this.#states.set("Note", server.state);
+    if (this.throwAfterStore) throw new Error("Note/get failed");
     if (this.nextWrite) this.ingesting(this.nextWrite);
     this.nextWrite = undefined;
   }
@@ -246,6 +249,23 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     expect(a.adapter.cursor).toBe("n2");
     expect(b.adapter.cursor).toBe("n2");
     expect(b.adapter.repaints).toBe(1);
+  });
+
+  it("a pull that throws after storing its state rewinds the cursor; the next sync pulls from it", async () => {
+    const { a, b } = await twoTabs();
+    server.state = "n2";
+    a.adapter.throwAfterStore = true;
+    expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
+    await settle();
+    expect(a.adapter.cursor).toBe("n1");
+    expect(b.adapter.cursor).toBe("n1");
+    expect(b.adapter.repaints).toBe(0);
+
+    a.adapter.throwAfterStore = false;
+    await a.adapter.sync();
+    await settle();
+    expect(a.adapter.pulledFrom).toEqual(["n1", "n1"]);
+    expect(a.adapter.cursor).toBe("n2");
   });
 
   // A record that can never be written must not be pulled again without end.

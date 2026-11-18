@@ -232,10 +232,31 @@ export abstract class JmapInboundAdapter {
     } catch (error) {
       if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
         const refetched = await this.#refetchAllReported();
-        return refetched && (await this.#settleIngests(before, failures, forPush));
+        if (!refetched) {
+          this.#rewind(before);
+          return false;
+        }
+        return await this.#settleIngests(before, failures, forPush);
       }
       this.reportSyncError(error);
+      this.#rewind(before);
       return false;
+    }
+  }
+
+  /**
+   * A round that threw may have stored a new state inside `/changes` before its
+   * cache write failed: put the cursor back so the change is read again. Counts
+   * toward {@link MAX_REWOUND_ROUNDS}, after which the cursor stays.
+   */
+  #rewind(before: Record<string, string>): void {
+    if (this.#rewoundRounds >= MAX_REWOUND_ROUNDS) {
+      this.#rewoundRounds = 0;
+      return;
+    }
+    this.#rewoundRounds += 1;
+    for (const [type, state] of Object.entries(before)) {
+      this.jmapClient.setState(this.accountId, type, state);
     }
   }
 
@@ -257,10 +278,7 @@ export abstract class JmapInboundAdapter {
       this.#shareRound(forPush);
       return true;
     }
-    this.#rewoundRounds += 1;
-    for (const [type, state] of Object.entries(before)) {
-      this.jmapClient.setState(this.accountId, type, state);
-    }
+    this.#rewind(before);
     return false;
   }
 
