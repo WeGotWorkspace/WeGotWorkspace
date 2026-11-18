@@ -4,54 +4,71 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
-use App\Models\Principal;
 use App\Services\Tasks\Conversion\TaskConversionSupport;
 
 /**
- * Maps task participant addresses to the people on this instance (#2172).
+ * Maps task participants to the people of the task's list (#2172).
  *
- * The converter reads an ATTENDEE without `X-WGW-USERNAME` as `e:<address>`.
- * When that address is a user's email, the participant is that user, so it
- * reads as `u:<username>`, just as an assignee the app wrote. Lookups are
- * batched per call and never cached across calls.
+ * Only the list audience counts: an address or username of anyone else on
+ * the instance is never looked up, so a task cannot be used to learn who has
+ * an account, or which address belongs to whom, across Teams.
+ *
+ * - An `e:` participant whose address is the email of someone in the audience
+ *   reads as that person's `u:` id.
+ * - A `u:` participant in the audience gets the name and address of that
+ *   person's profile, whatever the stored line says, so a CalDAV client cannot
+ *   show one person under another's name.
+ * - Every other participant reads as stored.
+ *
+ * The audience is looked up once per list for the lifetime of this object
+ * (one request); it is never cached across requests.
  */
 final class TaskParticipantDirectory
 {
+    /** @var array<int, array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>> */
+    private array $audiences = [];
+
+    public function __construct(private readonly TaskListAudience $audience) {}
+
     /**
-     * Re-keys `e:` participants whose address belongs to a user. Order is kept;
-     * when a user is already listed, the later entry is dropped (first line wins).
+     * Re-keys and fills participants from the audience of calendar `$calendarId`.
+     * Order is kept; when a person is listed twice, the later entry is dropped
+     * (first line wins).
      *
      * @param  array<string, mixed>  $task
      * @return array<string, mixed>
      */
-    public function resolveTask(array $task): array
+    public function resolveTask(array $task, int $calendarId): array
     {
         $participants = $task['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
             return $task;
         }
 
-        $usernames = $this->usernamesForEmails(array_values(array_filter(array_map(
-            static fn (mixed $id): ?string => self::emailFromId((string) $id),
-            array_keys($participants),
-        ))));
-        if ($usernames === []) {
-            return $task;
-        }
+        $members = $this->audienceForCalendar($calendarId);
+        $byEmail = self::membersByEmail($members);
 
         $resolved = [];
         foreach ($participants as $id => $entry) {
-            $email = self::emailFromId((string) $id);
-            $username = $email !== null ? ($usernames[$email] ?? null) : null;
-            if ($username === null || ! is_array($entry)) {
-                $resolved[(string) $id] ??= $entry;
+            $id = (string) $id;
+            if (! is_array($entry)) {
+                $resolved[$id] ??= $entry;
 
                 continue;
             }
-            $userId = TaskConversionSupport::USER_ID_PREFIX.$username;
+            $username = TaskConversionSupport::usernameFromParticipantId($id);
+            $email = self::emailFromId($id);
+            $member = $username !== null
+                ? ($members[$username] ?? null)
+                : ($email !== null ? ($byEmail[$email] ?? null) : null);
+            if ($member === null) {
+                $resolved[$id] ??= $entry;
+
+                continue;
+            }
+            $userId = TaskConversionSupport::USER_ID_PREFIX.$member['username'];
             if (! isset($resolved[$userId])) {
-                $entry['username'] = $username;
-                $resolved[$userId] = $entry;
+                $resolved[$userId] = self::withProfile($entry, $member);
             }
         }
         $task['participants'] = $resolved;
@@ -59,40 +76,58 @@ final class TaskParticipantDirectory
         return $task;
     }
 
-    /** The user whose email is `$email`, or null for an address no account has. */
-    public function usernameForEmail(string $email): ?string
+    /**
+     * The person in `$members` whose email is `$email`, or null.
+     *
+     * @param  array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
+     * @return array{username: string, displayName: string, email: string|null, access: 'read'|'write'}|null
+     */
+    public static function memberForEmail(array $members, string $email): ?array
     {
         $email = strtolower(trim($email));
 
-        return $email === '' ? null : ($this->usernamesForEmails([$email])[$email] ?? null);
+        return $email === '' ? null : (self::membersByEmail($members)[$email] ?? null);
     }
 
     /**
-     * @param  list<string>  $emails  lowercased addresses
-     * @return array<string, string> address => username
+     * @param  array<string, mixed>  $entry
+     * @param  array{username: string, displayName: string, email: string|null, access: 'read'|'write'}  $member
+     * @return array<string, mixed>
      */
-    private function usernamesForEmails(array $emails): array
+    private static function withProfile(array $entry, array $member): array
     {
-        $emails = array_values(array_unique(array_filter($emails, static fn (string $email): bool => $email !== '')));
-        if ($emails === []) {
-            return [];
+        $entry['name'] = $member['displayName'];
+        if ($member['email'] !== null) {
+            $entry['email'] = $member['email'];
+        }
+        $entry['username'] = $member['username'];
+
+        return $entry;
+    }
+
+    /**
+     * @return array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>
+     */
+    private function audienceForCalendar(int $calendarId): array
+    {
+        return $this->audiences[$calendarId] ??= $this->audience->forCalendarId($calendarId);
+    }
+
+    /**
+     * @param  array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members
+     * @return array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>
+     */
+    private static function membersByEmail(array $members): array
+    {
+        $byEmail = [];
+        foreach ($members as $member) {
+            $email = strtolower(trim((string) $member['email']));
+            if ($email !== '') {
+                $byEmail[$email] ??= $member;
+            }
         }
 
-        $placeholders = implode(',', array_fill(0, count($emails), '?'));
-        $rows = Principal::query()
-            ->whereRaw('lower(email) in ('.$placeholders.')', $emails)
-            ->where('uri', 'like', 'principals/%')
-            ->where('uri', 'not like', 'principals/%/%')
-            ->orderBy('id')
-            ->get(['uri', 'email']);
-
-        $usernames = [];
-        foreach ($rows as $row) {
-            $email = strtolower(trim((string) $row->email));
-            $usernames[$email] ??= strtolower(substr((string) $row->uri, strlen('principals/')));
-        }
-
-        return $usernames;
+        return $byEmail;
     }
 
     private static function emailFromId(string $id): ?string
