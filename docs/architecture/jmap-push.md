@@ -8,14 +8,14 @@ Design for telling open apps "data you can see changed, sync now", without WebSo
 
 Live editing of a Doc or Note body is instant (Yjs over the RTC mesh), and so is Meet chat for peers on the principal mesh (`meet-core/src/meet-mesh-sot.ts`). Everything else reaches other people only through each app's own poll, or not at all:
 
-| App | How it sees other people's changes today |
-|-----|------------------------------------------|
-| Notes | JMAP `/changes` every 10 s (`ONLINE_CHANGES_POLL_MS`, `notes-core/src/use-notes-api.ts`) |
-| Contacts | same, 10 s (`contacts-core/src/use-contacts-api.ts`) |
-| Calendar | background refresh every 10 s (`calendar-core/src/use-calendar-surface.ts`) |
-| Meet chat | live over the mesh; JMAP `/changes` every 4 s as the authoritative fallback (`meet-core/src/use-meet-chat-api.ts`) |
-| Drive / Docs home | `FileNode/changes` on app start and after a reconnect flush only. No timer. |
-| Tasks | reconnect flush and manual `refreshList` only. No online poll. |
+| App               | How it sees other people's changes today                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Notes             | JMAP `/changes` every 10 s (`ONLINE_CHANGES_POLL_MS`, `notes-core/src/use-notes-api.ts`)                           |
+| Contacts          | same, 10 s (`contacts-core/src/use-contacts-api.ts`)                                                               |
+| Calendar          | background refresh every 10 s (`calendar-core/src/use-calendar-surface.ts`)                                        |
+| Meet chat         | live over the mesh; JMAP `/changes` every 4 s as the authoritative fallback (`meet-core/src/use-meet-chat-api.ts`) |
+| Drive / Docs home | `FileNode/changes` on app start and after a reconnect flush only. No timer.                                        |
+| Tasks             | reconnect flush and manual `refreshList` only. No online poll.                                                     |
 
 All of these polls skip while `document.hidden`. A file a colleague drops in a shared folder does not show up until you reload Drive.
 
@@ -25,11 +25,11 @@ The suite runs on shared hosting with a small PHP-FPM pool ([realtime-capacity.m
 
 Every write already advances a counter that the per-user JMAP `state` strings are built from:
 
-| Data | Counter | Covers |
-|------|---------|--------|
-| Notes, calendar events, tasks, Meet chat, Docs threads (all VEVENT / VTODO / VJOURNAL in CalDAV) | Sabre `calendars.synctoken` + `calendarchanges` | every write path: DAV clients, REST, JMAP, MCP. `NoteMoveHelper` bumps it directly. |
-| Contacts | Sabre `addressbooks.synctoken` + `addressbookchanges` | same; `AddressBookShareInvites` also bumps on share |
-| Drive | `jmap_file_nodes.change_seq` (one global sequence, `FileNodeIndexService`) plus the hash of the user's member grants (`FileNodeSyncState`) | writes through the file-node index; a member grant added, revoked, hidden (Epic #1915) or changed in access |
+| Data                                                                                             | Counter                                                                                                                                    | Covers                                                                                                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Notes, calendar events, tasks, Meet chat, Docs threads (all VEVENT / VTODO / VJOURNAL in CalDAV) | Sabre `calendars.synctoken` + `calendarchanges`                                                                                            | every write path: DAV clients, REST, JMAP, MCP. `NoteMoveHelper` bumps it directly.                         |
+| Contacts                                                                                         | Sabre `addressbooks.synctoken` + `addressbookchanges`                                                                                      | same; `AddressBookShareInvites` also bumps on share                                                         |
+| Drive                                                                                            | `jmap_file_nodes.change_seq` (one global sequence, `FileNodeIndexService`) plus the hash of the user's member grants (`FileNodeSyncState`) | writes through the file-node index; a member grant added, revoked, hidden (Epic #1915) or changed in access |
 
 The account-wide `state` of a type is already a composite over the collections the user can access, for example `3:work:41,private:17,team:88` (`JmapAccountStateCodec`, and `computeInstancesState` in `NotebookRepository`, `CalendarRepository`, `TaskListRepository`, `AddressBookRepository`). It changes when an item changes, and also when a collection is shared with the user or removed, because the list of instances changes.
 
@@ -74,15 +74,15 @@ The id is a plain list of independent per-type hashes, never one hash over the w
 
 ### Types
 
-| Type | State source | Note |
-|------|--------------|------|
-| `Note`, `Notebook` | notebook instances + synctokens | existing JMAP types |
-| `CalendarEvent`, `Calendar` | calendar instances + synctokens | existing |
-| `ContactCard`, `AddressBook` | address book listings + synctokens | existing |
-| `ChatMessage`, `ChatChannel` | channel instances + synctokens | existing |
-| `FileNode` | a change marker per visible root, plus the user's member grants (below) | existing; grants since #1926 |
-| `Task`, `TaskList` | task list instances + synctokens (`TaskListRepository`) | no JMAP type today. Use the type names from the JMAP Tasks draft, so a later JMAP Tasks surface can keep them. |
-| `Notification` | a change marker per principal on `notifications` (below) | WGW type for active news; the client fetches the inbox |
+| Type                         | State source                                                            | Note                                                                                                           |
+| ---------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `Note`, `Notebook`           | notebook instances + synctokens                                         | existing JMAP types                                                                                            |
+| `CalendarEvent`, `Calendar`  | calendar instances + synctokens                                         | existing                                                                                                       |
+| `ContactCard`, `AddressBook` | address book listings + synctokens                                      | existing                                                                                                       |
+| `ChatMessage`, `ChatChannel` | channel instances + synctokens                                          | existing                                                                                                       |
+| `FileNode`                   | a change marker per visible root, plus the user's member grants (below) | existing; grants since #1926                                                                                   |
+| `Task`, `TaskList`           | task list instances + synctokens (`TaskListRepository`)                 | no JMAP type today. Use the type names from the JMAP Tasks draft, so a later JMAP Tasks surface can keep them. |
+| `Notification`               | a change marker per principal on `notifications` (below)                | WGW type for active news; the client fetches the inbox                                                         |
 
 Every state read is O(collections or roots the user can see), never O(changes on the server).
 
@@ -117,10 +117,10 @@ A `429` carries `Retry-After`. The client waits that long and treats push as dow
 Each request boots Laravel and runs a handful of small indexed reads (one per state source, one for the Drive markers). No writes. Measured locally with PHP-FPM and 5 children ([realtime-capacity.md](../realtime-capacity.md#3-s-or-5-s-by-mesh-state-1943), #1943):
 
 | Browsers open | 3 s: requests per minute | busy children (average) | 5 s (mesh linked): requests per minute | busy children (average) |
-|---------------|--------------------------|-------------------------|----------------------------------------|-------------------------|
-| 5 | 96 | 0.11 | 57 | 0.12 |
-| 16 | 302 | 0.51 | 180 | 0.32 |
-| 32 | 605 | 0.73 | 363 | 0.32 |
+| ------------- | ------------------------ | ----------------------- | -------------------------------------- | ----------------------- |
+| 5             | 96                       | 0.11                    | 57                                     | 0.12                    |
+| 16            | 302                      | 0.51                    | 180                                    | 0.32                    |
+| 32            | 605                      | 0.73                    | 363                                    | 0.32                    |
 
 The median push request took 41–48 ms. These are laptop numbers with a near-empty data set; a shared host with MySQL is still to measure. `tools/load/rtc-shared-hosting.k6.js` has the push scenario, with the client interval, several accounts and an FPM busy-children sampler. `WGW_JMAP_PUSH_RETRY_MS` is the lever on slow hosts. Once push works, the per-app polls (10 s, chat 4 s, inbox 15 s) can slow down. Their requests are heavier than a push check, so the total can end up lower than today. That is a separate decision after measuring.
 
@@ -195,22 +195,28 @@ Only tabs with a subscriber take part, so an app that does not use push costs no
 ### Apps
 
 ```ts
-useJmapStateChange(["Note", "Notebook"], (states) => notesAdapter.syncIfStale(states));
+useJmapStateChange(["Note", "Notebook"], (states) =>
+  notesAdapter.syncIfStale(states),
+);
 ```
 
 Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows its current state. A new `syncIfStale` calls `sync()` only when a pushed state differs from the adapter's own, and reports success or failure to the hub: the listener resolves `false` when the sync failed. A type the adapter has no state for yet is not confirmed. Pushes that arrive while a listener runs collapse into one next call with the newest states. That `sync()` uses `/changes`, which returns only what changed, so there is no per-collection hint and no new sync path.
 
 **Collab rooms lead.** While a note or doc has an active collab room in this browser, the Yjs layer already has its content. The app then does not refetch that item's body on a push; it only applies metadata (title, tags, notebook, archive state). Without this rule every collaborator would fetch the doc they are typing in every few seconds.
 
-| App | Types | Calls |
-|-----|-------|-------|
-| Notes | `Note`, `Notebook` | `JmapNotesAdapter.sync()` (built, `use-notes-live-inbound.ts`); the open note comes without `body` (`note-body-rooms.ts`) |
-| Contacts | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()` |
-| Calendar | `CalendarEvent`, `Calendar` | `JmapEventsAdapter.syncIfStale()` (built, `use-calendar-live-inbound.ts`); the 10 s event poll runs every 60 s while push is connected |
-| Meet chat | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh. |
-| Notification inbox | `Notification` | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); in-app toast in the front tab (built, `use-notification-toasts.ts`; [notifications.md](notifications.md#active-news-on-the-client)) |
-| Drive, Docs home | `FileNode` | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
-| Tasks | `Task`, `TaskList` | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`) |
+| App                | Types                        | Calls                                                                                                                                                                                                                                                                                                          |
+| ------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notes              | `Note`, `Notebook`           | `JmapNotesAdapter.sync()` (built, `use-notes-live-inbound.ts`); the open note comes without `body` (`note-body-rooms.ts`)                                                                                                                                                                                      |
+| Contacts           | `ContactCard`, `AddressBook` | `JmapContactsAdapter.sync()`                                                                                                                                                                                                                                                                                   |
+| Calendar           | `CalendarEvent`, `Calendar`  | `JmapEventsAdapter.syncIfStale()` (built, `use-calendar-live-inbound.ts`); the 10 s event poll runs every 60 s while push is connected                                                                                                                                                                         |
+| Meet chat          | `ChatMessage`, `ChatChannel` | `JmapChatAdapter.sync()`. Chat is already live over the mesh, and that preview stays ([notifications.md](notifications.md#rule-9-when-a-transport-may-carry-content)). Push replaces the 4 s fallback poll, the heaviest poll in the suite, and covers peers without a mesh.                                   |
+| Notification inbox | `Notification`               | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); in-app toast in the front tab (built, `use-notification-toasts.ts`; [notifications.md](notifications.md#active-news-on-the-client))                                                                    |
+| Drive, Docs home   | `FileNode`                   | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
+| Tasks              | `Task`, `TaskList`           | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`)                                                                                                                                                         |
+
+**One syncing tab per app.** Notes, Contacts, Calendar and Meet chat share one inbound sync per browser, app and account (#2252, `JmapInboundAdapter.shareAcrossTabs`, `inbound-sync-share.ts`). The tab that holds the Web Lock `wgw-inbound-sync/<app>/<account>` runs the push rounds and the fallback poll; the other tabs skip both and re-read the shared cache when the syncing tab says a round is done. A tab that is behind on a push confirms it when that message arrives; if none comes within 5 s (`SHARED_ROUND_WAIT_MS`: the syncing tab loaded after the change, so it had nothing to pull), it pulls for itself. That lock follows the stream's rule above: every such tab holds a second lock while it is visible, and a hidden holder gives the sync lock back and queues again while another tab with that app is visible (it checks when it becomes hidden, when it gets the lock, and when a tab says it is visible). A hidden tab does not run its poll, so with push down the updates still arrive in the visible tab. An explicit `sync()` (the user acted in that tab) always runs.
+
+The sync cursor stays in memory. After a round, once its cache writes have finished, the syncing tab sends its cursor with the "round done" message and the other tabs store it. A tab's cursor is therefore never ahead of the cache. The tab that takes over runs one round at once: from the last shared cursor, or, when the previous tab closed before its writes landed or one of its writes failed, from an older cursor of its own, which reads a few changes twice and skips none. Without Web Locks or BroadcastChannel every tab syncs for itself, as before. Tasks and Drive have their own sync and are not part of this.
 
 The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. Most go from 10 s to 60 s. Meet chat (`use-meet-chat-live-inbound.ts`) goes from 4 s to 30 s: an idle chat round is two `/changes` requests, so 4 s costs 30 requests a minute per open tab, and 30 s costs 4. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`. Work that one tab should do per push, such as fetching the inbox once and sharing it, checks `hub.leading`: the tab that holds the stream is visible whenever any subscribed tab is.
 
@@ -228,10 +234,10 @@ After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` ove
 
 With a working mesh, colleagues' writes arrive through `check-now`, so the regular reconnect is only the safety net for what the mesh does not carry: external DAV edits, peers without a mesh, your own other devices (they send no `check-now`), and what `check-now` leaves to push on purpose (a sharee who writes, group grants, silent Drive changes). So the visible interval depends on the mesh (#1943):
 
-| This browser's presence mesh | Visible reconnect interval |
-|---|---|
-| An open data channel to another user's peer, held for 30 s | `retry` × 5/3: 5 s at the default 3 s |
-| None (WebRTC blocked, room full, no peers linked yet), or a link younger than 30 s | `retry`: 3 s |
+| This browser's presence mesh                                                       | Visible reconnect interval            |
+| ---------------------------------------------------------------------------------- | ------------------------------------- |
+| An open data channel to another user's peer, held for 30 s                         | `retry` × 5/3: 5 s at the default 3 s |
+| None (WebRTC blocked, room full, no peers linked yet), or a link younger than 30 s | `retry`: 3 s                          |
 
 - The server stays the source of the base: the client scales whatever `retry` it sends, so `WGW_JMAP_PUSH_RETRY_MS` still slows every browser on a slow host.
 - "Linked" comes from the presence store (`PresenceStore.meshLinked`). The tab that dials the mesh relays its open peer ids with the roster, so a follower tab that holds the push stream knows it too. The port is `meshLinked` / `subscribeMeshLinked` in `lib/jmap-client/push/mesh-check-now.ts`; the choice is `MeshRetryInterval` (`mesh-retry-interval.ts`).

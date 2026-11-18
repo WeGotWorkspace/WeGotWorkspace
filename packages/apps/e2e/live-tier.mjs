@@ -55,6 +55,7 @@ export const liveTierSpecs = [
   "drive-upload-folder",
   "drive-upload-queue",
   "drive-upload-recovery",
+  "inbound-sync-one-tab",
   "meet-adhoc-two-users",
   "meet-audio-only-camera",
   "meet-chat-push",

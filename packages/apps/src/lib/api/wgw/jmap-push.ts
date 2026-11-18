@@ -59,7 +59,7 @@ export async function resolveEventSourcePath(origin: string): Promise<string | n
     : null;
 }
 
-function documentVisibility() {
+export function documentVisibility() {
   return {
     visible: () => document.visibilityState === "visible",
     subscribe: (listener: () => void) => {
@@ -88,7 +88,7 @@ function windowFocus() {
   };
 }
 
-function randomTabId(): string {
+export function randomTabId(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
