@@ -53,6 +53,7 @@ final class JmapSlowRequestLogTest extends WgwDatabaseTestCase
         $context = $this->slowRequest();
         $this->assertSame('api/v1/jmap', $context['route']);
         $this->assertSame(200, $context['status']);
+        $this->assertLessThan(60_000, $context['ms'], 'timed from the request start, not the PHP process start');
         $this->assertGreaterThan(0, $context['db_queries'], 'the bearer check reads the database');
         foreach (['ms', 'db_ms', 'db_commit_ms', 'storage_ms', 'storage_ops', 'other_ms'] as $key) {
             $this->assertIsInt($context[$key], $key);

@@ -38,6 +38,15 @@ final class RequestTimings
         $this->startedAt = $startedAt ?? self::requestStart();
     }
 
+    /**
+     * The request's own start (REQUEST_TIME_FLOAT of the request). PHP's
+     * process start is only right for PHP-FPM, where they are the same.
+     */
+    public function startedAt(float $startedAt): void
+    {
+        $this->startedAt = $startedAt;
+    }
+
     public function addQuery(float $milliseconds): void
     {
         $this->dbQueries++;

@@ -24,6 +24,11 @@ final class LogSlowRequest
 
     public function handle(Request $request, Closure $next): Response
     {
+        $start = $request->server('REQUEST_TIME_FLOAT');
+        if (is_numeric($start)) {
+            $this->timings->startedAt((float) $start);
+        }
+
         return $next($request);
     }
 
