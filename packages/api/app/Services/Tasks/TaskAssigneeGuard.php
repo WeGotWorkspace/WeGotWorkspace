@@ -109,7 +109,6 @@ final class TaskAssigneeGuard
      * (and, for a user, the stored name) replaces what the payload sent.
      *
      * @param  array<string, mixed>  $entry
-     * @param  mixed  $stored
      * @return array<string, mixed>
      */
     private function pinToStored(array $entry, mixed $stored, string $id): array
