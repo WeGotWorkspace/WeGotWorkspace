@@ -27,12 +27,12 @@ final class CalendarSetMethod implements JmapMethodInterface
         private readonly CalendarEventRepository $events,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Calendar/set';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CALENDARS;
     }

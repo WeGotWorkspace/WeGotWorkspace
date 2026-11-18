@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Dav\Server\WgwCalendarBackendFactory;
+use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
@@ -145,45 +146,55 @@ final class UserCalendarCollectionsProvisioner
 
     public function ensureForGroupPrincipal(string $groupPrincipalUri, string $displayName): bool
     {
-        if (! str_starts_with($groupPrincipalUri, AdminConstants::GROUP_PREFIX)) {
-            return false;
+        return $this->ensureForGroupPrincipals([$groupPrincipalUri => $displayName]) !== [];
+    }
+
+    /**
+     * {@see ensureForGroupPrincipal()} for several Teams, with one read of the collections they
+     * already have: the JMAP push check asks this for every Team of the user on each request (#2243).
+     *
+     * @param  array<string, string>  $displayNameByGroupUri  Team principal uri => display name
+     * @return list<string> the Team principal uris that got a collection
+     */
+    public function ensureForGroupPrincipals(array $displayNameByGroupUri): array
+    {
+        $slugByUri = [];
+        foreach ($displayNameByGroupUri as $groupPrincipalUri => $displayName) {
+            $groupPrincipalUri = (string) $groupPrincipalUri;
+            if (! str_starts_with($groupPrincipalUri, AdminConstants::GROUP_PREFIX)) {
+                continue;
+            }
+            $slug = substr($groupPrincipalUri, strlen(AdminConstants::GROUP_PREFIX));
+            if ($slug !== '') {
+                $slugByUri[$groupPrincipalUri] = $slug;
+            }
+        }
+        if ($slugByUri === []) {
+            return [];
         }
 
-        $slug = substr($groupPrincipalUri, strlen(AdminConstants::GROUP_PREFIX));
-        if ($slug === '') {
-            return false;
+        $existingByPrincipal = $this->calendarUrisForPrincipals(array_keys($slugByUri));
+        $provisioned = [];
+        foreach ($slugByUri as $groupPrincipalUri => $slug) {
+            $existingUris = $existingByPrincipal[strtolower($groupPrincipalUri)] ?? [];
+            $displayName = (string) $displayNameByGroupUri[$groupPrincipalUri];
+            $name = trim($displayName) !== '' ? trim($displayName) : $slug;
+            $created = false;
+            foreach ([
+                [CollectionKind::EventCalendar, $slug, ['VEVENT']],
+                [CollectionKind::TaskList, CalendarCollectionUris::groupTaskListCalDavUri($slug), ['VTODO']],
+                [CollectionKind::Notebook, CalendarCollectionUris::groupNotebookCalDavUri($slug), ['VJOURNAL']],
+            ] as [$kind, $uri, $components]) {
+                if ($this->ensureCalendar($kind, $groupPrincipalUri, $uri, $name, $components, $existingUris)) {
+                    $created = true;
+                }
+            }
+            if ($created) {
+                $provisioned[] = $groupPrincipalUri;
+            }
         }
 
-        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
-        $existingUris = $this->calendarUrisForPrincipal($caldav, $groupPrincipalUri);
-        $name = trim($displayName) !== '' ? trim($displayName) : $slug;
-
-        $created = false;
-        if ($this->ensureCalendar(CollectionKind::EventCalendar, $groupPrincipalUri, $slug, $name, ['VEVENT'], $existingUris)) {
-            $created = true;
-        }
-        if ($this->ensureCalendar(
-            CollectionKind::TaskList,
-            $groupPrincipalUri,
-            CalendarCollectionUris::groupTaskListCalDavUri($slug),
-            $name,
-            ['VTODO'],
-            $existingUris,
-        )) {
-            $created = true;
-        }
-        if ($this->ensureCalendar(
-            CollectionKind::Notebook,
-            $groupPrincipalUri,
-            CalendarCollectionUris::groupNotebookCalDavUri($slug),
-            $name,
-            ['VJOURNAL'],
-            $existingUris,
-        )) {
-            $created = true;
-        }
-
-        return $created;
+        return $provisioned;
     }
 
     /**
@@ -222,6 +233,29 @@ final class UserCalendarCollectionsProvisioner
             $uri = (string) ($calendar['uri'] ?? '');
             if ($uri !== '') {
                 $map[$uri] = true;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * The collection uris each principal holds, the same rows Sabre's getCalendarsForUser()
+     * lists, in one query for all of them.
+     *
+     * @param  list<string>  $principalUris
+     * @return array<string, array<string, true>> keyed by the lower-cased principal uri
+     */
+    private function calendarUrisForPrincipals(array $principalUris): array
+    {
+        $map = [];
+        foreach (CalendarInstance::query()
+            ->whereIn('principaluri', $principalUris)
+            ->get(['principaluri', 'uri']) as $instance) {
+            $uri = (string) $instance->uri;
+            if ($uri !== '') {
+                // Keyed in lower case: MySQL compares principal uris without case, as getCalendarsForUser() did.
+                $map[strtolower((string) $instance->principaluri)][$uri] = true;
             }
         }
 

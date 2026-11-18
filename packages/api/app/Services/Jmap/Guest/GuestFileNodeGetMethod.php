@@ -18,12 +18,12 @@ final class GuestFileNodeGetMethod implements JmapMethodInterface
 {
     public function __construct(private readonly FileNodeGetMethod $get) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'FileNode/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::FILENODE;
     }

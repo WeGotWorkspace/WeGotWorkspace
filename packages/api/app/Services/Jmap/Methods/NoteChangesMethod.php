@@ -24,12 +24,12 @@ final class NoteChangesMethod implements JmapMethodInterface
         private readonly JmapNoteStateService $states,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Note/changes';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::NOTES;
     }

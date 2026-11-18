@@ -36,12 +36,12 @@ final class ContactCardQueryMethod implements JmapMethodInterface
         private readonly ContactCardKindFilter $kinds,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ContactCard/query';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CONTACTS;
     }
