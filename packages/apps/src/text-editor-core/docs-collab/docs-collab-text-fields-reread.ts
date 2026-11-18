@@ -1,9 +1,9 @@
 import * as Y from "yjs";
+import { adoptServerSnapshot } from "@/lib/collab/docs-collab-bootstrap";
 import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import { isReadableYjsUpdate } from "./docs-collab-external-write";
 import { isSameSave } from "./docs-collab-snapshot-check";
 import {
-  EXTERNAL_REPLACE_ORIGIN,
   isTextFieldsEmpty,
   normalizeLineEnds,
   readTextFields,
@@ -14,6 +14,7 @@ import {
   textFieldsMetaToken,
   vectorOfUpdate,
   writeTextFieldsBaseIfUnchanged,
+  type TextFieldsBase,
   type TextFieldsText,
 } from "./docs-collab-text-fields";
 
@@ -48,6 +49,18 @@ function storedStateText(update: Uint8Array): TextFieldsText | null {
   }
 }
 
+function servedMatchesBase(
+  base: TextFieldsBase,
+  text: TextFieldsText,
+  contentTag: string | null,
+): boolean {
+  if (base.contentTag && contentTag && base.contentTag !== contentTag) return false;
+  return (
+    normalizeLineEnds(base.title) === normalizeLineEnds(text.title) &&
+    normalizeLineEnds(base.description) === normalizeLineEnds(text.description)
+  );
+}
+
 /**
  * The text-fields re-read (spec.md, The re-read): the first matching case
  * runs, the others do not. Pending local work is the caller's: this client's
@@ -56,7 +69,10 @@ function storedStateText(update: Uint8Array): TextFieldsText | null {
 export function rereadTextFields(
   doc: Y.Doc,
   read: TextFieldsServerRead,
-  { pendingLocalWork }: { pendingLocalWork: boolean },
+  {
+    pendingLocalWork,
+    loadedStateVector,
+  }: { pendingLocalWork: boolean; loadedStateVector?: ReadonlyMap<number, number> },
 ): TextFieldsRereadResult {
   const { storedState, text, contentTag, objectEtag } = read;
   const stored = storedState && storedState.byteLength > 0 ? storedState : null;
@@ -68,13 +84,18 @@ export function rereadTextFields(
     storedText !== null &&
     isSameSave(read.stateContentTag, contentTag) &&
     !sameTextFields(storedText, text);
-  const outside = read.externalWrite || !stored || !storedText || otherText;
+  // With no stored state (204), the served text is an outside write only when
+  // it differs from what this document last took from the server.
+  const base = readTextFieldsBase(doc);
+  const noStateOutside = !stored && !!base && !servedMatchesBase(base, text, contentTag);
+  const outside =
+    read.externalWrite || (stored ? !storedText || otherText : !base || noStateOutside);
 
   if (!outside && stored) {
     // Case 1: adopt. The snapshot carries `base` and `seed` when this code wrote it.
-    Y.applyUpdate(doc, stored, SERVER_ORIGIN);
-    const base = readTextFieldsBase(doc);
-    if (!base) {
+    // Drops a seed built offline from an older text, keeps typing on top of it.
+    adoptServerSnapshot(doc, stored, SERVER_ORIGIN, loadedStateVector, { keepUnsavedEdits: true });
+    if (!readTextFieldsBase(doc)) {
       writeTextFieldsBaseIfUnchanged(doc, textFieldsMetaToken(doc), {
         contentTag,
         ...readTextFields(doc),
@@ -91,7 +112,6 @@ export function rereadTextFields(
 
   if (sameTextFields(readTextFields(doc), text)) {
     // Case 2: only a stale content tag moves on.
-    const base = readTextFieldsBase(doc);
     if (base && base.contentTag !== contentTag) {
       writeTextFieldsBaseIfUnchanged(doc, textFieldsMetaToken(doc), {
         ...base,
@@ -103,6 +123,10 @@ export function rereadTextFields(
     return "unchanged";
   }
 
+  // No stored state and the served text is still what this document took:
+  // the local work stands and saves.
+  if (pendingLocalWork && !stored && base && !noStateOutside) return "unchanged";
+
   if (pendingLocalWork) return "prompt";
 
   // Case 3: replace quietly, publish with the replace origin, send nothing.
@@ -113,5 +137,3 @@ export function rereadTextFields(
   });
   return "replaced";
 }
-
-export { EXTERNAL_REPLACE_ORIGIN };

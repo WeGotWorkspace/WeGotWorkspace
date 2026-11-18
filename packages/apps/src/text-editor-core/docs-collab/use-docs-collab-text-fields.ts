@@ -16,6 +16,7 @@ import {
   seedTextFields,
 } from "./docs-collab-text-fields";
 import { rereadTextFields, type TextFieldsRereadResult } from "./docs-collab-text-fields-reread";
+import { hasPendingLocalWork } from "./use-docs-collab-session-refs";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 
 export type TextFieldsBootstrapSettlement = {
@@ -94,8 +95,7 @@ export function useDocsCollabTextFields({
           objectEtag: text.objectEtag ?? "",
         },
         {
-          pendingLocalWork:
-            refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current,
+          pendingLocalWork: hasPendingLocalWork(refs),
         },
       );
       refs.externalWriteHoldRef.current = result === "prompt";

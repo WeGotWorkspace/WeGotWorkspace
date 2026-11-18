@@ -125,6 +125,40 @@ describe("text-fields re-read, case 1: adopt", () => {
   });
 });
 
+describe("text-fields re-read, offline edits", () => {
+  it("drops a stale offline seed when a stored state is adopted, keeping typing on top", () => {
+    const server = seeded({ title: "Buy milk", description: "" });
+    server.getText(TEXT_FIELDS_TITLE).insert(8, " and eggs");
+    const doc = new Y.Doc();
+    seedTextFields(doc, { title: "Buy milk and eggs", description: "" }, '"x"');
+    observeTextFieldsSeeds(doc);
+    const text = { title: "Buy milk and eggs", description: "" };
+
+    expect(rereadTextFields(doc, read(text, "e2", { storedState: stateOf(server) }), quiet)).toBe(
+      "adopted",
+    );
+    expect(readTextFields(doc).title).toBe("Buy milk and eggs");
+  });
+
+  it("keeps an offline edit when there is no stored state and the text is what it took", () => {
+    const doc = seeded();
+    doc.getText(TEXT_FIELDS_BODY).insert(8, " typed offline");
+    const base = readTextFieldsBase(doc);
+    const served = read(MILK, "e1");
+    served.contentTag = base?.contentTag ?? null;
+
+    expect(rereadTextFields(doc, served, { pendingLocalWork: true })).toBe("unchanged");
+    expect(readTextFields(doc).description).toBe("Buy milk typed offline");
+  });
+
+  it("asks when there is no stored state and the served text moved", () => {
+    const doc = seeded();
+    doc.getText(TEXT_FIELDS_BODY).insert(8, " typed offline");
+
+    expect(rereadTextFields(doc, read(OAT, "e2"), { pendingLocalWork: true })).toBe("prompt");
+  });
+});
+
 describe("text-fields re-read, case 2: the document already holds the text", () => {
   it("writes nothing when base already names the server tag, and is not also an adopt", () => {
     const doc = seeded();

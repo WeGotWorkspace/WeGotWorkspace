@@ -23,6 +23,8 @@ export type CollabSaveBody = {
   afterMerge: () => string;
   /** The tag a save with no stored state names: the text it started from. */
   seenFallback: () => string | null;
+  /** A text-fields body: its save signature is taken when the request starts. */
+  textFields: boolean;
   /** Typing landed while the save was on its way. */
   editedSince: (saved: string, latest: (() => string) | null) => boolean;
   /** Called before the request; records `base` once the save lands. */
@@ -44,13 +46,16 @@ export function collabSaveBody(
   const current = () =>
     textFields ? readTextFields(ydoc).description : markdownForSave(ydoc, getMd ? getMd() : "");
   const markdown = override ?? current();
+  // The title the request carries; typing in it while the save is on its way is not in the body.
+  const sentTitle = textFields ? readTextFields(ydoc).title : "";
   return {
+    textFields,
     markdown,
     current,
     afterMerge: () => (getMd || textFields ? current() : markdown),
     seenFallback: () => (textFields ? (readTextFieldsBase(ydoc)?.contentTag ?? null) : null),
     editedSince: (saved, latest) => {
-      if (textFields) return current() !== saved;
+      if (textFields) return current() !== saved || readTextFields(ydoc).title !== sentTitle;
       return latest ? markdownForSave(ydoc, latest()) !== saved : false;
     },
     startSave: () => (textFields ? textFieldsSaveBase(ydoc) : null),

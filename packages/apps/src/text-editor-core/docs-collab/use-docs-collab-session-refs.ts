@@ -2,6 +2,11 @@ import { useEffect, useRef } from "react";
 import type { DocsCollabSession, DocsCollabSessionRefs } from "./docs-collab-types";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 
+/** This client's own edits since its last landed save. */
+export function hasPendingLocalWork(refs: DocsCollabSessionRefs): boolean {
+  return refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
+}
+
 export function useDocsCollabSessionRefs(
   wire: DocsCollabWireOperations,
   seedContent: string | undefined,
