@@ -144,16 +144,23 @@ export function TasksAssigneesField({
             assignees.length === 0 && "tasks-assignees-field--empty",
             noAccess && "tasks-assignee--no-access",
           )}
-          // It starts with the visible value (WCAG 2.5.3), then every name for several people.
-          aria-label={`${L.assigneeLabel}: ${label}${
-            assignees.length > 1
-              ? ` (${assignees.map((assignee) => assignee.name).join(", ")})`
-              : ""
-          }${noAccess ? `, ${L.assigneeNoAccess}` : ""}`}
           title={noAccess ? L.assigneeNoAccess : undefined}
           disabled={disabled}
           leading={leading}
-          label={label}
+          // The name comes from the content (WCAG 2.5.3): the field name and, for
+          // several people or a lost access, the rest only for screen readers.
+          label={
+            <>
+              <span className="sr-only">{`${L.assigneeLabel}: `}</span>
+              {label}
+              {assignees.length > 1 ? (
+                <span className="sr-only">
+                  {` (${assignees.map((assignee) => assignee.name).join(", ")})`}
+                </span>
+              ) : null}
+              {noAccess ? <span className="sr-only">{`, ${L.assigneeNoAccess}`}</span> : null}
+            </>
+          }
         />
       </PopoverTrigger>
       <PopoverContent

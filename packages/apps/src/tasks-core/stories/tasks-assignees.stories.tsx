@@ -136,7 +136,7 @@ export const NoAccessAssignee: Story = {
     const page = within(document.body);
     await waitFor(() =>
       expect(trigger(canvasElement)).toHaveAccessibleName(
-        `${L.assigneeLabel}: Casey Brooks, ${L.assigneeNoAccess}`,
+        new RegExp(`^${L.assigneeLabel}: Casey Brooks ?, ${L.assigneeNoAccess}$`),
       ),
     );
     await userEvent.click(trigger(canvasElement));
