@@ -6,9 +6,9 @@ import { continuesChatRun } from "@/chat-ui/src/chat-message-group";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/ui/badge";
-import { useAuthorPresence } from "@/presence-core/src/use-author-presence";
 import { threadUiLabels } from "@/thread-ui/src/thread-labels";
 import { formatThreadTime } from "@/thread-ui/src/thread-time";
+import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
 import type { ThreadClient, ThreadSubjectAdapter } from "@/lib/models/thread-types";
 import { useThread, type ThreadViewEntry } from "@/thread-ui/src/use-thread";
 import { threadEntryToChatMessage } from "@/thread-ui/src/thread-entry";
@@ -17,6 +17,8 @@ import "@/thread-ui/src/thread-panel.css";
 export type ThreadPanelProps = {
   client: ThreadClient;
   adapter: ThreadSubjectAdapter;
+  /** Username → online/away for the avatar dots; the app reads it from the suite presence. */
+  presence?: ChatAuthorPresenceMap;
   className?: string;
 };
 
@@ -26,7 +28,7 @@ export type ThreadPanelProps = {
  * about the subject; the adapter says who may post and who can be mentioned.
  * Comments only for now: activity entries are not shown (2026-11-18).
  */
-export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
+export function ThreadPanel({ client, adapter, presence, className }: ThreadPanelProps) {
   const thread = useThread(client, adapter);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -35,8 +37,6 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
     null,
   );
   const me = adapter.me.id;
-  // The same status dot as Chat: online / away from the suite presence roster.
-  const presence = useAuthorPresence();
   // Enter sends, as in Chat; Shift+Enter starts a new line.
   const shortcut = "↵";
   const principals = useMemo(

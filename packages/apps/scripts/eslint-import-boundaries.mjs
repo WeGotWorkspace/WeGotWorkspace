@@ -43,10 +43,11 @@ export const CORE_ALLOWLIST = Object.freeze([
     reason:
       "text-editor-core is the shared rich-text editor and collaboration layer (docs-collab) that apps embed.",
   })),
-  ...["meet-core", "notifications-core"].map((from) => ({
+  ...["meet-core", "notifications-core", "tasks-core"].map((from) => ({
     from,
     to: "presence-core",
-    reason: "presence-core is the shared presence service that calls and the inbox build on.",
+    reason:
+      "presence-core is the shared presence service that calls, the inbox and the status dots on comment avatars build on.",
   })),
 ]);
 

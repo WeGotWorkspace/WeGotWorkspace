@@ -1,5 +1,6 @@
 import type { Task } from "@/lib/models/tasks-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import { useAuthorPresence } from "@/presence-core/src/use-author-presence";
 import { ThreadPanel } from "@/thread-ui/src/thread-panel";
 import { useTaskThread } from "@/tasks-core/src/tasks-thread-adapter";
 
@@ -14,5 +15,14 @@ export function TasksThreadSection({
   session: WorkspaceSession;
 }) {
   const { client, adapter } = useTaskThread(task, canPost, session);
-  return <ThreadPanel className="tasks-detail-view__thread" client={client} adapter={adapter} />;
+  // The same status dot as Chat: online / away from the suite presence roster.
+  const presence = useAuthorPresence();
+  return (
+    <ThreadPanel
+      className="tasks-detail-view__thread"
+      client={client}
+      adapter={adapter}
+      presence={presence}
+    />
+  );
 }
