@@ -64,16 +64,6 @@ describe("useTaskDetailLiveText", () => {
     rerender();
     expect(parkTask).not.toHaveBeenCalled();
   });
-});
-
-describe("taskTextHold", () => {
-  const L = defaultTasksLabels;
-  it("holds a blank title and a field over its limit", () => {
-    expect(taskTextHold({ title: " ", description: "" }, L)).toBe(L.liveTextTitleRequired);
-    expect(taskTextHold({ title: "x".repeat(4097), description: "" }, L)).toBe(L.liveTextTooLong);
-    expect(taskTextHold({ title: "x", description: "y".repeat(8193) }, L)).toBe(L.liveTextTooLong);
-    expect(taskTextHold({ title: "x".repeat(4096), description: "y".repeat(8192) }, L)).toBeNull();
-  });
 
   it("gives the header the open task's room only, and clears it when the room is left", () => {
     const { result } = renderLive();
@@ -92,5 +82,15 @@ describe("taskTextHold", () => {
 
     act(() => result.current.onPresence("other.ics", source));
     expect(result.current.textPresence).toBeNull();
+  });
+});
+
+describe("taskTextHold", () => {
+  const L = defaultTasksLabels;
+  it("holds a blank title and a field over its limit", () => {
+    expect(taskTextHold({ title: " ", description: "" }, L)).toBe(L.liveTextTitleRequired);
+    expect(taskTextHold({ title: "x".repeat(4097), description: "" }, L)).toBe(L.liveTextTooLong);
+    expect(taskTextHold({ title: "x", description: "y".repeat(8193) }, L)).toBe(L.liveTextTooLong);
+    expect(taskTextHold({ title: "x".repeat(4096), description: "y".repeat(8192) }, L)).toBeNull();
   });
 });
