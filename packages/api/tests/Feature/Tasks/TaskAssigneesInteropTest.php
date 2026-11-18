@@ -108,6 +108,25 @@ final class TaskAssigneesInteropTest extends WgwDatabaseTestCase
         return $ics;
     }
 
+    public function test_a_username_claim_that_contradicts_the_address_and_name_reads_as_the_named_account(): void
+    {
+        // A CalDAV client writes alice's account with carol's name and address.
+        $taskId = $this->seedTaskViaPdo('bob', 'spoof.ics', "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\n"
+            ."BEGIN:VTODO\r\nUID:spoof-1\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:Spoof\r\n"
+            ."ATTENDEE;X-WGW-USERNAME=alice;CN=Carol:mailto:carol@example.test\r\n"
+            ."END:VTODO\r\nEND:VCALENDAR\r\n", $this->listId);
+
+        $participants = $this->withBearer($this->issueBearerTokenFor('carol'))
+            ->getJson('/api/v1/tasks/items/'.rawurlencode($taskId))
+            ->assertOk()
+            ->json('participants');
+
+        // One person, shown as who the account is: never as carol.
+        $this->assertSame(['u:alice'], array_keys($participants));
+        $this->assertSame('Alice', $participants['u:alice']['name']);
+        $this->assertSame('alice@example.test', $participants['u:alice']['email']);
+    }
+
     private function stored(string $objectUri): string
     {
         $raw = (string) CalendarObject::query()->where('uri', $objectUri)->firstOrFail()->calendardata;
