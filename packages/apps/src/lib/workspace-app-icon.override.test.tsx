@@ -24,7 +24,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
       "var(--app-icon-layer-surface, var(--color-we-got-pink, #ffbdc2))",
     );
     expect(trigger?.innerHTML).toContain(
-      "var(--app-icon-layer-foreground, var(--color-we-got-pink-tint, #ffe8ea))",
+      "var(--app-icon-layer-foreground, var(--color-we-got-dark, #003311))",
     );
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
@@ -53,7 +53,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
       "var(--app-icon-layer-surface, var(--color-we-got-pink, #ffbdc2))",
     );
     expect(tile?.innerHTML).toContain(
-      "var(--app-icon-layer-foreground, var(--color-we-got-pink-tint, #ffe8ea))",
+      "var(--app-icon-layer-foreground, var(--color-we-got-dark, #003311))",
     );
   });
 

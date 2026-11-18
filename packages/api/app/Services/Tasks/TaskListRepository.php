@@ -221,8 +221,19 @@ final class TaskListRepository
             $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
         }
 
+        return $this->changesOf($this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList), $since);
+    }
+
+    /**
+     * {@see changes()} over the given accessible task list instances.
+     *
+     * @param  iterable<CalendarInstance>  $instances
+     * @return array{oldState: string, newState: string, created: list<string>, updated: list<string>, destroyed: list<string>}
+     */
+    public function changesOf(iterable $instances, ?string $since): array
+    {
         return $this->collections->changes(
-            $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList),
+            $instances,
             $since,
             fn (CalendarInstance $instance): string => $this->apiIdForInstance($instance),
         );

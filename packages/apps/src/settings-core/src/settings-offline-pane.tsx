@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HardDrive, RefreshCw } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Switch } from "@/ui/switch";
+import { useTrackAutosave } from "@/ui/autosave-status";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
@@ -63,6 +64,7 @@ export function SettingsOfflinePane() {
   const [clearing, setClearing] = useState(false);
   const { confirmDialog, requestConfirm } = useConfirmDialog();
   const { show, showError } = useAppToast();
+  const trackSave = useTrackAutosave();
 
   const refreshUsage = useCallback(async () => {
     setUsageBytes(await estimateDeviceUsageBytes());
@@ -87,10 +89,12 @@ export function SettingsOfflinePane() {
     const mb = next.maxFileSizeMb ?? maxFileSizeMb;
     setContentSyncEnabled(enabled);
     setMaxFileSizeMb(mb);
-    writeOfflineDeviceContentSettings({
-      contentSyncEnabled: enabled,
-      maxFileSizeBytes: mbToOfflineFileSizeBytes(mb),
-    });
+    void trackSave(() =>
+      writeOfflineDeviceContentSettings({
+        contentSyncEnabled: enabled,
+        maxFileSizeBytes: mbToOfflineFileSizeBytes(mb),
+      }),
+    );
   };
 
   const clearCache = async () => {

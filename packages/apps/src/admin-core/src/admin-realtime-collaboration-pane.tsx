@@ -1,184 +1,174 @@
+import { Bug, Network, Video } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { Card } from "@/card/src/card";
+import { Callout } from "@/callout/src/callout";
 import { AdminIceUrlList } from "@/admin-core/src/admin-ice-url-list";
 import { splitIceUrlRows } from "@/admin-core/src/admin-settings-form-utils";
 import { AdminStunUrlsField } from "@/admin-core/src/admin-stun-urls-field";
-import { FieldLabelRow as FormField } from "@/ui/field-label-row";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { Tag } from "@/tag/src/tag";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import { VIDEO_PROFILE_LABELS, VIDEO_PROFILES_RANKED } from "@/lib/rtc/video-profile";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
+import { useAdminSettingsEditor } from "@/admin-core/src/use-admin-settings-autosave";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 export type AdminRealtimeCollaborationPaneProps = {
   controller: AdminControllerState;
 };
 
+function VideoProfileSelect({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <CollectionGhostSelectTrigger id={id} label={<SelectValue />} />
+      <SelectContent align="end">
+        {VIDEO_PROFILES_RANKED.map((profile) => (
+          <SelectItem key={profile} value={profile}>
+            {VIDEO_PROFILE_LABELS[profile]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function AdminRealtimeCollaborationPane({
   controller,
 }: AdminRealtimeCollaborationPaneProps) {
-  const relayReady =
-    controller.settingsForm.turnSecretSet &&
-    splitIceUrlRows(controller.settingsForm.turnUrls).some((url) => url !== "");
+  const form = controller.settingsForm;
+  const { choose, type, clear } = useAdminSettingsEditor();
+  const relayReady = form.turnSecretSet && splitIceUrlRows(form.turnUrls).some((url) => url !== "");
+
   return (
     <>
-      <Card title="WebRTC ICE servers">
-        <p className="mb-3 text-sm text-muted-foreground">
-          ICE servers improve real-time reliability by helping peers discover the best route through
-          NATs and firewalls. Configure STUN for direct path discovery and TURN as a relay fallback
-          when direct peer-to-peer connections are blocked. Add up to three URLs of each kind, one
-          per field.
+      {form.turnStaticCredentialsPresent ? (
+        <Callout
+          className="admin-pane-callout"
+          severity="warning"
+          title="The relay is off"
+          message="This server still has a TURN username and password from an older release. Enter a shared secret below to turn the relay back on; that also removes the old ones."
+        />
+      ) : null}
+
+      <WorkspacePageSection title="Connection servers" icon={<Network aria-hidden />}>
+        <p className="workspace-page-section__lead">
+          Calls and live editing connect people directly. STUN helps them find each other; TURN
+          relays the connection when a firewall blocks the direct route. Up to three of each.
         </p>
         <AdminStunUrlsField
-          value={controller.settingsForm.stunUrls}
-          onChange={(stunUrls) => controller.setSettingsForm((prev) => ({ ...prev, stunUrls }))}
+          value={form.stunUrls}
+          onChange={(stunUrls) => type({ stunUrls })}
+          onRemove={(stunUrls) => choose({ stunUrls })}
+          onRestore={(stunUrls) => choose({ stunUrls })}
         />
-        <FormField htmlFor="admin-realtime-turn-urls-1" label="TURN URLs">
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label="TURN servers"
+          description="Optional relay for people behind strict firewalls."
+          htmlFor="admin-realtime-turn-urls-1"
+        >
           <AdminIceUrlList
             id="admin-realtime-turn-urls"
-            label="TURN URLs"
+            label="TURN servers"
             itemLabel="TURN URL"
-            value={controller.settingsForm.turnUrls}
-            onChange={(turnUrls) => controller.setSettingsForm((prev) => ({ ...prev, turnUrls }))}
+            value={form.turnUrls}
+            onChange={(turnUrls) => type({ turnUrls })}
+            onRemove={(turnUrls) => choose({ turnUrls })}
           />
-        </FormField>
-        <FormField htmlFor="admin-realtime-turn-secret" label="TURN shared secret">
-          <Input
-            id="admin-realtime-turn-secret"
-            variant="password"
-            autoComplete="new-password"
-            value={controller.settingsForm.turnSecret}
-            placeholder={
-              controller.settingsForm.turnSecretSet ? "Leave blank to keep the stored secret" : ""
-            }
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                turnSecret: value,
-              }));
-            }}
-          />
-        </FormField>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Optional. The secret matches your TURN server&apos;s <code>use-auth-secret</code> setting.
-          It is currently{" "}
-          <strong>{controller.settingsForm.turnSecretSet ? "set" : "not set"}</strong>; it is never
-          shown again after saving.
-        </p>
-        {controller.settingsForm.turnStaticCredentialsPresent ? (
-          <p className="mb-3 text-sm text-destructive">
-            This server still has a static TURN username and password from an older release. The
-            relay stays disabled until you enter a shared secret here, which also removes them.
-          </p>
-        ) : null}
-        {controller.settingsForm.turnSecretSet ? (
-          <div className="flex justify-start">
-            <Button
-              label="Clear stored TURN secret"
-              variant="outline"
-              onClick={() => void controller.actions.clearTurnSecret()}
-            />
-          </div>
-        ) : null}
-      </Card>
-      <Card title="Video quality">
-        <p className="mb-3 text-sm text-muted-foreground">
-          These limits affect video quality only, never audio. Clients still choose a quality
-          automatically based on how many people are in the call; these settings only cap how high
-          that choice may go.
-        </p>
-        <FormField htmlFor="admin-realtime-max-video-profile" label="Maximum video quality">
-          <Select
-            value={controller.settingsForm.maxVideoProfile}
-            onValueChange={(value) => {
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                maxVideoProfile: value,
-              }));
-            }}
-          >
-            <SelectTrigger id="admin-realtime-max-video-profile" size="sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {VIDEO_PROFILES_RANKED.map((profile) => (
-                <SelectItem key={profile} value={profile}>
-                  {VIDEO_PROFILE_LABELS[profile]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
-        <p className="mb-3 text-sm text-muted-foreground">
-          The highest quality anyone on this server may send. <strong>Audio only</strong> turns off
-          camera sending entirely.
-        </p>
-        <FormField
-          htmlFor="admin-realtime-max-video-profile-relay"
-          label="Maximum video quality over relay"
+        </FieldLabelRow>
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label="TURN shared secret"
+          description={
+            form.turnSecretSet
+              ? "Saved. It is never shown again; leave empty to keep it."
+              : "The use-auth-secret value of your TURN server."
+          }
+          htmlFor="admin-realtime-turn-secret"
         >
-          <Select
-            value={controller.settingsForm.maxVideoProfileRelay}
-            onValueChange={(value) => {
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                maxVideoProfileRelay: value,
-              }));
-            }}
-          >
-            <SelectTrigger id="admin-realtime-max-video-profile-relay" size="sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {VIDEO_PROFILES_RANKED.map((profile) => (
-                <SelectItem key={profile} value={profile}>
-                  {VIDEO_PROFILE_LABELS[profile]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Used when someone&apos;s connection has to go through the TURN relay, which costs your
-          server bandwidth. It can never exceed the maximum above.
+          <span className="admin-value-control">
+            <Input
+              id="admin-realtime-turn-secret"
+              variant="password"
+              autoComplete="new-password"
+              value={form.turnSecret}
+              onChange={(event) => type({ turnSecret: event.target.value })}
+            />
+            {form.turnSecretSet ? (
+              <Button
+                label="Clear"
+                variant="ghost"
+                onClick={() => clear("turnSecret", controller.actions.clearTurnSecret)}
+              />
+            ) : null}
+          </span>
+        </FieldLabelRow>
+      </WorkspacePageSection>
+
+      <WorkspacePageSection title="Video quality" icon={<Video aria-hidden />}>
+        <p className="workspace-page-section__lead">
+          Caps for video only, never audio. Each call still picks a quality for its size, up to
+          these limits.
         </p>
-      </Card>
-      <Card title="Diagnostics">
-        <p className="mb-3 text-sm text-muted-foreground">
-          For troubleshooting connection problems. Changes apply when people reload the page.
-        </p>
+        <FieldLabelRow
+          layout="inline"
+          label="Highest quality"
+          description="Audio only turns cameras off on this server."
+          htmlFor="admin-realtime-max-video-profile"
+        >
+          <VideoProfileSelect
+            id="admin-realtime-max-video-profile"
+            value={form.maxVideoProfile}
+            onChange={(value) => choose({ maxVideoProfile: value })}
+          />
+        </FieldLabelRow>
+        <FieldLabelRow
+          layout="inline"
+          label="Highest quality over the relay"
+          description="Relayed video uses your server's bandwidth. Never above the limit above."
+          htmlFor="admin-realtime-max-video-profile-relay"
+        >
+          <VideoProfileSelect
+            id="admin-realtime-max-video-profile-relay"
+            value={form.maxVideoProfileRelay}
+            onChange={(value) => choose({ maxVideoProfileRelay: value })}
+          />
+        </FieldLabelRow>
+      </WorkspacePageSection>
+
+      <WorkspacePageSection title="Troubleshooting" icon={<Bug aria-hidden />}>
+        <p className="workspace-page-section__lead">Changes apply when people reload the page.</p>
         <FeatureRow
           label="Detailed connection logs"
-          desc="Writes real-time connection details to each browser's developer console. Turn this off when you are done."
-          value={controller.settingsForm.rtcDebugLogging}
-          onChange={(next) =>
-            controller.setSettingsForm((prev) => ({ ...prev, rtcDebugLogging: next }))
-          }
+          desc="Writes connection details to each browser's developer console. Turn it off when you are done."
+          value={form.rtcDebugLogging}
+          onChange={(next) => choose({ rtcDebugLogging: next })}
         />
         <FeatureRow
-          label="Always use the TURN relay"
-          desc="Sends all real-time traffic through your TURN server, even when a direct connection would work. This uses more server bandwidth."
-          value={relayReady ? controller.settingsForm.rtcForceRelay : false}
+          label="Always use the relay"
+          desc="Sends all traffic through your TURN server, even when a direct route works. Uses more bandwidth."
+          value={relayReady ? form.rtcForceRelay : false}
           disabled={!relayReady}
           labelAccessory={
             relayReady ? undefined : (
-              <Tag label="Needs TURN Credentials" className="admin-feature-row__status-tag" />
+              <Tag label="Needs TURN" className="admin-feature-row__status-tag" />
             )
           }
-          onChange={(next) =>
-            controller.setSettingsForm((prev) => ({ ...prev, rtcForceRelay: next }))
-          }
+          onChange={(next) => choose({ rtcForceRelay: next })}
         />
-      </Card>
-      <div className="flex justify-end">
-        <Button
-          label="Save changes"
-          variant="primary"
-          onClick={() => void controller.actions.saveSettings()}
-        />
-      </div>
+      </WorkspacePageSection>
     </>
   );
 }

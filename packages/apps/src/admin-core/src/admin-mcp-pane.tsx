@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card } from "@/card/src/card";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +12,7 @@ import {
 } from "@/ui/alert-dialog";
 import { buttonVariants } from "@/button/src/button";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
+import { useAdminSettingsEditor } from "@/admin-core/src/use-admin-settings-autosave";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 import { buildMcpEndpointUrl } from "@/lib/mcp-endpoint";
 import { McpEndpointUrlRow } from "@/settings-core/src/mcp-endpoint-url-row";
@@ -27,9 +28,8 @@ export function AdminMcpPane({ controller, mcpEndpointUrl }: AdminMcpPaneProps) 
   const enabled = controller.settingsForm.mcpEnabled;
   const endpointUrl = mcpEndpointUrl ?? buildMcpEndpointUrl();
 
-  const persistEnabled = (next: boolean) => {
-    void controller.actions.saveSettings({ mcpEnabled: next });
-  };
+  const { choose } = useAdminSettingsEditor();
+  const persistEnabled = (next: boolean) => choose({ mcpEnabled: next });
 
   const requestToggle = (next: boolean) => {
     if (!next && enabled) {
@@ -41,12 +41,13 @@ export function AdminMcpPane({ controller, mcpEndpointUrl }: AdminMcpPaneProps) 
 
   return (
     <>
-      <Card title="Connected assistants">
-        <p className="admin-mcp-pane__lead">
-          People can connect Claude, ChatGPT, or Mistral. Turning this off disconnects them for
-          everyone.
-        </p>
-        <FeatureRow label="Allow connected assistants" value={enabled} onChange={requestToggle} />
+      <WorkspacePageSection>
+        <FeatureRow
+          label="Allow connected assistants"
+          desc="People choose for themselves in Settings. Turning this off disconnects everyone."
+          value={enabled}
+          onChange={requestToggle}
+        />
         {enabled ? (
           <McpEndpointUrlRow
             className="admin-mcp-pane__endpoint"
@@ -54,7 +55,7 @@ export function AdminMcpPane({ controller, mcpEndpointUrl }: AdminMcpPaneProps) 
             inputId="admin-mcp-endpoint"
           />
         ) : null}
-      </Card>
+      </WorkspacePageSection>
       <AlertDialog open={confirmOff} onOpenChange={setConfirmOff}>
         <AlertDialogContent className="admin-dialog-surface">
           <AlertDialogHeader>

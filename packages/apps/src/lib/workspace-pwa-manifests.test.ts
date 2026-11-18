@@ -64,7 +64,7 @@ describe("workspace PWA manifests", () => {
           purpose: "any",
         },
         {
-          src: `/pwa-icons/${name}-512-maskable.png?v=${version}`,
+          src: `/pwa-icons/${name}-512.png?v=${version}`,
           sizes: "512x512",
           type: "image/png",
           purpose: "maskable",
@@ -91,7 +91,7 @@ describe("workspace PWA manifests", () => {
   it("keeps the in-app home mark separate from the / install icon", () => {
     const svg = readFileSync(join(import.meta.dirname, "../../public/app-icons/home.svg"), "utf8");
     const install = readFileSync(
-      join(import.meta.dirname, "../../public/app-icons/home-pwa.svg"),
+      join(import.meta.dirname, "../../src/assets/app-icons/home-pwa.svg"),
       "utf8",
     );
     const version = WORKSPACE_PWA_ICON_CACHE_VERSION;

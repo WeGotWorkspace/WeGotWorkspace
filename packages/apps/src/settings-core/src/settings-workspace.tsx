@@ -1,14 +1,17 @@
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
+import {
+  SETTINGS_GROUP_LABELS,
+  SETTINGS_GROUP_ORDER,
+} from "@/settings-core/src/use-settings-sidebar-model";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { ChevronRight } from "lucide-react";
 import { ViewHeader } from "@/view-header/src/view-header";
-import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
+import { WorkspacePageHeader, WorkspacePageTrail } from "@/workspace-shell/src/workspace-page";
 import { SETTINGS_DEFAULT_SECTION } from "@/settings-core/src/settings-section";
 import {
   useSettingsController,
@@ -25,7 +28,6 @@ import { SettingsPageStatusSlotContext } from "@/settings-core/src/settings-page
 import "@/settings-core/src/settings-workspace.css";
 
 /** Sidebar section titles; also the header title (Settings › Device). */
-const GROUP_LABELS = { account: "Account", device: "Device", apps: "Apps" } as const;
 
 export function SettingsWorkspace(props: SettingsWorkspaceProps) {
   const {
@@ -82,23 +84,18 @@ function Sidebar({
   session: WorkspaceSession;
   onLogout?: () => void;
 }) {
-  const accountItems = navItems(controller, controller.sidebarGroups.account);
-  const deviceItems = navItems(controller, controller.sidebarGroups.device);
-  const appsItems = navItems(controller, controller.sidebarGroups.apps);
-
   return (
     <AppSidebar
       footer={<MainFooter session={session} onLogout={onLogout} />}
       open={controller.sidebarOpen}
       onCloseMobile={() => controller.setSidebarOpen(false)}
     >
-      {accountItems.length > 0 ? (
-        <SidebarSection title={GROUP_LABELS.account} items={accountItems} />
-      ) : null}
-      {deviceItems.length > 0 ? (
-        <SidebarSection title={GROUP_LABELS.device} items={deviceItems} />
-      ) : null}
-      {appsItems.length > 0 ? <SidebarSection title={GROUP_LABELS.apps} items={appsItems} /> : null}
+      {SETTINGS_GROUP_ORDER.map((group) => {
+        const items = navItems(controller, controller.sidebarGroups[group]);
+        return items.length > 0 ? (
+          <SidebarSection key={group} title={SETTINGS_GROUP_LABELS[group]} items={items} />
+        ) : null;
+      })}
     </AppSidebar>
   );
 }
@@ -111,17 +108,13 @@ function MainHeader({ controller }: { controller: SettingsControllerState }) {
   const panel = controller.currentSection;
   return (
     <ViewHeader
-      title={GROUP_LABELS[panel.group]}
+      title={SETTINGS_GROUP_LABELS[panel.group]}
       titlePrefix={
-        <span className="settings-main-header__trail">
-          <PathBreadcrumb
-            items={[{ label: "Settings", path: SETTINGS_DEFAULT_SECTION }]}
-            currentPath={panel.id}
-            alwaysNavigablePaths={[SETTINGS_DEFAULT_SECTION]}
-            onNavigate={() => controller.selectSection(SETTINGS_DEFAULT_SECTION)}
-          />
-          <ChevronRight className="settings-main-header__trail-separator" aria-hidden />
-        </span>
+        <WorkspacePageTrail
+          label="Settings"
+          path={SETTINGS_DEFAULT_SECTION}
+          onNavigate={() => controller.selectSection(SETTINGS_DEFAULT_SECTION)}
+        />
       }
       sidebarOpen={controller.sidebarOpen}
       onToggleSidebar={() => controller.setSidebarOpen((value) => !value)}
@@ -140,17 +133,17 @@ function MainContent({ controller }: { controller: SettingsControllerState }) {
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   return (
     <>
-      <header className="settings-page-header">
-        <div className="settings-page-header__title-row">
-          <h1 className="settings-page-header__title">{pageTitle(panel)}</h1>
-          <div className="settings-page-header__status">
+      <WorkspacePageHeader
+        title={pageTitle(panel)}
+        description={panel.description}
+        status={
+          <>
             {/* Keyed by pane: a Saved from the previous pane does not show on the next one. */}
             <AutosaveStatusTag key={panel.id} />
             <span ref={setStatusSlot} className="settings-page-header__slot" />
-          </div>
-        </div>
-        <p className="settings-page-header__description">{panel.description}</p>
-      </header>
+          </>
+        }
+      />
       <SettingsPageStatusSlotContext.Provider value={statusSlot}>
         <SettingsPanelHost
           panelId={controller.section}

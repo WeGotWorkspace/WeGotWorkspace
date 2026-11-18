@@ -30,12 +30,12 @@ final class CalendarEventGetMethod implements JmapMethodInterface
         private readonly JmapCalendarEventStateService $eventStates,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'CalendarEvent/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CALENDARS;
     }

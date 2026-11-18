@@ -19031,6 +19031,12 @@
                                     "type": "string"
                                 }
                             },
+                            "X-Wgw-Content-Tag": {
+                                "description": "On format=yjs: the content tag (as contentEtag on the JSON GET) of the text the stored Yjs state was written from. A client checks the state against the text only when this equals the contentEtag it read, so a save landing between the two reads is not mistaken for an outside write. Absent when there is no state row.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
                             "X-Wgw-External-Write": {
                                 "description": "Present with value 1 on format=yjs when the journal ETag moved on and SUMMARY or DESCRIPTION is no longer the text the stored Yjs state was written from. Absent when there is no state row, when the journal ETag still matches, and when only tags, a move, or archive changed the journal. The body is still the stored Yjs bytes. The read does not rewrite them.",
                                 "schema": {
@@ -20037,6 +20043,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "422": {
+                        "description": "A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions)"
                     }
                 }
             }
@@ -20445,6 +20454,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "422": {
+                        "description": "A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions)"
                     }
                 }
             }
@@ -22319,6 +22331,265 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/tasks/items/{taskId}/text": {
+            "get": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Read a task's live text",
+                "description": "Without `format`: the title and description the live-text room seeds from (#2208), the server-built room key `task:<calendarid>:<vtodo-uid>`, and the calendar object's ETag. The response `ETag` is the content tag of the current text (sha1 of DESCRIPTION and SUMMARY); a first save names it in `X-Wgw-External-Write`. With `format=yjs`: the stored Yjs state, `204` when there is none, with `X-Wgw-External-Write: 1` when the text changed outside the room since the state was written (a status, due date or other metadata change does not count).",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "REST task id: the object URI, or `{objectUri}#{vtodoUid}` for a VTODO in a multi-VTODO file."
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "required": false,
+                        "description": "Pass yjs for the raw Yjs state. Omit it for the text JSON.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "yjs"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "With format=yjs: the state tag from an earlier read. Answers 304 while it still matches and the state is still an ancestor of the text.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The text JSON, or the Yjs bytes with format=yjs.",
+                        "headers": {
+                            "ETag": {
+                                "description": "Content tag of the text (JSON), or state tag (format=yjs).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-Wgw-Content-Tag": {
+                                "description": "On format=yjs: the content tag of the text the stored state was written from (as this resource's ETag on the plain read). A client checks the state against the text only when this equals the tag it read, so a save landing between the two reads is not mistaken for an outside write. Absent when there is no state row.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-Wgw-External-Write": {
+                                "description": "`1` (format=yjs) when the stored state is not an ancestor of the text.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "title",
+                                        "description",
+                                        "room",
+                                        "objectEtag"
+                                    ],
+                                    "properties": {
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "room": {
+                                            "type": "string",
+                                            "description": "Collab room key `task:<calendarid>:<vtodo-uid>`. Clients never build it."
+                                        },
+                                        "objectEtag": {
+                                            "type": "string",
+                                            "description": "The calendar object's ETag. Every write changes it, also one that writes back an earlier text."
+                                        }
+                                    }
+                                }
+                            },
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "format=yjs and the task has no stored state."
+                    },
+                    "304": {
+                        "description": "format=yjs and the state tag in If-None-Match still matches."
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Save a task's live text",
+                "description": "Writes SUMMARY and DESCRIPTION (an empty document removes DESCRIPTION) and the Yjs state in one transaction, through the same write path as a task PATCH. The body is the shared collaboration frame (application/octet-stream): a uint16 big-endian header length, a JSON header `{documentLen, yjsLen, title}`, the description bytes, then the Yjs bytes. Guarded by the state tag, not the task ETag.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "taskId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "REST task id: the object URI, or `{objectUri}#{vtodoUid}` for a VTODO in a multi-VTODO file."
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "State tag from GET ?format=yjs. Refused with 412 when the stored state moved on.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Send * to write the state only when none exists. Refused with 412 when a state is already stored.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "X-Wgw-External-Write",
+                        "in": "header",
+                        "required": false,
+                        "description": "A content tag from GET /tasks/items/{taskId}/text. Required on a save with no stored state (the tag the room seeded from; 428 without it), and on a save while the text changed outside the room since the state was written. A tag for older text, or `*`, is refused with 409 `external_write`.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "description": "Framed collaboration body; the document part is the description (at most 8 192 characters), the header `title` the title (1 to 4 096 characters, not blank).",
+                    "content": {
+                        "application/octet-stream": {
+                            "schema": {
+                                "type": "string",
+                                "format": "binary"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Saved.",
+                        "headers": {
+                            "ETag": {
+                                "description": "State tag (sha1 of the Yjs bytes) for the next If-Match.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "description": "`external_write`: the text changed outside the room and the request did not name it in `X-Wgw-External-Write`, or a first save names text that is no longer the task's. Nothing is written.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/JmapPreconditionFailed"
+                    },
+                    "413": {
+                        "description": "`state_too_large`: the Yjs state is over 256 KiB (`payload_too_large` over the 5 MiB request limit).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "`title_required`: the title is blank.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "A save over an existing state with neither If-Match nor If-None-Match, or a save with no stored state that does not name its content tag in X-Wgw-External-Write.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

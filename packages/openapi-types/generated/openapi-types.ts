@@ -6257,6 +6257,8 @@ export interface paths {
                     headers: {
                         /** @description VJOURNAL entity tag on the JSON representation. format=yjs returns the sha1 of the state bytes, and only when a state row exists. Those tags are not interchangeable. */
                         ETag?: string;
+                        /** @description On format=yjs: the content tag (as contentEtag on the JSON GET) of the text the stored Yjs state was written from. A client checks the state against the text only when this equals the contentEtag it read, so a save landing between the two reads is not mistaken for an outside write. Absent when there is no state row. */
+                        "X-Wgw-Content-Tag"?: string;
                         /** @description Present with value 1 on format=yjs when the journal ETag moved on and SUMMARY or DESCRIPTION is no longer the text the stored Yjs state was written from. Absent when there is no state row, when the journal ETag still matches, and when only tags, a move, or archive changed the journal. The body is still the stored Yjs bytes. The read does not rewrite them. */
                         "X-Wgw-External-Write"?: string;
                         [name: string]: unknown;
@@ -6965,6 +6967,13 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
+                /** @description A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         delete?: never;
@@ -7306,6 +7315,13 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
+                /** @description A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         delete?: never;
@@ -8936,6 +8952,166 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/items/{taskId}/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a task's live text
+         * @description Without `format`: the title and description the live-text room seeds from (#2208), the server-built room key `task:<calendarid>:<vtodo-uid>`, and the calendar object's ETag. The response `ETag` is the content tag of the current text (sha1 of DESCRIPTION and SUMMARY); a first save names it in `X-Wgw-External-Write`. With `format=yjs`: the stored Yjs state, `204` when there is none, with `X-Wgw-External-Write: 1` when the text changed outside the room since the state was written (a status, due date or other metadata change does not count).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Pass yjs for the raw Yjs state. Omit it for the text JSON. */
+                    format?: "yjs";
+                };
+                header?: {
+                    /** @description With format=yjs: the state tag from an earlier read. Answers 304 while it still matches and the state is still an ancestor of the text. */
+                    "If-None-Match"?: string;
+                };
+                path: {
+                    /** @description REST task id: the object URI, or `{objectUri}#{vtodoUid}` for a VTODO in a multi-VTODO file. */
+                    taskId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The text JSON, or the Yjs bytes with format=yjs. */
+                200: {
+                    headers: {
+                        /** @description Content tag of the text (JSON), or state tag (format=yjs). */
+                        ETag?: string;
+                        /** @description On format=yjs: the content tag of the text the stored state was written from (as this resource's ETag on the plain read). A client checks the state against the text only when this equals the tag it read, so a save landing between the two reads is not mistaken for an outside write. Absent when there is no state row. */
+                        "X-Wgw-Content-Tag"?: string;
+                        /** @description `1` (format=yjs) when the stored state is not an ancestor of the text. */
+                        "X-Wgw-External-Write"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            title: string;
+                            description: string;
+                            /** @description Collab room key `task:<calendarid>:<vtodo-uid>`. Clients never build it. */
+                            room: string;
+                            /** @description The calendar object's ETag. Every write changes it, also one that writes back an earlier text. */
+                            objectEtag: string;
+                        };
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description format=yjs and the task has no stored state. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description format=yjs and the state tag in If-None-Match still matches. */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        /**
+         * Save a task's live text
+         * @description Writes SUMMARY and DESCRIPTION (an empty document removes DESCRIPTION) and the Yjs state in one transaction, through the same write path as a task PATCH. The body is the shared collaboration frame (application/octet-stream): a uint16 big-endian header length, a JSON header `{documentLen, yjsLen, title}`, the description bytes, then the Yjs bytes. Guarded by the state tag, not the task ETag.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description State tag from GET ?format=yjs. Refused with 412 when the stored state moved on. */
+                    "If-Match"?: string;
+                    /** @description Send * to write the state only when none exists. Refused with 412 when a state is already stored. */
+                    "If-None-Match"?: string;
+                    /** @description A content tag from GET /tasks/items/{taskId}/text. Required on a save with no stored state (the tag the room seeded from; 428 without it), and on a save while the text changed outside the room since the state was written. A tag for older text, or `*`, is refused with 409 `external_write`. */
+                    "X-Wgw-External-Write"?: string;
+                };
+                path: {
+                    /** @description REST task id: the object URI, or `{objectUri}#{vtodoUid}` for a VTODO in a multi-VTODO file. */
+                    taskId: string;
+                };
+                cookie?: never;
+            };
+            /** @description Framed collaboration body; the document part is the description (at most 8 192 characters), the header `title` the title (1 to 4 096 characters, not blank). */
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            responses: {
+                /** @description Saved. */
+                200: {
+                    headers: {
+                        /** @description State tag (sha1 of the Yjs bytes) for the next If-Match. */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                        };
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                /** @description `external_write`: the text changed outside the room and the request did not name it in `X-Wgw-External-Write`, or a first save names text that is no longer the task's. Nothing is written. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                412: components["responses"]["JmapPreconditionFailed"];
+                /** @description `state_too_large`: the Yjs state is over 256 KiB (`payload_too_large` over the 5 MiB request limit). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `title_required`: the title is blank. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description A save over an existing state with neither If-Match nor If-None-Match, or a save with no stored state that does not name its content tag in X-Wgw-External-Write. */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;

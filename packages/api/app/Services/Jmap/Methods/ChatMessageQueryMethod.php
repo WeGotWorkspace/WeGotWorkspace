@@ -29,12 +29,12 @@ final class ChatMessageQueryMethod implements JmapMethodInterface
         private readonly JournalObjectIds $journalIds,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ChatMessage/query';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CHAT;
     }

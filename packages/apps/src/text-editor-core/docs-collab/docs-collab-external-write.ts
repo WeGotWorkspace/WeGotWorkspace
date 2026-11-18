@@ -4,6 +4,7 @@ import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor
 import { adoptServerSnapshot } from "@/lib/collab/docs-collab-bootstrap";
 import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
+import { seedClientId } from "./docs-collab-seed";
 import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 
 export type ExternalWriteDetail = {
@@ -57,11 +58,20 @@ export function replaceDocumentWithExternalText(
   serverState: Uint8Array,
   { dropLocalWork = false }: { dropLocalWork?: boolean } = {},
 ): void {
+  if (!isReadableYjsUpdate(serverState)) {
+    reseedOverUnreadableState(ydoc, markdown, title, format, serverState);
+    return;
+  }
   Yjs.applyUpdate(ydoc, serverState, SERVER_ORIGIN);
   const serverStateVector = Yjs.encodeStateVectorFromUpdate(serverState);
   const seeded = new Yjs.Doc();
-  applyContentSeedToYDoc(seeded, markdown, format, serverStateVector.join(","));
-  if (title !== null) writeNoteTitle(seeded, title);
+  const baseSalt = serverStateVector.join(",");
+  // A quiet rebuild keeps the state-vector salt so peers merge. Dropping local
+  // work deletes the seeded items again, so the salt moves on while this
+  // document already holds either seed id (Yjs never recreates deleted items).
+  const salt = dropLocalWork ? freeSalt(ydoc, markdown, title, format, baseSalt) : baseSalt;
+  applyContentSeedToYDoc(seeded, markdown, format, salt);
+  writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(
     ydoc,
     Yjs.encodeStateAsUpdate(seeded),
@@ -69,4 +79,80 @@ export function replaceDocumentWithExternalText(
     dropLocalWork ? undefined : Yjs.decodeStateVector(serverStateVector),
   );
   seeded.destroy();
+}
+
+/**
+ * Bytes a client can apply in full: they decode, and no struct waits for a
+ * parent the bytes never deliver. The server stores a writer's state without
+ * reading it (#2208), so a stored state can be neither.
+ */
+export function isReadableYjsUpdate(update: Uint8Array): boolean {
+  const scratch = new Yjs.Doc();
+  try {
+    Yjs.applyUpdate(scratch, update);
+    return scratch.store.pendingStructs === null && scratch.store.pendingDs === null;
+  } catch {
+    return false;
+  } finally {
+    scratch.destroy();
+  }
+}
+
+/**
+ * The rebuild for a stored state no client can read: nothing of it is
+ * applied, every item the document holds is deleted (as with the person's
+ * own "use the other version"), and the outside text is seeded. The seed id
+ * comes from the unreadable bytes, so every client that reads them seeds the
+ * same items, and they never match an earlier seed of the same text.
+ */
+function reseedOverUnreadableState(
+  ydoc: Y.Doc,
+  markdown: string,
+  title: string | null,
+  format: TextEditorContentFormat,
+  serverState: Uint8Array,
+): void {
+  let hash = 0x811c9dc5;
+  for (const byte of serverState) hash = Math.imul(hash ^ byte, 0x01000193) >>> 0;
+  // Seed ids are 32 bits: two unreadable payloads can share one. A seed whose
+  // id the document already holds would map onto deleted items and leave the
+  // text blank, so the salt moves on until the id is new to this document.
+  const salt = freeSalt(ydoc, markdown, title, format, `unreadable:${serverState.length}:${hash}`);
+  const seeded = new Yjs.Doc();
+  applyContentSeedToYDoc(seeded, markdown, format, salt);
+  writeSeedTitle(seeded, title, salt, markdown);
+  adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), EXTERNAL_REBUILD_ORIGIN);
+  seeded.destroy();
+}
+
+function freeSalt(
+  ydoc: Y.Doc,
+  markdown: string,
+  title: string | null,
+  format: TextEditorContentFormat,
+  base: string,
+): string {
+  const local = Yjs.decodeStateVector(Yjs.encodeStateVector(ydoc));
+  const taken = (s: string): boolean =>
+    local.has(seedClientId(format, markdown, s)) ||
+    (title !== null && local.has(titleSeedId(title, s, markdown)));
+  let salt = base;
+  for (let n = 1; taken(salt); n += 1) salt = `${base}#${n}`;
+  return salt;
+}
+
+/**
+ * The title of a rebuild seed, written with a client id from the title and
+ * the seed's salt: two clients rebuilding the same text write the same title
+ * item, not one each (which would show the title twice).
+ */
+function titleSeedId(title: string, salt: string, markdown: string): number {
+  // Keyed on the body too: the title seed collides only when the body seed does.
+  return seedClientId("note-title", title, `${salt}\u0000${markdown}`);
+}
+
+function writeSeedTitle(seeded: Y.Doc, title: string | null, salt: string, markdown: string): void {
+  if (title === null) return;
+  seeded.clientID = titleSeedId(title, salt, markdown);
+  writeNoteTitle(seeded, title);
 }

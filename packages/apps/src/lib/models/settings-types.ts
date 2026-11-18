@@ -25,8 +25,11 @@ export type SettingsPanelId = string;
 /** Route-owned Settings section; same as {@link SettingsPanelId}. */
 export type SettingsSection = SettingsPanelId;
 
-/** Sidebar sections: the account, this device (stored in this browser), the apps. */
-export type SettingsPanelGroup = "account" | "device" | "apps";
+/**
+ * Sidebar sections: who you are, what you connected (a mailbox, assistants), this
+ * device (stored in this browser), the apps, and about the product.
+ */
+export type SettingsPanelGroup = "account" | "connections" | "device" | "apps" | "about";
 
 export type SettingsSectionDescriptor = {
   id: SettingsSection;

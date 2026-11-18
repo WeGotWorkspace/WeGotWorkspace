@@ -20,7 +20,7 @@ describe("createWorkspacePwaHead", () => {
           {
             rel: "icon",
             type: "image/svg+xml",
-            href: `/app-icons/${appId}.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
+            href: `/app-icons/${appId}-favicon.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
           },
         ]),
       );
@@ -52,7 +52,7 @@ describe("createWorkspacePwaHead", () => {
         {
           rel: "icon",
           type: "image/svg+xml",
-          href: `/app-icons/home-pwa.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
+          href: `/app-icons/home-favicon.svg?v=${WORKSPACE_PWA_ICON_CACHE_VERSION}`,
         },
       ]),
     );

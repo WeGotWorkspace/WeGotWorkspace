@@ -1,12 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdminWebRootProbe, webRootProbeUrls } from "@/admin-core/src/admin-web-root-probe";
+import { useWebRootProbe, webRootProbeUrls } from "@/admin-core/src/admin-web-root-probe";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("AdminWebRootProbe", () => {
+describe("useWebRootProbe", () => {
   it("prefixes the canary with the app base path", () => {
     expect(webRootProbeUrls("/")).toEqual([
       "/wgw-content/.probe",
@@ -20,7 +20,7 @@ describe("AdminWebRootProbe", () => {
     ]);
   });
 
-  it("warns when only packages/.probe is reachable", async () => {
+  it("reports only packages when only packages/.probe is reachable", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -39,14 +39,14 @@ describe("AdminWebRootProbe", () => {
       }),
     );
 
-    render(<AdminWebRootProbe />);
+    const { result } = renderHook(() => useWebRootProbe());
 
-    expect(await screen.findByText(/packages is reachable from the web/i)).toBeTruthy();
-    expect(screen.queryByText(/wgw-content is reachable/i)).toBeNull();
-    expect(screen.queryByText(/wgw-plugins is reachable/i)).toBeNull();
+    await waitFor(() => {
+      expect(result.current).toEqual(["packages"]);
+    });
   });
 
-  it("warns when the canary file is served", async () => {
+  it("reports every folder that serves the canary file", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -55,19 +55,21 @@ describe("AdminWebRootProbe", () => {
       }),
     );
 
-    render(<AdminWebRootProbe />);
+    const { result } = renderHook(() => useWebRootProbe());
 
-    expect(await screen.findByText(/reachable from the web/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(result.current).toEqual(["wgw-content", "packages", "wgw-plugins"]);
+    });
   });
 
-  it("stays quiet when the canary is denied", async () => {
+  it("reports nothing when the canary is denied", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       text: async () => "",
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<AdminWebRootProbe />);
+    const { result } = renderHook(() => useWebRootProbe());
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -75,6 +77,6 @@ describe("AdminWebRootProbe", () => {
     expect(fetchMock).toHaveBeenCalledWith("/wgw-content/.probe", expect.anything());
     expect(fetchMock).toHaveBeenCalledWith("/packages/.probe", expect.anything());
     expect(fetchMock).toHaveBeenCalledWith("/wgw-plugins/.probe", expect.anything());
-    expect(screen.queryByText(/reachable from the web/i)).toBeNull();
+    expect(result.current).toEqual([]);
   });
 });
