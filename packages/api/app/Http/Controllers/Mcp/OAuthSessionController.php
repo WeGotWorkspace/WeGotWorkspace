@@ -31,7 +31,7 @@ final class OAuthSessionController
         $intent = $this->intent->issue('_login', 'session');
         $request->session()->put('mcp_login_intent', $intent);
 
-        return redirect(McpOAuthLoginRedirect::spaLoginUrl($request, $intent));
+        return redirect(McpOAuthLoginRedirect::spaLoginUrl($intent));
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
@@ -80,6 +80,6 @@ final class OAuthSessionController
             $request->session()->put('mcp_login_intent', $intent);
         }
 
-        return redirect(McpOAuthLoginRedirect::spaLoginUrl($request, $intent, $code));
+        return redirect(McpOAuthLoginRedirect::spaLoginUrl($intent, $code));
     }
 }

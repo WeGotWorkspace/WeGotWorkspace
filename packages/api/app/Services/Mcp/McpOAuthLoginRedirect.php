@@ -11,15 +11,21 @@ use Illuminate\Http\Request;
  *
  * SPA JWT in localStorage is not a Laravel web session. Only `/oauth/authorize`
  * (same host) is an allowed `return` target.
+ *
+ * The login URL carries the bare authorize path, never the authorize query.
+ * The full query stays in the session (`url.intended`) and comes back from
+ * `POST /oauth/session`. An encoded query inside `return` (for example
+ * `%26prompt%3Dconsent`) trips common WAF XSS rules, which then answer the
+ * login page with an empty 403.
  */
 final class McpOAuthLoginRedirect
 {
     public const AUTHORIZE_PATH = '/oauth/authorize';
 
-    public static function spaLoginUrl(Request $request, ?string $intent = null, ?string $error = null): string
+    public static function spaLoginUrl(?string $intent = null, ?string $error = null): string
     {
         $query = [
-            'return' => self::relativeAuthorize($request),
+            'return' => self::AUTHORIZE_PATH,
         ];
         if (is_string($intent) && $intent !== '') {
             $query['intent'] = $intent;

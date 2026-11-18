@@ -44,16 +44,19 @@ final class McpOAuthSessionTest extends WgwDatabaseTestCase
         $this->assertNotSame('', $query['intent'] ?? '');
     }
 
-    public function test_guest_session_preserves_authorize_query_in_return(): void
+    public function test_guest_session_keeps_authorize_query_out_of_login_url(): void
     {
-        $intended = url('/oauth/authorize?client_id=abc&state=s1');
+        // An encoded `%26prompt%3D` in the login URL trips WAF XSS rules (empty 403).
+        $intended = url('/oauth/authorize?client_id=abc&prompt=consent&state=s1');
         $response = $this->withSession(['url.intended' => $intended])->get('/oauth/session');
 
         $response->assertRedirect();
         $location = (string) $response->headers->get('Location');
         $query = [];
         parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
-        $this->assertSame('/oauth/authorize?client_id=abc&state=s1', $query['return'] ?? null);
+        $this->assertSame(McpOAuthLoginRedirect::AUTHORIZE_PATH, $query['return'] ?? null);
+        $this->assertStringNotContainsString('prompt', $location);
+        $this->assertStringNotContainsString('client_id', $location);
     }
 
     public function test_web_session_skips_login_and_returns_to_authorize(): void
@@ -111,17 +114,26 @@ final class McpOAuthSessionTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('/login?', $pwa);
         $query = [];
         parse_str((string) parse_url($pwa, PHP_URL_QUERY), $query);
-        $this->assertNotFalse(str_starts_with((string) ($query['return'] ?? ''), '/oauth/authorize'));
+        $this->assertSame(McpOAuthLoginRedirect::AUTHORIZE_PATH, $query['return'] ?? null);
+        $this->assertStringNotContainsString('prompt', $pwa);
         $this->assertNotSame('', $query['intent'] ?? '');
 
-        $this->post('/oauth/session', [
+        $target = (string) $this->postJson('/oauth/session', [
             'username' => 'bob',
             'password' => 'secret',
             'intent' => $query['intent'],
-        ])->assertRedirect($query['return']);
+        ])->assertOk()->json('redirect');
         $this->assertAuthenticatedAs($user, 'web');
+        $this->assertSame(McpOAuthLoginRedirect::AUTHORIZE_PATH, parse_url($target, PHP_URL_PATH));
+        $expectedQuery = [];
+        $targetQuery = [];
+        parse_str((string) parse_url($authorize, PHP_URL_QUERY), $expectedQuery);
+        parse_str((string) parse_url($target, PHP_URL_QUERY), $targetQuery);
+        ksort($expectedQuery);
+        ksort($targetQuery);
+        $this->assertSame($expectedQuery, $targetQuery);
 
-        $this->get($query['return'])
+        $this->get($target)
             ->assertOk()
             ->assertSee('Connect assistant', false)
             ->assertSee('Data is sent to the assistant vendor’s model.', false)
@@ -155,6 +167,7 @@ final class McpOAuthSessionTest extends WgwDatabaseTestCase
             'state' => 'state-1',
             'code_challenge' => $challenge,
             'code_challenge_method' => 'S256',
+            'prompt' => 'consent',
         ]);
     }
 }
