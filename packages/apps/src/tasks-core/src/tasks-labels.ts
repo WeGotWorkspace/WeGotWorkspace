@@ -155,6 +155,18 @@ export type TasksUILabels = {
   detailNotesPlaceholder: string;
   /** One alarm row, numbered from 1. */
   detailAlarm: (number: number) => string;
+  assigneeLabel: string;
+  assigneeUnassigned: string;
+  assigneePeople: (count: number) => string;
+  assigneeSearch: string;
+  assigneeLoading: string;
+  assigneeLoadFailed: string;
+  assigneeConnect: string;
+  assigneeNoMatches: string;
+  assigneeReadOnly: string;
+  assigneeNoAccess: string;
+  assigneeExternal: string;
+  assigneeMore: (count: number) => string;
   /** Multi-select: the selection bar, the detail pane and the move dialog. */
   selectionLabel: string;
   selectionTitle: (count: number) => string;
@@ -361,6 +373,18 @@ export const defaultTasksLabels: TasksUILabels = {
   emptyList: "No tasks",
   detailNotesPlaceholder: "Add notes…",
   detailAlarm: (number) => `Alarm ${number}`,
+  assigneeLabel: "Assignee",
+  assigneeUnassigned: "Unassigned",
+  assigneePeople: (count) => `${count} people`,
+  assigneeSearch: "Search people",
+  assigneeLoading: "Loading people…",
+  assigneeLoadFailed: "Couldn't load people",
+  assigneeConnect: "Connect to load people",
+  assigneeNoMatches: "No one found",
+  assigneeReadOnly: "Can only view this list",
+  assigneeNoAccess: "No longer has access",
+  assigneeExternal: "Not in this workspace",
+  assigneeMore: (count) => `+${count}`,
   selectionLabel: "Multiple selection",
   selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
   selectionComplete: "Mark complete",

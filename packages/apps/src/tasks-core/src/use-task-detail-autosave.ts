@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import type { Task, TaskPatch } from "@/lib/models/tasks-types";
 import type { TasksTaskFormValue } from "@/tasks-core/src/tasks-task-form";
 import { taskAlertsPatch } from "@/tasks-core/src/tasks-alert-mapping";
+import { taskParticipantsPatch } from "@/tasks-core/src/tasks-assignees";
 import { normalizeTaskPriority, TASK_PRIORITY_NONE } from "@/tasks-core/src/tasks-priority";
 import { dueEditSendsShowWithoutTime, taskAlertsEqual } from "@/tasks-core/src/tasks-task-utils";
 import { canWriteTaskList } from "@/lib/models/task-lists";
@@ -18,6 +19,7 @@ function taskEditValues(input: TasksTaskFormValue) {
     showWithoutTime: due ? (input.showWithoutTime ?? true) : undefined,
     timeZone: due && input.showWithoutTime === false ? (input.timeZone ?? null) : null,
     alerts: input.alerts,
+    participants: input.participants,
   };
 }
 
@@ -44,6 +46,8 @@ function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): Tas
   if (!taskAlertsEqual(next.alerts, task.alerts)) {
     patch.alerts = taskAlertsPatch(task.alerts, next.alerts);
   }
+  const participants = taskParticipantsPatch(task.participants, next.participants);
+  if (participants) patch.participants = participants;
   return patch;
 }
 

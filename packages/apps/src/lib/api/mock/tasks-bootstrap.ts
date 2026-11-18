@@ -1,9 +1,17 @@
 import type { Task, TaskList } from "@wgw/openapi-types/tasks-types";
-import type { TasksUIData } from "@/lib/models/tasks-types";
+import type { TaskListMember, TasksUIData } from "@/lib/models/tasks-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
 import { createSettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
+
+/** The people the mock API puts in every list's audience (#2172), besides the viewer. */
+export const MOCK_TASK_LIST_COLLEAGUES: TaskListMember[] = [
+  { username: "alex", displayName: "Alex Morgan", email: "alex@example.org", access: "write" },
+  { username: "sam", displayName: "Sam Rivera", email: "sam@example.org", access: "write" },
+  { username: "jordan", displayName: "Jordan Lee", email: "jordan@example.org", access: "write" },
+  { username: "robin", displayName: "Robin Chen", email: "robin@example.org", access: "read" },
+];
 
 export type TasksAppBootstrap = {
   data: TasksUIData;

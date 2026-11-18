@@ -418,6 +418,7 @@ export function TasksWorkspace({
               onToggleComplete={toggleTaskComplete}
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
               onConfirmMove={requestMoveTask}
+              loadListMembers={operations?.listTaskListMembers}
             />
           ) : (
             <CollectionState icon={<ListTodo className="size-12" />}>

@@ -19,6 +19,8 @@ import { workflowStatusIcon, workflowStatusLabel } from "@/tasks-core/src/tasks-
 import { PriorityMark } from "@/tasks-core/src/tasks-priority";
 import { TasksRemindIndicator } from "@/tasks-core/src/tasks-remind-picker";
 import { taskAlertCount } from "@/tasks-core/src/tasks-alert-mapping";
+import { taskAssignees } from "@/tasks-core/src/tasks-assignees";
+import { TaskAssigneeAvatars } from "@/tasks-core/src/tasks-assignees-field";
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -90,6 +92,11 @@ function TasksListRowMarks({ task, L }: Pick<TasksListRowProps, "task" | "L">) {
         <TasksRemindIndicator labels={L} alerts={task.alerts} />
       ) : null}
       <PriorityMark priority={task.priority} L={L} />
+      <TaskAssigneeAvatars
+        assignees={taskAssignees(task.participants)}
+        moreLabel={L.assigneeMore}
+        className="tasks-list-row__assignees"
+      />
     </span>
   );
 }

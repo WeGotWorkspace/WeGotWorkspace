@@ -129,7 +129,7 @@ describe("tasksRescueOperations", () => {
       ]);
     });
 
-    it("drops a person without access, a positional id and keeps an address", async () => {
+    it("rescue drops assignees the target list cannot hold", async () => {
       const createTask = vi.fn(async (_body: TaskCreate) => first);
       const operations = tasksRescueOperations(
         { createTask },
@@ -174,8 +174,10 @@ describe("tasksRescueOperations", () => {
         ...first,
         participants: {
           "e:x@example.org": { "@type": "Participant", name: "X" },
+          "e:y@example.org": { "@type": "Participant", name: "Y" },
         } as ParkedTask["item"]["participants"],
       });
+      expect(createTask).toHaveBeenCalledTimes(2);
       expect(createTask.mock.calls[1]![0]).not.toHaveProperty("participants");
     });
 

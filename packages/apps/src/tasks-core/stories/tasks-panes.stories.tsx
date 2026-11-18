@@ -72,10 +72,18 @@ async function playListAndDetail(canvasElement: HTMLElement) {
   const sheet = canvasElement.querySelector<HTMLElement>(".tasks-detail-view.paper-sheet")!;
   expect(getComputedStyle(sheet).boxShadow).toBe("none");
   const fields = sheet.querySelectorAll(".tasks-detail-view__field");
-  expect(fields).toHaveLength(5);
+  expect(fields).toHaveLength(6);
+  // The Assignee comes first, above Status (#2172).
   expect(
     Array.from(fields).map((field) => field.querySelector(".card__row-title")?.textContent),
-  ).toEqual([L.addTaskStatus, L.dueLabel, L.dueAllDay, L.addTaskPriority, L.detailAlarm(1)]);
+  ).toEqual([
+    L.assigneeLabel,
+    L.addTaskStatus,
+    L.dueLabel,
+    L.dueAllDay,
+    L.addTaskPriority,
+    L.detailAlarm(1),
+  ]);
   for (const field of Array.from(fields)) {
     expect(getComputedStyle(field).borderBottomStyle).toBe("solid");
     // Each value is the shared ghost dropdown (no chrome), its label at the same size;

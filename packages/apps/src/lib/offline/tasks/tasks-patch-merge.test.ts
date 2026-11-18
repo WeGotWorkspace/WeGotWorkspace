@@ -98,7 +98,7 @@ describe("participants merge per id (#2172)", () => {
   const attendee = { "@type": "Participant" as const, roles: ["attendee"] };
   const base: Task = { ...taskWithAlert(), alerts: undefined };
 
-  it("coalesces two queued assigns into one patch holding both people", () => {
+  it("coalesces participants per id like alerts", () => {
     const coalesced = coalesceTaskPatches(
       { participants: { "u:bob": attendee } },
       { participants: { "u:carol": attendee } },

@@ -1,0 +1,91 @@
+@import "../../styles.css" reference;
+
+/* Assignees (#2172): the detail value, the picker and the list row avatars. */
+
+/* Overlapping avatars, each ringed in the surface so the overlap reads. */
+.tasks-assignee-avatars {
+  @apply inline-flex shrink-0 items-center;
+}
+
+.tasks-assignee-avatars__item + .tasks-assignee-avatars__item {
+  margin-inline-start: -6px;
+}
+
+.tasks-assignee-avatars__item .user-avatar__mark {
+  box-shadow: 0 0 0 2px var(--workspace-surface, var(--color-background));
+}
+
+.tasks-assignee-avatars__more {
+  @apply ms-1 text-xs tabular-nums text-muted-foreground;
+}
+
+/* An assignee who lost access to the list stays, greyed. */
+.tasks-assignee--no-access {
+  opacity: 0.5;
+}
+
+.tasks-assignees-field--empty {
+  @apply text-muted-foreground;
+}
+
+/* The ghost's first-svg rule must not shrink the avatars. */
+.tasks-assignees-field.tasks-field__ghost > .tasks-assignee-avatars {
+  @apply me-0.5;
+}
+
+.tasks-assignee-picker {
+  @apply flex flex-col;
+}
+
+.tasks-assignee-picker__search {
+  @apply flex items-center gap-2 border-b px-3;
+}
+
+.tasks-assignee-picker__search-icon {
+  @apply size-4 shrink-0 text-muted-foreground;
+}
+
+.tasks-assignee-picker__input {
+  @apply h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground;
+}
+
+.tasks-assignee-picker__list {
+  @apply m-0 max-h-72 list-none overflow-y-auto p-1;
+}
+
+.tasks-assignee-picker__list:empty {
+  @apply hidden;
+}
+
+.tasks-assignee-picker__option {
+  @apply flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5;
+}
+
+.tasks-assignee-picker__option[data-active] {
+  @apply bg-accent text-accent-foreground;
+}
+
+.tasks-assignee-picker__option--disabled {
+  @apply cursor-default;
+}
+
+.tasks-assignee-picker__option--disabled .tasks-assignee-picker__person,
+.tasks-assignee-picker__option--outside .tasks-assignee-picker__person {
+  opacity: 0.55;
+}
+
+.tasks-assignee-picker__person {
+  @apply min-w-0 flex-1;
+}
+
+.tasks-assignee-picker__check {
+  @apply size-4 shrink-0 opacity-0;
+}
+
+.tasks-assignee-picker__check[data-checked] {
+  @apply opacity-100;
+}
+
+.tasks-assignee-picker__status {
+  @apply m-0 px-3 py-3 text-sm text-muted-foreground;
+}
