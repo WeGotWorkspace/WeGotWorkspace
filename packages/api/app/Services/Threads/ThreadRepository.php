@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Threads;
 
 use App\Exceptions\ApiHttpException;
-use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\ThreadIndex;
 use Illuminate\Database\Eloquent\Builder;
@@ -194,26 +193,32 @@ final class ThreadRepository
      * Entries changed since $since. Entries are never removed one by one in
      * this chunk, so `removed` is empty; pruning (chunk F) fills it.
      *
+     * A state reads `<pool>:<scope>:<modseq>`. One from another pool or scope
+     * (the thread moved with its list, or to another list) cannot be compared
+     * with this thread's modseq values: `cannotCalculateChanges`.
+     *
      * @return array{oldState: string, newState: string, changed: list<string>, removed: list<string>, hasMoreChanges: bool}
      */
     public function changes(ThreadSubject $subject, ?string $since): array
     {
-        $old = ($since === null || $since === '') ? '0' : $since;
-        if (! ctype_digit($old)) {
-            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
-        }
+        $initial = $since === null || $since === '' || $since === '0';
         $pool = $this->pools->find($subject->type, $subject->poolOwner);
+        $oldModseq = 0;
+        if (! $initial) {
+            $parts = explode(':', (string) $since, 3);
+            if (count($parts) !== 3 || ! ctype_digit($parts[0]) || ! ctype_digit($parts[2])
+                || $pool === null || (int) $parts[0] !== (int) $pool->calendarid || $parts[1] !== $subject->scope) {
+                throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
+            }
+            $oldModseq = (int) $parts[2];
+        }
+        $old = $initial ? '0' : (string) $since;
         if ($pool === null) {
             return ['oldState' => $old, 'newState' => $old, 'changed' => [], 'removed' => [], 'hasMoreChanges' => false];
         }
-        // A state above the pool's own token came from another pool (the thread
-        // moved with its list): new entries would land below it and be missed.
-        if ((int) $old > (int) Calendar::query()->whereKey((int) $pool->calendarid)->value('synctoken')) {
-            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
-        }
 
         $rows = array_values($this->threadRows($pool, $subject)
-            ->where('modseq', '>', (int) $old)
+            ->where('modseq', '>', $oldModseq)
             ->orderBy('modseq')
             ->orderBy('uid')
             ->limit(self::PAGE_SIZE + 1)
@@ -222,13 +227,13 @@ final class ThreadRepository
         $more = count($rows) > self::PAGE_SIZE;
         $rows = array_slice($rows, 0, self::PAGE_SIZE);
         $last = $rows === [] ? null : $rows[count($rows) - 1];
-        $new = $more && $last !== null
-            ? (string) $last->modseq
-            : (string) max((int) $this->state($pool, $subject), (int) $old);
+        $newModseq = $more && $last !== null
+            ? (int) $last->modseq
+            : max($this->maxModseq($pool, $subject), $oldModseq);
 
         return [
             'oldState' => $old,
-            'newState' => $new,
+            'newState' => $this->formatState($pool, $subject, $newModseq),
             'changed' => array_map(static fn (ThreadIndex $row): string => $row->uid, $rows),
             'removed' => [],
             'hasMoreChanges' => $more,
@@ -247,7 +252,17 @@ final class ThreadRepository
 
     private function state(CalendarInstance $pool, ThreadSubject $subject): string
     {
-        return (string) (int) $this->threadRows($pool, $subject)->max('modseq');
+        return $this->formatState($pool, $subject, $this->maxModseq($pool, $subject));
+    }
+
+    private function maxModseq(CalendarInstance $pool, ThreadSubject $subject): int
+    {
+        return (int) $this->threadRows($pool, $subject)->max('modseq');
+    }
+
+    private function formatState(CalendarInstance $pool, ThreadSubject $subject, int $modseq): string
+    {
+        return (int) $pool->calendarid.':'.$subject->scope.':'.$modseq;
     }
 
     /**

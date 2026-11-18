@@ -162,9 +162,9 @@ final class ThreadEntryStore
     /**
      * Move entries into another pool, object and row together, keeping their
      * key and uri (an owner change of the scope, #2173). Each moved row gets
-     * the new pool's sync token. A client's `since` from the old pool can be
-     * higher than that; `ThreadRepository::changes` answers those with
-     * `cannotCalculateChanges`.
+     * the new pool's sync token. A sync state names its pool, so one from the
+     * old pool is answered by `ThreadRepository::changes` with
+     * `cannotCalculateChanges`, however the two tokens compare.
      *
      * @param  iterable<ThreadIndex>  $rows  all in $from
      */

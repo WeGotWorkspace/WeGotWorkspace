@@ -134,14 +134,54 @@ final class TaskThreadLifecycleTest extends WgwDatabaseTestCase
         $state = (string) $this->asUser('bob')->getJson($this->threadUrl($taskId, 'entries'))->assertOk()->json('state');
 
         $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['groupSlug' => 'crew'])->assertOk();
+        $this->comment('alice', $taskId, 'After the Team')->assertCreated();
+        $crew = $this->createList('bob', 'Crew other');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$crew, ['groupSlug' => 'crew'])->assertOk();
+        $crewTask = $this->createTask('bob', $crew, 'Rope');
+        for ($i = 0; $i < 12; $i++) {
+            $this->comment('alice', $crewTask, 'Crew noise '.$i)->assertCreated();
+        }
+
+        $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since='.$state)
+            ->assertStatus(400)->assertJsonPath('code', 'cannotCalculateChanges');
+    }
+
+    public function test_changes_state_taken_after_an_owner_change_keeps_working(): void
+    {
+        $taskId = $this->createTask('bob', $this->listId, 'Milk');
+        $this->comment('bob', $taskId, 'Before the Team')->assertCreated();
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['groupSlug' => 'crew'])->assertOk();
+        $state = (string) $this->asUser('bob')->getJson($this->threadUrl($taskId, 'entries'))->assertOk()->json('state');
+
         $new = $this->comment('alice', $taskId, 'After the Team')->assertCreated()->json('id');
 
-        $response = $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since='.$state);
-        if ($response->status() === 200) {
-            $this->assertContains($new, $response->json('changed'));
-        } else {
-            $response->assertStatus(400)->assertJsonPath('code', 'cannotCalculateChanges');
-        }
+        $changes = $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since='.$state)->assertOk();
+        $this->assertSame([$new], $changes->json('changed'));
+        $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since='.$changes->json('newState'))
+            ->assertOk()->assertJsonPath('changed', []);
+    }
+
+    public function test_changes_state_from_before_a_task_move_is_rejected(): void
+    {
+        $taskId = $this->createTask('bob', $this->listId, 'Milk');
+        $other = $this->createList('bob', 'Other');
+        $this->comment('bob', $taskId, 'Old comment')->assertCreated();
+        $state = (string) $this->asUser('bob')->getJson($this->threadUrl($taskId, 'entries'))->assertOk()->json('state');
+
+        $this->moveTask('bob', $taskId, $other)->assertOk();
+
+        $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since='.$state)
+            ->assertStatus(400)->assertJsonPath('code', 'cannotCalculateChanges');
+        $this->assertNotContains('Old comment', array_column($this->entries('bob', $taskId), 'body'));
+    }
+
+    public function test_changes_rejects_a_bare_integer_state(): void
+    {
+        $taskId = $this->createTask('bob', $this->listId, 'Milk');
+        $this->comment('bob', $taskId, 'One')->assertCreated();
+
+        $this->asUser('bob')->getJson($this->threadUrl($taskId, 'changes').'?since=1')
+            ->assertStatus(400)->assertJsonPath('code', 'cannotCalculateChanges');
     }
 
     public function test_failed_rehome_rolls_the_owner_change_back(): void
@@ -150,7 +190,7 @@ final class TaskThreadLifecycleTest extends WgwDatabaseTestCase
         $this->comment('bob', $taskId, 'Kept')->assertCreated();
         $this->app->bind(ThreadLifecycle::class, static fn () => new class
         {
-            public function scopeOwnerChanged(): void
+            public function scopeOwnerChanged(string $subjectType, string $scope, string $newOwnerUri): void
             {
                 throw new \RuntimeException('pool down');
             }
