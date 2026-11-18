@@ -5,8 +5,10 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { listParkedWrites, takeParkedWrites } from "@/lib/offline/core/parked-writes";
 import { rescueParkedWrites } from "@/lib/offline/core/rescue-parked-writes";
+import { ApiError } from "@/lib/api/api-error";
 import {
   parkTask,
+  rescueParticipants,
   tasksRescueOperations,
   type ParkedTask,
 } from "@/lib/offline/tasks/tasks-parked-writes";
@@ -95,5 +97,97 @@ describe("tasksRescueOperations", () => {
 
     expect(createTask).not.toHaveBeenCalled();
     expect(await listParkedWrites(username, TASKS_DOMAIN)).toHaveLength(2);
+  });
+
+  describe("assignees (#2172)", () => {
+    const participants = {
+      "u:bob": { "@type": "Participant", name: "Bob" },
+      "u:rescue-user": { "@type": "Participant", name: "Me" },
+      att1: { "@type": "Participant", name: "Positional" },
+      org: { "@type": "Participant", name: "Organizer" },
+      "e:outside@example.org": { "@type": "Participant", name: "Outside" },
+      "e:carol@example.org": { "@type": "Participant", name: "Carol by mail" },
+    } as NonNullable<ParkedTask["item"]["participants"]>;
+    const members = [
+      { username: "rescue-user", email: null, displayName: "Me", access: "write" },
+      { username: "carol", email: "carol@example.org", displayName: "Carol", access: "write" },
+      { username: "dave", email: null, displayName: "Dave", access: "read" },
+    ] as Parameters<typeof rescueParticipants>[1];
+
+    it("keeps write members and outside addresses, drops the rest", () => {
+      expect(Object.keys(rescueParticipants(participants, members, username) ?? {})).toEqual([
+        "u:rescue-user",
+        "e:outside@example.org",
+      ]);
+    });
+
+    it("keeps only the own u: entry and addresses when no audience is cached", () => {
+      expect(Object.keys(rescueParticipants(participants, null, username) ?? {})).toEqual([
+        "u:rescue-user",
+        "e:outside@example.org",
+        "e:carol@example.org",
+      ]);
+    });
+
+    it("drops a person without access, a positional id and keeps an address", async () => {
+      const createTask = vi.fn(async (_body: TaskCreate) => first);
+      const operations = tasksRescueOperations(
+        { createTask },
+        { username, readCachedMembers: async () => [] },
+      );
+      await operations.createItemIn("keep", {
+        ...first,
+        participants: {
+          "u:bob": { "@type": "Participant", name: "Bob" },
+          att1: { "@type": "Participant", name: "Positional" },
+          "e:outside@example.org": { "@type": "Participant", name: "Outside" },
+        } as ParkedTask["item"]["participants"],
+      });
+      expect(createTask.mock.calls[0]![0].participants).toEqual({
+        "e:outside@example.org": { "@type": "Participant", name: "Outside" },
+      });
+    });
+
+    it("retries once with only the own entry after invalid_participant", async () => {
+      const createTask = vi
+        .fn(async (_body: TaskCreate) => first)
+        .mockRejectedValueOnce(new ApiError("Invalid", 422, "invalid_participant"));
+      const operations = tasksRescueOperations(
+        { createTask },
+        { username, readCachedMembers: async () => null },
+      );
+      await expect(operations.createItemIn("keep", { ...first, participants })).resolves.toBe(
+        first,
+      );
+      expect(createTask).toHaveBeenCalledTimes(2);
+      expect(createTask.mock.calls[1]![0].participants).toEqual({
+        "u:rescue-user": { "@type": "Participant", name: "Me" },
+      });
+    });
+
+    it("retries without assignees when the parked task had no own entry", async () => {
+      const createTask = vi
+        .fn(async (_body: TaskCreate) => first)
+        .mockRejectedValueOnce(new ApiError("Invalid", 422, "invalid_participant"));
+      const operations = tasksRescueOperations({ createTask }, { username });
+      await operations.createItemIn("keep", {
+        ...first,
+        participants: {
+          "e:x@example.org": { "@type": "Participant", name: "X" },
+        } as ParkedTask["item"]["participants"],
+      });
+      expect(createTask.mock.calls[1]![0]).not.toHaveProperty("participants");
+    });
+
+    it("does not retry other errors", async () => {
+      const createTask = vi.fn(async (_body: TaskCreate): Promise<typeof first> => {
+        throw new ApiError("Nope", 422, "validation_failed");
+      });
+      const operations = tasksRescueOperations({ createTask }, { username });
+      await expect(operations.createItemIn("keep", { ...first, participants })).rejects.toThrow(
+        "Nope",
+      );
+      expect(createTask).toHaveBeenCalledTimes(1);
+    });
   });
 });

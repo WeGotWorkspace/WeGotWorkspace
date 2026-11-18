@@ -93,3 +93,38 @@ describe("withExplicitAlertsClear", () => {
     expect(withExplicitAlertsClear(patch, taskWithAlert())).toBe(patch);
   });
 });
+
+describe("participants merge per id (#2172)", () => {
+  const attendee = { "@type": "Participant" as const, roles: ["attendee"] };
+  const base: Task = { ...taskWithAlert(), alerts: undefined };
+
+  it("coalesces two queued assigns into one patch holding both people", () => {
+    const coalesced = coalesceTaskPatches(
+      { participants: { "u:bob": attendee } },
+      { participants: { "u:carol": attendee } },
+    );
+
+    expect(coalesced.participants).toEqual({ "u:bob": attendee, "u:carol": attendee });
+  });
+
+  it("coalesces an assign then an unassign into a null entry", () => {
+    const coalesced = coalesceTaskPatches(
+      { participants: { "u:bob": attendee, "u:carol": attendee } },
+      { participants: { "u:bob": null } },
+    );
+
+    expect(coalesced.participants).toEqual({ "u:bob": null, "u:carol": attendee });
+  });
+
+  it("keeps the optimistic task free of null entries", () => {
+    const assigned = applyTaskPatch(base, { participants: { "u:bob": attendee } });
+    const both = applyTaskPatch(assigned, { participants: { "u:carol": attendee } });
+    expect(both.participants).toEqual({ "u:bob": attendee, "u:carol": attendee });
+
+    const unassigned = applyTaskPatch(both, { participants: { "u:bob": null } });
+    expect(unassigned.participants).toEqual({ "u:carol": attendee });
+
+    const empty = applyTaskPatch(unassigned, { participants: { "u:carol": null } });
+    expect("participants" in empty).toBe(false);
+  });
+});

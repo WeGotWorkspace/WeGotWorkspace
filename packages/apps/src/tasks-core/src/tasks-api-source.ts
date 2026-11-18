@@ -8,6 +8,7 @@ import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import type { Task, TaskList, TaskListPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
 import { applyTaskAlertsPatch } from "@/lib/models/task-alerts";
+import { applyTaskParticipantsPatch } from "@/lib/offline/tasks/tasks-patch-merge";
 import {
   filterSharePrincipals,
   mergeShareWith,
@@ -102,6 +103,7 @@ function createMockTasksOperations(
             taskListId: listId,
             categories: patch.categories ?? task.categories,
             alerts: applyTaskAlertsPatch(task.alerts, patch.alerts),
+            participants: applyTaskParticipantsPatch(task.participants, patch.participants),
           };
           return updated;
         }),

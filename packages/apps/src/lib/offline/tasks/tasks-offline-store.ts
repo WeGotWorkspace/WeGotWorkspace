@@ -1,6 +1,6 @@
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { rememberOfflineTasksUsername } from "@/lib/offline/core/offline-session";
-import type { Task, TaskList, TaskPatch } from "@/lib/models/tasks-types";
+import type { Task, TaskList, TaskListMember, TaskPatch } from "@/lib/models/tasks-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   parseMirrorRows,
@@ -199,4 +199,29 @@ export function createTempTaskId(): string {
 
 export function createTempTaskListId(): string {
   return createLocalEntityId("local-list-");
+}
+
+const META_LIST_MEMBERS_PREFIX = "tasks:list-members:";
+
+/** The list audience last fetched online, for the picker offline (#2172). */
+export async function readCachedTaskListMembers(
+  username: string,
+  taskListId: string,
+): Promise<TaskListMember[] | null> {
+  const raw = await readMeta(username, META_LIST_MEMBERS_PREFIX + taskListId);
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as TaskListMember[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeCachedTaskListMembers(
+  username: string,
+  taskListId: string,
+  members: readonly TaskListMember[],
+): Promise<void> {
+  await writeMeta(username, META_LIST_MEMBERS_PREFIX + taskListId, JSON.stringify(members));
 }

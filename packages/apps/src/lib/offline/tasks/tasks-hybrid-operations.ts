@@ -18,6 +18,7 @@ import {
   getTask,
   importTasksLive,
   listTaskListChanges,
+  listTaskListMembers,
   patchTask,
   patchTaskList,
   putTask,
@@ -41,6 +42,8 @@ import {
   removeTaskListFromCache,
   tasksOutboxTaskId,
   upsertTaskInCache,
+  readCachedTaskListMembers,
+  writeCachedTaskListMembers,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
   writeTasksChangesState,
@@ -371,6 +374,22 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         rethrowUnlessOfflineQueue(error, opts);
         return queueOfflineMove(username, taskId, taskListId, existing, opts);
       }
+    },
+    listTaskListMembers: async (taskListId) => {
+      if (readBrowserOnline()) {
+        try {
+          const members = await listTaskListMembers(taskListId);
+          try {
+            await writeCachedTaskListMembers(username, taskListId, members);
+          } catch {
+            // Cache only: the picker still has the live answer.
+          }
+          return { members, fromCache: false };
+        } catch (error) {
+          if (!isFetchNetworkError(error)) throw error;
+        }
+      }
+      return { members: await readCachedTaskListMembers(username, taskListId), fromCache: true };
     },
     importTasks: async (icsText, opts) => {
       if (!readBrowserOnline()) {
