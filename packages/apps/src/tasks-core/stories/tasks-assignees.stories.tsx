@@ -107,7 +107,7 @@ export const ThreeAssignees: Story = {
     const page = within(document.body);
     await waitFor(() => expect(trigger(canvasElement)).toHaveTextContent(L.assigneePeople(3)));
     expect(trigger(canvasElement)).toHaveAccessibleName(
-      `${L.assigneeLabel}: Alex Morgan, Sam Rivera, Jordan Lee`,
+      `${L.assigneeLabel}: ${L.assigneePeople(3)} (Alex Morgan, Sam Rivera, Jordan Lee)`,
     );
     await userEvent.click(trigger(canvasElement));
 

@@ -128,7 +128,10 @@ export function TasksAssigneesField({
         : L.assigneePeople(assignees.length);
   const leading =
     assignees.length === 0 ? null : (
-      <TaskAssigneeAvatars assignees={assignees} moreLabel={L.assigneeMore} />
+      // The names are in the button's name; the initials would only repeat them.
+      <span aria-hidden className="contents">
+        <TaskAssigneeAvatars assignees={assignees} moreLabel={L.assigneeMore} />
+      </span>
     );
   const noAccess = single?.access === "none";
 
@@ -141,9 +144,11 @@ export function TasksAssigneesField({
             assignees.length === 0 && "tasks-assignees-field--empty",
             noAccess && "tasks-assignee--no-access",
           )}
-          // Field name + the visible value (WCAG 2.5.3); every name for several people.
-          aria-label={`${L.assigneeLabel}: ${
-            assignees.length > 1 ? assignees.map((assignee) => assignee.name).join(", ") : label
+          // It starts with the visible value (WCAG 2.5.3), then every name for several people.
+          aria-label={`${L.assigneeLabel}: ${label}${
+            assignees.length > 1
+              ? ` (${assignees.map((assignee) => assignee.name).join(", ")})`
+              : ""
           }${noAccess ? `, ${L.assigneeNoAccess}` : ""}`}
           title={noAccess ? L.assigneeNoAccess : undefined}
           disabled={disabled}
@@ -151,7 +156,13 @@ export function TasksAssigneesField({
           label={label}
         />
       </PopoverTrigger>
-      <PopoverContent align="start" collisionPadding={16} frost className="w-80 p-0">
+      <PopoverContent
+        align="start"
+        collisionPadding={16}
+        frost
+        aria-label={L.assigneeLabel}
+        className="w-80 p-0"
+      >
         <TasksAssigneePicker
           L={L}
           members={members}
