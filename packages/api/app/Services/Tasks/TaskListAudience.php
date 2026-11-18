@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Settings\GroupMembershipResolver;
+use App\Services\Teams\TeamColleagues;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -19,7 +20,10 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  * sources. Hidden grants (Epic #1915) and disabled accounts are left out.
  *
  * One answer for assignee validation, the assignee picker and assignment
- * notifications. It is computed per call and never cached, so Team changes
+ * notifications. `visibleTo` narrows it to the people one person may see:
+ * themself, the list owners, and their Team colleagues (product owner,
+ * 2026-11-18). Reads, the picker and assignment all use that view, so a person
+ * sharee learns nothing about a Team they are not in. It is computed per call and never cached, so Team changes
  * show on the next request.
  */
 final class TaskListAudience
@@ -31,7 +35,29 @@ final class TaskListAudience
     public function __construct(
         private readonly CalendarShareInvites $shareInvites,
         private readonly GroupMembershipResolver $groupMembers,
+        private readonly TeamColleagues $colleagues,
     ) {}
+
+    /**
+     * The audience of calendar `$calendarId` as `$viewer` may see it: themself,
+     * the person owners of the list, and everyone they share a Team with
+     * ({@see TeamColleagues::sharesTeamIgnoringAdminRole}). Access levels are
+     * kept, so a visible reader is still a reader.
+     *
+     * @return array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>
+     */
+    public function visibleTo(int $calendarId, string $viewer): array
+    {
+        $viewer = strtolower(trim($viewer));
+        $shown = array_flip([$viewer, ...$this->ownerUsernamesForCalendar($calendarId)]);
+
+        return array_filter(
+            $this->forCalendarId($calendarId),
+            fn (array $member, string $username): bool => isset($shown[$username])
+                || $this->colleagues->sharesTeamIgnoringAdminRole($viewer, $username),
+            ARRAY_FILTER_USE_BOTH,
+        );
+    }
 
     /**
      * Keyed by username, ordered by display name.
@@ -83,8 +109,16 @@ final class TaskListAudience
      */
     public function ownerUsernames(CalendarInstance $list): array
     {
+        return $this->ownerUsernamesForCalendar((int) $list->calendarid);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function ownerUsernamesForCalendar(int $calendarId): array
+    {
         $owners = [];
-        foreach ($this->ownerRows($list) as $row) {
+        foreach ($this->ownerRowsForCalendar($calendarId) as $row) {
             $uri = (string) $row->principaluri;
             if (! str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
                 $owners = [...$owners, ...$this->usernamesForPrincipalUri($uri)];
@@ -92,14 +126,6 @@ final class TaskListAudience
         }
 
         return array_values(array_unique($owners));
-    }
-
-    /**
-     * @return list<CalendarInstance>
-     */
-    private function ownerRows(CalendarInstance $list): array
-    {
-        return $this->ownerRowsForCalendar((int) $list->calendarid);
     }
 
     /**

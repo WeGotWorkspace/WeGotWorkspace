@@ -62,7 +62,7 @@ final class TaskRepository
         $tasks = [];
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
                     $tasks[] = $task;
                 }
             } catch (ApiHttpException $e) {
@@ -103,7 +103,7 @@ final class TaskRepository
         $total = 0;
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
                     if ($uidFilter !== null && ($task['uid'] ?? null) !== $uidFilter) {
                         continue;
                     }
@@ -139,7 +139,7 @@ final class TaskRepository
         if ($located === null) {
             return null;
         }
-        $task = $this->mapper->toTask($located['object'], $located['taskListUri'], $located['vtodoUid']);
+        $task = $this->mapper->forViewer($username)->toTask($located['object'], $located['taskListUri'], $located['vtodoUid']);
 
         return $task === null ? null : ['instance' => $located['instance'], 'task' => $task];
     }
@@ -152,7 +152,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
-        $task = $this->mapper->toTask(
+        $task = $this->mapper->forViewer($username)->toTask(
             $located['object'],
             $located['taskListUri'],
             $located['vtodoUid'],
@@ -202,7 +202,7 @@ final class TaskRepository
         }
 
         $taskListId = $this->taskListUriForInstance($instance);
-        $task = $this->mapper->toTask($object, $taskListId);
+        $task = $this->mapper->forViewer($username)->toTask($object, $taskListId);
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
         }
@@ -233,7 +233,7 @@ final class TaskRepository
             ->where('componenttype', 'VTODO')
             ->first();
 
-        return $object === null ? null : $this->mapper->toTask($object, $this->taskListUriForInstance($instance));
+        return $object === null ? null : $this->mapper->forViewer($username)->toTask($object, $this->taskListUriForInstance($instance));
     }
 
     /**
@@ -316,7 +316,7 @@ final class TaskRepository
         $object = $located['object'];
         $objectUri = (string) $object->uri;
         $taskListId = $this->taskListUriForInstance($instance);
-        $existingTask = $this->mapper->toTask($object, $taskListId, $located['vtodoUid']);
+        $existingTask = $this->mapper->forViewer($username)->toTask($object, $taskListId, $located['vtodoUid']);
         if ($existingTask === null) {
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
@@ -368,7 +368,7 @@ final class TaskRepository
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
 
-        $task = $this->mapper->toTask($updated, $targetListUri, $located['vtodoUid']);
+        $task = $this->mapper->forViewer($username)->toTask($updated, $targetListUri, $located['vtodoUid']);
         if ($task === null) {
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
@@ -456,7 +456,7 @@ final class TaskRepository
         $objectUri = (string) $object->uri;
         $calendarIdPair = [(int) $instance->calendarid, (int) $instance->id];
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
-        $existingTask = $this->mapper->toTask($object, $this->taskListUriForInstance($instance), $located['vtodoUid']);
+        $existingTask = $this->mapper->forViewer($username)->toTask($object, $this->taskListUriForInstance($instance), $located['vtodoUid']);
 
         if ($located['vtodoUid'] !== null) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
@@ -555,12 +555,8 @@ final class TaskRepository
         array $before,
         array $after,
     ): void {
-        $from = isset($before['workflowStatus']) && is_string($before['workflowStatus'])
-            ? $before['workflowStatus']
-            : null;
-        $to = isset($after['workflowStatus']) && is_string($after['workflowStatus'])
-            ? $after['workflowStatus']
-            : null;
+        $from = is_string($before['workflowStatus'] ?? null) ? $before['workflowStatus'] : null;
+        $to = is_string($after['workflowStatus'] ?? null) ? $after['workflowStatus'] : null;
         if ($to === null || $from === $to) {
             return;
         }
