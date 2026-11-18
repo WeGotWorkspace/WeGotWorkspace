@@ -97,6 +97,7 @@ export const liveTierSpecs = [
   "tasks-inbound-sync",
   "tasks-list-windowed",
   "tasks-push",
+  "tasks-thread-live",
   "undo-offline",
 ];
 

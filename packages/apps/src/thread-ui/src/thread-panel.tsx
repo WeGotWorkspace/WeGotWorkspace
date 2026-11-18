@@ -27,6 +27,10 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
   const thread = useThread(client, adapter);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  /** The text of an edit that did not land, put back in a fresh editor so it is not lost. */
+  const [editDraft, setEditDraft] = useState<{ id: string; body: string; attempt: number } | null>(
+    null,
+  );
   const me = adapter.me.id;
   const shortcut = sendShortcutLabel();
   const principals = useMemo(
@@ -66,14 +70,33 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
         editComposer={
           editing === entry.id ? (
             <ChatComposer
-              initialContent={entry.body ?? ""}
+              key={`${entry.id}:${editDraft?.id === entry.id ? editDraft.attempt : 0}`}
+              initialContent={editDraft?.id === entry.id ? editDraft.body : (entry.body ?? "")}
               principals={principals}
               sendKey="mod-enter"
               onSend={({ body }) => {
-                setEditing(null);
-                if (body !== entry.body) void thread.edit(entry.id, body);
+                if (body === entry.body) {
+                  setEditing(null);
+                  return;
+                }
+                void thread.edit(entry.id, body).then((landed) => {
+                  if (landed) {
+                    setEditing(null);
+                    setEditDraft(null);
+                  } else {
+                    setEditDraft((previous) => ({
+                      id: entry.id,
+                      body,
+                      attempt: (previous?.attempt ?? 0) + 1,
+                    }));
+                  }
+                });
               }}
-              onCancel={() => setEditing(null)}
+              onCancel={() => {
+                setEditing(null);
+                setEditDraft(null);
+                thread.clearWriteError();
+              }}
             />
           ) : undefined
         }
@@ -129,6 +152,16 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
         </p>
       ) : thread.status === "gone" ? null : (
         <>
+          {thread.lastUpdated !== null ? (
+            <p className="thread-panel__state thread-panel__last-updated">
+              {threadUiLabels.lastUpdated(formatThreadTime(thread.lastUpdated))}
+            </p>
+          ) : null}
+          {thread.writeError ? (
+            <p className="thread-panel__failed-reason" role="alert">
+              {threadUiLabels.notSaved}: {threadUiLabels.failure[thread.writeError]}
+            </p>
+          ) : null}
           {thread.roots.length === 0 ? (
             <p className="thread-panel__state">{threadUiLabels.empty}</p>
           ) : (
