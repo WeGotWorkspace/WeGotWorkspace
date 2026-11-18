@@ -66,6 +66,7 @@ use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitie
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TaskImportController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
+use App\Http\Controllers\Api\V1\Tasks\TaskTextController;
 use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\GuestUploadRateLimiters;
 use App\Http\RateLimiting\JmapPushRateLimiters;
@@ -287,6 +288,10 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         Route::patch('tasks/items/{taskId}', [TasksController::class, 'patch'])
             ->where('taskId', '[A-Za-z0-9_.#-]+');
         Route::delete('tasks/items/{taskId}', [TasksController::class, 'destroy'])
+            ->where('taskId', '[A-Za-z0-9_.#-]+');
+        Route::get('tasks/items/{taskId}/text', [TaskTextController::class, 'show'])
+            ->where('taskId', '[A-Za-z0-9_.#-]+');
+        Route::put('tasks/items/{taskId}/text', [TaskTextController::class, 'update'])
             ->where('taskId', '[A-Za-z0-9_.#-]+');
     });
 

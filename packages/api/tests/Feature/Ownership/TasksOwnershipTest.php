@@ -38,6 +38,7 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         'GET /tasks/items',
         'POST /tasks/items/query',
         'GET /tasks/items/{taskId}',
+        'GET /tasks/items/{taskId}/text',
     ];
 
     private const ITEM_WRITE_OPS = [
@@ -46,6 +47,7 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         'PUT /tasks/items/{taskId}',
         'PATCH /tasks/items/{taskId}',
         'DELETE /tasks/items/{taskId}',
+        'PUT /tasks/items/{taskId}/text',
     ];
 
     private const VISIBLE = [
@@ -203,6 +205,8 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'POST /tasks/items' => $this->runItemCreate($case, $target),
             'POST /tasks/items/import' => $this->runItemImport($case, $target),
             'PUT /tasks/items/{taskId}', 'PATCH /tasks/items/{taskId}', 'DELETE /tasks/items/{taskId}' => $this->runItemWrite($case, $target),
+            'GET /tasks/items/{taskId}/text' => $this->runTextShow($case, $target),
+            'PUT /tasks/items/{taskId}/text' => $this->runTextPut($case, $target),
             default => throw new LogicException('No runner for '.$case->operation),
         };
     }
@@ -615,6 +619,48 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         // The owner's current ETag: the strongest precondition another client could send.
         $headers = ['If-Match' => $this->etagOf($target['owner'], $target['taskId'])];
         $send = fn (): TestResponse => $this->requestAs($case->actor, $method, '/tasks/items/'.$target['taskId'], $body, $headers);
+
+        if ($case->outcome === Outcome::Allowed || $case->outcome === Outcome::Unauthenticated) {
+            $this->assertRestOutcome($send(), $case);
+
+            return;
+        }
+
+        $response = $this->assertUnchanged(fn () => $this->ownerSnapshot($target), $send, $case->key());
+        $this->assertRestOutcome($response, $case);
+    }
+
+    /**
+     * The live text of the target task (#2208).
+     *
+     * @param  array{owner: string, name: string, ownerListId: string, actorListId: string, taskId: string}  $target
+     */
+    private function runTextShow(OwnershipCase $case, array $target): void
+    {
+        $response = $this->requestAs($case->actor, 'GET', '/tasks/items/'.$target['taskId'].'/text');
+        $this->assertRestOutcome($response, $case);
+        if ($case->outcome === Outcome::Allowed) {
+            $this->assertSame('task '.$case->scope->value, $response->json('title'), $case->key());
+        }
+    }
+
+    /**
+     * A first live-text save naming the owner's current text, the strongest
+     * acknowledgement another client could send.
+     *
+     * @param  array{owner: string, name: string, ownerListId: string, actorListId: string, taskId: string}  $target
+     */
+    private function runTextPut(OwnershipCase $case, array $target): void
+    {
+        $seen = (string) $this->requestAsUsername($target['owner'], 'GET', '/tasks/items/'.$target['taskId'].'/text')
+            ->assertOk()->headers->get('ETag');
+        $header = (string) json_encode(['documentLen' => 6, 'yjsLen' => 1, 'title' => 'typed by actor']);
+        $server = ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json', 'HTTP_IF_NONE_MATCH' => '*', 'HTTP_X_WGW_EXTERNAL_WRITE' => $seen];
+        $token = $this->tokenFor($case->actor);
+        if ($token !== null) {
+            $server['HTTP_AUTHORIZATION'] = 'Bearer '.$token;
+        }
+        $send = fn (): TestResponse => $this->call('PUT', '/api/v1/tasks/items/'.$target['taskId'].'/text', [], [], [], $server, pack('n', strlen($header)).$header."actor!\x01");
 
         if ($case->outcome === Outcome::Allowed || $case->outcome === Outcome::Unauthenticated) {
             $this->assertRestOutcome($send(), $case);
