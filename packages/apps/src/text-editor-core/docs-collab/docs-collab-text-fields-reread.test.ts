@@ -140,6 +140,45 @@ describe("text-fields re-read, offline edits", () => {
     expect(readTextFields(doc).title).toBe("Buy milk and eggs");
   });
 
+  it("keeps typing made on top of an offline seed when the stored state is adopted", () => {
+    const server = seeded({ title: "Buy milk", description: "Notes" });
+    server.getText(TEXT_FIELDS_TITLE).insert(8, " and eggs");
+    const doc = new Y.Doc();
+    seedTextFields(doc, { title: "Buy milk and eggs", description: "Notes" }, '"x"');
+    observeTextFieldsSeeds(doc);
+    doc.getText(TEXT_FIELDS_TITLE).insert(17, "!");
+    doc.getText(TEXT_FIELDS_BODY).insert(5, "!");
+    const text = { title: "Buy milk and eggs", description: "Notes" };
+
+    expect(rereadTextFields(doc, read(text, "e2", { storedState: stateOf(server) }), quiet)).toBe(
+      "adopted",
+    );
+
+    const { title, description } = readTextFields(doc);
+    expect(title.split("!").length - 1).toBe(1);
+    expect(description.split("!").length - 1).toBe(1);
+    expect(title.replace("!", "")).toBe("Buy milk and eggs");
+    expect(description.replace("!", "")).toBe("Notes");
+  });
+
+  it("asks after a reload when offline typing is not in the stored state and the text moved", () => {
+    const doc = seeded();
+    const serverState = stateOf(doc);
+    doc.getText(TEXT_FIELDS_BODY).insert(8, " and eggs");
+    const reloaded = new Y.Doc();
+    Y.applyUpdate(reloaded, stateOf(doc));
+    const loaded = Y.decodeStateVector(Y.encodeStateVector(reloaded));
+    const served = read(SOY, "e2", { storedState: serverState, externalWrite: true });
+
+    const result = rereadTextFields(reloaded, served, {
+      pendingLocalWork: true,
+      loadedStateVector: loaded,
+    });
+
+    expect(result).toBe("prompt");
+    expect(readTextFields(reloaded).description).toBe("Buy milk and eggs");
+  });
+
   it("keeps an offline edit when there is no stored state and the text is what it took", () => {
     const doc = seeded();
     doc.getText(TEXT_FIELDS_BODY).insert(8, " typed offline");
@@ -382,7 +421,7 @@ describe("rereadTextFields: typing a peer already saved", () => {
     const result = rereadTextFields(
       typist,
       read(SOY, "o3", { storedState: stateOf(peer), externalWrite: true }),
-      { pendingLocalWork: true },
+      { pendingLocalWork: true, loadedStateVector: new Map() },
     );
 
     expect(result).toBe("replaced");

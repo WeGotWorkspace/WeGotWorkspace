@@ -127,7 +127,7 @@ export function useDocsCollabJoin({
    */
   const loadedStateRef = useRef<{ ydoc: Y.Doc; stateVector: Map<number, number> } | null>(null);
   const serverJoinStartedRef = useRef(false);
-  const shape = useDocsCollabTextFields({ refs, room, urls, documentFormat });
+  const shape = useDocsCollabTextFields({ refs, room, urls, documentFormat, loadedStateRef });
   const { seedDocument } = shape;
   const markDocReady = useCallback(() => {
     // A peer can fill the doc after a failed sidecar already showed the preview.

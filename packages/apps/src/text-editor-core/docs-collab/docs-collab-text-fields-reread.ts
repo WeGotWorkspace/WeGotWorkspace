@@ -12,6 +12,8 @@ import {
   sameTextFields,
   seedTextFields,
   textFieldsMetaToken,
+  textFieldsSeedClientIds,
+  textFieldsSeedClocks,
   vectorOfUpdate,
   writeTextFieldsBaseIfUnchanged,
   type TextFieldsBase,
@@ -64,12 +66,26 @@ function servedMatchesBase(
 /**
  * Every item this client wrote is in the stored state: a peer's save carried
  * this person's typing (two people in one room), so a later outside write
- * replaces it quietly instead of asking (#2208, live e2e).
+ * replaces it quietly instead of asking (#2208, live e2e). A reload gives the
+ * document a new client id, so the clients the local copy held at load count
+ * too; seeds do not (the stored state may hold a different one). Without that
+ * load vector the pending flag stands.
  */
-function storedHoldsOwnWork(doc: Y.Doc, stored: Uint8Array): boolean {
+function storedHoldsOwnWork(
+  doc: Y.Doc,
+  stored: Uint8Array,
+  loadedStateVector: ReadonlyMap<number, number> | undefined,
+): boolean {
+  if (!loadedStateVector) return false;
   try {
     const vector = Y.decodeStateVector(Y.encodeStateVectorFromUpdate(stored));
-    return (vector.get(doc.clientID) ?? 0) >= Y.getState(doc.store, doc.clientID);
+    const seeds = new Set(textFieldsSeedClientIds(doc));
+    const clients = new Set([doc.clientID, ...loadedStateVector.keys()]);
+    for (const client of clients) {
+      if (seeds.has(client)) continue;
+      if ((vector.get(client) ?? 0) < Y.getState(doc.store, client)) return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -91,7 +107,8 @@ export function rereadTextFields(
   const { storedState, text, contentTag, objectEtag } = read;
   const stored = storedState && storedState.byteLength > 0 ? storedState : null;
   // Typing a peer already saved is not this person's unsaved work any more.
-  const pendingLocalWork = pendingFlag && !(stored && storedHoldsOwnWork(doc, stored));
+  const pendingLocalWork =
+    pendingFlag && !(stored && storedHoldsOwnWork(doc, stored, loadedStateVector));
   // A state that does not hold the served text, or cannot be read, is an
   // outside write too (#2208, security review). The text is compared only
   // when both reads are one save; a save between them adopts.
@@ -109,8 +126,12 @@ export function rereadTextFields(
 
   if (!outside && stored) {
     // Case 1: adopt. The snapshot carries `base` and `seed` when this code wrote it.
-    // Drops a seed built offline from an older text, keeps typing on top of it.
-    adoptServerSnapshot(doc, stored, SERVER_ORIGIN, loadedStateVector, { keepUnsavedEdits: true });
+    // Drops a seed built offline from an older text, keeps typing on top of it:
+    // only seed clients are candidates (the offline seed is made after the load,
+    // so the load vector would not do).
+    adoptServerSnapshot(doc, stored, SERVER_ORIGIN, textFieldsSeedClocks(doc), {
+      keepUnsavedEdits: true,
+    });
     if (!readTextFieldsBase(doc)) {
       writeTextFieldsBaseIfUnchanged(doc, textFieldsMetaToken(doc), {
         contentTag,

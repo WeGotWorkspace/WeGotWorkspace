@@ -35,8 +35,11 @@ export function useDocsCollabTextFields({
   room,
   urls,
   documentFormat,
+  loadedStateRef,
 }: {
   refs: DocsCollabSessionRefs;
+  /** The state the local copy held when IndexedDB finished loading. */
+  loadedStateRef: { current: { ydoc: Y.Doc; stateVector: Map<number, number> } | null };
   room: string;
   urls: DocsCollabUrls;
   documentFormat: TextEditorContentFormat;
@@ -96,6 +99,8 @@ export function useDocsCollabTextFields({
         },
         {
           pendingLocalWork: hasPendingLocalWork(refs),
+          loadedStateVector:
+            loadedStateRef.current?.ydoc === ydoc ? loadedStateRef.current.stateVector : undefined,
         },
       );
       refs.externalWriteHoldRef.current = result === "prompt";
@@ -111,7 +116,7 @@ export function useDocsCollabTextFields({
       }
       return result;
     },
-    [refs, urls],
+    [loadedStateRef, refs, urls],
   );
 
   /**
