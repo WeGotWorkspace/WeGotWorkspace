@@ -380,7 +380,8 @@ final class TaskAssigneeGuard
                 }
                 $username = TaskConversionSupport::usernameFromParticipantId($id);
                 if ($username !== null) {
-                    return isset($members()[$username]);
+                    // Someone who can only view the target list cannot tick the task off.
+                    return ($members()[$username]['access'] ?? null) === TaskListAudience::ACCESS_WRITE;
                 }
                 if (! str_starts_with($id, TaskConversionSupport::EMAIL_ID_PREFIX)) {
                     return false;

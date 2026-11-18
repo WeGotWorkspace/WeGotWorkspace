@@ -253,6 +253,25 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertNoDave('alice', $taskId);
     }
 
+    public function test_a_move_drops_a_stored_assignee_who_can_only_read_the_new_list(): void
+    {
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'alice' => ['mayWriteAll' => false],
+        ]])->assertOk();
+
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $this->moveTask('bob', $taskId, $shed);
+
+        $participants = $this->asUser('bob')->getJson('/api/v1/tasks/items/'.$taskId)->assertOk()->json('participants') ?? [];
+        $this->assertArrayNotHasKey('u:alice', $participants);
+        $this->assertStringNotContainsString('alice@example.test', $this->storedIcs($taskId));
+    }
+
     private function moveTask(string $user, string $taskId, string $listId): void
     {
         $url = '/api/v1/tasks/items/'.$taskId;
