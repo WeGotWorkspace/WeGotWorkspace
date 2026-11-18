@@ -118,12 +118,10 @@ describe("SettingsAssistantsPane", () => {
     });
     expect(assistantNames()).toEqual(["Claude"]);
     expect(screen.getByText("claude.ai")).toBeTruthy();
-    expect(screen.getByText("Permissions")).toBeTruthy();
-    expect(screen.getByText("Connections")).toBeTruthy();
     expect(connectionRows()).toEqual([
       expect.stringMatching(/^Safari on Mac: Approved (12 Nov|Nov 12) · Active /),
     ]);
-    expect(screen.queryByRole("button", { name: /Revoke all/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Revoke all Claude connections" })).toBeTruthy();
     expect(appRows()).toEqual(["Calendar: Read & write", "Drive: Read"]);
     expect(screen.getByRole("button", { name: "Revoke Claude" })).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();

@@ -1,4 +1,3 @@
-import { KeyRound, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { buildMcpEndpointUrl } from "@/lib/mcp-endpoint";
@@ -107,9 +106,9 @@ export function SettingsAssistantsPane({
 }
 
 /**
- * One assistant product as a page section: its name as the title (source at the
- * end), then what it may do per app, then its connections. One connection or
- * many, the layout is the same; Revoke all only appears with more than one.
+ * One assistant product as a page section: its name as the title (source beside it,
+ * Revoke all at the end), then an app tag per permission, then its connections. One connection or
+ * many, the layout is the same; Revoke all revokes every one.
  */
 function AssistantSection({
   group,
@@ -135,37 +134,18 @@ function AssistantSection({
       className="settings-assistant"
       title={group.name}
       titleAccessory={showSource ? <Tag label={group.source} /> : undefined}
+      action={
+        <Button
+          variant="ghost"
+          severity="danger"
+          label="Revoke all"
+          aria-label={`Revoke all ${group.name} connections`}
+          disabled={connections.some((grant) => grant.clientId === revokingId)}
+          onClick={() => onRevoke(connections)}
+        />
+      }
     >
-      {sharedScopes ? (
-        <>
-          <FieldLabelRow
-            layout="inline"
-            section
-            className="settings-assistant__heading"
-            label="Permissions"
-            icon={<KeyRound aria-hidden />}
-          >
-            {null}
-          </FieldLabelRow>
-          <AccessRows scopes={connections[0].scopes} />
-        </>
-      ) : null}
-      <FieldLabelRow
-        layout="inline"
-        section
-        className="settings-assistant__heading"
-        label="Connections"
-        icon={<MonitorSmartphone aria-hidden />}
-      >
-        {connections.length > 1 ? (
-          <RevokeButton
-            label="Revoke all"
-            ariaLabel={`Revoke all ${group.name} connections`}
-            disabled={connections.some((grant) => grant.clientId === revokingId)}
-            onClick={() => onRevoke(connections)}
-          />
-        ) : null}
-      </FieldLabelRow>
+      {sharedScopes ? <AccessRows scopes={connections[0].scopes} /> : null}
       {connections.map((grant) => (
         <ConnectionRow
           key={grant.clientId}
@@ -213,8 +193,7 @@ function ConnectionRow({
       below={showScopes ? <AccessRows scopes={grant.scopes} /> : undefined}
     >
       <RevokeButton
-        label="Revoke"
-        ariaLabel={single ? `Revoke ${name}` : `Revoke ${name}, ${via ?? "unknown browser"}`}
+        label={single ? `Revoke ${name}` : `Revoke ${name}, ${via ?? "unknown browser"}`}
         disabled={disabled}
         onClick={onRevoke}
       />
@@ -222,23 +201,22 @@ function ConnectionRow({
   );
 }
 
+/** Ghost text button; the accessible name says which connection. */
 function RevokeButton({
   label,
-  ariaLabel,
   disabled,
   onClick,
 }: {
   label: string;
-  ariaLabel: string;
   disabled: boolean;
   onClick: () => void;
 }) {
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       severity="danger"
-      label={label}
-      aria-label={ariaLabel}
+      label="Revoke"
+      aria-label={label}
       disabled={disabled}
       onClick={onClick}
     />
