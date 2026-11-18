@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Docs\Conversion;
 
-use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
+use App\Services\Threads\ThreadEntryJournal;
 use DateTimeImmutable;
-use DateTimeZone;
-use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VJournal;
-use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
-use Sabre\VObject\Reader;
 
 /**
  * Docs comment/suggestion thread <-> VJOURNAL mapping (Task #749; mirrors chat).
@@ -26,25 +22,30 @@ use Sabre\VObject\Reader;
  * - X-WGW-RESOLVED   = comment roots
  * - X-WGW-ARCHIVED   = suggestion roots (not STATUS:CANCELLED)
  * - X-WGW-REACTIONS  = JSON on the root, rewritten in a transaction
+ *
+ * The shared entry properties live in ThreadEntryJournal (#2173 chunk A);
+ * this class adds the Docs root fields and keeps Docs' property order.
  */
 final class DocsThreadJournalConverter
 {
-    public const MAX_BODY_BYTES = 65_536;
+    public const MAX_BODY_BYTES = ThreadEntryJournal::MAX_BODY_BYTES;
 
     public const KIND_COMMENT = 'comment';
 
     public const KIND_SUGGESTION = 'suggestion';
 
-    private const ULID_PATTERN = '/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/';
+    private const LABEL = 'Thread';
+
+    private readonly ThreadEntryJournal $journal;
+
+    public function __construct()
+    {
+        $this->journal = new ThreadEntryJournal(self::LABEL);
+    }
 
     public static function normalizeUlid(string $id): string
     {
-        $ulid = strtoupper(trim($id));
-        if (preg_match(self::ULID_PATTERN, $ulid) !== 1) {
-            throw new ApiHttpException(400, 'Thread id must be a ULID.', 'invalidProperties', ['id']);
-        }
-
-        return $ulid;
+        return ThreadEntryJournal::normalizeUlid($id, self::LABEL);
     }
 
     /**
@@ -64,26 +65,16 @@ final class DocsThreadJournalConverter
      */
     public function toIcs(array $message, DateTimeImmutable $createdAt): string
     {
-        $body = (string) $message['body'];
-        $this->assertBodySize($body);
-
-        $calendar = new VCalendar;
-        $journal = $calendar->add('VJOURNAL', [
-            'UID' => self::normalizeUlid((string) $message['id']),
-            'DTSTAMP' => $createdAt->setTimezone(new DateTimeZone('UTC')),
-        ]);
-        if (! $journal instanceof VJournal) {
-            throw new \LogicException('Expected a VJOURNAL component.');
-        }
-        $journal->DESCRIPTION = $body;
-        $journal->add('X-WGW-AUTHOR', (string) $message['author']);
+        [$calendar, $journal] = $this->journal->create(
+            (string) $message['id'],
+            $createdAt,
+            (string) $message['body'],
+            (string) $message['author'],
+        );
         $journal->add('X-WGW-DOC-PATH', (string) $message['docPath']);
         $journal->SEQUENCE = 0;
 
-        $parentId = $message['parentId'] ?? null;
-        if (is_string($parentId) && $parentId !== '') {
-            $journal->add('RELATED-TO', self::normalizeUlid($parentId));
-
+        if ($this->journal->addParent($journal, $message['parentId'] ?? null)) {
             return $calendar->serialize();
         }
 
@@ -114,19 +105,12 @@ final class DocsThreadJournalConverter
      */
     public function applyReactions(string $ics, array $reactions): string
     {
-        [$calendar, $journal] = $this->readJournal($ics);
-
-        unset($journal->{'X-WGW-REACTIONS'});
-        if ($reactions !== []) {
-            $journal->add('X-WGW-REACTIONS', json_encode($reactions, JSON_UNESCAPED_UNICODE));
-        }
-
-        return $calendar->serialize();
+        return $this->journal->applyReactions($ics, $reactions);
     }
 
     public function applyResolved(string $ics, bool $resolved): string
     {
-        [$calendar, $journal] = $this->readJournal($ics);
+        [$calendar, $journal] = $this->journal->read($ics);
         unset($journal->{'X-WGW-RESOLVED'});
         $journal->add('X-WGW-RESOLVED', $resolved ? 'TRUE' : 'FALSE');
 
@@ -135,7 +119,7 @@ final class DocsThreadJournalConverter
 
     public function applyArchived(string $ics, bool $archived): string
     {
-        [$calendar, $journal] = $this->readJournal($ics);
+        [$calendar, $journal] = $this->journal->read($ics);
         unset($journal->{'X-WGW-ARCHIVED'});
         $journal->add('X-WGW-ARCHIVED', $archived ? 'TRUE' : 'FALSE');
 
@@ -147,7 +131,7 @@ final class DocsThreadJournalConverter
      */
     public function applyAnchors(string $ics, array $anchors): string
     {
-        [$calendar, $journal] = $this->readJournal($ics);
+        [$calendar, $journal] = $this->journal->read($ics);
         if (array_key_exists('anchorText', $anchors) && is_string($anchors['anchorText'])) {
             unset($journal->{'X-WGW-ANCHOR-TEXT'});
             $journal->add('X-WGW-ANCHOR-TEXT', $anchors['anchorText']);
@@ -166,7 +150,7 @@ final class DocsThreadJournalConverter
 
     public function applyDocPath(string $ics, string $docPath): string
     {
-        [$calendar, $journal] = $this->readJournal($ics);
+        [$calendar, $journal] = $this->journal->read($ics);
         unset($journal->{'X-WGW-DOC-PATH'});
         $journal->add('X-WGW-DOC-PATH', $docPath);
 
@@ -188,31 +172,10 @@ final class DocsThreadJournalConverter
      */
     public function fromIcs(string $ics, string $fallbackUid): array
     {
-        [, $journal] = $this->readJournal($ics);
-
-        $uid = isset($journal->UID) ? (string) $journal->UID : $fallbackUid;
-        $reactions = [];
-        if (isset($journal->{'X-WGW-REACTIONS'})) {
-            $decoded = json_decode((string) $journal->{'X-WGW-REACTIONS'}, true);
-            if (is_array($decoded)) {
-                foreach ($decoded as $entry) {
-                    if (! is_array($entry) || ! is_string($entry['emoji'] ?? null) || ! is_array($entry['authors'] ?? null)) {
-                        continue;
-                    }
-                    $reactions[] = [
-                        'emoji' => $entry['emoji'],
-                        'authors' => array_values(array_map('strval', $entry['authors'])),
-                    ];
-                }
-            }
-        }
+        [, $journal] = $this->journal->read($ics);
 
         return [
-            'id' => $uid !== '' ? $uid : $fallbackUid,
-            'authorId' => isset($journal->{'X-WGW-AUTHOR'}) ? (string) $journal->{'X-WGW-AUTHOR'} : '',
-            'body' => isset($journal->DESCRIPTION) ? (string) $journal->DESCRIPTION : '',
-            'createdAt' => $this->dateTimeValue($journal, 'DTSTAMP') ?? '',
-            'parentId' => isset($journal->{'RELATED-TO'}) ? ((string) $journal->{'RELATED-TO'} ?: null) : null,
+            ...$this->journal->baseFields($journal, $fallbackUid),
             'kind' => isset($journal->{'X-WGW-THREAD-KIND'}) ? (string) $journal->{'X-WGW-THREAD-KIND'} : null,
             'docPath' => isset($journal->{'X-WGW-DOC-PATH'}) ? (string) $journal->{'X-WGW-DOC-PATH'} : '',
             'changeId' => isset($journal->{'X-WGW-CHANGE-ID'}) ? (string) $journal->{'X-WGW-CHANGE-ID'} : null,
@@ -222,37 +185,13 @@ final class DocsThreadJournalConverter
             'anchorOccurrence' => $this->optionalInt($journal, 'X-WGW-ANCHOR-OCCURRENCE'),
             'resolved' => $this->flag($journal, 'X-WGW-RESOLVED'),
             'archived' => $this->flag($journal, 'X-WGW-ARCHIVED'),
-            'reactions' => $reactions,
+            'reactions' => $this->journal->reactionsOf($journal),
         ];
     }
 
     public function assertBodySize(string $body): void
     {
-        if (strlen($body) > self::MAX_BODY_BYTES) {
-            throw new ApiHttpException(413, 'Message body exceeds the 64 KiB limit.', 'payload_too_large');
-        }
-    }
-
-    /**
-     * @return array{0: VCalendar, 1: VJournal}
-     */
-    private function readJournal(string $ics): array
-    {
-        try {
-            $calendar = Reader::read($ics);
-        } catch (\Throwable) {
-            throw new ApiHttpException(400, 'Invalid thread payload.', 'bad_request');
-        }
-        if (! $calendar instanceof VCalendar) {
-            throw new ApiHttpException(400, 'Invalid thread payload.', 'bad_request');
-        }
-        foreach ($calendar->select('VJOURNAL') as $component) {
-            if ($component instanceof VJournal) {
-                return [$calendar, $component];
-            }
-        }
-
-        throw new ApiHttpException(400, 'Thread is not a VJOURNAL.', 'bad_request');
+        $this->journal->assertBodySize($body);
     }
 
     private function flag(VJournal $journal, string $property): bool
@@ -275,23 +214,5 @@ final class DocsThreadJournalConverter
         }
 
         return (int) $raw;
-    }
-
-    private function dateTimeValue(VJournal $journal, string $property): ?string
-    {
-        if (! isset($journal->{$property})) {
-            return null;
-        }
-        $prop = $journal->{$property};
-        if ($prop instanceof IcsDateTime) {
-            $dateTimes = $prop->getDateTimes();
-            if ($dateTimes !== []) {
-                return DateTimeImmutable::createFromInterface($dateTimes[0])
-                    ->setTimezone(new DateTimeZone('UTC'))
-                    ->format('Y-m-d\TH:i:s\Z');
-            }
-        }
-
-        return null;
     }
 }

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Callout } from "@/callout/src/callout";
 
 const PROBE_BODY = "wgw-content-probe";
 
@@ -10,18 +9,6 @@ export function webRootProbeUrls(base: string = import.meta.env.BASE_URL): strin
   const prefix = base.endsWith("/") ? base.slice(0, -1) : base;
 
   return WEB_ROOT_PROBE_DIRECTORIES.map((directory) => `${prefix}/${directory}/.probe`);
-}
-
-function reachableMessage(directories: readonly string[]): string {
-  if (directories.length === 1 && directories[0] === "wgw-content") {
-    return "wgw-content is reachable from the web. The data directory, including the database and private keys, can be downloaded.";
-  }
-
-  if (directories.length === 1) {
-    return `${directories[0]} is reachable from the web.`;
-  }
-
-  return `${directories.join(", ")} are reachable from the web.`;
 }
 
 async function probeDirectory(url: string): Promise<string | null> {
@@ -42,7 +29,8 @@ async function probeDirectory(url: string): Promise<string | null> {
   }
 }
 
-export function AdminWebRootProbe() {
+/** Directories of this install that the web serves (should be none); empty until probed. */
+export function useWebRootProbe(): string[] {
   const [reachable, setReachable] = useState<string[]>([]);
 
   useEffect(() => {
@@ -64,13 +52,5 @@ export function AdminWebRootProbe() {
     };
   }, []);
 
-  if (reachable.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="admin-security-warnings">
-      <Callout severity="error" title="Security warning" message={reachableMessage(reachable)} />
-    </div>
-  );
+  return reachable;
 }

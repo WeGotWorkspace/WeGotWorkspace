@@ -18,10 +18,17 @@ name: Review loop - review
 
 on:
   pull_request:
-    types: [opened, ready_for_review, reopened, synchronize]
+    # labeled: only the re-review label starts a review (a person asking for
+    # one without the draft/ready round trip, which drops auto-merge).
+    types: [opened, ready_for_review, reopened, synchronize, labeled]
 
+# Any other label gets a group of its own, so the loop's own hand-over labels
+# never cancel a review that is running.
 concurrency:
-  group: review-loop-review-${{ github.event.pull_request.number }}
+  group: >-
+    review-loop-review-${{
+      github.event.action == 'labeled' && github.event.label.name != 're-review' &&
+      github.run_id || github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -32,6 +39,7 @@ jobs:
     # gets the secrets.
     if: >-
       !github.event.pull_request.draft &&
+      (github.event.action != 'labeled' || github.event.label.name == 're-review') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]'
     permissions:

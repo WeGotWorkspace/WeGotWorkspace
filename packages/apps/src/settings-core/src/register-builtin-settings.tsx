@@ -84,7 +84,7 @@ export function registerBuiltinSettings(): void {
     label: "Connected assistants",
     description: "Assistants that can act as you",
     icon: <Bot className="size-3.5" />,
-    group: "account",
+    group: "connections",
     reachable: (ctx) => ctx.mcpEnabled === true,
     needsSettingsApi: true,
   });
@@ -93,7 +93,7 @@ export function registerBuiltinSettings(): void {
     label: incomingEmailLabels.panel,
     description: incomingEmailLabels.panelDescription,
     icon: <Mail className="size-3.5" />,
-    group: "account",
+    group: "connections",
   });
   registerPanel({
     id: "calendar",
@@ -148,14 +148,14 @@ export function registerBuiltinSettings(): void {
     label: settingsDiagnosticsLabels.panel,
     description: settingsDiagnosticsLabels.panelDescription,
     icon: <Bug className="size-3.5" />,
-    group: "account",
+    group: "device",
   });
   registerPanel({
     id: "about",
-    label: "About",
+    label: "License",
     description: "License and source code",
     icon: <Info className="size-3.5" />,
-    group: "account",
+    group: "about",
   });
 
   registerSlice({

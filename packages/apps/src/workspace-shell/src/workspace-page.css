@@ -1,0 +1,95 @@
+@import "../../styles.css" reference;
+
+/**
+ * Open-page layout (Settings, Admin): see `workspace-page.tsx`.
+ * Rows inside sections are `FieldLabelRow layout="inline"`.
+ */
+
+/* Rows are label | control: they read better wider than the 42rem default. Same side
+   padding on every width: small screens keep the desktop gutter. */
+.workspace-columns:has(.workspace-page-header) {
+  --workspace-main-content-max-width: 56rem;
+}
+
+.workspace-columns:has(.workspace-page-header) .workspace-app-layout__main-content {
+  padding-inline: 2rem;
+}
+
+/* Header path: a link before the group title ("Settings › Account"). */
+.view-header__title-prefix:has(.workspace-page-trail) {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.workspace-page-trail {
+  @apply flex min-w-0 items-center gap-2;
+  --path-breadcrumb-link-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
+  --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
+}
+
+.workspace-page-trail__separator {
+  @apply size-4 shrink-0;
+  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
+}
+
+.workspace-page-header {
+  @apply mb-10 flex flex-col gap-2;
+}
+
+/* Title start, state tag end (as in the dialog header). */
+.workspace-page-header__title-row {
+  @apply flex items-center justify-between gap-4;
+}
+
+.workspace-page-header__status {
+  @apply flex shrink-0 items-center gap-2;
+}
+
+.workspace-page-header__title {
+  @apply m-0 font-serif text-4xl font-normal leading-tight md:text-5xl;
+  color: var(--workspace-foreground);
+}
+
+.workspace-page-header__description {
+  @apply m-0 text-base;
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+}
+
+/* Sections sit straight on the page and in the dialog: no card chrome, only the title. */
+.workspace-page-section {
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  margin-bottom: 0;
+  border-radius: 0;
+}
+
+/* A second section starts after a pause. */
+.workspace-page-section + .workspace-page-section {
+  margin-top: 3rem;
+}
+
+.ui-modal-surface .workspace-page-section + .workspace-page-section {
+  margin-top: 1.5rem;
+}
+
+/* Quiet paragraph under a section title (what the section is for). */
+.workspace-page-section__lead {
+  @apply mb-2 text-sm;
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
+}
+
+/* Section title actions (refresh, add) line up with the rows' end edge, like the row
+ * controls in `field-label-row.css`. */
+.workspace-page-section .card__header .icon-button--size-md:last-child {
+  margin-inline-end: calc(
+    (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
+  );
+}
+
+/* A list in a section: its rows' inset hangs outside the column, so names and values
+   line up with the labels and controls above (hover fills reach a little past). */
+.workspace-page-section :has(> table.list-table) {
+  margin-inline: calc(-1 * var(--list-row-padding-x, 1rem));
+  width: calc(100% + 2 * var(--list-row-padding-x, 1rem));
+}

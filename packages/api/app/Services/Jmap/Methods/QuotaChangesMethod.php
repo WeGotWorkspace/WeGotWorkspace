@@ -20,12 +20,12 @@ final class QuotaChangesMethod implements JmapMethodInterface
 {
     public function __construct(private readonly QuotaRequest $quotas) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Quota/changes';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::QUOTA;
     }

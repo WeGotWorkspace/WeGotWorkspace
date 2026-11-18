@@ -31,8 +31,6 @@ const columns: DataTableColumn<BackupRow>[] = [
   {
     key: "file",
     header: "File",
-    headerClassName: "font-medium pb-3 pr-3",
-    cellClassName: "py-3 pr-3",
     render: (row) => (
       <div className="flex items-center gap-2 min-w-0">
         <FileArchive className="size-4 shrink-0 opacity-60" />
@@ -43,8 +41,7 @@ const columns: DataTableColumn<BackupRow>[] = [
   {
     key: "createdAt",
     header: "Created",
-    headerClassName: "font-medium pb-3 pr-3",
-    cellClassName: "py-3 pr-3 whitespace-nowrap",
+    shrink: true,
     render: (row) => (
       <span style={{ color: "color-mix(in oklab, #1a1a18 65%, transparent)" }}>
         {row.createdAt}
@@ -54,8 +51,7 @@ const columns: DataTableColumn<BackupRow>[] = [
   {
     key: "version",
     header: "Version",
-    headerClassName: "font-medium pb-3 pr-3",
-    cellClassName: "py-3 pr-3 whitespace-nowrap",
+    shrink: true,
     render: (row) => (
       <span
         className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
@@ -71,8 +67,7 @@ const columns: DataTableColumn<BackupRow>[] = [
   {
     key: "size",
     header: "Size",
-    headerClassName: "font-medium pb-3 pr-3",
-    cellClassName: "py-3 pr-3 whitespace-nowrap",
+    shrink: true,
     render: (row) => (
       <span style={{ color: "color-mix(in oklab, #1a1a18 65%, transparent)" }}>{row.size}</span>
     ),
@@ -80,8 +75,8 @@ const columns: DataTableColumn<BackupRow>[] = [
   {
     key: "actions",
     header: <span className="sr-only">Actions</span>,
-    headerClassName: "font-medium pb-3 w-1",
-    cellClassName: "py-3 whitespace-nowrap",
+    align: "end",
+    shrink: true,
     render: (row) => (
       <div className="flex items-center gap-1 justify-end">
         <button
@@ -112,15 +107,5 @@ export default meta;
 type Story = StoryObj<typeof DataTable<BackupRow>>;
 
 export const BackupsLike: Story = {
-  render: () => (
-    <DataTable
-      data={rows}
-      columns={columns}
-      rowKey={(row) => row.id}
-      tableClassName="text-sm"
-      headerClassName="text-left text-[10px] uppercase tracking-[0.18em]"
-      rowClassName="border-t hover:bg-transparent"
-      rowStyle={() => ({ borderColor: "color-mix(in oklab, #1a1a18 10%, transparent)" })}
-    />
-  ),
+  render: () => <DataTable data={rows} columns={columns} rowKey={(row) => row.id} />,
 };

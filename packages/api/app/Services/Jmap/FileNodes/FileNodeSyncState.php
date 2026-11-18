@@ -25,7 +25,16 @@ final class FileNodeSyncState
 
     public function current(string $username): string
     {
-        return $this->index->currentSeq().'.'.$this->grantHash($username);
+        return $this->forGrantPairs($this->accounts->memberGrantPairs($username));
+    }
+
+    /**
+     * {@see current()} from grant pairs the caller already read
+     * ({@see FileNodeAccountSupport::rootsAndGrantPairs()}).
+     */
+    public function forGrantPairs(string $grantPairs): string
+    {
+        return $this->index->currentSeq().'.'.JmapPushEventId::hash('FileNode', $grantPairs);
     }
 
     public function grantHash(string $username): string

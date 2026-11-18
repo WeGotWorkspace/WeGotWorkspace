@@ -51,7 +51,9 @@ describe("useAdminSettingsMutations", () => {
     const { result, showError } = renderSettings();
     await act(async () => {
       await result.current.actions.saveSettings();
-      await result.current.actions.clearMailDeliverySmtpPassword();
+      await expect(result.current.actions.clearMailDeliverySmtpPassword()).rejects.toThrow(
+        "Admin API is not ready yet",
+      );
       expect(await result.current.actions.sendMailDeliveryTest("ops@example.test")).toBe(false);
     });
     expect(showError).toHaveBeenCalledWith("Admin API is not ready yet");

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { useTrackAutosave } from "@/ui/autosave-status";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
@@ -23,6 +24,7 @@ function isThemePreference(value: string): value is ThemePreference {
 /** Device setting for the colour theme. Stored on this browser, not on the account. */
 export function SettingsAppearancePane() {
   const [preference, setPreference] = useState<ThemePreference>("system");
+  const trackSave = useTrackAutosave();
 
   useEffect(() => {
     const apply = () => setPreference(readThemePreference());
@@ -40,7 +42,7 @@ export function SettingsAppearancePane() {
         <Select
           value={preference}
           onValueChange={(value) => {
-            if (isThemePreference(value)) writeThemePreference(value);
+            if (isThemePreference(value)) void trackSave(() => writeThemePreference(value));
           }}
         >
           <CollectionGhostSelectTrigger aria-label="Theme" label={<SelectValue />} />

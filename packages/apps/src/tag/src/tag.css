@@ -49,6 +49,10 @@
   --tag-tone-color: var(--color-warning);
 }
 
+.tag--tone-danger {
+  --tag-tone-color: var(--color-error);
+}
+
 .tag--tone-pending {
   --tag-tone-color: var(--color-sync-pending);
 }
