@@ -20,12 +20,12 @@ final class GuestFileNodeQueryMethod implements JmapMethodInterface
 {
     public function __construct(private readonly FileNodeQueryMethod $query) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'FileNode/query';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::FILENODE;
     }

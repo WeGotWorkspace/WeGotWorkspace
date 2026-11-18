@@ -227,6 +227,30 @@ final class ChatMessagesTest extends WgwDatabaseTestCase
         $this->asUser('carol')->postJson($reactionsPath, ['emoji' => '👀'])->assertNotFound();
     }
 
+    public function test_reactions_must_be_emoji_and_are_capped_per_message(): void
+    {
+        $id = $this->ulid('AA');
+        $this->asUser('alice')->postJson($this->messagesPath(), ['id' => $id, 'body' => 'react here'])->assertCreated();
+        $reactionsPath = '/api/v1/chat/messages/'.$id.'/reactions';
+
+        $this->asUser('alice')->postJson($reactionsPath, ['emoji' => 'not an emoji'])
+            ->assertStatus(422)->assertJsonPath('code', 'invalid_emoji');
+        $this->asUser('alice')->postJson($reactionsPath, ['emoji' => '<img src=x onerror=alert(1)>'])
+            ->assertStatus(422)->assertJsonPath('code', 'invalid_emoji');
+
+        $emoji = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '🥲', '😚', '🙂'];
+        foreach ($emoji as $one) {
+            $this->asUser('alice')->postJson($reactionsPath, ['emoji' => $one])->assertOk();
+        }
+        $this->asUser('bob')->postJson($reactionsPath, ['emoji' => '🤗'])
+            ->assertStatus(422)->assertJsonPath('code', 'too_many_reactions');
+        // Joining or leaving an emoji that is already there still works at the cap.
+        $this->asUser('bob')->postJson($reactionsPath, ['emoji' => '😀'])->assertOk()
+            ->assertJsonPath('reactions.0.authors', ['alice', 'bob']);
+        $this->asUser('alice')->postJson($reactionsPath, ['emoji' => '🙂'])->assertOk();
+        $this->asUser('bob')->postJson($reactionsPath, ['emoji' => '🤗'])->assertOk();
+    }
+
     public function test_every_mutation_surfaces_in_the_changes_feed(): void
     {
         $changesPath = '/api/v1/chat/messages/changes?channelId='.$this->channelId;

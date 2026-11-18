@@ -1,0 +1,25 @@
+{
+    "id": "01J6Y6M0R2V9GKJ4W1T8Q3ZBEX",
+    "authorId": "alice",
+    "body": "hello *world* — ünïcode 🎉\nsecond line, with; specials: \\ and a very long line that has to be folded by the serializer because it runs past seventy-five octets",
+    "createdAt": "2026-09-04T10:34:56Z",
+    "parentId": null,
+    "kind": "comment",
+    "docPath": "Documents/Plan; v2.md",
+    "changeId": null,
+    "anchorText": "the quoted, text",
+    "anchorFrom": 12,
+    "anchorTo": 40,
+    "anchorOccurrence": 2,
+    "resolved": false,
+    "archived": false,
+    "reactions": [
+        {
+            "emoji": "👍",
+            "authors": [
+                "alice",
+                "bob"
+            ]
+        }
+    ]
+}

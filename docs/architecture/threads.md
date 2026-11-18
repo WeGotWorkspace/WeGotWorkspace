@@ -9,6 +9,8 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 1. **One message is one VJOURNAL.** Every message, reply and activity entry is its own VJOURNAL in a DAV-hidden collection.
    - It carries a client ULID as `UID`, the author as `X-WGW-AUTHOR` and the body as `DESCRIPTION`.
    - It can carry stored mentions (`X-WGW-MENTIONS`) and reactions (`X-WGW-REACTIONS`, an OR-set).
+   - The server names who is mentioned: a client sends ids, `ThreadMentions` keeps the ids that have a principal and stores their directory names. A client `displayName` is ignored.
+   - A new reaction must be an emoji, at most 3 graphemes (422 `invalid_emoji`). An entry holds at most 20 different emoji (422 `too_many_reactions`). Joining or leaving an emoji that is already there always works.
    - An edit bumps `SEQUENCE`. A delete leaves a tombstone (`STATUS:CANCELLED`, body cleared).
    - Today Chat and Docs each have their own copy of this. #2173 chunk A moves the shared part into `App\Services\Threads`.
 2. **Replies are one level deep.** A reply's `RELATED-TO` points at a root. A reply to a reply is rejected by the server. Docs and Chat keep replies flat today, but Chat checks it only in the client (`chat-thread-actions.ts`). #2173 puts the check in the shared server module.
@@ -48,7 +50,7 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 | Access | channel membership | Drive share (`mayView` / `mayComment`) | the task's current list (read access reads; write access comments) |
 | Edit / delete | the author / tombstone | none | the author / tombstone |
 | Mentions stored | yes | no (regex for subscribing only) | yes |
-| Activity entries | no | no | yes (server-written) |
+| Activity entries | no | no | parked (comments only for now); chunk B still writes "moved here" and "created", the panel hides them |
 | Live updates | `ChatMessage` push | 4 s polling | `ThreadEntry` push |
 | Index | read-time | `docs_thread_index` | `thread_index` |
 
@@ -57,17 +59,17 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 Threads are a shared layer. An app plugs in a **subject type**: the thing a thread is about (a task) and its **scope**, the place that sets who can see it (the task's list). Tasks is the first subject type (#2173).
 
 - **Backend:** `App\Services\Threads`.
-  - Converter core (#2173 chunk A): `ThreadEntryJournal` for the properties in rule 1, `ThreadReactions` to toggle a reaction, `ThreadAuthorNames` for display names. Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
+  - Converter core (#2173 chunk A): `ThreadEntryJournal` for the properties in rule 1, `ThreadReactions` to toggle and check a reaction, `ThreadAuthorNames` for display names, `ThreadMentions` for mentions. Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
   - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, notification actions), and `ThreadSubjectRegistry`.
-  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` (deleting a scope's entries), the `ThreadEntry` push state, `ThreadNotifier` and `ThreadActivityWriter`.
+  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` (deleting a scope's entries), the `ThreadEntry` push state, `ThreadNotifier`. The activity writer for field changes is parked.
   - `thread_index` is generic (`subject_type`, `subject_key`, `subject_scope`).
 - **Frontend:**
-  - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread`, the activity row and its formatter;
+  - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread` (the activity row and formatter are parked);
   - `lib/api/wgw/threads.ts`, the shared API client;
   - `lib/offline/threads/`, one offline domain for the read cache and the outbox of every subject type;
-  - the chat-ui composer, mention menu, message and reaction bar, and the shared `reaction-picker` and `user-avatar`.
+  - `ThreadComposer`, the one comment input Tasks, Chat and Docs share (product owner, 2026-11-18): the same mention menu, emoji and reactions, send key and limits, and no attachments; plus the chat-ui message and reaction bar, and the shared `reaction-picker` and `user-avatar`.
 
-  Docs cards still have their own reply input. Moving them onto the chat composer is a follow-up.
+  The task thread shows comments only for now (2026-11-18). The activity log (writer and rows) is parked; its entry format stays.
 
 ## Adding threads to another app
 

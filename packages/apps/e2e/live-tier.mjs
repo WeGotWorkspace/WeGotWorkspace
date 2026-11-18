@@ -67,6 +67,7 @@ export const liveTierSpecs = [
   "mesh-check-now",
   "notes-collab-access-lost",
   "notes-collab-missed-tail",
+  "notes-collab-planted-state",
   "notes-collab-steady-typing",
   "notes-create-lost-response",
   "notes-leave-within-save-delay",

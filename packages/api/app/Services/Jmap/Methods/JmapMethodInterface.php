@@ -12,13 +12,13 @@ interface JmapMethodInterface
     /**
      * Wire method name, e.g. "CalendarEvent/get".
      */
-    public function name(): string;
+    public static function name(): string;
 
     /**
      * Capability URN that must be present in the request's `using` array;
      * absent capability renders the method unknown (RFC 8620 §3.2).
      */
-    public function capability(): string;
+    public static function capability(): string;
 
     /**
      * Whether the dispatcher must validate args.accountId against the

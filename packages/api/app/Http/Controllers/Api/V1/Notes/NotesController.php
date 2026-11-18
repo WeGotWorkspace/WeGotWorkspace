@@ -9,8 +9,8 @@ use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\NoteCollaborativePutRequest;
 use App\Http\Requests\Api\V1\NoteCreateRequest;
 use App\Http\Requests\Api\V1\NotePatchRequest;
+use App\Http\Support\CollabStateResponse;
 use App\Http\Support\JmapResourceResponse;
-use App\Http\Support\OptimisticConcurrency;
 use App\Services\Collab\CollabExternalWrite;
 use App\Services\Notes\NoteCollaborativeWrite;
 use App\Services\Notes\NoteRepository;
@@ -173,32 +173,7 @@ final class NotesController
 
     private function yjsState(Request $request, string $username, string $noteId): Response
     {
-        $snapshot = $this->notes->yjsSnapshot($username, $noteId);
-        if ($snapshot === null) {
-            return response('', 204);
-        }
-
-        $headers = [
-            'Content-Type' => 'application/octet-stream',
-            'ETag' => $snapshot['etag'],
-            'X-Content-Type-Options' => 'nosniff',
-        ];
-        if ($snapshot['externalWrite']) {
-            // A 304 would hide the signal. The state bytes are unchanged, and
-            // the client must still see that they are not an ancestor.
-            $headers[CollabExternalWrite::HEADER] = '1';
-        }
-
-        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
-        if (
-            ! $snapshot['externalWrite']
-            && $ifNoneMatch !== ''
-            && OptimisticConcurrency::ifMatchSatisfied($ifNoneMatch, $snapshot['etag'])
-        ) {
-            return response('', 304, ['ETag' => $snapshot['etag']]);
-        }
-
-        return response($snapshot['bytes'], 200, $headers);
+        return CollabStateResponse::make($request, $this->notes->yjsSnapshot($username, $noteId));
     }
 
     private function header(Request $request, string $name): ?string

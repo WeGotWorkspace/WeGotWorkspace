@@ -166,6 +166,58 @@ describe("createHybridMeetChatOperations", () => {
     );
   });
 
+  describe("mentions (#2247)", () => {
+    const mentions = [{ id: "sam", displayName: "Sam de Vries" }];
+
+    beforeEach(() => {
+      vi.mocked(sendChatMessage).mockImplementation(async (_channelId, body) =>
+        wireMessage({ id: body.id, body: body.body }),
+      );
+    });
+
+    it("sends the mention list with a channel message", async () => {
+      const operations = createHybridMeetChatOperations(username, author);
+
+      await operations.sendMessage!("chat-general", "hi @Sam", { mentions });
+
+      expect(sendChatMessage).toHaveBeenCalledWith(
+        "chat-general",
+        expect.objectContaining({ body: "hi @Sam", mentions }),
+      );
+    });
+
+    it("sends the mention list with a thread reply", async () => {
+      const operations = createHybridMeetChatOperations(username, author);
+      const parent = await operations.sendMessage!("chat-general", "question");
+
+      await operations.reply!(parent.id, "@Sam see above", { mentions });
+
+      expect(sendChatMessage).toHaveBeenLastCalledWith(
+        "chat-general",
+        expect.objectContaining({ parentId: parent.id, mentions }),
+      );
+    });
+
+    it("leaves the mention list out when nobody is mentioned", async () => {
+      const operations = createHybridMeetChatOperations(username, author);
+
+      await operations.sendMessage!("chat-general", "plain", { mentions: [] });
+
+      expect(vi.mocked(sendChatMessage).mock.calls[0]?.[1]).not.toHaveProperty("mentions");
+    });
+
+    it("keeps the mention list on a send queued offline", async () => {
+      vi.mocked(readBrowserOnline).mockReturnValue(false);
+      const operations = createHybridMeetChatOperations(username, author);
+
+      const optimistic = await operations.sendMessage!("chat-general", "hi @Sam", { mentions });
+
+      expect(optimistic.mentions).toEqual(mentions);
+      const [row] = await listMeetChatOutbox(username);
+      expect((JSON.parse(row!.payload) as MeetChatSendOutboxPayload).mentions).toEqual(mentions);
+    });
+  });
+
   it("queues sends offline as pending Dexie rows plus a send outbox op", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
 
