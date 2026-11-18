@@ -181,6 +181,28 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertEmpty($response->json('participants') ?? []);
     }
 
+    public function test_ics_props_with_a_split_name_cannot_add_an_attendee(): void
+    {
+        foreach (['.ATTENDEE', 'ATTENDEE;CN=Dave'] as $name) {
+            $taskId = $this->createTask();
+
+            $response = $this->patchTask($taskId, ['icsProps' => [$name => 'mailto:dave@example.test']])->assertOk();
+
+            $this->assertStringNotContainsString('ATTENDEE', $this->storedIcs($taskId));
+            $this->assertEmpty($response->json('participants') ?? []);
+        }
+    }
+
+    public function test_ics_props_with_a_split_name_cannot_add_an_organizer_on_create(): void
+    {
+        $taskId = (string) $this->asUser('bob')->postJson('/api/v1/tasks/items', [
+            ...$this->sampleTaskCreatePayload($this->listId),
+            'icsProps' => ['.ORGANIZER' => 'mailto:dave@example.test'],
+        ])->assertCreated()->json('id');
+
+        $this->assertStringNotContainsString('ORGANIZER', $this->storedIcs($taskId));
+    }
+
     public function test_ics_props_cannot_add_an_organizer_on_create(): void
     {
         $taskId = (string) $this->asUser('bob')->postJson('/api/v1/tasks/items', [

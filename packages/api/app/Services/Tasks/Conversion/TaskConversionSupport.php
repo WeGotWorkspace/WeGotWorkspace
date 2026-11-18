@@ -440,11 +440,16 @@ final class TaskConversionSupport
             if (! is_string($name) || ! is_string($value) || trim($value) === '') {
                 continue;
             }
-            // Mapped properties have their own fields (and guards); icsProps only carries the rest.
-            if (in_array(strtoupper($name), self::KNOWN_VTODO_PROPERTIES, true)) {
+            $name = strtoupper($name);
+            // Names Sabre would split on "." or ";" can still serialize as a mapped property.
+            if (preg_match('/^[A-Z0-9-]+$/', $name) !== 1) {
                 continue;
             }
-            $todo->add(strtoupper($name), $value);
+            // Mapped properties have their own fields (and guards); icsProps only carries the rest.
+            if (in_array($name, self::KNOWN_VTODO_PROPERTIES, true)) {
+                continue;
+            }
+            $todo->add($name, $value);
         }
     }
 
