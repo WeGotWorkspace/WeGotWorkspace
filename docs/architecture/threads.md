@@ -48,7 +48,7 @@ Conversations attached to something: a chat channel, a document, a task. Every t
 | Access | channel membership | Drive share (`mayView` / `mayComment`) | the task's current list (read access reads; write access comments) |
 | Edit / delete | the author / tombstone | none | the author / tombstone |
 | Mentions stored | yes | no (regex for subscribing only) | yes |
-| Activity entries | no | no | yes (server-written) |
+| Activity entries | no | no | parked (comments only for now); chunk B still writes "moved here" and "created", the panel hides them |
 | Live updates | `ChatMessage` push | 4 s polling | `ThreadEntry` push |
 | Index | read-time | `docs_thread_index` | `thread_index` |
 
@@ -59,10 +59,10 @@ Threads are a shared layer. An app plugs in a **subject type**: the thing a thre
 - **Backend:** `App\Services\Threads`.
   - Converter core (#2173 chunk A): `ThreadEntryJournal` for the properties in rule 1, `ThreadReactions` to toggle a reaction, `ThreadAuthorNames` for display names. Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
   - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, notification actions), and `ThreadSubjectRegistry`.
-  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` (deleting a scope's entries), the `ThreadEntry` push state, `ThreadNotifier` and `ThreadActivityWriter`.
+  - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` (deleting a scope's entries), the `ThreadEntry` push state, `ThreadNotifier`. The activity writer for field changes is parked.
   - `thread_index` is generic (`subject_type`, `subject_key`, `subject_scope`).
 - **Frontend:**
-  - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread`, the activity row and its formatter;
+  - `thread-ui`: `ThreadSubjectAdapter` (what an app hands the panel), `ThreadPanel`, `useThread` (the activity row and formatter are parked);
   - `lib/api/wgw/threads.ts`, the shared API client;
   - `lib/offline/threads/`, one offline domain for the read cache and the outbox of every subject type;
   - `ThreadComposer`, the one comment input Tasks, Chat and Docs share (product owner, 2026-11-18): the same mention menu, emoji and reactions, send key and limits, and no attachments; plus the chat-ui message and reaction bar, and the shared `reaction-picker` and `user-avatar`.
