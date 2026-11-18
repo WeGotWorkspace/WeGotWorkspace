@@ -1,4 +1,5 @@
 import type {
+  ChatMention,
   ChatMessage,
   MeetAppBootstrap,
   MeetChannel,
@@ -114,6 +115,7 @@ function buildOptimisticMessage(
   body: string,
   parentId: string | null,
   id: string,
+  mentions: ChatMention[],
 ): ChatMessage {
   return {
     id,
@@ -123,7 +125,7 @@ function buildOptimisticMessage(
     body: body.trim(),
     createdAt: Date.now(),
     reactions: [],
-    mentions: [],
+    mentions,
     previews: [],
     parentId,
     threadId: parentId,
@@ -197,13 +199,14 @@ export function createHybridMeetChatOperations(
     body: string,
     parentId: string | null,
     messageId?: string,
+    mentions: ChatMention[] = [],
   ): Promise<ChatMessage> => {
     // A caller that already echoed its id keeps it; anything that is not a
     // ULID would be rejected by the create call, so mint a fresh one.
     const id = messageId && isChatMessageUlid(messageId) ? messageId : createChatMessageUlid();
     // The optimistic message keeps the UI channel id (virtual `dm:{peer}` for
     // DM sends) so the workspace applies it to the open conversation.
-    const optimistic = buildOptimisticMessage(author, channelId, body, parentId, id);
+    const optimistic = buildOptimisticMessage(author, channelId, body, parentId, id, mentions);
     const queueSend = async (): Promise<ChatMessage> => {
       await upsertChatMessageInCache(username, optimistic, true);
       await bumpParentReplyCount(username, parentId);
@@ -212,6 +215,7 @@ export function createHybridMeetChatOperations(
         channelId,
         body: optimistic.body,
         parentId,
+        ...(mentions.length ? { mentions } : {}),
       });
       notifyMeetChatCacheChanged(username);
       return { ...optimistic, syncState: "pending" };
@@ -227,6 +231,7 @@ export function createHybridMeetChatOperations(
             id,
             body: optimistic.body,
             ...(parentId ? { parentId } : {}),
+            ...(mentions.length ? { mentions } : {}),
           }),
         ),
       );
@@ -297,13 +302,19 @@ export function createHybridMeetChatOperations(
   return {
     newMessageId: () => createChatMessageUlid(),
     sendMessage: async (channelId, body, opts) =>
-      sendMessageHybrid(channelId, body, opts?.parentId ?? null, opts?.messageId),
-    reply: async (parentId, body) => {
+      sendMessageHybrid(
+        channelId,
+        body,
+        opts?.parentId ?? null,
+        opts?.messageId,
+        opts?.mentions ?? [],
+      ),
+    reply: async (parentId, body, opts) => {
       const parent = await getCachedChatMessage(username, parentId);
       if (!parent) throw new Error(`Unknown message ${parentId}`);
       // RELATED-TO always points at the thread root (single-level threads).
       const rootId = parent.parentId ?? parent.id;
-      return sendMessageHybrid(parent.channelId, body, rootId);
+      return sendMessageHybrid(parent.channelId, body, rootId, undefined, opts?.mentions ?? []);
     },
     editMessage: async (messageId, body) => {
       const existing = await getCachedChatMessage(username, messageId);
