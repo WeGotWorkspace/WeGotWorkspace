@@ -150,7 +150,12 @@ export function escapeMarkdownHtml(body: string): string {
   return body
     .split(/(```[\s\S]*?```|`[^`\n]*`)/)
     .map((part, index) =>
-      index % 2 === 1 ? part : part.replace(/\\?</g, (match) => (match === "<" ? "\\<" : match)),
+      index % 2 === 1
+        ? part
+        : // An odd run of backslashes already escapes the `<`; an even run is literal backslashes.
+          part.replace(/(\\*)</g, (match, slashes: string) =>
+            slashes.length % 2 === 0 ? `${slashes}\\<` : match,
+          ),
     )
     .join("");
 }

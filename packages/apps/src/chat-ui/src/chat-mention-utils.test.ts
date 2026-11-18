@@ -72,5 +72,6 @@ describe("escapeMarkdownHtml", () => {
     expect(escapeMarkdownHtml('<img src=x onerror="x()">')).toBe('\\<img src=x onerror="x()">');
     expect(escapeMarkdownHtml("a `<b>` c ```\n<i>\n``` <u>")).toBe("a `<b>` c ```\n<i>\n``` \\<u>");
     expect(escapeMarkdownHtml("already \\<b>")).toBe("already \\<b>");
+    expect(escapeMarkdownHtml("\\\\<img src=x>")).toBe("\\\\\\<img src=x>");
   });
 });
