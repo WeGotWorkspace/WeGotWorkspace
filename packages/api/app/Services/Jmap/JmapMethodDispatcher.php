@@ -58,6 +58,7 @@ use App\Services\Jmap\Methods\QuotaQueryMethod;
 use App\Services\Jmap\Methods\TeamMemberGetAvailabilityMethod;
 use App\Services\Jmap\Methods\TeamMemberGetMethod;
 use App\Support\Timing\RequestTimings;
+use Closure;
 
 /**
  * JMAP method dispatcher (RFC 8620 §3.2–3.7): processes methodCalls in
@@ -138,28 +139,32 @@ final class JmapMethodDispatcher
         QuotaQueryChangesMethod::class,
     ];
 
-    /** @var array<string, JmapMethodInterface> */
+    /** @var array<string, class-string<JmapMethodInterface>> method name => handler class */
     private array $methods = [];
+
+    /** @var array<string, JmapMethodInterface> handlers built so far, by method name */
+    private array $built = [];
 
     /**
      * Resolved from self::METHODS by the container binding in
      * WgwServiceProvider — autowiring cannot construct a handler list.
      *
-     * @param  list<JmapMethodInterface>  $methods
+     * Handlers are built on their first call, not here: a request that only
+     * needs the capability list (the session, the JMAP push check) would
+     * otherwise build every handler and its services (#2243).
+     *
+     * @param  list<class-string<JmapMethodInterface>>  $methods
+     * @param  Closure(class-string<JmapMethodInterface>): JmapMethodInterface  $build
      */
     public function __construct(
         array $methods,
+        private readonly Closure $build,
         private readonly JmapRequestContext $context = new JmapRequestContext,
         private readonly RequestTimings $timings = new RequestTimings,
     ) {
         foreach ($methods as $method) {
-            $this->register($method);
+            $this->methods[$method::name()] = $method;
         }
-    }
-
-    private function register(JmapMethodInterface $method): void
-    {
-        $this->methods[$method->name()] = $method;
     }
 
     /**
@@ -173,7 +178,7 @@ final class JmapMethodDispatcher
     {
         $urns = [];
         foreach ($this->methods as $method) {
-            $urns[$method->capability()] = true;
+            $urns[$method::capability()] = true;
         }
 
         return array_keys($urns);
@@ -198,12 +203,13 @@ final class JmapMethodDispatcher
                 continue;
             }
 
-            $method = $this->methods[$name] ?? null;
-            if ($method === null || ! in_array($method->capability(), $using, true)) {
+            $class = $this->methods[$name] ?? null;
+            if ($class === null || ! in_array($class::capability(), $using, true)) {
                 $responses[] = ['error', ['type' => 'unknownMethod'], $callId];
 
                 continue;
             }
+            $method = $this->built[$name] ??= ($this->build)($class);
 
             if ($method->requiresAccountId()) {
                 $accountId = $args['accountId'] ?? null;

@@ -1,0 +1,25 @@
+{
+    "id": "01J6Y6M0R2V9GKJ4W1T8Q3ZBEX",
+    "authorId": "alice",
+    "body": "hello *world* — ünïcode 🎉\nsecond line, with; specials: \\ and a very long line that has to be folded by the serializer because it runs past seventy-five octets",
+    "createdAt": "2026-09-04T10:34:56Z",
+    "editedAt": null,
+    "deletedAt": null,
+    "parentId": null,
+    "reactions": [],
+    "mentions": [
+        {
+            "id": "bob",
+            "displayName": "Bob Builder"
+        },
+        {
+            "id": "carol",
+            "displayName": "carol"
+        },
+        {
+            "id": "dave",
+            "displayName": "dave"
+        }
+    ],
+    "sequence": 0
+}

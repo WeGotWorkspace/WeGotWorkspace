@@ -1,5 +1,6 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import type {
+  ChatMention,
   ChatMessage,
   ChatMessageSyncState,
   MeetDirectoryGroup,
@@ -65,6 +66,8 @@ export type MeetChatSendOutboxPayload = {
   channelId: string;
   body: string;
   parentId: string | null;
+  /** Absent on rows queued before mentions were sent. */
+  mentions?: ChatMention[];
 };
 
 export type MeetChatEditOutboxPayload = {

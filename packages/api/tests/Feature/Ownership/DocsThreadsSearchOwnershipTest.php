@@ -528,7 +528,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
         [$method, $uri, $body] = match ($case->operation) {
             'POST /files/threads' => ['POST', '/files/threads'.$query, ['id' => $newId, 'kind' => 'comment', 'body' => 'by actor', 'anchorText' => 'Doc']],
             'POST /files/threads/{threadId}/replies' => ['POST', '/files/threads/'.$target['threadId'].'/replies'.$query, ['id' => $newId, 'body' => 'reply by actor']],
-            'POST /files/threads/{threadId}/reactions' => ['POST', '/files/threads/'.$target['threadId'].'/reactions'.$query, ['emoji' => '+1']],
+            'POST /files/threads/{threadId}/reactions' => ['POST', '/files/threads/'.$target['threadId'].'/reactions'.$query, ['emoji' => "\u{1F44D}"]],
             self::THREAD_PATCH => ['PATCH', '/files/threads/'.$target['threadId'].$query, ['resolved' => true]],
             default => throw new LogicException('No thread runner for '.$case->operation),
         };
@@ -594,7 +594,7 @@ final class DocsThreadsSearchOwnershipTest extends WgwDatabaseTestCase implement
 
         [$method, $uri, $body] = match ($case->operation) {
             'POST /files/threads/{threadId}/replies' => ['POST', '/files/threads/'.$threadId.'/replies'.$query, ['id' => $this->nextUlid(), 'body' => 'reply by actor']],
-            'POST /files/threads/{threadId}/reactions' => ['POST', '/files/threads/'.$threadId.'/reactions'.$query, ['emoji' => '+1']],
+            'POST /files/threads/{threadId}/reactions' => ['POST', '/files/threads/'.$threadId.'/reactions'.$query, ['emoji' => "\u{1F44D}"]],
             self::THREAD_PATCH => $changeId === null
                 ? ['PATCH', '/files/threads/'.$threadId.$query, ['resolved' => true]]
                 : ['PATCH', '/files/threads/'.$this->nextUlid().$query, ['changeId' => $changeId, 'resolved' => true]],

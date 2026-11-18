@@ -36,7 +36,7 @@ export function useMeetThreadSurface({
   authorPresence?: ChatAuthorPresenceMap;
   editingMessageId?: string | null;
   onClose?: () => void;
-  onSendReply?: (parentId: string, body: string) => void;
+  onSendReply?: (parentId: string, payload: ChatSendPayload) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   onSaveEdit: (messageId: string, payload: ChatSendPayload) => void;
   onCancelEdit: () => void;

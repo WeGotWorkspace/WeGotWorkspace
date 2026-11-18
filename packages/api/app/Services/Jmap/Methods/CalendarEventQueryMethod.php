@@ -22,12 +22,12 @@ final class CalendarEventQueryMethod implements JmapMethodInterface
 {
     public function __construct(private readonly CalendarEventRepository $events) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'CalendarEvent/query';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CALENDARS;
     }

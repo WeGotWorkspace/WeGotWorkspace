@@ -13,12 +13,12 @@ use App\Services\Jmap\JmapMethodException;
  */
 final class NoteQueryChangesMethod implements JmapMethodInterface
 {
-    public function name(): string
+    public static function name(): string
     {
         return 'Note/queryChanges';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::NOTES;
     }

@@ -19,12 +19,12 @@ final class NoteGetMethod implements JmapMethodInterface
 
     public function __construct(private readonly NoteRepository $notes) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Note/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::NOTES;
     }

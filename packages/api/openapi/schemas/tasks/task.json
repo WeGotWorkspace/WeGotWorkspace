@@ -65,7 +65,8 @@
       "roles": { "type": "array", "items": { "type": "string" } },
       "participationStatus": { "type": "string" },
       "kind": { "type": "string" },
-      "language": { "type": "string" }
+      "language": { "type": "string" },
+      "username": { "type": ["string", "null"], "description": "Set by the server; ignored on writes. The account of a `u:<username>` participant (#2172); null for an `e:<email>` participant or the organizer. Participant ids are `u:<username>`, `e:<lowercased email>` or `org`. An assignee is any participant with role `attendee`." }
     },
     "additionalProperties": false
   },

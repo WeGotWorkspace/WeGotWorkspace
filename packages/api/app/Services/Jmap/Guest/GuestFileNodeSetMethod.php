@@ -24,12 +24,12 @@ final class GuestFileNodeSetMethod implements JmapMethodInterface
 
     public function __construct(private readonly FileNodeSetMethod $set) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'FileNode/set';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::FILENODE;
     }

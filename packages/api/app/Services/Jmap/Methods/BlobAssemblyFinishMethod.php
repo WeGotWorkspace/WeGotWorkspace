@@ -20,12 +20,12 @@ final class BlobAssemblyFinishMethod implements JmapMethodInterface
 
     public function __construct(private readonly BlobAssemblyService $assemblies) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'BlobAssembly/finish';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::BLOB_ASSEMBLY;
     }

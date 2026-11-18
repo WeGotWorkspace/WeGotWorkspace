@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:<sabre-vobject>
+CALSCALE:GREGORIAN
+BEGIN:VJOURNAL
+UID:01J6Y6M0R2V9GKJ4W1T8Q3ZBEX
+DTSTAMP:20260904T103456Z
+X-WGW-AUTHOR:alice
+X-WGW-MENTIONS:[{"id":"bob"\,"displayName":"Bob Builder"}\,{"id":"carol"\,"
+ displayName":"carol"}\,{"id":"dave"\,"displayName":"dave"}]
+DESCRIPTION:edited body
+SEQUENCE:1
+LAST-MODIFIED:20260905T080001Z
+X-WGW-REACTIONS:[{"emoji":"👍"\,"authors":["alice"\,"bob"]}\,{"emoji":"
+ 🎉"\,"authors":["carol"]}]
+END:VJOURNAL
+END:VCALENDAR
