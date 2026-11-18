@@ -11,11 +11,11 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\ChatChannelMeta;
 use App\Models\ChatReadMarker;
-use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Chat\Conversion\ChatMessageJournalConverter;
 use App\Services\Notify\ChatMentionedNotify;
 use App\Services\Threads\ThreadAuthorNames;
+use App\Services\Threads\ThreadMentions;
 use App\Services\Threads\ThreadReactions;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -590,25 +590,8 @@ final class ChatMessageRepository
      */
     private function normalizeMentions(mixed $raw): array
     {
-        if (! is_array($raw)) {
-            return [];
-        }
-        $out = [];
-        foreach ($raw as $entry) {
-            if (! is_array($entry) || ! is_string($entry['id'] ?? null)) {
-                continue;
-            }
-            $id = strtolower(trim((string) $entry['id']));
-            if ($id === '' || isset($out[$id]) || Principal::forUsername($id) === null) {
-                continue;
-            }
-            $display = isset($entry['displayName']) && is_string($entry['displayName'])
-                ? trim($entry['displayName'])
-                : $id;
-            $out[$id] = ['id' => $id, 'displayName' => $display !== '' ? $display : $id];
-        }
-
-        return array_values($out);
+        // The server names who is mentioned; a client-sent displayName is ignored (#2173).
+        return ThreadMentions::resolve($raw);
     }
 
     /**
