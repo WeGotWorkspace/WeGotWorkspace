@@ -10547,7 +10547,10 @@
                     "clientId",
                     "clientName",
                     "clientOrigin",
+                    "clientRegistration",
                     "connectedAt",
+                    "approvedAt",
+                    "approvedUserAgent",
                     "scopes",
                     "shareCalls"
                 ],
@@ -10561,8 +10564,31 @@
                     "clientOrigin": {
                         "type": "string"
                     },
+                    "clientRegistration": {
+                        "type": "string",
+                        "enum": [
+                            "cimd",
+                            "dcr"
+                        ],
+                        "description": "How the client registered: `cimd` = client ID metadata document (name and origin come from the vendor's HTTPS metadata), `dcr` = dynamic client registration (name chosen by the client itself; a new client per registration)."
+                    },
                     "connectedAt": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "When the user connected this client: the recorded approval, else the first token issued for it."
+                    },
+                    "approvedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "When the user approved this client on the consent page. Null for grants approved before approvals were recorded."
+                    },
+                    "approvedUserAgent": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "User agent of the browser the user approved this client in (max 512 characters). No IP address is stored."
                     },
                     "scopes": {
                         "type": "array",

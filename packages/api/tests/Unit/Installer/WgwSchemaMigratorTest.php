@@ -210,6 +210,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'oauth_device_codes',
             'mcp_audit_events',
             'mcp_sessions',
+            'mcp_consents',
             'docs_thread_index',
             'notifications',
             'notification_deliveries',

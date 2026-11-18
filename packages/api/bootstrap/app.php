@@ -14,6 +14,7 @@ use App\Http\Middleware\ExposeNotifiedRecipients;
 use App\Http\Middleware\FilterMcpConsentScopes;
 use App\Http\Middleware\McpCors;
 use App\Http\Middleware\ProtectMcpConsent;
+use App\Http\Middleware\RecordMcpConsent;
 use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\ReplayMcpConsentDecision;
 use App\Http\Middleware\RequireGuestSession;
@@ -83,6 +84,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             WgwSecurityHeaders::class,
             ProtectMcpConsent::class,
             ReplayMcpConsentDecision::class,
+            RecordMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
         $middleware->appendToGroup('api', [
