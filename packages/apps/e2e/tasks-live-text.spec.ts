@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext } from "./helpers/live-test";
+import { expect, test, type BrowserContext, type Route } from "./helpers/live-test";
 import {
   cleanUpCase,
   createList,
@@ -218,6 +218,102 @@ test("typing offline reaches the server, and an outside edit meanwhile asks once
     await expect(notes(mate)).toHaveValue(settled, { timeout: LIVE_MS });
     await expect(owner.getByRole("dialog")).toHaveCount(0);
     await expect(mate.getByRole("dialog")).toHaveCount(0);
+  } finally {
+    for (const context of contexts) await context.close();
+    await cleanUpCase(id);
+  }
+});
+
+test("two tabs of one account converge on one task", async ({ browser }) => {
+  const id = `tab${Date.now().toString(36)}`;
+  await ensureTasksTeam();
+  const events: string[] = [];
+  const contexts: BrowserContext[] = [];
+
+  try {
+    const listId = await createList(`L ${id}`);
+    const task = await createTask(listId, `Water plants ${id}`);
+
+    const ownerContext = await openUser(browser, OWNER);
+    contexts.push(ownerContext);
+    const tabA = await openTasksTab(ownerContext, "owner-a", events);
+    const tabB = await openTasksTab(ownerContext, "owner-b", events);
+    await openTask(tabA, task.title);
+    await openTask(tabB, task.title);
+
+    await title(tabA).click();
+    await title(tabA).press("End");
+    await title(tabA).pressSequentially(" v2");
+    await expect(title(tabB)).toHaveValue(`Water plants ${id} v2`, { timeout: LIVE_MS });
+
+    await notes(tabB).click();
+    await notes(tabB).pressSequentially("Shared");
+    await expect(notes(tabA)).toHaveValue("Shared", { timeout: LIVE_MS });
+
+    await tabB.reload();
+    await openTask(tabB, `Water plants ${id} v2`);
+
+    await expect(title(tabA)).toHaveValue(`Water plants ${id} v2`, { timeout: LIVE_MS });
+    await expect(title(tabB)).toHaveValue(`Water plants ${id} v2`, { timeout: LIVE_MS });
+    await expect(notes(tabA)).toHaveValue("Shared", { timeout: LIVE_MS });
+    await expect(notes(tabB)).toHaveValue("Shared", { timeout: LIVE_MS });
+    await expect
+      .poll(
+        async () => {
+          const saved = await serverTask(task.id);
+          return `${saved?.title} | ${saved?.description ?? ""}`;
+        },
+        { timeout: LIVE_MS },
+      )
+      .toBe(`Water plants ${id} v2 | Shared`);
+    await expect(tabA.getByRole("dialog")).toHaveCount(0);
+    await expect(tabB.getByRole("dialog")).toHaveCount(0);
+  } finally {
+    for (const context of contexts) await context.close();
+    await cleanUpCase(id);
+  }
+});
+
+test("a reload in the middle of an unsaved edit keeps the typing and saves it", async ({
+  browser,
+}) => {
+  const id = `rel${Date.now().toString(36)}`;
+  await ensureTasksTeam();
+  const events: string[] = [];
+  const contexts: BrowserContext[] = [];
+
+  try {
+    const listId = await createList(`L ${id}`);
+    const task = await createTask(listId, `Pack bags ${id}`);
+
+    const ownerContext = await openUser(browser, OWNER);
+    contexts.push(ownerContext);
+    const owner = await openTasksTab(ownerContext, "owner", events);
+    await openTask(owner, task.title);
+
+    await notes(owner).click();
+    await notes(owner).pressSequentially("Pack");
+    await expect
+      .poll(async () => (await serverTask(task.id))?.description ?? "", { timeout: LIVE_MS })
+      .toBe("Pack");
+
+    const hold = (route: Route) =>
+      route.request().method() === "PUT" ? route.abort() : route.continue();
+    await owner.route("**/api/v1/tasks/items/*/text", hold);
+    await notes(owner).click();
+    await notes(owner).press("End");
+    await notes(owner).pressSequentially(" later");
+    await expect(notes(owner)).toHaveValue("Pack later");
+
+    await owner.reload();
+    await openTask(owner, task.title);
+    await expect(notes(owner)).toHaveValue("Pack later", { timeout: LIVE_MS });
+
+    await owner.unroute("**/api/v1/tasks/items/*/text", hold);
+    await expect
+      .poll(async () => (await serverTask(task.id))?.description ?? "", { timeout: LIVE_MS })
+      .toBe("Pack later");
+    await expect(owner.getByRole("dialog")).toHaveCount(0);
   } finally {
     for (const context of contexts) await context.close();
     await cleanUpCase(id);

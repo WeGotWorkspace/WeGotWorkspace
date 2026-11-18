@@ -13,7 +13,7 @@ const next = {
   title: "Buy milk",
   description: "Two cartons",
   workflowStatus: "needs-action" as const,
-  priority: 5,
+  priority: 5 as const,
   due: null,
   showWithoutTime: undefined,
   timeZone: null,
