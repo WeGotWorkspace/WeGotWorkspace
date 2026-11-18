@@ -82,6 +82,7 @@ export const liveTierSpecs = [
   "notes-sharee-star",
   "notes-undo-two-users",
   "notifications-hidden-call",
+  "notifications-inbox-poll",
   "notifications-inbox-push",
   "notifications-read-batch",
   "notifications-toast",

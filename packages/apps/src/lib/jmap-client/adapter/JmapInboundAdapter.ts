@@ -33,8 +33,8 @@ export abstract class JmapInboundAdapter {
   #ingests = new Set<Promise<unknown>>();
   /** The cursor the other tabs have, so an idle round tells them nothing. */
   #sharedCursor = "";
-  /** True once a cache write failed: this tab's cursor may be ahead of the cache. */
-  #cursorHeld = false;
+  /** Cache writes that failed so far; a round that sees it grow rewinds its cursor. */
+  #ingestFailures = 0;
   /** Pushes this tab is behind on, waiting for the syncing tab's round. */
   #roundWaiters = new Set<(heard: boolean) => void>();
 
@@ -143,9 +143,8 @@ export abstract class JmapInboundAdapter {
     this.#ingests.add(work);
     const done = () => this.#ingests.delete(work);
     work.then(done, () => {
-      // This change is in no cache: from now on this tab shares no cursor,
-      // so the tab that takes over reads the change again.
-      this.#cursorHeld = true;
+      // This change is in no cache: the round that started it rewinds.
+      this.#ingestFailures += 1;
       done();
     });
   }
@@ -188,7 +187,8 @@ export abstract class JmapInboundAdapter {
   /**
    * After a round of the syncing tab: tell the others once its writes are in
    * the cache. A round that found nothing is told only when `always` is set
-   * (a push round: other tabs may wait for it).
+   * (a push round: other tabs may wait for it). Its writes have settled and
+   * succeeded by now (see {@link JmapInboundAdapter.#settleIngests}).
    */
   #shareRound(always: boolean): void {
     if (!this.#share || !this.#owner) return;
@@ -198,7 +198,7 @@ export abstract class JmapInboundAdapter {
     this.#sharedCursor = cursor;
     void Promise.allSettled([...this.#ingests]).then(() => {
       if (!this.#share || !this.#owner) return;
-      this.#share.publishRound(this.#cursorHeld ? {} : states);
+      this.#share.publishRound(states);
     });
   }
 
@@ -214,19 +214,40 @@ export abstract class JmapInboundAdapter {
   }
 
   async #syncRound(forPush: boolean): Promise<boolean> {
+    const before = this.#cursor();
+    const failures = this.#ingestFailures;
     try {
       await this.pullChanges();
-      this.#shareRound(forPush);
-      return true;
+      return await this.#settleIngests(before, failures, forPush);
     } catch (error) {
       if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
         const refetched = await this.#refetchAllReported();
-        if (refetched) this.#shareRound(forPush);
-        return refetched;
+        return refetched && (await this.#settleIngests(before, failures, forPush));
       }
       this.reportSyncError(error);
       return false;
     }
+  }
+
+  /**
+   * Wait for the round's cache writes. When one failed, put the cursor back to
+   * where the round started, so the next poll and push read the change again,
+   * share nothing, and report the round as failed.
+   */
+  async #settleIngests(
+    before: Record<string, string>,
+    failures: number,
+    forPush: boolean,
+  ): Promise<boolean> {
+    await Promise.allSettled([...this.#ingests]);
+    if (this.#ingestFailures === failures) {
+      this.#shareRound(forPush);
+      return true;
+    }
+    for (const [type, state] of Object.entries(before)) {
+      this.jmapClient.setState(this.accountId, type, state);
+    }
+    return false;
   }
 
   /** The full re-list can fail too (#1792: `requestTooLarge` above 500 records). */

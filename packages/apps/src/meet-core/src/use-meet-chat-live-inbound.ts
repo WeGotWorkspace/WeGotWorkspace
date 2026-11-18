@@ -79,10 +79,13 @@ export function useMeetChatLiveInbound({
     // This tab repaints; the others re-read the shared cache when told.
     const ingested = (work: Promise<unknown>) => {
       next.ingesting(work);
-      void work.then(() => {
-        notifyMeetChatCacheChanged(username);
-        return latestPatch.current();
-      });
+      // A failed write is the adapter's to handle: it rewinds the cursor.
+      void work
+        .then(() => {
+          notifyMeetChatCacheChanged(username);
+          return latestPatch.current();
+        })
+        .catch(() => undefined);
     };
     const next: JmapChatAdapter = new JmapChatAdapter({
       client: createMeetChatJmapClient(),
@@ -96,7 +99,7 @@ export function useMeetChatLiveInbound({
             await ingestRemoteChatChannel(username, jmapChatChannelToWire(channel));
             // A channel newly shared or created remotely needs its history pulled once.
             if (!(await isChatChannelBackfilled(username, channel.id))) {
-              await backfillChatChannelHistory(username, channel.id).catch(() => undefined);
+              await backfillChatChannelHistory(username, channel.id);
             }
           })(),
         ),

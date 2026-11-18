@@ -178,12 +178,13 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     a.adapter.nextWrite = new Promise<void>((resolve) => (written = resolve));
 
     server.state = "n2";
-    await a.adapter.sync();
+    const round = a.adapter.sync();
     await settle();
     expect(b.adapter.repaints).toBe(0);
     expect(b.adapter.cursor).toBe("n1");
 
     written();
+    await round;
     await settle();
     expect(b.adapter.repaints).toBe(1);
     expect(b.adapter.cursor).toBe("n2");
@@ -219,7 +220,7 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     const { a, b } = await twoTabs();
     a.adapter.nextWrite = new Promise<void>(() => undefined);
     server.state = "n2";
-    await a.adapter.sync();
+    void a.adapter.sync();
     await settle();
 
     a.close();
@@ -229,20 +230,22 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     expect(b.adapter.pulledFrom).toEqual(["n1"]);
   });
 
-  it("a failed cache write shares no cursor, then or later; the other tabs still repaint", async () => {
+  it("a failed cache write rewinds the cursor and shares nothing; the next round and the other tab read it again", async () => {
     const { a, b } = await twoTabs();
     a.adapter.nextWrite = Promise.reject(new Error("quota"));
     server.state = "n2";
-    await a.adapter.sync();
+    expect(await a.adapter.syncIfStale({ Note: "n2" })).toBe(false);
     await settle();
-    expect(b.adapter.repaints).toBe(1);
+    expect(a.adapter.cursor).toBe("n1");
     expect(b.adapter.cursor).toBe("n1");
+    expect(b.adapter.repaints).toBe(0);
 
-    server.state = "n3";
     await a.adapter.sync();
     await settle();
-    expect(b.adapter.repaints).toBe(2);
-    expect(b.adapter.cursor).toBe("n1");
+    expect(a.adapter.pulledFrom).toEqual(["n1", "n1"]);
+    expect(a.adapter.cursor).toBe("n2");
+    expect(b.adapter.cursor).toBe("n2");
+    expect(b.adapter.repaints).toBe(1);
   });
 
   it("owner hidden while push is down: the visible tab takes over and its poll runs", async () => {
@@ -281,12 +284,12 @@ describe("JmapInboundAdapter shared across tabs (#2252)", () => {
     const inB = b.adapter.syncIfStale({ Note: "n9" });
     const inA = a.adapter.syncIfStale({ Note: "n9" });
     await settle();
-    await expect(inA).resolves.toBe(true);
     // Not before the re-listed records are in the cache.
     expect(b.adapter.repaints).toBe(0);
 
     written();
     await settle();
+    await expect(inA).resolves.toBe(true);
     await expect(inB).resolves.toBe(true);
     expect(a.adapter.relists).toBe(1);
     expect(b.adapter.repaints).toBe(1);
