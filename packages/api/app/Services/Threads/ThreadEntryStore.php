@@ -160,6 +160,35 @@ final class ThreadEntryStore
     }
 
     /**
+     * Move every entry the rows name from one pool to another, object and row
+     * together. The entry keeps its UID, key and created_at.
+     *
+     * @param  iterable<ThreadIndex>  $rows
+     */
+    public function moveRows(CalendarInstance $from, CalendarInstance $to, iterable $rows): void
+    {
+        DB::connection('wgw')->transaction(function () use ($from, $to, $rows): void {
+            foreach ($rows as $row) {
+                $object = CalendarObject::query()
+                    ->where('calendarid', (int) $from->calendarid)
+                    ->where('uid', $row->uid)
+                    ->lockForUpdate()
+                    ->first();
+                if ($object !== null) {
+                    $uri = (string) $object->uri;
+                    $raw = self::rawIcs($object);
+                    $this->backends->calBackend()->deleteCalendarObject($this->collections->backendId($from), $uri);
+                    $this->backends->calBackend()->createCalendarObject($this->collections->backendId($to), $uri, $raw);
+                }
+                ThreadIndex::query()->whereKey($row->id)->update([
+                    'pool_calendarid' => (int) $to->calendarid,
+                    'modseq' => $this->syncToken((int) $to->calendarid),
+                ]);
+            }
+        });
+    }
+
+    /**
      * Stored ICS per UID, in one query.
      *
      * @param  list<string>  $uids

@@ -308,6 +308,7 @@ final class TaskListRepository
 
         $instance->principaluri = $principalUri;
         $instance->save();
+        $this->threadHooks->listTransferred((int) $instance->calendarid, $principalUri);
     }
 
     private function assertOwnerTransferAllowed(CalendarInstance $instance, ?string $currentGroupSlug): void

@@ -19,7 +19,45 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  */
 final class ThreadLifecycle
 {
-    public function __construct(private readonly ThreadEntryStore $store) {}
+    public function __construct(
+        private readonly ThreadEntryStore $store,
+        private readonly ThreadPoolProvisioner $pools,
+    ) {}
+
+    /**
+     * The scope changed owner and keeps its key: its entries move into the new
+     * owner's pool, so they stay visible under the current owner.
+     */
+    public function scopeTransferred(string $subjectType, string $scope, string $newOwnerUri): void
+    {
+        $rows = ThreadIndex::query()
+            ->where('subject_type', $subjectType)
+            ->where('subject_scope', $scope)
+            ->orderBy('id')
+            ->get();
+        if ($rows->isEmpty()) {
+            return;
+        }
+        $target = $this->pools->ensure($subjectType, $newOwnerUri);
+
+        $byPool = [];
+        foreach ($rows as $row) {
+            if ((int) $row->pool_calendarid !== (int) $target->calendarid) {
+                $byPool[$row->pool_calendarid][] = $row;
+            }
+        }
+        foreach ($byPool as $calendarId => $moving) {
+            $from = CalendarInstance::query()
+                ->where('calendarid', $calendarId)
+                ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+                ->orderBy('id')
+                ->first();
+            if ($from === null) {
+                continue;
+            }
+            $this->store->moveRows($from, $target, $moving);
+        }
+    }
 
     public function scopeDeleted(string $subjectType, string $scope): void
     {
