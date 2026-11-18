@@ -441,7 +441,7 @@ final class TaskRepository
         $objectUri = (string) $object->uri;
         $calendarIdPair = [(int) $instance->calendarid, (int) $instance->id];
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
-        $existingTask = $this->mapper->toTask($object, $this->taskListUriForInstance($instance), $located['vtodoUid']);
+        $existingTask = $this->mapper->forViewer($username)->toTask($object, $this->taskListUriForInstance($instance), $located['vtodoUid']);
 
         if ($located['vtodoUid'] !== null) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;

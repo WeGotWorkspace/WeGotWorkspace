@@ -98,10 +98,10 @@ final class TaskChangeObserverPlugin extends ServerPlugin
             $instance = $pending['instance'];
             $listId = $this->taskLists->apiIdForInstance($instance);
             $objectUri = basename($path);
-            $before = $this->tasksByUid($pending['raw'], $objectUri, $listId, $instance);
+            $before = $this->tasksByUid($pending['raw'], $objectUri, $listId, $instance, $actor);
             $after = strtoupper($request->getMethod()) === 'DELETE'
                 ? []
-                : $this->tasksByUid($this->storedRaw($instance, $objectUri), $objectUri, $listId, $instance);
+                : $this->tasksByUid($this->storedRaw($instance, $objectUri), $objectUri, $listId, $instance, $actor);
             // Resolved here, inside the guard, so a reaction that cannot even be
             // built is logged like any other failure instead of failing the PUT.
             $reactions = app(TaskChangeReactions::class);
@@ -186,7 +186,7 @@ final class TaskChangeObserverPlugin extends ServerPlugin
     /**
      * @return array<string, array<string, mixed>>
      */
-    private function tasksByUid(?string $raw, string $objectUri, string $listId, CalendarInstance $instance): array
+    private function tasksByUid(?string $raw, string $objectUri, string $listId, CalendarInstance $instance, string $actor): array
     {
         if ($raw === null || trim($raw) === '') {
             return [];
@@ -194,10 +194,12 @@ final class TaskChangeObserverPlugin extends ServerPlugin
         $object = new CalendarObject;
         $object->uri = $objectUri;
         $object->calendardata = $raw;
-        // The list's audience decides who an attendee address stands for.
+        // The list's audience, as the writer may see it, decides who an
+        // attendee address stands for: a hidden member's address is a guest
+        // to them and is not notified, as on REST.
         $object->calendarid = (int) $instance->calendarid;
         $byUid = [];
-        foreach ($this->mapper->toTasks($object, $listId) as $task) {
+        foreach ($this->mapper->forViewer($actor)->toTasks($object, $listId) as $task) {
             $uid = is_string($task['uid'] ?? null) ? $task['uid'] : '';
             $byUid[$uid] ??= $task;
         }

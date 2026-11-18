@@ -200,6 +200,25 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
     /**
      * @return array<string, mixed>
      */
+    public function test_a_hidden_members_address_notifies_nobody(): void
+    {
+        // erin edits the list and shares a Team with bob only: to her, alice's address is a guest.
+        $this->seedWgwUser('erin', displayName: 'Erin', email: 'erin@example.test');
+        $this->seedSharedTeam('side', 'bob', 'erin');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['shareWith' => [
+            'alice' => ['mayWriteAll' => true],
+            'carol' => ['mayWriteAll' => false],
+            'erin' => ['mayWriteAll' => true],
+        ]])->assertOk();
+        $taskId = $this->createTask();
+
+        $this->patchAs('erin', $taskId, ['participants' => [
+            'e:alice@example.test' => ['@type' => 'Participant', 'email' => 'alice@example.test', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
+    }
+
     private function attendee(): array
     {
         return ['@type' => 'Participant', 'roles' => ['attendee']];
