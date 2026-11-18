@@ -197,9 +197,6 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
         $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function test_a_hidden_members_address_notifies_nobody(): void
     {
         // erin edits the list and shares a Team with bob only: to her, alice's address is a guest.
@@ -219,6 +216,9 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
         $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function attendee(): array
     {
         return ['@type' => 'Participant', 'roles' => ['attendee']];
