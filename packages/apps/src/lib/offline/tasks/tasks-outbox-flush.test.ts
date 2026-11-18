@@ -357,6 +357,43 @@ describe("flushTasksOutbox", () => {
     expect((await cachedTask())?.participants).toBeUndefined();
   });
 
+  it.each([["update"], ["move"]])(
+    "moves the server copy when a refused assignee is queued with a move, %s first",
+    async (first) => {
+      const refused = () => new TasksRequestError("PATCH failed (422)", 422, "invalid_participant");
+      const participants = { "u:bob": { "@type": "Participant" as const, roles: ["attendee"] } };
+      await upsertTaskInCache(username, { ...task, participants, etag: "e0" }, true);
+      const enqueueMove = () =>
+        enqueueOutboxMutation(username, {
+          id: "queued-move",
+          domain: TASKS_DOMAIN,
+          op: "move",
+          payload: JSON.stringify({ taskId: task.id, taskListId: "work" }),
+          ifInState: "e0",
+        });
+      if (first === "move") await enqueueMove();
+      await enqueueCoalescedTaskUpdate(username, task.id, { participants }, "e0");
+      if (first === "update") await enqueueMove();
+      patchTask.mockRejectedValue(refused());
+      getTask.mockResolvedValue({ ...task, etag: "e0" });
+      putTask.mockImplementation(async (_id: string, body: { participants?: object }) => {
+        if (body.participants && "u:bob" in body.participants) {
+          throw new TasksRequestError("PUT failed (422)", 422, "invalid_participant");
+        }
+        return { ...task, taskListId: "work", etag: "e1" };
+      });
+
+      await flushTasksOutbox(username);
+
+      const bodies = putTask.mock.calls.map((call) => call[1] as { participants?: object });
+      const last = bodies[bodies.length - 1]!;
+      expect(last).toMatchObject({ taskListIds: { work: true } });
+      expect(last.participants && "u:bob" in last.participants).toBeFalsy();
+      expect(await listOutboxMutations(username)).toEqual([]);
+      expect((await cachedTask())?.participants).toBeUndefined();
+    },
+  );
+
   it("sends an edit to a task created offline to the id the create got (#1816)", async () => {
     const tempId = "local-abc";
     await upsertTaskInCache(

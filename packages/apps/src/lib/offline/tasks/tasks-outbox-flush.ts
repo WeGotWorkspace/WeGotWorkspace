@@ -78,6 +78,7 @@ async function followLandedTaskWrite(
   localId: string,
   task: Task,
   stillQueued = false,
+  refused = false,
 ): Promise<void> {
   const rebased = await rebaseQueuedEntityRows(username, {
     domain: TASKS_DOMAIN,
@@ -90,11 +91,13 @@ async function followLandedTaskWrite(
   const local = rebased > 0 ? await getTaskFromCache(username, localId) : null;
   if (localId !== task.id) await removeTaskFromCache(username, localId);
   if (local) {
-    await upsertTaskInCache(
-      username,
-      { ...task, ...local, id: task.id, uid: task.uid, etag: taskEtag(task) } as Task,
-      true,
-    );
+    const merged = { ...task, ...local, id: task.id, uid: task.uid, etag: taskEtag(task) } as Task;
+    // A refused assignee must not come back from the local copy: a queued move would send it.
+    if (refused) {
+      if (task.participants === undefined) delete merged.participants;
+      else merged.participants = task.participants;
+    }
+    await upsertTaskInCache(username, merged, true);
   } else {
     await upsertTaskInCache(username, task, false);
   }
@@ -126,10 +129,12 @@ async function sendTasksRow(
     const taskId = String(payload.taskId ?? "");
     const patch = payload.patch as TaskPatch;
     let task: Task;
+    let refused = false;
     try {
       task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
     } catch (error) {
       if (!isInvalidParticipant(error)) throw error;
+      refused = true;
       // An assignee the server no longer accepts (read from the cached audience
       // offline): send the rest once more, and read no ids from the error.
       const { participants: _refused, ...rest } = patch;
@@ -141,7 +146,7 @@ async function sendTasksRow(
       }
     }
     // A patch merged in while this one was sent is owed on top of `task`.
-    return settleLandedTaskRow(username, row, taskId, task, context);
+    return settleLandedTaskRow(username, row, taskId, task, context, refused);
   } else if (row.op === "move") {
     const taskId = String(payload.taskId ?? "");
     const taskListId = String(payload.taskListId ?? "");
@@ -149,11 +154,24 @@ async function sendTasksRow(
     if (!localTask) {
       throw new Error(`Task ${taskId} missing from cache for move flush`);
     }
-    const task = await putTask(taskId, taskCreateFromTask(localTask, taskListId), {
-      ifMatch: row.ifInState,
-    });
+    let task: Task;
+    let refused = false;
+    try {
+      task = await putTask(taskId, taskCreateFromTask(localTask, taskListId), {
+        ifMatch: row.ifInState,
+      });
+    } catch (error) {
+      if (!isInvalidParticipant(error)) throw error;
+      // The cached copy holds an assignee the server refused: move the server copy
+      // instead. A failed read keeps the row queued.
+      refused = true;
+      const server = await getTask(taskId);
+      task = await putTask(taskId, taskCreateFromTask(server, taskListId), {
+        ifMatch: taskEtag(server),
+      });
+    }
     // Undo may have pointed the row back while it was sent: then send it again.
-    return settleLandedTaskRow(username, row, taskId, task, context);
+    return settleLandedTaskRow(username, row, taskId, task, context, refused);
   } else if (row.op === "delete") {
     const taskId = String(payload.taskId ?? "");
     await deleteTask(taskId, { ifMatch: row.ifInState });
@@ -190,12 +208,13 @@ async function settleLandedTaskRow(
   taskId: string,
   task: Task,
   context: OutboxFlushContext,
+  refused = false,
 ): Promise<OutboxSendOutcome> {
   const settlement = await settleSentOutboxMutation(username, row, {
     rebase: (current) => rowFollowingTask(current, task),
     cacheTables: (db) => [tasksItemsTable(db)],
-    onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task),
-    onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true),
+    onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task, false, refused),
+    onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true, refused),
   });
   context.resend(settlement);
   return "handled";
