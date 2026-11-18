@@ -26,6 +26,7 @@ use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\TaskChangeObserverPlugin;
+use App\Dav\Server\TaskOrganizerPinPlugin;
 use App\Dav\Server\TeamGatedSharingPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
@@ -136,6 +137,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalendarPropfindReadPlugin);
             $server->addPlugin(new CalDAV\Plugin);
             $server->addPlugin(new RecurrenceCapExceptionPlugin);
+            $server->addPlugin(new TaskOrganizerPinPlugin);
             $server->addPlugin(app(WgwSchedulePlugin::class));
             $server->addPlugin(app(CalendarScheduleDeliveryGuardPlugin::class));
             $server->addPlugin(app(CalendarScheduleNotifyPlugin::class));

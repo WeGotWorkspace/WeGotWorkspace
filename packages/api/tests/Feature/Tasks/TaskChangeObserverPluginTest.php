@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Tasks;
 
 use App\Models\CalendarInstance;
+use App\Models\CalendarObject;
 use App\Models\Notification;
 use App\Services\Notify\TaskAssignedNotify;
-use App\Services\Tasks\TaskListAudience;
+use App\Services\Notify\TaskAssignedRateLimiter;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -19,7 +20,7 @@ use Tests\Support\WgwTestDisks;
  * ATTENDEE notifies that person like the web app does.
  *
  * bob owns "Groceries", shared with alice (write) and carol (read). All three
- * share Team "crew".
+ * share Team "crew". It also pins that a CalDAV PUT keeps the stored ORGANIZER.
  */
 final class TaskChangeObserverPluginTest extends WgwDatabaseTestCase
 {
@@ -69,6 +70,23 @@ final class TaskChangeObserverPluginTest extends WgwDatabaseTestCase
         $this->assertCount(1, $rows);
         $this->assertSame('alice', $rows->first()?->principal);
         $this->assertSame('Bob assigned you Buy milk', $rows->first()?->title);
+    }
+
+    public function test_a_caldav_put_cannot_replace_or_drop_the_organizer(): void
+    {
+        // bob's client stores the task with himself as organizer and alice as attendee.
+        $this->davPut('bob', $this->bobListUri, 'org.ics', $this->organised('ORGANIZER;CN=Bob:mailto:bob@example.test'))->assertCreated();
+
+        // alice's client (Thunderbird-shaped) claims the task, then drops the line.
+        $aliceUri = $this->listUriOf('alice');
+        $this->davPut('alice', $aliceUri, 'org.ics', $this->organised('ORGANIZER;CN=Alice:mailto:alice@example.test'))->assertNoContent();
+        $this->assertStringContainsString("ORGANIZER;CN=Bob:mailto:bob@example.test\r\n", $this->storedObject('org.ics'));
+        $this->davPut('alice', $aliceUri, 'org.ics', $this->organised(''))->assertNoContent();
+
+        $stored = $this->storedObject('org.ics');
+        $this->assertSame(1, substr_count($stored, 'ORGANIZER'));
+        $this->assertStringContainsString("ORGANIZER;CN=Bob:mailto:bob@example.test\r\n", $stored);
+        $this->assertStringContainsString('SUMMARY:Edited by alice', $stored);
     }
 
     public function test_a_new_file_with_an_attendee_notifies_them(): void
@@ -122,7 +140,7 @@ final class TaskChangeObserverPluginTest extends WgwDatabaseTestCase
 
     public function test_observer_exception_does_not_fail_the_put(): void
     {
-        $this->app->bind(TaskListAudience::class, static fn () => throw new \RuntimeException('audience down'));
+        $this->app->bind(TaskAssignedRateLimiter::class, static fn () => throw new \RuntimeException('limiter down'));
 
         $this->davPut('bob', $this->bobListUri, 'milk.ics', $this->vtodo('milk-1', ['alice@example.test']))->assertCreated();
 
@@ -142,6 +160,24 @@ final class TaskChangeObserverPluginTest extends WgwDatabaseTestCase
             ->firstOrFail();
 
         return (string) $instance->uri;
+    }
+
+    private function organised(string $organizerLine): string
+    {
+        $summary = $organizerLine === '' || str_contains($organizerLine, 'alice') ? 'Edited by alice' : 'Buy milk';
+
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN\r\n"
+            ."BEGIN:VTODO\r\nUID:org-1\r\nDTSTAMP:20261118T120000Z\r\nSUMMARY:{$summary}\r\n"
+            .($organizerLine === '' ? '' : $organizerLine."\r\n")
+            ."ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:alice@example.test\r\n"
+            ."END:VTODO\r\nEND:VCALENDAR\r\n";
+    }
+
+    private function storedObject(string $objectUri): string
+    {
+        $raw = (string) CalendarObject::query()->where('uri', $objectUri)->firstOrFail()->calendardata;
+
+        return str_replace("\r\n ", '', $raw);
     }
 
     /**

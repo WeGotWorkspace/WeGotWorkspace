@@ -15,8 +15,10 @@ use App\Services\Tasks\TaskListAudience;
  * Recipients are the change set's added `u:` assignees who are in the list
  * audience with write access at the moment of the write, minus the actor.
  * An address that is no account here, or someone outside the audience, gets
- * nothing. The dedupe key is per task (and per recipient in the listener), with
- * supersede, so a reassign after an unassign replaces the old notice.
+ * nothing. {@see TaskAssignedRateLimiter} caps how many notices an actor
+ * sends and a recipient gets. The dedupe key is per task (and per recipient
+ * in the listener), with supersede, so a reassign after an unassign replaces
+ * the old notice.
  */
 final class TaskAssignedNotify
 {
@@ -25,6 +27,7 @@ final class TaskAssignedNotify
     public function __construct(
         private readonly EventDispatch $eventDispatch,
         private readonly TaskListAudience $audience,
+        private readonly TaskAssignedRateLimiter $rateLimiter,
     ) {}
 
     /**
@@ -43,7 +46,8 @@ final class TaskAssignedNotify
             if ($username === $actor) {
                 continue;
             }
-            if (($audience[$username]['access'] ?? null) === TaskListAudience::ACCESS_WRITE) {
+            if (($audience[$username]['access'] ?? null) === TaskListAudience::ACCESS_WRITE
+                && $this->rateLimiter->allow($actor, $username)) {
                 $recipients[] = $username;
             }
         }
@@ -117,13 +121,13 @@ final class TaskAssignedNotify
     }
 
     /**
-     * The Tasks app with the task selected. A list id is per user (a sharee
-     * sees another id than the owner), the task id is the same for everyone,
-     * so the link names only the task. The web app opens it from the `task`
-     * query (#2172 chunk C).
+     * All Tasks with the task open. A list id is per user (a sharee sees
+     * another id than the owner), the task id is the same for everyone, so the
+     * link names only the task. It names the view too: a bare `/tasks`
+     * redirects to the default view and drops the `task` query.
      */
     public static function navigate(string $taskId): string
     {
-        return '/tasks?task='.rawurlencode($taskId);
+        return '/tasks/state/all?task='.rawurlencode($taskId);
     }
 }

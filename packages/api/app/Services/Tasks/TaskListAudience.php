@@ -40,7 +40,17 @@ final class TaskListAudience
      */
     public function forList(CalendarInstance $list): array
     {
-        $ownerRows = $this->ownerRows($list);
+        return $this->forCalendarId((int) $list->calendarid);
+    }
+
+    /**
+     * The audience of the task list stored as calendar `$calendarId`.
+     *
+     * @return array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>
+     */
+    public function forCalendarId(int $calendarId): array
+    {
+        $ownerRows = $this->ownerRowsForCalendar($calendarId);
         $access = [];
         foreach ($ownerRows as $row) {
             foreach ($this->usernamesForPrincipalUri((string) $row->principaluri) as $username) {
@@ -89,8 +99,16 @@ final class TaskListAudience
      */
     private function ownerRows(CalendarInstance $list): array
     {
+        return $this->ownerRowsForCalendar((int) $list->calendarid);
+    }
+
+    /**
+     * @return list<CalendarInstance>
+     */
+    private function ownerRowsForCalendar(int $calendarId): array
+    {
         return array_values(CalendarInstance::query()
-            ->where('calendarid', (int) $list->calendarid)
+            ->where('calendarid', $calendarId)
             ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
             ->orderBy('id')
             ->get()
