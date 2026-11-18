@@ -60,7 +60,7 @@ final class ThreadRepository
         }
 
         return [
-            'list' => $this->presenter->present($pool, $rows),
+            'list' => $this->presenter->present($rows),
             'nextCursor' => $next,
             'state' => $this->state($pool, $subject),
             'canPost' => $subject->canPost,
@@ -111,7 +111,7 @@ final class ThreadRepository
             return $this->replay($subject, $result['row']);
         }
 
-        return ['entry' => $this->presenter->presentOne($pool, $result['row']), 'created' => true];
+        return ['entry' => $this->presenter->presentOne($result['row']), 'created' => true];
     }
 
     /**
@@ -149,7 +149,7 @@ final class ThreadRepository
             return $this->store->journal()->applyEdit($ics, $body, new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
         });
 
-        return $this->presenter->presentOne($pool, $row);
+        return $this->presenter->presentOne($row);
     }
 
     /** @return array<string, mixed> */
@@ -161,7 +161,7 @@ final class ThreadRepository
             new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
         ));
 
-        return $this->presenter->presentOne($pool, $row);
+        return $this->presenter->presentOne($row);
     }
 
     /** @return array<string, mixed> */
@@ -178,12 +178,15 @@ final class ThreadRepository
         }
         $this->store->rewrite($pool, $row, function (string $ics) use ($emoji, $username): string {
             [, $journal] = $this->store->journal()->read($ics);
+            if ($this->store->journal()->isTombstoned($journal)) {
+                throw new ApiHttpException(409, 'This entry was deleted.', 'conflict');
+            }
             $reactions = ThreadReactions::toggle($this->store->journal()->reactionsOf($journal), $emoji, $username);
 
             return $this->store->journal()->applyReactions($ics, $reactions);
         });
 
-        return $this->presenter->presentOne($pool, $row);
+        return $this->presenter->presentOne($row);
     }
 
     /**
@@ -262,10 +265,8 @@ final class ThreadRepository
         if ($row->subject_key !== $subject->key()) {
             throw new ApiHttpException(409, 'This comment was already stored in an earlier place.', 'already_stored');
         }
-        $pool = $this->pools->find($subject->type, $subject->poolOwner)
-            ?? throw new ApiHttpException(404, 'Thread not found.', 'not_found');
 
-        return ['entry' => $this->presenter->presentOne($pool, $row), 'created' => false];
+        return ['entry' => $this->presenter->presentOne($row), 'created' => false];
     }
 
     private function assertCanPost(ThreadSubject $subject): void

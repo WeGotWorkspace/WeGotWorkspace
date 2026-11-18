@@ -160,6 +160,56 @@ final class ThreadEntryStore
     }
 
     /**
+     * Move entries into another pool, object and row together, keeping their
+     * key and uri (an owner change of the scope, #2173). Each moved row gets
+     * the new pool's sync token, so `/changes` reports it.
+     *
+     * @param  iterable<ThreadIndex>  $rows  all in $from
+     */
+    public function moveRows(CalendarInstance $from, CalendarInstance $to, iterable $rows): void
+    {
+        DB::connection('wgw')->transaction(function () use ($from, $to, $rows): void {
+            foreach ($rows as $row) {
+                $object = CalendarObject::query()
+                    ->where('calendarid', (int) $from->calendarid)
+                    ->where('uid', $row->uid)
+                    ->lockForUpdate()
+                    ->first();
+                if ($object !== null) {
+                    $raw = self::rawIcs($object);
+                    $uri = (string) $object->uri;
+                    $this->backends->calBackend()->deleteCalendarObject($this->collections->backendId($from), $uri);
+                    $this->backends->calBackend()->createCalendarObject($this->collections->backendId($to), $uri, $raw);
+                }
+                ThreadIndex::query()->whereKey($row->id)->update([
+                    'pool_calendarid' => (int) $to->calendarid,
+                    'modseq' => $this->syncToken((int) $to->calendarid),
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Stored ICS per row, read from each row's own pool.
+     *
+     * @param  list<ThreadIndex>  $rows
+     * @return array<string, string> uid => ICS
+     */
+    public function rawForRows(array $rows): array
+    {
+        $byPool = [];
+        foreach ($rows as $row) {
+            $byPool[(int) $row->pool_calendarid][] = $row->uid;
+        }
+        $raw = [];
+        foreach ($byPool as $calendarId => $uids) {
+            $raw += $this->rawByUid($calendarId, $uids);
+        }
+
+        return $raw;
+    }
+
+    /**
      * Stored ICS per UID, in one query.
      *
      * @param  list<string>  $uids

@@ -136,7 +136,7 @@ final class TaskThreadSubject implements ThreadSubjectType
         return new ThreadSubject(
             type: self::TYPE,
             id: $id,
-            localKey: $uid,
+            localKey: self::localKey($uid),
             scope: (string) (int) $list->calendarid,
             scopeId: $this->taskLists->apiIdForInstance($list),
             poolOwner: $owner,
@@ -150,5 +150,14 @@ final class TaskThreadSubject implements ThreadSubjectType
         $list = is_array($subject->context) ? ($subject->context['list'] ?? null) : null;
 
         return $list instanceof CalendarInstance ? $list : null;
+    }
+
+    /**
+     * The task UID, or a hash of it when it is too long for the index key
+     * (`subject_key` is 320 characters; some imported UIDs are longer).
+     */
+    private static function localKey(string $uid): string
+    {
+        return strlen($uid) <= 200 ? $uid : 'sha256:'.hash('sha256', $uid);
     }
 }

@@ -105,6 +105,22 @@ final class TaskThreadLifecycleTest extends WgwDatabaseTestCase
         $this->assertSame(0, $this->entryCount());
     }
 
+    public function test_giving_the_list_to_a_team_keeps_its_threads(): void
+    {
+        $taskId = $this->createTask('bob', $this->listId, 'Milk');
+        $id = $this->ulid();
+        $this->comment('bob', $taskId, 'Before the Team', ['id' => $id])->assertCreated();
+
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['groupSlug' => 'crew'])->assertOk();
+
+        $this->assertSame(['Before the Team'], array_column($this->entries('bob', $taskId), 'body'));
+        $this->assertSame(['Before the Team'], array_column($this->entries('carol', $taskId), 'body'));
+        $this->comment('bob', $taskId, 'Before the Team', ['id' => $id])->assertOk()->assertJsonPath('id', $id);
+        $this->comment('alice', $taskId, 'After the Team')->assertCreated();
+        $this->assertSame(['Before the Team', 'After the Team'], array_column($this->entries('bob', $taskId), 'body'));
+        $this->assertSame(1, ThreadIndex::query()->distinct()->count('pool_calendarid'));
+    }
+
     public function test_sharee_dismiss_keeps_thread_entries(): void
     {
         $taskId = $this->createTask('bob', $this->listId, 'Milk');

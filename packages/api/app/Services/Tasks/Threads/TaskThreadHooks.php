@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
  * - A delete deletes nothing: the entries stay hidden under the list's key
  *   and show again if the same UID comes back.
  * - Only the owner deleting a list removes its entries.
+ * - Giving a list to another owner moves its entries into that owner's pool.
  *
  * It runs after the task write has committed and never fails it.
  */
@@ -49,6 +50,12 @@ final class TaskThreadHooks
     public function listDeleted(int $calendarId): void
     {
         $this->guard('list_deleted', (string) $calendarId, fn () => app(ThreadLifecycle::class)->scopeDeleted(TaskThreadSubject::TYPE, (string) $calendarId));
+    }
+
+    /** The list was given to another owner (a Team): its threads move to that owner's pool. */
+    public function listOwnerChanged(int $calendarId, string $newOwnerUri): void
+    {
+        $this->guard('list_owner_changed', (string) $calendarId, fn () => app(ThreadLifecycle::class)->scopeOwnerChanged(TaskThreadSubject::TYPE, (string) $calendarId, $newOwnerUri));
     }
 
     private function guard(string $hook, ?string $id, \Closure $run): void

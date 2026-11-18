@@ -308,6 +308,8 @@ final class TaskListRepository
 
         $instance->principaluri = $principalUri;
         $instance->save();
+        // Task threads live in the list owner's pool (#2173): they follow the list.
+        $this->threadHooks->listOwnerChanged((int) $instance->calendarid, $principalUri);
     }
 
     private function assertOwnerTransferAllowed(CalendarInstance $instance, ?string $currentGroupSlug): void

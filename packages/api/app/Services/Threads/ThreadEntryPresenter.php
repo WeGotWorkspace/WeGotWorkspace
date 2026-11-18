@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Threads;
 
-use App\Models\CalendarInstance;
 use App\Models\ThreadIndex;
 
 /**
@@ -21,9 +20,10 @@ final class ThreadEntryPresenter
      * @param  list<ThreadIndex>  $rows
      * @return list<array<string, mixed>>
      */
-    public function present(CalendarInstance $pool, array $rows): array
+    public function present(array $rows): array
     {
-        $raw = $this->store->rawByUid((int) $pool->calendarid, array_map(static fn (ThreadIndex $row): string => $row->uid, $rows));
+        // Each row is read from its own pool, never from the caller's guess.
+        $raw = $this->store->rawForRows($rows);
         $names = ThreadAuthorNames::lookup(array_values(array_unique(array_map(static fn (ThreadIndex $row): string => $row->author, $rows))));
         $entries = [];
         foreach ($rows as $row) {
@@ -36,9 +36,9 @@ final class ThreadEntryPresenter
     }
 
     /** @return array<string, mixed> */
-    public function presentOne(CalendarInstance $pool, ThreadIndex $row): array
+    public function presentOne(ThreadIndex $row): array
     {
-        return $this->present($pool, [$row])[0]
+        return $this->present([$row])[0]
             ?? throw new \LogicException('Thread entry '.$row->uid.' has no stored object.');
     }
 
