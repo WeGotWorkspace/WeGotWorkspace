@@ -1,0 +1,2 @@
+# Golden thread entries are CRLF byte for byte, as sabre/vobject writes them.
+*.ics -text
