@@ -16,8 +16,8 @@ use App\Services\Teams\TeamColleagues;
  * those the stored task already has (every attendee on a create). An added
  * user must be in the target list's audience with write access; an added
  * address no account has passes. Attendees the task already has pass
- * unchecked, so a task with a native-client attendee, a former member or an
- * assignee without access in a move target still saves.
+ * unchecked, so a task with a native-client attendee or a former member still
+ * saves. A move to another list drops the assignees who cannot see the target.
  *
  * For an added user the server writes the address and name from that user's
  * own profile, whatever the payload says. An address is matched to a user

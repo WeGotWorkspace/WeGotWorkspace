@@ -97,9 +97,7 @@ final class TaskParticipantDirectory
     private static function withProfile(array $entry, array $member): array
     {
         $entry['name'] = $member['displayName'];
-        if ($member['email'] !== null) {
-            $entry['email'] = $member['email'];
-        }
+        $entry['email'] = $member['email'] ?? $member['username'];
         $entry['username'] = $member['username'];
 
         return $entry;

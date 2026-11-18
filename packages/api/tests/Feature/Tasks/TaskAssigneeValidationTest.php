@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Tasks;
 
 use App\Models\CalendarObject;
+use App\Models\Principal;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
@@ -145,6 +146,21 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertSame('Alice', $participants['u:alice']['name']);
         $this->assertSame('alice@example.test', $participants['u:alice']['email']);
         $this->assertSame('alice', $participants['u:alice']['username']);
+    }
+
+    public function test_a_caldav_username_claim_on_a_member_without_email_does_not_keep_the_line_address(): void
+    {
+        Principal::query()->where('uri', 'principals/alice')->update(['email' => null]);
+        $taskId = $this->seedTaskViaPdo('bob', 'noemail.ics', $this->vtodoWith(
+            "ATTENDEE;X-WGW-USERNAME=alice;CN=Other:mailto:mallory@evil.test\r\n"
+        ), $this->listId);
+
+        $participant = $this->asUser('bob')->getJson('/api/v1/tasks/items/'.$taskId)
+            ->assertOk()
+            ->json('participants.u:alice');
+
+        $this->assertSame('Alice', $participant['name']);
+        $this->assertNotSame('mallory@evil.test', $participant['email']);
     }
 
     public function test_a_caldav_username_claim_outside_the_audience_reveals_no_profile(): void
