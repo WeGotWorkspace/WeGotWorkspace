@@ -2,8 +2,9 @@
 
 /* Assignees (#2172): the detail value, the picker and the list row avatars. */
 
-/* Overlapping avatars: only an overlapping one is ringed in the surface, so a single
-   avatar on a selected or hovered row shows no dark ring. */
+/* Overlapping avatars. Each one that has a neighbour on top gets a transparent notch
+   (a mask, not a ring in the surface colour), so the stack reads the same on a plain,
+   hovered or selected row. Up to `max` show; the rest collapse into a "+N" disc. */
 .tasks-assignee-avatars {
   @apply inline-flex shrink-0 items-center;
 }
@@ -17,16 +18,31 @@
   font-size: var(--user-avatar-font-size);
 }
 
-.tasks-assignee-avatars__item + .tasks-assignee-avatars__item {
+.tasks-assignee-avatars__item + .tasks-assignee-avatars__item,
+.tasks-assignee-avatars__item + .tasks-assignee-avatars__more {
   margin-inline-start: -5px;
 }
 
-.tasks-assignee-avatars__item + .tasks-assignee-avatars__item .user-avatar__mark {
-  box-shadow: 0 0 0 2px var(--workspace-surface, var(--color-background));
+/* 20px marks overlapping by 5px: the next one's centre sits 25px from this one's left
+   edge; cut its radius plus a 2px gap. */
+.tasks-assignee-avatars__item:has(+ .tasks-assignee-avatars__item, + .tasks-assignee-avatars__more)
+  .user-avatar__mark {
+  mask: radial-gradient(circle 12px at 25px 50%, transparent 11.5px, #000 12px);
+}
+
+.tasks-assignee-avatars__item:has(
+    + .tasks-assignee-avatars__item,
+    + .tasks-assignee-avatars__more
+  ):dir(rtl)
+  .user-avatar__mark {
+  mask: radial-gradient(circle 12px at -5px 50%, transparent 11.5px, #000 12px);
 }
 
 .tasks-assignee-avatars__more {
-  @apply ms-1 text-xs tabular-nums text-muted-foreground;
+  @apply inline-flex shrink-0 items-center justify-center rounded-full bg-muted font-medium tabular-nums text-muted-foreground;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 9px;
 }
 
 /* An assignee who lost access to the list stays, greyed. */

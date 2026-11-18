@@ -94,6 +94,7 @@ function TasksListRowMarks({ task, L }: Pick<TasksListRowProps, "task" | "L">) {
       <PriorityMark priority={task.priority} L={L} />
       <TaskAssigneeAvatars
         assignees={taskAssignees(task.participants)}
+        max={2}
         moreLabel={L.assigneeMore}
         className="tasks-list-row__assignees"
       />

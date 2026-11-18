@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import "@/tasks-core/src/tasks-assignees.css";
 
-/** Up to three overlapping avatars; each name shows on hover. */
+/** Up to `max` overlapping avatars (three by default, two in a list row), then a "+N" disc; each name shows on hover. */
 export function TaskAssigneeAvatars({
   assignees,
   max = 3,

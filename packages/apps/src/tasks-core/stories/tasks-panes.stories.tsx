@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { withDarkTheme } from "@/branding-playground/dark-theme-story";
-import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import { createTasksAppBootstrap, MOCK_TASK_LIST_COLLEAGUES } from "@/lib/api/mock/tasks-bootstrap";
+import type { Task, TaskListMember } from "@/lib/models/tasks-types";
+import { assigneeParticipant } from "@/tasks-core/src/tasks-assignees";
 import { TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { TasksWorkspace } from "@/tasks-core/src/tasks-workspace";
@@ -17,6 +19,44 @@ function TasksPanesHarness() {
     <TasksStoryScope>
       <TasksWorkspace
         data={bootstrap.data}
+        session={bootstrap.session}
+        operations={tasksStoryOperations}
+        initialView="state:all"
+      />
+    </TasksStoryScope>
+  );
+}
+
+const STACK_PEOPLE: TaskListMember[] = [
+  { username: "me", displayName: "Morgan Vale", email: "morgan@example.org", access: "write" },
+  ...MOCK_TASK_LIST_COLLEAGUES.filter((member) => member.access === "write"),
+  { username: "kai", displayName: "Kai Okafor", email: "kai@example.org", access: "write" },
+];
+
+const STACK_TITLES = ["One assignee", "Two assignees", "Five assignees"] as const;
+
+/** Three rows with one, two and five assignees: the list row shows two, then "+N". */
+function TasksAssigneeStackHarness() {
+  const bootstrap = createTasksAppBootstrap();
+  const counts = [1, 2, 5];
+  const tasks = bootstrap.data.tasks.map((task, index): Task => {
+    const count = counts[index];
+    if (count === undefined) return task;
+    return {
+      ...task,
+      title: STACK_TITLES[index]!,
+      participants: Object.fromEntries(
+        STACK_PEOPLE.slice(0, count).map((member) => [
+          `u:${member.username}`,
+          assigneeParticipant(member),
+        ]),
+      ),
+    };
+  });
+  return (
+    <TasksStoryScope>
+      <TasksWorkspace
+        data={{ ...bootstrap.data, tasks }}
         session={bootstrap.session}
         operations={tasksStoryOperations}
         initialView="state:all"
@@ -114,6 +154,49 @@ export const ListAndDetail: Story = {
   tags: ["vitest-ci"],
   play: async ({ canvasElement }) => {
     await playListAndDetail(canvasElement);
+  },
+};
+
+async function playAssigneeStacks(canvasElement: HTMLElement) {
+  await waitFor(() => expect(canvasElement.querySelector(".tasks-list-row")).toBeTruthy());
+  const avatars = (title: string) =>
+    rowFor(canvasElement, title).querySelectorAll(".tasks-assignee-avatars__item").length;
+  const more = (title: string) =>
+    rowFor(canvasElement, title).querySelector(".tasks-assignee-avatars__more")?.textContent ??
+    null;
+
+  expect([avatars("One assignee"), more("One assignee")]).toEqual([1, null]);
+  expect([avatars("Two assignees"), more("Two assignees")]).toEqual([2, null]);
+  // At most two in a row, then a "+N" disc.
+  expect([avatars("Five assignees"), more("Five assignees")]).toEqual([2, L.assigneeMore(3)]);
+
+  // Selected: the overlap is a transparent notch, never a ring in the surface colour.
+  const row = rowFor(canvasElement, "Five assignees");
+  await userEvent.click(row.querySelector<HTMLElement>(".list-item__button")!);
+  await waitFor(() =>
+    expect(row.querySelector(".list-item__button")).toHaveAttribute("data-selected", "true"),
+  );
+  for (const mark of row.querySelectorAll<HTMLElement>(
+    ".tasks-assignee-avatars .user-avatar__mark",
+  )) {
+    expect(getComputedStyle(mark).boxShadow).toBe("none");
+  }
+}
+
+export const AssigneeStacks: StoryObj<typeof TasksAssigneeStackHarness> = {
+  tags: ["vitest-ci"],
+  render: () => <TasksAssigneeStackHarness />,
+  play: async ({ canvasElement }) => {
+    await playAssigneeStacks(canvasElement);
+  },
+};
+
+export const AssigneeStacksDark: StoryObj<typeof TasksAssigneeStackHarness> = {
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <TasksAssigneeStackHarness />,
+  play: async ({ canvasElement }) => {
+    await playAssigneeStacks(canvasElement);
   },
 };
 
