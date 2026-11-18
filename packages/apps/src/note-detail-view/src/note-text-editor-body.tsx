@@ -5,11 +5,9 @@ import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import {
+  CollabSessionPresence,
   DocsCollabEditor,
-  DocsCollabPresenceChrome,
-  mergeCollabPresencePeers,
   useDocsCollab,
-  useDocsCollabAwarenessPresence,
 } from "@/text-editor-core/docs-collab";
 import type { DocsCollabPresenceChromeProps, DocsCollabUrls } from "@/text-editor-core/docs-collab";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
@@ -189,9 +187,9 @@ export function NoteCollabSession({
 }
 
 /**
- * Notes collab presence — thin wrapper around shared
- * {@link DocsCollabPresenceChrome} that reads peers from {@link NoteCollabSession}.
- * The detail action bar uses the `header` variant (same avatars as the Docs header).
+ * Notes collab presence: shared {@link CollabSessionPresence} reading
+ * {@link NoteCollabSession}. The detail action bar uses the `header` variant
+ * (same avatars as the Docs header).
  */
 export function NoteCollabChrome({
   className,
@@ -201,23 +199,12 @@ export function NoteCollabChrome({
   variant?: DocsCollabPresenceChromeProps["variant"];
 }) {
   const { session, peers, connectingPeers, warningPeers } = useNoteCollabContext();
-  const awarenessPresencePeers = useDocsCollabAwarenessPresence(session?.awareness);
-  const presencePeers = useMemo(
-    () =>
-      session ? mergeCollabPresencePeers(awarenessPresencePeers, peers, session.user.name) : [],
-    [awarenessPresencePeers, peers, session],
-  );
-
-  if (!session) {
-    return null;
-  }
-
   return (
-    <DocsCollabPresenceChrome
+    <CollabSessionPresence
       className={className}
       variant={variant}
-      localUser={{ displayName: session.user.name }}
-      peers={presencePeers}
+      session={session}
+      peers={peers}
       connectingPeers={connectingPeers}
       warningPeers={warningPeers}
     />

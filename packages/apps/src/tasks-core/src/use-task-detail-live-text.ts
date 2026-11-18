@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import { parkTask } from "@/lib/offline/tasks/tasks-parked-writes";
 import type { TextFieldsText } from "@/text-editor-core/docs-collab/docs-collab-text-fields";
+import type { CollabSessionPresenceSource } from "@/text-editor-core/docs-collab";
 import { useTaskTextCollab } from "@/tasks-core/src/use-task-text-collab";
 
 /**
@@ -39,6 +40,18 @@ export function useTaskDetailLiveText({
     [showLiveText],
   );
 
+  /** Who is in the open task's room, for the detail header. */
+  const [presence, setPresence] = useState<{
+    taskId: string;
+    source: CollabSessionPresenceSource;
+  } | null>(null);
+  const onPresence = useCallback((taskId: string, source: CollabSessionPresenceSource | null) => {
+    setPresence((current) => {
+      if (source) return { taskId, source };
+      return current?.taskId === taskId ? null : current;
+    });
+  }, []);
+
   useEffect(() => {
     const live = liveRef.current;
     if (!accessLost || !username || !task || live?.taskId !== task.id || !live.unsaved) return;
@@ -56,5 +69,7 @@ export function useTaskDetailLiveText({
     textAccessLost: accessLost,
     textLookingUp: lookingUp,
     onLiveText,
+    textPresence: presence && task && presence.taskId === task.id ? presence.source : null,
+    onPresence,
   };
 }
