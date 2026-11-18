@@ -127,12 +127,14 @@ test("two people type a task's title and notes together", async ({ browser }) =>
     const text = await api(OWNER, "GET", `/tasks/items/${encodeURIComponent(task.id)}/text`);
     expect((text.json as { description?: string }).description).toBe("From REST!");
 
-    // Two writers' saves race: a 412 re-merges and saves again. Group presence
-    // rooms are not part of this test.
+    // Two writers' saves race: a 412 re-merges and saves again, and a retry
+    // that crosses the outside edit gets 409, re-reads quietly and saves.
+    // Group presence rooms are not part of this test.
     const unexpected = events.filter(
       (line) =>
         !line.startsWith("TRACE") &&
         !line.includes("412") &&
+        !line.includes("409") &&
         !line.includes("/rooms/p_") &&
         !line.includes("status of 400"),
     );
