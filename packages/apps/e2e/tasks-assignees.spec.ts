@@ -30,11 +30,20 @@ async function audience(listId: string): Promise<Map<string, string>> {
   return new Map(list.map((m) => [m.username, m.displayName || m.username]));
 }
 
-/** The participant ids a task has on the server, as `user` sees it. */
+/** The assignee ids a task has on the server, as `user` sees it (the organizer left out). */
 async function assigneeIds(taskId: string, user = OWNER): Promise<string[]> {
   const res = await api(user, "GET", `/tasks/items/${encodeURIComponent(taskId)}`);
   const task = res.json as { participants?: Record<string, unknown> | null };
-  return Object.keys(task.participants ?? {}).sort();
+  return Object.keys(task.participants ?? {})
+    .filter((id) => id !== "org")
+    .sort();
+}
+
+/** The organizer's address on the server: the server sets it to the first assigner. */
+async function organizerEmail(taskId: string): Promise<string | null> {
+  const res = await api(OWNER, "GET", `/tasks/items/${encodeURIComponent(taskId)}`);
+  const task = res.json as { participants?: Record<string, { email?: string }> | null };
+  return task.participants?.org?.email ?? null;
 }
 
 function row(tab: Tab, title: string) {
@@ -100,6 +109,7 @@ test("assignments made offline merge per person and land once online", async ({ 
     await setTabOffline(a, false);
 
     await expect.poll(() => assigneeIds(task.id), { timeout: 30_000 }).toEqual([`u:${OWNER}`]);
+    expect(await organizerEmail(task.id)).toMatch(new RegExp(`^${OWNER}@`));
 
     for (const tab of [b, a]) {
       if (tab === a) {
