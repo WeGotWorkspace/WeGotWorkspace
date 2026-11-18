@@ -54,6 +54,7 @@ export type TasksUILabels = {
   stateToday: string;
   stateUpcoming: string;
   stateOverdue: string;
+  stateAssignedToMe: string;
   stateNeedsAction: string;
   stateInProcess: string;
   stateCompleted: string;
@@ -261,6 +262,7 @@ export const defaultTasksLabels: TasksUILabels = {
   stateToday: "Today",
   stateUpcoming: "Upcoming",
   stateOverdue: "Overdue",
+  stateAssignedToMe: "Assigned to me",
   stateNeedsAction: "Needs action",
   stateInProcess: "In progress",
   stateCompleted: "Completed",

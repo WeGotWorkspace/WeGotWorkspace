@@ -3040,6 +3040,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: tasks 1`
   "sidebarSharedWithMe": "Shared with me",
   "sidebarStatus": "Status",
   "stateAll": "All Tasks",
+  "stateAssignedToMe": "Assigned to me",
   "stateCancelled": "Cancelled",
   "stateCompleted": "Completed",
   "stateInProcess": "In progress",

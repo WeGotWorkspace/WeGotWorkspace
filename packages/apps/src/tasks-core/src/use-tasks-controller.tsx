@@ -9,6 +9,7 @@ import { useTasksList } from "@/tasks-core/src/use-tasks-list";
 import { useTasksMutations } from "@/tasks-core/src/use-tasks-mutations";
 import { useTasksProjectMutations } from "@/tasks-core/src/use-tasks-project-mutations";
 import { useTasksShell } from "@/tasks-core/src/use-tasks-shell";
+import type { TaskViewer } from "@/tasks-core/src/tasks-task-utils";
 
 type UseTasksControllerArgs = {
   data: TasksUIData;
@@ -18,6 +19,7 @@ type UseTasksControllerArgs = {
   initialView?: string;
   initialTaskId?: string;
   onViewChange?: (view: string) => void;
+  viewer?: TaskViewer;
 };
 
 export function useTasksController({
@@ -28,6 +30,7 @@ export function useTasksController({
   initialView,
   initialTaskId,
   onViewChange,
+  viewer,
 }: UseTasksControllerArgs) {
   const shell = useTasksShell({
     data,
@@ -36,6 +39,7 @@ export function useTasksController({
     bootstrapRevision,
     initialView,
     onViewChange,
+    viewer,
   });
   const exitAnimation = useTasksExitAnimation();
   const { clearHiddenTasks } = exitAnimation;
