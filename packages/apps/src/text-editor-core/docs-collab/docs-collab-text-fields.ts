@@ -87,6 +87,17 @@ function seedClientIds(doc: Y.Doc): number[] {
   return [...doc.getMap(TEXT_FIELDS_SEEDS).keys()].map(Number).filter(Number.isFinite);
 }
 
+/** Every seed's items this document holds: the only items a stale-seed drop may take. */
+export function textFieldsSeedClocks(doc: Y.Doc): Map<number, number> {
+  const local = Y.decodeStateVector(Y.encodeStateVector(doc));
+  return new Map(seedClientIds(doc).map((client) => [client, local.get(client) ?? 0]));
+}
+
+/** The seed client ids this document records. */
+export function textFieldsSeedClientIds(doc: Y.Doc): number[] {
+  return seedClientIds(doc);
+}
+
 type SeedUpdate = { update: Uint8Array; seedId: number; vector: Map<number, number> };
 
 /**

@@ -5,6 +5,7 @@ import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending
 import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
+import { isTextFieldsDoc, readTextFields } from "./docs-collab-text-fields";
 import { collabSaveBody } from "./docs-collab-save-body";
 import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
 import {
@@ -82,8 +83,12 @@ export function useDocsCollabSave({
   const markPendingWhenUnsaved = useCallback(async (): Promise<void> => {
     const ydoc = refs.ydocRef.current;
     const getMd = refs.getMarkdownRef.current;
-    if (!ydoc || !getMd || !refs.localDirtySinceLastSaveRef.current) return;
-    const signature = docSignature(getMd(), ydoc);
+    const textFields = !!ydoc && isTextFieldsDoc(ydoc);
+    if (!ydoc || (!getMd && !textFields) || !refs.localDirtySinceLastSaveRef.current) return;
+    const signature = docSignature(
+      textFields ? readTextFields(ydoc).description : (getMd?.() ?? ""),
+      ydoc,
+    );
     if (
       !shouldMarkPendingWhenUnsaved(
         refs.localDirtySinceLastSaveRef.current,
