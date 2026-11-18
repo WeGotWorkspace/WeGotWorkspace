@@ -27,7 +27,7 @@
    edge; cut its radius plus a 2px gap. */
 .tasks-assignee-avatars__item:has(+ .tasks-assignee-avatars__item, + .tasks-assignee-avatars__more)
   .user-avatar__mark {
-  mask: radial-gradient(circle 12px at 25px 50%, transparent 11.5px, #000 12px);
+  mask: radial-gradient(circle 12px at 25px 50%, transparent 11.5px, black 12px);
 }
 
 .tasks-assignee-avatars__item:has(
@@ -35,7 +35,7 @@
     + .tasks-assignee-avatars__more
   ):dir(rtl)
   .user-avatar__mark {
-  mask: radial-gradient(circle 12px at -5px 50%, transparent 11.5px, #000 12px);
+  mask: radial-gradient(circle 12px at -5px 50%, transparent 11.5px, black 12px);
 }
 
 .tasks-assignee-avatars__more {
