@@ -43,7 +43,7 @@ export function AdminMcpPane({ controller, mcpEndpointUrl }: AdminMcpPaneProps) 
     <>
       <WorkspacePageSection>
         <FeatureRow
-          label="Allow connected assistants"
+          label="Allow AI assistants"
           desc="People choose for themselves in Settings. Turning this off disconnects everyone."
           value={enabled}
           onChange={requestToggle}
@@ -59,7 +59,7 @@ export function AdminMcpPane({ controller, mcpEndpointUrl }: AdminMcpPaneProps) 
       <AlertDialog open={confirmOff} onOpenChange={setConfirmOff}>
         <AlertDialogContent className="admin-dialog-surface">
           <AlertDialogHeader>
-            <AlertDialogTitle>Turn off connected assistants?</AlertDialogTitle>
+            <AlertDialogTitle>Turn off AI assistants?</AlertDialogTitle>
             <AlertDialogDescription>
               Turning this off disconnects all assistants. People will need to connect again.
             </AlertDialogDescription>

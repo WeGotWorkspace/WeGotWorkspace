@@ -83,4 +83,32 @@ describe("useSettingsMcpGrants", () => {
     expect(listMcpGrants).not.toHaveBeenCalled();
     expect(result.current.grants).toEqual([]);
   });
+  it("revokes several connections one after another", async () => {
+    const grant = (clientId: string) => ({
+      clientId,
+      clientName: "Claude Code",
+      clientOrigin: "http://localhost:1",
+      clientRegistration: "dcr" as const,
+      connectedAt: "2026-11-12T10:00:00Z",
+      approvedAt: null,
+      approvedUserAgent: null,
+      scopes: ["drive.read"],
+      lastUsedAt: null,
+      shareCalls: [],
+    });
+    const listMcpGrants = vi.fn().mockResolvedValue([grant("a"), grant("b"), grant("c")]);
+    const revokeMcpGrant = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useSettingsMcpGrants({ saveProfile: vi.fn(), listMcpGrants, revokeMcpGrant }),
+    );
+    await waitFor(() => expect(result.current.grants).toHaveLength(3));
+
+    await act(async () => {
+      await result.current.revokeAll(["a", "c"]);
+    });
+
+    expect(revokeMcpGrant.mock.calls.map((call) => call[0])).toEqual(["a", "c"]);
+    expect(result.current.grants.map((g) => g.clientId)).toEqual(["b"]);
+    expect(result.current.revokingId).toBeNull();
+  });
 });

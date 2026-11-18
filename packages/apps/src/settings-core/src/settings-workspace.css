@@ -77,61 +77,70 @@
   @apply text-sm text-muted-foreground;
 }
 
-.settings-workspace .settings-connected-assistants-pane,
+/* AI assistants: connection URL, then one entry per product (hairlines as the Team rows). */
 .settings-workspace .settings-assistants-pane {
-  @apply flex flex-col gap-4 max-w-xl;
-}
-
-.settings-workspace .settings-connected-assistants-pane--empty {
-  @apply gap-4;
-}
-
-.settings-workspace .settings-connected-assistants-pane--connected {
-  @apply gap-12;
+  @apply flex flex-col gap-12;
 }
 
 .settings-workspace .settings-assistants-pane__empty {
   @apply text-sm text-muted-foreground;
 }
 
-.settings-workspace .settings-assistants-pane a {
-  @apply underline underline-offset-2;
-  color: var(--workspace-accent);
-}
-
 .settings-workspace .settings-assistants-pane__error {
   @apply text-sm text-destructive;
 }
 
-.settings-workspace .settings-assistants-pane__grants {
-  @apply flex flex-col gap-16;
+.settings-workspace .settings-assistant-list,
+.settings-workspace .settings-assistant__connections,
+.settings-workspace .settings-assistant__access {
+  @apply m-0 list-none p-0;
 }
 
-.settings-workspace .settings-assistants-pane__grant {
-  @apply flex flex-col gap-4;
+.settings-workspace .settings-assistant {
+  @apply flex flex-col gap-3 py-5;
 }
 
-.settings-workspace .settings-assistants-pane__grant-header {
-  @apply relative pr-10;
+.settings-workspace .settings-assistant + .settings-assistant {
+  border-top: 1px solid var(--workspace-divider-color);
 }
 
-.settings-workspace .settings-assistants-pane__grant-identity {
-  @apply flex min-w-0 flex-col items-start gap-1;
+.settings-workspace .settings-assistant__header,
+.settings-workspace .settings-assistant__connection {
+  @apply flex items-center justify-between gap-3;
 }
 
-.settings-workspace .settings-assistants-pane__grant-name {
-  @apply m-0 text-4xl font-normal leading-none;
-  font-family: var(--font-serif);
+.settings-workspace .settings-assistant__identity {
+  @apply flex min-w-0 flex-wrap items-center gap-2;
+}
+
+.settings-workspace .settings-assistant__name {
+  @apply m-0 truncate text-base font-medium;
   color: var(--workspace-foreground);
 }
 
-.settings-workspace .settings-assistants-pane__grant-origin {
-  @apply m-0 text-base font-normal leading-normal;
-  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+.settings-workspace .settings-assistant__meta {
+  @apply m-0 text-sm;
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
-.settings-workspace .settings-assistants-pane__grant-revoke {
-  @apply absolute top-0 right-0;
+.settings-workspace .settings-assistant__access {
+  @apply flex flex-wrap gap-2;
+}
+
+.settings-workspace .settings-assistant__app-icon {
+  @apply size-4;
+}
+
+.settings-workspace .settings-assistant__connection {
+  @apply py-2;
+}
+
+.settings-workspace .settings-assistant__connection + .settings-assistant__connection {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.settings-workspace .settings-assistant__connection-main {
+  @apply flex min-w-0 flex-col gap-2;
 }
 
 .settings-workspace .settings-assistants-pane__share-calls {

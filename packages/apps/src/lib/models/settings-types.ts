@@ -61,7 +61,14 @@ export type SettingsMcpGrant = {
   clientId: string;
   clientName: string;
   clientOrigin: string;
+  /** `cimd`: name and origin from the vendor's HTTPS metadata. `dcr`: name chosen by the client itself. */
+  clientRegistration: "cimd" | "dcr";
+  /** Approval time, else the first token for this client. */
   connectedAt: string;
+  /** When the user approved on the consent page. Null for grants approved before this was recorded. */
+  approvedAt: string | null;
+  /** User agent of the browser the user approved in. Null when unknown. */
+  approvedUserAgent: string | null;
   scopes: string[];
   lastUsedAt: string | null;
   /** Last share-tool MCP calls for this assistant. Required by the OpenAPI grant schema. */
@@ -72,7 +79,7 @@ export type SettingsUIData = {
   user: SettingsUser;
   groups: SettingsGroup[];
   logoutUrl: string;
-  /** Admin MCP kill-switch. Settings hides Connected assistants when false. */
+  /** Admin MCP kill-switch. Settings hides AI assistants when false. */
   mcpEnabled: boolean;
 };
 

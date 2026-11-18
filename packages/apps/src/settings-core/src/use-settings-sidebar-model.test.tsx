@@ -14,7 +14,7 @@ describe("useSettingsSidebarModel", () => {
     resetSettingsRegistryForTests();
   });
 
-  it("groups Account, Connections, Device, Apps and About, with Connected assistants when MCP is on", () => {
+  it("groups Account, Connections, Device, Apps and About, with AI assistants when MCP is on", () => {
     const { result } = renderHook(() => useSettingsSidebarModel(true));
     expect(result.current.account.map((section) => section.id)).toEqual(["profile", "memberships"]);
     expect(result.current.connections.map((section) => section.id)).toEqual([
@@ -35,12 +35,12 @@ describe("useSettingsSidebarModel", () => {
       "docs",
       "meet",
     ]);
-    expect(
-      result.current.connections.some((section) => section.label === "Connected assistants"),
-    ).toBe(true);
+    expect(result.current.connections.some((section) => section.label === "AI assistants")).toBe(
+      true,
+    );
   });
 
-  it("omits Connected assistants when the admin kill-switch is off", () => {
+  it("omits AI assistants when the admin kill-switch is off", () => {
     const { result } = renderHook(() => useSettingsSidebarModel(false));
     expect(result.current.account.map((section) => section.id)).toEqual(["profile", "memberships"]);
     expect(result.current.connections.map((section) => section.id)).toEqual(["incoming-email"]);
@@ -52,8 +52,8 @@ describe("useSettingsSidebarModel", () => {
       "docs",
       "meet",
     ]);
-    expect(
-      result.current.connections.some((section) => section.label === "Connected assistants"),
-    ).toBe(false);
+    expect(result.current.connections.some((section) => section.label === "AI assistants")).toBe(
+      false,
+    );
   });
 });

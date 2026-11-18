@@ -9,7 +9,7 @@ use App\Services\Settings\SettingKeys;
 use Laravel\Passport\Passport;
 
 /**
- * Instance switch for Connected assistants (`SettingKeys::MCP_ENABLED`, default off).
+ * Instance switch for AI assistants (`SettingKeys::MCP_ENABLED`, default off).
  *
  * This AppSetting is the only switch and an env var must not override it.
  */

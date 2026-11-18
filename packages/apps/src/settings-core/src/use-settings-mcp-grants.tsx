@@ -20,7 +20,7 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations, enabled
     try {
       setGrants(await listMcpGrants());
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load connected assistants.");
+      setError(cause instanceof Error ? cause.message : "Could not load AI assistants.");
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,27 @@ export function useSettingsMcpGrants(operations?: SettingsAPIOperations, enabled
     [revokeMcpGrant],
   );
 
-  return { grants, loading, revokingId, error, refresh, revoke };
+  /** Revokes one connection after another; stops at the first failure. */
+  const revokeAll = useCallback(
+    async (clientIds: readonly string[]) => {
+      if (!revokeMcpGrant) return;
+      setError(null);
+      try {
+        for (const clientId of clientIds) {
+          setRevokingId(clientId);
+          await revokeMcpGrant(clientId);
+          setGrants((prev) => prev.filter((grant) => grant.clientId !== clientId));
+        }
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not revoke this assistant.");
+      } finally {
+        setRevokingId(null);
+      }
+    },
+    [revokeMcpGrant],
+  );
+
+  return { grants, loading, revokingId, error, refresh, revoke, revokeAll };
 }
 
 export type SettingsMcpGrantsState = ReturnType<typeof useSettingsMcpGrants>;

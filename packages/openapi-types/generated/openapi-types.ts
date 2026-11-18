@@ -9307,7 +9307,7 @@ export interface components {
             /** @description Whether the caller has the admin role. Admin is a role per user, not membership of a Team. */
             isAdmin: boolean;
             logoutUrl: string;
-            /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
+            /** @description Whether AI assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
             mcpEnabled: boolean;
         };
         /**

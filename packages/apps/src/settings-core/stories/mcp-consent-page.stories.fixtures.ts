@@ -1,6 +1,6 @@
 /**
  * Story fixtures for the consent mock. Catalog + grouping live in
- * `mcp-scope-labels.ts` (same map as Settings Connected assistants).
+ * `mcp-scope-labels.ts` (same map as Settings AI assistants).
  */
 
 import {
