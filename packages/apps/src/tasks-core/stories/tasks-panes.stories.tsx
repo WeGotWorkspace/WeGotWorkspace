@@ -76,8 +76,11 @@ async function playListAndDetail(canvasElement: HTMLElement) {
   expect(
     Array.from(fields).map((field) => field.querySelector(".card__row-title")?.textContent),
   ).toEqual([L.addTaskStatus, L.dueLabel, L.dueAllDay, L.addTaskPriority, L.detailAlarm(1)]);
-  for (const field of Array.from(fields)) {
-    expect(getComputedStyle(field).borderBottomStyle).toBe("solid");
+  for (const [index, field] of Array.from(fields).entries()) {
+    // Rows are split by a line; the last row has none (2026-11-18).
+    expect(getComputedStyle(field).borderBottomStyle).toBe(
+      index === fields.length - 1 ? "none" : "solid",
+    );
     // Each value is the shared ghost dropdown (no chrome), its label at the same size;
     // All day is a switch.
     if (field.querySelector('[role="switch"]')) continue;
