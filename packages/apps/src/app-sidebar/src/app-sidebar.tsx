@@ -1,4 +1,5 @@
 import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef } from "react";
+import { AppRail } from "@/app-rail/src/app-rail";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
 import { bindOpenSidebarStatusBar } from "@/app-sidebar/src/sidebar-status-bar";
 import { cn } from "@/lib/utils";
@@ -88,6 +89,7 @@ export function AppSidebar({
 
   return (
     <>
+      {appSwitchDisabled ? null : <AppRail />}
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
       <aside
         ref={sidebarRef}

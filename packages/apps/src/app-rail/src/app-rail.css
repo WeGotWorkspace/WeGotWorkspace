@@ -1,0 +1,135 @@
+@import "../../styles.css" reference;
+
+/*
+ * App rail: hidden by default. It appears where the sidebar docks AND the
+ * viewport is landscape (iPad landscape, laptops, desktops). Portrait tablets
+ * and phones keep the AppSwitchButton menu in the sidebar header.
+ */
+.app-rail {
+  display: none;
+  --app-rail-width: 4rem;
+  --app-rail-icon-size: 2.25rem;
+}
+
+@media (min-width: 72.5rem) and (orientation: landscape) {
+  .app-rail {
+    /*
+     * Below the docked sidebar (z-31) so its leading shadow falls on the rail.
+     * The z-index drop waits for the slide, so an opening sidebar still comes
+     * out from under the rail.
+     */
+    @apply relative z-30 flex shrink-0 flex-col items-center justify-between gap-4;
+    transition: z-index 0s var(--panel-overlay-duration);
+    inline-size: calc(var(--app-rail-width) + env(safe-area-inset-left, 0px));
+    padding-inline-start: env(safe-area-inset-left, 0px);
+    /* First tile tops with the header controls of every column. */
+    padding-block-start: calc(var(--workspace-header-padding-y) + env(safe-area-inset-top, 0px));
+    padding-block-end: calc(1rem + env(safe-area-inset-bottom, 0px));
+    /* Same paper as the main / detail pane; the sidebar floats between them. */
+    background-color: var(--workspace-main-bg, var(--workspace-surface));
+  }
+
+  /* Closed sidebar: the rail covers it at once, so it slides away underneath. */
+  .app-rail:has(~ .app-sidebar[data-open="false"]) {
+    z-index: 32;
+    transition: none;
+  }
+
+  /* Beside the rail the sidebar is a panel with two free edges: round, rule and shadow on both. */
+  .app-rail ~ .app-sidebar {
+    border-inline-start: 1px solid var(--workspace-divider-color);
+    border-start-start-radius: var(--sidebar-panel-radius);
+    border-end-start-radius: var(--sidebar-panel-radius);
+  }
+
+  .app-rail ~ .app-sidebar[data-open="true"] {
+    box-shadow: var(--sidebar-panel-shadow-start), var(--sidebar-panel-shadow-end);
+  }
+
+  .app-rail__list {
+    @apply m-0 flex list-none flex-col items-center gap-2 p-0;
+    inline-size: 100%;
+  }
+
+  .app-rail__item {
+    @apply relative flex justify-center;
+    inline-size: 100%;
+  }
+
+  .app-rail__link {
+    @apply relative flex items-center justify-center rounded-xl outline-none transition-[opacity,scale] focus-visible:ring-2 focus-visible:ring-ring;
+    /* 44px hit area around the 36px tile. */
+    block-size: 2.75rem;
+    inline-size: 2.75rem;
+    opacity: 0.55;
+  }
+
+  .app-rail__link:hover,
+  .app-rail__link:focus-visible,
+  .app-rail__link[aria-current="page"] {
+    opacity: 1;
+  }
+
+  .app-rail__link:active {
+    scale: 0.94;
+  }
+
+  .app-rail__icon {
+    block-size: var(--app-rail-icon-size);
+    inline-size: var(--app-rail-icon-size);
+  }
+
+  /*
+   * New notifications for this app: a dot on the tile's corner, never a count
+   * (the bell carries the number). Stays full strength on a dimmed tile.
+   */
+  .app-rail__link[data-unread] {
+    opacity: 1;
+  }
+
+  .app-rail__link[data-unread]:not(:hover, :focus-visible, [aria-current="page"]) .app-rail__icon {
+    opacity: 0.55;
+  }
+
+  .app-rail__dot {
+    @apply absolute rounded-full;
+    inset-block-start: 0.125rem;
+    inset-inline-end: 0.125rem;
+    block-size: 0.625rem;
+    inline-size: 0.625rem;
+    background-color: var(--notification-inbox-badge-bg, var(--scheme-selection));
+    box-shadow: 0 0 0 2px var(--workspace-main-bg, var(--workspace-surface));
+  }
+
+  /* Current app: an ink pill on the rail's leading edge. */
+  .app-rail__item:has(> .app-rail__link[aria-current="page"])::before {
+    content: "";
+    @apply absolute rounded-full;
+    inset-inline-start: 0;
+    inset-block: 0.625rem;
+    inline-size: 3px;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    background-color: var(--workspace-foreground);
+  }
+
+  /*
+   * The rail is the switcher here, so the sidebar header drops its tile, chevron
+   * and menu and keeps the app name as a title.
+   */
+  .app-rail ~ .app-sidebar .app-switch-button__icon,
+  .app-rail ~ .app-sidebar .app-switch-button__chevron {
+    display: none;
+  }
+
+  .app-rail ~ .app-sidebar .app-switch-button__trigger {
+    pointer-events: none;
+    min-block-size: var(--workspace-header-control-height);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-rail__link {
+    transition: none;
+  }
+}
