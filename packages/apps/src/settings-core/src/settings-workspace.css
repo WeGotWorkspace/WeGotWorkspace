@@ -106,8 +106,12 @@
   @apply size-4 shrink-0;
 }
 
-.settings-workspace .settings-assistant__actions {
-  @apply flex flex-wrap justify-end gap-2;
+.settings-workspace .settings-assistant__apps {
+  @apply flex flex-wrap gap-2 py-3;
+}
+
+.settings-workspace .settings-assistant__app {
+  @apply inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring;
 }
 
 .settings-workspace .settings-assistants-pane__share-calls {

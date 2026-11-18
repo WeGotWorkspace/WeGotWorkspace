@@ -60,13 +60,11 @@ function assistantsState(overrides: Partial<SettingsMcpGrantsState> = {}): Setti
   };
 }
 
-/** Each app row as "App: Read, Write", in order. */
+/** Each app tag by its accessible name, "App: Read & write", in order. */
 function appRows(): string[] {
-  return [...document.querySelectorAll(".settings-assistant__app")].map((row) => {
-    const app = row.querySelector(".field-label-row__label")?.textContent ?? "";
-    const actions = [...row.querySelectorAll(".tag")].map((tag) => tag.textContent?.trim());
-    return `${app}: ${actions.join(", ")}`;
-  });
+  return [...document.querySelectorAll(".settings-assistant__app")].map(
+    (tag) => tag.getAttribute("aria-label") ?? "",
+  );
 }
 
 /** Section titles of the assistants (the product names). */
@@ -126,7 +124,7 @@ describe("SettingsAssistantsPane", () => {
       expect.stringMatching(/^Safari on Mac: Approved (12 Nov|Nov 12) · Active /),
     ]);
     expect(screen.queryByRole("button", { name: /Revoke all/ })).toBeNull();
-    expect(appRows()).toEqual(["Calendar: Read, Write", "Drive: Read"]);
+    expect(appRows()).toEqual(["Calendar: Read & write", "Drive: Read"]);
     expect(screen.getByRole("button", { name: "Revoke Claude" })).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();
   });

@@ -6,6 +6,7 @@ import type { SettingsMcpGrant } from "@/lib/models/settings-types";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import { Tag } from "@/tag/src/tag";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
   connectionMetaParts,
   connectionsShareScopes,
@@ -34,9 +35,8 @@ export type SettingsAssistantsPaneProps = {
 };
 
 /**
- * Settings → AI assistants, in the two-column rows of the other panes: the
- * connection URL, then one row per assistant product (Revoke at the end) with
- * what it may do and, for a product connected more than once, its connections.
+ * Settings → AI assistants: the connection URL, then a section per assistant
+ * product with an app tag per permission and a row per connection (Revoke at the end).
  */
 export function SettingsAssistantsPane({
   assistants,
@@ -250,27 +250,42 @@ function AppIcon({ app }: { app: string }) {
   return appId ? <WorkspaceAppIcon appId={appId} className="settings-assistant__app-icon" /> : null;
 }
 
-/** One inline row per app: the app at the start, Read / Write / Share tags at the end. */
+/** "Read", "Read & write", "Read, write & share". */
+function actionsLabel(actions: string[]): string {
+  const words = actions.map((action, index) => (index === 0 ? action : action.toLowerCase()));
+  return words.length < 2
+    ? (words[0] ?? "")
+    : `${words.slice(0, -1).join(", ")} & ${words[words.length - 1]}`;
+}
+
+/**
+ * One tag per app, side by side: the app icon and what it may do. The app name
+ * is in the tooltip (and the accessible name), so the tags stay short.
+ */
 function AccessRows({ scopes }: { scopes: string[] }) {
   const apps = mcpAppAccess(scopes);
   if (apps.length === 0) return null;
   return (
-    <>
-      {apps.map((access) => (
-        <FieldLabelRow
-          key={access.app}
-          layout="inline"
-          className="settings-assistant__app"
-          label={access.app}
-          icon={<AppIcon app={access.app} />}
-        >
-          <span className="settings-assistant__actions">
-            {access.actions.map((action) => (
-              <Tag key={action} label={action} />
-            ))}
-          </span>
-        </FieldLabelRow>
-      ))}
-    </>
+    <div className="settings-assistant__apps">
+      {apps.map((access) => {
+        // Retired ids outside the catalog stay as they are.
+        const label =
+          access.app === "Other" ? access.actions.join(", ") : actionsLabel(access.actions);
+        return (
+          <Tooltip key={access.app}>
+            <TooltipTrigger asChild>
+              <span
+                className="settings-assistant__app"
+                tabIndex={0}
+                aria-label={`${access.app}: ${label}`}
+              >
+                <Tag label={label} icon={<AppIcon app={access.app} />} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{access.app}</TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
   );
 }
