@@ -82,6 +82,8 @@ export type FieldLabelRowProps = {
   below?: ReactNode;
   /** `inline` layout: the row opens a section; its caption is a step bigger, full ink. */
   section?: boolean;
+  /** `inline` layout: a chip right after the caption (a "Needs TURN" state). */
+  labelAccessory?: ReactNode;
 };
 
 function hasVisibleCaption(label: string | undefined): boolean {
@@ -169,6 +171,7 @@ function FieldLabelRowInline({
   fill,
   below,
   section,
+  labelAccessory,
   children,
   readOnly,
   icon,
@@ -176,6 +179,13 @@ function FieldLabelRowInline({
   labelClassName,
   htmlFor,
 }: FieldLabelRowProps): ReactNode {
+  const caption = (
+    <Label htmlFor={htmlFor} className={cn("field-label-row__label", labelClassName)}>
+      {icon}
+      {label}
+      {readOnly ? <Lock className="field-label-row__lock" aria-hidden /> : null}
+    </Label>
+  );
   return (
     <div
       className={cn(
@@ -187,11 +197,14 @@ function FieldLabelRowInline({
       )}
     >
       <div className="field-label-row__text">
-        <Label htmlFor={htmlFor} className={cn("field-label-row__label", labelClassName)}>
-          {icon}
-          {label}
-          {readOnly ? <Lock className="field-label-row__lock" aria-hidden /> : null}
-        </Label>
+        {labelAccessory != null ? (
+          <span className="field-label-row__caption-row">
+            {caption}
+            {labelAccessory}
+          </span>
+        ) : (
+          caption
+        )}
         {description ? <p className="field-label-row__description">{description}</p> : null}
       </div>
       <div className="field-label-row__control">{children}</div>
@@ -220,6 +233,7 @@ export function FieldLabelRow({
   fill,
   below,
   section,
+  labelAccessory,
 }: FieldLabelRowProps): ReactNode {
   const contextLabelMode = useFieldLabelMode();
   const fieldIcon = labelIcon ?? icon;
@@ -249,6 +263,7 @@ export function FieldLabelRow({
         fill={fill}
         below={below}
         section={section}
+        labelAccessory={labelAccessory}
         readOnly={readOnly}
         icon={icon}
         className={className}

@@ -30,11 +30,11 @@ export const Default: Story = {
   render: () => <SearchPaneHarness />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Indexer idle")).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: "Re-index search" }));
+    await expect(canvas.getByText("Rebuild the index")).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Rebuild" }));
     // Confirm dialog renders in a portal outside the canvas.
     await userEvent.click(await screen.findByRole("button", { name: "Start reindex" }));
-    await expect(await canvas.findByText("Reindex in progress")).toBeInTheDocument();
+    await expect(await canvas.findByRole("button", { name: "Cancel" })).toBeInTheDocument();
   },
 };
 

@@ -33,7 +33,7 @@ import { useWorkspaceListRows } from "@/workspace-list/src/use-workspace-list-ro
 import { DriveListSpacer } from "@/drive-core/src/drive-list-spacer";
 import { driveFileKey, driveListRowEstimate } from "@/drive-core/src/drive-list-rows";
 
-import "@/ui/list-head-bar.css";
+import "@/ui/list-table.css";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
 import { DriveFileOfflinePinCell } from "@/drive-core/src/drive-offline-pin-cell";
@@ -210,7 +210,7 @@ export function DriveListView({
         onDragStart={pickerChrome ? undefined : dragHandlers.onDragStart}
         onDragEnd={pickerChrome ? undefined : dragHandlers.onDragEnd}
         className={cn(
-          "drive-list-row group cursor-default transition-colors",
+          "drive-list-row list-table__row group",
           isItemDragging(f.id) && "drive-list-row--dragging",
           isFolder && dropZone.isDropTarget && "drive-list-row--drop-target",
           isSelected && "drive-list-row--selected",
@@ -256,13 +256,13 @@ export function DriveListView({
           </td>
         ) : null}
         {showLocationColumn ? (
-          <td className="drive-list-col-location py-2 hidden sm:table-cell drive-list-muted min-w-0">
+          <td className="drive-list-col-location py-2 hidden sm:table-cell list-table__muted min-w-0">
             <DriveLocationLabel file={f} />
           </td>
         ) : null}
         <td
           className={cn(
-            "drive-list-col-modified py-2 hidden sm:table-cell tabular-nums drive-list-muted whitespace-nowrap",
+            "drive-list-col-modified py-2 hidden sm:table-cell tabular-nums list-table__muted whitespace-nowrap",
             endColumn === "modified" && "text-right",
           )}
         >
@@ -271,7 +271,7 @@ export function DriveListView({
         {showKindColumn ? (
           <td
             className={cn(
-              "drive-list-col-kind py-2 hidden lg:table-cell drive-list-muted",
+              "drive-list-col-kind py-2 hidden lg:table-cell list-table__muted",
               endColumn === "kind" && "text-right",
             )}
           >
@@ -279,7 +279,7 @@ export function DriveListView({
           </td>
         ) : null}
         {showSizeColumn ? (
-          <td className="drive-list-col-size py-2 text-right tabular-nums drive-list-muted hidden sm:table-cell">
+          <td className="drive-list-col-size py-2 text-right tabular-nums list-table__muted hidden sm:table-cell">
             {f.size}
           </td>
         ) : null}
@@ -335,23 +335,23 @@ export function DriveListView({
       data-multi-select={multiSelectAttr(selectionMode, selectedIds)}
     >
       <table
-        className="drive-list-table"
+        className="drive-list-table list-table"
         role="grid"
         aria-multiselectable={!pickerChrome || undefined}
       >
         <thead className="list-head-bar">
           <tr className="drive-list-head">
-            <th className="drive-list-col-name drive-list-head__cell" aria-sort={ariaSort("name")}>
+            <th className="drive-list-col-name list-table__head-cell" aria-sort={ariaSort("name")}>
               {head("name", searchActive ? labels.searchViewTitle : labels.listColumnName)}
             </th>
             {slotColumn ? (
-              <th className="drive-list-col-offline drive-list-head__cell">
+              <th className="drive-list-col-offline list-table__head-cell">
                 <span className="sr-only">{labels.listColumnOffline}</span>
               </th>
             ) : null}
             {showLocationColumn ? (
               <th
-                className="drive-list-col-location drive-list-head__cell hidden sm:table-cell"
+                className="drive-list-col-location list-table__head-cell hidden sm:table-cell"
                 aria-sort={ariaSort("location")}
               >
                 {head("location", locationColumnLabel)}
@@ -359,8 +359,8 @@ export function DriveListView({
             ) : null}
             <th
               className={cn(
-                "drive-list-col-modified drive-list-head__cell hidden sm:table-cell",
-                endColumn === "modified" && "drive-list-head__cell--align-end",
+                "drive-list-col-modified list-table__head-cell hidden sm:table-cell",
+                endColumn === "modified" && "list-table__cell--end",
               )}
               aria-sort={ariaSort("modified")}
             >
@@ -369,8 +369,8 @@ export function DriveListView({
             {showKindColumn ? (
               <th
                 className={cn(
-                  "drive-list-col-kind drive-list-head__cell hidden lg:table-cell",
-                  endColumn === "kind" && "drive-list-head__cell--align-end",
+                  "drive-list-col-kind list-table__head-cell hidden lg:table-cell",
+                  endColumn === "kind" && "list-table__cell--end",
                 )}
                 aria-sort={ariaSort("kind")}
               >
@@ -379,14 +379,14 @@ export function DriveListView({
             ) : null}
             {showSizeColumn ? (
               <th
-                className="drive-list-col-size drive-list-head__cell drive-list-head__cell--align-end hidden sm:table-cell"
+                className="drive-list-col-size list-table__head-cell list-table__cell--end hidden sm:table-cell"
                 aria-sort={ariaSort("size")}
               >
                 {head("size", labels.listColumnSize, "end")}
               </th>
             ) : null}
             {pickerChrome ? null : (
-              <th className="drive-list-col-actions drive-list-head__cell drive-list-head__cell--align-end">
+              <th className="drive-list-col-actions list-table__head-cell list-table__cell--end">
                 {labels.listColumnActions}
               </th>
             )}

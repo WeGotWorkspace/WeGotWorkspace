@@ -4159,6 +4159,9 @@
           },
           "404": {
             "$ref": "#/components/responses/JmapNotFound"
+          },
+          "422": {
+            "description": "A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions)"
           }
         }
       }
@@ -8881,6 +8884,9 @@
           },
           "404": {
             "$ref": "#/components/responses/JmapNotFound"
+          },
+          "422": {
+            "description": "A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions)"
           }
         }
       }

@@ -2,6 +2,7 @@ import { isAppUrlWarning } from "@/admin-core/src/admin-workspace-utils";
 import {
   adminSettingsFormToMap,
   buildAdminSettingsFormState,
+  mergeStoredSettings,
   type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
 import {
@@ -60,41 +61,63 @@ export function useAdminSettingsMutations({
     }
   };
 
-  const clearMailDeliverySmtpPassword = async () => {
+  /** Autosave: stores `sent` without a toast (the page shows Saving / Saved); false on failure. */
+  const autosaveSettings = async (sent: AdminSettingsFormState): Promise<boolean> => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
-      return;
+      return false;
     }
     try {
-      const next = await operations.saveSettings(
-        adminSettingsFormToMap({
-          ...settingsForm,
-          mailDeliverySmtpPassword: "",
-        }),
-        { clearSmtpPassword: true },
-      );
-      setSettingsForm(buildAdminSettingsFormState(next));
+      const next = await operations.saveSettings(adminSettingsFormToMap(sent));
+      const stored = buildAdminSettingsFormState(next);
+      setSettingsForm((current) => mergeStoredSettings(current, sent, stored));
+      setMailDelivery(next.mailDelivery);
+      setUpdates(next.updates);
+      setUpdateLogLines(next.updateLogLines);
+      return true;
+    } catch (error) {
+      showError(mutationErrorMessage(error, "Could not save admin settings"));
+      return false;
+    }
+  };
+
+  /** `form`: what the autosave would send now (Admin passes it; fields being typed keep). */
+  const clearMailDeliverySmtpPassword = async (form: AdminSettingsFormState = settingsForm) => {
+    if (!operations?.saveSettings) {
+      showError("Admin API is not ready yet");
+      throw new Error("Admin API is not ready yet");
+    }
+    try {
+      const sent = { ...form, mailDeliverySmtpPassword: "" };
+      const next = await operations.saveSettings(adminSettingsFormToMap(sent), {
+        clearSmtpPassword: true,
+      });
+      const stored = buildAdminSettingsFormState(next);
+      setSettingsForm((current) => mergeStoredSettings(current, sent, stored));
       setMailDelivery(next.mailDelivery);
       showSuccess("Stored SMTP password cleared");
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not clear SMTP password"));
+      throw error;
     }
   };
 
-  const clearTurnSecret = async () => {
+  const clearTurnSecret = async (form: AdminSettingsFormState = settingsForm) => {
     if (!operations?.saveSettings) {
       showError("Admin API is not ready yet");
-      return;
+      throw new Error("Admin API is not ready yet");
     }
     try {
-      const next = await operations.saveSettings(
-        adminSettingsFormToMap({ ...settingsForm, turnSecret: "" }),
-        { clearTurnSecret: true },
-      );
-      setSettingsForm(buildAdminSettingsFormState(next));
+      const sent = { ...form, turnSecret: "" };
+      const next = await operations.saveSettings(adminSettingsFormToMap(sent), {
+        clearTurnSecret: true,
+      });
+      const stored = buildAdminSettingsFormState(next);
+      setSettingsForm((current) => mergeStoredSettings(current, sent, stored));
       showSuccess("Stored TURN secret cleared");
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not clear TURN secret"));
+      throw error;
     }
   };
 
@@ -146,6 +169,7 @@ export function useAdminSettingsMutations({
 
   return {
     saveSettings,
+    autosaveSettings,
     clearMailDeliverySmtpPassword,
     clearTurnSecret,
     sendMailDeliveryTest,
