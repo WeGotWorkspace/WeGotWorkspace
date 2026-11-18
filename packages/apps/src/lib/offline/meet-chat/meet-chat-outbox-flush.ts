@@ -98,6 +98,7 @@ async function sendQueuedMessage(
         id: payload.messageId,
         body: payload.body,
         ...(payload.parentId ? { parentId: payload.parentId } : {}),
+        ...(payload.mentions?.length ? { mentions: payload.mentions } : {}),
       });
       // The server keeps the client ULID unless an object out of this
       // person's reach already has it; then the answer carries a fresh id.

@@ -67,7 +67,7 @@ describe("AdminUpdatesPane update channel", () => {
     render(<Harness channelSpy={channelSpy} />);
 
     expect(channelSelect().textContent).toBe("Stable");
-    expect(screen.getByText("Not checked yet")).toBeTruthy();
+    expect(screen.getByText("Not checked yet.")).toBeTruthy();
 
     pickChannel("Beta");
 
@@ -75,28 +75,28 @@ describe("AdminUpdatesPane update channel", () => {
       expect(channelSelect().textContent).toBe("Beta");
     });
     expect(channelSpy).toHaveBeenCalledWith("beta", undefined);
-    expect(screen.getByText("Beta channel")).toBeTruthy();
+    expect(screen.getByText(/^Offers prereleases and stable releases/)).toBeTruthy();
     // The switch checks the beta feed right away.
-    expect(await screen.findByText("Running the latest beta release.")).toBeTruthy();
+    expect(await screen.findByText(/^Checked /)).toBeTruthy();
   });
 
   it("does not claim up to date before the first check", () => {
     render(<Harness updates={{ lastCheckedAt: null, updateAvailable: false }} />);
 
-    expect(screen.getByText("Not checked yet")).toBeTruthy();
+    expect(screen.getByText("Not checked yet.")).toBeTruthy();
     expect(screen.queryByText("You're up to date")).toBeNull();
   });
 
   it("says stable is not 1.0 yet on a 0.x install", () => {
     render(<Harness updates={{ installedVersion: "0.1.122" }} />);
 
-    expect(screen.getByText("Stable, before 1.0")).toBeTruthy();
+    expect(screen.getByText(/has not reached 1\.0 yet/)).toBeTruthy();
   });
 
   it("drops the pre-1.0 note from 1.0 on", () => {
     render(<Harness updates={{ installedVersion: "1.0.0" }} />);
 
-    expect(screen.queryByText("Stable, before 1.0")).toBeNull();
+    expect(screen.queryByText(/has not reached 1\.0 yet/)).toBeNull();
   });
 
   it("asks before switching to edge and stays put on cancel", async () => {
@@ -133,7 +133,7 @@ describe("AdminUpdatesPane update channel", () => {
   it("warns that edge is not for production data", () => {
     render(<Harness updates={{ updateChannel: "edge" }} />);
 
-    expect(screen.getByText("Edge channel: not for production data")).toBeTruthy();
+    expect(screen.getByText(/^Every merge to main ships here/)).toBeTruthy();
   });
 
   it("locks the channel while an update runs", () => {

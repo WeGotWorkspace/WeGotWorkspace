@@ -161,3 +161,21 @@ export function adminSettingsFormToMap(
   }
   return values;
 }
+
+/**
+ * The form after an autosave: fields still holding what was sent take the stored value;
+ * fields the admin changed while the save was on its way keep the newer value.
+ */
+export function mergeStoredSettings(
+  current: AdminSettingsFormState,
+  sent: AdminSettingsFormState,
+  stored: AdminSettingsFormState,
+): AdminSettingsFormState {
+  const merged = { ...current };
+  for (const key of Object.keys(stored) as (keyof AdminSettingsFormState)[]) {
+    if (current[key] === sent[key]) {
+      (merged as Record<string, unknown>)[key] = stored[key];
+    }
+  }
+  return merged;
+}

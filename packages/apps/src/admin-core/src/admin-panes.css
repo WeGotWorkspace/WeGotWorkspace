@@ -65,20 +65,7 @@
   color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-text-muted-65 {
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-/* --- Feature rows (WebDAV, Meet routing) --- */
-:is(.admin-workspace, .admin-dialog-surface) .admin-feature-row {
-  @apply flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0 border-t first:border-t-0;
-  border-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__title-row {
-  @apply flex min-w-0 flex-wrap items-center gap-2;
-}
-
+/* --- Switch rows: an optional chip after the caption --- */
 :is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__status-tag {
   @apply shrink-0;
   /* Same washed warning chip as `.admin-user-status-tag`. */
@@ -86,44 +73,9 @@
   --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__title {
-  @apply text-sm font-medium;
-  color: var(--workspace-foreground);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__desc {
-  @apply text-xs;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
 /* --- Toolbar icon buttons in panes --- */
 :is(.admin-workspace, .admin-dialog-surface) .admin-icon-action {
   color: var(--workspace-foreground);
-}
-
-/* --- Data tables (backups, update log) --- */
-:is(.admin-workspace, .admin-dialog-surface) .admin-data-table-row {
-  @apply border-t;
-  border-top-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-table-head {
-  @apply text-left text-[10px] uppercase tracking-[0.18em];
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-backup-version-pill {
-  @apply inline-flex items-center px-2 py-0.5 text-xs font-medium;
-  border-radius: var(--control-radius-pill);
-  background-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
-  color: var(--workspace-foreground);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-backup-file-row {
-  @apply flex items-center gap-2 min-w-0;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-backup-file-icon {
-  @apply size-4 shrink-0 opacity-60;
 }
 
 /* --- Updates: release status --- */
@@ -288,10 +240,6 @@
   @apply mt-4;
 }
 
-.admin-workspace .admin-security-warnings {
-  @apply mb-4 flex flex-col gap-3;
-}
-
 /* --- ICE url lists (realtime collaboration) --- */
 :is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list {
   @apply flex flex-col gap-2;
@@ -311,4 +259,66 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list__warning {
   @apply text-sm text-destructive;
+}
+
+/* --- Open-page panes (rows are `FieldLabelRow layout="inline"`) --- */
+
+/* A callout that asks for action sits above the first section. */
+.admin-workspace .admin-pane-callout {
+  @apply mb-10;
+}
+
+/* Several controls at the end of one row (a status tag and a button). */
+:is(.admin-workspace, .admin-dialog-surface) .admin-row-actions {
+  @apply inline-flex items-center gap-3;
+}
+
+/* A field with a quiet button after it (Clear a stored secret). */
+.admin-workspace .admin-value-control {
+  @apply flex w-full min-w-0 items-center gap-2;
+}
+
+.admin-workspace .admin-value-control > .input,
+.admin-workspace .admin-value-control > :first-child {
+  @apply min-w-0 flex-1;
+}
+
+/* Numbers (a port, a limit) do not need the whole end column. */
+.admin-workspace .admin-number-input {
+  @apply w-28 text-right;
+}
+
+/* ICE url fields with a quiet action under them (Restore default). */
+.admin-workspace .admin-ice-field {
+  @apply flex w-full min-w-0 flex-col items-end gap-2;
+}
+
+.admin-workspace .admin-ice-field > :first-child {
+  @apply w-full;
+}
+
+/* Catches blur/Enter from the fields inside (autosave); takes no box. */
+.admin-workspace .admin-settings-autosave {
+  display: contents;
+}
+
+/* "Fix ↗": a quiet link to the docs, before the severity tag. */
+.admin-workspace .admin-fix-link {
+  @apply inline-flex items-center gap-1 text-sm;
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.admin-workspace .admin-fix-link:hover {
+  color: var(--workspace-foreground);
+}
+
+.admin-workspace .admin-fix-link > svg {
+  @apply size-4;
+}
+
+/* Row actions (edit, password, delete) end on the column edge like the page rows. */
+.admin-workspace .admin-list-row__actions > .icon-button--size-md:last-child {
+  margin-inline-end: calc(
+    (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
+  );
 }

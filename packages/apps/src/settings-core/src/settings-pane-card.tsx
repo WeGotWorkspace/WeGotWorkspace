@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
-import { Card } from "@/card/src/card";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 
-/**
- * Section wrapper for Settings panes. `settings-workspace.css` strips the card chrome on the
- * page and in the dialog; only the section title and icon stay.
- */
+/** Section wrapper for Settings panes, on the page and in the dialog. */
 export function SettingsPaneCard({
   title,
   icon,
@@ -19,8 +16,8 @@ export function SettingsPaneCard({
   children: ReactNode;
 }) {
   return (
-    <Card className="settings-pane-card" title={title} titleIcon={icon} action={action}>
+    <WorkspacePageSection className="settings-pane-card" title={title} icon={icon} action={action}>
       {children}
-    </Card>
+    </WorkspacePageSection>
   );
 }

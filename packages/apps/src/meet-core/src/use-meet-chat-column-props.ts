@@ -17,7 +17,7 @@ import type { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
 export type MeetChatColumnWiring = {
   /** Everything the chat column needs except the caught-up callback, which differs per surface. */
   chatColumnProps: Omit<MeetChatColumnProps, "onCaughtUpChange">;
-  sendThreadReply: (parentId: string, body: string) => void;
+  sendThreadReply: (parentId: string, payload: ChatSendPayload) => void;
   onToggleThreadReaction: (messageId: string, emoji: string) => void;
   onSaveEdit: (messageId: string, payload: ChatSendPayload) => void;
   onCancelEdit: () => void;
@@ -55,16 +55,16 @@ export function useMeetChatColumnProps({
   onOpenThread: (message: ChatMessage) => void;
   /** Expanded call: replying has to bring the chat rail back out. */
   onExpandChatPanel: () => void;
-  onSendThreadReply?: (parentId: string, body: string) => void;
+  onSendThreadReply?: (parentId: string, payload: ChatSendPayload) => void;
   onError: (error: unknown) => void;
 }): MeetChatColumnWiring {
   const sendThreadReply = useCallback(
-    (parentId: string, body: string) => {
+    (parentId: string, payload: ChatSendPayload) => {
       if (onSendThreadReply) {
-        onSendThreadReply(parentId, body);
+        onSendThreadReply(parentId, payload);
         return;
       }
-      void chat.sendThreadReply({ body, mentions: [] }).catch(onError);
+      void chat.sendThreadReply(payload).catch(onError);
     },
     [chat.sendThreadReply, onError, onSendThreadReply],
   );

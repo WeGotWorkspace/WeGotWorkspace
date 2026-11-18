@@ -28,12 +28,12 @@ final class FileNodeChangesMethod implements JmapMethodInterface
         private readonly FileNodeSyncState $syncState,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'FileNode/changes';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::FILENODE;
     }

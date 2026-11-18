@@ -1,0 +1,17 @@
+{
+    "id": "01J6Y6M0R2V9GKJ4W1T8Q3ZBF0",
+    "authorId": "bob",
+    "body": "a reply",
+    "createdAt": "2026-09-04T10:34:56Z",
+    "parentId": "01J6Y6M0R2V9GKJ4W1T8Q3ZBEX",
+    "kind": null,
+    "docPath": "Documents/Plan.md",
+    "changeId": null,
+    "anchorText": "",
+    "anchorFrom": null,
+    "anchorTo": null,
+    "anchorOccurrence": null,
+    "resolved": false,
+    "archived": false,
+    "reactions": []
+}

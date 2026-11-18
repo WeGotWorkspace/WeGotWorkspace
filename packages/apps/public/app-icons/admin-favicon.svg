@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
+<clipPath id="favicon-tile"><rect width="60" height="60" rx="10"/></clipPath>
+<g clip-path="url(#favicon-tile)">
+<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #003311))"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-brat, #8ace00))" d="M40 30c5.523 0 10-4.477 10-10s-4.476-10-10-10-10 4.477-10 10c0-5.523-4.477-10-10-10-5.524 0-10 4.477-10 10s4.477 10 10 10c-5.523 0-10 4.478-10 10s4.477 10 10 10 10-4.477 10-10c0 5.523 4.476 10 9.999 10s10-4.477 10-10-4.477-10-10-10"/>
+</g>
+</svg>

@@ -197,12 +197,10 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
         $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function test_a_hidden_members_address_notifies_nobody(): void
     {
-        // erin edits the list and shares a Team with bob only: to her, alice's address is a guest.
+        // erin edits the list and shares a Team with bob only: alice's address never rings her,
+        // whether the write is stored as a guest or refused (main refuses it, 422 invalid_participant).
         $this->seedWgwUser('erin', displayName: 'Erin', email: 'erin@example.test');
         $this->seedSharedTeam('side', 'bob', 'erin');
         $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['shareWith' => [
@@ -214,11 +212,14 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
 
         $this->patchAs('erin', $taskId, ['participants' => [
             'e:alice@example.test' => ['@type' => 'Participant', 'email' => 'alice@example.test', 'roles' => ['attendee']],
-        ]])->assertOk();
+        ]]);
 
         $this->assertSame(0, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function attendee(): array
     {
         return ['@type' => 'Participant', 'roles' => ['attendee']];

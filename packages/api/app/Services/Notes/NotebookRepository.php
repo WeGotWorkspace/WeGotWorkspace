@@ -226,8 +226,19 @@ final class NotebookRepository
         if ($provision) {
             $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
         }
+
+        return $this->syncTokensFor($this->accessibleNotebookInstances($username));
+    }
+
+    /**
+     * Notebook api id => synctoken of the given accessible notebook instances.
+     *
+     * @param  iterable<CalendarInstance>  $instances
+     * @return array<string, string>
+     */
+    public function syncTokensFor(iterable $instances): array
+    {
         $tokens = [];
-        $instances = $this->accessibleNotebookInstances($username);
         foreach ($instances as $instance) {
             $tokens[$this->apiIdForInstance($instance)] = (string) (int) ($instance->calendar->synctoken ?? 1);
         }

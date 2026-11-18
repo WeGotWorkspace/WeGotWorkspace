@@ -22,12 +22,12 @@ final class BlobUploadMethod implements JmapMethodInterface
         private readonly JmapBlobMaintenance $maintenance,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Blob/upload';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::BLOB;
     }

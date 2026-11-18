@@ -65,13 +65,13 @@ jobs:
             exit 0
           fi
           since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
-            | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+            | jq -r '[add[] | select(.event == "ready_for_review" or (.event == "labeled" and .label.name == "re-review")) | .created_at] | max // ""')
           round=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
             | jq --arg bot "$BOT" --arg since "$since" \
               '[add[] | select(.user.login == $bot and .state == "CHANGES_REQUESTED" and .submitted_at > $since)] | length')
           echo "Change request $round of $MAX_ROUNDS this cycle."
           if [ "$round" -gt "$MAX_ROUNDS" ]; then
-            echo "stop=Review loop stopped after $MAX_ROUNDS fix rounds. The open items above need a human call. Mark the PR draft and then ready to start a new cycle." >> "$GITHUB_OUTPUT"
+            echo "stop=Review loop stopped after $MAX_ROUNDS fix rounds. The open items above need a human call. Add the re-review label (or mark the PR draft and then ready) to start a new cycle." >> "$GITHUB_OUTPUT"
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -227,7 +227,7 @@ jobs:
             if [ "$head" != "$HEAD_SHA" ]; then
               gh pr comment "$PR" --body "${MESSAGE:-The polish round failed: $RUN_URL}
 
-          The branch moved after the approval, so it no longer applies. Mark the PR draft and then ready to review again."
+          The branch moved after the approval, so it no longer applies. Add the re-review label (or mark the PR draft and then ready) to review again."
               exit 0
             fi
             gh label create ready-for-human --color 0e8a16 \

@@ -142,7 +142,7 @@ export type MeetChatOperations = {
   sendMessage?: (
     channelId: string,
     body: string,
-    opts?: { parentId?: string | null; messageId?: string },
+    opts?: { parentId?: string | null; messageId?: string; mentions?: ChatMention[] },
   ) => Promise<ChatMessage>;
   /**
    * Mints the client ULID the next `sendMessage` will save under. The room
@@ -152,7 +152,11 @@ export type MeetChatOperations = {
   editMessage?: (messageId: string, body: string) => Promise<ChatMessage>;
   deleteMessage?: (messageId: string) => Promise<void>;
   react?: (messageId: string, emoji: string) => Promise<ChatMessage>;
-  reply?: (parentId: string, body: string) => Promise<ChatMessage>;
+  reply?: (
+    parentId: string,
+    body: string,
+    opts?: { mentions?: ChatMention[] },
+  ) => Promise<ChatMessage>;
   createChannel?: (input: MeetChannelWriteInput) => Promise<MeetChannel>;
   patchChannel?: (channelId: string, patch: MeetChannelPatchInput) => Promise<MeetChannel>;
   deleteChannel?: (channelId: string) => Promise<void>;

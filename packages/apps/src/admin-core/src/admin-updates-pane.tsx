@@ -1,12 +1,24 @@
 import { useMemo, useState } from "react";
-import { Check, Download, Eraser, Loader2, RefreshCw } from "lucide-react";
+import {
+  Check,
+  Download,
+  Eraser,
+  Loader2,
+  Package,
+  RefreshCw,
+  ScrollText,
+  Terminal,
+} from "lucide-react";
 import { Button } from "@/button/src/button";
-import { Callout, type CalloutSeverity } from "@/callout/src/callout";
-import { Card } from "@/card/src/card";
+import { Callout } from "@/callout/src/callout";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
+import { FieldLabelRow } from "@/ui/field-label-row";
+import { useTrackAutosave } from "@/ui/autosave-status";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
-import { MenuItem } from "@/menu-item/src/menu-item";
 import { Tag } from "@/tag/src/tag";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +33,6 @@ import { buttonVariants } from "@/button/src/button";
 import {
   formatByteCount,
   formatHumanDateTime,
-  getServerCheckVisual,
   parseUpdateLogLine,
   UPDATE_PROGRESS_STEPS,
   type UpdateLogRow,
@@ -38,12 +49,11 @@ const UPDATE_CHANNEL_OPTIONS: { value: AdminUpdateChannel; label: string }[] = [
   { value: "edge", label: "Edge" },
 ];
 
-type UpdateChannelNote = { title: string; message: string };
+type UpdateChannelNote = { message: string };
 
 // Below 1.0 there is no production-ready release yet: stable is the most
 // tested build, not a compatibility promise.
 const PRE_1_0_STABLE_NOTE: UpdateChannelNote = {
-  title: "Stable, before 1.0",
   message:
     "Stable is the most tested build, but WeGotWorkspace has not reached 1.0 yet. Releases can still change behaviour. Keep a backup before you update.",
 };
@@ -55,12 +65,10 @@ function isPre1_0(version: string | null | undefined): boolean {
 const UPDATE_CHANNEL_NOTES: Record<AdminUpdateChannel, UpdateChannelNote | null> = {
   stable: null,
   beta: {
-    title: "Beta channel",
     message:
       "Offers prereleases and stable releases, whichever is newer. Switching back to stable does not downgrade: this install stays on its version until stable catches up.",
   },
   edge: {
-    title: "Edge channel: not for production data",
     message:
       "Every merge to main ships here. Database changes only move forward, so this install cannot go back to beta or stable. Use edge for testing only.",
   },
@@ -85,38 +93,22 @@ export function AdminUpdatesPane({
     updateChannel === "stable" && isPre1_0(controller.updates.installedVersion)
       ? PRE_1_0_STABLE_NOTE
       : UPDATE_CHANNEL_NOTES[updateChannel];
-  const releaseStatus: { severity: CalloutSeverity; title: string; message: string } = controller
-    .updates.inProgress
-    ? {
-        severity: "warning",
-        title: "Update in progress",
-        message: `Applying ${controller.updates.current?.from ?? controller.updates.installedVersion} -> ${controller.updates.current?.to ?? controller.updates.latest?.version ?? "latest"} (${controller.updates.phase?.replace(/_/g, " ") ?? "processing"}).`,
-      }
-    : controller.updates.updateAvailable
-      ? {
-          severity: "warning",
-          title: "Update available",
-          message: `${controller.updates.latest?.version ?? "A new release"} is available on the ${updateChannel} channel.`,
-        }
-      : controller.updates.lastCheckedAt
-        ? {
-            severity: "success",
-            title: "You're up to date",
-            message: `Running the latest ${updateChannel} release.`,
-          }
-        : {
-            severity: "info",
-            title: "Not checked yet",
-            message: `Check for updates to see what the ${updateChannel} channel offers.`,
-          };
   const [confirmEdgeOpen, setConfirmEdgeOpen] = useState(false);
+  const trackSave = useTrackAutosave();
+  // The tag shows Unsaved when the switch failed (the error toast says why).
+  const saveChannel = (channel: AdminUpdateChannel) =>
+    void trackSave(async () => {
+      if (!(await controller.actions.setUpdateChannel(channel))) {
+        throw new Error("Update channel not saved");
+      }
+    }).catch(() => {});
   // Edge cannot be undone once an edge build is installed, so it is never one click.
   const chooseUpdateChannel = (channel: AdminUpdateChannel) => {
     if (channel === "edge" && updateChannel !== "edge") {
       setConfirmEdgeOpen(true);
       return;
     }
-    void controller.actions.setUpdateChannel(channel);
+    saveChannel(channel);
   };
   const updateLogRows = useMemo(
     () =>
@@ -154,287 +146,213 @@ export function AdminUpdatesPane({
             )
           : 2;
 
+  const progressCard = (
+    <div className="admin-updates-progress-card">
+      <div className="admin-updates-progress-head">
+        <div className="admin-updates-stat-label--strong">Update progress</div>
+        <div className="admin-updates-progress-count">{displayProgressCount}</div>
+      </div>
+      <div className="admin-updates-progress-track">
+        <div className="admin-updates-progress-fill" style={{ width: `${progressPercent}%` }} />
+      </div>
+      <ol className="admin-updates-step-list">
+        {UPDATE_PROGRESS_STEPS.map((step, index) => {
+          const isDone = activeProgressStep > index;
+          const isActive = activeProgressStep === index;
+          const stepState = isDone ? "done" : isActive ? "active" : "pending";
+          return (
+            <li key={step.label} className="admin-updates-step-row">
+              <span className="admin-updates-step-dot" data-step-state={stepState}>
+                {isDone ? (
+                  <Check className="size-3" />
+                ) : isActive ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <span className="size-1.5 rounded-full bg-current" />
+                )}
+              </span>
+              <span className="admin-updates-step-label">{step.label}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+
   const logColumns: DataTableColumn<UpdateLogRow>[] = useMemo(
     () => [
       {
         key: "time",
         header: "Date",
-        headerClassName: "font-medium pb-3 pr-3",
-        cellClassName: "py-3 pr-3 whitespace-nowrap font-mono text-xs",
+        muted: true,
+        shrink: true,
         render: (row) => formatHumanDateTime(row.date),
       },
       {
         key: "level",
         header: "Level",
-        headerClassName: "font-medium pb-3 pr-3",
-        cellClassName: "py-3 pr-3 whitespace-nowrap",
+        muted: true,
+        shrink: true,
         render: (row) => row.level,
       },
       {
         key: "message",
         header: "Message",
-        headerClassName: "font-medium pb-3",
-        cellClassName: "py-3",
+        cellClassName: "whitespace-normal",
         render: (row) => row.message,
       },
     ],
     [],
   );
 
+  const updates = controller.updates;
+  const latestVersion = updates.latest?.version ?? updates.installedVersion ?? "-";
+  const checkButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={controller.actions.checkUpdates}
+      disabled={controller.checkingUpdates || updates.inProgress}
+    >
+      {controller.checkingUpdates ? (
+        <Loader2 className="size-4 mr-2 animate-spin" />
+      ) : (
+        <RefreshCw className="size-4 mr-2" />
+      )}
+      {controller.checkingUpdates ? "Checking..." : "Check now"}
+    </Button>
+  );
+
   return (
     <>
-      <Card title="Release status">
-        <div className="admin-updates-release-grid">
-          <div>
-            <div className="admin-updates-stat-label">Installed</div>
-            <div className="admin-updates-stat-value">
-              <Tag label={controller.updates.installedVersion || "-"} />
-            </div>
-          </div>
-          {isDockerChannel ? (
-            <>
-              <div>
-                <div className="admin-updates-stat-label">Install channel</div>
-                <Tag label="docker" />
-              </div>
-              <div>
-                <div className="admin-updates-stat-label">Update channel</div>
-                <Tag label={updateChannel} />
-              </div>
-              {controller.updates.imageTag ? (
-                <div>
-                  <div className="admin-updates-stat-label">Image tag</div>
-                  <div className="admin-updates-stat-value">
-                    <Tag label={controller.updates.imageTag} />
-                  </div>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <div>
-                <div className="admin-updates-stat-label">Latest</div>
-                <div className="admin-updates-stat-value">
-                  <Tag
-                    label={
-                      controller.updates.latest?.version ??
-                      controller.updates.installedVersion ??
-                      "-"
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="admin-updates-stat-label" id="admin-update-channel-label">
-                  Update channel
-                </div>
-                <Select
-                  value={updateChannel}
-                  onValueChange={(value) => chooseUpdateChannel(value as AdminUpdateChannel)}
-                  disabled={controller.savingUpdateChannel || controller.updates.inProgress}
-                >
-                  <SelectTrigger
-                    size="sm"
-                    className="w-28"
-                    aria-labelledby="admin-update-channel-label"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UPDATE_CHANNEL_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1 min-w-32">
-                <div className="admin-updates-stat-label">Last checked</div>
-                <Tag label={formatHumanDateTime(controller.updates.lastCheckedAt)} />
-              </div>
-            </>
-          )}
-        </div>
+      {updates.lastCheckError ? (
+        <Callout
+          className="admin-pane-callout"
+          severity="error"
+          title="Could not check for updates"
+          message={updates.lastCheckError}
+        />
+      ) : null}
+
+      <WorkspacePageSection title="Version" icon={<Package aria-hidden />}>
+        <FieldLabelRow layout="inline" label="Installed">
+          <Tag label={updates.installedVersion || "-"} />
+        </FieldLabelRow>
         {isDockerChannel ? (
-          <Callout
-            className="mt-5"
-            severity="info"
-            title="Docker install — upgrade on the host"
-            message={
-              <>
-                <p>
-                  This instance runs from a container image. Do not use Admin Updates — upgrade by
-                  pulling a new image tag with{" "}
-                  <code className="admin-updates-inline-code">setup.sh</code> on the host.
-                </p>
-                <pre className="admin-updates-docker-commands">
-                  <code>{`cd wegotworkspace\nbash setup.sh check\nbash setup.sh upgrade`}</code>
-                </pre>
-                <p>
-                  To switch the update channel, pass it once:{" "}
-                  <code className="admin-updates-inline-code">
-                    bash setup.sh upgrade --channel beta
-                  </code>{" "}
-                  (stable, beta, or edge).
-                </p>
-                <p>
-                  See{" "}
-                  <a
-                    className="admin-updates-docs-link"
-                    href={DOCKER_INSTALL_DOCS_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    install-docker.md
-                  </a>{" "}
-                  for backup, rollback, and troubleshooting.
-                </p>
-              </>
-            }
-          />
+          <>
+            <FieldLabelRow layout="inline" label="Update channel" description="Set on the host.">
+              <Tag label={updateChannel} />
+            </FieldLabelRow>
+            {updates.imageTag ? (
+              <FieldLabelRow layout="inline" label="Image tag">
+                <Tag label={updates.imageTag} />
+              </FieldLabelRow>
+            ) : null}
+          </>
         ) : (
           <>
-            {updateChannelNote ? (
-              <Callout
-                className="mt-5"
-                severity={updateChannel === "edge" ? "warning" : "info"}
-                title={updateChannelNote.title}
-                message={updateChannelNote.message}
-              />
-            ) : null}
-            <Callout
-              className="mt-5"
-              severity={releaseStatus.severity}
-              title={releaseStatus.title}
-              message={releaseStatus.message}
-            />
-            {controller.updates.inProgress ? (
-              <div className="admin-updates-progress-card">
-                <div className="admin-updates-progress-head">
-                  <div className="admin-updates-stat-label--strong">Update progress</div>
-                  <div className="admin-updates-progress-count">{displayProgressCount}</div>
-                </div>
-                <div className="admin-updates-progress-track">
-                  <div
-                    className="admin-updates-progress-fill"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <ol className="admin-updates-step-list">
-                  {UPDATE_PROGRESS_STEPS.map((step, index) => {
-                    const isDone = activeProgressStep > index;
-                    const isActive = activeProgressStep === index;
-                    const stepState = isDone ? "done" : isActive ? "active" : "pending";
-                    return (
-                      <li key={step.label} className="admin-updates-step-row">
-                        <span className="admin-updates-step-dot" data-step-state={stepState}>
-                          {isDone ? (
-                            <Check className="size-3" />
-                          ) : isActive ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : (
-                            <span className="size-1.5 rounded-full bg-current" />
-                          )}
-                        </span>
-                        <span className="admin-updates-step-label">{step.label}</span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-            ) : null}
-            {controller.updates.lastCheckError ? (
-              <p className="mt-3 text-sm text-red-700">{controller.updates.lastCheckError}</p>
-            ) : null}
-            <div className="admin-updates-actions">
-              <Button
-                variant="outline"
-                onClick={controller.actions.checkUpdates}
-                disabled={controller.checkingUpdates}
-              >
-                {controller.checkingUpdates ? (
-                  <Loader2 className="size-4 mr-2 animate-spin" />
+            <FieldLabelRow
+              layout="inline"
+              label="Latest"
+              description={
+                updates.lastCheckedAt
+                  ? `Checked ${formatHumanDateTime(updates.lastCheckedAt)}.`
+                  : "Not checked yet."
+              }
+              below={updates.inProgress ? progressCard : undefined}
+            >
+              <span className="admin-row-actions">
+                {updates.updateAvailable ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setConfirmUpdateOpen(true)}
+                    disabled={!updates.compatible || updatingNow || updates.inProgress}
+                  >
+                    <Download className="size-4 mr-2" />
+                    {`Update to ${latestVersion}`}
+                  </Button>
                 ) : (
-                  <RefreshCw className="size-4 mr-2" />
+                  <Tag label={latestVersion} />
                 )}
-                {controller.checkingUpdates ? "Checking..." : "Check for updates"}
-              </Button>
-              <Button
-                onClick={() => setConfirmUpdateOpen(true)}
-                disabled={
-                  !controller.updates.updateAvailable ||
-                  !controller.updates.compatible ||
-                  updatingNow
-                }
+                {checkButton}
+              </span>
+            </FieldLabelRow>
+            <FieldLabelRow
+              layout="inline"
+              label="Update channel"
+              description={updateChannelNote?.message ?? "The most tested releases."}
+              htmlFor="admin-update-channel"
+            >
+              <Select
+                value={updateChannel}
+                onValueChange={(value) => chooseUpdateChannel(value as AdminUpdateChannel)}
+                disabled={controller.savingUpdateChannel || updates.inProgress}
               >
-                <Download className="size-4 mr-2" />
-                {`Update to ${controller.updates.latest?.version ?? "latest"}`}
-              </Button>
-            </div>
+                <CollectionGhostSelectTrigger id="admin-update-channel" label={<SelectValue />} />
+                <SelectContent align="end">
+                  {UPDATE_CHANNEL_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FieldLabelRow>
           </>
         )}
-      </Card>
+      </WorkspacePageSection>
 
-      <Card
-        title="Server checks"
-        iconActions={[
-          {
-            icon: <RefreshCw className="size-4" />,
-            label: "Refresh checks",
-            onClick: controller.actions.refreshServerChecks,
-            disabled: controller.refreshingServerChecks,
-          },
-        ]}
-      >
-        <div className="space-y-1">
-          {controller.updates.checks.map((check, index) =>
-            (() => {
-              const { Icon, tone } = getServerCheckVisual(check);
-              return (
-                <MenuItem
-                  key={`${check.label}-${index}`}
-                  className="admin-server-check-item"
-                  icon={<Icon className="admin-server-check-icon" data-check-tone={tone} />}
-                  label={check.label}
-                  description={check.detail}
-                />
-              );
-            })(),
-          )}
-        </div>
-      </Card>
+      {isDockerChannel ? (
+        <WorkspacePageSection title="Upgrade on the host" icon={<Terminal aria-hidden />}>
+          <p className="workspace-page-section__lead">
+            This server runs from a container image, so it updates on the host, not here. Run:
+          </p>
+          <pre className="admin-updates-docker-commands">
+            <code>{`cd wegotworkspace\nbash setup.sh check\nbash setup.sh upgrade`}</code>
+          </pre>
+          <p className="workspace-page-section__lead">
+            To switch channel, pass it once:{" "}
+            <code className="admin-updates-inline-code">bash setup.sh upgrade --channel beta</code>{" "}
+            (stable, beta or edge). Backups, rollback and troubleshooting:{" "}
+            <a
+              className="admin-updates-docs-link"
+              href={DOCKER_INSTALL_DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              install-docker.md
+            </a>
+            .
+          </p>
+        </WorkspacePageSection>
+      ) : null}
 
-      <Card
-        title="Update log"
-        iconActions={[
-          {
-            icon: <Download className="size-4" />,
-            label: "Download full log",
-            onClick: controller.actions.downloadUpdateLog,
-          },
-          {
-            icon: <RefreshCw className="size-4" />,
-            label: "Refresh logs",
-            onClick: controller.actions.refreshUpdateLog,
-          },
-          {
-            icon: <Eraser className="size-4" />,
-            label: "Clear logs",
-            onClick: () => setConfirmClearLogsOpen(true),
-          },
-        ]}
+      <WorkspacePageSection
+        title="Log"
+        icon={<ScrollText aria-hidden />}
+        action={
+          <span className="admin-row-actions admin-row-actions--tight">
+            <IconActionButton
+              label="Download full log"
+              onClick={controller.actions.downloadUpdateLog}
+            >
+              <Download className="size-4" />
+            </IconActionButton>
+            <IconActionButton label="Refresh logs" onClick={controller.actions.refreshUpdateLog}>
+              <RefreshCw className="size-4" />
+            </IconActionButton>
+            <IconActionButton label="Clear logs" onClick={() => setConfirmClearLogsOpen(true)}>
+              <Eraser className="size-4" />
+            </IconActionButton>
+          </span>
+        }
       >
-        <DataTable
-          data={updateLogRows}
-          columns={logColumns}
-          rowKey={(row) => row.id}
-          className="-mx-6 px-6"
-          tableClassName="w-full text-sm"
-          headerClassName="admin-table-head"
-          rowClassName="admin-data-table-row"
-        />
-      </Card>
+        {updateLogRows.length > 0 ? (
+          <DataTable data={updateLogRows} columns={logColumns} rowKey={(row) => row.id} />
+        ) : (
+          <p className="workspace-page-section__lead">Nothing logged yet.</p>
+        )}
+      </WorkspacePageSection>
 
       <AlertDialog open={confirmEdgeOpen} onOpenChange={setConfirmEdgeOpen}>
         <AlertDialogContent className="admin-dialog-surface">
@@ -452,7 +370,7 @@ export function AdminUpdatesPane({
               className={buttonVariants({ variant: "destructive" })}
               onClick={() => {
                 setConfirmEdgeOpen(false);
-                void controller.actions.setUpdateChannel("edge");
+                saveChannel("edge");
               }}
             >
               Switch to edge

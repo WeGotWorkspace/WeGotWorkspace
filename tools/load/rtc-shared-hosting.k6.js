@@ -100,6 +100,7 @@ const pushRequest = new Trend("push_request_ms", true);
 const pushRequests = new Counter("push_requests");
 const pushStateBySource = {};
 for (const source of [
+  "caldav",
   "notes",
   "calendars",
   "contacts",
