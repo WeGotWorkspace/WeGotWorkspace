@@ -131,4 +131,23 @@ final class TaskThreadLifecycleTest extends WgwDatabaseTestCase
         $this->assertSame(1, $this->entryCount());
         $this->assertSame(['Kept'], array_column($this->entries('bob', $taskId), 'body'));
     }
+
+    public function test_giving_the_list_to_a_team_keeps_the_thread_and_retries(): void
+    {
+        $listId = $this->createList('bob', 'Own');
+        $taskId = $this->createTask('bob', $listId, 'Milk');
+        $id = $this->ulid();
+        $this->comment('bob', $taskId, 'Before the transfer', ['id' => $id])->assertCreated();
+
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$listId, ['groupSlug' => 'crew'])->assertOk();
+
+        $this->assertSame(['Before the transfer'], array_column($this->entries('bob', $taskId), 'body'));
+        $this->assertSame(['Before the transfer'], array_column($this->entries('alice', $taskId), 'body'));
+        $this->comment('bob', $taskId, 'Before the transfer', ['id' => $id])
+            ->assertOk()
+            ->assertJsonPath('body', 'Before the transfer');
+        $this->comment('alice', $taskId, 'After the transfer')->assertCreated();
+        $this->assertSame(['Before the transfer', 'After the transfer'], array_column($this->entries('bob', $taskId), 'body'));
+        $this->assertSame(1, ThreadIndex::query()->distinct()->count('pool_calendarid'));
+    }
 }
