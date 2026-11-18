@@ -78,6 +78,10 @@ export function ChatComposer({
     },
     [principals],
   );
+  // The editor keeps its first `handleKeyDown`; read the latest submit (and
+  // so the latest principals) through a ref, or Enter sends no mentions.
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
 
   const editor = useTextEditor({
     content: initialContent,
@@ -108,7 +112,7 @@ export function ChatComposer({
             : shouldSendChatOnEnter(event);
         if (current && sends) {
           event.preventDefault();
-          submit(current);
+          submitRef.current(current);
           return true;
         }
         return false;
