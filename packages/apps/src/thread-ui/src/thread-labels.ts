@@ -1,6 +1,6 @@
 /** Copy for the shared thread panel (#2173). App-specific text comes from the adapter. */
 export const threadUiLabels = {
-  heading: "Activity",
+  heading: "Comments",
   count: (count: number) => (count === 1 ? "1 comment" : `${count} comments`),
   empty: "No comments yet",
   loading: "Loading comments…",
@@ -14,7 +14,6 @@ export const threadUiLabels = {
   readOnly: "You can read this conversation but not comment.",
   notSent: "Not sent",
   notSaved: "Not saved",
-  lastUpdated: (time: string) => `Last updated ${time}`,
   retry: "Try again",
   copyText: "Copy text",
   discard: "Discard",

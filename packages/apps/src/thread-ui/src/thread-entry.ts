@@ -1,11 +1,6 @@
 import type { ChatMessage as ChatMessageModel } from "@/lib/models/chat-types";
 import type { ThreadViewEntry } from "@/thread-ui/src/use-thread";
 
-/** ⌘↵ on Apple devices, Ctrl+↵ elsewhere. */
-export function sendShortcutLabel(platform = globalThis.navigator?.platform ?? ""): string {
-  return /(mac|iphone|ipad|ipod)/i.test(platform) ? "⌘↵" : "Ctrl+↵";
-}
-
 /** A thread entry in the shape chat-ui renders. The body is markdown, rendered as text. */
 export function threadEntryToChatMessage(entry: ThreadViewEntry): ChatMessageModel {
   return {

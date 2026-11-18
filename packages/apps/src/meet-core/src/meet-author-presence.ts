@@ -1,17 +1,5 @@
 import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
-import type { PresenceCoworker } from "@/presence-core/src/presence-types";
-
-/** Roster usernames → chat author presence (anyone absent is treated offline). */
-export function authorPresenceFromRoster(
-  roster: readonly PresenceCoworker[],
-): ChatAuthorPresenceMap {
-  const map: Record<string, NonNullable<ChatAuthorPresenceMap[string]>> = {};
-  for (const coworker of roster) {
-    if (!coworker.username) continue;
-    map[coworker.username] = coworker.status;
-  }
-  return map;
-}
+export { authorPresenceFromRoster } from "@/presence-core/src/use-author-presence";
 
 /**
  * Live roster first, fixture/demo map last so Storybook `authorPresence` still

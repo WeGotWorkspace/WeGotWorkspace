@@ -64,7 +64,7 @@ function wrapperFor(store: PresenceStore | null) {
 }
 
 describe("useMeetAuthorPresence", () => {
-  it("maps the presence roster to username → online/away", async () => {
+  it("maps the presence roster to username → online/away, with the signed-in user online", async () => {
     const { session, store } = await onlineStore();
     const { result } = renderHook(() => useMeetAuthorPresence(), {
       wrapper: wrapperFor(store),
@@ -78,7 +78,7 @@ describe("useMeetAuthorPresence", () => {
       session.emit({ type: "roster" });
     });
 
-    expect(result.current).toEqual({ bob: "online", carol: "online" });
+    expect(result.current).toEqual({ alice: "online", bob: "online", carol: "online" });
   });
 
   it("returns undefined without a presence store", () => {

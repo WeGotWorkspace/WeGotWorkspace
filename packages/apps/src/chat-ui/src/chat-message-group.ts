@@ -10,6 +10,22 @@ export type ChatMessageGroup = {
   messages: ChatMessage[];
 };
 
+/**
+ * One rule for the suite: a message by the same author within the window of the
+ * one before it continues that run (no avatar or name). Chat, Meet and threads.
+ */
+export function continuesChatRun(
+  previous: Pick<ChatMessage, "authorId" | "createdAt"> | null | undefined,
+  message: Pick<ChatMessage, "authorId" | "createdAt">,
+  windowMs = CHAT_MESSAGE_GROUP_WINDOW_MS,
+): boolean {
+  return (
+    previous != null &&
+    previous.authorId === message.authorId &&
+    message.createdAt - previous.createdAt <= windowMs
+  );
+}
+
 export function groupChatMessages(
   messages: readonly ChatMessage[],
   windowMs = CHAT_MESSAGE_GROUP_WINDOW_MS,
@@ -19,9 +35,7 @@ export function groupChatMessages(
   for (const message of messages) {
     const previous = groups[groups.length - 1];
     const last = previous?.messages[previous.messages.length - 1];
-    const sameAuthor = previous?.authorId === message.authorId;
-    const withinWindow = last != null && message.createdAt - last.createdAt <= windowMs;
-    if (previous && sameAuthor && withinWindow) {
+    if (previous && continuesChatRun(last, message, windowMs)) {
       previous.messages.push(message);
       continue;
     }

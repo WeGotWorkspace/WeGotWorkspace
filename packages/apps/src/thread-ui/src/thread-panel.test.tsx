@@ -2,7 +2,6 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ThreadPanel } from "@/thread-ui/src/thread-panel";
-import { sendShortcutLabel } from "@/thread-ui/src/thread-entry";
 import { threadUiLabels } from "@/thread-ui/src/thread-labels";
 import { createThreadMemoryClient } from "@/thread-ui/src/thread-memory-client";
 import type { ThreadEntry, ThreadSubjectAdapter } from "@/lib/models/thread-types";
@@ -67,11 +66,35 @@ describe("ThreadPanel", () => {
     await loaded();
 
     expect(screen.getByRole("heading", { name: threadUiLabels.heading })).toBeTruthy();
-    expect(screen.getByText(threadUiLabels.count(3))).toBeTruthy();
+    expect(screen.getByLabelText(threadUiLabels.count(3))).toBeTruthy();
     const roots = document.querySelectorAll(".thread-panel__root");
     expect(roots).toHaveLength(2);
     expect(within(roots[0] as HTMLElement).getByText("Answer")).toBeTruthy();
     expect(roots[0]?.querySelector(".thread-panel__replies")).not.toBeNull();
+  });
+
+  it("runs follow-ups by one author as Chat does, unless replies or time come between", async () => {
+    setup([
+      entry("C1", { createdAt: "2026-11-18T10:00:00.000Z", body: "One" }),
+      entry("C2", { createdAt: "2026-11-18T10:02:00.000Z", body: "Two" }),
+      entry("R1", {
+        kind: "reply",
+        parentId: "C2",
+        createdAt: "2026-11-18T10:03:00.000Z",
+        body: "Reply",
+      }),
+      entry("C3", { createdAt: "2026-11-18T10:04:00.000Z", body: "Three" }),
+      entry("C4", { createdAt: "2026-11-18T10:30:00.000Z", body: "Four" }),
+    ]);
+    await loaded();
+
+    const runs = [
+      ...document.querySelectorAll(".thread-panel__root > ol > .thread-panel__entry"),
+    ].map((row) =>
+      row.querySelector(".chat-message")!.classList.contains("chat-message--continuation"),
+    );
+    // C2 follows C1; C3 comes after C2's reply; C4 is outside the 5-minute window.
+    expect(runs).toEqual([false, true, false, false]);
   });
 
   it("does not show activity entries (comments only, 2026-11-18)", async () => {
@@ -82,7 +105,7 @@ describe("ThreadPanel", () => {
     await loaded();
 
     expect(document.querySelectorAll(".thread-panel__entry")).toHaveLength(1);
-    expect(screen.getByText(threadUiLabels.count(1))).toBeTruthy();
+    expect(screen.getByLabelText(threadUiLabels.count(1))).toBeTruthy();
   });
 
   it("renders a body, a reaction and a mention name with HTML as text", async () => {
@@ -163,10 +186,5 @@ describe("ThreadPanel", () => {
 
     await waitFor(() => expect(screen.getByText("After")).toBeTruthy());
     expect(screen.queryByText("Before")).toBeNull();
-  });
-
-  it("labels the send shortcut per platform", () => {
-    expect(sendShortcutLabel("MacIntel")).toBe("⌘↵");
-    expect(sendShortcutLabel("Win32")).toBe("Ctrl+↵");
   });
 });

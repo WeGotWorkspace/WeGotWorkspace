@@ -3,11 +3,9 @@
 /*
  * Fields of an open item on the detail sheet (Tasks, Contacts): one quiet row per
  * field, split by the suite hairline. CardRow on the sheet: no hover wash, the title
- * as a fixed label column so every value starts on one line.
+ * as a fixed label column so every value starts on one line. Hairlines only
+ * between rows: the list has no line above its first or below its last row.
  */
-.detail-field-list {
-  border-top: 1px solid var(--workspace-divider-color);
-}
 
 .detail-field-row.card__row {
   @apply gap-3 rounded-none px-0 py-2.5;
@@ -15,6 +13,10 @@
      value wraps onto more lines (phones, an address). */
   align-items: baseline;
   border-bottom: 1px solid var(--workspace-divider-color);
+}
+
+.detail-field-list > .detail-field-row.card__row:last-child {
+  border-bottom: 0;
 }
 
 /* A switch has no text baseline: centre the row on it. */

@@ -2,13 +2,16 @@ import { useMemo, useState } from "react";
 import { Button } from "@/button/src/button";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
+import { continuesChatRun } from "@/chat-ui/src/chat-message-group";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/ui/badge";
+import { useAuthorPresence } from "@/presence-core/src/use-author-presence";
 import { threadUiLabels } from "@/thread-ui/src/thread-labels";
 import { formatThreadTime } from "@/thread-ui/src/thread-time";
 import type { ThreadClient, ThreadSubjectAdapter } from "@/lib/models/thread-types";
 import { useThread, type ThreadViewEntry } from "@/thread-ui/src/use-thread";
-import { sendShortcutLabel, threadEntryToChatMessage } from "@/thread-ui/src/thread-entry";
+import { threadEntryToChatMessage } from "@/thread-ui/src/thread-entry";
 import "@/thread-ui/src/thread-panel.css";
 
 export type ThreadPanelProps = {
@@ -32,7 +35,10 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
     null,
   );
   const me = adapter.me.id;
-  const shortcut = sendShortcutLabel();
+  // The same status dot as Chat: online / away from the suite presence roster.
+  const presence = useAuthorPresence();
+  // Enter sends, as in Chat; Shift+Enter starts a new line.
+  const shortcut = "↵";
   const principals = useMemo(
     () => adapter.people.filter((person) => person.id !== me),
     [adapter.people, me],
@@ -50,11 +56,47 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
     return actions;
   };
 
-  const renderEntry = (entry: ThreadViewEntry, isRoot: boolean) => (
+  /** Chat's run rule: a follow-up by the same author within 5 minutes hides avatar and name. */
+  const runOf = (siblings: readonly ThreadViewEntry[], index: number) => {
+    const at = (i: number) => (siblings[i] ? threadEntryToChatMessage(siblings[i]) : null);
+    const message = at(index)!;
+    const next = at(index + 1);
+    return {
+      continuation: continuesChatRun(at(index - 1), message),
+      beforeContinuation: next != null && continuesChatRun(message, next),
+    };
+  };
+
+  /** Comments run on as in Chat, but replies in between break the run. */
+  const rootRun = (
+    roots: readonly { entry: ThreadViewEntry; replies: unknown[] }[],
+    index: number,
+  ) => {
+    const run = runOf(
+      roots.map((root) => root.entry),
+      index,
+    );
+    return {
+      continuation: run.continuation && roots[index - 1]!.replies.length === 0,
+      beforeContinuation: run.beforeContinuation && roots[index]!.replies.length === 0,
+    };
+  };
+
+  const renderEntry = (
+    entry: ThreadViewEntry,
+    isRoot: boolean,
+    run: { continuation: boolean; beforeContinuation: boolean } = {
+      continuation: false,
+      beforeContinuation: false,
+    },
+  ) => (
     <li key={entry.id} className="thread-panel__entry" data-kind={entry.kind}>
       <ChatMessage
         message={threadEntryToChatMessage(entry)}
+        continuation={run.continuation}
+        className={run.beforeContinuation ? "chat-message--before-continuation" : undefined}
         currentUserId={me}
+        presence={presence?.[entry.author.username]}
         // Roots keep chat-ui's Reply action (it opens the reply box); replies have none.
         allowThread={isRoot}
         actions={actionsFor(entry, isRoot)}
@@ -73,7 +115,6 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
               key={`${entry.id}:${editDraft?.id === entry.id ? editDraft.attempt : 0}`}
               initialContent={editDraft?.id === entry.id ? editDraft.body : (entry.body ?? "")}
               principals={principals}
-              sendKey="mod-enter"
               onSend={({ body }) => {
                 if (body === entry.body) {
                   setEditing(null);
@@ -135,7 +176,13 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
       <header className="thread-panel__header">
         <h2 className="thread-panel__heading">{threadUiLabels.heading}</h2>
         {thread.status === "ready" && thread.count > 0 ? (
-          <span className="thread-panel__count">{threadUiLabels.count(thread.count)}</span>
+          <Badge
+            variant="secondary"
+            className="thread-panel__count"
+            aria-label={threadUiLabels.count(thread.count)}
+          >
+            {thread.count}
+          </Badge>
         ) : null}
       </header>
 
@@ -152,11 +199,6 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
         </p>
       ) : thread.status === "gone" ? null : (
         <>
-          {thread.lastUpdated !== null ? (
-            <p className="thread-panel__state thread-panel__last-updated">
-              {threadUiLabels.lastUpdated(formatThreadTime(thread.lastUpdated))}
-            </p>
-          ) : null}
           {thread.writeError ? (
             <p className="thread-panel__failed-reason" role="alert">
               {threadUiLabels.notSaved}: {threadUiLabels.failure[thread.writeError]}
@@ -166,21 +208,22 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
             <p className="thread-panel__state">{threadUiLabels.empty}</p>
           ) : (
             <ol className="thread-panel__list">
-              {thread.roots.map(({ entry, replies }) => (
+              {thread.roots.map(({ entry, replies }, index, roots) => (
                 <li key={entry.id} className="thread-panel__root">
                   <ol className="thread-panel__group">
-                    {renderEntry(entry, true)}
+                    {renderEntry(entry, true, rootRun(roots, index))}
                     {replies.length > 0 || replyTo === entry.id ? (
                       <li className="thread-panel__replies">
                         <ol className="thread-panel__group">
-                          {replies.map((reply) => renderEntry(reply, false))}
+                          {replies.map((reply, index) =>
+                            renderEntry(reply, false, runOf(replies, index)),
+                          )}
                         </ol>
                         {replyTo === entry.id && thread.canPost ? (
                           <ChatComposer
                             className="thread-panel__reply-composer"
                             principals={principals}
                             placeholder={threadUiLabels.replyPlaceholder}
-                            sendKey="mod-enter"
                             submitLabel={threadUiLabels.reply}
                             submitShortcut={shortcut}
                             onSend={({ body, mentions }) => {
@@ -202,11 +245,16 @@ export function ThreadPanel({ client, adapter, className }: ThreadPanelProps) {
               className="thread-panel__composer"
               principals={principals}
               placeholder={threadUiLabels.placeholder}
-              sendKey="mod-enter"
               submitLabel={threadUiLabels.comment}
               submitShortcut={shortcut}
               leading={
-                <UserAvatar displayName={adapter.me.displayName} compact size="md" variant="tint" />
+                <UserAvatar
+                  displayName={adapter.me.displayName}
+                  compact
+                  size="md"
+                  variant="tint"
+                  presence={presence?.[me]}
+                />
               }
               onSend={({ body, mentions }) => void thread.post(body, mentions)}
             />

@@ -95,6 +95,8 @@ export type CreateTextEditorExtensionsOptions = {
    * changes go through `applyTextEditorPageSetup`. Notes and Mail leave it out.
    */
   pagination?: { setup: TextEditorPageSetup; enabled: boolean };
+  /** App nodes on top of the shared schema (e.g. the chat composer's mention chip). */
+  extraExtensions?: Extensions;
 };
 
 export function createTextEditorExtensions(
@@ -140,6 +142,8 @@ export function createTextEditorExtensions(
       createTextEditorPagination(options.pagination.setup, options.pagination.enabled),
     );
   }
+
+  if (options.extraExtensions) extensions.push(...options.extraExtensions);
 
   if (format === "markdown") {
     extensions.push(

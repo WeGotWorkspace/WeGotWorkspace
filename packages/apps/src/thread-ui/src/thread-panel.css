@@ -1,21 +1,23 @@
 @import "../../styles.css" reference;
 
-/* Under the subject's fields, after a divider (spec.md, UI, Layout). */
+/* Under the subject's fields; the space and the heading set it apart, no rule. */
 .thread-panel {
-  @apply flex min-w-0 flex-col gap-3 pt-6;
-  border-top: 1px solid var(--workspace-divider-color);
+  @apply flex min-w-0 flex-col gap-3 pt-10;
 }
 
 .thread-panel__header {
-  @apply flex items-baseline gap-2;
+  @apply mb-1 flex items-center gap-2;
 }
 
+/* A section title, like the other headings in the detail pane: not a field label. */
 .thread-panel__heading {
-  @apply text-xs font-semibold uppercase tracking-wide;
-  color: var(--workspace-label-color);
+  @apply m-0 text-lg font-semibold text-foreground;
 }
 
-.thread-panel__count,
+.thread-panel__count {
+  @apply tabular-nums;
+}
+
 .thread-panel__state {
   @apply text-sm;
   color: var(--workspace-label-color);
