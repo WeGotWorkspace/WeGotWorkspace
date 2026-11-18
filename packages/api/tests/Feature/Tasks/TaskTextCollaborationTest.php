@@ -127,6 +127,18 @@ final class TaskTextCollaborationTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('STATUS:IN-PROCESS', (string) $this->object()->calendardata);
     }
 
+    public function test_the_state_read_names_the_content_tag_of_the_text_it_was_saved_with(): void
+    {
+        $this->firstSave('Plan', 'One')->assertOk();
+        $saved = (string) $this->readText()->headers->get('ETag');
+        $this->readState()->assertOk()->assertHeader(CollabExternalWrite::CONTENT_TAG_HEADER, $saved);
+
+        // A REST edit moves the text, not the state: the tags no longer agree.
+        $this->patchTask(['title' => 'From MCP']);
+        $this->assertNotSame($saved, (string) $this->readText()->headers->get('ETag'));
+        $this->readState()->assertOk()->assertHeader(CollabExternalWrite::CONTENT_TAG_HEADER, $saved);
+    }
+
     public function test_a_rest_title_edit_is_an_outside_write_the_save_must_name(): void
     {
         $this->firstSave('Plan', 'One')->assertOk();

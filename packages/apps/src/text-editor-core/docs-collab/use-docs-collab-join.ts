@@ -23,8 +23,8 @@ import {
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
 import { fetchYjsSnapshot, loadCollabText } from "@/lib/collab/docs-collab-server-io";
-import { decideExternalWrite, replaceDocumentWithExternalText } from "./docs-collab-external-write";
-import { checkSnapshotText } from "./docs-collab-snapshot-check";
+import { replaceDocumentWithExternalText } from "./docs-collab-external-write";
+import { decideBootstrapAction, decideMergeAction } from "./docs-collab-snapshot-check";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
@@ -87,6 +87,11 @@ type UseDocsCollabJoinOptions = {
   setPendingSync: (pending: boolean) => void;
   setFailedSync: (failed: boolean) => void;
 };
+
+/** This client's own edits since its last landed save. */
+function hasPendingLocalWork(refs: DocsCollabSessionRefs): boolean {
+  return refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
+}
 
 export function useDocsCollabJoin({
   refs,
@@ -233,21 +238,14 @@ export function useDocsCollabJoin({
       const snapshot = await fetchYjsSnapshot(urls.yjsUrl, authToken);
       rememberSidecarEtag(room, snapshot.etag);
       if (!snapshot.update) return false;
-
-      const pendingLocalWork =
-        refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-      // Without the flag, the state is still only adopted when it holds the
-      // server text (#2208); otherwise it is handled as an outside write.
-      const checked =
-        snapshot.externalWrite === true ? null : await loadCollabText(urls.documentUrl, authToken);
-      const unlikeText =
-        checked !== null && checkSnapshotText(snapshot.update, checked, documentFormat) !== "match";
-      const action = decideExternalWrite(
-        snapshot.externalWrite === true || unlikeText,
-        pendingLocalWork,
-      );
+      const { action, readText } = await decideMergeAction(snapshot, snapshot.update, {
+        documentUrl: urls.documentUrl,
+        authToken,
+        format: documentFormat,
+        pendingLocalWork: hasPendingLocalWork(refs),
+      });
       if (action === "prompt") {
-        const text = checked ?? (await loadCollabText(urls.documentUrl, authToken));
+        const text = await readText();
         refs.externalWriteSeenRef.current = text.etag ?? null;
         refs.externalWriteHoldRef.current = true;
         urls.onExternalWrite?.({
@@ -258,7 +256,7 @@ export function useDocsCollabJoin({
         return false;
       }
       if (action === "rebuild") {
-        const text = checked ?? (await loadCollabText(urls.documentUrl, authToken));
+        const text = await readText();
         refs.externalWriteSeenRef.current = text.etag ?? null;
         replaceDocumentWithExternalText(
           ydoc,
@@ -336,22 +334,10 @@ export function useDocsCollabJoin({
       let restoredLocalState = false;
       let keptLocalEdits = false;
       if (snapshot.kind === "snapshot") {
-        const pendingLocalWork =
-          refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-        // Without the text there is nothing to rebuild from or to ask about.
-        // A state that does not hold the server text, or cannot be read, is
-        // handled as an outside write (#2208).
-        const unlikeText =
-          !load.markdownError &&
-          !snapshot.externalWrite &&
-          checkSnapshotText(
-            snapshot.update,
-            { markdown: load.markdown, title: loadedTitle },
-            documentFormat,
-          ) !== "match";
-        const action = load.markdownError
-          ? "adopt"
-          : decideExternalWrite(snapshot.externalWrite || unlikeText, pendingLocalWork);
+        const action = decideBootstrapAction(snapshot, load, loadedTitle, loadedEtag, {
+          format: documentFormat,
+          pendingLocalWork: hasPendingLocalWork(refs),
+        });
         rememberSidecarEtag(room, snapshot.etag);
         if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {

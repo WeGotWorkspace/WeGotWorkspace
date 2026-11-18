@@ -31,8 +31,45 @@ describe("replaceDocumentWithExternalText", () => {
     // Two clients that read the same bytes seed the same items.
     Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
     expect(readContentFromYDoc(first).trim()).toBe("from outside");
+    // The title too: one item for both clients, not the title twice.
+    expect(readNoteTitle(first)).toBe("Outside");
     first.destroy();
     second.destroy();
+  });
+
+  it("writes the title once when two clients rebuild the same readable state", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "old text", "markdown");
+    const state = Y.encodeStateAsUpdate(server);
+    const rebuild = () => {
+      const ydoc = new Y.Doc();
+      replaceDocumentWithExternalText(ydoc, "new text", "New title", "markdown", state);
+      return ydoc;
+    };
+    const first = rebuild();
+    const second = rebuild();
+    Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
+    expect(readNoteTitle(first)).toBe("New title");
+    expect(readContentFromYDoc(first).trim()).toBe("new text");
+    first.destroy();
+    second.destroy();
+    server.destroy();
+  });
+
+  it("does not leave the text blank when an unreadable seed id is already in the document", () => {
+    const garbage = new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", garbage);
+    // The person edits the text away, then the same unreadable bytes and text
+    // come back: the first seed's items are deleted and must not be reused.
+    replaceDocumentWithExternalText(ydoc, "other", "T", "markdown", garbage, {
+      dropLocalWork: true,
+    });
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", garbage, {
+      dropLocalWork: true,
+    });
+    expect(readContentFromYDoc(ydoc).trim()).toBe("same text");
+    ydoc.destroy();
   });
 
   it("replaces the stale document with the outside text", () => {

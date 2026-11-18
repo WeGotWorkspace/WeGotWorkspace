@@ -36,6 +36,12 @@ final class NoteYjsProjection
         return $this->core->isExternalContentWrite($this->fields, $row, $object);
     }
 
+    /** The content tag of the text the stored state was written from. */
+    public function stateContentTag(NoteYjsState $row): ?string
+    {
+        return $this->core->stateContentTag($row);
+    }
+
     /** The tag of the note's text. A tag, move, or archive does not change it. */
     public function contentEtag(CalendarObject $object): string
     {

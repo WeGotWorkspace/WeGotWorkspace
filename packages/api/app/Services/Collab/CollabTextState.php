@@ -40,6 +40,19 @@ final class CollabTextState
         return OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag;
     }
 
+    /**
+     * The content tag of the text a stored state was written from, quoted like
+     * `contentTag()`. A client compares it with the text it read, so it checks
+     * the state against the text only when both come from one save (#2208).
+     * Null for a row written before the column was filled.
+     */
+    public function stateContentTag(Model $row): ?string
+    {
+        $stored = $row->getAttribute('content_etag');
+
+        return is_string($stored) && $stored !== '' ? '"'.$stored.'"' : null;
+    }
+
     /** The tag of a stored state: it moves only when the bytes move. */
     public function stateEtag(Model $row): string
     {

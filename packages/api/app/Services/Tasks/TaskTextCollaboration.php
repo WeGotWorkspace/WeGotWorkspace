@@ -50,7 +50,7 @@ final class TaskTextCollaboration
     /**
      * Raw Yjs bytes of the task's stored state, or null when it has none.
      *
-     * @return array{bytes: string, etag: string, externalWrite: bool}|null
+     * @return array{bytes: string, etag: string, externalWrite: bool, contentTag: string|null}|null
      */
     public function yjsSnapshot(string $username, string $taskId): ?array
     {
@@ -64,6 +64,7 @@ final class TaskTextCollaboration
             'bytes' => $this->core->stateBytes($row),
             'etag' => $this->core->stateEtag($row),
             'externalWrite' => $this->core->isExternalContentWrite($fields, $row, $object),
+            'contentTag' => $this->core->stateContentTag($row),
         ];
     }
 
