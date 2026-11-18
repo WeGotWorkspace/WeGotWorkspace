@@ -11,6 +11,7 @@ import {
   createTaskList,
   deleteTask,
   deleteTaskList,
+  getTask,
   patchTask,
   patchTaskList,
   putTask,
@@ -24,9 +25,11 @@ import {
 import {
   getOutboxMutation,
   rebaseQueuedEntityRows,
+  removeOutboxMutation,
   settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import { isInvalidParticipant } from "@/lib/offline/tasks/tasks-parked-writes";
 import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import {
   isRefusedTaskWrite,
@@ -123,7 +126,21 @@ async function sendTasksRow(
   } else if (row.op === "update") {
     const taskId = String(payload.taskId ?? "");
     const patch = payload.patch as TaskPatch;
-    const task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
+    let task: Task;
+    try {
+      task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
+    } catch (error) {
+      if (!isInvalidParticipant(error)) throw error;
+      // An assignee the server no longer accepts (read from the cached audience
+      // offline): send the rest once more, and read no ids from the error.
+      const { participants: _refused, ...rest } = patch;
+      if (Object.keys(rest).length === 0) {
+        await removeOutboxMutation(username, row.id);
+        await upsertTaskInCache(username, await getTask(taskId), false);
+        return "handled";
+      }
+      task = await patchTask(taskId, rest, { ifMatch: row.ifInState });
+    }
     // A patch merged in while this one was sent is owed on top of `task`.
     return settleLandedTaskRow(username, row, taskId, task, context);
   } else if (row.op === "move") {

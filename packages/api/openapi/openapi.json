@@ -1601,10 +1601,7 @@
             }
           },
           "participants": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": "object",
             "propertyNames": {
               "$ref": "#/components/schemas/JmapId"
             },
@@ -1618,7 +1615,7 @@
                 }
               ]
             },
-            "description": "JSON merge patch of the participants map, keyed by participant id (`u:<username>`, `e:<email>`, `org`). An entry sets that person, a null entry removes them, and null clears every participant (#2172)."
+            "description": "JSON merge patch of the participants map, keyed by participant id (`u:<username>`, `e:<email>`, `org`). An entry sets that person, a null entry removes them (#2172)."
           },
           "icsProps": {
             "type": "object",

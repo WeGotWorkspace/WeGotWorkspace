@@ -10,14 +10,13 @@ type TaskParticipantsPatch = TaskPatch["participants"];
 
 /**
  * Participants merge per id, as the server does (#2172): an entry replaces that
- * person, a null entry removes them, and `participants: null` clears them all.
+ * person, and a null entry removes them.
  */
 export function applyTaskParticipantsPatch(
   current: Task["participants"],
   patch: TaskParticipantsPatch,
 ): TaskParticipants | undefined {
   if (patch === undefined) return current ?? undefined;
-  if (patch === null) return undefined;
   const next: Record<string, TaskParticipants[string]> = { ...(current ?? {}) };
   for (const [id, entry] of Object.entries(patch)) {
     if (entry === null) delete next[id];

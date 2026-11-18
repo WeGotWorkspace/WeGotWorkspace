@@ -293,6 +293,36 @@ describe("flushTasksOutbox", () => {
     expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Second" });
   });
 
+  it("sends the rest of a patch whose assignees the server refused, and drops a refused assignee-only patch", async () => {
+    const refused = () => new TasksRequestError("PATCH failed (422)", 422, "invalid_participant");
+    const participants = { "u:bob": { "@type": "Participant" as const, roles: ["attendee"] } };
+    await enqueueCoalescedTaskUpdate(
+      username,
+      task.id,
+      { title: "Renamed", participants },
+      "etag-1",
+    );
+    patchTask.mockRejectedValueOnce(refused());
+    patchTask.mockResolvedValueOnce({ ...task, title: "Renamed", etag: "etag-2" });
+
+    await flushTasksOutbox(username);
+
+    expect(patchTask).toHaveBeenCalledTimes(2);
+    expect(patchTask.mock.calls[1]).toEqual([task.id, { title: "Renamed" }, { ifMatch: "etag-1" }]);
+    expect(await listOutboxMutations(username)).toEqual([]);
+
+    await enqueueCoalescedTaskUpdate(username, task.id, { participants }, "etag-2");
+    patchTask.mockReset();
+    patchTask.mockRejectedValueOnce(refused());
+    getTask.mockResolvedValueOnce({ ...task, etag: "etag-3" });
+
+    await flushTasksOutbox(username);
+
+    expect(patchTask).toHaveBeenCalledOnce();
+    expect(await listOutboxMutations(username)).toEqual([]);
+    expect((await cachedTask())?.participants).toBeUndefined();
+  });
+
   it("sends an edit to a task created offline to the id the create got (#1816)", async () => {
     const tempId = "local-abc";
     await upsertTaskInCache(

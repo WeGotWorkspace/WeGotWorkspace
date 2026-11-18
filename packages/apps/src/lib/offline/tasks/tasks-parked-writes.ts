@@ -96,7 +96,7 @@ function rescueBody(
   return participants ? { ...body, participants } : body;
 }
 
-function isInvalidParticipant(error: unknown): boolean {
+export function isInvalidParticipant(error: unknown): boolean {
   return isApiError(error) && error.status === 422 && error.code === "invalid_participant";
 }
 
