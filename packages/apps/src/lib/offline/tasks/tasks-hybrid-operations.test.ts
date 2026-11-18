@@ -139,6 +139,25 @@ describe("createHybridTasksOperations", () => {
     expect(cached?.data.tasks.find((entry) => entry.id === task.id)?.taskListId).toBe(from);
   });
 
+  it("queues an online patch behind a write still in the outbox for that task", async () => {
+    // Sent at once, the later patch would land first and the queued one would undo it:
+    // assign Bob, assign me and unassign Bob offline, back online as the last lands.
+    const bob = { "@type": "Participant" as const, roles: ["attendee"] };
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const operations = createHybridTasksOperations(username);
+    await operations.patchTask(task.id, { participants: { "u:bob": bob, "u:alice": bob } });
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(patchTask).mockImplementation(async () => ({ ...task, etag: "etag-2" }) as Task);
+    const saved = await operations.patchTask(task.id, { participants: { "u:bob": null } });
+
+    expect(Object.keys(saved.participants ?? {})).toEqual(["u:alice"]);
+    await vi.waitFor(() => expect(patchTask).toHaveBeenCalled());
+    expect(vi.mocked(patchTask).mock.calls.map((call) => call[1])).toEqual([
+      { participants: { "u:bob": null, "u:alice": bob } },
+    ]);
+  });
+
   it("queues patch when live API fails with a network error", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     vi.mocked(patchTask).mockRejectedValue(new TypeError("network request failed"));
