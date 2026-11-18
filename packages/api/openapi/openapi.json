@@ -2903,6 +2903,9 @@
           },
           "409": {
             "$ref": "#/components/responses/JmapConflict"
+          },
+          "422": {
+            "description": "A new reaction is not an emoji (invalid_emoji), or the entry already holds 20 different emoji (too_many_reactions)"
           }
         },
         "requestBody": {

@@ -132,7 +132,7 @@ final class TaskImportService
                     throw new ApiHttpException(500, 'Could not load imported task.', 'server_error');
                 }
 
-                return [$objectUri, $this->mapper->toTasks($object, $listId)];
+                return [$objectUri, $this->mapper->forViewer($username)->toTasks($object, $listId)];
             },
         );
 

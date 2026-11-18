@@ -89,6 +89,24 @@ final class TaskChangeObserverPluginTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('SUMMARY:Edited by alice', $stored);
     }
 
+    public function test_a_caldav_put_by_someone_who_cannot_see_the_member_notifies_nobody(): void
+    {
+        // erin edits Groceries and shares a Team with bob only, so alice is hidden from her.
+        $this->seedWgwUser('erin', displayName: 'Erin', email: 'erin@example.test');
+        $this->seedSharedTeam('side', 'bob', 'erin');
+        $apiId = collect($this->withBearer($this->userBearerToken())->getJson('/api/v1/tasks/tasklists')->assertOk()->json('list'))
+            ->firstWhere('name', 'Groceries')['id'];
+        $this->withBearer($this->userBearerToken())->patchJson('/api/v1/tasks/tasklists/'.$apiId, ['shareWith' => [
+            'alice' => ['mayWriteAll' => true],
+            'carol' => ['mayWriteAll' => false],
+            'erin' => ['mayWriteAll' => true],
+        ]])->assertOk();
+
+        $this->davPut('erin', $this->listUriOf('erin'), 'hidden.ics', $this->vtodo('hidden-1', ['alice@example.test']))->assertCreated();
+
+        $this->assertSame(0, $this->assignedCount());
+    }
+
     public function test_a_new_file_with_an_attendee_notifies_them(): void
     {
         $this->davPut('alice', $this->listUriOf('alice'), 'rent.ics', $this->vtodo('rent-1', ['bob@example.test'], 'Pay rent'))
