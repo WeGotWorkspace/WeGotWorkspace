@@ -135,7 +135,7 @@ export const Unread: Story = {
     await expect(
       body.getByText((_, el) =>
         Boolean(
-          el?.classList.contains("notification-inbox-tray__row-title") &&
+          el?.classList.contains("notification-item__title") &&
           (el.textContent ?? "")
             .replace(/\s+/g, " ")
             .includes("Marcel sent a message in #administrators"),
@@ -143,15 +143,13 @@ export const Unread: Story = {
       ),
     ).toBeInTheDocument();
     const marcelActor = body.getByText((content, el) =>
-      Boolean(
-        el?.classList.contains("notification-inbox-tray__title-actor") && content === "Marcel",
-      ),
+      Boolean(el?.classList.contains("notification-item__actor") && content === "Marcel"),
     );
     await expect(marcelActor.tagName).toBe("STRONG");
     await expect(
       body.getByText((_, el) =>
         Boolean(
-          el?.classList.contains("notification-inbox-tray__row-title") &&
+          el?.classList.contains("notification-item__title") &&
           (el.textContent ?? "")
             .replace(/\s+/g, " ")
             .includes("Nathalie invited you to Zaterdag Open"),
@@ -166,7 +164,7 @@ export const Unread: Story = {
     await expect(
       body.getByText((_, el) =>
         Boolean(
-          el?.classList.contains("notification-inbox-tray__row-title") &&
+          el?.classList.contains("notification-item__title") &&
           (el.textContent ?? "")
             .replace(/\s+/g, " ")
             .includes("Matthijs shared Agenda Anne & Co.md with you"),
@@ -224,6 +222,52 @@ export const EnableAlerts: Story = {
     await expect(body.getByRole("button", { name: "Enable alerts" })).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Mute notification sound" })).toBeInTheDocument();
     await expect(body.getByRole("button", { name: "Mark all as read" })).toBeInTheDocument();
+  },
+};
+
+/**
+ * Inside an app the header offers a scope: every app's notifications, or only this
+ * app's. The bell counts the picked scope, and each unread row can be marked read
+ * on its own.
+ */
+export const CurrentAppScope: Story = {
+  args: {
+    items: UNREAD_ITEMS,
+    unreadCount: UNREAD_ITEMS.length,
+    currentAppId: "calendar",
+    onMarkReadWhere: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const doc = canvasElement.ownerDocument;
+    const canvas = within(canvasElement);
+    const body = within(doc.body);
+    const rows = () =>
+      Array.from(doc.querySelectorAll<HTMLElement>(".notification-inbox-tray__row"));
+    await userEvent.click(canvas.getByRole("button", { name: /^Notifications \(/ }));
+    // Start from every app, whatever an earlier story picked.
+    await userEvent.click(body.getByRole("button", { name: /^Showing .* change$/ }));
+    await userEvent.click(await body.findByRole("menuitem", { name: /All apps/ }));
+    await expect(rows()).toHaveLength(5);
+    await expect(canvas.getByRole("button", { name: "Notifications (5 unread)" })).toBeVisible();
+
+    await userEvent.click(
+      body.getByRole("button", { name: "Showing notifications from all apps, change" }),
+    );
+    await userEvent.click(await body.findByRole("menuitem", { name: /Current app/ }));
+    await expect(rows().map((row) => row.dataset.app)).toEqual(["calendar", "calendar"]);
+    await expect(
+      canvas.getByRole("button", { name: "Notifications (2 unread in Calendar)" }),
+    ).toBeVisible();
+
+    const [markFirst] = body.getAllByRole("button", { name: "Mark as read" });
+    await userEvent.click(markFirst!);
+    await expect(args.onMarkReadWhere).toHaveBeenCalledTimes(1);
+
+    // Leave the shared setting as other stories expect it.
+    await userEvent.click(
+      body.getByRole("button", { name: "Showing Calendar notifications, change" }),
+    );
+    await userEvent.click(await body.findByRole("menuitem", { name: /All apps/ }));
   },
 };
 

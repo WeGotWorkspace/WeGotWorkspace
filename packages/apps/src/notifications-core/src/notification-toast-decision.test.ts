@@ -111,6 +111,21 @@ describe("pickRowsToToast", () => {
     expect(await pickRowsToToast([dm, other], onDm)).toEqual([other]);
   });
 
+  it("does not toast a row outside the user's scope, and does not toast it later either", async () => {
+    const storage = memoryStorage();
+    const calendar = row("n2", "/calendar");
+    const scoped: ToastDecisionDeps = {
+      ...tab(storage, { self: true, route: "/notes/all" }),
+      // "Current app" picked while in Notes: only rows that open in Notes toast.
+      inScope: (candidate, route) => candidate.navigate.startsWith(route.split("/", 2).join("/")),
+    };
+    const note = row("n3", "/notes/all/abc");
+    expect(await pickRowsToToast([calendar, note], scoped)).toEqual([note]);
+    // Decided once: widening the scope afterwards does not replay the skipped row.
+    const wide = tab(storage, { self: true, route: "/notes/all" });
+    expect(await pickRowsToToast([calendar], wide)).toEqual([]);
+  });
+
   it("uses this tab's own route when the hub has none yet", async () => {
     const storage = memoryStorage();
     const onDm = tab(storage, { self: true, route: null }, "/meet/dms/admin");

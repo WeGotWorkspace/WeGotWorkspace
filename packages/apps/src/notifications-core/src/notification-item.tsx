@@ -89,8 +89,9 @@ export function NotificationItemContent({ item, srPrefix }: NotificationItemCont
           {srPrefix ? <span className="sr-only">{srPrefix} </span> : null}
           {hasActor ? (
             <>
-              <strong className="notification-item__actor">{titleActor}</strong>
-              <span className="notification-item__rest">{titleRest}</span>
+              {/* A text space, so an accessible name does not run the two together. */}
+              <strong className="notification-item__actor">{titleActor}</strong>{" "}
+              <span className="notification-item__rest">{titleRest.trimStart()}</span>
             </>
           ) : (
             title
