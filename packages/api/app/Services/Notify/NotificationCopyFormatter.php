@@ -58,6 +58,7 @@ final class NotificationCopyFormatter
             'calendar.rsvp' => CalendarRsvpNotify::formatCopy($data),
             'calendar.shared', 'notes.shared', 'tasks.list_shared' => CollectionSharedNotify::formatCopy($domain, $data),
             'tasks.status_changed' => TaskStatusChangedNotify::formatCopy($data),
+            'tasks.assigned' => TaskAssignedNotify::formatCopy($data),
             'chat.message_posted' => ChatMessagePostedNotify::formatCopy($data),
             'chat.mentioned' => ChatMentionedNotify::formatCopy($data),
             'meet.started' => MeetStartedNotify::formatCopy($data),
