@@ -60,7 +60,7 @@ Threads are a shared layer. An app plugs in a **subject type**: the thing a thre
 
 - **Backend:** `App\Services\Threads`.
   - Converter core (#2173 chunk A): `ThreadEntryJournal` for the properties in rule 1, `ThreadReactions` to toggle and check a reaction, `ThreadAuthorNames` for display names, `ThreadMentions` for mentions. Domain converters wrap the core with their own properties: Docs anchors, path and resolved state; Chat attachments.
-  - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, notification actions), and `ThreadSubjectRegistry`.
+  - Subjects: `ThreadSubjectType`, the interface an app implements (resolve and access, scope, audience, followers, readable scopes, notification actions), and `ThreadSubjectRegistry`. `followers` only ever returns people in `audience`: a stray CalDAV ATTENDEE, someone who left the Team or lost the share never gets a notification with a snippet.
   - Service: the `thread_pool` collection kind and provisioner, the entry repository, `ThreadsController` under `/api/v1/threads/{subjectType}/{subjectId}`, `ThreadLifecycle` (deleting a scope's entries), the `ThreadEntry` push state, `ThreadNotifier` and `ThreadActivityWriter`.
   - `thread_index` is generic (`subject_type`, `subject_key`, `subject_scope`).
 - **Frontend:**

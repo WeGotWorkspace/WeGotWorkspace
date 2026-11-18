@@ -94,7 +94,13 @@ final class TaskThreadSubject implements ThreadSubjectType
             }
         }
 
-        return array_values($usernames);
+        // Only people who can still read the list follow it (#2173 security
+        // review): a stray ATTENDEE from a CalDAV client, someone removed
+        // from the Team, or a task moved to another list must not bring in
+        // outsiders who would then get notified with a snippet.
+        $audience = array_fill_keys($this->audience($subject), true);
+
+        return array_values(array_filter($usernames, static fn (string $username): bool => isset($audience[$username])));
     }
 
     public function readableScopes(string $username): array

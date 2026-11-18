@@ -350,8 +350,11 @@ final class ThreadRepository
     }
 
     /**
+     * Mentions of people in the audience, named by the server: a client
+     * displayName is ignored ({@see ThreadMentions}).
+     *
      * @param  list<array{id: string, displayName?: string}>  $mentions
-     * @return list<array{id: string, displayName?: string}>
+     * @return list<array{id: string, displayName: string}>
      */
     private function mentionsInAudience(ThreadSubjectType $type, ThreadSubject $subject, array $mentions): array
     {
@@ -361,8 +364,8 @@ final class ThreadRepository
         $audience = array_fill_keys(array_map('strtolower', $type->audience($subject)), true);
 
         return array_values(array_filter(
-            $mentions,
-            static fn (array $mention): bool => isset($audience[strtolower(trim($mention['id']))]),
+            ThreadMentions::resolve($mentions),
+            static fn (array $mention): bool => isset($audience[$mention['id']]),
         ));
     }
 

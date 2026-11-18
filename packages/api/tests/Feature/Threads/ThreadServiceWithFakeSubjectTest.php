@@ -47,7 +47,7 @@ final class ThreadServiceWithFakeSubjectTest extends WgwDatabaseTestCase
         $page->assertJsonPath('canPost', false)
             ->assertJsonPath('list.0.author.displayName', 'Alice')
             ->assertJsonPath('list.0.kind', 'comment')
-            ->assertJsonPath('list.0.mentions', [['id' => 'bob', 'displayName' => 'bob']])
+            ->assertJsonPath('list.0.mentions', [['id' => 'bob', 'displayName' => 'Bob']])
             ->assertJsonPath('list.1.parentId', $root['id']);
         $this->assertSame('fakenote', ThreadIndex::query()->value('subject_type'));
         $this->asUser('dave')->getJson($this->url('n1', 'entries'))->assertNotFound();

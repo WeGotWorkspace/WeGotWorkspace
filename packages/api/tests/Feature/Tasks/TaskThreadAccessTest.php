@@ -136,7 +136,7 @@ final class TaskThreadAccessTest extends WgwDatabaseTestCase
     {
         $this->comment('bob', $this->taskId, '@alice @dave', ['mentions' => [['id' => 'alice'], ['id' => 'dave']]])
             ->assertCreated()
-            ->assertJsonPath('mentions', [['id' => 'alice', 'displayName' => 'alice']])
+            ->assertJsonPath('mentions', [['id' => 'alice', 'displayName' => 'Alice']])
             ->assertJsonPath('body', '@alice @dave');
     }
 }
