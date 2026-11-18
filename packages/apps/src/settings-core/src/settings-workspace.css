@@ -103,6 +103,13 @@
   margin-inline-end: -0.75rem;
 }
 
+/* Revoke per connection is quieter than Revoke all; full ink on hover and focus. */
+.settings-workspace
+  .settings-assistant__connection
+  .button.button--severity-danger:not(:hover, :focus-visible) {
+  color: color-mix(in oklab, var(--button-severity-color) 75%, transparent);
+}
+
 .settings-workspace .settings-assistant__app-icon {
   @apply size-3.5 shrink-0 overflow-hidden;
   border-radius: calc(100% / 6);
