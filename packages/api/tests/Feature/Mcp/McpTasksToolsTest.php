@@ -247,7 +247,7 @@ final class McpTasksToolsTest extends WgwDatabaseTestCase
                 'taskId' => $taskId,
                 'participants' => ['u:carol' => $attendee],
             ])
-            ->assertHasErrors(['Only people who can edit this task list can be assigned: u:carol.']);
+            ->assertHasErrors(['Only people who can edit this task list can be assigned.']);
         $this->assertSame(1, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 
