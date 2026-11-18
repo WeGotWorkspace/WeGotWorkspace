@@ -2,7 +2,8 @@
 
 /* Assignees (#2172): the detail value, the picker and the list row avatars. */
 
-/* Overlapping avatars, each ringed in the surface so the overlap reads. */
+/* Overlapping avatars: only an overlapping one is ringed in the surface, so a single
+   avatar on a selected or hovered row shows no dark ring. */
 .tasks-assignee-avatars {
   @apply inline-flex shrink-0 items-center;
 }
@@ -20,7 +21,7 @@
   margin-inline-start: -5px;
 }
 
-.tasks-assignee-avatars__item .user-avatar__mark {
+.tasks-assignee-avatars__item + .tasks-assignee-avatars__item .user-avatar__mark {
   box-shadow: 0 0 0 2px var(--workspace-surface, var(--color-background));
 }
 
@@ -55,7 +56,9 @@
 }
 
 .tasks-assignee-picker__input {
-  @apply h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground;
+  @apply h-10 w-full min-w-0 bg-transparent outline-none placeholder:text-muted-foreground;
+  /* `.input__field` opts out of the global 16px input floor; use the sm control token. */
+  font-size: var(--input-font-size-sm, 0.875rem);
 }
 
 .tasks-assignee-picker__list {

@@ -149,7 +149,7 @@ export function TasksAssigneePicker({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={active ? optionId(rows.indexOf(active)) : undefined}
-          className="tasks-assignee-picker__input"
+          className="tasks-assignee-picker__input input__field"
           placeholder={L.assigneeSearch}
           value={query}
           autoFocus
