@@ -25,6 +25,7 @@ use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
+use App\Dav\Server\TaskChangeObserverPlugin;
 use App\Dav\Server\TeamGatedSharingPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
@@ -116,6 +117,7 @@ final class SabreServerFactory
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(app(FileNodeIndexPlugin::class));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
+        $server->addPlugin(app(TaskChangeObserverPlugin::class));
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\PDO($pdo)));
         if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? false)) {
             $server->addPlugin(new DAV\Browser\Plugin);

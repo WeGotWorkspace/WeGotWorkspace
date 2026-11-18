@@ -38,6 +38,7 @@ final class TaskRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly TaskAssigneeGuard $assignees,
+        private readonly TaskChangeReactions $changeReactions,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
@@ -190,6 +191,7 @@ final class TaskRepository
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
         }
+        $this->changeReactions->afterWrite($username, $instance, null, $task);
 
         return $task;
     }
@@ -355,6 +357,7 @@ final class TaskRepository
         }
 
         $this->notifyStatusChanged($username, $target, $existingTask, $task);
+        $this->changeReactions->afterWrite($username, $target, $existingTask, $task);
 
         return $task;
     }
@@ -436,6 +439,7 @@ final class TaskRepository
         $objectUri = (string) $object->uri;
         $calendarIdPair = [(int) $instance->calendarid, (int) $instance->id];
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
+        $existingTask = $this->mapper->toTask($object, $this->taskListUriForInstance($instance), $located['vtodoUid']);
 
         if ($located['vtodoUid'] !== null) {
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
@@ -466,6 +470,7 @@ final class TaskRepository
                 $username,
             );
         }
+        $this->changeReactions->afterWrite($username, $instance, $existingTask, null);
 
         return ['ok' => true];
     }

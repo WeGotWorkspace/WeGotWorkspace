@@ -50,6 +50,8 @@ export function formatNotificationCopy(
       return formatCollectionShared(item.domain, data);
     case "tasks.status_changed":
       return formatTaskStatusChanged(data);
+    case "tasks.assigned":
+      return formatTaskAssigned(data);
     case "chat.message_posted":
       return formatChatMessagePosted(data);
     case "chat.mentioned":
@@ -204,6 +206,12 @@ function formatTaskStatusChanged(data: NotificationFacts): NotificationCopy {
   const titleRest = to === "completed" ? ` completed ${summary}` : ` updated ${summary}`;
   const body = from && to ? `${from} → ${to}` : to || null;
   return withActorTitle(actor, titleRest, body);
+}
+
+function formatTaskAssigned(data: NotificationFacts): NotificationCopy {
+  const actor = trimStr(data.actor) || "Someone";
+  const summary = trimStr(data.summary) || "a task";
+  return withActorTitle(actor, ` assigned you ${summary}`, null);
 }
 
 function formatMeetStarted(data: NotificationFacts): NotificationCopy {
