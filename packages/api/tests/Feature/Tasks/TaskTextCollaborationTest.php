@@ -252,9 +252,16 @@ final class TaskTextCollaborationTest extends WgwDatabaseTestCase
         $this->showTask();
     }
 
-    public function test_moving_a_task_keeps_its_state(): void
+    public function test_moving_a_task_leaves_its_state_and_deleted_text_behind(): void
     {
-        $this->firstSave('Plan', 'Typed')->assertOk();
+        // Stand-in for a Yjs update that still holds text deleted in list A.
+        $history = "\x01wiped from list A\x02";
+        $this->putCollaborationAs('bob', 'Typed', $history, 'Plan', [
+            'If-None-Match' => '*',
+            CollabExternalWrite::HEADER => (string) $this->readText()->headers->get('ETag'),
+        ])->assertOk();
+        $sourceId = (int) CalendarObject::query()->where('uri', self::OBJECT_URI)->value('id');
+        $this->assertSame(1, TaskYjsState::query()->where('calendar_object_id', $sourceId)->count());
         $workId = (string) $this->withBearer($this->issueBearerTokenFor('bob'))
             ->postJson('/api/v1/tasks/tasklists', ['name' => 'Work'])
             ->assertCreated()
@@ -266,10 +273,16 @@ final class TaskTextCollaborationTest extends WgwDatabaseTestCase
             ->putJson($this->taskUrl(), ['taskListIds' => [$workId => true], 'title' => 'Plan', 'description' => 'Typed'])
             ->assertOk()
             ->assertJsonPath('taskListId', $workId);
+        $this->flushHeaders();
 
-        $state = $this->readState()->assertOk();
-        $this->assertSame(self::STATE, $state->getContent());
-        $state->assertHeaderMissing(CollabExternalWrite::HEADER);
+        // The text moves as plain VTODO text; the state, and the deleted text in it, do not.
+        $this->readText()->assertOk()->assertJsonPath('description', 'Typed');
+        $this->readState()->assertNoContent();
+        $this->assertSame(0, TaskYjsState::query()->where('calendar_object_id', $sourceId)->count());
+        $this->assertSame(0, TaskYjsState::query()->count());
+        // The next save in list B seeds afresh and must name the text it read.
+        $this->firstSave('Plan', 'Typed again')->assertOk();
+        $this->assertSame(self::STATE, $this->readState()->assertOk()->getContent());
     }
 
     public function test_a_delete_with_a_stale_etag_is_refused_and_keeps_the_other_tasks_text(): void

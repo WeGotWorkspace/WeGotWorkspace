@@ -36,6 +36,28 @@ final class CollabJoinAuthorizer
     ) {}
 
     /**
+     * `assertMayJoin` and `accessFor` in one step: denies, or returns the
+     * right to store. A task room resolves its task once per request.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return 'read'|'comment'|'write'
+     */
+    public function authorize(string $room, array $principal): string
+    {
+        if (str_starts_with($room, self::TASK_PREFIX)) {
+            $task = $this->tasks->findForRoom($principal['username'], $room);
+            if ($task === null) {
+                $this->deny();
+            }
+
+            return $this->writeUnlessReadOnly($task['instance']->access);
+        }
+        $this->assertMayJoin($room, $principal);
+
+        return $this->accessFor($room, $principal);
+    }
+
+    /**
      * @param  array{username: string, role: string}  $principal
      */
     public function assertMayJoin(string $room, array $principal): void

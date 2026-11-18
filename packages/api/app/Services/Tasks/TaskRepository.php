@@ -361,19 +361,10 @@ final class TaskRepository
                     $this->backends->calBackend()->updateCalendarObject($sourceIds, $objectUri, $ics);
                 } else {
                     $this->backends->calBackend()->createCalendarObject([(int) $target->calendarid, (int) $target->id], $objectUri, $ics);
-                    $moved = $this->findObjectInCalendar((int) $target->calendarid, $objectUri);
-                    if ($moved !== null) {
-                        // The delete below cascades the state rows; carry them over.
-                        foreach (TaskYjsState::query()->where('calendar_object_id', (int) $object->id)->get() as $row) {
-                            TaskYjsState::query()->create([
-                                'calendar_object_id' => (int) $moved->id,
-                                'vtodo_uid' => $row->vtodo_uid,
-                                'state' => $this->textCore->stateBytes($row),
-                                'object_etag' => $row->object_etag,
-                                'content_etag' => $row->content_etag,
-                            ]);
-                        }
-                    }
+                    // The stored state does not move: it can hold deleted text and
+                    // who typed it, which the new list's audience must not read
+                    // (#2208). The next join seeds from the text the VTODO carries.
+                    TaskYjsState::query()->where('calendar_object_id', (int) $object->id)->delete();
                     $this->backends->calBackend()->deleteCalendarObject($sourceIds, $objectUri);
                 }
 

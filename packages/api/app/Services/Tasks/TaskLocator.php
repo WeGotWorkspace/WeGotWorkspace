@@ -18,6 +18,9 @@ use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
  */
 final class TaskLocator
 {
+    /** Files whose text holds a room's UID that are parsed on one join, poll or send. */
+    private const MAX_TEXT_CANDIDATES = 20;
+
     public function __construct(
         private readonly TaskListRepository $taskLists,
         private readonly DriveGroupResolver $groups,
@@ -54,20 +57,29 @@ final class TaskLocator
             return null;
         }
 
-        // A second VTODO in a file is not the object's own `uid`. A wildcard in
-        // the UID only widens the LIKE; the component check below decides.
-        $candidates = CalendarObject::query()
+        // The object's own `uid` first. A second VTODO in a file is not the
+        // object's `uid`, so a capped LIKE with the wildcards escaped finds
+        // it; the component check below decides either way.
+        $byUid = CalendarObject::query()
             ->where('calendarid', $calendarId)
-            ->where(function ($query) use ($uid): void {
-                $query->where('uid', $uid)
-                    ->orWhere('calendardata', 'like', '%'.$uid.'%');
-            })
+            ->where('uid', $uid)
             ->orderBy('id')
             ->get();
-        foreach ($candidates as $object) {
-            if (($this->mapper->toTask($object, '', $uid)['uid'] ?? null) === $uid) {
-                return ['object' => $object, 'instance' => $instance];
-            }
+        $match = $this->firstWithComponent($byUid, $uid);
+        if ($match !== null) {
+            return ['object' => $match, 'instance' => $instance];
+        }
+        $pattern = '%'.strtr($uid, ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
+        $byText = CalendarObject::query()
+            ->where('calendarid', $calendarId)
+            ->where('uid', '!=', $uid)
+            ->whereRaw("calendardata LIKE ? ESCAPE '!'", [$pattern])
+            ->orderBy('id')
+            ->limit(self::MAX_TEXT_CANDIDATES)
+            ->get();
+        $match = $this->firstWithComponent($byText, $uid);
+        if ($match !== null) {
+            return ['object' => $match, 'instance' => $instance];
         }
 
         return null;
@@ -142,6 +154,20 @@ final class TaskLocator
                 $username,
                 CalendarInstance::query()->whereIn('id', $candidateInstanceIds)->orderBy('id')->get(),
             )->first();
+    }
+
+    /**
+     * @param  iterable<CalendarObject>  $objects
+     */
+    private function firstWithComponent(iterable $objects, string $uid): ?CalendarObject
+    {
+        foreach ($objects as $object) {
+            if (($this->mapper->toTask($object, '', $uid)['uid'] ?? null) === $uid) {
+                return $object;
+            }
+        }
+
+        return null;
     }
 
     /**
