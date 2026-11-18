@@ -155,7 +155,9 @@ function TasksDetailForm({
   const onSaveProp = useRef(onSave);
   onSaveProp.current = onSave;
   const onSaveRef = useRef((taskId: string, value: TasksTaskFormValue) =>
-    onSaveProp.current(taskId, value, inRoomRef.current ? { skipText: true } : undefined),
+    inRoomRef.current
+      ? onSaveProp.current(taskId, value, { skipText: true })
+      : onSaveProp.current(taskId, value),
   );
 
   const flush = useCallback(() => {
