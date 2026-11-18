@@ -108,7 +108,10 @@ trait TaskThreadFixtures
 
     protected function ulid(): string
     {
-        return self::ULID_PREFIX.str_pad(strtoupper(base_convert((string) ++$this->ulidCounter, 10, 32)), 4, '0', STR_PAD_LEFT);
+        // Crockford base 32 has no I, L, O or U, which a ULID refuses.
+        $digits = strtr(strtoupper(base_convert((string) ++$this->ulidCounter, 10, 32)), '0123456789ABCDEFGHIJKLMNOPQRSTUV', '0123456789ABCDEFGHJKMNPQRSTVWXYZ');
+
+        return self::ULID_PREFIX.str_pad($digits, 4, '0', STR_PAD_LEFT);
     }
 
     /**

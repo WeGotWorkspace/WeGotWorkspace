@@ -10,7 +10,6 @@ use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use App\Models\GroupMember;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CollectionKind;
@@ -26,7 +25,6 @@ use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class TaskRepository
 {
@@ -564,7 +562,7 @@ final class TaskRepository
         if ($to === null || $from === $to) {
             return;
         }
-        $owners = $this->listAclOwnerUsernames($instance);
+        $owners = TaskListOwnerUsernames::of($instance);
         if ($owners === []) {
             return;
         }
@@ -586,47 +584,6 @@ final class TaskRepository
                 $owners,
             ),
         );
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function listAclOwnerUsernames(CalendarInstance $instance): array
-    {
-        $owners = [];
-        $rows = CalendarInstance::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
-            ->get(['principaluri']);
-        foreach ($rows as $row) {
-            $uri = (string) $row->principaluri;
-            if (str_starts_with($uri, AdminConstants::GROUP_PREFIX)) {
-                continue;
-            }
-            if (str_starts_with($uri, 'principals/')) {
-                $username = strtolower(substr($uri, strlen('principals/')));
-                if ($username !== '' && ! str_contains($username, '/')) {
-                    $owners[$username] = $username;
-                }
-            }
-        }
-
-        $principalUri = (string) $instance->principaluri;
-        if (str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
-            $members = GroupMember::query()
-                ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
-                ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
-                ->where('g.uri', $principalUri)
-                ->pluck('m.uri');
-            foreach ($members as $uri) {
-                $username = strtolower(str_replace('principals/', '', (string) $uri));
-                if ($username !== '') {
-                    $owners[$username] = $username;
-                }
-            }
-        }
-
-        return array_values($owners);
     }
 
     /**
