@@ -16,8 +16,9 @@ use App\Services\Tasks\TaskListAudience;
  * audience with write access at the moment of the write, minus the actor.
  * An address that is no account here, or someone outside the audience, gets
  * nothing. {@see TaskAssignedRateLimiter} caps how many notices an actor
- * sends and a recipient gets. The dedupe key is per task (and per recipient in the listener), with
- * supersede, so a reassign after an unassign replaces the old notice.
+ * sends and a recipient gets. The dedupe key is per task (and per recipient
+ * in the listener), with supersede, so a reassign after an unassign replaces
+ * the old notice.
  */
 final class TaskAssignedNotify
 {
