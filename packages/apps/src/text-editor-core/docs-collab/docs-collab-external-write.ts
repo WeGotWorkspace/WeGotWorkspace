@@ -6,12 +6,17 @@ import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { seedClientId } from "./docs-collab-seed";
 import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
+import { isTextFieldsDoc } from "@/lib/collab/docs-collab-text-fields-shape";
+import { replaceTextFields } from "./docs-collab-text-fields";
 
 export type ExternalWriteDetail = {
   markdown: string;
   title: string | null;
   /** The stale sidecar every client read; the rebuild replaces exactly that state. */
   serverState: Uint8Array;
+  /** Text-fields resources (#2208): the outside text's content tag and object version. */
+  contentTag?: string | null;
+  objectEtag?: string;
 };
 
 /**
@@ -56,8 +61,28 @@ export function replaceDocumentWithExternalText(
   title: string | null,
   format: TextEditorContentFormat,
   serverState: Uint8Array,
-  { dropLocalWork = false }: { dropLocalWork?: boolean } = {},
+  {
+    dropLocalWork = false,
+    contentTag = null,
+    objectEtag = "",
+  }: { dropLocalWork?: boolean; contentTag?: string | null; objectEtag?: string } = {},
 ): void {
+  if (isTextFieldsDoc(ydoc)) {
+    // The text-fields replacement: a seed salted with the object version, a
+    // delete limit that never covers a peer's unsaved typing (#2208).
+    const readable = serverState.byteLength > 2 && isReadableYjsUpdate(serverState);
+    replaceTextFields(
+      ydoc,
+      { title: title ?? "", description: markdown },
+      {
+        contentTag,
+        objectEtag,
+        storedState: readable ? serverState : null,
+        dropOwnWork: dropLocalWork,
+      },
+    );
+    return;
+  }
   if (!isReadableYjsUpdate(serverState)) {
     reseedOverUnreadableState(ydoc, markdown, title, format, serverState);
     return;

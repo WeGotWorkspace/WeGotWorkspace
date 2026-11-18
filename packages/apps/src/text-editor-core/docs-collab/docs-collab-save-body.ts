@@ -1,0 +1,94 @@
+import * as Y from "yjs";
+import { readContentFromYDoc } from "./docs-collab-editor-surface";
+import {
+  isTextFieldsDoc,
+  readTextFields,
+  readTextFieldsBase,
+  textFieldsContentTag,
+  textFieldsMetaToken,
+  writeTextFieldsBaseIfUnchanged,
+} from "./docs-collab-text-fields";
+
+/**
+ * What a collab save sends, read from the document through its shape. A
+ * text-fields document (#2208) is its own save body, with no editor getter;
+ * Docs and Notes read the editor (or the override) as before.
+ */
+export type CollabSaveBody = {
+  /** The body to send now. */
+  markdown: string;
+  /** The body as the document holds it at this moment. */
+  current: () => string;
+  /** The body after a 412 merge; without an editor getter, the body sent. */
+  afterMerge: () => string;
+  /** The tag a save with no stored state names: the text it started from. */
+  seenFallback: () => string | null;
+  /** Typing landed while the save was on its way. */
+  editedSince: (saved: string, latest: (() => string) | null) => boolean;
+  /** Called before the request; records `base` once the save lands. */
+  startSave: () => { landed: (saved: string) => Promise<void> } | null;
+};
+
+export function collabSaveBody(
+  ydoc: Y.Doc | null,
+  refs: {
+    getMarkdownRef: { current: (() => string) | null };
+    markdownOverrideRef: { current: string | null };
+  },
+): CollabSaveBody | null {
+  if (!ydoc) return null;
+  const getMd = refs.getMarkdownRef.current;
+  const override = refs.markdownOverrideRef.current;
+  const textFields = isTextFieldsDoc(ydoc);
+  if (!getMd && override === null && !textFields) return null;
+  const current = () =>
+    textFields ? readTextFields(ydoc).description : markdownForSave(ydoc, getMd ? getMd() : "");
+  const markdown = override ?? current();
+  return {
+    markdown,
+    current,
+    afterMerge: () => (getMd || textFields ? current() : markdown),
+    seenFallback: () => (textFields ? (readTextFieldsBase(ydoc)?.contentTag ?? null) : null),
+    editedSince: (saved, latest) => {
+      if (textFields) return current() !== saved;
+      return latest ? markdownForSave(ydoc, latest()) !== saved : false;
+    },
+    startSave: () => (textFields ? textFieldsSaveBase(ydoc) : null),
+  };
+}
+
+export function markdownForSave(ydoc: Y.Doc, editorMarkdown: string): string {
+  try {
+    const fromDoc = readContentFromYDoc(ydoc);
+    if (
+      editorMarkdown !== "" &&
+      fromDoc.includes(editorMarkdown) &&
+      fromDoc.length > editorMarkdown.length
+    ) {
+      return fromDoc;
+    }
+  } catch {
+    // The editor string is still a valid save body.
+  }
+  return editorMarkdown;
+}
+
+/**
+ * What a text-fields save records as `base` once it lands: the text and
+ * vector as encoded now, written only if `text-fields-meta` did not change
+ * meanwhile (a replacement or a peer's newer `base` wins).
+ */
+function textFieldsSaveBase(ydoc: Y.Doc): { landed: (savedDescription: string) => Promise<void> } {
+  const token = textFieldsMetaToken(ydoc);
+  const { title } = readTextFields(ydoc);
+  const vector: Record<string, number> = {};
+  for (const [client, clock] of Y.decodeStateVector(Y.encodeStateVector(ydoc))) {
+    vector[String(client)] = clock;
+  }
+  return {
+    landed: async (description) => {
+      const contentTag = await textFieldsContentTag({ title, description });
+      writeTextFieldsBaseIfUnchanged(ydoc, token, { contentTag, title, description, vector });
+    },
+  };
+}

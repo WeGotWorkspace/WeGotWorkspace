@@ -184,7 +184,11 @@ export function replaceTextFields(
   doc.transact(() => {
     if (storedState) Y.applyUpdate(doc, storedState, SERVER_ORIGIN);
     const limit = textFieldsDeleteLimit(doc, storedState, { dropOwnWork });
-    const seed = buildSeed(text, { salt: objectEtag, contentTag, first: false });
+    const seed = buildSeed(text, {
+      salt: freshSeedSalt(doc, text, objectEtag),
+      contentTag,
+      first: false,
+    });
     adoptServerSnapshot(doc, seed.update, EXTERNAL_REPLACE_ORIGIN, limit);
     const vector: Record<string, number> = {};
     for (const [client, clock] of limit) vector[String(client)] = clock;
@@ -199,6 +203,22 @@ export function replaceTextFields(
     } satisfies TextFieldsBase);
   }, EXTERNAL_REPLACE_ORIGIN);
   cleanupTextFieldsSeeds(doc);
+}
+
+/**
+ * `objectEtag`, or `objectEtag#n` when a seed with that id is already in the
+ * document. Two overlapping replacements can leave the server's text and
+ * version in a seed the cleanup deleted; Yjs would keep those items deleted
+ * and the text would go blank. Peers on the same state pick the same salt.
+ */
+function freshSeedSalt(doc: Y.Doc, text: TextFieldsText, objectEtag: string): string {
+  const local = Y.decodeStateVector(Y.encodeStateVector(doc));
+  const key = `${normalizeLineEnds(text.title)}\u0000${normalizeLineEnds(text.description)}`;
+  let salt = objectEtag;
+  for (let n = 1; local.has(seedClientId(TEXT_FIELDS_SHAPE, key, salt)); n += 1) {
+    salt = `${objectEtag}#${n}`;
+  }
+  return salt;
 }
 
 const EMPTY_UPDATE = Y.encodeStateAsUpdate(new Y.Doc());

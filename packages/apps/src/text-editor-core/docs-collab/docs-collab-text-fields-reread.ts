@@ -1,0 +1,117 @@
+import * as Y from "yjs";
+import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
+import { isReadableYjsUpdate } from "./docs-collab-external-write";
+import { isSameSave } from "./docs-collab-snapshot-check";
+import {
+  EXTERNAL_REPLACE_ORIGIN,
+  isTextFieldsEmpty,
+  normalizeLineEnds,
+  readTextFields,
+  readTextFieldsBase,
+  replaceTextFields,
+  sameTextFields,
+  seedTextFields,
+  textFieldsMetaToken,
+  vectorOfUpdate,
+  writeTextFieldsBaseIfUnchanged,
+  type TextFieldsText,
+} from "./docs-collab-text-fields";
+
+/** What the server answered: `?format=yjs` (`null` on `204`) and `GET …/text`. */
+export type TextFieldsServerRead = {
+  storedState: Uint8Array | null;
+  externalWrite: boolean;
+  /** `X-Wgw-Content-Tag`: the content tag of the text the state was written from. */
+  stateContentTag?: string | null;
+  text: TextFieldsText;
+  contentTag: string | null;
+  objectEtag: string;
+};
+
+/**
+ * - `seeded`: an empty document took the server text (first seed).
+ * - `adopted`: case 1, a peer's save applied with `SERVER_ORIGIN`.
+ * - `unchanged`: case 2, the document already holds the server text.
+ * - `replaced`: case 3, a quiet replacement; nothing to save.
+ * - `prompt`: case 4, the person has unsaved work; the caller asks.
+ */
+export type TextFieldsRereadResult = "seeded" | "adopted" | "unchanged" | "replaced" | "prompt";
+
+function storedStateText(update: Uint8Array): TextFieldsText | null {
+  if (!isReadableYjsUpdate(update)) return null;
+  const scratch = new Y.Doc();
+  try {
+    Y.applyUpdate(scratch, update);
+    return readTextFields(scratch);
+  } finally {
+    scratch.destroy();
+  }
+}
+
+/**
+ * The text-fields re-read (spec.md, The re-read): the first matching case
+ * runs, the others do not. Pending local work is the caller's: this client's
+ * own edits since its last landed save.
+ */
+export function rereadTextFields(
+  doc: Y.Doc,
+  read: TextFieldsServerRead,
+  { pendingLocalWork }: { pendingLocalWork: boolean },
+): TextFieldsRereadResult {
+  const { storedState, text, contentTag, objectEtag } = read;
+  const stored = storedState && storedState.byteLength > 0 ? storedState : null;
+  // A state that does not hold the served text, or cannot be read, is an
+  // outside write too (#2208, security review). The text is compared only
+  // when both reads are one save; a save between them adopts.
+  const storedText = stored ? storedStateText(stored) : null;
+  const otherText =
+    storedText !== null &&
+    isSameSave(read.stateContentTag, contentTag) &&
+    !sameTextFields(storedText, text);
+  const outside = read.externalWrite || !stored || !storedText || otherText;
+
+  if (!outside && stored) {
+    // Case 1: adopt. The snapshot carries `base` and `seed` when this code wrote it.
+    Y.applyUpdate(doc, stored, SERVER_ORIGIN);
+    const base = readTextFieldsBase(doc);
+    if (!base) {
+      writeTextFieldsBaseIfUnchanged(doc, textFieldsMetaToken(doc), {
+        contentTag,
+        ...readTextFields(doc),
+        vector: vectorOfUpdate(stored),
+      });
+    }
+    return "adopted";
+  }
+
+  if (!stored && isTextFieldsEmpty(doc)) {
+    seedTextFields(doc, text, contentTag);
+    return "seeded";
+  }
+
+  if (sameTextFields(readTextFields(doc), text)) {
+    // Case 2: only a stale content tag moves on.
+    const base = readTextFieldsBase(doc);
+    if (base && base.contentTag !== contentTag) {
+      writeTextFieldsBaseIfUnchanged(doc, textFieldsMetaToken(doc), {
+        ...base,
+        contentTag,
+        title: normalizeLineEnds(text.title),
+        description: normalizeLineEnds(text.description),
+      });
+    }
+    return "unchanged";
+  }
+
+  if (pendingLocalWork) return "prompt";
+
+  // Case 3: replace quietly, publish with the replace origin, send nothing.
+  replaceTextFields(doc, text, {
+    contentTag,
+    objectEtag,
+    storedState: storedText ? stored : null,
+  });
+  return "replaced";
+}
+
+export { EXTERNAL_REPLACE_ORIGIN };

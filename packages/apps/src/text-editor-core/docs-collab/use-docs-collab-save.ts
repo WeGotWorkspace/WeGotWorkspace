@@ -1,12 +1,12 @@
 import { useCallback, useRef } from "react";
-import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import { readContentFromYDoc } from "./docs-collab-editor-surface";
+
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
+import { collabSaveBody } from "./docs-collab-save-body";
 import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
 import {
   computeShouldPersist,
@@ -114,10 +114,9 @@ export function useDocsCollabSave({
       return false;
     }
     const ydoc = refs.ydocRef.current;
-    const getMd = refs.getMarkdownRef.current;
-    const override = refs.markdownOverrideRef.current;
-    if (!ydoc || (!getMd && override === null)) return false;
-    const markdown = override ?? markdownForSave(ydoc, getMd ? getMd() : "");
+    const body = collabSaveBody(ydoc, refs);
+    if (!ydoc || !body) return false;
+    const { markdown } = body;
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
       localDirtySinceLastSave: refs.localDirtySinceLastSaveRef.current,
@@ -136,6 +135,7 @@ export function useDocsCollabSave({
     }
     refs.saveInFlightRef.current = true;
     let savedMarkdown = markdown;
+    const baseCandidate = body.startSave();
     try {
       const persisted = await persistCollabSave({
         urls,
@@ -144,9 +144,9 @@ export function useDocsCollabSave({
         markdown,
         authToken: refs.authTokenRef.current,
         remergeAttempted: conflictRemergeAttemptedRef,
-        markdownAfterMerge: () => (getMd ? markdownForSave(ydoc, getMd()) : markdown),
+        markdownAfterMerge: body.afterMerge,
         markdownOverrideRef: refs.markdownOverrideRef,
-        externalWriteSeen: refs.externalWriteSeenRef.current,
+        externalWriteSeen: refs.externalWriteSeenRef.current ?? body.seenFallback(),
       });
       if (persisted.status === "skipped") return false;
       savedMarkdown = persisted.markdown;
@@ -155,8 +155,8 @@ export function useDocsCollabSave({
       refs.saveFailedRef.current = false;
       const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
       // Typed while this save was on its way: still dirty, saved by the next round.
-      const latest = refs.getMarkdownRef.current;
-      const editedSince = latest ? markdownForSave(ydoc, latest()) !== savedMarkdown : false;
+      if (baseCandidate) await baseCandidate.landed(savedMarkdown);
+      const editedSince = body.editedSince(savedMarkdown, refs.getMarkdownRef.current);
       refs.localDirtySinceLastSaveRef.current = editedSince;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
       refs.saveTerminalKindRef.current = null;
@@ -282,24 +282,4 @@ function terminalSaveFailure(error: unknown): DocsCollabSaveTerminalKind | null 
   if (collabErrorStatus(error) === 403) return "forbidden";
   if (isCollabPayloadTooLarge(error)) return "too-large";
   return null;
-}
-
-/**
- * A reconnect can apply the server Y.Doc before the editor view catches up.
- * Saving the shorter view would replace the other person's edit.
- */
-function markdownForSave(ydoc: Y.Doc, editorMarkdown: string): string {
-  try {
-    const fromDoc = readContentFromYDoc(ydoc);
-    if (
-      editorMarkdown !== "" &&
-      fromDoc.includes(editorMarkdown) &&
-      fromDoc.length > editorMarkdown.length
-    ) {
-      return fromDoc;
-    }
-  } catch {
-    // The editor string is still a valid save body.
-  }
-  return editorMarkdown;
 }

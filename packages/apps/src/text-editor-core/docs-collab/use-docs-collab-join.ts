@@ -4,7 +4,6 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import { docsCollabLabels } from "@/text-editor-core/docs-collab/docs-collab-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/core/browser-online";
-import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { expectsServerContent, useDocsCollabContentGate } from "./use-docs-collab-content-gate";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
@@ -25,6 +24,9 @@ import {
 import { fetchYjsSnapshot, loadCollabText } from "@/lib/collab/docs-collab-server-io";
 import { replaceDocumentWithExternalText } from "./docs-collab-external-write";
 import { decideBootstrapAction, decideMergeAction } from "./docs-collab-snapshot-check";
+import { settleMergeAction } from "./docs-collab-merge-settle";
+import { EXTERNAL_REPLACE_ORIGIN } from "./docs-collab-text-fields";
+import { useDocsCollabTextFields } from "./use-docs-collab-text-fields";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
@@ -129,6 +131,8 @@ export function useDocsCollabJoin({
    */
   const loadedStateRef = useRef<{ ydoc: Y.Doc; stateVector: Map<number, number> } | null>(null);
   const serverJoinStartedRef = useRef(false);
+  const shape = useDocsCollabTextFields({ refs, room, urls, documentFormat });
+  const { seedDocument } = shape;
   const markDocReady = useCallback(() => {
     // A peer can fill the doc after a failed sidecar already showed the preview.
     setSnapshotPreview(null);
@@ -152,7 +156,7 @@ export function useDocsCollabJoin({
     }
 
     if (!meshSession) {
-      applyContentSeedToYDoc(ydoc, markdown, documentFormat);
+      seedDocument(ydoc, markdown);
       markDocReady();
       setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
       return;
@@ -161,10 +165,10 @@ export function useDocsCollabJoin({
     const peerIds = meshSession.getPeerIds();
     if (!canSeedFromFile(meshSession, meshSession.getMyId(), peerIds)) return;
 
-    applyContentSeedToYDoc(ydoc, markdown, documentFormat);
+    seedDocument(ydoc, markdown);
     markDocReady();
     setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
-  }, [documentFormat, markDocReady, refs, setDocStatus]);
+  }, [markDocReady, refs, seedDocument, setDocStatus]);
 
   const teardown = useCallback(() => {
     const awareness = refs.awarenessRef.current;
@@ -235,6 +239,8 @@ export function useDocsCollabJoin({
     async (authToken: string | undefined): Promise<boolean> => {
       const ydoc = refs.ydocRef.current;
       if (!ydoc) return false;
+      const textFieldsMerged = await shape.mergeTextFields(ydoc, authToken);
+      if (textFieldsMerged !== null) return textFieldsMerged;
       const snapshot = await fetchYjsSnapshot(urls.yjsUrl, authToken);
       rememberSidecarEtag(room, snapshot.etag);
       if (!snapshot.update) return false;
@@ -244,41 +250,20 @@ export function useDocsCollabJoin({
         format: documentFormat,
         pendingLocalWork: hasPendingLocalWork(refs),
       });
-      if (action === "prompt") {
-        const text = await readText();
-        refs.externalWriteSeenRef.current = text.etag ?? null;
-        refs.externalWriteHoldRef.current = true;
-        urls.onExternalWrite?.({
-          markdown: text.markdown,
-          title: text.title,
-          serverState: snapshot.update,
-        });
-        return false;
-      }
-      if (action === "rebuild") {
-        const text = await readText();
-        refs.externalWriteSeenRef.current = text.etag ?? null;
-        replaceDocumentWithExternalText(
-          ydoc,
-          text.markdown,
-          text.title,
-          documentFormat,
-          snapshot.update,
-        );
-        refs.markdownOverrideRef.current = text.markdown;
-        refs.externalWriteHoldRef.current = false;
-        refs.localDirtySinceLastSaveRef.current = true;
-        refs.lastSuccessfulSaveSignatureRef.current = null;
-        await updatePendingState(true, false);
-        setSnapshotPreview(null);
-        return true;
-      }
-
-      Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
-      setSnapshotPreview(null);
-      return true;
+      const merged = await settleMergeAction({
+        action,
+        readText,
+        ydoc,
+        update: snapshot.update,
+        refs,
+        urls,
+        format: documentFormat,
+        updatePendingState,
+      });
+      if (merged) setSnapshotPreview(null);
+      return merged;
     },
-    [documentFormat, refs, room, updatePendingState, urls],
+    [documentFormat, refs, room, shape, updatePendingState, urls],
   );
 
   const applyServerBootstrap = useCallback(
@@ -293,6 +278,7 @@ export function useDocsCollabJoin({
           const text = await loadCollabText(urls.documentUrl, authToken);
           loadedTitle = text.title;
           loadedEtag = text.etag ?? null;
+          shape.noteServed(text);
           return text.markdown;
         },
         fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl, authToken),
@@ -330,10 +316,12 @@ export function useDocsCollabJoin({
         return;
       }
 
-      let settlement: "adopted" | "rebuilt" | "prompted" | "other" = "other";
+      let settlement: "adopted" | "rebuilt" | "replaced" | "prompted" | "other" = "other";
       let restoredLocalState = false;
       let keptLocalEdits = false;
-      if (snapshot.kind === "snapshot") {
+      const textFieldsSettled = shape.settleBootstrap(ydoc, load);
+      if (textFieldsSettled) ({ settlement, keptLocalEdits } = textFieldsSettled);
+      else if (snapshot.kind === "snapshot") {
         const action = decideBootstrapAction(snapshot, load, loadedTitle, loadedEtag, {
           format: documentFormat,
           pendingLocalWork: hasPendingLocalWork(refs),
@@ -424,7 +412,7 @@ export function useDocsCollabJoin({
       ) {
         const meshSession = refs.meshRef.current;
         if (shouldApplyImmediateSeed(meshSession, ydoc, refs.seedDoneRef.current, seed)) {
-          applyContentSeedToYDoc(ydoc, seed, documentFormat);
+          seedDocument(ydoc, seed);
           markDocReady();
           setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
         } else if (meshSession && meshSession.getPeerIds().length > 0) {
@@ -433,7 +421,7 @@ export function useDocsCollabJoin({
           refs.seedTimerRef.current = setTimeout(tick, 1000);
           setTimeout(tick, 3000);
         }
-      } else if (settlement === "rebuilt") {
+      } else if (settlement === "rebuilt" || settlement === "replaced") {
         setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
       } else if (hadSnapshot && settlement === "adopted" && restoredLocalState) {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
@@ -448,10 +436,11 @@ export function useDocsCollabJoin({
       flushMeshSyncIfHydrated();
     },
     [
-      documentFormat,
       flushMeshSyncIfHydrated,
       markDocReady,
       refs,
+      seedDocument,
+      shape,
       updatePendingState,
       room,
       setDocStatus,
@@ -530,6 +519,7 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
+    shape.prepareDoc(ydoc);
     const database = await resolveDocsCollabEditorDatabase(room, urls.nodeId);
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) {
       database.release();
@@ -585,7 +575,8 @@ export function useDocsCollabJoin({
 
     ydoc.on("update", (update, origin) => {
       if (isRemoteUpdateOrigin(origin, refs.persistenceRef.current)) return;
-      refs.localDirtySinceLastSaveRef.current = true;
+      // A text-fields replacement is published but is not this person's work (#2208).
+      if (origin !== EXTERNAL_REPLACE_ORIGIN) refs.localDirtySinceLastSaveRef.current = true;
       const encoded = encodeUpdateBroadcast(update);
       const tabSync = refs.tabSyncRef.current;
       const mayMeshPublish = mayPublishDocumentBearingMeshSync(ydoc, refs.seedDoneRef.current);
@@ -624,7 +615,7 @@ export function useDocsCollabJoin({
 
     if (!online || !allowServerRequests) {
       if (!refs.seedDoneRef.current && isYDocEmpty(ydoc) && refs.seedContentRef.current) {
-        applyContentSeedToYDoc(ydoc, refs.seedContentRef.current, documentFormat);
+        seedDocument(ydoc, refs.seedContentRef.current);
         markDocReady();
       }
       setStatus("Editing offline");
@@ -657,11 +648,12 @@ export function useDocsCollabJoin({
       await finishAuthenticatedJoin(generation, name, authToken);
     })();
   }, [
-    documentFormat,
     finishAuthenticatedJoin,
     markDocReady,
     refs,
     room,
+    seedDocument,
+    shape,
     setDocStatus,
     setStatus,
     teardown,

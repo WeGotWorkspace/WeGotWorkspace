@@ -23,12 +23,18 @@ export async function askAboutRefusedSave({
     const authToken = refs.authTokenRef.current;
     const text = await loadCollabText(urls.documentUrl, authToken);
     const snapshot = await fetchYjsSnapshot(urls.yjsUrl, authToken);
-    if (!snapshot.update) throw new Error("No sidecar to seed the outside text from");
+    // A text-fields room (#2208) may have no stored state yet: its replacement
+    // seeds from the text alone.
+    const textFields = urls.documentShape === "text-fields";
+    if (!snapshot.update && !textFields)
+      throw new Error("No sidecar to seed the outside text from");
     refs.externalWriteSeenRef.current = text.etag ?? null;
     urls.onExternalWrite({
       markdown: text.markdown,
       title: text.title,
-      serverState: snapshot.update,
+      serverState: snapshot.update ?? new Uint8Array(),
+      contentTag: text.etag ?? null,
+      objectEtag: text.objectEtag,
     });
     return true;
   } catch {
