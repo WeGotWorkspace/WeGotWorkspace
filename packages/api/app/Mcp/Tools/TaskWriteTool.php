@@ -44,6 +44,8 @@ final class TaskWriteTool extends WgwMcpTool
                 ->enum(['needs-action', 'in-process', 'completed', 'cancelled', 'pending', 'failed']),
             'priority' => $schema->integer()->min(0)->max(9)->nullable(),
             'alerts' => $schema->object()->description('JSCalendar alerts map (VALARM reminders)'),
+            'participants' => $schema->object()
+                ->description('JSCalendar participants map; add an assignee as {"u:<username>": {"@type": "Participant", "roles": ["attendee"]}}, remove with null'),
         ];
     }
 
@@ -122,6 +124,13 @@ final class TaskWriteTool extends WgwMcpTool
             }
             $payload['alerts'] = $alerts;
         }
+        if ($request->has('participants')) {
+            $participants = $request->get('participants');
+            if ($participants !== null && ! is_array($participants)) {
+                throw new \InvalidArgumentException('participants must be an object.');
+            }
+            $payload['participants'] = $participants;
+        }
 
         return $payload;
     }
@@ -145,6 +154,7 @@ final class TaskWriteTool extends WgwMcpTool
             'workflowStatus',
             'priority',
             'alerts',
+            'participants',
         ]);
     }
 
