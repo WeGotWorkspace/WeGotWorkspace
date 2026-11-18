@@ -40,10 +40,17 @@ export function taskTextHold(text: TextFieldsText, L: TasksUILabels): string | n
   return null;
 }
 
-type TaskTextContextValue = { hold: string | null };
+type TaskTextContextValue = {
+  hold: string | null;
+  /**
+   * The room has not taken its first content yet (the server text or a peer's
+   * copy). Typing now would land in an empty document (#2056): the fields wait.
+   */
+  waiting: boolean;
+};
 const TaskTextContext = createContext<TaskTextContextValue | null>(null);
 
-/** Inside a {@link TaskTextSession}: why the save waits. Null outside a room. */
+/** Inside a {@link TaskTextSession}: why the save waits, and whether typing does. Null outside a room. */
 export function useTaskTextSession(): TaskTextContextValue | null {
   return useContext(TaskTextContext);
 }
@@ -126,6 +133,7 @@ export function TaskTextSession({
 
   const text = useDocText(ydoc);
   const hold = ydoc && session.joined ? taskTextHold(text, L) : null;
+  const waiting = !ydoc || !session.joined || session.awaitingContent;
 
   const onLiveTextRef = useRef(onLiveText);
   onLiveTextRef.current = onLiveText;
@@ -169,7 +177,7 @@ export function TaskTextSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ydoc]);
 
-  const value = useMemo(() => ({ hold }), [hold]);
+  const value = useMemo(() => ({ hold, waiting }), [hold, waiting]);
   return (
     <NoteCollabYDocProvider
       ydoc={ydoc}

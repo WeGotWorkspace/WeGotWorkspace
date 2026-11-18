@@ -65,8 +65,14 @@ export function useTaskTextCollab({
   task: Task | undefined;
   username: string | undefined;
   displayName: string | undefined;
-}): { collab: TaskTextCollabConfig | undefined; accessLost: boolean } {
+}): {
+  collab: TaskTextCollabConfig | undefined;
+  accessLost: boolean;
+  /** The task's room is being looked up: its text waits, so typing never lands outside it. */
+  lookingUp: boolean;
+} {
   const [urls, setUrls] = useState<{ taskId: string; urls: DocsCollabUrls } | undefined>();
+  const [lookup, setLookup] = useState<string | null>(null);
   const [accessLost, setAccessLost] = useState<string | null>(null);
   const taskId = task?.id;
   // The list is part of the key: a move drops the old state, and the room
@@ -77,7 +83,11 @@ export function useTaskTextCollab({
 
   useEffect(() => {
     setUrls(undefined);
-    if (!wgwLiveApiEnabled() || !taskId || !username || isQueuedCreate(taskId)) return;
+    if (!wgwLiveApiEnabled() || !taskId || !username || isQueuedCreate(taskId)) {
+      setLookup(null);
+      return;
+    }
+    setLookup(taskId);
     let cancelled = false;
     const lose = () => {
       if (cancelled) return;
@@ -97,6 +107,9 @@ export function useTaskTextCollab({
       .catch(() => {
         // No room: the fields keep the autosave, as without the live API.
         if (!cancelled) setUrls(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setLookup(null);
       });
     return () => {
       cancelled = true;
@@ -110,7 +123,7 @@ export function useTaskTextCollab({
     return { userName: displayName || username, urls: urls.urls, wire };
   }, [displayName, lost, taskId, urls, username, wire]);
 
-  return { collab, accessLost: lost };
+  return { collab, accessLost: lost, lookingUp: lookup !== null && lookup === taskId };
 }
 
 /** A ref that always holds the latest value, read by an effect without re-running it. */

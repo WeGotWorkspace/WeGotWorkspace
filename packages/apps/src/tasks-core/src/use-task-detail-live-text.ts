@@ -23,7 +23,7 @@ export function useTaskDetailLiveText({
   displayName: string | undefined;
   showLiveText: (taskId: string, text: TextFieldsText) => void;
 }) {
-  const { collab, accessLost } = useTaskTextCollab({
+  const { collab, accessLost, lookingUp } = useTaskTextCollab({
     task: task ?? undefined,
     username,
     displayName,
@@ -51,5 +51,10 @@ export function useTaskDetailLiveText({
     ).catch(() => {});
   }, [accessLost, task, taskLists, username]);
 
-  return { textCollab: collab, textAccessLost: accessLost, onLiveText };
+  return {
+    textCollab: collab,
+    textAccessLost: accessLost,
+    textLookingUp: lookingUp,
+    onLiveText,
+  };
 }

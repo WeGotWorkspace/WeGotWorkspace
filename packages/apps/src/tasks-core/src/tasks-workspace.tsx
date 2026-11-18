@@ -424,6 +424,7 @@ export function TasksWorkspace({
               onConfirmMove={requestMoveTask}
               textCollab={liveText.textCollab}
               textAccessLost={liveText.textAccessLost}
+              textLookingUp={liveText.textLookingUp}
               onLiveText={liveText.onLiveText}
             />
           ) : (

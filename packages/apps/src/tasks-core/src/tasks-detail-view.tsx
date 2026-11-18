@@ -47,6 +47,8 @@ type TasksDetailViewProps = {
   textCollab?: TaskTextCollabConfig;
   /** The room refused this person: the fields are read-only, with a notice. */
   textAccessLost?: boolean;
+  /** The task's room is being looked up: the title and notes wait for it. */
+  textLookingUp?: boolean;
   onLiveText?: (taskId: string, text: TextFieldsText, unsaved: boolean) => void;
 };
 
@@ -67,6 +69,7 @@ export function TasksDetailView({
   onConfirmMove,
   textCollab,
   textAccessLost = false,
+  textLookingUp = false,
   onLiveText,
 }: TasksDetailViewProps) {
   const view = (
@@ -76,7 +79,7 @@ export function TasksDetailView({
       taskLists={taskLists}
       allTaskLists={allTaskLists}
       readOnly={readOnly}
-      textReadOnly={readOnly || textAccessLost}
+      textReadOnly={readOnly || textAccessLost || textLookingUp}
       inRoom={textCollab != null && !textAccessLost}
       onSave={onSave}
       onToggleComplete={onToggleComplete}
@@ -133,12 +136,15 @@ function TasksDetailForm({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
-}: Omit<TasksDetailViewProps, "textCollab" | "textAccessLost" | "onLiveText"> & {
+}: Omit<TasksDetailViewProps, "textCollab" | "textAccessLost" | "textLookingUp" | "onLiveText"> & {
   textReadOnly: boolean;
   /** The room saves the title and description: the autosave leaves them out. */
   inRoom: boolean;
 }) {
   const [form, setForm] = useTaskEditForm(task, readOnly);
+  // In a room, the text waits for the room's first content (as in Notes).
+  const textWaiting = useTaskTextSession()?.waiting ?? false;
+  const textLocked = textReadOnly || textWaiting;
   const formRef = useRef(form);
   formRef.current = form;
   const pendingRef = useRef<{ taskId: string; timer: ReturnType<typeof setTimeout> } | null>(null);
@@ -245,14 +251,14 @@ function TasksDetailForm({
       titlePlaceholder={L.addTaskName}
       titleLeading={completeControl}
       onTitleChange={
-        textReadOnly
+        textLocked
           ? undefined
           : inRoom
             ? // The room's text, shown in the form; the room saves it.
               (title) => setForm((prev) => ({ ...prev, title }))
             : (title) => update((prev) => ({ ...prev, title }), "later")
       }
-      readOnly={textReadOnly}
+      readOnly={textLocked}
       showTags={false}
       tags={[]}
       eyebrow={
@@ -282,7 +288,7 @@ function TasksDetailForm({
         value={form.description}
         placeholder={L.detailNotesPlaceholder}
         label={L.descriptionLabel}
-        readOnly={textReadOnly}
+        readOnly={textLocked}
         onChange={(description) => update((prev) => ({ ...prev, description }), "later")}
         onBlur={flush}
       />

@@ -27,10 +27,12 @@ test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15_000 });
 
 const LIVE_MS = 15_000;
 
-async function openTask(tab: Tab, title: string): Promise<void> {
+async function openTask(tab: Tab, name: string): Promise<void> {
   await showAllTasks(tab);
-  await tab.getByText(title, { exact: true }).first().click();
-  await expect(tab.getByLabel("Notes", { exact: true })).toBeVisible();
+  await tab.getByText(name, { exact: true }).first().click();
+  // The fields wait for the room's first content, as a note's body does.
+  await expect(tab.getByLabel("Notes", { exact: true })).toBeEditable({ timeout: LIVE_MS });
+  await expect(title(tab)).toBeEditable();
 }
 
 function notes(tab: Tab) {
@@ -62,7 +64,9 @@ test("two people type a task's title and notes together", async ({ browser }) =>
         if (!response.url().includes("/text")) return;
         const method = response.request().method();
         const header = response.request().headers()["x-wgw-external-write"] ?? "-";
-        events.push(`TRACE ${tab.tag} ${method} ${response.status()} ext=${header} t=${Date.now() % 100000}`);
+        events.push(
+          `TRACE ${tab.tag} ${method} ${response.status()} ext=${header} t=${Date.now() % 100000}`,
+        );
       });
     }
     await openTask(owner, task.title);
@@ -82,10 +86,13 @@ test("two people type a task's title and notes together", async ({ browser }) =>
 
     // The room saves both fields.
     await expect
-      .poll(async () => {
-        const saved = await serverTask(task.id);
-        return `${saved?.title} | ${saved?.description ?? ""}`;
-      }, { timeout: LIVE_MS })
+      .poll(
+        async () => {
+          const saved = await serverTask(task.id);
+          return `${saved?.title} | ${saved?.description ?? ""}`;
+        },
+        { timeout: LIVE_MS },
+      )
       .toBe(`Buy milk ${id} now | Two cartons`);
 
     await owner.screenshot({ path: test.info().outputPath("owner-typed.png") });
@@ -115,7 +122,9 @@ test("two people type a task's title and notes together", async ({ browser }) =>
 
     // A blank title holds the save and says why.
     await title(owner).fill("   ");
-    await expect(owner.getByRole("status").filter({ hasText: "A task needs a title" })).toBeVisible();
+    await expect(
+      owner.getByRole("status").filter({ hasText: "A task needs a title" }),
+    ).toBeVisible();
     await owner.screenshot({ path: test.info().outputPath("owner-blank-title.png") });
     expect((await serverTask(task.id))?.title).toBe(`Buy milk ${id} now`);
     await title(owner).fill(`Buy milk ${id} again`);

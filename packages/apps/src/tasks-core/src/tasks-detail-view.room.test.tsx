@@ -15,11 +15,12 @@ import { TooltipProvider } from "@/ui/tooltip";
 // the binding, the hold, and keeping the text out of the autosave.
 const doc = { current: new Y.Doc() };
 const scheduleSave = vi.fn();
+const waiting = { current: false };
 vi.mock("@/tasks-core/src/task-text-session", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/tasks-core/src/task-text-session")>();
   const { readTextFields } = await import("@/text-editor-core/docs-collab/docs-collab-text-fields");
   const { useSyncExternalStore, createElement } = await import("react");
-  const holdContext = { hold: null as string | null };
+  const holdContext = { hold: null as string | null, waiting: false };
   return {
     ...actual,
     useTaskTextSession: () => holdContext,
@@ -38,6 +39,7 @@ vi.mock("@/tasks-core/src/task-text-session", async (importOriginal) => {
         () => JSON.stringify(readTextFields(doc.current)),
       );
       holdContext.hold = actual.taskTextHold(JSON.parse(text), L);
+      holdContext.waiting = waiting.current;
       return createElement(NoteCollabYDocProvider, {
         ydoc: doc.current,
         onLocalTitleEdit: scheduleSave,
@@ -86,6 +88,7 @@ describe("TasksDetailView in a live room", () => {
     cleanup();
     doc.current = new Y.Doc();
     scheduleSave.mockReset();
+    waiting.current = false;
     Element.prototype.scrollIntoView = vi.fn();
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: false,
@@ -154,6 +157,22 @@ describe("TasksDetailView in a live room", () => {
     seed("Buy milk", "");
     renderRoom();
     expect(screen.getByLabelText(L.descriptionLabel).getAttribute("maxlength")).toBe("8192");
+  });
+
+  it("keeps the fields read-only until the room has its first content", () => {
+    waiting.current = true;
+    renderRoom();
+
+    expect(screen.getByLabelText(L.addTaskName).hasAttribute("readonly")).toBe(true);
+    expect(screen.getByLabelText(L.descriptionLabel).hasAttribute("readonly")).toBe(true);
+  });
+
+  it("keeps the fields read-only while the task's room is looked up", () => {
+    seed("Buy milk", "");
+    renderRoom({ textCollab: undefined, textLookingUp: true });
+
+    expect(screen.getByLabelText(L.addTaskName).hasAttribute("readonly")).toBe(true);
+    expect(screen.getByLabelText(L.descriptionLabel).hasAttribute("readonly")).toBe(true);
   });
 
   it("shows read-only fields and a notice when access is lost", () => {
