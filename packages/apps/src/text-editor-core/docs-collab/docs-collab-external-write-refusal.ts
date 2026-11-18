@@ -18,6 +18,19 @@ export async function askAboutRefusedSave({
   urls: DocsCollabUrls;
 }): Promise<boolean> {
   if (!urls.onExternalWrite) return false;
+  const reread = refs.rereadServerRef.current;
+  if (urls.documentShape === "text-fields" && reread) {
+    // The text-fields re-read decides (#2208): a quiet replacement when this
+    // person has no unsaved typing (a peer's save may already hold it), the
+    // question otherwise. Either way the refused save is handled; the next
+    // one names the text the document now holds.
+    try {
+      await reread(refs.authTokenRef.current);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   refs.externalWriteHoldRef.current = true;
   try {
     const authToken = refs.authTokenRef.current;

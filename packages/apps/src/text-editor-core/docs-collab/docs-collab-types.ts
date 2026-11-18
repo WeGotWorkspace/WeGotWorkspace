@@ -177,4 +177,9 @@ export type DocsCollabSessionRefs = {
   lastSuccessfulSaveSignatureRef: MutableRefObject<string | null>;
   sessionRef: MutableRefObject<DocsCollabSession | null>;
   tabSyncRef: MutableRefObject<DocsCollabTabSyncApi | null>;
+  /**
+   * The session's re-read (`mergeServerState`). A refused text-fields save
+   * runs it, so the refusal decides as a read-time outside write does.
+   */
+  rereadServerRef: MutableRefObject<((authToken: string | undefined) => Promise<boolean>) | null>;
 };

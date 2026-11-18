@@ -96,6 +96,7 @@ export function useDocsCollab({
   });
 
   markDocReadyRef.current = joinHook.markDocReady;
+  refs.rereadServerRef.current = joinHook.mergeServerState;
   trySeedFromFileRef.current = joinHook.trySeedFromFile;
 
   useDocsCollabTabSync({

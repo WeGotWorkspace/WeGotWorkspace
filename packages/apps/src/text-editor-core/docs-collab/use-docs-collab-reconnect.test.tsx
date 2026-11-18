@@ -54,6 +54,7 @@ function sessionRefs(
     lastSuccessfulSaveSignatureRef: ref(null),
     sessionRef: ref(null),
     tabSyncRef: ref(null),
+    rereadServerRef: ref(null),
   };
 }
 
