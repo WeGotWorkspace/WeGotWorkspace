@@ -7,8 +7,17 @@
   @apply inline-flex shrink-0 items-center;
 }
 
+/* Marks smaller than the xs control (28px): they sit beside a 14px flag in the row
+   and inside a text-sized ghost value in the detail. */
+.tasks-assignee-avatars .user-avatar--xs .user-avatar__mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  --user-avatar-font-size: 9px;
+  font-size: var(--user-avatar-font-size);
+}
+
 .tasks-assignee-avatars__item + .tasks-assignee-avatars__item {
-  margin-inline-start: -6px;
+  margin-inline-start: -5px;
 }
 
 .tasks-assignee-avatars__item .user-avatar__mark {
