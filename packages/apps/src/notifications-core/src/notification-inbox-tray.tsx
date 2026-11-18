@@ -19,11 +19,15 @@ import {
   notificationInboxAppId,
   notificationInboxDomainLabel,
 } from "@/notifications-core/src/notification-inbox-row-meta";
-import { formatNotificationCopy } from "@/notifications-core/src/format-notification-copy";
+import { NotificationItemContent } from "@/notifications-core/src/notification-item";
+import {
+  readNotificationScope,
+  storeNotificationScope,
+  type NotificationScope,
+} from "@/notifications-core/src/notification-scope";
 import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 import { useInboxBadgePulseAttr } from "@/lib/notifications/use-inbox-badge-pulse";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import "@/notifications-core/src/notification-inbox-tray.css";
 
 export type NotificationInboxTrayProps = {
@@ -48,26 +52,7 @@ export type NotificationInboxTrayProps = {
   popoverSide?: "bottom" | "right";
 };
 
-type InboxScope = "all" | "app";
-
-const SCOPE_STORAGE_KEY = "wgw.notifications.tray-scope";
-
-/** Device-local convenience: the tray reopens on the scope last picked. */
-function readStoredScope(): InboxScope {
-  try {
-    return window.localStorage.getItem(SCOPE_STORAGE_KEY) === "app" ? "app" : "all";
-  } catch {
-    return "all";
-  }
-}
-
-function storeScope(scope: InboxScope): void {
-  try {
-    window.localStorage.setItem(SCOPE_STORAGE_KEY, scope);
-  } catch {
-    // Private mode or blocked storage: the scope just resets on reload.
-  }
-}
+type InboxScope = NotificationScope;
 
 export function NotificationInboxTray({
   items,
@@ -83,7 +68,7 @@ export function NotificationInboxTray({
   onMarkReadWhere,
   popoverSide = "bottom",
 }: NotificationInboxTrayProps) {
-  const [storedScope, setStoredScope] = useState<InboxScope>(readStoredScope);
+  const [storedScope, setStoredScope] = useState<InboxScope>(readNotificationScope);
   const scope: InboxScope = currentAppId ? storedScope : "all";
   const appItems = useMemo(
     () =>
@@ -108,7 +93,7 @@ export function NotificationInboxTray({
   const canMarkShownRead = scope === "app" ? Boolean(onMarkReadWhere) : Boolean(onMarkAllRead);
   const pickScope = (next: InboxScope) => {
     setStoredScope(next);
-    storeScope(next);
+    storeNotificationScope(next);
   };
   const markShownRead = () => {
     if (scope === "app" && currentAppId) {
@@ -261,11 +246,6 @@ export function NotificationInboxTray({
   );
 }
 
-function actorKey(item: NotificationInboxItem, actor: string): string {
-  const username = item.data?.actorUsername;
-  return typeof username === "string" && username.trim() !== "" ? username : actor;
-}
-
 function NotificationInboxRow({
   item,
   onOpenItem,
@@ -278,10 +258,7 @@ function NotificationInboxRow({
 }) {
   const unread = item.readAt == null;
   const appId = notificationInboxAppId(item);
-  const domain = notificationInboxDomainLabel(appId);
   const time = formatNotificationRelativeTime(item.createdAt);
-  const { title, titleActor, titleRest, body } = formatNotificationCopy(item);
-  const hasActor = titleActor != null && titleRest != null;
   const absoluteTime =
     item.createdAt && !Number.isNaN(Date.parse(item.createdAt))
       ? new Date(item.createdAt).toLocaleString()
@@ -299,35 +276,7 @@ function NotificationInboxRow({
         onClick={() => onOpenItem(item)}
       >
         <span className="notification-inbox-tray__dot" aria-hidden />
-        <NotificationInboxMark
-          appId={appId}
-          domain={domain}
-          actor={hasActor ? titleActor : null}
-          actorKey={hasActor ? actorKey(item, titleActor) : ""}
-        />
-        <span className="notification-inbox-tray__main">
-          <span className="notification-inbox-tray__title-line">
-            <span
-              className={
-                hasActor
-                  ? "notification-inbox-tray__row-title"
-                  : "notification-inbox-tray__row-title notification-inbox-tray__row-title--plain"
-              }
-            >
-              {unread ? <span className="sr-only">Unread. </span> : null}
-              {hasActor ? (
-                <>
-                  <strong className="notification-inbox-tray__title-actor">{titleActor}</strong>
-                  <span className="notification-inbox-tray__title-rest">{titleRest}</span>
-                </>
-              ) : (
-                title
-              )}
-              <span className="sr-only">, {domain}</span>
-            </span>
-          </span>
-          {body ? <span className="notification-inbox-tray__row-body">{body}</span> : null}
-        </span>
+        <NotificationItemContent item={item} srPrefix={unread ? "Unread." : undefined} />
       </button>
       {/* Own column: the text stops short of it, so the button never covers a word. */}
       <span className="notification-inbox-tray__aside">
@@ -352,43 +301,5 @@ function NotificationInboxRow({
         ) : null}
       </span>
     </li>
-  );
-}
-
-/**
- * Who + where: the actor's avatar with the app icon as a corner badge.
- * Rows without an actor (reminders) show the app icon on its own.
- */
-function NotificationInboxMark({
-  appId,
-  domain,
-  actor,
-  actorKey,
-}: {
-  appId: WorkspaceAppId;
-  domain: string;
-  actor: string | null;
-  actorKey: string;
-}) {
-  if (actor == null) {
-    return (
-      <span className="notification-inbox-tray__mark" title={domain} aria-hidden>
-        <WorkspaceAppIcon appId={appId} className="notification-inbox-tray__app-icon" />
-      </span>
-    );
-  }
-  return (
-    <span className="notification-inbox-tray__mark" title={domain} aria-hidden>
-      <UserAvatar
-        displayName={actor}
-        compact
-        size="xl"
-        color={avatarColorForUserId(actorKey)}
-        className="notification-inbox-tray__avatar"
-      />
-      <span className="notification-inbox-tray__app-badge">
-        <WorkspaceAppIcon appId={appId} className="notification-inbox-tray__app-badge-icon" />
-      </span>
-    </span>
   );
 }

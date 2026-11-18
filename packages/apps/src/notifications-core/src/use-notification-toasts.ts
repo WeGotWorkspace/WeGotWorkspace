@@ -9,6 +9,7 @@ import {
   type ToastDecisionDeps,
 } from "@/notifications-core/src/notification-toast-decision";
 import { NotificationToast } from "@/notifications-core/src/notification-toast";
+import { notificationInScope } from "@/notifications-core/src/notification-scope";
 import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /** Long enough to read a title and a line of body; hovering or focusing the toasts pauses it. */
@@ -44,6 +45,8 @@ export function defaultNotificationToastDeps(): NotificationToastDeps {
     decided: browserToastDecidedStore(),
     currentRoute: () => window.location.pathname + window.location.search,
     visibleSince: trackVisibleSince(),
+    // Read at decision time, so a scope picked in the tray applies to the next toast.
+    inScope: (row, route) => notificationInScope(row, route),
     show: showNotificationToast,
   };
 }
