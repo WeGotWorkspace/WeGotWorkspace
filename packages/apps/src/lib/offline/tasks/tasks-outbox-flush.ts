@@ -25,7 +25,6 @@ import {
 import {
   getOutboxMutation,
   rebaseQueuedEntityRows,
-  removeOutboxMutation,
   settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
@@ -135,11 +134,11 @@ async function sendTasksRow(
       // offline): send the rest once more, and read no ids from the error.
       const { participants: _refused, ...rest } = patch;
       if (Object.keys(rest).length === 0) {
-        await removeOutboxMutation(username, row.id);
-        await upsertTaskInCache(username, await getTask(taskId), false);
-        return "handled";
+        // Nothing else to send: settle on the server copy. A failed read keeps the row queued.
+        task = await getTask(taskId);
+      } else {
+        task = await patchTask(taskId, rest, { ifMatch: row.ifInState });
       }
-      task = await patchTask(taskId, rest, { ifMatch: row.ifInState });
     }
     // A patch merged in while this one was sent is owed on top of `task`.
     return settleLandedTaskRow(username, row, taskId, task, context);

@@ -293,6 +293,40 @@ describe("flushTasksOutbox", () => {
     expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Second" });
   });
 
+  it("keeps an edit merged in while an assignee-only patch is refused, and keeps the row when the server copy cannot be read", async () => {
+    const refused = () => new TasksRequestError("PATCH failed (422)", 422, "invalid_participant");
+    const participants = { "u:bob": { "@type": "Participant" as const, roles: ["attendee"] } };
+    await enqueueCoalescedTaskUpdate(username, task.id, { participants }, "etag-1");
+    let refuse!: (error: unknown) => void;
+    patchTask.mockReturnValueOnce(new Promise((_, reject) => (refuse = reject)));
+    patchTask.mockRejectedValueOnce(refused());
+    patchTask.mockResolvedValueOnce({ ...task, title: "Later", etag: "etag-3" });
+    getTask.mockResolvedValue({ ...task, etag: "etag-2" });
+
+    const flushing = flushTasksOutbox(username);
+    await vi.waitFor(() => expect(patchTask).toHaveBeenCalledOnce());
+    await upsertTaskInCache(username, { ...task, title: "Later" }, true);
+    await enqueueCoalescedTaskUpdate(username, task.id, { title: "Later" }, "etag-1");
+    refuse(refused());
+    await flushing;
+
+    expect(patchTask).toHaveBeenCalledTimes(3);
+    expect(patchTask.mock.calls[2]![1]).toEqual({ title: "Later" });
+    expect(await listOutboxMutations(username)).toEqual([]);
+    expect(await cachedTask()).toMatchObject({ title: "Later" });
+    expect((await cachedTask())?.participants).toBeUndefined();
+
+    patchTask.mockReset();
+    getTask.mockReset();
+    await enqueueCoalescedTaskUpdate(username, task.id, { participants }, "etag-3");
+    patchTask.mockRejectedValueOnce(refused());
+    getTask.mockRejectedValueOnce(new Error("offline"));
+
+    await flushTasksOutbox(username);
+
+    expect(await listOutboxMutations(username)).toHaveLength(1);
+  });
+
   it("sends the rest of a patch whose assignees the server refused, and drops a refused assignee-only patch", async () => {
     const refused = () => new TasksRequestError("PATCH failed (422)", 422, "invalid_participant");
     const participants = { "u:bob": { "@type": "Participant" as const, roles: ["attendee"] } };
