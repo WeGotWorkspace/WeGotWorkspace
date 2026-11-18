@@ -10,7 +10,6 @@ use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Tasks\TaskAssigneeGuard;
 use App\Services\Tasks\TaskListAudience;
 use App\Services\Tasks\TaskListRepository;
-use App\Services\Teams\TeamColleagues;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,7 +28,6 @@ final class TaskListMembersController
         private readonly TaskListRepository $taskLists,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly TaskListAudience $audience,
-        private readonly TeamColleagues $colleagues,
     ) {}
 
     public function __invoke(Request $request, string $taskListId): JsonResponse
@@ -43,14 +41,6 @@ final class TaskListMembersController
         }
         $this->collectionAccess->assertCollectionWritable($list, 'Only people who can edit this task list can assign people.');
 
-        $alwaysShown = array_flip([$caller, ...$this->audience->ownerUsernames($list)]);
-        $members = [];
-        foreach ($this->audience->forList($list) as $username => $member) {
-            if (isset($alwaysShown[$username]) || $this->colleagues->sharesTeamIgnoringAdminRole($caller, $username)) {
-                $members[] = $member;
-            }
-        }
-
-        return response()->json(['list' => $members]);
+        return response()->json(['list' => array_values($this->audience->visibleTo((int) $list->calendarid, $caller))]);
     }
 }

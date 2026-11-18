@@ -12,10 +12,24 @@ use Illuminate\Support\Str;
 
 final class TaskMapper
 {
+    /** Whose view participants are read in; null maps nobody to an account. */
+    private ?string $viewer = null;
+
     public function __construct(
         private readonly TaskParticipantDirectory $participants,
         private readonly IcsJmapTaskConverter $converter = new IcsJmapTaskConverter,
     ) {}
+
+    /**
+     * A mapper that reads participants as `$viewer` may see them (#2172).
+     */
+    public function forViewer(string $viewer): self
+    {
+        $mapper = clone $this;
+        $mapper->viewer = $viewer;
+
+        return $mapper;
+    }
 
     /**
      * @return list<array<string, mixed>>
@@ -25,7 +39,7 @@ final class TaskMapper
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
         $calendarId = (int) $object->calendarid;
         $tasks = array_map(
-            fn (array $task): array => $this->participants->resolveTask($task, $calendarId),
+            fn (array $task): array => $this->participants->resolveTask($task, $calendarId, $this->viewer),
             $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri),
         );
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
@@ -63,7 +77,7 @@ final class TaskMapper
         if ($task === null) {
             return null;
         }
-        $task = $this->participants->resolveTask($task, (int) $object->calendarid);
+        $task = $this->participants->resolveTask($task, (int) $object->calendarid, $this->viewer);
 
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
         if ($etag !== null) {

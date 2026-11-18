@@ -7,45 +7,51 @@ namespace App\Services\Tasks;
 use App\Services\Tasks\Conversion\TaskConversionSupport;
 
 /**
- * Maps task participants to the people of the task's list (#2172).
+ * Maps task participants to the people of the task's list (#2172), as one
+ * reader may see them.
  *
- * Only the list audience counts: an address or username of anyone else on
- * the instance is never looked up, so a task cannot be used to learn who has
- * an account, or which address belongs to whom, across Teams.
+ * Only the people of the list audience that the reader may see count
+ * ({@see TaskListAudience::visibleTo}: themself, the list owners and their
+ * Team colleagues; product owner, 2026-11-18). An address or username of
+ * anyone else is never looked up, so a task cannot be used to learn who has an
+ * account, or which address belongs to whom, across Teams.
  *
- * - An `e:` participant whose address is the email of someone in the audience
- *   reads as that person's `u:` id.
- * - A `u:` participant in the audience gets the name and address of that
+ * - An `e:` participant whose address is the email of someone the reader may
+ *   see reads as that person's `u:` id.
+ * - A `u:` participant the reader may see gets the name and address of that
  *   person's profile, whatever the stored line says, so a CalDAV client cannot
- *   show one person under another's name.
- * - Every other participant reads as stored.
+ *   make the app show one person under another's name.
+ * - Every other participant reads as stored: a hidden member's address stays
+ *   `e:` with the stored name, like an address with no account.
  *
- * The audience is looked up once per list for the lifetime of this object
- * (one request); it is never cached across requests.
+ * With no reader, nobody is mapped (fail closed). The audience is looked up
+ * once per list and reader for the lifetime of this object (one request); it
+ * is never cached across requests.
  */
 final class TaskParticipantDirectory
 {
-    /** @var array<int, array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>> */
+    /** @var array<string, array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>> */
     private array $audiences = [];
 
     public function __construct(private readonly TaskListAudience $audience) {}
 
     /**
-     * Re-keys and fills participants from the audience of calendar `$calendarId`.
+     * Re-keys and fills participants from the audience of calendar `$calendarId`
+     * that `$viewer` may see.
      * Order is kept; when a person is listed twice, the later entry is dropped
      * (first line wins).
      *
      * @param  array<string, mixed>  $task
      * @return array<string, mixed>
      */
-    public function resolveTask(array $task, int $calendarId): array
+    public function resolveTask(array $task, int $calendarId, ?string $viewer): array
     {
         $participants = $task['participants'] ?? null;
         if (! is_array($participants) || $participants === []) {
             return $task;
         }
 
-        $members = $this->audienceForCalendar($calendarId);
+        $members = $viewer === null ? [] : $this->audienceFor($calendarId, $viewer);
         $byEmail = self::membersByEmail($members);
 
         $resolved = [];
@@ -106,9 +112,11 @@ final class TaskParticipantDirectory
     /**
      * @return array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>
      */
-    private function audienceForCalendar(int $calendarId): array
+    private function audienceFor(int $calendarId, string $viewer): array
     {
-        return $this->audiences[$calendarId] ??= $this->audience->forCalendarId($calendarId);
+        $viewer = strtolower(trim($viewer));
+
+        return $this->audiences[$calendarId."\n".$viewer] ??= $this->audience->visibleTo($calendarId, $viewer);
     }
 
     /**

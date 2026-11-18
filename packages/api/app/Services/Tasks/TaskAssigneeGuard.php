@@ -21,9 +21,11 @@ use App\Services\Teams\TeamColleagues;
  *
  * For an added user the server writes the address and name from that user's
  * own profile, whatever the payload says. An address is matched to a user
- * only within the target list's audience, and the actor can assign only
- * themselves, the list owner or someone they share a Team with (the picker's
- * rule). The organizer (`roles: owner`) is set by the server only: the actor
+ * only among the people of the target list the actor may see
+ * ({@see TaskListAudience::visibleTo}): themselves, the list owner and their
+ * Team colleagues, the picker's rule. A hidden member's address is stored as
+ * an external `e:` guest, and a hidden member's `u:` id gets the same 422 as an
+ * unknown one, so no answer tells whether an account exists. The organizer (`roles: owner`) is set by the server only: the actor
  * when a write first assigns someone, the mover when a move leaves it outside
  * the target audience. A payload cannot add or replace one.
  */
@@ -86,9 +88,16 @@ final class TaskAssigneeGuard
             // A write that leaves the map out must not shed the stored organizer.
             $participants = [];
         }
+        $actor = strtolower(trim($actor));
         $audience = null;
         $members = function () use (&$audience, $target): array {
             return $audience ??= $this->audience->forList($target);
+        };
+        // Whom the actor may see decides who an address stands for: a hidden
+        // member's address is an external guest, exactly like an unknown one.
+        $seen = null;
+        $visible = function () use (&$seen, $target, $actor): array {
+            return $seen ??= $this->audience->visibleTo((int) $target->calendarid, $actor);
         };
 
         $canonical = [];
@@ -113,7 +122,7 @@ final class TaskAssigneeGuard
 
                 continue;
             }
-            $stableId = $this->stableAttendeeId($id, $entry, $members);
+            $stableId = $this->stableAttendeeId($id, $entry, $visible);
             if (array_key_exists($stableId, $stored)) {
                 $canonical[$stableId] ??= $this->pinToStored($entry, $stored[$stableId], $stableId);
 
@@ -125,8 +134,7 @@ final class TaskAssigneeGuard
             }
         }
 
-        $actor = strtolower(trim($actor));
-        $canonical = $this->withCheckedUsers($canonical, $added, $members, $target, $actor);
+        $canonical = $this->withCheckedUsers($canonical, $added, $visible, $target, $actor);
         $moved = $source !== null && (int) $source->calendarid !== (int) $target->calendarid;
         if ($moved) {
             $canonical = $this->onlyTargetAudience($canonical, $members, $actor, $target);
@@ -163,8 +171,10 @@ final class TaskAssigneeGuard
 
     /**
      * The id an added attendee is stored under. An address reads as a user
-     * only when it is the email of someone in the target list's audience;
-     * anyone else's address stays `e:`, so no account is looked up outside it.
+     * only when it is the email of someone in the target list's audience whom
+     * the actor may see; anyone else's address stays `e:` and is stored as an
+     * external guest, so the answer is the same as for an address with no
+     * account (product owner, 2026-11-18).
      *
      * @param  array<string, mixed>  $entry
      * @param  \Closure(): array<string, array{username: string, displayName: string, email: string|null, access: 'read'|'write'}>  $members

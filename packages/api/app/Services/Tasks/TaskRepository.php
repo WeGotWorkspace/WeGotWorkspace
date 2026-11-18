@@ -63,7 +63,7 @@ final class TaskRepository
         $tasks = [];
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
                     $tasks[] = $task;
                 }
             } catch (ApiHttpException $e) {
@@ -104,7 +104,7 @@ final class TaskRepository
         $total = 0;
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
                     if ($uidFilter !== null && ($task['uid'] ?? null) !== $uidFilter) {
                         continue;
                     }
@@ -136,7 +136,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
-        $task = $this->mapper->toTask(
+        $task = $this->mapper->forViewer($username)->toTask(
             $located['object'],
             $located['taskListUri'],
             $located['vtodoUid'],
@@ -186,7 +186,7 @@ final class TaskRepository
         }
 
         $taskListId = $this->taskListUriForInstance($instance);
-        $task = $this->mapper->toTask($object, $taskListId);
+        $task = $this->mapper->forViewer($username)->toTask($object, $taskListId);
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
         }
@@ -216,7 +216,7 @@ final class TaskRepository
             ->where('componenttype', 'VTODO')
             ->first();
 
-        return $object === null ? null : $this->mapper->toTask($object, $this->taskListUriForInstance($instance));
+        return $object === null ? null : $this->mapper->forViewer($username)->toTask($object, $this->taskListUriForInstance($instance));
     }
 
     /**
@@ -299,7 +299,7 @@ final class TaskRepository
         $object = $located['object'];
         $objectUri = (string) $object->uri;
         $taskListId = $this->taskListUriForInstance($instance);
-        $existingTask = $this->mapper->toTask($object, $taskListId, $located['vtodoUid']);
+        $existingTask = $this->mapper->forViewer($username)->toTask($object, $taskListId, $located['vtodoUid']);
         if ($existingTask === null) {
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
@@ -351,7 +351,7 @@ final class TaskRepository
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
 
-        $task = $this->mapper->toTask($updated, $targetListUri, $located['vtodoUid']);
+        $task = $this->mapper->forViewer($username)->toTask($updated, $targetListUri, $located['vtodoUid']);
         if ($task === null) {
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
