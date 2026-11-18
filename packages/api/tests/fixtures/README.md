@@ -29,6 +29,14 @@ Real-world exports from groupware stacks (Horde, Nextcloud, Roundcube, Microsoft
 
 `dns.json` holds the TXT records the fake resolver serves. The `.eml` files are CRLF byte for byte (`.gitattributes` keeps git from converting them).
 
+## Threads
+
+| Directory | Source | License | Assertion style |
+|-----------|--------|---------|-----------------|
+| `Threads/*.ics` + `*.json` | WGW-authored: the ICS Chat and Docs stored before #2173 moved them onto the shared thread module, and what they read back | Project | Strict golden bytes (PRODID normalised) + parsed JSON |
+
+The `.ics` files are CRLF byte for byte (`.gitattributes` keeps git from converting them). Regenerate only on purpose, with `WGW_GOLDEN_UPDATE=1`.
+
 ## Fastmail normative references
 
 - **Text::JSContact** ([CPAN Text-JSContact](https://metacpan.org/pod/Text::JSContact)) — RFC 9555 figure tests in `t/rfc9555.t` and `t/apple.t`
