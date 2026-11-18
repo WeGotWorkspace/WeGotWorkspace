@@ -115,6 +115,62 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertSame(2, substr_count($ics, 'RSVP=TRUE'));
     }
 
+    public function test_repointing_a_stored_external_attendee_at_a_user_keeps_the_stored_address(): void
+    {
+        $taskId = $this->seedTaskViaPdo('bob', 'thunderbird.ics', $this->vtodoWith(
+            "ATTENDEE;CN=Guest:mailto:guest@outside.test\r\n"
+        ), $this->listId);
+
+        foreach (['dave@example.test', 'carol@example.test'] as $email) {
+            $this->patchTask($taskId, ['participants' => [
+                'e:guest@outside.test' => ['@type' => 'Participant', 'email' => $email, 'roles' => ['attendee']],
+            ]])->assertOk();
+            $ics = $this->storedIcs($taskId);
+            $this->assertStringContainsString('mailto:guest@outside.test', $ics);
+            $this->assertStringNotContainsString($email, $ics);
+        }
+    }
+
+    public function test_resending_a_stored_user_with_another_email_keeps_the_profile_address(): void
+    {
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $this->patchTask($taskId, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee'], 'email' => 'mallory@x.test'],
+        ]])->assertOk();
+
+        $ics = $this->storedIcs($taskId);
+        $this->assertStringContainsString('mailto:alice@example.test', $ics);
+        $this->assertStringNotContainsString('mallory@x.test', $ics);
+    }
+
+    public function test_an_external_id_with_a_users_email_is_checked_as_that_user(): void
+    {
+        $taskId = $this->createTask();
+
+        $this->patchTask($taskId, ['participants' => [
+            'e:nobody@outside.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
+        ]])->assertStatus(422)->assertJsonPath('code', 'invalid_participant');
+    }
+
+    public function test_recurrence_override_participants_add_no_attendee(): void
+    {
+        $taskId = $this->createTask();
+
+        $this->patchTask($taskId, [
+            'recurrenceRules' => [['frequency' => 'weekly']],
+            'recurrenceOverrides' => ['2026-06-09T10:00:00' => [
+                'title' => 'Moved',
+                'participants' => ['u:dave' => ['@type' => 'Participant', 'roles' => ['attendee'], 'email' => 'dave@example.test']],
+            ]],
+        ]);
+
+        $this->assertStringNotContainsString('ATTENDEE', $this->storedIcs($taskId));
+    }
+
     public function test_move_keeps_assignees_without_access_in_the_target_list(): void
     {
         $taskId = $this->createTask();

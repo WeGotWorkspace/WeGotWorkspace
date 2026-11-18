@@ -77,14 +77,19 @@ final class TaskAssigneeGuard
                 continue;
             }
             $id = (string) $id;
-            if (array_key_exists($id, $stored) || TaskConversionSupport::isOwnerParticipant($entry)) {
+            if (array_key_exists($id, $stored)) {
+                $canonical[$id] ??= $this->pinToStored($entry, $stored[$id], $id);
+
+                continue;
+            }
+            if (TaskConversionSupport::isOwnerParticipant($entry)) {
                 $canonical[$id] ??= $entry;
 
                 continue;
             }
             $stableId = $this->stableAttendeeId($id, $entry);
             if (array_key_exists($stableId, $stored)) {
-                $canonical[$stableId] ??= $entry;
+                $canonical[$stableId] ??= $this->pinToStored($entry, $stored[$stableId], $stableId);
 
                 continue;
             }
@@ -100,6 +105,31 @@ final class TaskAssigneeGuard
     }
 
     /**
+     * A write cannot change who a stored id stands for: the stored address
+     * (and, for a user, the stored name) replaces what the payload sent.
+     *
+     * @param  array<string, mixed>  $entry
+     * @param  mixed  $stored
+     * @return array<string, mixed>
+     */
+    private function pinToStored(array $entry, mixed $stored, string $id): array
+    {
+        $stored = is_array($stored) ? $stored : [];
+        unset($entry['email']);
+        if (isset($stored['email'])) {
+            $entry['email'] = $stored['email'];
+        }
+        if (TaskConversionSupport::usernameFromParticipantId($id) !== null) {
+            unset($entry['name']);
+            if (isset($stored['name'])) {
+                $entry['name'] = $stored['name'];
+            }
+        }
+
+        return $entry;
+    }
+
+    /**
      * @param  array<string, mixed>  $entry
      */
     private function stableAttendeeId(string $id, array $entry): string
@@ -108,10 +138,12 @@ final class TaskAssigneeGuard
         if ($username !== null) {
             return TaskConversionSupport::USER_ID_PREFIX.$username;
         }
-        $email = str_starts_with($id, TaskConversionSupport::EMAIL_ID_PREFIX)
-            ? substr($id, strlen(TaskConversionSupport::EMAIL_ID_PREFIX))
-            : (is_string($entry['email'] ?? null) ? $entry['email'] : '');
+        // The address the writer stores decides who the id stands for.
+        $email = is_string($entry['email'] ?? null) ? $entry['email'] : '';
         $email = strtolower(trim((string) preg_replace('/^mailto:/i', '', trim($email))));
+        if ($email === '' && str_starts_with($id, TaskConversionSupport::EMAIL_ID_PREFIX)) {
+            $email = strtolower(trim(substr($id, strlen(TaskConversionSupport::EMAIL_ID_PREFIX))));
+        }
         if ($email === '') {
             return $id;
         }
