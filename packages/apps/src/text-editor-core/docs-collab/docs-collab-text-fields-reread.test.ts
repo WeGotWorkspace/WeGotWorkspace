@@ -403,3 +403,24 @@ describe("rereadTextFields: typing a peer already saved", () => {
     expect(result).toBe("prompt");
   });
 });
+
+describe("rereadTextFields: typing on top of an outside write a peer already took", () => {
+  it("keeps the typing and asks nothing when the served text is the document's base", () => {
+    // A peer replaced quietly to the outside text and published it, base included.
+    const peer = seeded();
+    const typist = copyOf(peer);
+    replaceTextFields(peer, SOY, { contentTag: '"o2-tag"', objectEtag: "o2", storedState: null });
+    syncBoth(peer, typist);
+    // The typist types on top of it; the push of that outside write arrives late.
+    typist.getText(TEXT_FIELDS_BODY).insert(12, "!");
+
+    const result = rereadTextFields(
+      typist,
+      read(SOY, "o2", { storedState: stateOf(seeded()), externalWrite: true }),
+      { pendingLocalWork: true },
+    );
+
+    expect(result).toBe("unchanged");
+    expect(readTextFields(typist).description).toBe("Buy soy milk!");
+  });
+});

@@ -139,9 +139,10 @@ export function rereadTextFields(
     return "unchanged";
   }
 
-  // No stored state and the served text is still what this document took:
-  // the local work stands and saves.
-  if (pendingLocalWork && !stored && base && !noStateOutside) return "unchanged";
+  // The served text is still the one this document last took (directly, or
+  // from a peer's quiet replacement over the mesh): this person typed on top
+  // of the current server text. The local work stands and saves; nothing to ask.
+  if (pendingLocalWork && base && servedMatchesBase(base, text, contentTag)) return "unchanged";
 
   if (pendingLocalWork) return "prompt";
 
