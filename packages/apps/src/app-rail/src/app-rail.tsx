@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, type MouseEvent } from "react";
+import { memo, useEffect, type MouseEvent } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { prefersReducedMotion } from "@/lib/view-transition";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
@@ -8,8 +8,6 @@ import {
   type AppSwitchMenuApp,
 } from "@/app-switch-button/src/app-switch-menu-apps";
 import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
-import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-context";
-import { notificationInboxAppId } from "@/notifications-core/src/notification-inbox-row-meta";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { lastAppLocation, rememberAppLocation } from "@/app-rail/src/last-app-location";
@@ -90,7 +88,11 @@ type AppRailProps = {
   accountSlotRef?: (element: HTMLElement | null) => void;
   /** Receives the top slot element: the sidebar mounts the notifications bell there. */
   notificationsSlotRef?: (element: HTMLElement | null) => void;
+  /** Apps with unread notifications: their tiles show a dot. The host owns the inbox. */
+  unreadAppIds?: ReadonlySet<WorkspaceAppId>;
 };
+
+const NO_UNREAD_APPS: ReadonlySet<WorkspaceAppId> = new Set();
 
 /** Settings before Admin: everyone has the first, only admins the second. */
 function byRailUtilityOrder(a: AppSwitchMenuApp, b: AppSwitchMenuApp): number {
@@ -100,18 +102,10 @@ function byRailUtilityOrder(a: AppSwitchMenuApp, b: AppSwitchMenuApp): number {
 export const AppRail = memo(function AppRail({
   accountSlotRef,
   notificationsSlotRef,
+  unreadAppIds: unreadApps = NO_UNREAD_APPS,
 }: AppRailProps) {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const showAdmin = useShowAdminApp();
-  const inbox = useNotificationsInbox();
-  const inboxItems = inbox?.items;
-  const unreadApps = useMemo(() => {
-    const apps = new Set<WorkspaceAppId>();
-    for (const item of inboxItems ?? []) {
-      if (item.readAt == null) apps.add(notificationInboxAppId(item));
-    }
-    return apps;
-  }, [inboxItems]);
   const searchStr = useRouterState({ select: (r) => r.location.searchStr });
   // Keep the current app's last spot up to date for the way back.
   useEffect(() => {

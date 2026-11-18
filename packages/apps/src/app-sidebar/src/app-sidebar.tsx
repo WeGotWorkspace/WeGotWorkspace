@@ -3,6 +3,7 @@ import {
   type MouseEvent,
   type ReactNode,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -19,6 +20,7 @@ import {
   dismissSidebarOverlay,
   sidebarSelectClickDismisses,
 } from "@/workspace-shell/src/sidebar-breakpoint";
+import { notificationInboxAppId } from "@/notifications-core/src/notification-inbox-row-meta";
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
 import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
@@ -120,6 +122,15 @@ export function AppSidebar({
   const footerRef = useRef<HTMLElement>(null);
   const [railAccountSlot, setRailAccountSlot] = useState<HTMLElement | null>(null);
   const [railNotificationsSlot, setRailNotificationsSlot] = useState<HTMLElement | null>(null);
+  const inboxItems = useNotificationsInbox()?.items;
+  // Which apps have unread notifications: the rail dots their tiles.
+  const unreadAppIds = useMemo(() => {
+    const apps = new Set<WorkspaceAppId>();
+    for (const item of inboxItems ?? []) {
+      if (item.readAt == null) apps.add(notificationInboxAppId(item));
+    }
+    return apps;
+  }, [inboxItems]);
   // One live bell: at the top of the app rail. Home and install have no rail and keep it in the header.
   const bellInRail = !appSwitchDisabled && railNotificationsSlot != null;
   // Beside a docked rail the tray opens to its right; in the drawer it drops below the bell.
@@ -146,6 +157,7 @@ export function AppSidebar({
         <AppRail
           accountSlotRef={setRailAccountSlot}
           notificationsSlotRef={setRailNotificationsSlot}
+          unreadAppIds={unreadAppIds}
         />
       )}
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
