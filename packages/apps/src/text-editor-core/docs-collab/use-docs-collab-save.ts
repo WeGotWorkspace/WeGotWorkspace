@@ -5,9 +5,9 @@ import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending
 import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
-import { isTextFieldsDoc, readTextFields } from "./docs-collab-text-fields";
 import { collabSaveBody } from "./docs-collab-save-body";
 import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
+import { isTextFieldsDoc, readTextFields } from "./docs-collab-text-fields";
 import {
   computeShouldPersist,
   SAVE_DELAY_MS,
