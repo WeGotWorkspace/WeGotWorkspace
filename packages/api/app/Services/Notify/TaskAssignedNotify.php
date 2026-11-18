@@ -117,13 +117,13 @@ final class TaskAssignedNotify
     }
 
     /**
-     * The Tasks app with the task selected. A list id is per user (a sharee
-     * sees another id than the owner), the task id is the same for everyone,
-     * so the link names only the task. The web app opens it from the `task`
-     * query (#2172 chunk C).
+     * All Tasks with the task open. A list id is per user (a sharee sees
+     * another id than the owner), the task id is the same for everyone, so the
+     * link names only the task. It names the view too: a bare `/tasks`
+     * redirects to the default view and drops the `task` query.
      */
     public static function navigate(string $taskId): string
     {
-        return '/tasks?task='.rawurlencode($taskId);
+        return '/tasks/state/all?task='.rawurlencode($taskId);
     }
 }

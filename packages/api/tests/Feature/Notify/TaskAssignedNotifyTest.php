@@ -56,7 +56,7 @@ final class TaskAssignedNotifyTest extends WgwDatabaseTestCase
         $this->assertNotNull($row);
         $this->assertSame('alice', $row->principal);
         $this->assertSame('Bob assigned you Buy milk', $row->title);
-        $this->assertSame('/tasks?task='.rawurlencode($taskId), $row->navigate);
+        $this->assertSame('/tasks/state/all?task='.rawurlencode($taskId), $row->navigate);
         $this->assertSame($taskId, $row->data['taskId'] ?? null);
 
         // A later edit that keeps alice assigned does not ring again.
