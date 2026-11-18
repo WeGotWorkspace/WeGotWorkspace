@@ -130,6 +130,71 @@ final class UpdateStateEndpointTest extends WgwDatabaseTestCase
         $this->assertSame('Unknown (quota command unavailable on this host)', $this->quotaRow($checks)['detail']);
     }
 
+    public function test_update_progress_returns_only_lock_phase_and_progress(): void
+    {
+        $token = $this->adminToken();
+        $recentAt = date('c');
+        $data = app(WgwStorage::class)->data();
+        $data->put('updates/state.json', json_encode([
+            'phase' => 'downloading',
+            'current' => ['from' => '0.1.42', 'to' => '0.1.43', 'at' => $recentAt],
+            'download' => ['downloadedBytes' => 10, 'totalBytes' => 40, 'percent' => 25, 'updatedAt' => $recentAt],
+            'latest' => ['version' => '0.1.43'],
+        ], JSON_UNESCAPED_SLASHES)."\n");
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/updates/progress')
+            ->assertOk()
+            ->assertExactJson([
+                'inProgress' => true,
+                'phase' => 'downloading',
+                'current' => ['from' => '0.1.42', 'to' => '0.1.43', 'at' => $recentAt],
+                'download' => ['downloadedBytes' => 10, 'totalBytes' => 40, 'percent' => 25, 'updatedAt' => $recentAt],
+                'phaseProgress' => null,
+                'cancelRequested' => false,
+                'cancelAllowed' => true,
+            ]);
+    }
+
+    public function test_polling_update_progress_runs_no_checks_and_lists_no_backups(): void
+    {
+        $runs = $this->fakeQuotaCommand();
+        $token = $this->adminToken();
+        File::ensureDirectoryExists($this->dataDir.'/updates/backup');
+        file_put_contents($this->dataDir.'/updates/backup/wgw-backup-1.zip', 'zip');
+
+        foreach (range(1, 5) as $_) {
+            $progress = $this->withBearer($token)->getJson('/api/v1/admin/updates/progress')->assertOk()->json();
+            $this->assertIsArray($progress);
+            $this->assertFalse($progress['inProgress']);
+            $this->assertArrayNotHasKey('checks', $progress);
+            $this->assertArrayNotHasKey('backups', $progress);
+        }
+        $this->assertSame(0, $this->countRuns($runs));
+
+        // The full state still lists the backup and runs the capacity checks.
+        $state = $this->withBearer($token)->getJson('/api/v1/admin/updates/state')->assertOk();
+        $this->assertNotSame([], $state->json('backups'));
+        $this->assertSame(1, $this->countRuns($runs));
+    }
+
+    public function test_update_progress_clears_stale_orphan_progress(): void
+    {
+        $token = $this->adminToken();
+        $staleAt = date('c', time() - 600);
+        app(WgwStorage::class)->data()->put('updates/state.json', json_encode([
+            'phase' => 'extracting',
+            'current' => ['from' => '0.1.42', 'to' => '0.1.43', 'at' => $staleAt],
+        ], JSON_UNESCAPED_SLASHES)."\n");
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/updates/progress')
+            ->assertOk()
+            ->assertJsonPath('inProgress', false)
+            ->assertJsonPath('phase', null)
+            ->assertJsonPath('current', null);
+    }
+
     /**
      * Swaps `quota -s` for a script that logs each run and reports 512 MiB
      * used of a 2 GiB limit.
