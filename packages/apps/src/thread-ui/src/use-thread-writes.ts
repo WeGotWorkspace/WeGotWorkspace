@@ -22,6 +22,8 @@ export type ThreadWriteDeps = {
   setWriteError: Dispatch<SetStateAction<ThreadSendFailure | null>>;
   /** Marks a write as landed now, so a `list` that started earlier keeps it. */
   markLanded: (entryId: string) => void;
+  /** Marks a write failure as recorded now, so a `load` that started earlier keeps it. */
+  markFailed: () => void;
   upsert: (entry: ThreadViewEntry) => void;
   load: () => Promise<void>;
 };
@@ -35,6 +37,7 @@ export function useThreadWrites({
   setEntries,
   setWriteError,
   markLanded,
+  markFailed,
   upsert,
   load,
 }: ThreadWriteDeps) {
@@ -118,14 +121,19 @@ export function useThreadWrites({
         upsert(await run());
         return true;
       } catch (error) {
-        setWriteError(failureOf(error));
+        const failure = failureOf(error);
+        markFailed();
+        setWriteError(failure);
         if (error instanceof ThreadRequestError && (error.status === 403 || error.status === 404)) {
           await load();
+          // The reload is a clean read; the refused write still needs its reason shown.
+          markFailed();
+          setWriteError(failure);
         }
         return false;
       }
     },
-    [load, setWriteError, upsert],
+    [load, markFailed, setWriteError, upsert],
   );
 
   const edit = useCallback(

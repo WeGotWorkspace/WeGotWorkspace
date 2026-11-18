@@ -210,6 +210,65 @@ describe("useThread", () => {
     expect(result.current.roots[0]?.entry.body).toBe("E1");
   });
 
+  it.each([
+    [403, "forbidden"],
+    [404, "gone"],
+  ])("keeps the reason for a %s on edit although the reload succeeds", async (status, reason) => {
+    const memory = createThreadMemoryClient(alice, [alice, bob]);
+    memory.seed(subject, [{ ...entry("E1", "2026-01-01T00:00:00.000Z"), author: alice }] as never);
+    const client: ThreadClient = {
+      ...memory,
+      edit: async () => {
+        throw new ThreadRequestError("x", status);
+      },
+    };
+    const { result } = renderHook(() => useThread(client, adapter));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    await act(async () => {
+      await result.current.edit("E1", "New");
+    });
+    expect(result.current.writeError).toBe(reason);
+  });
+
+  it("keeps a write failure that happened while a list was in flight", async () => {
+    const memory = createThreadMemoryClient(alice, [alice, bob]);
+    memory.seed(subject, [{ ...entry("E1", "2026-01-01T00:00:00.000Z"), author: alice }] as never);
+    let release: (() => void) | null = null;
+    let hold = false;
+    const client: ThreadClient = {
+      ...memory,
+      list: async (s, c, signal) => {
+        const page = await memory.list(s, c, signal);
+        if (hold) await new Promise<void>((resolve) => (release = resolve));
+        return page;
+      },
+      changes: async (s, since, signal) => ({
+        ...(await memory.changes(s, since, signal)),
+        changed: ["E1"],
+      }),
+      edit: async () => {
+        throw new ThreadRequestError("too long", 422, "invalidArguments");
+      },
+    };
+    const { result } = renderHook(() => useThread(client, adapter));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    hold = true;
+    let refreshing: Promise<void> = Promise.resolve();
+    await act(async () => {
+      refreshing = result.current.refresh();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await result.current.edit("E1", "New");
+    });
+    hold = false;
+    await act(async () => {
+      release?.();
+      await refreshing;
+    });
+    expect(result.current.writeError).toBe("invalid");
+  });
+
   it("shows the last fetched thread offline with its fetch time, and never-opened ones as offline", async () => {
     const memory = createThreadMemoryClient(alice, [alice, bob]);
     memory.seed({ type: "note", id: "cached" }, [entry("K1", "2026-01-01T00:00:00.000Z")]);

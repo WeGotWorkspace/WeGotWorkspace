@@ -76,6 +76,10 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
   const markLanded = useCallback((entryId: string) => {
     landedAt.current.set(entryId, ++writeSeq.current);
   }, []);
+  const failureSeq = useRef(0);
+  const markFailed = useCallback(() => {
+    failureSeq.current += 1;
+  }, []);
   const upsert = useCallback(
     (entry: ThreadViewEntry) => {
       markLanded(entry.id);
@@ -88,6 +92,7 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
     async (signal?: AbortSignal) => {
       const subjectAtStart = subjectRef.current;
       const startedAfter = writeSeq.current;
+      const failuresAtStart = failureSeq.current;
       const stale = () => signal?.aborted === true;
       const isReady = () => statusRef.current === "ready";
       try {
@@ -109,8 +114,9 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
         if (!landedDuringLoad) stateRef.current = head.state;
         setServerCanPost(head.canPost);
         setLastUpdated(null);
-        // A clean reload means the thread on screen is the server's: the last write error is moot.
-        setWriteError(null);
+        // A clean reload means the thread on screen is the server's: the last write error is moot,
+        // unless a write failed after this reload began.
+        if (failureSeq.current === failuresAtStart) setWriteError(null);
         setEntries((previous) => {
           const next = new Map<string, ThreadViewEntry>();
           for (const entry of list) next.set(entry.id, entry);
@@ -207,6 +213,7 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
     };
   }, [refresh, subjectKey]);
 
+  const reload = useCallback(() => load(), [load]);
   const writes = useThreadWrites({
     client,
     subjectRef,
@@ -215,8 +222,9 @@ export function useThread(client: ThreadClient, adapter: ThreadSubjectAdapter): 
     setEntries,
     setWriteError,
     markLanded,
+    markFailed,
     upsert,
-    load: () => load(),
+    load: reload,
   });
 
   const { roots, count } = useMemo(() => groupThread(entries), [entries]);
