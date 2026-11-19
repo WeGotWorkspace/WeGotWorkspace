@@ -283,7 +283,8 @@ final class JmapEventSourceTest extends WgwDatabaseTestCase
         $response = $this->eventSource($this->userBearerToken(), 'Note,Notification')->assertOk();
 
         $timing = (string) $response->headers->get('Server-Timing');
-        $this->assertMatchesRegularExpression('/^notes;dur=\d+\.\d{2}, inbox;dur=\d+\.\d{2}$/', $timing);
+        // The CalDAV sources share one read, timed as `caldav`.
+        $this->assertMatchesRegularExpression('/^caldav;dur=\d+\.\d{2}, notes;dur=\d+\.\d{2}, inbox;dur=\d+\.\d{2}$/', $timing);
     }
 
     public function test_state_reads_do_not_scan_change_rows(): void

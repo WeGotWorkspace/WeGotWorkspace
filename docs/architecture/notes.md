@@ -106,13 +106,13 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 
 ## Decision 7 — Collab is a session
 
-**Decision:** Live collab stays TipTap + Yjs mesh while WGW clients are in the room. Room key = `UID` = REST `noteId`. Persist = `PATCH /notes/items/{uid}` + `If-Match`. No server Yjs sidecar. No path-keyed rooms.
+**Decision:** Live collab stays TipTap + Yjs mesh while WGW clients are in the room. Room key = `UID` = REST `noteId`. Persist = the collab save `PUT /notes/items/{uid}` + `If-Match`, which writes `DESCRIPTION` and `SUMMARY` and stores the last saved Yjs state (`note_yjs_state`) beside the note. No server Yjs process: the server never runs a document, it only stores the state the clients save. No path-keyed rooms.
 
-**Why:** The document of record is VJOURNAL `DESCRIPTION`, not a `.yjs` file.
+**Why:** The document of record is VJOURNAL `DESCRIPTION`, not a `.yjs` file. The stored state only lets a client that joins later continue the same document instead of seeding a new one.
 
 **Who picks the UID:** The app does, when the note is made (a UUID). The note keeps that id from the first keystroke, so an offline create needs no temporary id and no remap. `POST /notes/items` uses a `uid` only when it is a UUID; anything else is ignored and the server mints one. A UID of a note the caller can see is a 409. A UID that only notes out of the caller's reach use is replaced by a fresh one, like a non-UUID value, so the answer never depends on notes the caller cannot see; the response `id` is authoritative and UIDs stay unique across every VJOURNAL. A repeated create with the same `uid` by the same caller returns the existing note (200), so a retry or a second tab never makes a second note.
 
-**Title UX:** Editable `SUMMARY` field. Auto-fill once from first heading or first non-empty line; user edit sticks. Title/tags/move = REST PATCH + `If-Match` **without** opening a room. PATCH must not clobber `DESCRIPTION` (read-modify-write ICS or field-level replace).
+**Title UX:** The title is co-edited in the note's room, like the body. It is a second shared type in the same Yjs document (a `Y.Text` under `note-title`), with remote carets. Until a first edit creates that type, the field shows the stored `SUMMARY`. The collab save (`PUT /notes/items/{uid}`) writes `SUMMARY` together with the body. Only while no document is open yet (the room is still loading) does a title edit go out as REST `PATCH` + `If-Match`. Tags, notebook and archive are always REST `PATCH` + `If-Match` without a room. That `PATCH` must not clobber `SUMMARY` or `DESCRIPTION` (field-level replace). Tasks use the same title type for live task titles ([`.agents/specs/2208-task-live-text/`](../../.agents/specs/2208-task-live-text/spec.md)).
 
 **Several DESCRIPTIONs:** A VJOURNAL may carry more than one `DESCRIPTION` (RFC 5545 §3.6.3), for example one per language. The note body is the first one. A body edit updates only its value and keeps its parameters (`LANGUAGE`, `ALTREP`); clearing the body removes only that one. The other `DESCRIPTION`s are left as written ([#1410](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1410)).
 

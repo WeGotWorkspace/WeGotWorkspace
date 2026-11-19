@@ -7,6 +7,7 @@ export const ADMIN_SECTIONS = [
   "email-delivery",
   "collaboration",
   "webdav",
+  "health",
   "backups",
   "updates",
   "search",

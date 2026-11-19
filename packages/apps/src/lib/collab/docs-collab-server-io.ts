@@ -75,6 +75,12 @@ export type YjsSnapshot = {
   etag: string | null;
   externalWrite?: boolean;
   /**
+   * The content tag of the text the stored state was written from
+   * (`X-Wgw-Content-Tag`, Notes and Tasks). The client checks the state
+   * against the text only when the text it read has this tag (#2208).
+   */
+  contentTag?: string | null;
+  /**
    * Set only for a `&fallback=markdown` request when there is no sidecar: the
    * server sent the markdown in the same response.
    */
@@ -83,6 +89,8 @@ export type YjsSnapshot = {
 
 /** Response header that marks a `&fallback=markdown` body as markdown, not sidecar bytes. */
 export const COLLAB_FALLBACK_HEADER = "X-Wgw-Collab-Fallback";
+/** Content tag of the text a stored state was written from (#2208). */
+export const COLLAB_CONTENT_TAG_HEADER = "X-Wgw-Content-Tag";
 
 export type YjsSnapshotLoad = {
   applied: boolean;
@@ -117,6 +125,7 @@ export async function fetchYjsSnapshot(yjsUrl: string, authToken?: string): Prom
     update,
     etag: res.headers.get("ETag"),
     externalWrite: externalWriteFromHeader(res.headers),
+    contentTag: res.headers.get(COLLAB_CONTENT_TAG_HEADER),
   };
 }
 

@@ -22,12 +22,12 @@ final class NotebookGetMethod implements JmapMethodInterface
         private readonly NoteRepository $notes,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Notebook/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::NOTES;
     }

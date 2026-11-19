@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useAppToast } from "@/hooks/use-app-toast";
+import { useTrackAutosave } from "@/ui/autosave-status";
 import type { MailboxFolder } from "@/lib/api/wgw/calendar-reply-mailbox";
 import { calendarReplyFolderLabels as labels } from "@/settings-core/src/settings-calendar-reply-folder-labels";
 import {
@@ -44,7 +44,7 @@ const FOLDER_ERRORS = { folder_missing: labels.folderMissing };
 export function useSettingsCalendarReplyFolder(
   operations: IncomingMailboxOperations = defaultIncomingMailboxOperations(),
 ): SettingsCalendarReplyFolderController {
-  const { showSuccess } = useAppToast();
+  const trackSave = useTrackAutosave();
   const [mailbox, setMailbox] = useState<IncomingMailbox | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [folderList, setFolderList] = useState<ReplyFolderList>({ status: "idle" });
@@ -80,11 +80,9 @@ export function useSettingsCalendarReplyFolder(
     requestRef.current += 1;
     setSavingFolderId(folderId);
     setFailure(null);
-    operationsRef.current
-      .save(mailboxFolderUpdate(mailbox, folderId))
+    trackSave(() => operationsRef.current.save(mailboxFolderUpdate(mailbox, folderId)))
       .then((next) => {
         setMailbox(next.mailbox);
-        showSuccess(labels.folderSaved);
       })
       .catch((error: unknown) => setFailure(mailboxFailureSentence(error, FOLDER_ERRORS)))
       .finally(() => setSavingFolderId(null));

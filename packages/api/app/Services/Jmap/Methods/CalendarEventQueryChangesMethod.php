@@ -15,12 +15,12 @@ use App\Services\Jmap\JmapMethodException;
  */
 final class CalendarEventQueryChangesMethod implements JmapMethodInterface
 {
-    public function name(): string
+    public static function name(): string
     {
         return 'CalendarEvent/queryChanges';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CALENDARS;
     }

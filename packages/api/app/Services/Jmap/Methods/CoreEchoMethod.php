@@ -12,12 +12,12 @@ use App\Services\Jmap\JmapCapabilities;
  */
 final class CoreEchoMethod implements JmapMethodInterface
 {
-    public function name(): string
+    public static function name(): string
     {
         return 'Core/echo';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CORE;
     }

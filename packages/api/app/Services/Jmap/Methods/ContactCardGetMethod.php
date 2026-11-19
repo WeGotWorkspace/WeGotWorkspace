@@ -31,12 +31,12 @@ final class ContactCardGetMethod implements JmapMethodInterface
         private readonly ContactCardRepository $cards,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ContactCard/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CONTACTS;
     }

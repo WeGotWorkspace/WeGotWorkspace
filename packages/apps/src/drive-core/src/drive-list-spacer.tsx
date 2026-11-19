@@ -10,7 +10,7 @@ export function DriveListSpacer({ size, columns }: { size: number; columns: numb
     <tr aria-hidden className="drive-list-spacer" {...{ [WORKSPACE_LIST_SPACER_ATTR]: "" }}>
       <td
         colSpan={columns}
-        style={{ height: `max(0px, calc(${size}px - var(--drive-list-row-gap, 0px)))` }}
+        style={{ height: `max(0px, calc(${size}px - var(--list-table-row-gap, 0px)))` }}
       />
     </tr>
   );

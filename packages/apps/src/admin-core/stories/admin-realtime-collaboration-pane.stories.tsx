@@ -4,7 +4,7 @@ import {
   type AdminStoryDataOverride,
   useAdminPaneStoryController,
 } from "@/admin-core/stories/admin-pane-stories.harness";
-import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import { AdminPaneScope } from "@/admin-core/stories/admin-story-scope";
 
 function RealtimeCollaborationPaneHarness({
   dataOverride,
@@ -13,9 +13,9 @@ function RealtimeCollaborationPaneHarness({
 }) {
   const controller = useAdminPaneStoryController(dataOverride);
   return (
-    <AdminStoryScope>
+    <AdminPaneScope controller={controller}>
       <AdminRealtimeCollaborationPane controller={controller} />
-    </AdminStoryScope>
+    </AdminPaneScope>
   );
 }
 

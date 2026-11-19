@@ -104,7 +104,8 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(
             JmapMethodDispatcher::class,
             fn ($app): JmapMethodDispatcher => new JmapMethodDispatcher(
-                array_map($app->make(...), JmapMethodDispatcher::METHODS),
+                JmapMethodDispatcher::METHODS,
+                $app->make(...),
                 $app->make(JmapRequestContext::class),
             ),
         );
@@ -127,7 +128,8 @@ final class WgwServiceProvider extends ServiceProvider
             GuestJmapGateway::class,
             function ($app): GuestJmapGateway {
                 $dispatcher = new JmapMethodDispatcher(
-                    array_map($app->make(...), GuestJmapGateway::METHODS),
+                    GuestJmapGateway::METHODS,
+                    $app->make(...),
                     $app->make(JmapRequestContext::class),
                 );
 

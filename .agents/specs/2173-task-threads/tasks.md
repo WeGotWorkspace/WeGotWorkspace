@@ -19,10 +19,13 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `chunk-f-activity-writer` | builder | api, security | `packages/api/app/Services/Threads/ThreadActivityWriter.php` (new), `app/Services/Tasks/Threads/TaskThreadActivity.php` (new), `app/Dav/Server/TaskChangeObserverPlugin.php` (from #2172), `app/Services/Tasks/TaskRepository.php`, `app/Services/Tasks/TaskImportService.php`, `tests/Feature/Threads/ThreadActivityWriterTest.php` (new), `tests/Feature/Tasks/TaskActivity*Test.php` (new) | `pnpm test:api-done-gate` |
 | `chunk-g-activity-rows` | builder | apps-ui | `packages/apps/src/thread-ui/*` (new: `format-thread-activity.ts`, `thread-activity-row.tsx`), `tasks-core/src/tasks-thread-adapter.ts` (field labels) | `pnpm test:apps-done-gate` |
 | `chunk-h-offline-comments` | builder | workspace, client-transport | `packages/apps/src/lib/offline/threads/*` (new: schema, store, `threads-outbox-flush.ts`), `lib/offline/core/*` (domain registration only), `thread-ui/use-thread.ts`, `e2e/tasks-thread-offline.spec.ts` (new) | `pnpm test:apps-done-gate` |
+| `chunk-i-shared-composer` | builder | apps-ui, accessibility | `packages/apps/src/thread-ui/thread-composer.tsx` (new), `chat-ui/*` (composer moves onto it), `docs-*` comment cards | `pnpm test:apps-done-gate` |
 | `chunk-v-threads-verify` | verifier | testing | read-only; two-user browser e2e, move to a private list, Chat and Docs smoke test | done-checklist + e2e |
 
 ## Notes
 
 - Chunk A must land on its own and keep Chat and Docs byte-identical before any task-thread code builds on it.
+- Chunks F and G are parked (product owner, 2026-11-18): comments only, no "Show changes" toggle. The activity entry format stays.
+- No attachments in thread comments; Tasks, Chat and Docs share one composer (chunk I).
 - Chunks B and F extend #2172's `TaskChangeSet` and `TaskChangeObserverPlugin`; they do not fork them.
 - Shared code goes in `App\Services\Threads`, `thread-ui/` and `lib/offline/threads/`; task code goes in `App\Services\Tasks\Threads` and `tasks-core`. Nothing under the shared paths may name a task (plan.md, Invariants).

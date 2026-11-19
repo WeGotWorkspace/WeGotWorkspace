@@ -18,7 +18,7 @@ import "./tag.css";
 export type TagSize = "md" | "lg";
 
 /** Status wash: the chip in the status hue instead of the neutral wash. */
-export type TagTone = "success" | "warning" | "pending";
+export type TagTone = "success" | "warning" | "danger" | "pending";
 
 export type TagProps = {
   label: string;
