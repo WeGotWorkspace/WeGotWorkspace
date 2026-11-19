@@ -47,6 +47,10 @@ trait OwnershipWorld
             foreach ($members as $username) {
                 $this->addPrincipalToGroup($group, $this->ownershipPrincipal($username));
             }
+            // Adding a collection to a Team is for its team admins (#2278), so whoever seeds the
+            // Team collections of a scope holds that role. In crew, the actors' own Team, that
+            // is dave only: member and admin stay plain members there.
+            $this->appointTeamAdmin($slug, ...OwnershipPrincipals::teamAdmins()[$slug]);
         }
 
         // Carol shares with the actors in the grant scopes; Epic #1915 only lets colleagues

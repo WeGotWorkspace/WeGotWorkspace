@@ -97,6 +97,19 @@ final class OwnershipRegistry
                 'why' => 'Admin endpoint that acts on other principals or the instance by design.',
             ];
         }
+        foreach ([
+            'GET /teams/{team}/members',
+            'GET /teams/{team}/member-candidates',
+            'PUT /teams/{team}/members/{username}',
+            'DELETE /teams/{team}/members/{username}',
+            'PUT /teams/{team}/admins/{username}',
+            'DELETE /teams/{team}/admins/{username}',
+        ] as $operation) {
+            $exempt[$operation] = [
+                'reason' => ExemptionReason::TeamRole,
+                'why' => 'Member management of the Team in the path (#2278): a team admin of it or an organization admin; anyone else gets the 404 of an unknown Team.',
+            ];
+        }
 
         $noObject = [
             'GET /health' => 'Liveness probe.',

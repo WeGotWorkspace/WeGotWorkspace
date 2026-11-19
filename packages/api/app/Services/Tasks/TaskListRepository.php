@@ -98,6 +98,7 @@ final class TaskListRepository
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
+            $this->collectionAccess->assertMayAddToTeam($username, $groupSlug);
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {

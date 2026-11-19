@@ -407,7 +407,7 @@
               "string",
               "null"
             ],
-            "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`)."
+            "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only` (Calendar/set: `forbidden`)."
           },
           "shareWith": {
             "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included.",
@@ -878,7 +878,7 @@
               "string",
               "null"
             ],
-            "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`."
+            "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`."
           },
           "shareWith": {
             "description": "Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included.",
@@ -2240,7 +2240,7 @@
               "string",
               "null"
             ],
-            "description": "Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`."
+            "description": "Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`."
           },
           "shareWith": {
             "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included.",
@@ -6952,6 +6952,302 @@
           }
         },
         "x-wgw-access": "user"
+      }
+    },
+    "/teams/{team}/members": {
+      "get": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "List a Team's members",
+        "description": "Members with their team-admin flag, ordered by username. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/teams/{team}/member-candidates": {
+      "get": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Search users to add to a Team",
+        "description": "Users whose username, display name or email contains `q`, at most 20, ordered by username. The only place where the team-admin role shows a user outside the caller's Teams. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberCandidateListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "400": {
+            "description": "`q` is shorter than two characters (`invalidProperties`)."
+          },
+          "429": {
+            "description": "More than 60 searches a minute by this caller; carries `Retry-After`."
+          }
+        }
+      }
+    },
+    "/teams/{team}/members/{username}": {
+      "put": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Add a member to a Team",
+        "description": "Idempotent. 404 for an unknown user. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          },
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamWriteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Remove a member from a Team",
+        "description": "Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          },
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamWriteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/teams/{team}/admins/{username}": {
+      "put": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Appoint a team admin",
+        "description": "Idempotent. The user must be a member of the Team (409 `not_a_member`). For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          },
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamWriteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "description": "The user is not a member of this Team (`not_a_member`)."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Dismiss a team admin",
+        "description": "Idempotent. A team admin may dismiss themself; a Team may be left without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "team",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          },
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,62}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamWriteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
       }
     },
     "/settings/state": {

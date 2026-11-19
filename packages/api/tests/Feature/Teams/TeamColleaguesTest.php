@@ -255,14 +255,15 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
         self::assertSame([], $this->app->make(DriveGroupResolver::class)->allowedGroupSlugs('dave'));
         self::assertSame(
             [
-                ['id' => 'principals/groups/t1', 'displayName' => 'Team One', 'memberCount' => 2],
-                ['id' => 'principals/groups/t2', 'displayName' => 'Team Two', 'memberCount' => 3],
+                ['id' => 'principals/groups/t1', 'displayName' => 'Team One', 'memberCount' => 2, 'isTeamAdmin' => false],
+                ['id' => 'principals/groups/t2', 'displayName' => 'Team Two', 'memberCount' => 3, 'isTeamAdmin' => false],
             ],
             $this->app->make(GroupDirectoryService::class)->groupsForUser('alice'),
         );
     }
 
-    public function test_settings_groups_for_user_is_one_query(): void
+    /** The membership read, and the team-admin rows of the user (#2278). */
+    public function test_settings_groups_for_user_is_two_queries(): void
     {
         $this->join('t2', 'alice');
         $directory = $this->app->make(GroupDirectoryService::class);
@@ -273,7 +274,7 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
 
         $count = count(DB::connection('wgw')->getQueryLog());
         DB::connection('wgw')->disableQueryLog();
-        self::assertSame(1, $count);
+        self::assertSame(2, $count);
     }
 
     public function test_settings_groups_fall_back_to_the_slug_without_a_display_name(): void
@@ -282,7 +283,7 @@ final class TeamColleaguesTest extends WgwDatabaseTestCase
         $this->addPrincipalToGroup($unnamed, $this->users['dave']);
 
         self::assertSame(
-            [['id' => 'principals/groups/unnamed', 'displayName' => 'unnamed', 'memberCount' => 1]],
+            [['id' => 'principals/groups/unnamed', 'displayName' => 'unnamed', 'memberCount' => 1, 'isTeamAdmin' => false]],
             $this->app->make(GroupDirectoryService::class)->groupsForUser('dave'),
         );
     }

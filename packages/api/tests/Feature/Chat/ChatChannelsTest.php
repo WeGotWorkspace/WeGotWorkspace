@@ -315,6 +315,7 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
     public function test_group_owned_channels_and_group_slug_transfer(): void
     {
         $group = $this->seedWgwGroup('principals/groups/devs', 'Devs');
+        $this->appointTeamAdmin('devs', 'alice');
         $alice = Principal::query()->where('uri', 'principals/alice')->firstOrFail();
         $bob = Principal::query()->where('uri', 'principals/bob')->firstOrFail();
         $this->addPrincipalToGroup($group, $alice);
@@ -339,19 +340,18 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
             ->assertJsonPath('groupSlug', 'devs');
         $this->asUser('carol')->getJson('/api/v1/chat/channels/'.$created['id'])->assertNotFound();
 
-        // Moving it out of the group is admin-only; a member moves a personal channel in.
+        // Moving it out of the Team, or a personal channel in, is for the Team's team admins (#2278).
         $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$created['id'], ['groupSlug' => null])
             ->assertForbidden()
-            ->assertJsonPath('code', 'group_delete_admin_only');
+            ->assertJsonPath('code', 'team_admin_only');
         $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$created['id'])->assertOk()
             ->assertJsonPath('groupSlug', 'devs');
         $mine = (string) $this->asUser('bob')->postJson('/api/v1/chat/channels', [
             'name' => 'Bob talk', 'kind' => 'channel',
         ])->assertCreated()->json('id');
         $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$mine, ['groupSlug' => 'devs'])
-            ->assertOk()
-            ->assertJsonPath('scope', 'group')
-            ->assertJsonPath('groupSlug', 'devs');
+            ->assertForbidden()
+            ->assertJsonPath('code', 'team_admin_only');
 
         // Transfer into a group the caller does not belong to is forbidden.
         $personal = (string) $this->asUser('carol')->postJson('/api/v1/chat/channels', [

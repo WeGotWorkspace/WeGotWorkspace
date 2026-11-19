@@ -10,6 +10,7 @@ use App\Models\CalendarSubscription;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\CalendarsTestFixtures;
@@ -30,6 +31,8 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $this->setUpCalendarsFixtures();
         $this->seedDefaultCalendarFor('alice');
         $team = $this->seedWgwGroup('principals/groups/'.self::TEAM, 'Team');
+        // Adding a calendar to a Team and moving one out are for its team admins (#2278).
+        $this->appointTeamAdmin(self::TEAM, 'alice', 'bob');
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);
@@ -55,7 +58,7 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         ]);
     }
 
-    public function test_owner_can_move_personal_calendar_to_a_group(): void
+    public function test_team_admin_can_move_personal_calendar_to_a_group(): void
     {
         $calendarId = $this->createPersonalCalendar('bob', 'Roadmap', 'roadmap');
 
@@ -85,7 +88,7 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $this->assertContains($calendarId, array_column($aliceList, 'id'));
     }
 
-    public function test_admin_can_move_group_calendar_to_personal(): void
+    public function test_team_admin_can_move_group_calendar_to_personal(): void
     {
         $calendarId = $this->createGroupCalendar('bob', 'Roadmap', 'roadmap');
 
@@ -114,6 +117,8 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($other, $bob);
         $calendarId = $this->createGroupCalendar('bob', 'Roadmap', 'roadmap');
+        // From here bob is a plain member of the Team.
+        app(TeamRoles::class)->dismiss(self::TEAM, 'bob');
 
         foreach ([null, 'alumni'] as $target) {
             $args = $this->jmapAs('bob', [
@@ -124,7 +129,7 @@ final class CalendarsChangeOwnerTest extends WgwDatabaseTestCase
 
             $this->assertSame('forbidden', $args['notUpdated'][$calendarId]['type'] ?? null);
             $this->assertSame(
-                'Only an instance admin can move a team collection out of its team.',
+                'Only a team admin can move a team collection out of its team.',
                 $args['notUpdated'][$calendarId]['description'] ?? null,
             );
         }

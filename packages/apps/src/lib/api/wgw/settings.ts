@@ -28,6 +28,7 @@ function toGroups(raw: WgwSettingsUserGroup[]): SettingsUIData["groups"] {
     id: group.id,
     displayName: group.displayName,
     memberCount: group.memberCount,
+    isTeamAdmin: group.isTeamAdmin,
   }));
 }
 

@@ -14,12 +14,17 @@
         "type": "integer",
         "minimum": 0,
         "description": "How many members the Team has, the caller included."
+      },
+      "isTeamAdmin": {
+        "type": "boolean",
+        "description": "Whether the caller is a team admin of this Team: may manage its members, its Projects and its Team collections."
       }
     },
     "required": [
       "id",
       "displayName",
-      "memberCount"
+      "memberCount",
+      "isTeamAdmin"
     ]
   },
   "SettingsUserGroupList": {
@@ -39,7 +44,7 @@
       },
       "isAdmin": {
         "type": "boolean",
-        "description": "Whether the caller has the admin role. Admin is a role per user, not membership of a Team."
+        "description": "Whether the caller is an organization admin. Admin is a role per user, not membership of a Team."
       },
       "logoutUrl": {
         "type": "string"

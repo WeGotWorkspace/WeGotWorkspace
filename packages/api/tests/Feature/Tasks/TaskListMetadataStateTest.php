@@ -27,6 +27,7 @@ final class TaskListMetadataStateTest extends WgwDatabaseTestCase
         $this->seedInboxTaskListFor('alice');
         $this->setUpDavServer();
         $team = $this->seedWgwGroup('principals/groups/'.self::TEAM, 'Team');
+        $this->appointTeamAdmin(self::TEAM, 'bob');
         foreach (['bob', 'alice'] as $username) {
             $member = Principal::forUsername($username);
             $this->assertNotNull($member);
