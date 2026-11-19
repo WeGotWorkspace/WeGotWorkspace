@@ -1,0 +1,154 @@
+{
+  "ProjectResources": {
+    "type": "object",
+    "description": "The API ids of what the Project bundles. `null` while an item is missing (ensure repairs it on the next read) and, for `driveFolderId`, until the Project folder exists. The default Project has no Drive folder: its Drive view is the whole Team Drive.",
+    "properties": {
+      "calendarId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "taskListId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "notebookId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "channelId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "driveFolderId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "calendarId",
+      "taskListId",
+      "notebookId",
+      "channelId",
+      "driveFolderId"
+    ]
+  },
+  "Project": {
+    "type": "object",
+    "description": "A Project of one of the caller's Teams: a calendar, task list, notebook, chat channel and Drive folder. Access is Team membership.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[0-9a-z]{26}$"
+      },
+      "teamSlug": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string",
+        "description": "Unique per Team, archived Projects included. Does not change on rename."
+      },
+      "name": {
+        "type": "string"
+      },
+      "color": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "Hex color like `#3b82f6`."
+      },
+      "isDefault": {
+        "type": "boolean",
+        "description": "The Team's default Project: its provisioned calendar, task list and notebook plus one channel."
+      },
+      "archived": {
+        "type": "boolean"
+      },
+      "archivedAt": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "format": "date-time"
+      },
+      "mayManage": {
+        "type": "boolean",
+        "description": "Whether the caller may rename, recolor, archive and purge it (team admin of the Team)."
+      },
+      "resources": {
+        "$ref": "#/components/schemas/ProjectResources"
+      }
+    },
+    "required": [
+      "id",
+      "teamSlug",
+      "slug",
+      "name",
+      "color",
+      "isDefault",
+      "archived",
+      "archivedAt",
+      "mayManage",
+      "resources"
+    ]
+  },
+  "ProjectListResponse": {
+    "type": "object",
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Project"
+        }
+      }
+    },
+    "required": [
+      "list"
+    ]
+  },
+  "ProjectCreateRequest": {
+    "type": "object",
+    "properties": {
+      "teamSlug": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "color": {
+        "type": "string",
+        "description": "Hex color like `#3b82f6`. Defaults to a palette color."
+      }
+    },
+    "required": [
+      "teamSlug",
+      "name"
+    ]
+  },
+  "ProjectPatchRequest": {
+    "type": "object",
+    "description": "Name and color are written through to the Project's calendar, task list, notebook and channel. Slugs, uris and ids stay.",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "color": {
+        "type": "string"
+      }
+    }
+  }
+}

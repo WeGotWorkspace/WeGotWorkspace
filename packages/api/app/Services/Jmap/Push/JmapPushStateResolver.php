@@ -20,7 +20,9 @@ use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notify\NotificationInboxMarkers;
+use App\Services\Projects\ProjectMarkers;
 use App\Services\Tasks\TaskListRepository;
+use App\Services\Teams\TeamColleagues;
 use App\Support\WgwSettings;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -57,6 +59,7 @@ final class JmapPushStateResolver
         'Task',
         'TaskList',
         'Notification',
+        'Project',
     ];
 
     /** Types that share one state source are resolved once. */
@@ -73,6 +76,7 @@ final class JmapPushStateResolver
         'Task' => 'tasks',
         'TaskList' => 'tasks',
         'Notification' => 'inbox',
+        'Project' => 'projects',
     ];
 
     /** Sources whose state is a composite over CalDAV collections of one kind. */
@@ -104,6 +108,8 @@ final class JmapPushStateResolver
         private readonly FileNodeRootMarkers $fileMarkers,
         private readonly FileNodeSyncState $fileSyncState,
         private readonly NotificationInboxMarkers $inbox,
+        private readonly ProjectMarkers $projectMarkers,
+        private readonly TeamColleagues $colleagues,
         private readonly JmapCapabilitySet $capabilities,
     ) {}
 
@@ -219,6 +225,7 @@ final class JmapPushStateResolver
             'chat' => JmapAccountStateCodec::compose(self::channelSyncTokens($instances ?? [])),
             'tasks' => (string) $this->taskLists->changesOf($instances ?? [], null)['newState'],
             'inbox' => (string) $this->inbox->markerFor($username),
+            'projects' => $this->projectState($username),
             default => throw new \LogicException('Unknown push state source '.$source),
         };
 
@@ -239,6 +246,22 @@ final class JmapPushStateResolver
         }
 
         return $tokens;
+    }
+
+    /**
+     * The `Project` state (#817): a hash over the caller's Team slugs and each Team's Project
+     * marker. Joining or leaving a Team changes the set, so it changes the state.
+     */
+    private function projectState(string $username): string
+    {
+        $slugs = $this->colleagues->teamSlugsOf($username);
+        sort($slugs, SORT_STRING);
+        $basis = '';
+        foreach ($this->projectMarkers->markersFor($slugs) as $slug => $marker) {
+            $basis .= strlen((string) $slug).':'.$slug.'='.$marker."\n";
+        }
+
+        return substr(hash('sha256', $basis), 0, 16);
     }
 
     /**

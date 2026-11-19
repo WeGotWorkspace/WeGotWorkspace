@@ -2538,6 +2538,191 @@
     }
   },
   "paths": {
+    "/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List the Projects of the caller's Teams",
+        "description": "Per Team, the default Project first, then by name. Archived Projects only with `archived=1`. Reading repairs a live Project whose calendar, task list, notebook or channel is gone.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            },
+            "description": "`1` includes archived Projects."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create a Project",
+        "description": "Creates the Project with a new calendar, task list, notebook and channel owned by the Team, in one transaction. A slug clash in the Team gets a `-2`, `-3` suffix. 404 when the caller is not a member of the Team; 403 `team_admin_only` for a member who is not a team admin.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      }
+    },
+    "/projects/{project}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get a Project",
+        "description": "404 for a Project of a Team the caller is not a member of, the same as for an unknown id.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-z]{26}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Rename or recolor a Project",
+        "description": "Writes the name and color through to the Project's collections. 403 `team_admin_only` for a member who is not a team admin; 409 `archived` for an archived Project.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-z]{26}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
     "/threads/{subjectType}/{subjectId}/entries": {
       "get": {
         "tags": [
