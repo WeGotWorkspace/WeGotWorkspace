@@ -79,7 +79,7 @@ export class JmapContactsClient {
       { accountId, ids: ids ?? null },
       CONTACTS_USING,
     );
-    this.client.setState(accountId, ADDRESS_BOOK_TYPE, response.state);
+    this.client.recordGetState(accountId, ADDRESS_BOOK_TYPE, response.state, ids);
     return response;
   }
 
@@ -408,7 +408,6 @@ export class JmapContactsClient {
         { page, remainingIds: ids.slice(index + pageSize) },
       );
     }
-    this.client.setState(accountId, CONTACT_CARD_TYPE, state);
     return { accountId: responseAccountId, state, list, notFound };
   }
 
@@ -426,7 +425,7 @@ export class JmapContactsClient {
       },
       CONTACTS_USING,
     );
-    this.client.setState(accountId, CONTACT_CARD_TYPE, response.state);
+    this.client.recordGetState(accountId, CONTACT_CARD_TYPE, response.state, ids);
     return response;
   }
 }

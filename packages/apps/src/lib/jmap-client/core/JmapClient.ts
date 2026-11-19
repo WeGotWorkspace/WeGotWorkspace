@@ -98,13 +98,31 @@ export class JmapClient {
     return accountId;
   }
 
-  /** Latest known state string for a datatype in an account (from /get, /changes or /set). */
+  /** Latest known state string for a datatype in an account (from a list, /changes or /set). */
   getState(accountId: JmapId, type: string): JmapState | undefined {
     return this.#states.get(`${accountId}/${type}`);
   }
 
   setState(accountId: JmapId, type: string, state: JmapState): void {
     this.#states.set(`${accountId}/${type}`, state);
+  }
+
+  /**
+   * Record the state of a `/get` answer (#2257). It is the server's state at
+   * the time of the get. A get-all (`ids` null) stores it. A get for explicit
+   * ids keeps a stored state: that one is the cursor the next `/changes`
+   * resumes from, and moving it to the get's state would skip what changed
+   * between the two. A destroy in that gap would never be reported again.
+   * Without a stored state the get's state becomes the first cursor.
+   */
+  recordGetState(
+    accountId: JmapId,
+    type: string,
+    state: JmapState,
+    ids: readonly JmapId[] | null | undefined,
+  ): void {
+    if (ids && this.getState(accountId, type) !== undefined) return;
+    this.setState(accountId, type, state);
   }
 
   nextCallId(): string {

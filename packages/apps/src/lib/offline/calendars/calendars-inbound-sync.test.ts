@@ -120,6 +120,33 @@ describe("syncCalendarEventChanges", () => {
     expect(cache.has("ev-timed")).toBe(false);
   });
 
+  it("returns a destroy that landed between the changes and the get in the next round (#2257)", async () => {
+    const { server, client, accountId, source } = await setup();
+    client.setState(accountId, "CalendarEvent", server.state);
+    cache.set("ev-timed", "Old");
+    cache.set("ev-recurring", "Weekly");
+    server.remoteUpdateEvent("ev-timed", { title: "Renamed" });
+    const stateOfChanges = server.state;
+    server.beforeRequest = (methodCalls) => {
+      if (methodCalls.some(([name]) => name === "CalendarEvent/get")) {
+        server.beforeRequest = null;
+        server.remoteDestroyEvent("ev-recurring");
+      }
+    };
+
+    await syncCalendarEventChanges("owner", source);
+
+    expect(cache.get("ev-timed")).toBe("Renamed");
+    expect(
+      client.getState(accountId, "CalendarEvent"),
+      "the cursor is the state of the changes answer, not of the later get",
+    ).toBe(stateOfChanges);
+
+    await syncCalendarEventChanges("owner", source);
+
+    expect(cache.has("ev-recurring")).toBe(false);
+  });
+
   it("runs nothing before the window has loaded a state", async () => {
     const { server, source } = await setup();
 
