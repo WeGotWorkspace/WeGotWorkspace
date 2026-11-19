@@ -9,7 +9,7 @@ class TestAdapter extends JmapInboundAdapter {
   errors: unknown[] = [];
   protected readonly pushTypes = ["Note"];
   protected get jmapClient(): JmapClient {
-    return { getState: () => "n1" } as unknown as JmapClient;
+    return { getState: () => "n1", setState: () => undefined } as unknown as JmapClient;
   }
   get accountId(): string {
     return "alice";

@@ -6,6 +6,8 @@ return [
     'default' => env('FILESYSTEM_DISK', 'local'),
 
     'disks' => [
+        // The wgw disks use `wgw_local`: the local driver with each operation timed
+        // for the slow-request log (RequestTimingServiceProvider, #2244).
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
@@ -15,19 +17,19 @@ return [
         ],
 
         'wgw_data' => [
-            'driver' => 'local',
+            'driver' => 'wgw_local',
             'root' => storage_path('app/wgw-data'),
             'throw' => true,
         ],
 
         'wgw_files' => [
-            'driver' => 'local',
+            'driver' => 'wgw_local',
             'root' => storage_path('app/wgw-files'),
             'throw' => true,
         ],
 
         'wgw_notes' => [
-            'driver' => 'local',
+            'driver' => 'wgw_local',
             'root' => storage_path('app/wgw-files'),
             'throw' => true,
         ],

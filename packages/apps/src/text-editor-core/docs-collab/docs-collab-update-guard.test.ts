@@ -404,3 +404,66 @@ describe("docs-collab-update-guard", () => {
     });
   });
 });
+
+describe("applyGuardedRemoteUpdate on a text-fields document (#2208)", () => {
+  function textFieldsPair(): { local: Y.Doc; remote: Y.Doc } {
+    const local = new Y.Doc();
+    local.getText("note-title").insert(0, "Groceries");
+    local.getText("plain-body").insert(0, "Buy milk");
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(local));
+    return { local, remote };
+  }
+
+  function editBoth(remote: Y.Doc): Uint8Array {
+    const before = Y.encodeStateVector(remote);
+    remote.getText("note-title").insert(9, "!");
+    remote.getText("plain-body").insert(8, " now");
+    return Y.encodeStateAsUpdate(remote, before);
+  }
+
+  it("admits title and description writes from a writer", () => {
+    const { local, remote } = textFieldsPair();
+    const verdict = applyGuardedRemoteUpdate({
+      doc: local,
+      update: editBoth(remote),
+      access: "write",
+      senderUser: "bob",
+      origin: MESH,
+    });
+    expect(verdict).toEqual({ applied: true });
+    expect(local.getText("note-title").toString()).toBe("Groceries!");
+    expect(local.getText("plain-body").toString()).toBe("Buy milk now");
+  });
+
+  it("admits a writer clearing the description", () => {
+    const { local, remote } = textFieldsPair();
+    const before = Y.encodeStateVector(remote);
+    remote.getText("plain-body").delete(0, 8);
+    const verdict = applyGuardedRemoteUpdate({
+      doc: local,
+      update: Y.encodeStateAsUpdate(remote, before),
+      access: "write",
+      senderUser: "bob",
+      origin: MESH,
+    });
+    expect(verdict).toEqual({ applied: true });
+    expect(local.getText("plain-body").toString()).toBe("");
+  });
+
+  it("drops title and description writes from a reader and a commenter", () => {
+    for (const access of ["read", "comment"] as const) {
+      const { local, remote } = textFieldsPair();
+      const verdict = applyGuardedRemoteUpdate({
+        doc: local,
+        update: editBoth(remote),
+        access,
+        senderUser: "bob",
+        origin: MESH,
+      });
+      expect(verdict.applied).toBe(false);
+      expect(local.getText("note-title").toString()).toBe("Groceries");
+      expect(local.getText("plain-body").toString()).toBe("Buy milk");
+    }
+  });
+});

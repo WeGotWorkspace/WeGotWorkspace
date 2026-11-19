@@ -59,6 +59,7 @@ function sessionRefs(): DocsCollabSessionRefs {
     lastSuccessfulSaveSignatureRef: ref(null),
     sessionRef: ref(null),
     tabSyncRef: ref(null),
+    rereadServerRef: ref(null),
   };
 }
 

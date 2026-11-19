@@ -14,6 +14,8 @@ import {
   setCollabRoomPendingServerSave,
 } from "@/lib/collab/docs-collab-pending-registry";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
+import { TEXT_FIELDS_BODY, TEXT_FIELDS_TITLE } from "./docs-collab-text-fields";
 
 let counter = 0;
 
@@ -173,5 +175,40 @@ describe("uploadPendingCollabRooms", () => {
 
     expect(puts()).toHaveLength(2);
     expect(await stillPending(failing)).toBe(true);
+  });
+
+  it("saves a text-fields room's notes from plain-body, with its title (#2208)", async () => {
+    server();
+    counter += 1;
+    const roomName = `left-task-${counter}`;
+    const databaseName = `${roomName}:v2`;
+    const ydoc = new Y.Doc();
+    ydoc.getText(TEXT_FIELDS_TITLE).insert(0, "Buy milk");
+    ydoc.getText(TEXT_FIELDS_BODY).insert(0, "Pack");
+    const persistence = new IndexeddbPersistence(databaseName, ydoc);
+    await persistence.whenSynced;
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+    ydoc.destroy();
+    const urls: DocsCollabUrls = {
+      room: roomName,
+      signalUrl: "",
+      authToken: "token",
+      documentUrl: `https://wgw.test/tasks/items/${roomName}/text`,
+      yjsUrl: `https://wgw.test/tasks/items/${roomName}/text?format=yjs`,
+      documentShape: "text-fields",
+    };
+
+    await uploadPendingCollabRooms([
+      { room: roomName, databaseName, urls: () => urls, format: "markdown" },
+    ]);
+
+    expect(puts()).toHaveLength(1);
+    const framed = decodeFramedPayload(puts()[0]?.[1]?.body as Uint8Array);
+    const header = framed?.header as { documentLen: number; title?: string };
+    const document = framed?.tail.slice(0, header.documentLen);
+    // The document part, not the Yjs bytes (which hold "Pack" either way).
+    expect(new TextDecoder().decode(document)).toBe("Pack");
+    expect(header.title).toBe("Buy milk");
   });
 });

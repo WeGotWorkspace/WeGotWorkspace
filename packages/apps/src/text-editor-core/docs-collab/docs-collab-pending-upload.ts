@@ -5,6 +5,7 @@ import { withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { collabDatabaseHasPendingSave } from "@/lib/offline/core/offline-wipe";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
+import { isTextFieldsDoc, readTextFields, TEXT_FIELDS_SHAPE } from "./docs-collab-text-fields";
 import { rememberSidecarEtag } from "@/lib/collab/docs-collab-etag";
 import {
   collabUploadLockName,
@@ -66,7 +67,11 @@ async function uploadPendingCollabRoom({
       if (snapshot.externalWrite) return;
       if (snapshot.update) Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
 
-      const read = () => readContentFromYDoc(ydoc, format);
+      // A text-fields room (#2208) keeps its body in `plain-body`, not in the
+      // editor fragment: reading the fragment would save empty notes.
+      const textFields = urls.documentShape === TEXT_FIELDS_SHAPE || isTextFieldsDoc(ydoc);
+      const read = () =>
+        textFields ? readTextFields(ydoc).description : readContentFromYDoc(ydoc, format);
       const saved = await persistCollabSave({
         urls,
         room,

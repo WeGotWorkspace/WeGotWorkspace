@@ -73,6 +73,20 @@ export type DocsCollabUrls = {
    * decides, which fits a Drive path but not an id such as a note UID.
    */
   documentFormat?: TextEditorContentFormat;
+  /**
+   * `text-fields` (#2208): a title and a plain description, each a `Y.Text`,
+   * with no editor schema (Tasks). The session asks the shape for the seed,
+   * emptiness, save body and re-read. Without it the Docs/Notes shape applies.
+   */
+  documentShape?: "text-fields";
+  /** The title a text-fields document seeds with offline, before the server answers. */
+  seedTitle?: string;
+  /**
+   * True while the document holds text the server would refuse (a blank task
+   * title, a field over its limit): the save waits, the edit stays unsaved,
+   * and the next edit tries again. The app shows why.
+   */
+  holdSave?: () => boolean;
   onPersistForbidden?: () => void;
   /**
    * The server answered 404: the document was deleted, or this account lost read
@@ -94,6 +108,8 @@ export type DocsCollabUrls = {
     markdown: string;
     title: string | null;
     serverState: Uint8Array;
+    contentTag?: string | null;
+    objectEtag?: string;
   }) => void;
   /** Called with the markdown the server accepted. */
   onPersistSuccess?: (markdown: string) => void;
@@ -167,4 +183,9 @@ export type DocsCollabSessionRefs = {
   lastSuccessfulSaveSignatureRef: MutableRefObject<string | null>;
   sessionRef: MutableRefObject<DocsCollabSession | null>;
   tabSyncRef: MutableRefObject<DocsCollabTabSyncApi | null>;
+  /**
+   * The session's re-read (`mergeServerState`). A refused text-fields save
+   * runs it, so the refusal decides as a read-time outside write does.
+   */
+  rereadServerRef: MutableRefObject<((authToken: string | undefined) => Promise<boolean>) | null>;
 };
