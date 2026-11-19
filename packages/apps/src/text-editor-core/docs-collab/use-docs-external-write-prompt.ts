@@ -107,7 +107,7 @@ export function useDocsExternalWritePrompt({
         detail.title,
         collabFormatForUrls(request.urls),
         detail.serverState,
-        { dropLocalWork: true },
+        { dropLocalWork: true, contentTag: detail.contentTag, objectEtag: detail.objectEtag },
       );
       setAppliedOutside(detail);
       onOutsideApplied?.();

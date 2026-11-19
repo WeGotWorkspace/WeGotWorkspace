@@ -29,6 +29,8 @@ export type CollabText = {
   title: string | null;
   /** Entity tag of this text representation. A save names it after an outside write. */
   etag?: string | null;
+  /** The object version, from a text-fields resource; a replacement seed is salted with it. */
+  objectEtag?: string;
 };
 
 export async function loadCollabText(documentUrl: string, authToken?: string): Promise<CollabText> {
@@ -49,13 +51,22 @@ export async function loadCollabText(documentUrl: string, authToken?: string): P
       body?: unknown;
       markdown?: unknown;
       title?: unknown;
+      description?: unknown;
       contentEtag?: unknown;
+      objectEtag?: unknown;
     };
     const title = typeof data.title === "string" ? data.title : null;
+    // A text-fields resource (a task's text) also names the object version a
+    // replacement seed is salted with (#2208).
+    const objectEtag = typeof data.objectEtag === "string" ? data.objectEtag : undefined;
     // A JSON representation whose own tag also moves with metadata names its text separately.
     if (typeof data.contentEtag === "string") etag = data.contentEtag;
-    if (typeof data.markdown === "string") return { markdown: data.markdown, title, etag };
-    if (typeof data.body === "string") return { markdown: data.body, title, etag };
+    if (typeof data.markdown === "string")
+      return { markdown: data.markdown, title, etag, objectEtag };
+    if (typeof data.body === "string") return { markdown: data.body, title, etag, objectEtag };
+    if (typeof data.description === "string") {
+      return { markdown: data.description, title, etag, objectEtag };
+    }
     throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);
   }
   return { markdown: await res.text(), title: null, etag };

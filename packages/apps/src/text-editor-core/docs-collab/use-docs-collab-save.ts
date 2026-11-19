@@ -1,12 +1,12 @@
 import { useCallback, useRef } from "react";
 import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { setCollabRoomPendingServerSave } from "@/lib/collab/docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "@/lib/collab/docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
+import { collabSaveBody, pendingSignatureBody } from "./docs-collab-save-body";
 import { armSaveTimer, cancelSaveTimer } from "./docs-collab-save-timer";
 import {
   computeShouldPersist,
@@ -81,19 +81,7 @@ export function useDocsCollabSave({
   );
 
   const markPendingWhenUnsaved = useCallback(async (): Promise<void> => {
-    const ydoc = refs.ydocRef.current;
-    const getMd = refs.getMarkdownRef.current;
-    if (!ydoc || !getMd || !refs.localDirtySinceLastSaveRef.current) return;
-    const signature = docSignature(getMd(), ydoc);
-    if (
-      !shouldMarkPendingWhenUnsaved(
-        refs.localDirtySinceLastSaveRef.current,
-        signature,
-        refs.lastSuccessfulSaveSignatureRef.current,
-      )
-    ) {
-      return;
-    }
+    if (unsavedSignature(refs) === null) return;
     await updatePendingState(true, false);
   }, [refs, updatePendingState]);
 
@@ -114,10 +102,9 @@ export function useDocsCollabSave({
       return false;
     }
     const ydoc = refs.ydocRef.current;
-    const getMd = refs.getMarkdownRef.current;
-    const override = refs.markdownOverrideRef.current;
-    if (!ydoc || (!getMd && override === null)) return false;
-    const markdown = override ?? markdownForSave(ydoc, getMd ? getMd() : "");
+    const body = collabSaveBody(ydoc, refs);
+    if (!ydoc || !body) return false;
+    const { markdown } = body;
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
       localDirtySinceLastSave: refs.localDirtySinceLastSaveRef.current,
@@ -136,6 +123,7 @@ export function useDocsCollabSave({
     }
     refs.saveInFlightRef.current = true;
     let savedMarkdown = markdown;
+    const baseCandidate = body.startSave();
     try {
       const persisted = await persistCollabSave({
         urls,
@@ -144,25 +132,27 @@ export function useDocsCollabSave({
         markdown,
         authToken: refs.authTokenRef.current,
         remergeAttempted: conflictRemergeAttemptedRef,
-        markdownAfterMerge: () => (getMd ? markdownForSave(ydoc, getMd()) : markdown),
+        markdownAfterMerge: body.afterMerge,
         markdownOverrideRef: refs.markdownOverrideRef,
-        externalWriteSeen: refs.externalWriteSeenRef.current,
+        externalWriteSeen: refs.externalWriteSeenRef.current ?? body.seenFallback(),
       });
       if (persisted.status === "skipped") return false;
       savedMarkdown = persisted.markdown;
       refs.externalWriteSeenRef.current = null;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
-      const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
+      const success = saveSuccessState(
+        landedSignature(body.textFields, { markdown, signature }, savedMarkdown, ydoc),
+      );
       // Typed while this save was on its way: still dirty, saved by the next round.
-      const latest = refs.getMarkdownRef.current;
-      const editedSince = latest ? markdownForSave(ydoc, latest()) !== savedMarkdown : false;
+      if (baseCandidate) await baseCandidate.landed(savedMarkdown);
+      const editedSince = body.editedSince(savedMarkdown, refs.getMarkdownRef.current);
       refs.localDirtySinceLastSaveRef.current = editedSince;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
       refs.saveTerminalKindRef.current = null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
       refs.nextSaveAttemptAtRef.current = success.nextSaveAttemptAt ?? 0;
-      await updatePendingState(false, false);
+      await updatePendingState(editedSince && body.textFields, false);
       setLastSavedAt(new Date().toISOString());
       setDocStatus("");
       urls.onPersistSuccess?.(savedMarkdown);
@@ -284,22 +274,29 @@ function terminalSaveFailure(error: unknown): DocsCollabSaveTerminalKind | null 
   return null;
 }
 
-/**
- * A reconnect can apply the server Y.Doc before the editor view catches up.
- * Saving the shorter view would replace the other person's edit.
- */
-function markdownForSave(ydoc: Y.Doc, editorMarkdown: string): string {
-  try {
-    const fromDoc = readContentFromYDoc(ydoc);
-    if (
-      editorMarkdown !== "" &&
-      fromDoc.includes(editorMarkdown) &&
-      fromDoc.length > editorMarkdown.length
-    ) {
-      return fromDoc;
-    }
-  } catch {
-    // The editor string is still a valid save body.
-  }
-  return editorMarkdown;
+/** A text-fields save keeps the vector from the send: typing since is not in it. */
+function landedSignature(
+  textFields: boolean,
+  sent: { markdown: string; signature: string },
+  savedMarkdown: string,
+  ydoc: Y.Doc,
+): string {
+  return textFields && savedMarkdown === sent.markdown
+    ? sent.signature
+    : docSignature(savedMarkdown, ydoc);
+}
+
+/** The document's signature when it holds edits the last save did not carry, else null. */
+function unsavedSignature(refs: DocsCollabSessionRefs): string | null {
+  const ydoc = refs.ydocRef.current;
+  if (!ydoc || !refs.localDirtySinceLastSaveRef.current) return null;
+  const body = pendingSignatureBody(ydoc, refs.getMarkdownRef.current);
+  if (body === null) return null;
+  const signature = docSignature(body, ydoc);
+  const unsaved = shouldMarkPendingWhenUnsaved(
+    refs.localDirtySinceLastSaveRef.current,
+    signature,
+    refs.lastSuccessfulSaveSignatureRef.current,
+  );
+  return unsaved ? signature : null;
 }
