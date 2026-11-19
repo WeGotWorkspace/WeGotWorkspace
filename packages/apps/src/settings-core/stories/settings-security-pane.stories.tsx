@@ -86,7 +86,7 @@ export const Throttled: Story = {
     const page = within(canvasElement.ownerDocument.body);
     await fillCreateDialog(canvasElement, "throttled");
     await userEvent.click(page.getByRole("button", { name: labels.create }));
-    await expect(await page.findByText(/^Too many tries\. Try again at /)).toBeInTheDocument();
+    await expect(await page.findByText(labels.throttled(null))).toBeInTheDocument();
   },
 };
 
