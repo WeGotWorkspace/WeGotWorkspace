@@ -7,7 +7,9 @@ import { CALENDARS_OFFLINE_VERSION } from "@/lib/offline/core/offline-version-al
 import {
   mergeCalendarRangeIntoCache,
   readCalendarBootstrapFromCache,
+  removeCalendarEventFromCache,
   upsertCalendarEventInCache,
+  upsertSnapshotCalendarEventInCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars/calendars-offline-store";
 import { calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
@@ -283,5 +285,315 @@ describe("calendars offline store: periods outside the bootstrap window (#1675)"
     await liveWrite([], []);
 
     expect(await ids()).toEqual([]);
+  });
+});
+
+describe("calendars offline store: a snapshot that is older than the cache (#2256)", () => {
+  const liveWindow = {
+    utcStart: new Date("2025-10-01T00:00:00Z"),
+    utcEnd: new Date("2028-10-01T00:00:00Z"),
+  };
+  const week = {
+    utcStart: new Date("2026-11-02T00:00:00Z"),
+    utcEnd: new Date("2026-11-09T00:00:00Z"),
+  };
+  const at = (id: string, title = "Standup") => ({
+    ...wireEvent(id),
+    title,
+    start: "2026-11-04T10:00:00",
+  });
+  const events = async () =>
+    new Map(
+      ((await readCalendarBootstrapFromCache(username))?.data.events ?? []).map((event) => [
+        event.id,
+        event.title,
+      ]),
+    );
+  const snapshot = (list: JmapCalendarEvent[]) => ({
+    ...bootstrap,
+    data: { ...bootstrap.data, events: list },
+  });
+  /** What inbound sync does with a created or changed event. */
+  const ingest = (event: JmapCalendarEvent) =>
+    upsertCalendarEventInCache(username, event, false, false);
+  /** A snapshot is requested, then the server and the cache move on. */
+  const requestSnapshot = async () => {
+    const requestedAt = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return requestedAt;
+  };
+
+  beforeEach(async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await calendarsEventsTable(db).clear();
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt: Date.now() - 60_000,
+    });
+  });
+
+  it("first load: keeps an event stored after the snapshot was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-new", "Arrived meanwhile"));
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).get("ev-new")).toBe("Arrived meanwhile");
+  });
+
+  it("first load: keeps a change stored after the snapshot was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-old", "Renamed meanwhile"));
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
+  });
+
+  it("first load: does not bring back an event removed after the snapshot was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await removeCalendarEventFromCache(username, "ev-old");
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("a cache rewrite keeps the age of the rows it copies", async () => {
+    const requestedAt = await requestSnapshot();
+    const cached = await readCalendarBootstrapFromCache(username);
+    await writeCalendarBootstrapToCache(username, cached as CalendarAppBootstrap, {
+      window: liveWindow,
+      requestedAt: Date.now(),
+      rewrite: true,
+    });
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Edited")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+    expect((await events()).get("ev-old")).toBe("Edited");
+
+    await writeCalendarBootstrapToCache(username, snapshot([]), {
+      window: liveWindow,
+      requestedAt,
+    });
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("a cache rewrite ends the protection of a just-written local row, as before", async () => {
+    // Created here, then deleted on another device while this tab was closed.
+    await upsertCalendarEventInCache(username, at("ev-mine", "Created here"), false);
+    const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;
+    await writeCalendarBootstrapToCache(username, copy, {
+      window: liveWindow,
+      requestedAt: Date.now(),
+      rewrite: true,
+    });
+    expect((await events()).get("ev-mine"), "the rewrite keeps the row").toBe("Created here");
+    const requestedAt = await requestSnapshot();
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).has("ev-mine")).toBe(false);
+  });
+
+  it("a cache rewrite keeps what a snapshot stored after the copy was read", async () => {
+    await ingest(at("ev-gone", "Ghost"));
+    const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;
+    const snapshotAt = await requestSnapshot();
+    await writeCalendarBootstrapToCache(
+      username,
+      snapshot([at("ev-old", "New"), at("ev-added", "Added")]),
+      { window: liveWindow, requestedAt: snapshotAt },
+    );
+
+    await writeCalendarBootstrapToCache(username, copy, {
+      window: liveWindow,
+      requestedAt: Date.now(),
+      rewrite: true,
+    });
+
+    const stored = await events();
+    expect(stored.get("ev-old")).toBe("New");
+    expect(stored.get("ev-added")).toBe("Added");
+    expect(stored.has("ev-gone")).toBe(false);
+  });
+
+  it("a cache rewrite keeps a stored event whose calendar the copy does not list", async () => {
+    const onNewCalendar = (id: string, title: string): JmapCalendarEvent => ({
+      ...at(id, title),
+      calendarIds: { "cal-new": true },
+    });
+    await ingest(onNewCalendar("ev-new", "Kept"));
+    const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;
+    await ingest(onNewCalendar("ev-gone", "Ghost"));
+    const requestedAt = Date.now() + 1;
+
+    await writeCalendarBootstrapToCache(
+      username,
+      {
+        ...copy,
+        data: { ...copy.data, events: copy.data.events.filter((e) => e.id !== "ev-gone") },
+      },
+      { window: liveWindow, requestedAt, rewrite: true },
+    );
+
+    const stored = await events();
+    expect(stored.get("ev-new")).toBe("Kept");
+    expect(stored.has("ev-gone")).toBe(false);
+  });
+
+  it("first load: an older snapshot written after a newer one changes nothing", async () => {
+    const older = await requestSnapshot();
+    const newer = await requestSnapshot();
+    await writeCalendarBootstrapToCache(
+      username,
+      snapshot([at("ev-old", "Renamed"), at("ev-new", "New")]),
+      { window: liveWindow, requestedAt: newer },
+    );
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt: older,
+    });
+
+    expect([...(await events())]).toEqual(
+      expect.arrayContaining([
+        ["ev-old", "Renamed"],
+        ["ev-new", "New"],
+      ]),
+    );
+  });
+
+  it("first load: a snapshot requested after the cache was written still wins", async () => {
+    await ingest(at("ev-gone", "Deleted on the server"));
+    await ingest(at("ev-old", "Stale"));
+    await removeCalendarEventFromCache(username, "ev-back");
+    const requestedAt = await requestSnapshot();
+
+    await writeCalendarBootstrapToCache(
+      username,
+      snapshot([at("ev-old", "Fresh"), at("ev-back", "Created again")]),
+      { window: liveWindow, requestedAt },
+    );
+
+    expect([...(await events())].sort()).toEqual([
+      ["ev-back", "Created again"],
+      ["ev-old", "Fresh"],
+    ]);
+  });
+
+  it("window load: an event of the window does not replace a newer row", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-old", "Renamed meanwhile"));
+
+    const stored = await upsertSnapshotCalendarEventInCache(
+      username,
+      at("ev-old", "Old"),
+      requestedAt,
+    );
+
+    expect(stored).toBe("newer");
+    expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
+  });
+
+  it("window load: an event removed after the window was requested stays gone", async () => {
+    const requestedAt = await requestSnapshot();
+    await removeCalendarEventFromCache(username, "ev-old");
+
+    await upsertSnapshotCalendarEventInCache(username, at("ev-old", "Old"), requestedAt);
+
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("window load: a row with a pending local change stays", async () => {
+    await upsertCalendarEventInCache(username, at("ev-old", "Mine"), true);
+    const requestedAt = await requestSnapshot();
+
+    const stored = await upsertSnapshotCalendarEventInCache(
+      username,
+      at("ev-old", "Server"),
+      requestedAt,
+    );
+
+    expect(stored).toBe("pending");
+    expect((await events()).get("ev-old")).toBe("Mine");
+  });
+
+  it("window load: stores a new event and replaces an older row", async () => {
+    const requestedAt = await requestSnapshot();
+
+    await upsertSnapshotCalendarEventInCache(username, at("ev-old", "Fresh"), requestedAt);
+    await upsertSnapshotCalendarEventInCache(username, at("ev-new", "New"), requestedAt);
+
+    expect([...(await events())].sort()).toEqual([
+      ["ev-new", "New"],
+      ["ev-old", "Fresh"],
+    ]);
+  });
+
+  it("forgets a removal after ten minutes, at the next snapshot write", async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const removals = () => db.meta.where("key").startsWith("calendars:removed-event:").keys();
+    await removeCalendarEventFromCache(username, "ev-old");
+    await db.meta.put({
+      key: "calendars:removed-event:ev-long-ago",
+      value: String(Date.now() - 11 * 60_000),
+    });
+
+    await writeCalendarBootstrapToCache(username, snapshot([]), { window: liveWindow });
+
+    const left = await removals();
+    expect(left).toContain("calendars:removed-event:ev-old");
+    expect(left).not.toContain("calendars:removed-event:ev-long-ago");
+  });
+
+  it("period load: keeps an event stored after the period was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-new", "Arrived meanwhile"));
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Old")], { requestedAt });
+
+    expect((await events()).get("ev-new")).toBe("Arrived meanwhile");
+  });
+
+  it("period load: keeps a change stored after the period was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-old", "Renamed meanwhile"));
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Old")], { requestedAt });
+
+    expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
+  });
+
+  it("period load: does not bring back an event removed after the period was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await removeCalendarEventFromCache(username, "ev-old");
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Old")], { requestedAt });
+
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("period load: a period requested after the cache was written still wins", async () => {
+    await ingest(at("ev-gone", "Deleted on the server"));
+    const requestedAt = await requestSnapshot();
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Fresh")], { requestedAt });
+
+    expect([...(await events())]).toEqual([["ev-old", "Fresh"]]);
   });
 });

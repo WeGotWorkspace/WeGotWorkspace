@@ -13,6 +13,7 @@
 export const liveTierSpecs = [
   "calendar-delete-mid-round",
   "calendar-far-week-event",
+  "calendar-late-first-load",
   "calendar-list-autosave-reload",
   "calendar-offline-week-event",
   "calendar-push",

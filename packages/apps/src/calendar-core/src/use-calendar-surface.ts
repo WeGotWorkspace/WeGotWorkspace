@@ -91,10 +91,10 @@ export function useCalendarSurface(
         if (result.changed) onInboundChangeRef.current?.();
       },
       // The window load (`loadRange`) still forwards each event here.
-      onRemoteEvent: (event) => {
+      onRemoteEvent: (event, snapshot) => {
         const username = usernameRef.current;
         if (!username) return;
-        ingested(ingestRemoteCalendarEvent(username, event));
+        ingested(ingestRemoteCalendarEvent(username, event, snapshot));
       },
       onRemoteCalendar: (calendar) => {
         const username = usernameRef.current;

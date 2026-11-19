@@ -23,8 +23,12 @@ export type JmapEventsAdapterOptions = {
    * `onRemoteEventDestroyed`, and an expired state re-lists the window.
    */
   syncEvents?: () => Promise<void>;
-  /** Inbound `/changes` ingest: write Dexie, skip pending outbox rows. */
-  onRemoteEvent?: (event: JmapCalendarEvent) => void;
+  /**
+   * Inbound ingest: write Dexie, skip pending outbox rows. `snapshot` is set
+   * for an event of a window load (`loadRange`) and says when that window was
+   * requested, so the cache can keep what it stored since (#2256).
+   */
+  onRemoteEvent?: (event: JmapCalendarEvent, snapshot?: { requestedAt: number }) => void;
   onRemoteEventDestroyed?: (eventId: JmapId) => void;
   onRemoteCalendar?: (calendar: JmapCalendar) => void;
   onRemoteCalendarDestroyed?: (calendarId: JmapId) => void;
@@ -96,9 +100,10 @@ export class JmapEventsAdapter extends JmapInboundAdapter {
    */
   async loadRange(range: DateRange): Promise<void> {
     this.#lastRange = range;
+    const snapshot = { requestedAt: Date.now() };
     const response = await this.#calendars.getCalendarEventsInRange(this.accountId, range);
     for (const jmapEvent of response.list) {
-      this.#options.onRemoteEvent?.(jmapEvent);
+      this.#options.onRemoteEvent?.(jmapEvent, snapshot);
     }
     this.#notify();
   }
