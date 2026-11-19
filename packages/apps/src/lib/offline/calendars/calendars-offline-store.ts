@@ -278,23 +278,26 @@ export async function upsertCalendarEventInCache(
 
 /**
  * Stores one event of a snapshot that was requested at `requestedAt` (the
- * window an open tab loads for inbound sync). The cache wins when it is newer
- * (see {@link CalendarSnapshotWriteOptions}); returns whether the event was stored.
+ * window an open tab loads for inbound sync). The cache wins when its row has
+ * a pending local change (`pending`) or is newer than the snapshot (`newer`,
+ * see {@link CalendarSnapshotWriteOptions}). It reads one row, not the table:
+ * a window load calls this once per event.
  */
 export async function upsertSnapshotCalendarEventInCache(
   username: string,
   event: JmapCalendarEvent,
   requestedAt: number,
-): Promise<boolean> {
+): Promise<"stored" | "pending" | "newer"> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const events = calendarsEventsTable(db);
   return db.transaction("rw", events, db.meta, async () => {
     const cached = await events.get(event.id);
-    if (cached && (cached.pendingSync || cached.updatedAt > requestedAt)) return false;
+    if (cached?.pendingSync) return "pending";
+    if (cached && cached.updatedAt > requestedAt) return "newer";
     const removedAt = await db.meta.get(`${META_REMOVED_EVENT_PREFIX}${event.id}`);
-    if (Number(removedAt?.value ?? 0) > requestedAt) return false;
+    if (Number(removedAt?.value ?? 0) > requestedAt) return "newer";
     await events.put(eventRow(event, false, false, requestedAt));
-    return true;
+    return "stored";
   });
 }
 

@@ -37,14 +37,16 @@ export async function ingestRemoteCalendarEvent(
   snapshot?: { requestedAt: number },
 ): Promise<"upserted" | "skipped-pending" | "skipped-stale"> {
   if (!event.id) return "skipped-pending";
+  if (snapshot) {
+    const outcome = await upsertSnapshotCalendarEventInCache(username, event, snapshot.requestedAt);
+    if (outcome === "pending") reportCalendarsSyncConflicts([event.id]);
+    if (outcome === "stored") return "upserted";
+    return outcome === "pending" ? "skipped-pending" : "skipped-stale";
+  }
   const pending = await pendingSet(username);
   if (pending.has(event.id)) {
     reportCalendarsSyncConflicts([event.id]);
     return "skipped-pending";
-  }
-  if (snapshot) {
-    const stored = await upsertSnapshotCalendarEventInCache(username, event, snapshot.requestedAt);
-    return stored ? "upserted" : "skipped-stale";
   }
   await upsertCalendarEventInCache(username, event, false, false);
   return "upserted";

@@ -418,7 +418,7 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
       requestedAt,
     );
 
-    expect(stored).toBe(false);
+    expect(stored).toBe("newer");
     expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
   });
 
@@ -429,6 +429,20 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
     await upsertSnapshotCalendarEventInCache(username, at("ev-old", "Old"), requestedAt);
 
     expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("window load: a row with a pending local change stays", async () => {
+    await upsertCalendarEventInCache(username, at("ev-old", "Mine"), true);
+    const requestedAt = await requestSnapshot();
+
+    const stored = await upsertSnapshotCalendarEventInCache(
+      username,
+      at("ev-old", "Server"),
+      requestedAt,
+    );
+
+    expect(stored).toBe("pending");
+    expect((await events()).get("ev-old")).toBe("Mine");
   });
 
   it("window load: stores a new event and replaces an older row", async () => {

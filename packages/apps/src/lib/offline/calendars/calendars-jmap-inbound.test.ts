@@ -9,7 +9,7 @@ import {
 
 const listPending = vi.fn<() => Promise<string[]>>();
 const upsert = vi.fn();
-const upsertSnapshot = vi.fn<(...args: unknown[]) => Promise<boolean>>();
+const upsertSnapshot = vi.fn<(...args: unknown[]) => Promise<"stored" | "pending" | "newer">>();
 const remove = vi.fn();
 const upsertCalendar = vi.fn();
 const removeCalendar = vi.fn();
@@ -60,14 +60,23 @@ describe("calendars-jmap-inbound", () => {
   });
 
   it("stores an event of a window load only when the cache is not newer (#2256)", async () => {
-    upsertSnapshot.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    upsertSnapshot
+      .mockResolvedValueOnce("stored")
+      .mockResolvedValueOnce("newer")
+      .mockResolvedValueOnce("pending");
     const snapshot = { requestedAt: 1_000 };
 
     await expect(ingestRemoteCalendarEvent("ada", remote, snapshot)).resolves.toBe("upserted");
     await expect(ingestRemoteCalendarEvent("ada", remote, snapshot)).resolves.toBe("skipped-stale");
+    expect(reportConflicts).not.toHaveBeenCalled();
+    await expect(ingestRemoteCalendarEvent("ada", remote, snapshot)).resolves.toBe(
+      "skipped-pending",
+    );
 
     expect(upsertSnapshot).toHaveBeenCalledWith("ada", remote, 1_000);
+    expect(reportConflicts).toHaveBeenCalledWith(["ev-1"]);
     expect(upsert).not.toHaveBeenCalled();
+    expect(listPending, "one row read per event, no scan of the table").not.toHaveBeenCalled();
   });
 
   it("skips a pending local row and reports the conflict channel", async () => {
