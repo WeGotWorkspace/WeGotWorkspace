@@ -219,8 +219,9 @@ test("Drive: a large upload in one tab shows once in a tab that watches the fold
     });
     await uploader.waitForTimeout(3_000);
 
+    // Whichever tab of the browser runs the upload queue sends the parts.
     let parts = 0;
-    uploader.on("request", (request) => {
+    context.on("request", (request) => {
       if (request.url().includes("/jmap/upload") && request.method() === "POST") parts += 1;
     });
     const buffer = Buffer.alloc(24 * partSize + 100);
