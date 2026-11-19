@@ -390,6 +390,26 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
     expect((await events()).has("ev-old")).toBe(false);
   });
 
+  it("a cache rewrite ends the protection of a just-written local row, as before", async () => {
+    // Created here, then deleted on another device while this tab was closed.
+    await upsertCalendarEventInCache(username, at("ev-mine", "Created here"), false);
+    const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;
+    await writeCalendarBootstrapToCache(username, copy, {
+      window: liveWindow,
+      requestedAt: Date.now(),
+      rewrite: true,
+    });
+    expect((await events()).get("ev-mine"), "the rewrite keeps the row").toBe("Created here");
+    const requestedAt = await requestSnapshot();
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).has("ev-mine")).toBe(false);
+  });
+
   it("a cache rewrite keeps what a snapshot stored after the copy was read", async () => {
     await ingest(at("ev-gone", "Ghost"));
     const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;

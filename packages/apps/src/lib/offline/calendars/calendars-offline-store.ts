@@ -128,7 +128,9 @@ async function readRemovedEvents(db: WgwOfflineDatabase): Promise<RemovedEvents>
   const expired = rows.filter((row) => Number(row.value) < forgetBefore).map((row) => row.key);
   if (expired.length > 0) await db.meta.bulkDelete(expired);
   return new Map(
-    rows.map((row) => [row.key.slice(META_REMOVED_EVENT_PREFIX.length), Number(row.value)]),
+    rows
+      .filter((row) => Number(row.value) >= forgetBefore)
+      .map((row) => [row.key.slice(META_REMOVED_EVENT_PREFIX.length), Number(row.value)]),
   );
 }
 
@@ -149,8 +151,8 @@ export type CalendarBootstrapCacheWriteOptions = CalendarSnapshotWriteOptions & 
    * The bootstrap is a copy of the cache (a calendar-list edit, a subscription
    * refresh), not a server snapshot. `requestedAt` is then only the fence for
    * rows stored meanwhile. The events are not written at all: the cache is the
-   * truth, and only a stored event the copy omits, whose calendar the copy
-   * dropped too, is removed.
+   * truth. Only a stored event the copy omits, whose calendar the copy dropped
+   * too, is removed, and a copied row loses its `locallyWritten` mark.
    */
   rewrite?: boolean;
 };
@@ -226,6 +228,18 @@ export async function writeCalendarBootstrapToCache(
         )
         .map((row) => row.id);
       if (gone.length > 0) await events.bulkDelete(gone);
+      // A rewrite has always ended the protection of a just-written local row:
+      // the next snapshot that omits the event may drop it. Without this an
+      // event created here and deleted elsewhere while the tab was closed
+      // would stay for good.
+      await events
+        .filter(
+          (row) =>
+            row.locallyWritten === true && copiedIds.has(row.id) && row.updatedAt <= requestedAt,
+        )
+        .modify((row) => {
+          delete row.locallyWritten;
+        });
       return;
     }
     const removed = await readRemovedEvents(db);
