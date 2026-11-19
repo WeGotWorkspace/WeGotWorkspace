@@ -189,9 +189,7 @@ describe("createDriveFolderFetchShare", () => {
     // The browser answers this tab's lock request a while later.
     const grant = locks.deferGrants("wgw.drive.folder-fetch.");
     const b = tab("b")({ username: USER, path: PATH, wave: 10, fetchLive: own });
-    bus
-      .topic()
-      .publish({ v: 1, username: USER, path: PATH, wave: 10, data: listing("early.md") });
+    bus.topic().publish({ v: 1, username: USER, path: PATH, wave: 10, data: listing("early.md") });
     await vi.advanceTimersByTimeAsync(0);
     grant();
     await vi.advanceTimersByTimeAsync(0);

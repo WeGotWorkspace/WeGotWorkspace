@@ -56,7 +56,9 @@ export type DriveFolderFetchRequest = {
  * fetching tab failed or closed), and always without Web Locks.
  */
 export function createDriveFolderFetchShare(deps: DriveFolderFetchShareDeps) {
-  return async function fetchOncePerBrowser(request: DriveFolderFetchRequest): Promise<DriveUIData> {
+  return async function fetchOncePerBrowser(
+    request: DriveFolderFetchRequest,
+  ): Promise<DriveUIData> {
     const { username, path, wave, fetchLive, signal } = request;
     let heard: DriveFolderFetched | null = null;
     let wake: () => void = () => undefined;
