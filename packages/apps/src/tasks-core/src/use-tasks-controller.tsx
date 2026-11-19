@@ -134,8 +134,24 @@ export function useTasksController({
     [shell],
   );
 
+  // The open task's live text, shown in the list row as it is typed (#2208).
+  // Projection only: the room saves it, never the autosave.
+  const showLiveText = useCallback(
+    (taskId: string, text: { title: string; description: string }) =>
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId &&
+          (task.title !== text.title || (task.description ?? "") !== text.description)
+            ? { ...task, title: text.title, description: text.description }
+            : task,
+        ),
+      ),
+    [setTasks],
+  );
+
   return {
     L: shell.L,
+    showLiveText,
     taskLists: shell.taskLists,
     view: shell.view,
     viewLabel: shell.viewLabel,
