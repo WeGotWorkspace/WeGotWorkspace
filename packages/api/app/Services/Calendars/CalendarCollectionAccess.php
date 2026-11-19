@@ -193,9 +193,9 @@ final class CalendarCollectionAccess
             || ($meeting
                 ? $this->admins->isAdmin($username)
                 : $this->teamRoles->mayManageTeamCollections(
-                $username,
-                substr($principalUri, strlen(AdminConstants::GROUP_PREFIX)),
-            ));
+                    $username,
+                    substr($principalUri, strlen(AdminConstants::GROUP_PREFIX)),
+                ));
     }
 
     public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance, bool $meeting = false): void

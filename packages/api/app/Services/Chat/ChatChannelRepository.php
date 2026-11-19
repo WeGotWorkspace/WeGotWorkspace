@@ -111,19 +111,7 @@ final class ChatChannelRepository
             : null;
 
         if ($groupSlug !== null) {
-            if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
-            }
-            $this->collectionAccess->assertMayAddChannelToTeam($username, $groupSlug, $kind);
-            $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
-            $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
-            if ($group === null) {
-                throw new ApiHttpException(404, 'Team not found.', 'not_found');
-            }
-            $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
-                (string) $group->uri,
-                (string) ($group->displayname ?? $groupSlug),
-            );
+            $principalUri = $this->teamPrincipalUri($username, $groupSlug, $kind);
         } else {
             $principalUri = $this->collections->principalUri($username);
         }
@@ -527,24 +515,11 @@ final class ChatChannelRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
-        $kind = $this->isMeeting($instance) ? ChatChannelMeta::KIND_MEETING : ChatChannelMeta::KIND_CHANNEL;
-        $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance, $kind === ChatChannelMeta::KIND_MEETING);
+        $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance, $this->isMeeting($instance));
         if ($newGroupSlug === null) {
             $principalUri = $this->collections->principalUri($username);
         } else {
-            if (! in_array($newGroupSlug, $this->groups->allowedGroupSlugs($username), true)) {
-                throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
-            }
-            $this->collectionAccess->assertMayAddChannelToTeam($username, $newGroupSlug, $kind);
-            $principalUri = AdminConstants::GROUP_PREFIX.$newGroupSlug;
-            $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
-            if ($group === null) {
-                throw new ApiHttpException(404, 'Team not found.', 'not_found');
-            }
-            $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
-                (string) $group->uri,
-                (string) ($group->displayname ?? $newGroupSlug),
-            );
+            $principalUri = $this->teamPrincipalUri($username, $newGroupSlug, $this->isMeeting($instance) ? ChatChannelMeta::KIND_MEETING : ChatChannelMeta::KIND_CHANNEL);
         }
 
         $existing = $this->findChannelInstance($principalUri, (string) $instance->uri);
@@ -792,6 +767,25 @@ final class ChatChannelRepository
         }
 
         return $map;
+    }
+
+    private function teamPrincipalUri(string $username, string $groupSlug, string $kind): string
+    {
+        if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
+            throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
+        }
+        $this->collectionAccess->assertMayAddChannelToTeam($username, $groupSlug, $kind);
+        $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
+        $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
+        if ($group === null) {
+            throw new ApiHttpException(404, 'Team not found.', 'not_found');
+        }
+        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
+            (string) $group->uri,
+            (string) ($group->displayname ?? $groupSlug),
+        );
+
+        return $principalUri;
     }
 
     private function isMeeting(CalendarInstance $instance): bool
