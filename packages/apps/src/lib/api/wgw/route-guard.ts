@@ -63,6 +63,19 @@ export function isWgwPublicRoutePathname(pathname: string): boolean {
   );
 }
 
+/**
+ * Routes where a signed-out visitor is expected and must not be sent to /login:
+ * guest doors (share links, Meet lobby, join, invite landings) and /install.
+ * Bare `/meet` is public only so leftover `?room=` links can redirect; the
+ * workspace that mounts there needs a member, so it is not a guest route.
+ */
+export function isWgwSignedOutRoutePathname(pathname: string): boolean {
+  const normalized = normalizePathname(pathname);
+  if (normalized === "/meet") return false;
+  if (normalized === "/install" || normalized.startsWith("/install/")) return true;
+  return isWgwPublicRoutePathname(normalized);
+}
+
 function parseRelativePath(raw: string): URL | null {
   const input = raw.trim();
   if (!input.startsWith("/") || input.startsWith("//")) return null;

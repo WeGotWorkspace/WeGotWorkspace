@@ -6,11 +6,7 @@ import {
   wgwLiveApiEnabled,
   wgwSessionAvailable,
 } from "@/lib/api/wgw/http";
-import {
-  isWgwAuthRoutePathname,
-  isWgwPublicRoutePathname,
-  sanitizeWgwReturnPath,
-} from "@/lib/api/wgw/route-guard";
+import { isWgwAuthRoutePathname, sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
 
 type WeGotWorkspaceRequireAuthProps = {
   children: ReactNode;
@@ -25,8 +21,11 @@ function WeGotWorkspaceRequireAuth({ children }: WeGotWorkspaceRequireAuthProps)
   useEffect(() => {
     if (!wgwLiveApiEnabled()) return;
     if (wgwHasAuthenticatedSession()) return;
+    // No public-route exemption: a component wrapped in this guard needs a member
+    // session wherever it mounts. Public Meet landings (guest lobby, invite
+    // refusal) never mount the wrapped workspace, but bare `/meet` does, and a
+    // signed-out PWA launch there must reach /login, not a bootstrap error.
     if (isWgwAuthRoutePathname(pathname)) return;
-    if (isWgwPublicRoutePathname(pathname)) return;
 
     let cancelled = false;
 
