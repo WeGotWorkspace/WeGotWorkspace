@@ -105,7 +105,7 @@ async function rewriteCachedCalendars(
   await writeCalendarBootstrapToCache(
     username,
     { ...latest, data: { ...latest.data, ...edit(latest.data) } },
-    { ...cacheWindow(), requestedAt: readAt },
+    { ...cacheWindow(), requestedAt: readAt, rewrite: true },
   );
 }
 

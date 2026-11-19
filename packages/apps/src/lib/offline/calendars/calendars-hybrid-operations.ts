@@ -162,7 +162,7 @@ async function writeCalendarsToCache(
   await writeCalendarBootstrapToCache(
     username,
     { ...cached, data: { ...cached.data, calendars: mutate(cached.data.calendars) } },
-    { window: calendarBootstrapWindow(), requestedAt: readAt },
+    { window: calendarBootstrapWindow(), requestedAt: readAt, rewrite: true },
   );
 }
 
@@ -501,6 +501,7 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
     await writeCalendarBootstrapToCache(username, bootstrap, {
       window,
       requestedAt: merged ? readAt : requestedAt,
+      rewrite: merged !== null,
     });
   }
   const cached = await readCalendarBootstrapFromCache(username);

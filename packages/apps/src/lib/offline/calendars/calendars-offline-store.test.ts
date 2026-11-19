@@ -368,6 +368,28 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
     expect((await events()).has("ev-old")).toBe(false);
   });
 
+  it("a cache rewrite keeps the age of the rows it copies", async () => {
+    const requestedAt = await requestSnapshot();
+    const cached = await readCalendarBootstrapFromCache(username);
+    await writeCalendarBootstrapToCache(username, cached as CalendarAppBootstrap, {
+      window: liveWindow,
+      requestedAt: Date.now(),
+      rewrite: true,
+    });
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Edited")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+    expect((await events()).get("ev-old")).toBe("Edited");
+
+    await writeCalendarBootstrapToCache(username, snapshot([]), {
+      window: liveWindow,
+      requestedAt,
+    });
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
   it("first load: an older snapshot written after a newer one changes nothing", async () => {
     const older = await requestSnapshot();
     const newer = await requestSnapshot();

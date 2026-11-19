@@ -145,6 +145,13 @@ export type CalendarBootstrapCacheWriteOptions = CalendarSnapshotWriteOptions & 
    * Without it, every omitted event is dropped.
    */
   window?: CalendarUtcRange;
+  /**
+   * The bootstrap is a copy of the cache (a calendar-list edit, a subscription
+   * refresh), not a server snapshot. `requestedAt` is then only the fence for
+   * rows stored meanwhile; a copied row keeps its own `updatedAt`, because the
+   * rewrite adds no information a snapshot requested earlier could lack.
+   */
+  rewrite?: boolean;
 };
 
 function keepCachedRowOnBootstrapWrite(
@@ -206,10 +213,15 @@ export async function writeCalendarBootstrapToCache(
     );
     const incomingIds = new Set(incoming.map((event) => event.id));
     const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
+    const cachedUpdatedAt = options.rewrite
+      ? new Map((await events.toArray()).map((row) => [row.id, row.updatedAt]))
+      : undefined;
     await replaceMirrorRows(
       events,
-      // The rows are as fresh as the snapshot, not as its write.
-      incoming.map((event) => eventRow(event, false, false, requestedAt)),
+      // The rows are as fresh as the snapshot, not as its write; a rewrite keeps the cached age.
+      incoming.map((event) =>
+        eventRow(event, false, false, cachedUpdatedAt?.get(event.id) ?? requestedAt),
+      ),
       {
         keep: (row) =>
           keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window, requestedAt),
