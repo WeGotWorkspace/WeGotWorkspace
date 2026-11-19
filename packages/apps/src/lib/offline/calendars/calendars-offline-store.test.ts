@@ -7,6 +7,7 @@ import { CALENDARS_OFFLINE_VERSION } from "@/lib/offline/core/offline-version-al
 import {
   mergeCalendarRangeIntoCache,
   readCalendarBootstrapFromCache,
+  removeCalendarEventFromCache,
   upsertCalendarEventInCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars/calendars-offline-store";
@@ -283,5 +284,162 @@ describe("calendars offline store: periods outside the bootstrap window (#1675)"
     await liveWrite([], []);
 
     expect(await ids()).toEqual([]);
+  });
+});
+
+describe("calendars offline store: a snapshot that is older than the cache (#2256)", () => {
+  const liveWindow = {
+    utcStart: new Date("2025-10-01T00:00:00Z"),
+    utcEnd: new Date("2028-10-01T00:00:00Z"),
+  };
+  const week = {
+    utcStart: new Date("2026-11-02T00:00:00Z"),
+    utcEnd: new Date("2026-11-09T00:00:00Z"),
+  };
+  const at = (id: string, title = "Standup") => ({
+    ...wireEvent(id),
+    title,
+    start: "2026-11-04T10:00:00",
+  });
+  const events = async () =>
+    new Map(
+      ((await readCalendarBootstrapFromCache(username))?.data.events ?? []).map((event) => [
+        event.id,
+        event.title,
+      ]),
+    );
+  const snapshot = (list: JmapCalendarEvent[]) => ({
+    ...bootstrap,
+    data: { ...bootstrap.data, events: list },
+  });
+  /** What inbound sync does with a created or changed event. */
+  const ingest = (event: JmapCalendarEvent) =>
+    upsertCalendarEventInCache(username, event, false, false);
+  /** A snapshot is requested, then the server and the cache move on. */
+  const requestSnapshot = async () => {
+    const requestedAt = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return requestedAt;
+  };
+
+  beforeEach(async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await calendarsEventsTable(db).clear();
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt: Date.now() - 60_000,
+    });
+  });
+
+  it("first load: keeps an event stored after the snapshot was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-new", "Arrived meanwhile"));
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).get("ev-new")).toBe("Arrived meanwhile");
+  });
+
+  it("first load: keeps a change stored after the snapshot was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-old", "Renamed meanwhile"));
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
+  });
+
+  it("first load: does not bring back an event removed after the snapshot was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await removeCalendarEventFromCache(username, "ev-old");
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt,
+    });
+
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("first load: an older snapshot written after a newer one changes nothing", async () => {
+    const older = await requestSnapshot();
+    const newer = await requestSnapshot();
+    await writeCalendarBootstrapToCache(
+      username,
+      snapshot([at("ev-old", "Renamed"), at("ev-new", "New")]),
+      { window: liveWindow, requestedAt: newer },
+    );
+
+    await writeCalendarBootstrapToCache(username, snapshot([at("ev-old", "Old")]), {
+      window: liveWindow,
+      requestedAt: older,
+    });
+
+    expect([...(await events())]).toEqual(
+      expect.arrayContaining([
+        ["ev-old", "Renamed"],
+        ["ev-new", "New"],
+      ]),
+    );
+  });
+
+  it("first load: a snapshot requested after the cache was written still wins", async () => {
+    await ingest(at("ev-gone", "Deleted on the server"));
+    await ingest(at("ev-old", "Stale"));
+    await removeCalendarEventFromCache(username, "ev-back");
+    const requestedAt = await requestSnapshot();
+
+    await writeCalendarBootstrapToCache(
+      username,
+      snapshot([at("ev-old", "Fresh"), at("ev-back", "Created again")]),
+      { window: liveWindow, requestedAt },
+    );
+
+    expect([...(await events())].sort()).toEqual([
+      ["ev-back", "Created again"],
+      ["ev-old", "Fresh"],
+    ]);
+  });
+
+  it("period load: keeps an event stored after the period was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-new", "Arrived meanwhile"));
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Old")], { requestedAt });
+
+    expect((await events()).get("ev-new")).toBe("Arrived meanwhile");
+  });
+
+  it("period load: keeps a change stored after the period was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-old", "Renamed meanwhile"));
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Old")], { requestedAt });
+
+    expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
+  });
+
+  it("period load: does not bring back an event removed after the period was requested", async () => {
+    const requestedAt = await requestSnapshot();
+    await removeCalendarEventFromCache(username, "ev-old");
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Old")], { requestedAt });
+
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("period load: a period requested after the cache was written still wins", async () => {
+    await ingest(at("ev-gone", "Deleted on the server"));
+    const requestedAt = await requestSnapshot();
+
+    await mergeCalendarRangeIntoCache(username, week, [at("ev-old", "Fresh")], { requestedAt });
+
+    expect([...(await events())]).toEqual([["ev-old", "Fresh"]]);
   });
 });

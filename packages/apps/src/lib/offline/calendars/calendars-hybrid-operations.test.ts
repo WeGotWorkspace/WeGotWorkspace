@@ -13,6 +13,7 @@ import {
   enqueueOutboxMutation,
   listOutboxMutations,
   readCalendarBootstrapFromCache,
+  upsertCalendarEventInCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars/calendars-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
@@ -461,6 +462,54 @@ describe("events outside the bootstrap window (#1675)", () => {
 
     expect(fetchCalendarEventsInRangeLive).toHaveBeenCalledTimes(1);
     expect(await cachedIds()).toEqual(expect.arrayContaining(["ev-now", "ev-far-back"]));
+  });
+});
+
+describe("a load that finishes after inbound sync stored an event (#2256)", () => {
+  const inWindow = (id: string, title: string): JmapCalendarEvent => ({
+    ...wireEvent(id, title),
+    start: Temporal.Now.plainDateISO().add({ days: 7 }).toString() + "T10:00:00",
+  });
+  const cachedTitles = async () =>
+    ((await readCalendarBootstrapFromCache(username))?.data.events ?? []).map(
+      (event) => event.title,
+    );
+
+  beforeEach(async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.outbox.clear();
+    await calendarsEventsTable(db).clear();
+  });
+
+  it("first load: an event stored while the live snapshot was in flight stays", async () => {
+    fetchCalendarLiveBootstrap.mockImplementation(async () => {
+      // Another tab's sync round stores an event the snapshot was too early for.
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await upsertCalendarEventInCache(username, inWindow("ev-new", "Arrived"), false, false);
+      return { ...bootstrap, data: { ...bootstrap.data, events: [inWindow("ev-1", "Standup")] } };
+    });
+
+    const loaded = await fetchCalendarHybridBootstrap();
+
+    expect(loaded.data.events.map((event) => event.title).sort()).toEqual(["Arrived", "Standup"]);
+    expect((await cachedTitles()).sort()).toEqual(["Arrived", "Standup"]);
+  });
+
+  it("period load: an event stored while the period was in flight stays", async () => {
+    const range = {
+      utcStart: new Date("2033-01-03T00:00:00Z"),
+      utcEnd: new Date("2033-01-24T00:00:00Z"),
+    };
+    fetchCalendarEventsInRangeLive.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await upsertCalendarEventInCache(username, wireEvent("ev-far", "Arrived"), false, false);
+      return [];
+    });
+
+    await loadCalendarRangeHybrid(username, range);
+
+    expect(await cachedTitles()).toContain("Arrived");
   });
 });
 
