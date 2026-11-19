@@ -23,6 +23,10 @@ services:
       # Shipped packages/api/.env.example is production-safe. This stack is local dev.
       APP_ENV: local
       APP_DEBUG: "true"
+      # The data dir is a bind mount. On Docker Desktop for macOS that mount
+      # breaks SQLite's WAL index: PHP workers die with SIGBUS and the database
+      # ends up corrupt. Keep the rollback journal here (INSTALL.md, SQLite database files).
+      WGW_DB_SQLITE_JOURNAL_MODE: ${WGW_DB_SQLITE_JOURNAL_MODE:-delete}
     volumes:
       - ./apps/wegotworkspace:/var/www/install
       - ./packages/api:/var/www/packages/api
@@ -49,6 +53,7 @@ services:
       WGW_DEV_DOMAIN: ${WGW_DEV_DOMAIN:-wegotworkspace.localhost}
       APP_ENV: local
       APP_DEBUG: "true"
+      WGW_DB_SQLITE_JOURNAL_MODE: ${WGW_DB_SQLITE_JOURNAL_MODE:-delete}
     volumes:
       - ./apps/wegotworkspace:/var/www/install
       - ./packages/api:/var/www/packages/api
