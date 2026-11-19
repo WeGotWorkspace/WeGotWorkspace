@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Payload: array{username: string, role: string}.
+ * Payload: array{username: string, role: string, mfa: array{enabled: bool, recoveryCodesRemaining: int}}.
  */
 final class PrincipalResource extends JsonResource
 {
@@ -20,6 +20,7 @@ final class PrincipalResource extends JsonResource
         return [
             'username' => $this->resource['username'],
             'role' => $this->resource['role'],
+            'mfa' => $this->resource['mfa'],
         ];
     }
 }
