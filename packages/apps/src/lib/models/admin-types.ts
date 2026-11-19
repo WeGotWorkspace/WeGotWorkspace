@@ -200,6 +200,18 @@ export type AdminUpdateState = {
   lastResult: AdminUpdateResult | null;
 };
 
+/** The cheap progress part of the update state (GET /admin/updates/progress, #2242). */
+export type AdminUpdateProgress = Pick<
+  AdminUpdateState,
+  | "inProgress"
+  | "phase"
+  | "current"
+  | "download"
+  | "phaseProgress"
+  | "cancelRequested"
+  | "cancelAllowed"
+>;
+
 export type AdminSearchReindexPhaseProgress = {
   completed: number;
   total: number;
@@ -253,6 +265,8 @@ export type AdminAPIOperations = {
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUpdateState>;
   refreshUpdateState: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
+  /** Lock, phase and progress only: no server checks, no backup listing. */
+  refreshUpdateProgress: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateProgress>;
   applyUpdate: (version?: string, opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   cancelUpdate: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   startSearchReindex: (opts?: { signal?: AbortSignal }) => Promise<AdminSearchReindexState>;

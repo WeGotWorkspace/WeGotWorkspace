@@ -23,6 +23,16 @@ final class UpdateStateService
         return $this->runner->getState();
     }
 
+    /**
+     * Lock, phase and progress only: what the admin page polls while an update runs (#2242).
+     *
+     * @return array<string, mixed>
+     */
+    public function progress(): array
+    {
+        return $this->runner->getProgress();
+    }
+
     /** @return array<mixed> */
     public function deleteBackup(string $name): array
     {

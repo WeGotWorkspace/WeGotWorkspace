@@ -39,6 +39,7 @@ final class TaskRepository
         private readonly CollabTextState $textCore,
         private readonly TaskTextFields $textFields,
         private readonly TaskAssigneeGuard $assignees,
+        private readonly TaskChangeReactions $changeReactions,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
@@ -191,6 +192,7 @@ final class TaskRepository
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
         }
+        $this->changeReactions->afterWrite($username, $instance, null, $task);
 
         return $task;
     }
@@ -414,6 +416,7 @@ final class TaskRepository
         }
 
         $this->notifyStatusChanged($username, $target, $existingTask, $task);
+        $this->changeReactions->afterWrite($username, $target, $existingTask, $task);
 
         return $task;
     }
@@ -494,6 +497,7 @@ final class TaskRepository
         $objectUri = (string) $located['object']->uri;
         $calendarIdPair = [(int) $instance->calendarid, (int) $instance->id];
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
+        $existingTask = $this->mapper->forViewer($username)->toTask($located['object'], $this->taskListUriForInstance($instance), $vtodoUid);
 
         // Under the live-text core's lock the precondition and the remaining
         // ICS come from the locked row, so a text save that landed after the
@@ -531,6 +535,7 @@ final class TaskRepository
             $davPath,
             $username,
         );
+        $this->changeReactions->afterWrite($username, $instance, $existingTask, null);
 
         return ['ok' => true];
     }
@@ -598,12 +603,8 @@ final class TaskRepository
         array $before,
         array $after,
     ): void {
-        $from = isset($before['workflowStatus']) && is_string($before['workflowStatus'])
-            ? $before['workflowStatus']
-            : null;
-        $to = isset($after['workflowStatus']) && is_string($after['workflowStatus'])
-            ? $after['workflowStatus']
-            : null;
+        $from = is_string($before['workflowStatus'] ?? null) ? $before['workflowStatus'] : null;
+        $to = is_string($after['workflowStatus'] ?? null) ? $after['workflowStatus'] : null;
         if ($to === null || $from === $to) {
             return;
         }

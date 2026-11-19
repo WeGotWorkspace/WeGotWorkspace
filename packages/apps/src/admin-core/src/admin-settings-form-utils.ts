@@ -1,4 +1,4 @@
-import type { AdminUpdateState } from "@/lib/models/admin-types";
+import type { AdminUpdateProgress, AdminUpdateState } from "@/lib/models/admin-types";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
 
 /** Matches CalendarImipService::HOURLY_LIMIT_DEFAULT. The server applies the same fallback. */
@@ -65,7 +65,7 @@ export type AdminSettingsFormState = {
 /** Keep the progress card visible during POST /apply while merging poll snapshots. */
 export function mergePendingApplyPoll(
   prev: AdminUpdateState,
-  next: AdminUpdateState,
+  next: AdminUpdateProgress,
 ): AdminUpdateState {
   return {
     ...prev,
