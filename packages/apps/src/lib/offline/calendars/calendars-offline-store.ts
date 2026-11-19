@@ -149,7 +149,9 @@ export type CalendarBootstrapCacheWriteOptions = CalendarSnapshotWriteOptions & 
    * The bootstrap is a copy of the cache (a calendar-list edit, a subscription
    * refresh), not a server snapshot. `requestedAt` is then only the fence for
    * rows stored meanwhile; a copied row keeps its own `updatedAt`, because the
-   * rewrite adds no information a snapshot requested earlier could lack.
+   * rewrite adds no information a snapshot requested earlier could lack. The
+   * events are not written at all: the cache is the truth, and only the events
+   * of a calendar the copy dropped are removed.
    */
   rewrite?: boolean;
 };
@@ -213,15 +215,25 @@ export async function writeCalendarBootstrapToCache(
     );
     const incomingIds = new Set(incoming.map((event) => event.id));
     const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
-    const cachedUpdatedAt = options.rewrite
-      ? new Map((await events.toArray()).map((row) => [row.id, row.updatedAt]))
-      : undefined;
+    if (options.rewrite) {
+      // A copy of the cache can be older than what the cache stores now. The
+      // stored rows stay as they are; only the events of a calendar the copy no
+      // longer lists go, unless a newer or local row says otherwise.
+      const gone = (await events.toArray())
+        .filter(
+          (row) =>
+            !calendarIds.has(row.calendarId) &&
+            !row.pendingSync &&
+            row.locallyWritten !== true &&
+            row.updatedAt <= requestedAt,
+        )
+        .map((row) => row.id);
+      if (gone.length > 0) await events.bulkDelete(gone);
+      return;
+    }
     await replaceMirrorRows(
       events,
-      // The rows are as fresh as the snapshot, not as its write; a rewrite keeps the cached age.
-      incoming.map((event) =>
-        eventRow(event, false, false, cachedUpdatedAt?.get(event.id) ?? requestedAt),
-      ),
+      incoming.map((event) => eventRow(event, false, false, requestedAt)),
       {
         keep: (row) =>
           keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window, requestedAt),

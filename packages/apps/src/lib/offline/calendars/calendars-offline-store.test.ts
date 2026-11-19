@@ -390,6 +390,28 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
     expect((await events()).has("ev-old")).toBe(false);
   });
 
+  it("a cache rewrite keeps what a snapshot stored after the copy was read", async () => {
+    await ingest(at("ev-gone", "Ghost"));
+    const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;
+    const snapshotAt = await requestSnapshot();
+    await writeCalendarBootstrapToCache(
+      username,
+      snapshot([at("ev-old", "New"), at("ev-added", "Added")]),
+      { window: liveWindow, requestedAt: snapshotAt },
+    );
+
+    await writeCalendarBootstrapToCache(username, copy, {
+      window: liveWindow,
+      requestedAt: Date.now(),
+      rewrite: true,
+    });
+
+    const stored = await events();
+    expect(stored.get("ev-old")).toBe("New");
+    expect(stored.get("ev-added")).toBe("Added");
+    expect(stored.has("ev-gone")).toBe(false);
+  });
+
   it("first load: an older snapshot written after a newer one changes nothing", async () => {
     const older = await requestSnapshot();
     const newer = await requestSnapshot();
