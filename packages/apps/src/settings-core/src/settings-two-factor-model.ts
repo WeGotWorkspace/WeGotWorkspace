@@ -69,11 +69,15 @@ export function twoFactorFailure(
     return { field: null, message: labels.offlineAction, wrongCode: false };
   }
   if (!isApiError(error)) return { field: null, message: labels.failed, wrongCode: false };
-  if (error.status === 403)
-    return { field: "password", message: labels.wrongPassword, wrongCode: false };
-  if (error.status === 409) return { field: null, message: labels.alreadyOn, wrongCode: false };
+  // Before the 403 check: Settings answers a wrong code with 403 `mfa_code_invalid`.
   if (error.code === "mfa_code_invalid" || error.status === 422) {
     return { field: "code", message: labels.wrongCode, wrongCode: true };
+  }
+  if (error.status === 403)
+    return { field: "password", message: labels.wrongPassword, wrongCode: false };
+  if (error.status === 409) {
+    const message = error.code === "mfa_not_enabled" ? labels.alreadyOff : labels.alreadyOn;
+    return { field: null, message, wrongCode: false };
   }
   if (error.status === 429) {
     return { field: step, message: labels.throttled(null), wrongCode: false };

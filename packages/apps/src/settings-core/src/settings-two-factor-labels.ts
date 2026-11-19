@@ -57,6 +57,7 @@ export const twoFactorSettingsLabels = {
   throttled: (time: string | null) =>
     time ? `Too many tries. Try again at ${time}.` : "Too many tries. Try again later.",
   alreadyOn: "Two-factor sign-in is already on. Reload the page to see it.",
+  alreadyOff: "Two-factor sign-in is already off. Reload the page to see it.",
   offlineAction: "You are offline. Try again when the connection is back.",
   failed: "Something went wrong. Try again.",
   turnedOff: "Two-factor sign-in is off",

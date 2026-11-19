@@ -30,7 +30,7 @@ export function createMockTwoFactorOperations(
       throw new AppPasswordThrottledError("mock 429", 3600, "throttled");
     }
     if (digits !== MOCK_SIGN_IN.code)
-      throw new WgwRequestError("mock 422", 422, "mfa_code_invalid");
+      throw new WgwRequestError("mock 403", 403, "mfa_code_invalid");
   };
   const newCodes = () => {
     state = { enabled: true, recoveryCodesRemaining: MOCK_SIGN_IN.recoveryCodes.length };
@@ -56,17 +56,19 @@ export function createMockTwoFactorOperations(
       await wait();
       checkPassword(currentPassword);
       if (state.enabled) throw new WgwRequestError("mock 409", 409, "mfa_already_enabled");
-      if (!started) throw new WgwRequestError("mock 404", 404, "not_found");
+      if (!started) throw new WgwRequestError("mock 400", 400, "mfa_setup_missing");
       checkCode(code);
       return newCodes();
     },
     disable: async (code) => {
       await wait();
+      if (!state.enabled) throw new WgwRequestError("mock 409", 409, "mfa_not_enabled");
       checkCode(code);
       state = { enabled: false, recoveryCodesRemaining: null };
     },
     replaceRecoveryCodes: async (code) => {
       await wait();
+      if (!state.enabled) throw new WgwRequestError("mock 409", 409, "mfa_not_enabled");
       checkCode(code);
       return newCodes();
     },

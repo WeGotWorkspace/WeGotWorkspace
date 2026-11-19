@@ -232,17 +232,19 @@ describe("twoFactorFailure", () => {
   const now = Date.UTC(2026, 10, 19, 12, 0);
 
   it("reads status and code, never the message", () => {
-    expect(twoFactorFailure(new WgwRequestError("x", 403), "password", now)).toMatchObject({
-      field: "password",
-      message: labels.wrongPassword,
-    });
     expect(
-      twoFactorFailure(new WgwRequestError("x", 422, "mfa_code_invalid"), "code", now),
+      twoFactorFailure(new WgwRequestError("x", 403, "current_password_invalid"), "password", now),
+    ).toMatchObject({ field: "password", message: labels.wrongPassword });
+    // Settings answers a wrong code with 403 too; the code decides.
+    expect(
+      twoFactorFailure(new WgwRequestError("x", 403, "mfa_code_invalid"), "code", now),
     ).toMatchObject({ field: "code", wrongCode: true });
-    expect(twoFactorFailure(new WgwRequestError("x", 409), "code", now)).toMatchObject({
-      field: null,
-      message: labels.alreadyOn,
-    });
+    expect(
+      twoFactorFailure(new WgwRequestError("x", 409, "mfa_already_enabled"), "code", now),
+    ).toMatchObject({ field: null, message: labels.alreadyOn });
+    expect(
+      twoFactorFailure(new WgwRequestError("x", 409, "mfa_not_enabled"), "code", now),
+    ).toMatchObject({ field: null, message: labels.alreadyOff });
     expect(
       twoFactorFailure(new AppPasswordThrottledError("x", 60, "throttled"), "password", now),
     ).toMatchObject({ field: "password" });

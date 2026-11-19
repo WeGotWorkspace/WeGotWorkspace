@@ -8,8 +8,8 @@ import { WgwRequestError } from "@/lib/api/wgw/request-error";
  * Two-factor sign-in in Settings → Security (#2273, #2275): start with the account password
  * (a secret and its `otpauth://` URI), confirm with the account password and a code (recovery
  * codes), turn off with a code, replace the recovery codes with a code. A wrong account
- * password is 403, a wrong code 401/422 `mfa_code_invalid`, a limit 429 with `Retry-After`,
- * confirm while it is already on 409.
+ * password is 403 `current_password_invalid`, a wrong code 403 `mfa_code_invalid`, a limit 429
+ * with `Retry-After`; 409 `mfa_already_enabled` / `mfa_not_enabled` when the state changed.
  */
 const PATH = "/settings/totp";
 
