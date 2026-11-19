@@ -1,0 +1,23 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:<sabre-vobject>
+CALSCALE:GREGORIAN
+BEGIN:VJOURNAL
+UID:01J6Y6M0R2V9GKJ4W1T8Q3ZBEX
+DTSTAMP:20260904T103456Z
+DESCRIPTION:hello *world* — ünïcode 🎉\nsecond line\, with\; specials
+ : \\ and a very long line that has to be folded by the serializer because 
+ it runs past seventy-five octets
+X-WGW-AUTHOR:alice
+X-WGW-DOC-PATH:Documents/Plan\; v2.md
+SEQUENCE:0
+X-WGW-THREAD-KIND:comment
+X-WGW-ANCHOR-TEXT:the quoted\, text
+X-WGW-ANCHOR-FROM:12
+X-WGW-ANCHOR-TO:40
+X-WGW-ANCHOR-OCCURRENCE:2
+X-WGW-ARCHIVED:FALSE
+X-WGW-REACTIONS:[{"emoji":"👍"\,"authors":["alice"\,"bob"]}]
+X-WGW-RESOLVED:TRUE
+END:VJOURNAL
+END:VCALENDAR

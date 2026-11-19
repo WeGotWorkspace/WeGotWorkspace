@@ -2,6 +2,11 @@ import { useEffect, useRef } from "react";
 import type { DocsCollabSession, DocsCollabSessionRefs } from "./docs-collab-types";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 
+/** This client's own edits since its last landed save. */
+export function hasPendingLocalWork(refs: DocsCollabSessionRefs): boolean {
+  return refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
+}
+
 export function useDocsCollabSessionRefs(
   wire: DocsCollabWireOperations,
   seedContent: string | undefined,
@@ -39,6 +44,7 @@ export function useDocsCollabSessionRefs(
   const lastSuccessfulSaveSignatureRef = useRef<string | null>(null);
   const sessionRef = useRef<DocsCollabSession | null>(null);
   const tabSyncRef = useRef<import("./docs-collab-types").DocsCollabTabSyncApi | null>(null);
+  const rereadServerRef = useRef<DocsCollabSessionRefs["rereadServerRef"]["current"]>(null);
 
   const refsBag = useRef<DocsCollabSessionRefs | null>(null);
   if (!refsBag.current) {
@@ -74,6 +80,7 @@ export function useDocsCollabSessionRefs(
       lastSuccessfulSaveSignatureRef,
       sessionRef,
       tabSyncRef,
+      rereadServerRef,
     };
   }
 

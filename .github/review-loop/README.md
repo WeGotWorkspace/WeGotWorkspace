@@ -32,9 +32,11 @@ approval leaves items for a human (see For a human), or when it fails. A human p
 unless the loop has not reviewed since the PR was last marked ready: then
 the review asked for is still due (a push right after "ready", such as
 "Update branch", cancels it), and the new head is reviewed. To
-start a new cycle, mark the PR draft and then ready again. That is the only
-reset, also for a PR that was never a draft: until then, every change request
-from the bot counts.
+start a new cycle, add the `re-review` label, or mark the PR draft and then
+ready again. The label is removed as soon as the review starts, and unlike
+draft/ready it leaves auto-merge on. Those are the only resets, also for a PR
+that was never a draft: until then, every change request from the bot
+counts.
 
 A `needs-human` PR whose last bot review requests changes stays blocked:
 GitHub keeps a change request in force until it is dismissed. To merge over
@@ -129,16 +131,19 @@ wait until the loop hands the PR to a human. Their first job,
 The reviewers cannot run the PHP suite, MySQL, or e2e, so an approved PR can
 still fail CI, which runs once the loop adds `ready-for-human`.
 `review-loop-ci-feedback.yml` runs when CI completes. If CI failed or timed
-out on a PR's head while that PR carries `ready-for-human`, it posts a
-change request from the loop bot, then removes the label. The review lists
-the failed or timed-out jobs (up to five), each with the last lines of its
-failed steps. It starts a normal fix round, which counts toward
+out on a PR's head while that PR carries `ready-for-human`, it first re-runs
+the failed jobs once and waits for them, so a flaky test does not cost the
+approval. Only when the re-run fails too does it post a change request from
+the loop bot, then remove the label. The review lists the failed or
+timed-out jobs (up to five), each with its failure lines (`FAIL`,
+`AssertionError`, `##[error]`, `✗`, non-zero exits) and then the last lines
+of its failed steps. It starts a normal fix round, which counts toward
 `REVIEW_LOOP_MAX_ROUNDS`. The fixer fixes the cause, or changes nothing and
 says why when the failure is not the change's, which stops the loop with
 `needs-human`.
 
-It reads the logs with the workflow's own token, so the loop's app needs no
-Actions permission. It runs from `main` and checks out no code. Security
+It reads the logs and re-runs jobs with the workflow's own token, so the
+loop's app needs no Actions permission. It runs from `main` and checks out no code. Security
 failures (Trivy, Gitleaks) are not sent back: their fixes are dependency or
 secret decisions for a human.
 

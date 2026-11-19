@@ -32,6 +32,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     savingUpdateChannel: updates.savingUpdateChannel,
     actions: {
       saveSettings: settings.saveSettings,
+      autosaveSettings: settings.autosaveSettings,
       useThisAddress: settings.useThisAddress,
       clearMailDeliverySmtpPassword: settings.clearMailDeliverySmtpPassword,
       clearTurnSecret: settings.clearTurnSecret,

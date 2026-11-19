@@ -63,7 +63,7 @@ export function createMeetChatOperations(seed: {
   const buildMessage = (
     channelId: string,
     body: string,
-    opts?: { parentId?: string | null; messageId?: string },
+    opts?: { parentId?: string | null; messageId?: string; mentions?: ChatMessage["mentions"] },
   ): ChatMessage => {
     const parentId = opts?.parentId ?? null;
     const parent = parentId ? state.messages.find((row) => row.id === parentId) : undefined;
@@ -79,7 +79,7 @@ export function createMeetChatOperations(seed: {
       body: body.trim(),
       createdAt: Date.now(),
       reactions: [],
-      mentions: [],
+      mentions: opts?.mentions ?? [],
       previews: mapChatPreviews(body, unfurl),
       parentId,
       threadId: parent?.threadId ?? parent?.id ?? null,
@@ -125,10 +125,12 @@ export function createMeetChatOperations(seed: {
         reactions: reactions.filter((row) => row.authors.length > 0),
       });
     },
-    reply: async (parentId, body) => {
+    reply: async (parentId, body, opts) => {
       const parent = state.messages.find((row) => row.id === parentId);
       if (!parent) throw new Error(`Unknown message ${parentId}`);
-      return upsertMessage(buildMessage(parent.channelId, body, { parentId }));
+      return upsertMessage(
+        buildMessage(parent.channelId, body, { parentId, mentions: opts?.mentions }),
+      );
     },
     createChannel: async (input: MeetChannelWriteInput) => {
       const channel = buildMeetChannel(input);

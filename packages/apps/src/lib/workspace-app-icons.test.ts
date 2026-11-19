@@ -55,11 +55,11 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
 
     expect(notes).toContain('d="M28 43a2 2 0');
     expect(notes).toContain("#ffc800");
-    expect(notes).toContain("#ffea9f");
+    expect(notes).toContain("#003311");
     expect(notes).not.toContain("44.868");
     expect(contacts).toContain("44.868");
+    expect(contacts).toContain("#0045ff");
     expect(contacts).toContain("#a3c4e8");
-    expect(contacts).toContain("#d7eafe");
     expect(contacts).not.toContain('d="M28 43a2 2 0');
     expect(contacts).not.toContain('d="M256 280C284.719');
   });
@@ -104,8 +104,8 @@ describe("WORKSPACE_APP_ACCENT", () => {
     }
   });
 
-  it("samples contacts from the sky launcher tile", () => {
-    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#a3c4e8");
+  it("samples contacts from the blue launcher tile", () => {
+    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#0045ff");
     expect(WORKSPACE_APP_ACCENT.contacts).not.toMatch(/#8b6f45/i);
   });
 

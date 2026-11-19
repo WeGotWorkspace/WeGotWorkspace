@@ -364,8 +364,9 @@ describe("useDocsHomeList cache-first", () => {
     expect(hook.current.refreshing).toBe(true);
 
     gated.release();
-    await waitFor(() => expect(hook.current.files).toHaveLength(5));
-    expect(hook.current.refreshing).toBe(false);
+    // Rows land before the cache write; the flags clear after it.
+    await waitFor(() => expect(hook.current.refreshing).toBe(false));
+    expect(hook.current.files).toHaveLength(5);
     expect(hook.current.loading).toBe(false);
     expect(hook.current.isOfflineListing).toBe(false);
   });
@@ -437,8 +438,8 @@ describe("useDocsHomeList cache-first", () => {
     expect(hook.current.files).toEqual([]);
 
     gated.release();
-    await waitFor(() => expect(hook.current.files.map((f) => f.title)).toEqual(["D"]));
-    expect(hook.current.loading).toBe(false);
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(hook.current.files.map((f) => f.title)).toEqual(["D"]);
   });
 });
 

@@ -50,6 +50,7 @@ The design went through three external reviews on 2026-10-26. Each line is an al
 - Review 2: move and delete bump the old and new root sets; batches bump each root once; a missing marker row counts as 0.
 - Review 3: the `FileNode` hash covers `root → marker` pairs, identity and value, so a share of an empty folder is visible.
 - Review 1: the "Drive single-person shares" gap was not a gap (`rootsFor` includes share roots).
+- Considered (#2243): a per-user or per-install "something changed" marker checked before the states are built — not built: every write path (Sabre's own PDO writes, shares, Team membership, dismissals, grants, settings) would have to bump it, and a missed bump is a silent miss. Measuring showed the cost was elsewhere: building every JMAP method handler per request and one query per Team per collection kind. Both are fixed without a second source of truth; the marker stays an option if a hosted install still needs it.
 
 **Client**
 

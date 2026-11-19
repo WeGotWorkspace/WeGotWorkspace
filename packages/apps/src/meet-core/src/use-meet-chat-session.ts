@@ -75,7 +75,10 @@ export function useMeetChatSession({
       const messageId = operations?.newMessageId?.() ?? `local-${Date.now()}`;
       const saved = (async (): Promise<ChatMessage> => {
         const row = operations?.sendMessage
-          ? await operations.sendMessage(selectedChannelId, payload.body, { messageId })
+          ? await operations.sendMessage(selectedChannelId, payload.body, {
+              messageId,
+              mentions: payload.mentions,
+            })
           : {
               id: messageId,
               channelId: selectedChannelId,
@@ -99,7 +102,9 @@ export function useMeetChatSession({
     async (payload: ChatSendPayload) => {
       if (!parent) return;
       if (operations?.reply) {
-        const next = await operations.reply(parent.id, payload.body);
+        const next = await operations.reply(parent.id, payload.body, {
+          mentions: payload.mentions,
+        });
         setMessages((current) => {
           const withReply = upsertMeetChatMessage(current, next);
           return withReply.map((row) =>

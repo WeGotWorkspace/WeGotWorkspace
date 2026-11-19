@@ -208,6 +208,150 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertSame(['org', 'u:dave'], array_keys($moved));
     }
 
+    public function test_a_move_drops_an_address_of_a_reader_of_the_new_list(): void
+    {
+        // bob may only share with a Team colleague.
+        $this->seedSharedTeam('side', 'bob', 'dave');
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'dave' => ['mayWriteAll' => false],
+        ]])->assertOk();
+
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => [
+            'e:dave@example.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $this->moveTask('bob', $taskId, $shed);
+
+        $this->assertNoDave('bob', $taskId);
+    }
+
+    public function test_a_move_drops_an_address_the_actor_could_not_assign_on_the_new_list(): void
+    {
+        // alice and dave share no Team and dave does not own Shed; bob may only share with a Team colleague.
+        $this->seedSharedTeam('side', 'bob', 'dave');
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'alice' => ['mayWriteAll' => true],
+            'dave' => ['mayWriteAll' => true],
+        ]])->assertOk();
+
+        $taskId = $this->createTask();
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $etag = (string) $this->asUser('alice')->getJson($url)->assertOk()->json('etag');
+        $this->asUser('alice')->patchJson($url, ['participants' => [
+            'e:dave@example.test' => ['@type' => 'Participant', 'email' => 'dave@example.test', 'roles' => ['attendee']],
+        ]], $this->withIfMatch($etag))->assertOk();
+
+        // alice sees the shared list under her own id.
+        $aliceShed = collect($this->asUser('alice')->getJson('/api/v1/tasks/tasklists')->assertOk()->json('list'))
+            ->firstWhere('name', 'Shed')['id'] ?? null;
+        $this->assertIsString($aliceShed);
+        $this->moveTask('alice', $taskId, $aliceShed);
+
+        $this->assertNoDave('alice', $taskId);
+    }
+
+    public function test_a_move_drops_a_stored_assignee_who_can_only_read_the_new_list(): void
+    {
+        $shed = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', ['name' => 'Shed'])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$shed, ['shareWith' => [
+            'alice' => ['mayWriteAll' => false],
+        ]])->assertOk();
+
+        $taskId = $this->createTask();
+        $this->patchTask($taskId, ['participants' => [
+            'u:alice' => ['@type' => 'Participant', 'roles' => ['attendee']],
+        ]])->assertOk();
+
+        $this->moveTask('bob', $taskId, $shed);
+
+        $participants = $this->asUser('bob')->getJson('/api/v1/tasks/items/'.$taskId)->assertOk()->json('participants') ?? [];
+        $this->assertArrayNotHasKey('u:alice', $participants);
+        $this->assertStringNotContainsString('alice@example.test', $this->storedIcs($taskId));
+    }
+
+    private function moveTask(string $user, string $taskId, string $listId): void
+    {
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $task = $this->asUser($user)->getJson($url)->assertOk()->json();
+        $this->asUser($user)->putJson($url, [
+            'taskListIds' => [$listId => true],
+            'title' => (string) $task['title'],
+            'participants' => $task['participants'],
+        ], $this->withIfMatch((string) $task['etag']))->assertOk();
+    }
+
+    private function assertNoDave(string $user, string $taskId): void
+    {
+        $participants = $this->asUser($user)->getJson('/api/v1/tasks/items/'.$taskId)->assertOk()->json('participants') ?? [];
+        $this->assertArrayNotHasKey('u:dave', $participants);
+        $this->assertArrayNotHasKey('e:dave@example.test', $participants);
+        $this->assertStringNotContainsString('dave@example.test', $this->storedIcs($taskId));
+    }
+
+    public function test_an_address_of_a_reader_or_an_unassignable_member_is_refused(): void
+    {
+        // carol can only view the list; erin shares no Team with writer alice.
+        $this->shareWithErin();
+        foreach (['carol@example.test', 'alice@example.test'] as $address) {
+            $taskId = $this->createTask();
+            $url = '/api/v1/tasks/items/'.$taskId;
+            $etag = (string) $this->asUser('erin')->getJson($url)->assertOk()->json('etag');
+            $this->asUser('erin')->patchJson($url, ['participants' => [
+                'e:'.$address => ['@type' => 'Participant', 'email' => $address, 'roles' => ['attendee']],
+            ]], $this->withIfMatch($etag))
+                ->assertStatus(422)
+                ->assertJsonPath('code', 'invalid_participant');
+
+            $this->assertStringNotContainsString($address, $this->storedIcs($taskId));
+        }
+    }
+
+    public function test_a_reader_sees_only_the_members_they_may_see(): void
+    {
+        $this->shareWithErin();
+        $taskId = $this->seedTaskViaPdo('bob', 'hidden.ics', $this->vtodoWith(
+            "ATTENDEE;CN=Al:mailto:alice@example.test\r\n"
+            ."ATTENDEE;X-WGW-USERNAME=carol;CN=Caz:mailto:carol@example.test\r\n"
+        ), $this->listId);
+        $url = '/api/v1/tasks/items/'.$taskId;
+
+        // erin: alice's address stays a guest with the line's name; a stored u: reads as stored.
+        $erin = $this->asUser('erin')->getJson($url)->assertOk()->json('participants');
+        $this->assertSame(['e:alice@example.test', 'u:carol'], array_keys($erin));
+        $this->assertNull($erin['e:alice@example.test']['username']);
+        $this->assertSame('Al', $erin['e:alice@example.test']['name']);
+        $this->assertSame('Caz', $erin['u:carol']['name']);
+
+        // bob shares Team "crew" with both, so he sees their profiles.
+        $bob = $this->asUser('bob')->getJson($url)->assertOk()->json('participants');
+        $this->assertSame(['u:alice', 'u:carol'], array_keys($bob));
+        $this->assertSame('Alice', $bob['u:alice']['name']);
+        $this->assertSame('Carol', $bob['u:carol']['name']);
+    }
+
+    public function test_an_imported_address_of_a_hidden_member_reads_as_a_guest(): void
+    {
+        $this->shareWithErin();
+        $erinList = collect($this->asUser('erin')->getJson('/api/v1/tasks/tasklists')->assertOk()->json('list'))
+            ->firstWhere('name', 'Groceries')['id'] ?? null;
+        $this->assertIsString($erinList);
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\nBEGIN:VTODO\r\nUID:hidden-import\r\n"
+            ."SUMMARY:Imported\r\nATTENDEE;CN=Al:mailto:alice@example.test\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
+
+        $participants = $this->call('POST', '/api/v1/tasks/items/import?taskListId='.rawurlencode($erinList), [], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->issueBearerTokenFor('erin'),
+            'CONTENT_TYPE' => 'text/calendar',
+            'HTTP_ACCEPT' => 'application/json',
+        ], $ics)->assertCreated()->json('list.0.participants');
+
+        $this->assertSame(['e:alice@example.test'], array_keys($participants));
+        $this->assertNull($participants['e:alice@example.test']['username']);
+        $this->assertSame('Al', $participants['e:alice@example.test']['name']);
+    }
+
     public function test_adding_a_reader_or_outsider_is_422(): void
     {
         $taskId = $this->createTask();
@@ -538,14 +682,7 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
 
     public function test_a_person_sharee_cannot_assign_a_team_member_they_share_no_team_with(): void
     {
-        // erin can edit the list; she shares Team "side" with bob only, none with alice.
-        $this->seedWgwUser('erin', displayName: 'Erin', email: 'erin@example.test');
-        $this->seedSharedTeam('side', 'bob', 'erin');
-        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['shareWith' => [
-            'alice' => ['mayWriteAll' => true],
-            'carol' => ['mayWriteAll' => false],
-            'erin' => ['mayWriteAll' => true],
-        ]])->assertOk();
+        $this->shareWithErin();
         $taskId = $this->createTask();
         $url = '/api/v1/tasks/items/'.$taskId;
         $patch = function (array $participants) use ($url): TestResponse {
@@ -604,6 +741,20 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->asUser('alice')->patchJson($url, ['participants' => [
             'u:bob' => ['@type' => 'Participant', 'roles' => ['attendee']],
         ]], $this->withIfMatch($etag))->assertOk()->assertJsonPath('participants.u:bob.username', 'bob');
+    }
+
+    /**
+     * erin can edit the list; she shares Team "side" with bob only, none with alice or carol.
+     */
+    private function shareWithErin(): void
+    {
+        $this->seedWgwUser('erin', displayName: 'Erin', email: 'erin@example.test');
+        $this->seedSharedTeam('side', 'bob', 'erin');
+        $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$this->listId, ['shareWith' => [
+            'alice' => ['mayWriteAll' => true],
+            'carol' => ['mayWriteAll' => false],
+            'erin' => ['mayWriteAll' => true],
+        ]])->assertOk();
     }
 
     private function createTask(): string

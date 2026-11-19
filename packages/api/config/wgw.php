@@ -52,6 +52,12 @@ return [
         'retry_ms' => (int) env('WGW_JMAP_PUSH_RETRY_MS', 3000),
         'server_timing' => (bool) env('WGW_JMAP_PUSH_SERVER_TIMING', false),
     ],
+    /**
+     * A JMAP call or upload slower than this many milliseconds logs
+     * `jmap.slow_request` with its method names and its database and storage
+     * time (#2244). 0 turns the log off.
+     */
+    'slow_request_log_ms' => (int) env('WGW_SLOW_REQUEST_LOG_MS', 2000),
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
     /** Extra Host names, comma-separated, trusted in addition to the APP_URL host. */

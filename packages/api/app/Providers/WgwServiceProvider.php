@@ -31,6 +31,7 @@ use App\Services\Teams\TeamColleagues;
 use App\Services\Teams\TeamMembershipReader;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
+use App\Support\Timing\RequestTimings;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
@@ -102,8 +103,10 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(
             JmapMethodDispatcher::class,
             fn ($app): JmapMethodDispatcher => new JmapMethodDispatcher(
-                array_map($app->make(...), JmapMethodDispatcher::METHODS),
+                JmapMethodDispatcher::METHODS,
+                $app->make(...),
                 $app->make(JmapRequestContext::class),
+                $app->make(RequestTimings::class),
             ),
         );
         $this->app->singleton(
@@ -125,8 +128,10 @@ final class WgwServiceProvider extends ServiceProvider
             GuestJmapGateway::class,
             function ($app): GuestJmapGateway {
                 $dispatcher = new JmapMethodDispatcher(
-                    array_map($app->make(...), GuestJmapGateway::METHODS),
+                    GuestJmapGateway::METHODS,
+                    $app->make(...),
                     $app->make(JmapRequestContext::class),
+                    $app->make(RequestTimings::class),
                 );
 
                 return new GuestJmapGateway(

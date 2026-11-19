@@ -5,6 +5,7 @@ export type AdminSection =
   | "email-delivery"
   | "collaboration"
   | "webdav"
+  | "health"
   | "backups"
   | "updates"
   | "search"

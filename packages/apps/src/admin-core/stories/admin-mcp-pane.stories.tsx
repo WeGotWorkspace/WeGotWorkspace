@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { STORY_MCP_ENDPOINT_URL } from "@/lib/mcp-endpoint";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
-import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import { AdminPaneScope } from "@/admin-core/stories/admin-story-scope";
 import { shareLabels } from "@/share-ui/share-labels";
 
 const ENABLED_OVERRIDE = { mcp: { enabled: true } };
@@ -11,9 +11,9 @@ const ENABLED_OVERRIDE = { mcp: { enabled: true } };
 function McpPaneHarness({ enabled = false }: { enabled?: boolean }) {
   const controller = useAdminPaneStoryController(enabled ? ENABLED_OVERRIDE : undefined);
   return (
-    <AdminStoryScope>
+    <AdminPaneScope controller={controller}>
       <AdminMcpPane controller={controller} mcpEndpointUrl={STORY_MCP_ENDPOINT_URL} />
-    </AdminStoryScope>
+    </AdminPaneScope>
   );
 }
 

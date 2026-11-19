@@ -183,9 +183,23 @@ function applyAndCollectTouchedRoots(
     unobserve.push(() => type.unobserveDeep(handler));
   }
 
+  // A root the clone holds only as a generic type (one no code opened with
+  // `getText`, `getMap`, …, such as `note-title` or `plain-body`) never calls
+  // its observers. The transaction still lists every type it changed, so the
+  // root of each one counts as touched too.
+  const onAfterTransaction = (transaction: Y.Transaction): void => {
+    for (const type of transaction.changed.keys()) {
+      const root = rootOf(type);
+      for (const [name, shared] of doc.share) {
+        if (shared === root) touched.add(name);
+      }
+    }
+  };
+  doc.on("afterTransaction", onAfterTransaction);
   try {
     Y.applyUpdate(doc, update);
   } finally {
+    doc.off("afterTransaction", onAfterTransaction);
     for (const off of unobserve) off();
   }
 
@@ -193,6 +207,14 @@ function applyAndCollectTouchedRoots(
     if (!before.has(name)) touched.add(name);
   }
   return { touched, pending: updateAddedPending(doc) };
+}
+
+type Nested = { _item: Y.Item | null };
+
+function rootOf(type: Nested): Nested {
+  let current = type;
+  while (current._item) current = current._item.parent as Nested;
+  return current;
 }
 
 /**

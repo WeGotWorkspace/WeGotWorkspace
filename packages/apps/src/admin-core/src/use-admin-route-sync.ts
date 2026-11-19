@@ -16,7 +16,7 @@ import {
  */
 export function useAdminRouteSync(): {
   section: AdminSection;
-  onSectionChange: (section: AdminSection) => void;
+  onSectionChange: (section: AdminSection, options?: { replace?: boolean }) => void;
 } {
   const router = useRouter();
   const location = useLocation();
@@ -34,14 +34,16 @@ export function useAdminRouteSync(): {
   }, [location.pathname, router]);
 
   const onSectionChange = useCallback(
-    (next: AdminSection) => {
+    (next: AdminSection, options?: { replace?: boolean }) => {
       const path = router.state.location.pathname;
       const resolved = resolveAdminSection(next);
       const target = adminPathFor(resolved);
       if (!isAdminPathname(path) || path === target) return;
-      void router.navigate(adminNavigateTarget(resolved)).then(() => {
-        router.history.flush?.();
-      });
+      void router
+        .navigate({ ...adminNavigateTarget(resolved), replace: options?.replace })
+        .then(() => {
+          router.history.flush?.();
+        });
     },
     [router],
   );

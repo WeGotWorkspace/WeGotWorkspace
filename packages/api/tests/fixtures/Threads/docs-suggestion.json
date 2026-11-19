@@ -1,0 +1,17 @@
+{
+    "id": "01J6Y6M0R2V9GKJ4W1T8Q3ZBEX",
+    "authorId": "alice",
+    "body": "replace this",
+    "createdAt": "2026-09-04T10:34:56Z",
+    "parentId": null,
+    "kind": "suggestion",
+    "docPath": "Documents/Plan.md",
+    "changeId": "change-42",
+    "anchorText": "",
+    "anchorFrom": null,
+    "anchorTo": null,
+    "anchorOccurrence": null,
+    "resolved": false,
+    "archived": false,
+    "reactions": []
+}

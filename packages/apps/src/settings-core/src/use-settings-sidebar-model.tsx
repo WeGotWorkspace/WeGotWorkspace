@@ -5,7 +5,7 @@ import {
   panelsForNav,
   type SettingsPanel,
 } from "@/settings-core/src/settings-registry";
-import type { SettingsPanelId } from "@/lib/models/settings-types";
+import type { SettingsPanelGroup, SettingsPanelId } from "@/lib/models/settings-types";
 
 const FALLBACK_PROFILE_PANEL: SettingsPanel = {
   id: "profile",
@@ -15,10 +15,23 @@ const FALLBACK_PROFILE_PANEL: SettingsPanel = {
   group: "account",
 };
 
-export type SettingsSidebarGroups = {
-  account: SettingsPanel[];
-  device: SettingsPanel[];
-  apps: SettingsPanel[];
+export type SettingsSidebarGroups = Record<SettingsPanelGroup, SettingsPanel[]>;
+
+/** Sidebar order, top to bottom. */
+export const SETTINGS_GROUP_ORDER: readonly SettingsPanelGroup[] = [
+  "account",
+  "connections",
+  "device",
+  "apps",
+  "about",
+];
+
+export const SETTINGS_GROUP_LABELS: Record<SettingsPanelGroup, string> = {
+  account: "Account",
+  connections: "Connections",
+  device: "Device",
+  apps: "Apps",
+  about: "About",
 };
 
 export function settingsSectionDescriptor(id: SettingsPanelId): SettingsPanel {
@@ -28,10 +41,8 @@ export function settingsSectionDescriptor(id: SettingsPanelId): SettingsPanel {
 export function useSettingsSidebarModel(mcpEnabled: boolean): SettingsSidebarGroups {
   return useMemo(() => {
     const nav = panelsForNav(reachabilityFromSettingsData({ mcpEnabled }));
-    return {
-      account: nav.filter((panel) => panel.group === "account"),
-      device: nav.filter((panel) => panel.group === "device"),
-      apps: nav.filter((panel) => panel.group === "apps"),
-    };
+    return Object.fromEntries(
+      SETTINGS_GROUP_ORDER.map((group) => [group, nav.filter((panel) => panel.group === group)]),
+    ) as SettingsSidebarGroups;
   }, [mcpEnabled]);
 }

@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { Mail, Send, Server } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { Callout } from "@/callout/src/callout";
-import { Card } from "@/card/src/card";
-import { FieldLabelRow as FormField } from "@/ui/field-label-row";
+import { Tag } from "@/tag/src/tag";
+import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
+import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import {
   lastTestSendLabel,
   MAIL_DELIVERY_PLACEHOLDER_FROM,
@@ -12,7 +14,7 @@ import {
 import { MailDeliveryTestDialog } from "@/admin-core/src/mail-delivery-test-dialog";
 import { SECURITY_OPTIONS } from "@/admin-core/src/admin-workspace-utils";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
-import type { AdminMailDeliveryCapability } from "@/lib/models/admin-types";
+import { useAdminSettingsEditor } from "@/admin-core/src/use-admin-settings-autosave";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 const TRANSPORT_OPTIONS = [
@@ -22,19 +24,6 @@ const TRANSPORT_OPTIONS = [
   { value: "sendmail", label: "Sendmail" },
 ] as const;
 
-function capabilityCalloutMessage(
-  capability: AdminMailDeliveryCapability,
-  selected: string,
-): string {
-  if (!capability.canSubmit) {
-    return "Configure a usable transport before the instance can submit outbound mail. Login hides “Forgot password?” until this check passes.";
-  }
-  if (capability.probes.fromConfigured) {
-    return `Capability check passed. Selected transport: ${selected}. This is not a claim that mail will arrive in an inbox.`;
-  }
-  return `Capability check passed using placeholder From ${MAIL_DELIVERY_PLACEHOLDER_FROM}. Selected transport: ${selected}. Set a real From to improve delivery; messages may land in spam.`;
-}
-
 export type AdminEmailDeliveryPaneProps = {
   controller: AdminControllerState;
 };
@@ -42,59 +31,59 @@ export type AdminEmailDeliveryPaneProps = {
 export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPaneProps) {
   const delivery = controller.mailDelivery;
   const capability = delivery.capability;
-  const selected = capability.selectedTransport ?? "none";
+  const form = controller.settingsForm;
   const [testSendOpen, setTestSendOpen] = useState(false);
+  const { choose, type, clear } = useAdminSettingsEditor();
+  const lastTest = delivery.lastTestSend;
+  const usesPlaceholderFrom = capability.canSubmit && !capability.probes.fromConfigured;
 
   return (
-    <div className="admin-email-delivery-pane">
-      <Callout
-        severity={capability.canSubmit ? "info" : "warning"}
-        title={capability.canSubmit ? "Submission is possible" : "Cannot submit yet"}
-        message={capabilityCalloutMessage(capability, selected)}
-      />
-      <Callout
-        severity={
-          delivery.lastTestSend == null
-            ? "info"
-            : delivery.lastTestSend.accepted
-              ? "success"
-              : "error"
-        }
-        title="Last test send"
-        message={lastTestSendLabel(delivery.lastTestSend)}
-      />
-
-      <Card title="From and transport">
-        <p className="admin-email-delivery-pane__help">
-          Platform email is separate from the Mail app IMAP/SMTP pane. Password recovery uses this
-          From address and transport. If From is empty, outbound mail uses{" "}
-          {MAIL_DELIVERY_PLACEHOLDER_FROM} and may land in spam. Set a real address you control.
-        </p>
-        <FormField htmlFor="admin-mail-delivery-from" label="From address">
+    <>
+      <WorkspacePageSection title="Sending" icon={<Send aria-hidden />}>
+        {capability.canSubmit ? null : (
+          <FieldLabelRow
+            layout="inline"
+            label="Delivery"
+            description="This server cannot send email yet. Choose a transport that works here; until then, the sign-in page hides “Forgot password?”."
+          >
+            <Tag label="Cannot send" tone="warning" dot />
+          </FieldLabelRow>
+        )}
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label="From address"
+          description={
+            usesPlaceholderFrom
+              ? `Empty: mail comes from ${MAIL_DELIVERY_PLACEHOLDER_FROM} and may land in spam. Use an address you control.`
+              : "Password resets and invitations come from this address."
+          }
+          htmlFor="admin-mail-delivery-from"
+        >
           <Input
             id="admin-mail-delivery-from"
             type="email"
-            value={controller.settingsForm.mailDeliveryFrom}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                mailDeliveryFrom: value,
-              }));
-            }}
+            placeholder={MAIL_DELIVERY_PLACEHOLDER_FROM}
+            value={form.mailDeliveryFrom}
+            onChange={(event) => type({ mailDeliveryFrom: event.target.value })}
           />
-        </FormField>
-        <FormField htmlFor="admin-mail-delivery-transport" label="Transport">
+        </FieldLabelRow>
+        <FieldLabelRow
+          layout="inline"
+          label="Transport"
+          description="Auto uses SMTP when a host is set, otherwise this server's own mail."
+          htmlFor="admin-mail-delivery-transport"
+        >
           <Select
-            value={controller.settingsForm.mailDeliveryTransport || "auto"}
-            onValueChange={(value) =>
-              controller.setSettingsForm((prev) => ({ ...prev, mailDeliveryTransport: value }))
-            }
+            value={form.mailDeliveryTransport || "auto"}
+            onValueChange={(value) => choose({ mailDeliveryTransport: value })}
           >
-            <SelectTrigger id="admin-mail-delivery-transport" aria-label="Transport">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
+            <CollectionGhostSelectTrigger
+              id="admin-mail-delivery-transport"
+              aria-label="Transport"
+              label={<SelectValue />}
+            />
+            <SelectContent align="end">
               {TRANSPORT_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -102,161 +91,152 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
               ))}
             </SelectContent>
           </Select>
-        </FormField>
-      </Card>
+        </FieldLabelRow>
+        <FieldLabelRow layout="inline" label="Test email" description={lastTestSendLabel(lastTest)}>
+          <span className="admin-row-actions">
+            {lastTest ? (
+              <Tag
+                label={lastTest.accepted ? "Accepted" : "Not accepted"}
+                tone={lastTest.accepted ? "success" : "warning"}
+                dot
+              />
+            ) : null}
+            <Button
+              label="Send test email"
+              variant="outline"
+              size="sm"
+              disabled={!capability.canSubmit}
+              onClick={() => setTestSendOpen(true)}
+            />
+          </span>
+        </FieldLabelRow>
+      </WorkspacePageSection>
 
-      <Card title="SMTP (optional)">
-        <p className="admin-email-delivery-pane__help">
-          Auto uses SMTP only when a host is set and either a username is set or the relay does not
-          require auth (for example local Postfix on localhost with security none).
+      <WorkspacePageSection title="SMTP" icon={<Server aria-hidden />}>
+        <p className="workspace-page-section__lead">
+          Optional. Needed only when you send through a mail provider or your own mail server.
         </p>
-        <FormField htmlFor="admin-mail-delivery-smtp-host" label="SMTP host">
+        <FieldLabelRow layout="inline" fill label="Host" htmlFor="admin-mail-delivery-smtp-host">
           <Input
             id="admin-mail-delivery-smtp-host"
-            value={controller.settingsForm.mailDeliverySmtpHost}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                mailDeliverySmtpHost: value,
-              }));
-            }}
+            placeholder="smtp.example.com"
+            value={form.mailDeliverySmtpHost}
+            onChange={(event) => type({ mailDeliverySmtpHost: event.target.value })}
           />
-        </FormField>
-        <div className="admin-email-delivery-pane__row">
-          <FormField htmlFor="admin-mail-delivery-smtp-port" label="Port">
-            <Input
-              id="admin-mail-delivery-smtp-port"
-              type="number"
-              value={String(controller.settingsForm.mailDeliverySmtpPort)}
-              onChange={(event) => {
-                const value = Number(event.target.value) || 0;
-                controller.setSettingsForm((prev) => ({
-                  ...prev,
-                  mailDeliverySmtpPort: value,
-                }));
-              }}
+        </FieldLabelRow>
+        <FieldLabelRow layout="inline" label="Port" htmlFor="admin-mail-delivery-smtp-port">
+          <Input
+            id="admin-mail-delivery-smtp-port"
+            type="number"
+            className="admin-number-input"
+            value={String(form.mailDeliverySmtpPort)}
+            onChange={(event) => type({ mailDeliverySmtpPort: Number(event.target.value) || 0 })}
+          />
+        </FieldLabelRow>
+        <FieldLabelRow layout="inline" label="Security" htmlFor="admin-mail-delivery-smtp-security">
+          <Select
+            value={form.mailDeliverySmtpSecurity || "starttls"}
+            onValueChange={(value) => choose({ mailDeliverySmtpSecurity: value })}
+          >
+            <CollectionGhostSelectTrigger
+              id="admin-mail-delivery-smtp-security"
+              aria-label="Security"
+              label={<SelectValue />}
             />
-          </FormField>
-          <FormField htmlFor="admin-mail-delivery-smtp-security" label="Security">
-            <Select
-              value={controller.settingsForm.mailDeliverySmtpSecurity || "starttls"}
-              onValueChange={(value) =>
-                controller.setSettingsForm((prev) => ({
-                  ...prev,
-                  mailDeliverySmtpSecurity: value,
-                }))
-              }
-            >
-              <SelectTrigger id="admin-mail-delivery-smtp-security" aria-label="Security">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SECURITY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </div>
-        <FormField htmlFor="admin-mail-delivery-smtp-username" label="SMTP username">
+            <SelectContent align="end">
+              {SECURITY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldLabelRow>
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label="Username"
+          description="Leave empty when the server needs no sign-in (a local relay)."
+          htmlFor="admin-mail-delivery-smtp-username"
+        >
           <Input
             id="admin-mail-delivery-smtp-username"
-            value={controller.settingsForm.mailDeliverySmtpUsername}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                mailDeliverySmtpUsername: value,
-              }));
-            }}
+            value={form.mailDeliverySmtpUsername}
+            onChange={(event) => type({ mailDeliverySmtpUsername: event.target.value })}
           />
-        </FormField>
-        <FormField htmlFor="admin-mail-delivery-smtp-password" label="SMTP password">
-          <Input
-            id="admin-mail-delivery-smtp-password"
-            variant="password"
-            autoComplete="new-password"
-            value={controller.settingsForm.mailDeliverySmtpPassword}
-            placeholder={
-              delivery.config.smtpPasswordSet ? "Leave blank to keep the stored secret" : ""
-            }
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                mailDeliverySmtpPassword: value,
-              }));
-            }}
-          />
-        </FormField>
-        {delivery.config.smtpPasswordSet ? (
-          <div className="admin-email-delivery-pane__actions">
-            <Button
-              label="Clear stored SMTP password"
-              variant="outline"
-              onClick={() => void controller.actions.clearMailDeliverySmtpPassword()}
-            />
-          </div>
-        ) : null}
-      </Card>
-
-      <Card title="Invitations">
-        <FeatureRow
-          label="External invitations"
-          desc="Email new invitations to people outside this instance. Updates to people already invited, cancellations, and RSVP replies still send."
-          value={controller.settingsForm.imipExternalEnabled}
-          onChange={(next) =>
-            controller.setSettingsForm((prev) => ({ ...prev, imipExternalEnabled: next }))
+        </FieldLabelRow>
+        <FieldLabelRow
+          layout="inline"
+          fill
+          label="Password"
+          description={
+            delivery.config.smtpPasswordSet ? "Saved. Leave empty to keep it." : undefined
           }
+          htmlFor="admin-mail-delivery-smtp-password"
+        >
+          <span className="admin-value-control">
+            <Input
+              id="admin-mail-delivery-smtp-password"
+              variant="password"
+              autoComplete="new-password"
+              value={form.mailDeliverySmtpPassword}
+              onChange={(event) => type({ mailDeliverySmtpPassword: event.target.value })}
+            />
+            {delivery.config.smtpPasswordSet ? (
+              <Button
+                label="Clear"
+                variant="ghost"
+                onClick={() =>
+                  clear(
+                    "mailDeliverySmtpPassword",
+                    controller.actions.clearMailDeliverySmtpPassword,
+                  )
+                }
+              />
+            ) : null}
+          </span>
+        </FieldLabelRow>
+      </WorkspacePageSection>
+
+      <WorkspacePageSection title="Invitations" icon={<Mail aria-hidden />}>
+        <FeatureRow
+          label="Invite people outside this server"
+          desc="Email new calendar invitations to outside addresses. Updates, cancellations and replies always send."
+          value={form.imipExternalEnabled}
+          onChange={(next) => choose({ imipExternalEnabled: next })}
         />
-        <FormField htmlFor="admin-email-delivery-imip-hourly-limit" label="Hourly invitation limit">
+        <FieldLabelRow
+          layout="inline"
+          label="Per hour"
+          description="Most invitations one person can send in an hour."
+          htmlFor="admin-email-delivery-imip-hourly-limit"
+        >
           <Input
             id="admin-email-delivery-imip-hourly-limit"
             type="number"
             min={1}
-            value={controller.settingsForm.imipHourlyLimit}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                imipHourlyLimit: value,
-              }));
-            }}
+            className="admin-number-input"
+            value={form.imipHourlyLimit}
+            onChange={(event) => type({ imipHourlyLimit: event.target.value })}
           />
-        </FormField>
-        <FormField htmlFor="admin-email-delivery-imip-daily-limit" label="Daily invitation limit">
+        </FieldLabelRow>
+        <FieldLabelRow
+          layout="inline"
+          label="Per day"
+          description="Most invitations one person can send in a day."
+          htmlFor="admin-email-delivery-imip-daily-limit"
+        >
           <Input
             id="admin-email-delivery-imip-daily-limit"
             type="number"
             min={1}
-            value={controller.settingsForm.imipDailyLimit}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                imipDailyLimit: value,
-              }));
-            }}
+            className="admin-number-input"
+            value={form.imipDailyLimit}
+            onChange={(event) => type({ imipDailyLimit: event.target.value })}
           />
-        </FormField>
-      </Card>
+        </FieldLabelRow>
+      </WorkspacePageSection>
 
-      <div className="admin-email-delivery-pane__actions">
-        <Button
-          label="Save changes"
-          variant="primary"
-          onClick={() => void controller.actions.saveSettings()}
-        />
-        <Button
-          label="Send test email"
-          variant="outline"
-          disabled={!capability.canSubmit}
-          onClick={() => setTestSendOpen(true)}
-        />
-      </div>
       <MailDeliveryTestDialog
         open={testSendOpen}
         onOpenChange={setTestSendOpen}
@@ -266,6 +246,6 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           }
         }}
       />
-    </div>
+    </>
   );
 }

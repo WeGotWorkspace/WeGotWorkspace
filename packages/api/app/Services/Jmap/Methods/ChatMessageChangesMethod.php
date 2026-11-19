@@ -49,12 +49,12 @@ final class ChatMessageChangesMethod implements JmapMethodInterface
         private readonly ChatChangesFeed $feed,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ChatMessage/changes';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CHAT;
     }

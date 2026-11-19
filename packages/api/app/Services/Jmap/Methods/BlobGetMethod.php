@@ -25,12 +25,12 @@ final class BlobGetMethod implements JmapMethodInterface
 
     public function __construct(private readonly JmapBlobService $blobs) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'Blob/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::BLOB;
     }

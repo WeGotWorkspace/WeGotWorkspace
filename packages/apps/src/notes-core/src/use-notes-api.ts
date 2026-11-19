@@ -80,6 +80,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
   const [listRefreshing, setListRefreshing] = useState(false);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
   const crossTabRefreshInFlightRef = useRef(false);
+  const livePollRunningRef = useRef(false);
   const { show, showError } = useAppToast();
 
   const patchFromCache = useCallback(async () => {
@@ -136,8 +137,11 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       if (crossTabRefreshInFlightRef.current || reconnectSyncing || listRefreshing) return;
       crossTabRefreshInFlightRef.current = true;
       // Offline, only the shared cache can have changed: no /changes call.
-      // Online, a failed sync is fine; applyInboundRefresh still re-reads it.
-      const refresh = online ? applyInboundRefresh() : patchFromCache();
+      // Online with the live inbound sync, one tab pulls for the browser
+      // (#2252), so the cache is current: no call either. Only without it
+      // this tab pulls; a failed sync is fine, applyInboundRefresh re-reads.
+      const pull = online && !livePollRunningRef.current;
+      const refresh = pull ? applyInboundRefresh() : patchFromCache();
       void refresh
         .catch(() => undefined)
         .finally(() => {
@@ -161,6 +165,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     notebooks: notebookCollectionsRef,
     patchFromCache,
   });
+  livePollRunningRef.current = livePollRunning;
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
