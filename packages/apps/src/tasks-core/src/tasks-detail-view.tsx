@@ -18,6 +18,7 @@ import { TaskDescriptionField } from "@/tasks-core/src/task-description-field";
 import { TaskTextSession, useTaskTextSession } from "@/tasks-core/src/task-text-session";
 import type { TaskTextCollabConfig } from "@/tasks-core/src/use-task-text-collab";
 import type { TextFieldsText } from "@/text-editor-core/docs-collab/docs-collab-text-fields";
+import type { CollabSessionPresenceSource } from "@/text-editor-core/docs-collab";
 // The done box shares the list row's mark styles.
 import "@/tasks-core/src/tasks-list-panel.css";
 
@@ -50,6 +51,8 @@ type TasksDetailViewProps = {
   /** The task's room is being looked up: the title and notes wait for it. */
   textLookingUp?: boolean;
   onLiveText?: (taskId: string, text: TextFieldsText, unsaved: boolean) => void;
+  /** Who is in the task's room, for the detail header (#2208). */
+  onPresence?: (taskId: string, presence: CollabSessionPresenceSource | null) => void;
 };
 
 /**
@@ -71,6 +74,7 @@ export function TasksDetailView({
   textAccessLost = false,
   textLookingUp = false,
   onLiveText,
+  onPresence,
 }: TasksDetailViewProps) {
   const view = (
     <TasksDetailForm
@@ -103,6 +107,7 @@ export function TasksDetailView({
           task={task}
           L={L}
           onLiveText={onLiveText}
+          onPresence={onPresence}
         >
           {view}
         </TaskTextSession>
@@ -136,7 +141,10 @@ function TasksDetailForm({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
-}: Omit<TasksDetailViewProps, "textCollab" | "textAccessLost" | "textLookingUp" | "onLiveText"> & {
+}: Omit<
+  TasksDetailViewProps,
+  "textCollab" | "textAccessLost" | "textLookingUp" | "onLiveText" | "onPresence"
+> & {
   textReadOnly: boolean;
   /** The room saves the title and description: the autosave leaves them out. */
   inRoom: boolean;
@@ -335,6 +343,8 @@ type TasksDetailActionBarProps = {
   backLabel: string;
   closeMobileDetail: () => void;
   onDeleteTask: (taskId: string) => void;
+  /** Who else has the task open (live room only), left of the actions. */
+  presence?: ReactNode;
 };
 
 /**
@@ -348,12 +358,14 @@ export function TasksDetailActionBar({
   backLabel,
   closeMobileDetail,
   onDeleteTask,
+  presence,
 }: TasksDetailActionBarProps) {
   if (!task) return null;
   return (
     <ActionBar
       onBack={closeMobileDetail}
       backLabel={backLabel}
+      rightLeading={presence}
       rightActions={[
         {
           id: "delete",

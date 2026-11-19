@@ -72,6 +72,15 @@ test("two people type a task's title and notes together", async ({ browser }) =>
     await openTask(owner, task.title);
     await openTask(mate, task.title);
 
+    // The detail header shows who else has the task open, as a note's does.
+    for (const tab of [owner, mate]) {
+      await expect(
+        tab.locator(".docs-collab-presence-chrome--header [data-presence='online']"),
+      ).toHaveCount(1, { timeout: LIVE_MS });
+    }
+    await owner.screenshot({ path: test.info().outputPath("owner-presence.png") });
+    await mate.screenshot({ path: test.info().outputPath("mate-presence.png") });
+
     // Typing on one side shows on the other, before any save.
     await notes(owner).click();
     await notes(owner).pressSequentially("Two cartons");

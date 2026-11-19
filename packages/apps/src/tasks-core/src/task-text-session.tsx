@@ -15,6 +15,7 @@ import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import type { Task } from "@/lib/models/tasks-types";
 import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
 import { useDocsCollab } from "@/text-editor-core/docs-collab";
+import type { CollabSessionPresenceSource } from "@/text-editor-core/docs-collab";
 import {
   readTextFields,
   readTextFieldsBase,
@@ -90,6 +91,7 @@ export function TaskTextSession({
   task,
   L,
   onLiveText,
+  onPresence,
   children,
 }: {
   collab: TaskTextCollabConfig;
@@ -100,6 +102,8 @@ export function TaskTextSession({
    * does not have it yet (the access-lost park). Projection only: never a save.
    */
   onLiveText?: (taskId: string, text: TextFieldsText, unsaved: boolean) => void;
+  /** Who is in the room, for the detail header; null when the room is left. */
+  onPresence?: (taskId: string, presence: CollabSessionPresenceSource | null) => void;
   children: ReactNode;
 }) {
   const ydocRef = useRef<Y.Doc | null>(null);
@@ -144,6 +148,18 @@ export function TaskTextSession({
     const base = readTextFieldsBase(ydoc);
     onLiveTextRef.current?.(taskId, text, !base || !sameTextFields(base, text));
   }, [lastSavedAt, session.joined, taskId, text, ydoc]);
+
+  const onPresenceRef = useRef(onPresence);
+  onPresenceRef.current = onPresence;
+  const { joined, peers, connectingPeers, warningPeers } = session;
+  const presenceSession = joined ? session.session : null;
+  useEffect(() => {
+    onPresenceRef.current?.(
+      taskId,
+      presenceSession ? { session: presenceSession, peers, connectingPeers, warningPeers } : null,
+    );
+  }, [connectingPeers, peers, presenceSession, taskId, warningPeers]);
+  useEffect(() => () => onPresenceRef.current?.(taskId, null), [taskId]);
 
   // A push whose title or description differs from the document: re-read the
   // server (spec.md, The re-read). Equal text, our own save included, does nothing.
