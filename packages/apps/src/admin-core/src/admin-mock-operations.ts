@@ -225,6 +225,27 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
       await sleep(80, opts?.signal);
       return cloneData(current).updates;
     },
+    refreshUpdateProgress: async (opts) => {
+      await sleep(80, opts?.signal);
+      const {
+        inProgress,
+        phase,
+        current: run,
+        download,
+        phaseProgress,
+        cancelRequested,
+        cancelAllowed,
+      } = cloneData(current).updates;
+      return {
+        inProgress,
+        phase,
+        current: run,
+        download,
+        phaseProgress,
+        cancelRequested,
+        cancelAllowed,
+      };
+    },
     applyUpdate: async (_version, opts) => {
       await sleep(120, opts?.signal);
       throw new Error("Applying updates requires a live server connection.");

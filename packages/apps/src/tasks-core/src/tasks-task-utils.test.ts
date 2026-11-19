@@ -7,8 +7,10 @@ import {
   defaultTaskListId,
   dueDateTimeToApiValue,
   dueDateToApiValue,
+  ASSIGNED_TO_ME_VIEW,
   filterTasksByHiddenLists,
   filterTasksByView,
+  isTaskAssignedTo,
   taskDueSeverity,
   isProtectedTaskList,
   mergeCreatedTask,
@@ -389,5 +391,114 @@ describe("dueEditSendsShowWithoutTime (#1821)", () => {
       dueEditSendsShowWithoutTime({ due: "2026-11-08", showWithoutTime: true }, "2026-11-08", true),
     ).toBe(false);
     expect(dueEditSendsShowWithoutTime({ due: "2026-11-08" }, null, undefined)).toBe(false);
+  });
+});
+
+describe("Assigned to me (#2172)", () => {
+  const me = { username: "alice", email: "Alice@Example.test" };
+  const base = {
+    "@type": "Task" as const,
+    isDraft: false,
+    sortOrder: 0,
+    categories: [],
+  };
+  const tasks: Task[] = [
+    {
+      ...base,
+      id: "by-id",
+      uid: "a",
+      taskListId: "groceries",
+      title: "Assigned by id",
+      participants: { "u:alice": { "@type": "Participant", roles: ["attendee"] } },
+    },
+    {
+      ...base,
+      id: "by-email",
+      uid: "b",
+      taskListId: "hidden-list",
+      title: "Assigned by a native client",
+      participants: {
+        "e:alice@example.test": {
+          "@type": "Participant",
+          email: "alice@example.test",
+          roles: ["attendee"],
+        },
+      },
+    },
+    {
+      ...base,
+      id: "done",
+      uid: "c",
+      taskListId: "groceries",
+      title: "Done",
+      workflowStatus: "completed",
+      participants: { "u:alice": { "@type": "Participant", roles: ["attendee"] } },
+    },
+    {
+      ...base,
+      id: "cancelled",
+      uid: "d",
+      taskListId: "groceries",
+      title: "Cancelled",
+      workflowStatus: "cancelled",
+      participants: { "u:alice": { "@type": "Participant", roles: ["attendee"] } },
+    },
+    {
+      ...base,
+      id: "owner-only",
+      uid: "e",
+      taskListId: "groceries",
+      title: "Alice is only the organizer",
+      participants: {
+        org: { "@type": "Participant", email: "alice@example.test", roles: ["owner"] },
+      },
+    },
+    {
+      ...base,
+      id: "someone-else",
+      uid: "f",
+      taskListId: "groceries",
+      title: "Bob's",
+      participants: { "u:bob": { "@type": "Participant", roles: ["attendee"] } },
+    },
+    { ...base, id: "nobody", uid: "g", taskListId: "groceries", title: "Unassigned" },
+  ];
+
+  it("keeps open tasks assigned by id or by attendee email", () => {
+    expect(filterTasksByView(tasks, ASSIGNED_TO_ME_VIEW, me).map((task) => task.id)).toEqual([
+      "by-id",
+      "by-email",
+    ]);
+  });
+
+  it("never matches someone else's account by email", () => {
+    // A CalDAV line can name mallory's account with alice's address.
+    const spoofed: Task = {
+      ...tasks[0]!,
+      id: "spoofed",
+      participants: {
+        "u:mallory": {
+          "@type": "Participant",
+          name: "Alice",
+          email: "alice@example.test",
+          roles: ["attendee"],
+        },
+      },
+    };
+    expect(isTaskAssignedTo(spoofed, me)).toBe(false);
+  });
+
+  it("matches nothing without a viewer", () => {
+    expect(filterTasksByView(tasks, ASSIGNED_TO_ME_VIEW)).toEqual([]);
+    expect(isTaskAssignedTo(tasks[0], { username: "", email: "" })).toBe(false);
+  });
+
+  it("ignores lists hidden in the sidebar", () => {
+    const visible = filterTasksByHiddenLists(
+      filterTasksByView(tasks, ASSIGNED_TO_ME_VIEW, me),
+      ASSIGNED_TO_ME_VIEW,
+      new Set(["hidden-list"]),
+    );
+    expect(visible.map((task) => task.id)).toContain("by-email");
   });
 });

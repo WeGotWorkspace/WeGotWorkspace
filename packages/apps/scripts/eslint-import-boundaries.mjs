@@ -37,12 +37,14 @@ export const CORE_ALLOWLIST = Object.freeze([
     reason:
       "Docs documents are Drive files: the Docs home reuses Drive's file browser, lists and share dialog.",
   },
-  ...["calendar-core", "docs-core", "drive-core", "meet-core", "notes-core"].map((from) => ({
-    from,
-    to: "text-editor-core",
-    reason:
-      "text-editor-core is the shared rich-text editor and collaboration layer (docs-collab) that apps embed.",
-  })),
+  ...["calendar-core", "docs-core", "drive-core", "meet-core", "notes-core", "tasks-core"].map(
+    (from) => ({
+      from,
+      to: "text-editor-core",
+      reason:
+        "text-editor-core is the shared rich-text editor and collaboration layer (docs-collab) that apps embed.",
+    }),
+  ),
   ...["meet-core", "notifications-core", "tasks-core"].map((from) => ({
     from,
     to: "presence-core",

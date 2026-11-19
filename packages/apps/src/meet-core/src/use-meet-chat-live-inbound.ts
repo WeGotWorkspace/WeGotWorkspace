@@ -7,6 +7,7 @@ import {
 import { createMeetChatJmapClient } from "@/lib/api/wgw/meet-chat-jmap";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useSharedInboundSync } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { JmapChatAdapter, type JmapChatChannel, type JmapChatMessage } from "@/lib/jmap-client";
 import { backfillChatChannelHistory } from "@/lib/offline/meet-chat/meet-chat-inbound-sync";
 import {
@@ -30,6 +31,7 @@ export const CHAT_CHANGES_PUSH_POLL_MS = 30_000;
 
 const PUSH_TYPES = ["ChatChannel", "ChatMessage"] as const;
 const NO_TYPES: readonly string[] = [];
+const noSharedRepaint = () => undefined;
 
 /** JMAP wire chat objects mirror the REST schemas: see docs/meet-chat-client.md. */
 function jmapChatMessageToApp(message: JmapChatMessage) {
@@ -53,7 +55,8 @@ type UseMeetChatLiveInboundArgs = {
  * Live inbound Meet chat sync over JMAP (#1667): a push for `ChatMessage` or
  * `ChatChannel` runs one `/changes` round when the pushed state differs from
  * the adapter's own. The poll backs it up every 4 s, or every 30 s while push
- * is connected. Peers on the mesh still see a message first through the mesh
+ * is connected. One tab per browser does this; the others re-read the cache
+ * it writes (#2252). Peers on the mesh still see a message first through the mesh
  * preview (`meet-mesh-sot.ts`); this is the server-authoritative path, and the
  * only one for peers without a mesh. Without the chat capability the REST
  * reconnect and refresh paths still converge.
@@ -74,12 +77,17 @@ export function useMeetChatLiveInbound({
     if (typeof window === "undefined" || !wgwLiveApiEnabled()) return;
 
     // This tab repaints; the others re-read the shared cache when told.
-    const ingested = (work: Promise<unknown>) =>
-      void work.then(() => {
-        notifyMeetChatCacheChanged(username);
-        return latestPatch.current();
-      });
-    const next = new JmapChatAdapter({
+    const ingested = (work: Promise<unknown>) => {
+      next.ingesting(work);
+      // A failed write is the adapter's to handle: it rewinds the cursor.
+      void work
+        .then(() => {
+          notifyMeetChatCacheChanged(username);
+          return latestPatch.current();
+        })
+        .catch(() => undefined);
+    };
+    const next: JmapChatAdapter = new JmapChatAdapter({
       client: createMeetChatJmapClient(),
       onRemoteMessage: (message) =>
         ingested(ingestRemoteChatMessage(username, jmapChatMessageToApp(message))),
@@ -91,7 +99,7 @@ export function useMeetChatLiveInbound({
             await ingestRemoteChatChannel(username, jmapChatChannelToWire(channel));
             // A channel newly shared or created remotely needs its history pulled once.
             if (!(await isChatChannelBackfilled(username, channel.id))) {
-              await backfillChatChannelHistory(username, channel.id).catch(() => undefined);
+              await backfillChatChannelHistory(username, channel.id);
             }
           })(),
         ),
@@ -125,6 +133,9 @@ export function useMeetChatLiveInbound({
       setAdapter(null);
     };
   }, [enabled, username]);
+
+  // The syncing tab already tells the others per write (`notifyMeetChatCacheChanged`).
+  useSharedInboundSync(adapter, "meet-chat", username, noSharedRepaint);
 
   const pushConnected = useJmapPushConnected();
   useEffect(() => {

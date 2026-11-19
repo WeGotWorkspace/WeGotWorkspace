@@ -7,6 +7,7 @@ import type {
   WgwAdminSettingsSaveRequest,
   WgwSearchReindexStateResponse,
   WgwUpdateLogResponse,
+  WgwUpdateProgressResponse,
   WgwUpdateStateResponse,
 } from "@/lib/api/wgw/types";
 import type {
@@ -15,6 +16,7 @@ import type {
   AdminUIData,
   AdminUpdateBackupItem,
   AdminUpdateCheck,
+  AdminUpdateProgress,
   AdminUpdateState,
 } from "@/lib/models/admin-types";
 
@@ -39,24 +41,8 @@ function coerceUpdateCheck(input: AdminUpdateCheck): AdminUpdateCheck {
   };
 }
 
-export function mapWgwUpdateStateToUI(state: WgwUpdateStateResponse): AdminUpdateState {
+export function mapWgwUpdateProgressToUI(state: WgwUpdateProgressResponse): AdminUpdateProgress {
   return {
-    installChannel: state.installChannel ?? null,
-    updateChannel: state.updateChannel ?? "stable",
-    installedVersion: state.installedVersion,
-    schemaVersion: state.schemaVersion,
-    latest: state.latest
-      ? {
-          version: state.latest.version,
-          package_url: state.latest.package_url,
-          checksum_sha256: state.latest.checksum_sha256,
-          checksum_signature: state.latest.checksum_signature,
-        }
-      : null,
-    updateAvailable: state.updateAvailable,
-    compatible: state.compatible,
-    backups: state.backups.map((item) => coerceUpdateBackupItem(item)),
-    checks: state.checks.map((check) => coerceUpdateCheck(check)),
     inProgress: state.inProgress,
     phase: state.phase ?? null,
     current: state.current
@@ -80,6 +66,28 @@ export function mapWgwUpdateStateToUI(state: WgwUpdateStateResponse): AdminUpdat
       : null,
     cancelRequested: state.cancelRequested,
     cancelAllowed: state.cancelAllowed,
+  };
+}
+
+export function mapWgwUpdateStateToUI(state: WgwUpdateStateResponse): AdminUpdateState {
+  return {
+    installChannel: state.installChannel ?? null,
+    updateChannel: state.updateChannel ?? "stable",
+    installedVersion: state.installedVersion,
+    schemaVersion: state.schemaVersion,
+    latest: state.latest
+      ? {
+          version: state.latest.version,
+          package_url: state.latest.package_url,
+          checksum_sha256: state.latest.checksum_sha256,
+          checksum_signature: state.latest.checksum_signature,
+        }
+      : null,
+    updateAvailable: state.updateAvailable,
+    compatible: state.compatible,
+    backups: state.backups.map((item) => coerceUpdateBackupItem(item)),
+    checks: state.checks.map((check) => coerceUpdateCheck(check)),
+    ...mapWgwUpdateProgressToUI(state),
     lastCheckedAt: state.lastCheckedAt ?? null,
     lastCheckError: state.lastCheckError ?? null,
     lastResult: state.lastResult
@@ -202,6 +210,15 @@ async function fetchAdminUpdateState(opts?: { signal?: AbortSignal }): Promise<A
   if (!res.ok)
     throw new WgwRequestError(`GET /admin/updates/state failed (${res.status})`, res.status);
   return mapWgwUpdateStateToUI((await wgwReadJson(res)) as WgwUpdateStateResponse);
+}
+
+async function fetchAdminUpdateProgress(opts?: {
+  signal?: AbortSignal;
+}): Promise<AdminUpdateProgress> {
+  const res = await wgwFetch("/admin/updates/progress", { signal: opts?.signal });
+  if (!res.ok)
+    throw new WgwRequestError(`GET /admin/updates/progress failed (${res.status})`, res.status);
+  return mapWgwUpdateProgressToUI((await wgwReadJson(res)) as WgwUpdateProgressResponse);
 }
 
 async function fetchAdminSearchReindexState(opts?: {
@@ -397,6 +414,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       return fetchAdminUpdateState(opts);
     },
     refreshUpdateState: (opts) => fetchAdminUpdateState(opts),
+    refreshUpdateProgress: (opts) => fetchAdminUpdateProgress(opts),
     applyUpdate: async (version, opts) => {
       const res = await wgwFetch("/admin/update-jobs", {
         method: "POST",

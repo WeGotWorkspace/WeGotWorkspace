@@ -196,6 +196,12 @@ test.describe("Tasks inbound sync (live app)", () => {
       .toBe(true);
     await expect(notes).toHaveValue(draft);
 
+    // In a live room (#2208) an outside edit on top of unsaved typing asks
+    // which version to keep; once the notes are saved it just follows.
+    await expect
+      .poll(async () => (await readTask(edited.id))?.description ?? "", { timeout: 15_000 })
+      .toBe(draft);
+
     // This task's title changes elsewhere: the title follows, the draft stays.
     const editedRenamed = `e2e-draft-edited-renamed-${stamp}`;
     await renameTask(edited.id, editedRenamed);

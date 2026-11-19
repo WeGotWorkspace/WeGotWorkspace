@@ -196,6 +196,29 @@ describe("useNotesAPI", () => {
     expect(mockInbound).not.toHaveBeenCalled();
   });
 
+  it("a message from another tab while the live inbound sync runs re-reads the cache without a network call (#2252)", async () => {
+    const { subscribeNotesBootstrapUpdated } =
+      await import("@/lib/offline/notes/notes-bootstrap-sync");
+    let fromOtherTab: () => void = () => undefined;
+    vi.mocked(subscribeNotesBootstrapUpdated).mockImplementation((_user, onUpdate) => {
+      fromOtherTab = onUpdate;
+      return () => undefined;
+    });
+    mockLiveApiEnabled = true;
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    const { result } = renderHook(() => useNotesAPI(source));
+    // One tab pulls for the browser once the live adapter runs.
+    await waitFor(() => expect(mockStartPolling).toHaveBeenCalled());
+
+    act(() => fromOtherTab());
+
+    await waitFor(() => expect(result.current.bootstrapRevision).toBe(1));
+    expect(mockInbound).not.toHaveBeenCalled();
+  });
+
   it("a message from another tab does not leave a failed refresh uncaught", async () => {
     const { subscribeNotesBootstrapUpdated } =
       await import("@/lib/offline/notes/notes-bootstrap-sync");

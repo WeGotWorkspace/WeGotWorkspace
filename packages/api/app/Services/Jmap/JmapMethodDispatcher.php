@@ -57,6 +57,7 @@ use App\Services\Jmap\Methods\QuotaQueryChangesMethod;
 use App\Services\Jmap\Methods\QuotaQueryMethod;
 use App\Services\Jmap\Methods\TeamMemberGetAvailabilityMethod;
 use App\Services\Jmap\Methods\TeamMemberGetMethod;
+use App\Support\Timing\RequestTimings;
 use Closure;
 
 /**
@@ -159,6 +160,7 @@ final class JmapMethodDispatcher
         array $methods,
         private readonly Closure $build,
         private readonly JmapRequestContext $context = new JmapRequestContext,
+        private readonly RequestTimings $timings = new RequestTimings,
     ) {
         foreach ($methods as $method) {
             $this->methods[$method::name()] = $method;
@@ -224,7 +226,8 @@ final class JmapMethodDispatcher
             }
 
             try {
-                $responses[] = [$name, $method->handle($username, $args), $callId];
+                // Timed under the registered name only: never arguments (#2244).
+                $responses[] = [$name, $this->timings->method($name, fn (): array => $method->handle($username, $args)), $callId];
             } catch (JmapMethodException $e) {
                 $responses[] = ['error', $e->errorArgs(), $callId];
             } catch (ApiHttpException $e) {

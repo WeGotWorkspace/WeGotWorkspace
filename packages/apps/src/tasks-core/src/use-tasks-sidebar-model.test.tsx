@@ -54,7 +54,7 @@ describe("useTasksSidebarModel", () => {
     );
   });
 
-  it("starts the top nav with All Tasks and keeps time filters", () => {
+  it("starts the top nav with All Tasks, keeps time filters and ends with Assigned to me", () => {
     const { result } = renderHook(() =>
       useTasksSidebarModel({
         labels: defaultTasksLabels,
@@ -69,6 +69,7 @@ describe("useTasksSidebarModel", () => {
       defaultTasksLabels.stateToday,
       defaultTasksLabels.stateUpcoming,
       defaultTasksLabels.stateOverdue,
+      defaultTasksLabels.stateAssignedToMe,
     ]);
   });
 

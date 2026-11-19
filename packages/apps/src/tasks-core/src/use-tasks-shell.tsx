@@ -12,6 +12,8 @@ import {
   filterTasksByHiddenLists,
   filterTasksByView,
   shouldApplyCompletedTaskFilter,
+  ASSIGNED_TO_ME_VIEW,
+  type TaskViewer,
 } from "@/tasks-core/src/tasks-task-utils";
 import { canWriteTaskList } from "@/lib/models/task-lists";
 import type { Task, TasksAPIOperations, TasksUIData } from "@/lib/models/tasks-types";
@@ -24,6 +26,8 @@ export type UseTasksShellArgs = {
   bootstrapRevision?: number;
   initialView?: string;
   onViewChange?: (view: string) => void;
+  /** The signed-in person, for "Assigned to me" (#2172). */
+  viewer?: TaskViewer;
 };
 
 export function useTasksShell({
@@ -33,6 +37,7 @@ export function useTasksShell({
   bootstrapRevision = 0,
   initialView,
   onViewChange,
+  viewer,
 }: UseTasksShellArgs) {
   const L = useMemo(() => mergeTasksLabels(labels), [labels]);
   const [tasks, setTasks] = useState<Task[]>(() => data.tasks);
@@ -82,6 +87,7 @@ export function useTasksShell({
     if (view === "state:today") return L.stateToday;
     if (view === "state:upcoming") return L.stateUpcoming;
     if (view === "state:overdue") return L.stateOverdue;
+    if (view === ASSIGNED_TO_ME_VIEW) return L.stateAssignedToMe;
     if (view === "state:needs-action") return L.stateNeedsAction;
     if (view === "state:in-process") return L.stateInProcess;
     if (view === "state:completed") return L.stateCompleted;
@@ -161,13 +167,13 @@ export function useTasksShell({
 
   const visibleTasks = useMemo(() => {
     const byView = filterTasksByHiddenLists(
-      filterTasksByView(tasks, view),
+      filterTasksByView(tasks, view, viewer),
       view,
       hiddenTaskListIds,
     );
     if (!showCompletedToggle || showCompletedTasks) return byView;
     return filterHiddenCompletedTasks(byView);
-  }, [hiddenTaskListIds, showCompletedTasks, showCompletedToggle, tasks, view]);
+  }, [hiddenTaskListIds, showCompletedTasks, showCompletedToggle, tasks, view, viewer]);
 
   const toggleShowCompletedTasks = useCallback(() => {
     setShowCompletedTasks((current) => !current);
