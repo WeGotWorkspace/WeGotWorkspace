@@ -1,13 +1,5 @@
-import { Button } from "@/button/src/button";
 import type { NoteBodyLabels } from "@/note-detail-view/src/note-body-labels";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
+import { CollabExternalWriteDialog } from "@/collab-ui/collab-external-write-dialog";
 
 export type NoteExternalWriteDialogProps = {
   open: boolean;
@@ -20,40 +12,23 @@ export type NoteExternalWriteDialogProps = {
   onUseOutside: () => void;
 };
 
-/**
- * The one prompt for a note changed outside the app while this client still
- * has unsaved work. It stays until the person chooses, so a dismiss cannot
- * write either version.
- */
+/** The shared question (`CollabExternalWriteDialog`) with the Notes words and surface. */
 export function NoteExternalWriteDialog({
-  open,
   noteTitle,
-  busy = false,
-  keepLocalDisabled = false,
-  labels: L,
-  onKeepLocal,
-  onUseOutside,
+  labels,
+  ...props
 }: NoteExternalWriteDialogProps) {
   return (
-    <Dialog open={open}>
-      <DialogContent
-        className="notes-dialog-surface"
-        onPointerDownOutside={(event) => event.preventDefault()}
-        onEscapeKeyDown={(event) => event.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>{L.externalWriteTitle}</DialogTitle>
-          <DialogDescription>{L.externalWriteDescription(noteTitle)}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onUseOutside} disabled={busy}>
-            {L.externalWriteUseOutside}
-          </Button>
-          <Button variant="primary" onClick={onKeepLocal} disabled={busy || keepLocalDisabled}>
-            {L.externalWriteKeepMine}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <CollabExternalWriteDialog
+      {...props}
+      name={noteTitle}
+      className="notes-dialog-surface"
+      labels={{
+        title: labels.externalWriteTitle,
+        description: labels.externalWriteDescription,
+        keepMine: labels.externalWriteKeepMine,
+        useOutside: labels.externalWriteUseOutside,
+      }}
+    />
   );
 }

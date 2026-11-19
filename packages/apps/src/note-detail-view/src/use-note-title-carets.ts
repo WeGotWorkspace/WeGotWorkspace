@@ -2,8 +2,9 @@ import { useEffect, useState, type RefObject } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import {
-  NOTE_TITLE_SELECTION_FIELD,
+  NOTE_TITLE_FIELD,
   encodeTitleSelection,
+  type CollabTextField,
   listRemoteTitleCarets,
   type RemoteTitleCaret,
   type TitleSelection,
@@ -23,18 +24,31 @@ const SELECTION_EVENTS = ["focus", "select", "input", "keyup", "pointerup", "sel
  */
 export function useNoteTitleCarets(
   textareaRef: RefObject<HTMLTextAreaElement | null>,
-  { publish }: { publish: boolean },
+  {
+    publish,
+    field = NOTE_TITLE_FIELD,
+  }: {
+    publish: boolean;
+    /** The bound `Y.Text` and its awareness field. Notes' title by default. */
+    field?: CollabTextField;
+  },
 ): RemoteTitleCaret[] {
   const ydoc = useNoteCollabYDoc();
   const presence = useNoteCollabPresence();
-  usePublishTitleSelection(textareaRef, ydoc, publish ? (presence?.awareness ?? null) : null);
-  return useRemoteTitleCarets(ydoc, presence);
+  usePublishTitleSelection(
+    textareaRef,
+    ydoc,
+    publish ? (presence?.awareness ?? null) : null,
+    field,
+  );
+  return useRemoteTitleCarets(ydoc, presence, field);
 }
 
 function usePublishTitleSelection(
   textareaRef: RefObject<HTMLTextAreaElement | null>,
   ydoc: Y.Doc | null,
   awareness: Awareness | null,
+  { key, selectionField }: CollabTextField,
 ): void {
   useEffect(() => {
     const element = textareaRef.current;
@@ -46,7 +60,7 @@ function usePublishTitleSelection(
       const serialized = JSON.stringify(state);
       if (serialized === last) return;
       last = serialized;
-      awareness.setLocalStateField(NOTE_TITLE_SELECTION_FIELD, state);
+      awareness.setLocalStateField(selectionField, state);
     };
     const publishSelection = () => {
       if (element.ownerDocument.activeElement !== element) return;
@@ -57,7 +71,7 @@ function usePublishTitleSelection(
         anchor,
       );
       anchor = selection.anchor;
-      set(encodeTitleSelection(ydoc, selection));
+      set(encodeTitleSelection(ydoc, selection, key));
     };
     const clear = () => {
       anchor = null;
@@ -82,7 +96,7 @@ function usePublishTitleSelection(
       ydoc.off("update", onDocUpdate);
       if (last !== undefined) clear();
     };
-  }, [textareaRef, ydoc, awareness]);
+  }, [textareaRef, ydoc, awareness, key, selectionField]);
 }
 
 /**
@@ -106,6 +120,7 @@ export function textareaSelectionEnds(
 function useRemoteTitleCarets(
   ydoc: Y.Doc | null,
   presence: NoteCollabPresence | null,
+  field: CollabTextField,
 ): RemoteTitleCaret[] {
   const [carets, setCarets] = useState<RemoteTitleCaret[]>([]);
 
@@ -117,10 +132,15 @@ function useRemoteTitleCarets(
     const { awareness, localUserName } = presence;
     let last = "";
     const refresh = () => {
-      const next = listRemoteTitleCarets(ydoc, awareness.getStates(), {
-        clientId: awareness.clientID,
-        userName: localUserName,
-      });
+      const next = listRemoteTitleCarets(
+        ydoc,
+        awareness.getStates(),
+        {
+          clientId: awareness.clientID,
+          userName: localUserName,
+        },
+        field,
+      );
       const serialized = JSON.stringify(next);
       if (serialized === last) return;
       last = serialized;
@@ -133,7 +153,7 @@ function useRemoteTitleCarets(
       awareness.off("change", refresh);
       ydoc.off("update", refresh);
     };
-  }, [ydoc, presence]);
+  }, [ydoc, presence, field]);
 
   return carets;
 }
