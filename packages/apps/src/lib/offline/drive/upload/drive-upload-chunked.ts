@@ -374,8 +374,10 @@ class ChunkedUpload {
   private async finish(): Promise<string> {
     const { session, signal } = this.input;
     const budget = session.uploadCapabilities.assembly?.stepBudgetBytes ?? this.size;
-    // Each call finishes or advances a hash rebuild by one budget.
-    const maxCalls = Math.ceil(this.size / Math.max(1, budget)) + 3;
+    // Each call finishes or advances a hash rebuild: by one budget, or by less
+    // when the server's storage is slow and the step ended on time (#2249).
+    const perCall = Math.max(1, Math.min(budget, MIN_REBUILD_STEP_BYTES));
+    const maxCalls = Math.ceil(this.size / perCall) + 3;
     for (let call = 0; call < maxCalls; call += 1) {
       const blobId = await finishJmapBlobAssembly(session, this.state.assemblyId!, signal);
       if (blobId) {
@@ -387,6 +389,9 @@ class ChunkedUpload {
     throw new DriveUploadPermanentError("The server did not finish putting the file together.");
   }
 }
+
+/** What a hash-rebuild step reads at least, however slow the server's storage is. */
+const MIN_REBUILD_STEP_BYTES = 1024 * 1024;
 
 /**
  * Parts accepted after one append call. Parts the server lists as accepted

@@ -31,6 +31,11 @@ use Illuminate\Support\Str;
  * true sha256 of the bytes — the same id the file gets uploaded in one
  * piece.
  *
+ * A step has two budgets (#2249): bytes (stepBudgetBytes, advertised) and
+ * wall time (JmapBlobLimits::stepMaxSeconds()). Storage slower than the
+ * byte budget assumes ends a step on time; the call answers with what it
+ * took and the client sends the rest again.
+ *
  * The running sha256 is a serialized HashContext stored between calls.
  * Whenever it cannot be read back (corrupt, another PHP build, not a
  * HashContext) the hash is rebuilt by streaming the bytes assembled so far,
@@ -99,10 +104,11 @@ final class BlobAssemblyService
      */
     public function append(string $username, string $id, array $parts): array
     {
+        $deadline = StepDeadline::in(JmapBlobLimits::stepMaxSeconds());
         $row = $this->openAssembly($username, $id);
         $this->guardPartsShape($row, $parts);
 
-        return $this->withLease($row, function (JmapBlobAssembly $row, string $lease) use ($parts): array {
+        return $this->withLease($row, function (JmapBlobAssembly $row, string $lease) use ($parts, $deadline): array {
             $this->reconcileFile($row);
             [$accepted, $fresh] = $this->splitAccepted($row, $parts);
 
@@ -116,7 +122,7 @@ final class BlobAssemblyService
                 throw new JmapMethodException('requestTooLarge', 'The parts exceed stepBudgetBytes; append fewer parts per call.', ['limit' => 'stepBudgetBytes']);
             }
 
-            [$context, $budget, $rebuildPending, $rebuilt] = $this->rebuildStep($row, $budget, $lease);
+            [$context, $budget, $rebuildPending, $rebuilt] = $this->rebuildStep($row, $budget, $lease, $deadline);
             if ($rebuildPending) {
                 return $this->appendResponse($row, $accepted, rebuiltOnly: true, rebuildPending: true);
             }
@@ -125,13 +131,24 @@ final class BlobAssemblyService
             $newRows = [];
             $received = $row->received_bytes;
             $nextIndex = $row->next_index;
+            $appendStarted = hrtime(true);
+            $appendedBytes = 0;
             foreach ($fresh as $i => $part) {
                 $partSize = $sizes[$i];
                 if ($partSize > $budget) {
                     break;
                 }
+                // Slow storage: the time is spent before the bytes are. Once
+                // this call has moved the assembly on, it takes no part that
+                // would end past the deadline at the pace of the parts before
+                // it; the client sends the remaining parts again.
+                $expected = $appendedBytes > 0 ? $partSize * (hrtime(true) - $appendStarted) / 1_000_000_000 / $appendedBytes : 0.0;
+                if (($rebuilt || $consumed !== []) && $deadline->passesWithin($expected)) {
+                    break;
+                }
                 $this->appendPart($row, $part['blobId'], $partSize, $context, $received, $lease);
                 $budget -= $partSize;
+                $appendedBytes += $partSize;
                 $received += $partSize;
                 $nextIndex = $part['index'] + 1;
                 $accepted[] = $part['index'];
@@ -171,14 +188,15 @@ final class BlobAssemblyService
             return $this->finishResponse($row);
         }
         $this->guardOpen($row);
+        $deadline = StepDeadline::in(JmapBlobLimits::stepMaxSeconds());
 
-        return $this->withLease($row, function (JmapBlobAssembly $row, string $lease): array {
+        return $this->withLease($row, function (JmapBlobAssembly $row, string $lease) use ($deadline): array {
             if ($row->received_bytes !== $row->size_bytes) {
                 throw new JmapMethodException('invalidArguments', sprintf('The assembly holds %d of %d octets.', $row->received_bytes, $row->size_bytes));
             }
             if ($row->final_sha256 === null) {
                 $this->reconcileFile($row);
-                [$context, , $rebuildPending] = $this->rebuildStep($row, JmapBlobLimits::stepBudgetBytes(), $lease);
+                [$context, , $rebuildPending] = $this->rebuildStep($row, JmapBlobLimits::stepBudgetBytes(), $lease, $deadline);
                 if ($rebuildPending) {
                     return $this->finishResponse($row, rebuildPending: true);
                 }
@@ -434,11 +452,12 @@ final class BlobAssemblyService
 
     /**
      * Restores the running hash, or rebuilds it from the assembled bytes
-     * within the budget (storing a fresh state after the step).
+     * within the byte budget and the deadline (storing a fresh state after
+     * the step).
      *
      * @return array{0: \HashContext, 1: int, 2: bool, 3: bool} context, budget left, rebuild still pending, rebuild advanced in this call
      */
-    private function rebuildStep(JmapBlobAssembly $row, int $budget, string $lease): array
+    private function rebuildStep(JmapBlobAssembly $row, int $budget, string $lease, StepDeadline $deadline): array
     {
         [$context, $hashed] = StepHasher::resume($row->hash_state, $row->hash_build, $row->hashed_bytes);
         if ($hashed > $row->received_bytes) {
@@ -448,7 +467,7 @@ final class BlobAssemblyService
             return [$context, $budget, false, false];
         }
 
-        $offset = StepHasher::advance($this->storage->data(), $this->fileKey($row), $context, $hashed, $row->received_bytes, $budget);
+        $offset = StepHasher::advance($this->storage->data(), $this->fileKey($row), $context, $hashed, $row->received_bytes, $budget, $deadline);
         if ($offset === $hashed) {
             throw new \RuntimeException('The assembly file is shorter than its received length.');
         }

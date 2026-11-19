@@ -31,6 +31,9 @@ return [
         'step_time_share' => (float) env('WGW_JMAP_STEP_TIME_SHARE', 0.5),
         'step_throughput_bytes' => (int) env('WGW_JMAP_STEP_THROUGHPUT_BYTES', 8 * 1024 * 1024),
         'step_unlimited_seconds' => (int) env('WGW_JMAP_STEP_UNLIMITED_SECONDS', 60),
+        // Wall time one assembly step may take before it stops taking more
+        // work; capped at the time share of max_execution_time (#2249).
+        'step_max_seconds' => (float) env('WGW_JMAP_STEP_MAX_SECONDS', 5),
         'assembly_ttl_hours' => (int) env('WGW_JMAP_ASSEMBLY_TTL_HOURS', 24),
         // Files discovered on disk up to this size are hashed during the walk.
         'discovery_hash_max_bytes' => (int) env('WGW_JMAP_DISCOVERY_HASH_MAX_BYTES', 4 * 1024 * 1024),

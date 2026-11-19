@@ -33,6 +33,10 @@ export class FakeDriveServer {
   rebuildOnlyAppends = 0;
   /** The next append calls fail on the network after the server applied them. */
   appendLostResponses = 0;
+  /** A step that ended on time (#2249): the server takes at most this many new parts per call. */
+  appendPartsPerCall = Infinity;
+  /** Finish calls that only advance a hash rebuild (`blobId: null`). */
+  finishRebuildCalls = 0;
   maxDataSources = 64;
   /** Blob/upload answers `requestTooLarge`. */
   blobUploadTooLarge = false;
@@ -267,7 +271,7 @@ export class FakeDriveServer {
       this.rebuildOnlyAppends -= 1;
       return { accepted, rebuiltOnly: true, received: row.received, nextIndex: row.nextIndex };
     }
-    for (const part of fresh) {
+    for (const part of fresh.slice(0, this.appendPartsPerCall)) {
       const partBytes = this.blobs.get(part.blobId)!;
       row.chunks.push(partBytes);
       row.received += partBytes.length;
@@ -290,6 +294,10 @@ export class FakeDriveServer {
     if (!row) throw new JmapMethodError("BlobAssembly/finish", "c1", { type: "invalidArguments" });
     if (row.received !== row.size) {
       throw new JmapMethodError("BlobAssembly/finish", "c1", { type: "invalidArguments" });
+    }
+    if (this.finishRebuildCalls > 0) {
+      this.finishRebuildCalls -= 1;
+      return { blobId: null, hashRebuildPending: true };
     }
     const bytes = concat(row.chunks);
     row.blobId = this.blobIdOf(bytes);

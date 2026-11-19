@@ -331,6 +331,42 @@ describe("chunked upload", () => {
     expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
+  it("sends the rest again when a slow server took fewer parts than the step held", async () => {
+    server.maxSizeUpload = 200;
+    server.stepBudgetBytes = 600;
+    server.appendPartsPerCall = 1;
+    const file = patternedFile("big.bin", 1_000);
+    const blobId = await send(file);
+
+    const steps = server
+      .callsNamed("BlobAssembly/append")
+      .map((call) => (call.args.parts as Array<{ index: number }>).map((p) => p.index));
+    expect(steps).toEqual([[0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4], [4]]);
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
+  });
+
+  it("keeps finishing while a slow server rebuilds the hash 1 MiB per call", async () => {
+    const mib = 1024 * 1024;
+    server.maxSizeUpload = mib;
+    server.stepBudgetBytes = 4 * mib;
+    // One budget per call would allow 4 calls; a rebuild that ends on time needs more.
+    server.finishRebuildCalls = 5;
+    const file = patternedFile("big.bin", 4 * mib);
+    const blobId = await send(file);
+
+    expect(server.callsNamed("BlobAssembly/finish")).toHaveLength(6);
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
+  });
+
+  it("gives up as permanent when finish never returns a blob", async () => {
+    server.maxSizeUpload = 200;
+    server.finishRebuildCalls = 1_000;
+    const file = patternedFile("big.bin", 1_000);
+    await expect(send(file)).rejects.toBeInstanceOf(DriveUploadPermanentError);
+    // 1000 bytes at the 600-byte budget: two calls, plus three spare.
+    expect(server.callsNamed("BlobAssembly/finish")).toHaveLength(5);
+  });
+
   it("never sends a part again once the server lists it as accepted", () => {
     expect(appendedAfter(2, { accepted: [2, 3], nextIndex: 4 })).toBe(4);
     expect(appendedAfter(2, { accepted: [], nextIndex: 2 })).toBe(2);
