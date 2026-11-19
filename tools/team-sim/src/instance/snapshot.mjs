@@ -20,7 +20,8 @@ export function removeDir(shell, dir) {
 
 /**
  * The night's snapshot: taken with web and scheduler stopped, after
- * migrations and reconcile, before actions. Holds the data dir, a mode-600
+ * migrations and reconcile, before actions. Holds the data dir (with the
+ * database dump `instance.dumpDb()` writes into it first), a mode-600
  * copy of the instance's .env (APP_KEY seals share links, refresh tokens and
  * the collab key) and meta.json. `planFrom(dataClone)` computes the action
  * list from the clone, so the plan reads exactly what replay will read.
@@ -28,6 +29,7 @@ export function removeDir(shell, dir) {
 export function takeSnapshot({ shell, instance, date, dataDir, snapshotsDir, envFile, meta, planFrom }) {
   const dir = join(snapshotsDir, date);
   instance.stopWriters();
+  instance.dumpDb?.();
   removeDir(shell, dir);
   cloneDir(shell, dataDir, join(dir, "data"));
   if (!shell.dryRun) {

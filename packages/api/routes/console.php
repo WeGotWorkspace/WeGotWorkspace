@@ -113,7 +113,7 @@ Artisan::command('wgw:dev-install', function (DevInstallBootstrap $bootstrap): i
     }
 
     return Command::SUCCESS;
-})->purpose('Bootstrap packages/api/.env WGW_* keys, SQLite, and admin user for Docker-free dev/preview (idempotent)');
+})->purpose('Bootstrap packages/api/.env WGW_* keys, the database (SQLite unless WGW_INSTALL_DB_* names another), and the admin user for dev/preview (idempotent)');
 
 Artisan::command('wgw:config-migrate', function (WgwConfigMigrator $migrator): int {
     if (! $migrator->migrateIfNeeded()) {

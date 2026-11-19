@@ -31,6 +31,17 @@ final class WgwInstallEnv
     }
 
     /**
+     * The database `WGW_INSTALL_DB_*` describes, in installer form. Null when
+     * the driver is unset or a MySQL value is missing.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function databaseFromEnv(): ?array
+    {
+        return $this->hasDatabaseFromEnv() ? $this->dbConfig($this->normalizedDriver()) : null;
+    }
+
+    /**
      * Partial wizard state merged into bootstrap/runtime responses (never includes passwords).
      *
      * @return array<string, mixed>

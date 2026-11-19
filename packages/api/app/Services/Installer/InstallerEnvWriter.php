@@ -119,6 +119,25 @@ final class InstallerEnvWriter
     }
 
     /**
+     * The `pdo` entry for {@see writeBootstrap()} from an installer MySQL choice.
+     *
+     * @param  array<string, mixed>  $db
+     * @return array{dsn: string, user: string, password: string}
+     */
+    public static function mysqlPdo(array $db): array
+    {
+        $host = (string) ($db['mysql_host'] ?? '127.0.0.1');
+        $port = (int) ($db['mysql_port'] ?? 3306);
+        $name = (string) ($db['mysql_db'] ?? '');
+
+        return [
+            'dsn' => sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $host, $port, $name),
+            'user' => (string) ($db['mysql_user'] ?? ''),
+            'password' => (string) ($db['mysql_password'] ?? ''),
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $pdo
      * @return array<string, mixed>
      */

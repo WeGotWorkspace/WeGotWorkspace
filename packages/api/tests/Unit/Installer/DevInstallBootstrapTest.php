@@ -15,12 +15,15 @@ use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\InstallerMysqlTestDatabase;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
 
 final class DevInstallBootstrapTest extends TestCase
 {
     private string $installRoot;
+
+    private ?string $mysqlDatabase = null;
 
     protected function setUp(): void
     {
@@ -44,6 +47,12 @@ final class DevInstallBootstrapTest extends TestCase
         putenv('WGW_DEV_SEED_CONTACTS_PROFILE');
         putenv('WGW_DEV_SEED_CALENDAR_PROFILE');
         unset($_ENV['WGW_APP_ROOT'], $_ENV['WGW_DEV_SEED_CONTACTS_PROFILE'], $_ENV['WGW_DEV_SEED_CALENDAR_PROFILE']);
+        if ($this->mysqlDatabase !== null) {
+            WgwInstallFixture::purgeDatabaseConnection();
+            InstallerMysqlTestDatabase::drop($this->mysqlDatabase);
+            $this->mysqlDatabase = null;
+        }
+        config(['wgw.install' => []]);
         WgwInstallFixture::forgetInstallBindings();
 
         if (is_dir($this->installRoot)) {
@@ -151,6 +160,46 @@ final class DevInstallBootstrapTest extends TestCase
         WgwInstallFixture::syncDatabaseConnection();
         $dsn = (string) DB::connection('wgw')->getConfig('database');
         $this->assertStringEndsWith('/wgw-content/db.sqlite', $dsn);
+    }
+
+    public function test_ensure_installs_into_the_mysql_database_the_install_env_names(): void
+    {
+        if (! InstallerMysqlTestDatabase::isAvailable()) {
+            $this->markTestSkipped(
+                'MySQL not available — run in api-mysql CI or set WGW_TEST_MYSQL_* against a local server.',
+            );
+        }
+
+        $this->mysqlDatabase = InstallerMysqlTestDatabase::createIsolated();
+        $mysql = InstallerMysqlTestDatabase::installerPayload($this->mysqlDatabase);
+        config(['wgw.install' => [
+            'db_driver' => 'mysql',
+            'db_host' => $mysql['mysql_host'],
+            'db_port' => (string) $mysql['mysql_port'],
+            'db_database' => $mysql['mysql_db'],
+            'db_user' => $mysql['mysql_user'],
+            'db_password' => $mysql['mysql_password'],
+        ]]);
+
+        $bootstrap = app(DevInstallBootstrap::class);
+        $this->assertTrue($bootstrap->ensure('admin', 'storybook-dev'));
+
+        $env = (string) file_get_contents($this->installRoot.'/packages/api/.env');
+        $this->assertStringContainsString('WGW_DB_CONNECTION=mysql', $env);
+        $this->assertStringContainsString('WGW_DB_DATABASE='.$this->mysqlDatabase, $env);
+        $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/db.sqlite');
+        $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
+
+        WgwInstallFixture::syncDatabaseConnection();
+        $this->assertSame('mysql', DB::connection('wgw')->getDriverName());
+        $this->assertSame($this->mysqlDatabase, DB::connection('wgw')->getDatabaseName());
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'admin')->count());
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'member')->count());
+        $this->assertEqualsCanonicalizing(['principals/admin', 'principals/member'], $this->devTeamMembers());
+
+        $this->assertTrue(app(AppPaths::class)->isInstalled());
+        $this->assertFalse($bootstrap->ensure('admin', 'storybook-dev'));
+        $this->assertSame(1, DB::connection('wgw')->table('users')->where('username', 'admin')->count());
     }
 
     private function recordingContactSeeder(): RecordingDevContactSeeder

@@ -3,7 +3,13 @@
 #   docker compose -p wgw-sim --project-directory ~/.wgw-sim/checkout \
 #     -f ~/.wgw-sim/checkout/compose.dev.yml -f tools/team-sim/compose.sim.yml --profile mail ...
 # Parameters (set by sim): WGW_DOCKER_HTTP_PORT, WGW_SIM_DATA_DIR,
-# WGW_SIM_HARNESS_DIR, WGW_SIM_SMTP_PORT, WGW_SIM_MAIL_API_PORT, WGW_SIM_ADMIN_PASSWORD.
+# WGW_SIM_HARNESS_DIR, WGW_SIM_SMTP_PORT, WGW_SIM_MAIL_API_PORT, WGW_SIM_ADMIN_PASSWORD,
+# WGW_SIM_DB_NAME, WGW_SIM_DB_USER, WGW_SIM_DB_PASSWORD, WGW_SIM_DB_ROOT_PASSWORD.
+#
+# The database is MariaDB in a named volume, as in the Docker install (the
+# plan says why it is not SQLite in the bind-mounted data dir).
+# WGW_INSTALL_DB_* makes the first boot's dev install use it; after that the
+# connection comes from packages/api/.env.
 services:
   web:
     ports: !override
@@ -11,6 +17,15 @@ services:
     environment:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_DEV_PASSWORD: ${WGW_SIM_ADMIN_PASSWORD:?}
+      WGW_INSTALL_DB_DRIVER: mysql
+      WGW_INSTALL_DB_HOST: db
+      WGW_INSTALL_DB_PORT: "3306"
+      WGW_INSTALL_DB_DATABASE: ${WGW_SIM_DB_NAME:?}
+      WGW_INSTALL_DB_USER: ${WGW_SIM_DB_USER:?}
+      WGW_INSTALL_DB_PASSWORD: ${WGW_SIM_DB_PASSWORD:?}
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ${WGW_SIM_DATA_DIR:?}:/var/www/install/wgw-content
       - ${WGW_SIM_HARNESS_DIR:?}/docker/apache-workers.conf:/etc/apache2/conf-enabled/zz-wgw-sim-workers.conf:ro
@@ -18,10 +33,40 @@ services:
   scheduler:
     environment:
       WGW_DEV_PASSWORD: ${WGW_SIM_ADMIN_PASSWORD:?}
+      WGW_INSTALL_DB_DRIVER: mysql
+      WGW_INSTALL_DB_HOST: db
+      WGW_INSTALL_DB_PORT: "3306"
+      WGW_INSTALL_DB_DATABASE: ${WGW_SIM_DB_NAME:?}
+      WGW_INSTALL_DB_USER: ${WGW_SIM_DB_USER:?}
+      WGW_INSTALL_DB_PASSWORD: ${WGW_SIM_DB_PASSWORD:?}
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ${WGW_SIM_DATA_DIR:?}:/var/www/install/wgw-content
+
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: ${WGW_SIM_DB_ROOT_PASSWORD:?}
+      MARIADB_DATABASE: ${WGW_SIM_DB_NAME:?}
+      MARIADB_USER: ${WGW_SIM_DB_USER:?}
+      MARIADB_PASSWORD: ${WGW_SIM_DB_PASSWORD:?}
+    volumes:
+      - db-data:/var/lib/mysql
+      # Only for the dump and restore file (.team-sim/db.sql); the database itself is in the volume.
+      - ${WGW_SIM_DATA_DIR:?}:/wgw-content
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p\"$$MARIADB_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   mailhog:
     ports: !override
       - "127.0.0.1:${WGW_SIM_SMTP_PORT:?}:1025"
       - "127.0.0.1:${WGW_SIM_MAIL_API_PORT:?}:8025"
+
+volumes:
+  db-data:

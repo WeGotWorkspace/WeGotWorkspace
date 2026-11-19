@@ -30,15 +30,33 @@ test("the overlay caps Apache at 5 workers without keep-alive, disables login th
   assert.equal(service("nope"), "");
 });
 
+test("the database is MariaDB in a named volume with no host port, and web and scheduler wait for it", () => {
+  const db = overlay.slice(overlay.indexOf("\n  db:\n"), overlay.indexOf("\n  mailhog:\n"));
+  assert.match(db, /image: mariadb:11/);
+  assert.match(db, /- db-data:\/var\/lib\/mysql/);
+  assert.ok(!/ports:/.test(db), "the database has no host port");
+  assert.match(overlay, /\nvolumes:\n  db-data:\n/);
+  for (const name of ["web", "scheduler"]) {
+    const block = overlay.slice(overlay.indexOf(`  ${name}:`), overlay.indexOf(name === "web" ? "\n  scheduler:\n" : "\n  db:\n"));
+    assert.match(block, /WGW_INSTALL_DB_DRIVER: mysql/, `${name} installs into MariaDB`);
+    assert.match(block, /depends_on:\n      db:\n        condition: service_healthy/, `${name} waits for the database`);
+  }
+  const env = composeInvocation({ project: "wgw-sim", checkout: "/c", dataDir: "/d" }).env;
+  assert.equal(env.WGW_SIM_DB_NAME, "wgw");
+  assert.ok(env.WGW_SIM_DB_PASSWORD && env.WGW_SIM_DB_ROOT_PASSWORD);
+});
+
 // Needs the live instance (`sim up` ran). Skipped elsewhere.
 const paths = layout();
-const live = existsSync(join(paths.data, "db.sqlite")) && process.env.WGW_SIM_LIVE_TESTS === "1";
+const live = existsSync(join(paths.data, ".installed")) && process.env.WGW_SIM_LIVE_TESTS === "1";
 
-test("after a first and a second boot, the sqlite file the app opens is under ~/.wgw-sim/data", { skip: !live && "set WGW_SIM_LIVE_TESTS=1 after `sim up`" }, () => {
+test("after a first and a second boot, the app runs on MariaDB and keeps its files under ~/.wgw-sim/data", { skip: !live && "set WGW_SIM_LIVE_TESTS=1 after `sim up`" }, () => {
   assert.ok(paths.data.startsWith(homedir()));
   const env = readFileSync(join(paths.checkout, "packages", "api", ".env"), "utf8");
-  assert.match(env, /^WGW_DB_DATABASE=\.\/wgw-content\/db\.sqlite$/m);
+  assert.match(env, /^WGW_DB_CONNECTION=mysql$/m);
+  assert.match(env, /^WGW_DB_HOST=db$/m);
   assert.match(env, /^WGW_DATA_DIR=\.\/wgw-content$/m);
-  assert.ok(existsSync(join(paths.data, "db.sqlite")));
-  assert.ok(!existsSync(join(paths.checkout, "apps", "wegotworkspace", "wgw-content", "db.sqlite")), "no database inside the worktree");
+  assert.ok(!existsSync(join(paths.data, "db.sqlite")), "no SQLite file in the data dir");
+  assert.ok(existsSync(join(paths.data, "keys")), "keys live in the mounted data dir");
+  assert.ok(!existsSync(join(paths.checkout, "apps", "wegotworkspace", "wgw-content", ".installed")), "no install inside the worktree");
 });

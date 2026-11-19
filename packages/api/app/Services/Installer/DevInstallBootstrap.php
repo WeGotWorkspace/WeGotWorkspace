@@ -14,9 +14,11 @@ use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
 
 /**
- * Idempotent local-dev install: packages/api/.env WGW_* keys, SQLite schema, admin user, JWT keys.
+ * Idempotent local-dev install: packages/api/.env WGW_* keys, database schema, admin user, JWT keys.
  *
  * Used by {@code pnpm dev} / {@code pnpm preview} so login works without the web installer.
+ * The database is SQLite in the data directory, unless `WGW_INSTALL_DB_*` names another one
+ * (the team simulation runs on MariaDB this way).
  */
 final class DevInstallBootstrap
 {
@@ -42,6 +44,7 @@ final class DevInstallBootstrap
         private WgwSchemaMigrator $schemaMigrator,
         private InstallerSeeder $seeder,
         private AdminGroupManagementService $teams,
+        private WgwInstallEnv $installEnv,
     ) {}
 
     /**
@@ -69,7 +72,7 @@ final class DevInstallBootstrap
             throw new \InvalidArgumentException('Dev install requires a username and password of at least 10 characters.');
         }
 
-        $db = [
+        $db = $this->installEnv->databaseFromEnv() ?? [
             'driver' => 'sqlite',
             'sqlite_path' => $this->paths->defaultSqliteRelativePath(),
         ];
@@ -106,12 +109,9 @@ final class DevInstallBootstrap
 
         $this->jwtKeys->ensureKeys();
 
-        $absDb = $this->paths->resolveProjectPath($db['sqlite_path']);
-        $relDb = $this->paths->tryRelativeToInstallRoot($absDb) ?? $db['sqlite_path'];
-
         $this->envWriter->writeBootstrap([
             'data_dir' => $this->paths->tryRelativeToInstallRoot($this->paths->dataDir()) ?? './wgw-content',
-            'pdo' => ['sqlite_file' => $relDb],
+            'pdo' => $this->pdoForEnv($db),
         ]);
         WgwRuntimeEnvBridge::apply($this->installConfig);
 
@@ -126,6 +126,21 @@ final class DevInstallBootstrap
         $this->seedDevTeam($username);
 
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $db
+     * @return array<string, mixed>
+     */
+    private function pdoForEnv(array $db): array
+    {
+        if (($db['driver'] ?? '') !== 'sqlite') {
+            return InstallerEnvWriter::mysqlPdo($db);
+        }
+        $path = (string) ($db['sqlite_path'] ?? $this->paths->defaultSqliteRelativePath());
+        $abs = $this->paths->resolveProjectPath($path);
+
+        return ['sqlite_file' => $this->paths->tryRelativeToInstallRoot($abs) ?? $path];
     }
 
     private function seedDevData(string $username): void
