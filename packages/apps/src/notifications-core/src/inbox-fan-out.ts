@@ -2,13 +2,26 @@ import { crossTabTopic, type CrossTabTopic } from "@/lib/offline/core/cross-tab-
 import type { NotificationInboxList } from "@/lib/models/notifications-types";
 
 /**
- * Sent by the tab that fetched the inbox for a pushed `Notification` state:
- * the rows it got, or that the fetch failed. `state` is the pushed state the
- * fetch answered, so a waiting tab knows the rows are new enough.
+ * What the tabs tell each other about the inbox. A push message comes from
+ * the tab that fetched the inbox for a pushed `Notification` state: the rows
+ * it got, or that the fetch failed. `state` is the pushed state the fetch
+ * answered, so a waiting tab knows the rows are new enough.
  */
-export type InboxMessage =
+export type InboxMessage = InboxPushMessage | InboxPollMessage;
+
+type InboxPushMessage =
   | ({ v: 1; kind: "inbox"; state: string } & NotificationInboxList)
   | { v: 1; kind: "inbox-failed"; state: string };
+
+/**
+ * Sent by the one tab that runs the backup poll while push is connected
+ * (#2252): the rows its poll got. They answer no pushed state.
+ */
+export type InboxPollMessage = { v: 1; kind: "inbox-poll" } & NotificationInboxList;
+
+function hasRows(message: Partial<NotificationInboxList>): boolean {
+  return Array.isArray(message.list) && typeof message.unreadCount === "number";
+}
 
 export function isInboxMessage(value: unknown): value is InboxMessage {
   if (!value || typeof value !== "object") return false;
@@ -17,13 +30,11 @@ export function isInboxMessage(value: unknown): value is InboxMessage {
     kind?: unknown;
     state?: unknown;
   } & Partial<NotificationInboxList>;
-  if (message.v !== 1 || typeof message.state !== "string") return false;
+  if (message.v !== 1) return false;
+  if (message.kind === "inbox-poll") return hasRows(message);
+  if (typeof message.state !== "string") return false;
   if (message.kind === "inbox-failed") return true;
-  return (
-    message.kind === "inbox" &&
-    Array.isArray(message.list) &&
-    typeof message.unreadCount === "number"
-  );
+  return message.kind === "inbox" && hasRows(message);
 }
 
 const CHANNEL = "wgw-notifications-inbox";
@@ -56,12 +67,13 @@ function covers(have: string, want: string): boolean {
 export class InboxFanOut {
   readonly #topic: CrossTabTopic<InboxMessage>;
   /** Recent rows from other tabs, for a tab that starts waiting after they arrived. */
-  #recent: Array<InboxMessage & { kind: "inbox" }> = [];
-  #waiters = new Set<(message: InboxMessage) => void>();
+  #recent: Array<InboxPushMessage & { kind: "inbox" }> = [];
+  #waiters = new Set<(message: InboxPushMessage) => void>();
 
   constructor(options: { topic: CrossTabTopic<InboxMessage> }) {
     this.#topic = options.topic;
     this.#topic.subscribe((message) => {
+      if (message.kind === "inbox-poll") return;
       if (message.kind === "inbox") {
         this.#recent.push(message);
         if (this.#recent.length > RECENT_LIMIT) this.#recent.shift();
@@ -87,6 +99,23 @@ export class InboxFanOut {
     );
   }
 
+  /** Send the rows this tab's backup poll got to the other tabs, which do not poll. */
+  sharePoll(payload: NotificationInboxList): void {
+    this.#topic.publish(
+      { v: 1, kind: "inbox-poll", list: payload.list, unreadCount: payload.unreadCount },
+      { otherTabsOnly: true },
+    );
+  }
+
+  /** Rows another tab's backup poll got. */
+  onPollShared(listener: (payload: NotificationInboxList) => void): () => void {
+    return this.#topic.subscribe((message) => {
+      if (message.kind === "inbox-poll") {
+        listener({ list: message.list, unreadCount: message.unreadCount });
+      }
+    });
+  }
+
   /** Tell the waiting tabs this tab's fetch for `state` failed. */
   shareFailed(state: string): void {
     this.#topic.publish({ v: 1, kind: "inbox-failed", state }, { otherTabsOnly: true });
@@ -99,7 +128,7 @@ export class InboxFanOut {
    * the wait was an earlier attempt and does not count.
    */
   waitFor(state: string, timeoutMs: number): Promise<NotificationInboxList | null> {
-    const answer = (message: InboxMessage) =>
+    const answer = (message: InboxPushMessage) =>
       message.kind === "inbox" ? { list: message.list, unreadCount: message.unreadCount } : null;
     const cached = [...this.#recent].reverse().find((message) => covers(message.state, state));
     if (cached) return Promise.resolve(answer(cached));
@@ -109,7 +138,7 @@ export class InboxFanOut {
         this.#waiters.delete(waiter);
         resolve(value);
       };
-      const waiter = (message: InboxMessage) => {
+      const waiter = (message: InboxPushMessage) => {
         if (message.kind === "inbox" ? covers(message.state, state) : message.state === state) {
           done(answer(message));
         }

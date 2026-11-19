@@ -159,17 +159,53 @@ function isCompleted(task: Task): boolean {
   return task.workflowStatus === "completed" || task.workflowStatus === "cancelled";
 }
 
-/** Aggregate views hide tasks from lists the user unchecked. A list view stays unfiltered. */
+export const ASSIGNED_TO_ME_VIEW = "state:assigned-to-me";
+
+/** Who is looking: the "Assigned to me" view matches tasks on these (#2172). */
+export type TaskViewer = {
+  username?: string | null;
+  email?: string | null;
+};
+
+/**
+ * True when the viewer is an assignee: a participant with the id `u:<username>`,
+ * or an `e:` attendee with the viewer's email (a native client wrote it before the
+ * server knew the address). A `u:` id is someone's account, so it never matches by
+ * email: a CalDAV line can name one account with another person's address. The
+ * owner (ORGANIZER) is not an assignee.
+ */
+export function isTaskAssignedTo(task: Task, viewer: TaskViewer | undefined): boolean {
+  const username = viewer?.username?.trim().toLowerCase();
+  const email = viewer?.email?.trim().toLowerCase();
+  if (!username && !email) return false;
+  for (const [id, participant] of Object.entries(task.participants ?? {})) {
+    if (!participant) continue;
+    const key = id.toLowerCase();
+    if (username && key === `u:${username}`) return true;
+    if (key.startsWith("u:")) continue;
+    const roles = participant.roles ?? [];
+    const participantEmail = participant.email?.trim().toLowerCase();
+    if (email && participantEmail === email && roles.includes("attendee")) return true;
+  }
+  return false;
+}
+
+/**
+ * Aggregate views hide tasks from lists the user unchecked. A list view stays
+ * unfiltered, and so does "Assigned to me": it shows every open task assigned
+ * to the viewer in every list they can see (#2172).
+ */
 export function filterTasksByHiddenLists(
   tasks: Task[],
   view: string,
   hiddenListIds: ReadonlySet<string>,
 ): Task[] {
-  if (hiddenListIds.size === 0 || view.startsWith("list:")) return tasks;
+  if (hiddenListIds.size === 0 || view.startsWith("list:") || view === ASSIGNED_TO_ME_VIEW)
+    return tasks;
   return tasks.filter((task) => !hiddenListIds.has(task.taskListId));
 }
 
-export function filterTasksByView(tasks: Task[], view: string): Task[] {
+export function filterTasksByView(tasks: Task[], view: string, viewer?: TaskViewer): Task[] {
   if (view.startsWith("tag:")) {
     const tag = normalizeTag(view.slice(4));
     return tasks.filter((task) => (task.categories ?? []).some((c) => normalizeTag(c) === tag));
@@ -232,6 +268,10 @@ export function filterTasksByView(tasks: Task[], view: string): Task[] {
       if (!due || isCompleted(task)) return false;
       return startOfLocalDay(due).getTime() >= tomorrow.getTime();
     });
+  }
+
+  if (view === ASSIGNED_TO_ME_VIEW) {
+    return tasks.filter((task) => !isCompleted(task) && isTaskAssignedTo(task, viewer));
   }
 
   if (state === "overdue") {

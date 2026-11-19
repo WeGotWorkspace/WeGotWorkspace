@@ -50,6 +50,7 @@ vi.mock("@/lib/jmap-client", () => ({
     fetchNotes(ids: string[]) {
       return mocks.fetchNotes(ids);
     }
+    ingesting() {}
   },
 }));
 

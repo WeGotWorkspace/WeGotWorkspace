@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createContactsJmapClient } from "@/lib/api/wgw/contacts";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useSharedInboundSync } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { JmapContactsAdapter } from "@/lib/jmap-client";
 import {
   ingestRemoteAddressBook,
@@ -33,7 +34,8 @@ type UseContactsLiveInboundArgs = {
  * Live inbound Contacts sync over JMAP (#1666): a push for `ContactCard` or
  * `AddressBook` runs one `/changes` round when the pushed state differs from
  * the adapter's own; the poll backs it up every 10 s, or every 60 s while
- * push is connected. Without the contacts capability the Dexie cache still
+ * push is connected. One tab per browser does this; the others re-read the
+ * cache it writes (#2252). Without the contacts capability the Dexie cache still
  * renders and nothing syncs inbound.
  */
 export function useContactsLiveInbound({
@@ -51,8 +53,11 @@ export function useContactsLiveInbound({
     if (!username || !enabled) return;
     if (typeof window === "undefined" || !wgwLiveApiEnabled()) return;
 
-    const ingested = (work: Promise<unknown>) => void work.then(() => latestPatch.current());
-    const next = new JmapContactsAdapter({
+    const ingested = (work: Promise<unknown>) => {
+      next.ingesting(work);
+      void work.then(() => latestPatch.current());
+    };
+    const next: JmapContactsAdapter = new JmapContactsAdapter({
       client: createContactsJmapClient(),
       onRemoteContactCard: (card) =>
         ingested(ingestRemoteContactCard(username, card as ContactCard)),
@@ -85,6 +90,8 @@ export function useContactsLiveInbound({
       setAdapter(null);
     };
   }, [enabled, username]);
+
+  useSharedInboundSync(adapter, "contacts", username, () => void latestPatch.current());
 
   const pushConnected = useJmapPushConnected();
   useEffect(() => {
