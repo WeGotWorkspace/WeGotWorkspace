@@ -11,6 +11,7 @@
  * `tools/live-e2e-webserver.test.mjs` checks the order.
  */
 export const liveTierSpecs = [
+  "calendar-delete-mid-round",
   "calendar-far-week-event",
   "calendar-list-autosave-reload",
   "calendar-offline-week-event",

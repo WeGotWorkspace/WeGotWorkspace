@@ -56,6 +56,32 @@ final class JmapBlobLimitsTest extends TestCase
         $this->assertSame(240 * 1024 * 1024, JmapBlobLimits::stepBudgetBytes());
     }
 
+    public function test_step_max_seconds_never_exceeds_the_time_share_of_the_time_limit(): void
+    {
+        config(['wgw.jmap.step_time_share' => 0.5, 'wgw.jmap.step_max_seconds' => 5]);
+
+        ini_set('max_execution_time', '30');
+        $this->assertSame(5.0, JmapBlobLimits::stepMaxSeconds());
+
+        ini_set('max_execution_time', '6');
+        $this->assertSame(3.0, JmapBlobLimits::stepMaxSeconds());
+
+        ini_set('max_execution_time', '30');
+        config(['wgw.jmap.step_max_seconds' => 60]);
+        $this->assertSame(15.0, JmapBlobLimits::stepMaxSeconds());
+    }
+
+    public function test_step_max_seconds_of_zero_or_less_means_the_default(): void
+    {
+        ini_set('max_execution_time', '30');
+        config(['wgw.jmap.step_time_share' => 0.5]);
+
+        config(['wgw.jmap.step_max_seconds' => 0]);
+        $this->assertSame(5.0, JmapBlobLimits::stepMaxSeconds());
+        config(['wgw.jmap.step_max_seconds' => -1]);
+        $this->assertSame(5.0, JmapBlobLimits::stepMaxSeconds());
+    }
+
     public function test_max_data_sources_has_the_rfc_floor_and_a_ceiling(): void
     {
         ini_set('max_execution_time', '30');

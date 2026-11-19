@@ -31,19 +31,27 @@
   padding-inline-start: calc(var(--app-sidebar-item-padding-x) + 3rem + 0.5rem) !important;
 }
 
-/* Back to documents: a filled chip row instead of a bare nav link. Settings,
-   below it, stays a plain row. */
+/* Back to documents: a plain row in full ink, no resting fill (hover is the menu row's). */
 .menu-item.docs-outline-sidebar__back {
   border-radius: var(--docs-chip-radius, 0.625rem);
-  background-color: var(
-    --docs-chip-bg,
-    color-mix(in oklch, var(--workspace-foreground) 7%, transparent)
-  );
   color: var(--workspace-foreground);
 }
 
 .menu-item.docs-outline-sidebar__back .menu-item__icon-slot {
   opacity: 0.9;
+}
+
+/*
+ * The back row takes the primary button's slot: same 40px height, and pulled up
+ * from the sections' 1rem top gap to the button's 0.5rem, so it lines up with a
+ * "New" button in the other apps (and with the first tile of the app rail).
+ */
+.docs-outline-sidebar__first {
+  margin-block-start: -0.5rem;
+}
+
+.menu-item.docs-outline-sidebar__back {
+  min-block-size: var(--control-height-lg, 2.5rem);
 }
 
 .docs-outline-sidebar__first + .sidebar-section {

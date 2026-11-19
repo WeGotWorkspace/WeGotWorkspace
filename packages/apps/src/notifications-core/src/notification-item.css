@@ -1,0 +1,45 @@
+@import "../../styles.css" reference;
+
+/*
+ * One notification's content, shared by the inbox tray row and the toast.
+ * Hosts set `--notification-item-muted` (secondary ink) and
+ * `--notification-item-badge-ring` (the paper the app badge is punched out of).
+ */
+.notification-item__mark {
+  @apply relative shrink-0;
+}
+
+/* App icon on its own (reminders, no actor): same footprint as an xl avatar. */
+.notification-item__mark > .notification-item__app-icon {
+  @apply block size-11 overflow-hidden rounded-[10px];
+}
+
+.notification-item__app-badge {
+  @apply absolute -bottom-1 -right-1 flex size-5 items-center justify-center overflow-hidden rounded-[6px];
+  box-shadow: 0 0 0 2px var(--notification-item-badge-ring, var(--workspace-surface));
+}
+
+.notification-item__app-badge-icon {
+  @apply block size-5;
+}
+
+.notification-item__main {
+  @apply flex min-w-0 flex-1 flex-col gap-1;
+}
+
+.notification-item__title {
+  @apply min-w-0 text-sm font-normal leading-snug text-foreground;
+}
+
+.notification-item__title--plain,
+.notification-item__actor {
+  @apply font-semibold;
+}
+
+.notification-item__body {
+  @apply line-clamp-2 text-sm leading-snug;
+  color: var(
+    --notification-item-muted,
+    color-mix(in oklch, var(--workspace-foreground) 64%, var(--workspace-surface))
+  );
+}

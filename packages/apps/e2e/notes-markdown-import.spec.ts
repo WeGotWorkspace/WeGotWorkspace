@@ -7,6 +7,7 @@
 // offline with the dialog open disables Import, and no notebook is made.
 import { expect, test } from "./helpers/live-test";
 import { prepareNotesForOfflineSync } from "./helpers/notes-live";
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 const PNG_1PX =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -52,7 +53,7 @@ test.describe("Notes Markdown import (live app)", () => {
     const row = page.locator(".list-item__button", { hasText: title });
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.click();
-    const editor = page.locator(".ProseMirror");
+    const editor = page.locator(NOTE_EDITOR);
     await expect(editor).toContainText(token, { timeout: 20_000 });
     await expect(page.getByText("travel").first()).toBeVisible();
     const image = editor.locator("img").first();
@@ -68,12 +69,12 @@ test.describe("Notes Markdown import (live app)", () => {
       timeout: 30_000,
     });
     await other.locator(".list-item__button", { hasText: title }).click();
-    await expect(other.locator(".ProseMirror")).toContainText(token, { timeout: 20_000 });
+    await expect(other.locator(NOTE_EDITOR)).toContainText(token, { timeout: 20_000 });
     await other.close();
 
     await page.reload();
     await page.locator(".list-item__button", { hasText: title }).click();
-    await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 20_000 });
+    await expect(page.locator(NOTE_EDITOR)).toContainText(token, { timeout: 20_000 });
     await expect
       .poll(
         () =>

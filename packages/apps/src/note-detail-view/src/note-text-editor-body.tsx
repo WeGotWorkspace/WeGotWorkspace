@@ -5,11 +5,9 @@ import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import {
+  CollabSessionPresence,
   DocsCollabEditor,
-  DocsCollabPresenceChrome,
-  mergeCollabPresencePeers,
   useDocsCollab,
-  useDocsCollabAwarenessPresence,
 } from "@/text-editor-core/docs-collab";
 import type { DocsCollabPresenceChromeProps, DocsCollabUrls } from "@/text-editor-core/docs-collab";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
@@ -60,6 +58,8 @@ export type NoteTextEditorBodyProps = {
 type NoteCollabContextValue = ReturnType<typeof useDocsCollab> & {
   localDisplayName: string;
   trackChangesUserKey: string;
+  /** The note's last known body: shown read-only until the collab session is up. */
+  initialMarkdown: string;
 };
 
 const NoteCollabContext = createContext<NoteCollabContextValue | null>(null);
@@ -159,10 +159,19 @@ export function NoteCollabSession({
       ...collab,
       localDisplayName,
       trackChangesUserKey: `${userName}:${urls.room ?? ""}`,
+      initialMarkdown,
       onMarkdownChange,
       registerMarkdownGetter,
     }),
-    [collab, localDisplayName, userName, urls.room, onMarkdownChange, registerMarkdownGetter],
+    [
+      collab,
+      localDisplayName,
+      userName,
+      urls.room,
+      initialMarkdown,
+      onMarkdownChange,
+      registerMarkdownGetter,
+    ],
   );
 
   return (
@@ -189,9 +198,9 @@ export function NoteCollabSession({
 }
 
 /**
- * Notes collab presence — thin wrapper around shared
- * {@link DocsCollabPresenceChrome} that reads peers from {@link NoteCollabSession}.
- * The detail action bar uses the `header` variant (same avatars as the Docs header).
+ * Notes collab presence: shared {@link CollabSessionPresence} reading
+ * {@link NoteCollabSession}. The detail action bar uses the `header` variant
+ * (same avatars as the Docs header).
  */
 export function NoteCollabChrome({
   className,
@@ -201,23 +210,12 @@ export function NoteCollabChrome({
   variant?: DocsCollabPresenceChromeProps["variant"];
 }) {
   const { session, peers, connectingPeers, warningPeers } = useNoteCollabContext();
-  const awarenessPresencePeers = useDocsCollabAwarenessPresence(session?.awareness);
-  const presencePeers = useMemo(
-    () =>
-      session ? mergeCollabPresencePeers(awarenessPresencePeers, peers, session.user.name) : [],
-    [awarenessPresencePeers, peers, session],
-  );
-
-  if (!session) {
-    return null;
-  }
-
   return (
-    <DocsCollabPresenceChrome
+    <CollabSessionPresence
       className={className}
       variant={variant}
-      localUser={{ displayName: session.user.name }}
-      peers={presencePeers}
+      session={session}
+      peers={peers}
       connectingPeers={connectingPeers}
       warningPeers={warningPeers}
     />
@@ -239,6 +237,7 @@ export function NoteCollabEditorSurface({
     session,
     awaitingContent,
     trackChangesUserKey,
+    initialMarkdown,
     onMarkdownChange,
     registerMarkdownGetter,
   } = useNoteCollabContext();
@@ -251,7 +250,16 @@ export function NoteCollabEditorSurface({
   );
 
   if (!session) {
-    return <div className={cn("note-text-editor-body text-editor", className)} aria-busy="true" />;
+    // The session joins a moment after the note opens. An empty body here read as
+    // the text vanishing and coming back, so the last known body stands in, read-only.
+    return (
+      <NoteSoloBody
+        initialMarkdown={initialMarkdown}
+        editable={false}
+        standIn
+        className={className}
+      />
+    );
   }
 
   return (
@@ -275,10 +283,17 @@ export function NoteCollabEditorSurface({
 function NoteSoloBody({
   initialMarkdown,
   editable,
+  standIn = false,
   className,
 }: {
   initialMarkdown: string;
   editable: boolean;
+  /**
+   * Shown while the collab session joins: not the note's editor yet. Marked busy
+   * (as the empty placeholder was) so nothing takes it for the live body; an
+   * "editor ready" wait targets `.ProseMirror[contenteditable="true"]`.
+   */
+  standIn?: boolean;
   className?: string;
 }) {
   const editor = useTextEditor({
@@ -294,6 +309,8 @@ function NoteSoloBody({
     <div
       className={cn("note-text-editor-body text-editor", className)}
       data-workspace-detail-editor
+      aria-busy={standIn ? "true" : undefined}
+      data-note-body-standin={standIn ? "" : undefined}
     >
       <TextEditorSheet editor={editor} variant="sheet" />
     </div>

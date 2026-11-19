@@ -187,7 +187,7 @@ describe("settings dialog from the sidebar primary button's menu", () => {
     expect(screen.queryByRole("combobox", { name: /working hours/i })).toBeNull();
   });
 
-  it("puts Settings last in the Notes primary button's menu, not in a sidebar section", async () => {
+  it("puts Settings in the Notes sidebar header beside the app rail, not in a section or the primary menu", async () => {
     const bootstrap = createNotesAppBootstrap();
     await renderHosted(
       <NotesWorkspace {...bootstrap} listLoading={false} onLogout={() => undefined} />,
@@ -197,13 +197,15 @@ describe("settings dialog from the sidebar primary button's menu", () => {
     expect(sections).toBeInstanceOf(HTMLElement);
     expect(within(sections as HTMLElement).queryByRole("button", { name: "Settings" })).toBeNull();
 
-    const trigger = within(
-      document.querySelector(".app-sidebar__primary-button") as HTMLElement,
-    ).getByRole("button", { name: "More create options" });
-    fireEvent.pointerDown(trigger);
-    fireEvent.click(trigger);
-    const options = screen.getAllByRole("menuitem").map((item) => item.textContent?.trim());
-    expect(options.at(-1)).toBe("Settings");
+    // The bell moved to the rail; Settings took its place in the header.
+    const header = document.querySelector(".app-sidebar__header") as HTMLElement;
+    expect(within(header).getByRole("button", { name: "Settings" })).toBeTruthy();
+    expect(
+      within(document.querySelector(".app-sidebar__primary-button") as HTMLElement).queryByRole(
+        "menuitem",
+        { name: "Settings" },
+      ),
+    ).toBeNull();
   });
 
   it("makes the primary button a split button for Settings alone", async () => {

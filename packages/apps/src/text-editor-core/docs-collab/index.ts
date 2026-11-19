@@ -4,6 +4,8 @@ export { DocsCollabPresence } from "./docs-collab-presence";
 export type { DocsCollabPresenceProps } from "./docs-collab-presence";
 export { DocsCollabPresenceChrome } from "./docs-collab-presence-chrome";
 export type { DocsCollabPresenceChromeProps } from "./docs-collab-presence-chrome";
+export { CollabSessionPresence } from "./collab-session-presence";
+export type { CollabSessionPresenceSource } from "./collab-session-presence";
 export { listAwarenessPresencePeers, mergeCollabPresencePeers } from "./docs-collab-presence-peers";
 export { useDocsCollabAwarenessPresence } from "./use-docs-collab-awareness-presence";
 export { DocsCollabCommentControl } from "./docs-collab-comment-control";

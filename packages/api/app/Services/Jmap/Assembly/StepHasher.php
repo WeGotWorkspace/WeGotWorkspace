@@ -34,9 +34,11 @@ final class StepHasher
 
     /**
      * Hashes bytes [$from, min($until, $from + $budget)) of the file into
-     * $context and returns the new offset.
+     * $context and returns the new offset. With a deadline the step also
+     * ends after the chunk in which the deadline passed (slow storage,
+     * #2249); it always reads at least one chunk, so every call moves on.
      */
-    public static function advance(Filesystem $disk, string $key, \HashContext $context, int $from, int $until, int $budget): int
+    public static function advance(Filesystem $disk, string $key, \HashContext $context, int $from, int $until, int $budget, ?StepDeadline $deadline = null): int
     {
         if ($from >= $until || $budget <= 0) {
             return $from;
@@ -67,6 +69,9 @@ final class StepHasher
                 hash_update($context, $chunk);
                 $offset += strlen($chunk);
                 $remaining -= strlen($chunk);
+                if ($deadline !== null && $deadline->passed()) {
+                    break;
+                }
             }
         } finally {
             fclose($stream);

@@ -16,6 +16,7 @@ import { execFileSync } from "node:child_process";
 import { createShell } from "../src/instance/sh.mjs";
 import { layout } from "../src/instance/config.mjs";
 import { createInstance } from "../src/instance/instance.mjs";
+import { repoRootOf } from "../src/instance/repo-root.mjs";
 
 const argv = process.argv.slice(2);
 const command = argv[0];
@@ -27,10 +28,7 @@ const option = (name, fallback) => {
 const today = () => new Date().toLocaleDateString("sv-SE");
 const log = (line) => console.log(`[sim ${new Date().toLocaleTimeString("nl-NL")}] ${line}`);
 
-function repoRoot() {
-  const common = execFileSync("git", ["rev-parse", "--git-common-dir"], { cwd: dirname(realpathSync(import.meta.filename)), encoding: "utf8" }).trim();
-  return dirname(realpathSync(common));
-}
+const repoRoot = () => repoRootOf(dirname(realpathSync(import.meta.filename)));
 
 function liveInstance(shell) {
   const paths = layout();

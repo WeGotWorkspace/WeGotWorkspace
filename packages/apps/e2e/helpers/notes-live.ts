@@ -1,5 +1,12 @@
 import { expect, type Page } from "@playwright/test";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+export const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 export const E2E_USERNAME = process.env.WGW_E2E_USERNAME ?? "admin";
 export const E2E_PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 
@@ -74,11 +81,11 @@ export async function openFirstNote(page: Page): Promise<void> {
   const firstNote = page.locator(".list-item__button").first();
   await expect(firstNote).toBeVisible({ timeout: 15_000 });
   await firstNote.click();
-  await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(NOTE_EDITOR)).toBeVisible({ timeout: 15_000 });
 }
 
 export async function appendToActiveNoteBody(page: Page, text: string): Promise<void> {
-  const editor = page.locator(".ProseMirror");
+  const editor = page.locator(NOTE_EDITOR);
   await editor.click();
   await editor.press("End");
   await editor.pressSequentially(text, { delay: 20 });
@@ -179,7 +186,7 @@ export async function openSeededNote(page: Page, token: string): Promise<void> {
   const item = page.locator(".list-item__button").filter({ hasText: `E2E ${token}` });
   await expect(item).toBeVisible({ timeout: 15_000 });
   await item.click();
-  await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 15_000 });
+  await expect(page.locator(NOTE_EDITOR)).toContainText(token, { timeout: 15_000 });
 }
 
 /**

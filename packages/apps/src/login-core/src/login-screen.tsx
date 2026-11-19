@@ -10,6 +10,8 @@ import {
 import { isWgwOAuthAuthorizeReturnPath, sanitizeWgwReturnPath } from "@/lib/api/wgw/route-guard";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
+import { clearLastAppLocations } from "@/app-rail/src/last-app-location";
+import { forgetShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 
 type LoginScreenError = "" | "invalid" | "throttled";
 
@@ -36,6 +38,13 @@ export function LoginScreen({
   const [submitting, setSubmitting] = useState(false);
   const [runtimeError, setRuntimeError] = useState("");
   const [showForgot, setShowForgot] = useState(passwordRecoveryEnabled ?? false);
+
+  // A session ended, however it ended (log out, expiry, another tab): the next
+  // person in this tab must not inherit remembered spots or the Admin answer.
+  useEffect(() => {
+    clearLastAppLocations();
+    forgetShowAdminApp();
+  }, []);
 
   useEffect(() => {
     if (passwordRecoveryEnabled !== undefined) {

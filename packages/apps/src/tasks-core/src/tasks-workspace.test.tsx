@@ -32,6 +32,11 @@ vi.mock("@/app-switch-button/src/app-switch-button", () => ({
   AppSwitchButton: () => null,
 }));
 
+// Like the switch button above: the rail reads the router, which this test does not mount.
+vi.mock("@/app-rail/src/app-rail", () => ({
+  AppRail: () => null,
+}));
+
 const bootstrap = createTasksAppBootstrap();
 
 function renderWorkspace() {
