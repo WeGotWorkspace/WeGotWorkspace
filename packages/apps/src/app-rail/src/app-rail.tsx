@@ -22,13 +22,10 @@ type AppRailItemProps = {
 
 /**
  * A tile's click. Another app: back to where the user left it (its start screen
- * the first time), cross-faded by the router's own view transition. The router
- * writes the address first and starts the transition around the render, so the
- * History API is never called inside a transition callback (Chrome and iOS drop
- * such writes). An app's start screen redirects (`/notes` to `/notes/all`) and
- * the router drops the transition on a redirect, so only a remembered spot
- * cross-fades; the first visit just switches. The current app's own tile goes
- * to its start screen. A modified click (new tab) is left to the browser.
+ * the first time). The current app's own tile goes to its start screen. A plain
+ * router navigation, no View Transition: the route must commit even when some
+ * other transition is running. The new app fades in through CSS (`app-rail.css`).
+ * A modified click (new tab) is left to the browser.
  */
 function useAppSwitch(app: AppSwitchMenuApp, current: boolean) {
   const navigate = useNavigate();
@@ -38,11 +35,7 @@ function useAppSwitch(app: AppSwitchMenuApp, current: boolean) {
     if (!plainClick) return;
     event.preventDefault();
     const last = current ? null : lastAppLocation(app.id);
-    if (last) {
-      void navigate({ to: last.pathname, search: last.search, viewTransition: true });
-      return;
-    }
-    void navigate({ to: app.to });
+    void navigate(last ? { to: last.pathname, search: last.search } : { to: app.to });
   };
 }
 

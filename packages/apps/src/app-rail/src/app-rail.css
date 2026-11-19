@@ -254,36 +254,21 @@
 }
 
 /*
- * App switch from the rail: the page cross-fades, the rail keeps its own
- * snapshot so it does not fade with it. Only the rail's links start a
- * View Transition, so this touches no other navigation.
+ * App switch: the new app's sidebar and panes fade in. Plain CSS on mount, not
+ * the View Transitions API: a transition started while another is running
+ * (a second tile click, the note overlay) can leave the address on the new app
+ * and the page on the old one. The rail itself does not fade, so it holds still.
  */
-.app-rail {
-  view-transition-name: app-rail;
+@keyframes app-rail-app-in {
+  from {
+    opacity: 0;
+  }
 }
 
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: ease;
-}
-
-::view-transition-group(app-rail) {
-  animation: none;
-}
-
-::view-transition-old(app-rail) {
-  display: none;
-}
-
-::view-transition-new(app-rail) {
-  animation: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
+@media (prefers-reduced-motion: no-preference) {
+  .app-rail
+    ~ :not(.app-sidebar__scrim, .workspace-app-layout__panel, .workspace-app-layout__panel-scrim) {
+    animation: app-rail-app-in 160ms ease-out;
   }
 }
 
