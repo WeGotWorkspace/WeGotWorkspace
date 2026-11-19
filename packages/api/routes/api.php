@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Admin\UpdateBackupController as AdminUpdateBacku
 use App\Http\Controllers\Api\V1\Admin\UpdateChannelController as AdminUpdateChannelController;
 use App\Http\Controllers\Api\V1\Admin\UpdateJobController as AdminUpdateJobController;
 use App\Http\Controllers\Api\V1\Admin\UpdateLogController as AdminUpdateLogController;
+use App\Http\Controllers\Api\V1\Admin\UpdateProgressController as AdminUpdateProgressController;
 use App\Http\Controllers\Api\V1\Admin\UpdateStateController as AdminUpdateStateController;
 use App\Http\Controllers\Api\V1\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Api\V1\Auth\ConsumePasswordResetController;
@@ -421,6 +422,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
     Route::put('settings', AdminSettingsController::class);
     Route::post('mail-delivery/test', AdminMailDeliveryTestController::class);
     Route::get('updates/state', AdminUpdateStateController::class);
+    Route::get('updates/progress', AdminUpdateProgressController::class);
     Route::put('updates/channel', AdminUpdateChannelController::class);
     Route::get('updates/log', [AdminUpdateLogController::class, 'show']);
     Route::delete('updates/log', [AdminUpdateLogController::class, 'destroy']);

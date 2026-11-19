@@ -46,21 +46,16 @@ final class UpdateRunner
     public function getState(): array
     {
         $installChannel = $this->install->installChannel();
-        if ($installChannel === 'docker') {
-            $this->recoverDockerAbandonedUpdateState();
-        }
-        $this->recoverStaleLockState();
-        $state = $this->store->read();
+        $state = $this->recoveredState();
         $latest = isset($state['latest']) && is_array($state['latest']) ? $state['latest'] : null;
         $hasRequiredMetadata = self::hasRequiredReleaseMetadata($latest);
         $driver = $this->packages->wgwDriver();
         $checks = $this->envChecker->checkAll($driver === 'mysql' ? 'mysql' : 'sqlite');
         $compatible = $this->envChecker->allPassed($checks);
         $checks = array_merge($checks, $this->files->capacityChecks($this->install->installRoot(), readQuota: $installChannel !== 'docker'));
-        $lockHeld = is_file($this->store->absolutePath($this->store->lockPath()));
-        $phase = self::phaseFromState($state);
-        $inProgress = $lockHeld || $phase !== null;
-        $current = $inProgress && is_array($state['current'] ?? null) ? $state['current'] : null;
+        $progress = $this->progressFields($state);
+        $inProgress = $progress['inProgress'];
+        $current = $progress['current'];
         $installedVersion = $this->appVersion->current();
         if (
             $installChannel !== 'docker'
@@ -82,13 +77,7 @@ final class UpdateRunner
             'compatible' => $compatible,
             'backups' => $this->backups->listBackups(),
             'checks' => $checks,
-            'inProgress' => $inProgress,
-            'phase' => $phase,
-            'current' => $current,
-            'download' => $inProgress && is_array($state['download'] ?? null) ? $state['download'] : null,
-            'phaseProgress' => $inProgress && is_array($state['phase_progress'] ?? null) ? $state['phase_progress'] : null,
-            'cancelRequested' => $inProgress && (bool) ($state['cancel_requested'] ?? false),
-            'cancelAllowed' => $phase !== null && self::isCancellablePhase($phase),
+            ...$progress,
             'lastCheckedAt' => is_string($state['last_checked_at'] ?? null) ? $state['last_checked_at'] : null,
             'lastCheckError' => is_string($state['last_check_error'] ?? null) ? $state['last_check_error'] : null,
             'lastResult' => is_array($state['last_result'] ?? null) ? $state['last_result'] : null,
@@ -103,6 +92,36 @@ final class UpdateRunner
         return $response;
     }
 
+    /**
+     * The cheap part of getState() for the progress poll: no checks, no backup listing (#2242).
+     *
+     * @return array<string, mixed>
+     */
+    public function getProgress(): array
+    {
+        return $this->progressFields($this->recoveredState());
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function progressFields(array $state): array
+    {
+        return UpdateProgress::fields($state, is_file($this->store->absolutePath($this->store->lockPath())));
+    }
+
+    /** @return array<string, mixed> state.json after clearing an abandoned or stale run */
+    private function recoveredState(): array
+    {
+        if ($this->install->installChannel() === 'docker') {
+            $this->recoverDockerAbandonedUpdateState();
+        }
+        $this->recoverStaleLockState();
+
+        return $this->store->read();
+    }
+
     public function recoverDockerAbandonedUpdateState(): void
     {
         if ($this->install->installChannel() !== 'docker') {
@@ -112,7 +131,7 @@ final class UpdateRunner
         $lockPath = $this->store->absolutePath($this->store->lockPath());
         $maintenancePath = $this->store->absolutePath($this->store->maintenancePath());
         $state = $this->store->read();
-        $hasProgress = self::phaseFromState($state) !== null
+        $hasProgress = UpdateProgress::phase($state) !== null
             || is_array($state['current'] ?? null)
             || is_file($lockPath)
             || is_file($maintenancePath);
@@ -146,7 +165,7 @@ final class UpdateRunner
                 $this->store->appendLog('Recovered stale maintenance mode marker without active update lock.');
             } else {
                 $state = $this->store->read();
-                if (self::phaseFromState($state) !== null && self::isStaleProgressState($state)) {
+                if (UpdateProgress::phase($state) !== null && self::isStaleProgressState($state)) {
                     self::clearProgressFields($state);
                     $this->store->write($state);
                     $this->store->appendLog('Cleared orphaned update progress (no active lock).');
@@ -195,22 +214,9 @@ final class UpdateRunner
     /**
      * @param  array<string, mixed>  $state
      */
-    private static function phaseFromState(array $state): ?string
-    {
-        if (! is_string($state['phase'] ?? null)) {
-            return null;
-        }
-        $phase = trim((string) $state['phase']);
-
-        return $phase !== '' ? $phase : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $state
-     */
     private static function isStaleProgressState(array $state): bool
     {
-        if (self::phaseFromState($state) === null) {
+        if (UpdateProgress::phase($state) === null) {
             return false;
         }
 
@@ -500,7 +506,7 @@ final class UpdateRunner
             throw new \InvalidArgumentException('No update is currently running.');
         }
         $phase = is_string($state['phase'] ?? null) ? $state['phase'] : '';
-        if (! self::isCancellablePhase($phase)) {
+        if (! UpdateProgress::isCancellablePhase($phase)) {
             throw new \InvalidArgumentException('Cancellation is no longer available for this update stage.');
         }
         $this->store->requestCancel();
@@ -688,11 +694,6 @@ final class UpdateRunner
         $state['cancel_requested'] = $this->store->isCancelRequested();
         unset($state['download']);
         $this->store->write($state);
-    }
-
-    private function isCancellablePhase(string $phase): bool
-    {
-        return in_array($phase, ['downloading', 'extracting', 'backing_up'], true);
     }
 
     public function throwIfCancelRequested(): void
