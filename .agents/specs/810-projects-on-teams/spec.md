@@ -48,11 +48,11 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 | **Project** | calendar, task list, notebook, chat channel, Drive folder |
 | **Default Project** (one per Team) | the Team's provisioned calendar, task list and notebook, plus one new channel. No Drive folder: its Drive view is the whole Team Drive. |
 
-- `projects`: `id`, `owner_principal_uri` (always a group principal), `slug`, `name`, `color`, `default_for_group` (nullable, unique: marks the default Project the way `chat_channel_meta.default_for_group` marks the Team channel), `archived_at`, timestamps. `UNIQUE (owner_principal_uri, slug)`, archived rows included.
+- `projects`: `id`, `group_slug` (the owning Team), `slug`, `name`, `color`, `default_for_group` (nullable, unique: marks the default Project the way `chat_channel_meta.default_for_group` marks the Team channel), `archived_at`, timestamps. `UNIQUE (group_slug, slug)`, archived rows included.
 - `project_resources`: `project_id`, `kind` (`calendar | tasklist | notebook | meet_channel | drive_folder`), `locator`. `UNIQUE (project_id, kind)` and `UNIQUE (locator)`.
 - **Locator.** For the four CalDAV-backed kinds it is `calendars.id` (the `calendarid`), which is the same for the owner instance and every sharee instance and survives rename and owner transfer. For `drive_folder` it is the FileNode `node_id` (`fn-…`), which survives rename and move.
 - `project_markers`: one change marker per Team, bumped on every Project write. It feeds a new `Project` push type.
-- `team_admins`: `group_principal_uri`, `username`, unique together. It is its own table and not a column on `groupmembers`, because member writes go through Sabre's `setGroupMemberSet`, which rewrites the rows.
+- `team_admins`: `group_slug`, `username`, unique together. It is its own table and not a column on `groupmembers`, because member writes go through Sabre's `setGroupMemberSet`, which rewrites the rows.
 - Collections outside every Project keep working as today. A Team can still own extra calendars, lists, notebooks and channels that belong to no Project.
 
 ## Non-goals
@@ -117,7 +117,7 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 
 ### Finding people to add (the one widening)
 
-- `GET /teams/{slug}/member-candidates?q=` returns display name, username and email of users matching `q`. It requires `mayManageMembers` for that Team, a query of at least two characters, a capped result count and its own rate limit.
+- `GET /teams/{slug}/member-candidates?q=` returns display name, username and email of users matching `q`. It requires `mayManageMembers` for that Team, a query of at least two characters, a capped result count and its own rate limit, keyed by the authenticated user (not the client address).
 - It is the only place where the team-admin role lets someone see a non-colleague. `TeamColleagues` does not read `team_admins`: `isColleague`, `sharesTeamIgnoringAdminRole` and every surface in its rule table (invitees, mentions, DM rail, share dialogs, presence, DAV principals, free/busy, availability) answer the same for a team admin as for a member.
 - Once someone is added, they are a colleague through membership, as for any member. That is the intended effect of adding, not a side effect of the role.
 
@@ -171,7 +171,7 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 
 ### Live updates
 
-- Push is pull-only: the event source computes state per caller. The `Project` state for a caller is a hash over the caller's Team slugs and each Team's marker. A new membership changes the set, so it changes the state.
+- Push is pull-only: the event source computes state per caller. The `Project` state for a caller is a hash over the caller's Team slugs and each Team's marker. A new membership changes the set, so it changes the state. Appointing or dismissing a team admin bumps the Team's marker, so `mayManage` and the create and manage entries follow in every tab.
 - Archive and unarchive also change the Calendar, TaskList, Notebook and ChatChannel states, because those are computed over the visible instances.
 
 ### Apps
@@ -200,7 +200,7 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 - A Team is renamed: the default Project keeps its own name. Nothing is renamed today for the Team's collections either.
 - The Project folder was deleted outside the app (filesystem, or before the guard existed): ensure creates a new folder and stores the new `node_id`.
 - A provisioned Team collection is missing when the default Project is ensured: the existing lazy provisioner creates it first.
-- Two members create a Project with the same name at once: both succeed, the second gets the `-2` slug and a suffixed folder name.
+- Two team admins create a Project with the same name at once: both succeed, the second gets the `-2` slug and a suffixed folder name.
 - A file inside an archived Project was shared with a guest link: the link answers as not found while archived and works again after unarchive.
 - An event in a Project calendar has attendees: archive hides the calendar for the Team; it sends no cancellations. Purge deletes the calendar the way an admin's delete of a Team calendar does today.
 - A Docs tab is open on a file in a Project that gets archived: the collab room refuses the next join, as for any file that becomes unreachable.

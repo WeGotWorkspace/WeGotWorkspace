@@ -43,7 +43,7 @@ See spec.md, Non-goals.
 - "The Team's provisioned collection" is a uri comparison in each repository, and delete of it is already 403. `path: app/Services/Calendars/CalendarRepository.php:389`, `path: app/Services/Tasks/TaskListRepository.php:288`, `path: app/Services/Notes/NotebookRepository.php:348`
 - A member can create extra Team calendars, task lists, notebooks and channels by passing `groupSlug`. `path: app/Services/Calendars/CalendarRepository.php:79`, `path: app/Services/Tasks/TaskListRepository.php:81`, `path: app/Services/Notes/NotebookRepository.php:82`, `path: app/Services/Chat/ChatChannelRepository.php:96`
 - Uris do not change on rename or owner transfer; sharee instances have their own uris, so the cross-instance identity is `calendars.id`. `path: app/Services/Calendars/CalendarRepository.php:395`
-- Only an instance admin may delete or transfer a Team-owned collection. `path: app/Services/Calendars/CalendarCollectionAccess.php:178`
+- Only an organization admin may delete or transfer a Team-owned collection. `path: app/Services/Calendars/CalendarCollectionAccess.php:178`
 - `accessibleInstancesByKind` is the one read path behind the calendar, notebook, task-list and chat lists, their changes and the push state. `path: app/Services/Calendars/CalendarCollectionAccess.php:56`
 - Availability reads Team calendars through its own query, not through that path. `path: app/Services/Calendars/CalendarCollectionAccess.php:364`
 - DAV lists collections through the backend. `path: app/Dav/Server/WgwCalendarBackend.php:303`
@@ -137,7 +137,8 @@ Considered: the existing `chat_channel_meta.default_for_group` marker and the pe
 4. `project-drive-folder` after 2. `project-archive-purge` after `project-collection-guards` and `project-drive-folder`.
 5. `team-delete-guard` after 3.
 6. `team-admin-ui` after `team-admin-role`, parallel with everything else. `project-filter-ui` after `project-client-store`. `project-filter-apps` after `project-filter-ui` and `project-collection-guards` (it needs `projectId` on the wire). `project-manage-settings` after `project-archive-purge`.
-7. `acl-cycle-walk` after every API chunk. `projects-verify` last.
+7. `dav-personal-create` after `project-model-create`, parallel with every later chunk.
+8. `acl-cycle-walk` after every API chunk. `projects-verify` last.
 
 ## Open decisions
 
@@ -147,13 +148,13 @@ Considered: the existing `chat_channel_meta.default_for_group` marker and the pe
 ## Invariants
 
 - The team-admin role changes nothing in what a user finds or sees outside the candidates endpoint: invitees, DM rail, share principals, presence rooms, DAV principals, free/busy and availability answer the same for a team admin and a plain member of the same Teams. A wrong change lets a team admin read a non-colleague's availability. Proof: `path: tests/Feature/Teams/TeamAdminVisibilityTest.php` assertion `test_team_admin_sees_no_more_colleagues_than_a_member`.
-- A member who is not a team admin, and an organization admin outside the Team, cannot call the candidates endpoint or the member writes of that Team. A wrong change makes the whole user directory searchable by anyone. Proof: `path: tests/Feature/Teams/TeamAdminMemberWritesTest.php` assertion `test_candidates_and_member_writes_need_the_role_for_that_team`.
+- A member who is not a team admin of that Team, and a non-member who is not an organization admin, cannot call the candidates endpoint or the member writes of that Team. An organization admin may, for any Team (spec Roles table). A wrong change makes the whole user directory searchable by anyone. Proof: `path: tests/Feature/Teams/TeamAdminMemberWritesTest.php` assertion `test_candidates_and_member_writes_need_the_role_for_that_team`.
 - The organization-admin routes under `admin/groups` keep working unchanged. A wrong change locks organization admins out of member management. Proof: `path: tests/Feature/Teams/TeamAdminMemberWritesTest.php` assertion `test_organization_admin_routes_are_unchanged`.
 - A Team member keeps reading and writing the Team calendar, task list and notebook after they are registered as the default Project. A wrong change turns the 403 on name and color into a 403 on events, tasks or notes. Proof: `path: tests/Feature/Projects/DefaultProjectBackfillTest.php` assertion `test_team_collections_stay_writable_after_backfill`.
 - A DAV client cannot create a collection under a Team's calendar home or another user's. A wrong change lets any member add Team collections past the repositories' checks. Proof: `path: tests/Feature/Dav/MkcalendarHttpTest.php` assertion `test_mkcalendar_outside_own_home_is_forbidden`.
 - A member who is not a team admin still creates, renames and deletes personal collections and still starts a Team meeting. A wrong change turns the Team-collection rule into a block on personal items or meetings. Proof: `path: tests/Feature/Teams/TeamCollectionRoleTest.php` assertion `test_personal_collections_and_team_meetings_are_unchanged`.
 - A collection in no Project stays deletable, renamable and recolorable for whoever may manage it. A wrong change seals every Team collection. Proof: `path: tests/Feature/Projects/ProjectCollectionGuardTest.php` assertion `test_collection_outside_a_project_is_unchanged`.
-- A non-member, an instance admin outside the Team included, gets the same 404 for an existing and an unknown Project id. A wrong change leaks Project names across Teams. Proof: `path: tests/Feature/Projects/ProjectAccessTest.php` assertion `test_non_member_and_unknown_id_answer_alike`.
+- A non-member, an organization admin outside the Team included, gets the same 404 for an existing and an unknown Project id. A wrong change leaks Project names across Teams. Proof: `path: tests/Feature/Projects/ProjectAccessTest.php` assertion `test_non_member_and_unknown_id_answer_alike`.
 - A failed create leaves no Project row, no collection and no channel meta, on sqlite and MySQL. A wrong change leaves collections that no Project owns. Proof: `path: tests/Feature/Projects/ProjectCreateRollbackTest.php` assertion `test_throw_after_first_collection_leaves_nothing`.
 - Archive hides the four collections on every read path, availability and DAV included, for members and sharees. A wrong change keeps an archived calendar in free/busy or in a native client. Proof: `path: tests/Feature/Projects/ProjectArchiveVisibilityTest.php` assertion `test_archived_collections_are_gone_on_every_read_path`.
 - FileNode ids of files in a Project folder are the same before archive and after unarchive, and a grant on such a file is inert while archived. A wrong change breaks Docs links or leaves a live share on an archived file. Proof: `path: tests/Feature/Projects/ProjectFolderArchiveTest.php` assertions `test_node_ids_survive_archive_and_unarchive`, `test_grant_is_inert_while_archived`.

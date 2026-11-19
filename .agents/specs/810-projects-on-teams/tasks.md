@@ -33,7 +33,7 @@ R1, R2 #2278 · A1, A2, A3 #817 · B1, B2, B3, B4, B5 #819 · C1, C2, C3, C4 #81
 
 ## Notes
 
-- Order: `team-admin-role` first, then `project-model-create`. Then `default-project-backfill`, `project-drive-folder`, `project-collection-guards` and `project-client-store` in parallel. Then `project-archive-purge` and `team-delete-guard`. UI chunks follow `project-client-store`; `project-filter-apps` also needs `project-collection-guards`.
+- Order: `team-admin-role` first, then `project-model-create`. Then `default-project-backfill`, `project-drive-folder`, `project-collection-guards` and `project-client-store` in parallel. Then `project-archive-purge` and `team-delete-guard`. `dav-personal-create` can run any time after `project-model-create`. UI chunks follow `project-client-store`; `project-filter-apps` also needs `project-collection-guards`.
 - `team-admin-ui`, `project-filter-ui`, `project-filter-apps` and `project-manage-settings` are visible UI: they wait for the product owner's review before merge. Every other chunk merges after review, green CI and its own e2e.
 - Two chunks touch `openapi/openapi.json` at the same time (`project-collection-guards` and `project-archive-purge` after `project-model-create`): the later one rebases and re-runs typegen.
 - Chunk `id` values must match `plan.md` chunk IDs and multitask handoff names.
