@@ -240,6 +240,18 @@ Only the **`/tasks`** route ships in v0.9. `workspace-app-icons.ts` may still li
 
 ---
 
+## Decision 18 — Task threads
+
+A task has a thread: comments, replies, reactions and, later, an activity log. It is built on the shared thread service ([threads.md](threads.md)) with `task` as the subject type (Epic #2173). Decision 17 is #2172's (assignees).
+
+- **Routes.** `/api/v1/threads/task/{taskId}/entries` and `…/changes`. The task is found the same way as `GET /tasks/items/{taskId}`, so whoever gets 404 there gets 404 on its thread.
+- **Who.** Read access to the list reads the thread. Commenting, replying, reacting, and editing or deleting your own comments need write access (`canPost`).
+- **The history belongs to the list.** A thread is keyed on the list's calendarid plus the task UID. Any move, through REST, MCP, the web app or a CalDAV `MOVE`, writes "moved here" under the new key, and the old entries stay with the old list's audience. A delete deletes nothing: the entries come back if the same UID is written to that list again. A CalDAV `DELETE` followed by a `PUT` elsewhere counts as a delete plus a new task.
+- **Storage.** One VJOURNAL per entry in the list owner's DAV-hidden `task-threads` pool (kind `thread_pool`), indexed in `thread_index`. Only the owner deleting the list removes its entries; a sharee's delete only dismisses their copy.
+- **Native clients** never see threads. They are web-only (Known limitations).
+
+---
+
 ## UI architecture
 
 `tasks-core` mirrors the **Notes collection shell** — reuse layout and sidebar primitives; do not invent a new workspace layout. Blueprint: [notes-core/README.md](../../packages/apps/src/notes-core/README.md). Shell pattern: [workspace-shells.md](../../packages/apps/docs/workspace-shells.md) (Collection = list + detail + mobile back).
@@ -436,6 +448,7 @@ Artisan (idempotent): `wgw:tasks:migrate-default-vtodos`, `wgw:calendars:provisi
 - **Mixed default calendar** — resolved by migration `2026_07_07_000140_wgw_migrate_default_mixed_calendar_vtodos` ([#332](https://github.com/WeGotWorkspace/wegotworkspace/issues/332))
 - **Recurrence UI** — may be v0.9 stretch; storage model still JMAP overrides (Decision 7).
 - **Single sidebar view** — no combined state + list filter in v0.9.
+- **Task threads are web-only** — comments live in a DAV-hidden pool, so CalDAV clients do not show them (Decision 18).
 - **Tasks offline** — architecture committed ([#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331)); v0.9 scheduling per [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313).
 - **Tier-2 Yjs collab** — only if rich description editor ships (Decision 15).
 - **Assignees from native clients** — an `ATTENDEE` a CalDAV client adds is stored and shown, but a person who is not an account here, or who cannot edit the list, is never notified (Decision 17).

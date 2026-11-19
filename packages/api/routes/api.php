@@ -69,6 +69,7 @@ use App\Http\Controllers\Api\V1\Tasks\TaskImportController;
 use App\Http\Controllers\Api\V1\Tasks\TaskListMembersController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Controllers\Api\V1\Tasks\TaskTextController;
+use App\Http\Controllers\Api\V1\Threads\ThreadsController;
 use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\GuestUploadRateLimiters;
 use App\Http\RateLimiting\JmapPushRateLimiters;
@@ -217,6 +218,19 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         ->where('threadId', '[^/]+');
     Route::patch('files/threads/{threadId}', [DocsThreadsController::class, 'patch'])
         ->where('threadId', '[^/]+');
+
+    // Shared threads (#2173): any registered subject type, such as `task`.
+    // The subject type checks access; docs/architecture/threads.md.
+    Route::prefix('threads/{subjectType}/{subjectId}')
+        ->where(['subjectType' => '[^/]+', 'subjectId' => '[A-Za-z0-9_.#-]+', 'entryId' => '[^/]+'])
+        ->group(function (): void {
+            Route::get('entries', [ThreadsController::class, 'index']);
+            Route::post('entries', [ThreadsController::class, 'store']);
+            Route::patch('entries/{entryId}', [ThreadsController::class, 'update']);
+            Route::delete('entries/{entryId}', [ThreadsController::class, 'destroy']);
+            Route::post('entries/{entryId}/reactions', [ThreadsController::class, 'toggleReaction']);
+            Route::get('changes', [ThreadsController::class, 'changes']);
+        });
 
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/context', [FilesController::class, 'context']);

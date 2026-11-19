@@ -201,6 +201,9 @@ final class OpenApiContract
             '{clientId}' => '550e8400-e29b-41d4-a716-446655440099',
             '{notificationId}' => 'missing-notification.ics',
             '{token}' => 'missingrsvptoken',
+            '{subjectType}' => 'task',
+            '{subjectId}' => 'demo-task',
+            '{entryId}' => '01J6Y6M0R2V9GKJ4W1T8Q3ZBEX',
         ];
 
         $path = $openApiPath;

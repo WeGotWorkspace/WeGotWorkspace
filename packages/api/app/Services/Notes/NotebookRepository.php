@@ -416,9 +416,11 @@ final class NotebookRepository
                     'alreadyExists',
                 );
             }
-            $this->collections->rejectReservedPrefix($requestedId, fn (CollectionKind $owner): string => $owner === CollectionKind::ChatChannel
-                ? 'This notebook id is reserved for chat channels.'
-                : 'This notebook id is reserved for docs threads.');
+            $this->collections->rejectReservedPrefix($requestedId, fn (CollectionKind $owner): string => match ($owner) {
+                CollectionKind::ChatChannel => 'This notebook id is reserved for chat channels.',
+                CollectionKind::DocsThreadPool => 'This notebook id is reserved for docs threads.',
+                default => 'This notebook id is reserved for threads.',
+            });
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedNoteUriSlugs(), true)
                 || $this->collections->uriTaken($principalUri, $requestedId)

@@ -6,13 +6,14 @@ namespace App\Services\Tasks;
 
 use App\Models\CalendarInstance;
 use App\Services\Notify\TaskAssignedNotify;
+use App\Services\Tasks\Threads\TaskThreadHooks;
 use Illuminate\Support\Facades\Log;
 
 /**
  * The one place a task write reacts to its change set (#2172). REST and MCP
  * writes reach it from {@see TaskRepository}, CalDAV writes from the DAV
  * `TaskChangeObserverPlugin`, so `tasks.assigned` fires the same way for all
- * three. Epic #2173 adds its activity log here.
+ * three. Task threads (#2173) hook in here too: a move writes "moved here".
  *
  * It runs after the write is stored and never fails it: a reaction that throws
  * is logged and dropped.
@@ -21,6 +22,7 @@ final class TaskChangeReactions
 {
     public function __construct(
         private readonly TaskAssignedNotify $assigned,
+        private readonly TaskThreadHooks $threads,
     ) {}
 
     /**
@@ -33,6 +35,7 @@ final class TaskChangeReactions
         if ($changes->isEmpty() || $after === null) {
             return $changes;
         }
+        $this->threads->afterWrite($actor, $list, $changes, $after);
         try {
             $this->assigned->notify($actor, $list, $after, $changes);
         } catch (\Throwable $e) {

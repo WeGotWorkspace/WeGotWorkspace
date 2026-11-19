@@ -10,6 +10,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Teams\TeamColleagues;
+use App\Services\Threads\ThreadPoolUris;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -405,12 +406,12 @@ final class WgwCalendarBackend extends CalPDO
             }
         }
 
-        return false;
+        return ThreadPoolUris::isPoolUri($uri);
     }
 
     /**
-     * chat-, dm-, and docs-threads belong to one kind. Any other kind claiming
-     * them would shadow Meet rooms or block the docs thread pool.
+     * chat-, dm-, docs-threads and the shared thread pool uris belong to one
+     * kind. Any other kind claiming them would shadow Meet rooms or block a pool.
      */
     private function assertUriAllowedForKind(CollectionKind $kind, string $uri): void
     {
@@ -418,6 +419,7 @@ final class WgwCalendarBackend extends CalPDO
             str_starts_with($uri, ChatCollectionUris::PREFIX_CHANNEL),
             str_starts_with($uri, ChatCollectionUris::PREFIX_DM) => CollectionKind::ChatChannel,
             str_starts_with($uri, DocsThreadCollectionUris::POOL_URI) => CollectionKind::DocsThreadPool,
+            ThreadPoolUris::isPoolUri($uri) => CollectionKind::ThreadPool,
             default => null,
         };
         if ($owner !== null && $owner !== $kind) {

@@ -1,6 +1,6 @@
 # Threads
 
-Conversations attached to something: a chat channel, a document, a task. Every thread in the suite stores messages the same way and follows the same rules for who reads it. Epic: #2173 (Goal WeGotWorkspace/Product#87), which adds task threads and the activity log and moves Chat and Docs onto one shared module. Spec, plan and chunks: [.agents/specs/2173-task-threads/](../../.agents/specs/2173-task-threads/). Status: **design**; nothing below is built yet except the parts marked "today".
+Conversations attached to something: a chat channel, a document, a task. Every thread in the suite stores messages the same way and follows the same rules for who reads it. Epic: #2173 (Goal WeGotWorkspace/Product#87), which adds task threads and the activity log and moves Chat and Docs onto one shared module. Spec, plan and chunks: [.agents/specs/2173-task-threads/](../../.agents/specs/2173-task-threads/). Status: **in progress**. Built: the shared converter core (chunk A) and the shared thread service with the `task` subject type (chunk B). Push, notifications, the panel, the activity log and offline comments follow.
 
 ---
 

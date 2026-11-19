@@ -1,0 +1,238 @@
+{
+  "ThreadEntryAuthor": {
+    "type": "object",
+    "required": ["username", "displayName"],
+    "additionalProperties": false,
+    "properties": {
+      "username": {
+        "type": "string",
+        "description": "Author principal username."
+      },
+      "displayName": {
+        "type": "string",
+        "description": "Current display name; the username when the account is gone."
+      }
+    }
+  },
+  "ThreadEntryMention": {
+    "type": "object",
+    "required": ["id", "displayName"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Mentioned principal username."
+      },
+      "displayName": {
+        "type": "string"
+      }
+    }
+  },
+  "ThreadEntryReaction": {
+    "type": "object",
+    "required": ["emoji", "authors"],
+    "additionalProperties": false,
+    "properties": {
+      "emoji": {
+        "type": "string"
+      },
+      "authors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Usernames that added this emoji."
+      }
+    }
+  },
+  "ThreadEntry": {
+    "type": "object",
+    "required": [
+      "id",
+      "kind",
+      "parentId",
+      "author",
+      "body",
+      "mentions",
+      "reactions",
+      "createdAt",
+      "editedAt",
+      "deletedAt",
+      "activity"
+    ],
+    "additionalProperties": false,
+    "description": "One entry of a shared thread (#2173): a comment, a reply or a server-written activity entry.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "ULID (VJOURNAL UID). The client's id, or a fresh one when that id was taken."
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["comment", "reply", "activity"]
+      },
+      "parentId": {
+        "type": ["string", "null"],
+        "description": "The root comment of a reply."
+      },
+      "author": {
+        "$ref": "#/components/schemas/ThreadEntryAuthor"
+      },
+      "body": {
+        "type": ["string", "null"],
+        "description": "Null for activity entries and deleted entries."
+      },
+      "mentions": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ThreadEntryMention"
+        }
+      },
+      "reactions": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ThreadEntryReaction"
+        }
+      },
+      "createdAt": {
+        "type": "string",
+        "description": "Server arrival time, UTC."
+      },
+      "editedAt": {
+        "type": ["string", "null"]
+      },
+      "deletedAt": {
+        "type": ["string", "null"]
+      },
+      "activity": {
+        "type": ["object", "null"],
+        "additionalProperties": true,
+        "description": "For activity entries: {field, from, to} or {field, added, removed}. Rendered by the client."
+      }
+    }
+  },
+  "ThreadEntryList": {
+    "type": "object",
+    "required": ["list", "nextCursor", "state", "canPost"],
+    "additionalProperties": false,
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ThreadEntry"
+        },
+        "description": "In arrival order, at most 200 per page."
+      },
+      "nextCursor": {
+        "type": ["string", "null"],
+        "description": "Pass as `cursor` for the next page; null on the last page."
+      },
+      "state": {
+        "type": "string",
+        "description": "Thread state for `/changes`."
+      },
+      "canPost": {
+        "type": "boolean",
+        "description": "Whether the caller may comment, reply, react, edit and delete their own entries."
+      }
+    }
+  },
+  "ThreadEntryCreate": {
+    "type": "object",
+    "required": ["id", "body"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Client ULID. Retrying the same id is idempotent."
+      },
+      "body": {
+        "type": "string",
+        "description": "At most 65 536 bytes."
+      },
+      "parentId": {
+        "type": ["string", "null"],
+        "description": "A root comment under the subject's current key."
+      },
+      "scopeId": {
+        "type": ["string", "null"],
+        "description": "The scope the writer saw the subject in (for a task, its list id). A stale one answers 409 subject_moved."
+      },
+      "mentions": {
+        "type": "array",
+        "maxItems": 50,
+        "items": {
+          "type": "object",
+          "required": ["id"],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "displayName": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "description": "Mentions outside the subject's audience are not stored."
+      }
+    }
+  },
+  "ThreadEntryPatch": {
+    "type": "object",
+    "required": ["body"],
+    "additionalProperties": false,
+    "properties": {
+      "body": {
+        "type": "string"
+      }
+    }
+  },
+  "ThreadReactionToggle": {
+    "type": "object",
+    "required": ["emoji"],
+    "additionalProperties": false,
+    "properties": {
+      "emoji": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
+    }
+  },
+  "ThreadChangesResponse": {
+    "type": "object",
+    "required": [
+      "oldState",
+      "newState",
+      "changed",
+      "removed",
+      "hasMoreChanges"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "oldState": {
+        "type": "string"
+      },
+      "newState": {
+        "type": "string"
+      },
+      "changed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Entry ids created or changed since oldState."
+      },
+      "removed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "hasMoreChanges": {
+        "type": "boolean"
+      }
+    }
+  }
+}

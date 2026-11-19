@@ -29,7 +29,9 @@ use Sabre\HTTP\ResponseInterface;
  * - It acts in `afterMethod:PUT` and `afterMethod:DELETE`, only for a 2xx
  *   response and a signed-in user. A refused or failed write never reacts.
  * - A file with several VTODOs gives one change set per UID.
- * - A `MOVE` gives no change set yet: it adds no assignee (Epic #2173 adds it).
+ * - A `MOVE` between task lists gives the same `moved` change set as a REST
+ *   move (#2173): before is the source object, after the destination object.
+ *   A `MOVE` out of or into a task list is a delete or a create there.
  * - It never fails the write: errors are logged, as in {@see EventDispatchPlugin}.
  */
 final class TaskChangeObserverPlugin extends ServerPlugin
@@ -58,6 +60,7 @@ final class TaskChangeObserverPlugin extends ServerPlugin
         $server->on('beforeUnbind', [$this, 'beforeUnbind'], self::PRIORITY);
         $server->on('afterMethod:PUT', [$this, 'afterWrite']);
         $server->on('afterMethod:DELETE', [$this, 'afterWrite']);
+        $server->on('afterMethod:MOVE', [$this, 'afterMove']);
     }
 
     public function getPluginName(): string
@@ -112,6 +115,57 @@ final class TaskChangeObserverPlugin extends ServerPlugin
             try {
                 Log::error('task_change_observer_failed', [
                     'path' => $path,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
+            } catch (\Throwable) {
+            }
+        }
+    }
+
+    /**
+     * Sabre copies and then deletes, because calendars are not `IMoveTarget`.
+     * `beforeUnbind` remembered the source (and an overwritten destination).
+     */
+    public function afterMove(RequestInterface $request, ResponseInterface $response): void
+    {
+        $source = trim((string) $request->getPath(), '/');
+        $pending = $this->pending[$source] ?? null;
+        unset($this->pending[$source]);
+        $status = $response->getStatus();
+        if ($status < 200 || $status >= 300 || $this->server === null) {
+            return;
+        }
+        $actor = DavCurrentUsername::of($this->server);
+        if ($actor === null) {
+            return;
+        }
+
+        try {
+            $destination = trim($this->server->calculateUri((string) $request->getHeader('Destination')), '/');
+            unset($this->pending[$destination]);
+            $target = $this->taskListForObjectPath($destination);
+            if ($pending === null && $target === null) {
+                return;
+            }
+            $before = $pending === null
+                ? []
+                : $this->tasksByUid($pending['raw'], basename($source), $this->taskLists->apiIdForInstance($pending['instance']), $pending['instance'], $actor);
+            $after = $target === null
+                ? []
+                : $this->tasksByUid($this->storedRaw($target, basename($destination)), basename($destination), $this->taskLists->apiIdForInstance($target), $target, $actor);
+            $reactions = app(TaskChangeReactions::class);
+            foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $uid) {
+                // The destination list once the task is there; the source list for a move out.
+                $list = isset($after[$uid]) ? $target : $pending['instance'] ?? null;
+                if ($list instanceof CalendarInstance) {
+                    $reactions->afterWrite($actor, $list, $before[$uid] ?? null, $after[$uid] ?? null);
+                }
+            }
+        } catch (\Throwable $e) {
+            try {
+                Log::error('task_change_observer_failed', [
+                    'path' => $source,
                     'exception' => $e::class,
                     'message' => $e->getMessage(),
                 ]);
