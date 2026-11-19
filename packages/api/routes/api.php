@@ -58,6 +58,7 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
 use App\Http\Controllers\Api\V1\Security\CspReportController;
+use App\Http\Controllers\Api\V1\Settings\AppPasswordsController as SettingsAppPasswordsController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
@@ -247,6 +248,11 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
 
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
+    Route::get('settings/app-passwords', [SettingsAppPasswordsController::class, 'index']);
+    Route::post('settings/app-passwords', [SettingsAppPasswordsController::class, 'store']);
+    Route::post('settings/app-passwords/revocations', [SettingsAppPasswordsController::class, 'revokeAll']);
+    Route::delete('settings/app-passwords/{appPasswordId}', [SettingsAppPasswordsController::class, 'destroy'])
+        ->whereNumber('appPasswordId');
     Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
     Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])
         ->where('clientId', '[A-Za-z0-9-]+');
