@@ -11,17 +11,19 @@ export function LiveBootstrapErrorPanel({ title, error, onRetry }: LiveBootstrap
       <p className="text-sm text-[color-mix(in_oklab,var(--workspace-foreground)_70%,transparent)]">
         {error}
       </p>
-      <p className="text-xs text-[color-mix(in_oklab,var(--workspace-foreground)_55%,transparent)]">
-        Use{" "}
-        <code className="rounded bg-[color-mix(in_oklab,var(--workspace-foreground)_8%,transparent)] px-1">
-          .env.local
-        </code>{" "}
-        from{" "}
-        <code className="rounded bg-[color-mix(in_oklab,var(--workspace-foreground)_8%,transparent)] px-1">
-          .env.example
-        </code>{" "}
-        (proxy + credentials), then restart <code className="rounded px-1">npm run dev</code>.
-      </p>
+      {import.meta.env.DEV ? (
+        <p className="text-xs text-[color-mix(in_oklab,var(--workspace-foreground)_55%,transparent)]">
+          Use{" "}
+          <code className="rounded bg-[color-mix(in_oklab,var(--workspace-foreground)_8%,transparent)] px-1">
+            .env.local
+          </code>{" "}
+          from{" "}
+          <code className="rounded bg-[color-mix(in_oklab,var(--workspace-foreground)_8%,transparent)] px-1">
+            .env.example
+          </code>{" "}
+          (proxy + credentials), then restart <code className="rounded px-1">npm run dev</code>.
+        </p>
+      ) : null}
       <button
         type="button"
         className="self-start rounded-md border border-[color-mix(in_oklab,var(--workspace-foreground)_20%,transparent)] px-3 py-1.5 text-sm hover:bg-[color-mix(in_oklab,var(--workspace-foreground)_6%,transparent)]"

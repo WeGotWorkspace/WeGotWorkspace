@@ -6,6 +6,7 @@ import {
   wgwIsGuestSession,
   wgwRedirectGuestShareReauth,
 } from "@/lib/api/wgw/http";
+import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { OfflineNotCachedError } from "@/lib/offline/core/offline-not-cached-error";
 
@@ -219,5 +220,67 @@ describe("WorkspaceLiveAppShell", () => {
 
     expect(wgwRedirectGuestShareReauth).toHaveBeenCalled();
     expect(assign).toHaveBeenCalledWith(expect.stringContaining("/login"));
+  });
+
+  describe("signed-out launch (no session at mount)", () => {
+    function renderSignedOutLaunch(pathname: string) {
+      vi.stubEnv("DEV", false);
+      vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(false);
+      const assign = vi.fn();
+      vi.stubGlobal("location", { ...window.location, pathname, search: "", hash: "", assign });
+      render(
+        <WorkspaceLiveAppShell
+          phase="error"
+          error={new WgwSignInRequiredError()}
+          retry={() => undefined}
+          errorTitle="Could not load live meet"
+          successVersion={0}
+          render={() => <div>should not render</div>}
+        />,
+      );
+      return assign;
+    }
+
+    it.each(["/meet", "/calendar", "/drive", "/notes/all"])(
+      "sends %s to login instead of the error panel",
+      (pathname) => {
+        const assign = renderSignedOutLaunch(pathname);
+
+        expect(screen.queryByText("Could not load live meet")).toBeNull();
+        expect(assign).toHaveBeenCalledWith(`/login?return=${encodeURIComponent(pathname)}`);
+      },
+    );
+
+    it.each([
+      "/meet/meetings/h8y8-ewp6-al8n",
+      "/meet/join",
+      "/meet/guest",
+      "/meet/channels/general",
+      "/share/demo-token",
+      "/install",
+    ])("leaves guest and setup route %s alone", (pathname) => {
+      const assign = renderSignedOutLaunch(pathname);
+
+      expect(assign).not.toHaveBeenCalled();
+      expect(screen.getByText("Could not load live meet")).toBeTruthy();
+    });
+
+    it("keeps the error panel for other errors without a session", () => {
+      vi.stubEnv("DEV", false);
+      vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(false);
+      const assign = vi.fn();
+      vi.stubGlobal("location", { ...window.location, pathname: "/calendar", assign });
+
+      renderBootstrapError("GET /calendars failed (503)");
+
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it("does not show the developer hint outside dev", () => {
+      vi.stubEnv("DEV", false);
+      renderBootstrapError("GET /calendars failed (503)");
+
+      expect(screen.queryByText(".env.local")).toBeNull();
+    });
   });
 });

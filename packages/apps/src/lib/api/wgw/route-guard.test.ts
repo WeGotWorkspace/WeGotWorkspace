@@ -4,6 +4,7 @@ import {
   isWgwAuthRoutePathname,
   isWgwOAuthAuthorizeReturnPath,
   isWgwPublicRoutePathname,
+  isWgwSignedOutRoutePathname,
   requireWgwAuth,
   resolveWgwSameOriginHref,
   sanitizeWgwReturnPath,
@@ -27,6 +28,21 @@ describe("isWgwAuthRoutePathname", () => {
 
   it("normalizes duplicate slashes and trailing slashes", () => {
     expect(isWgwAuthRoutePathname("//login//")).toBe(true);
+  });
+});
+
+describe("isWgwSignedOutRoutePathname", () => {
+  it("keeps guest doors and /install, but not the bare Meet workspace", () => {
+    expect(isWgwSignedOutRoutePathname("/share/demo-token")).toBe(true);
+    expect(isWgwSignedOutRoutePathname("/meet/guest")).toBe(true);
+    expect(isWgwSignedOutRoutePathname("/meet/join")).toBe(true);
+    expect(isWgwSignedOutRoutePathname("/meet/channels/general")).toBe(true);
+    expect(isWgwSignedOutRoutePathname("/meet/meetings/h8y8-ewp6-al8n")).toBe(true);
+    expect(isWgwSignedOutRoutePathname("/install")).toBe(true);
+    expect(isWgwSignedOutRoutePathname("/meet")).toBe(false);
+    expect(isWgwSignedOutRoutePathname("/meet/")).toBe(false);
+    expect(isWgwSignedOutRoutePathname("/meet/dms/alice")).toBe(false);
+    expect(isWgwSignedOutRoutePathname("/calendar")).toBe(false);
   });
 });
 
