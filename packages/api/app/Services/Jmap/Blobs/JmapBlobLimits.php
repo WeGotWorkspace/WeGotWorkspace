@@ -23,6 +23,8 @@ final class JmapBlobLimits
     /** Bounds per-call bookkeeping (one blob lookup per source). */
     public const MAX_DATA_SOURCES = 1024;
 
+    private const DEFAULT_STEP_MAX_SECONDS = 5.0;
+
     /**
      * The smaller of WGW_JMAP_MAX_SIZE_UPLOAD and post_max_size (0 or an
      * unparseable value means PHP sets no limit and is ignored).
@@ -77,11 +79,33 @@ final class JmapBlobLimits
      */
     public static function stepBudgetBytes(): int
     {
-        $share = (float) config('wgw.jmap.step_time_share', 0.5);
-        $share = $share > 0 && $share <= 1 ? $share : 0.5;
         $throughput = max(1, (int) config('wgw.jmap.step_throughput_bytes', 8 * 1024 * 1024));
 
-        return max(1024 * 1024, (int) floor(self::timeLimitSeconds() * $share * $throughput));
+        return max(1024 * 1024, (int) floor(self::timeLimitSeconds() * self::stepTimeShare() * $throughput));
+    }
+
+    /**
+     * Wall-clock seconds one assembly step may spend before it stops taking
+     * more work (#2249): WGW_JMAP_STEP_MAX_SECONDS, never more than the time
+     * share of the time limit. The byte budget assumes a throughput; this
+     * bounds the step when storage is slower than that. Zero or less means
+     * the default.
+     */
+    public static function stepMaxSeconds(): float
+    {
+        $configured = (float) config('wgw.jmap.step_max_seconds', self::DEFAULT_STEP_MAX_SECONDS);
+        if ($configured <= 0) {
+            $configured = self::DEFAULT_STEP_MAX_SECONDS;
+        }
+
+        return min($configured, self::timeLimitSeconds() * self::stepTimeShare());
+    }
+
+    private static function stepTimeShare(): float
+    {
+        $share = (float) config('wgw.jmap.step_time_share', 0.5);
+
+        return $share > 0 && $share <= 1 ? $share : 0.5;
     }
 
     /**

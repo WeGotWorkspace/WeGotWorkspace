@@ -25,7 +25,8 @@ use Tests\Support\WgwDatabaseTestCase;
  * Blob assembly extension (#1500): appends within the step budget, resume
  * after an interrupted step, TTL expiry, a finish whose id is the true
  * sha256 (the same id as a one-piece upload), hash states that cannot be
- * read back rebuilt in budgeted steps, idempotent append and finish.
+ * read back rebuilt in budgeted steps, idempotent append and finish, and
+ * steps that end on wall time when the disk is slow (#2249).
  */
 final class JmapBlobAssemblyTest extends WgwDatabaseTestCase
 {
@@ -214,6 +215,108 @@ final class JmapBlobAssemblyTest extends WgwDatabaseTestCase
         $this->assertSame('error', $error['_name']);
         $this->assertSame('requestTooLarge', $error['type']);
         $this->assertSame(0, JmapBlobAssembly::query()->where('assembly_id', $id)->value('received_bytes'));
+    }
+
+    /**
+     * A disk that needs 80 ms per write: far slower than the byte budget
+     * assumes, like a network filesystem in front of object storage (#2249).
+     */
+    private function useSlowDisk(): void
+    {
+        $this->app->instance(LocalDiskFiles::class, new class extends LocalDiskFiles
+        {
+            protected function write($handle, string $chunk): void
+            {
+                usleep(80_000);
+                parent::write($handle, $chunk);
+            }
+        });
+    }
+
+    public function test_an_append_step_ends_on_wall_time_when_the_disk_is_slow(): void
+    {
+        // The byte budget (1 MiB) would take all three parts in one call.
+        config(['wgw.jmap.step_max_seconds' => 0.05]);
+        $bytes = random_bytes(300_000);
+        $id = $this->createAssembly(strlen($bytes));
+        $parts = array_map(fn (string $chunk): string => $this->uploadPart($chunk, $id), $this->chunks($bytes, 100_000));
+        $this->useSlowDisk();
+
+        // Every call still takes one part, however slow the disk is.
+        $first = $this->append($id, $parts);
+        $this->assertSame([0], $first['accepted']);
+        $this->assertSame(100_000, $first['received']);
+        $this->assertSame(1, $first['nextIndex']);
+        $this->assertFalse($first['rebuiltOnly']);
+
+        // The client sends the rest again, as it does after a byte-budget stop.
+        $second = $this->append($id, array_slice($parts, 1), 1);
+        $this->assertSame([1], $second['accepted']);
+        $third = $this->append($id, $parts);
+        $this->assertSame([0, 1, 2], $third['accepted'], 'accepted before, plus the last part');
+        $this->assertSame(300_000, $third['received']);
+
+        $this->assertSame('jb-'.substr(hash('sha256', $bytes), 0, 40), $this->method('BlobAssembly/finish', ['id' => $id])['blobId']);
+    }
+
+    public function test_a_slow_disk_within_the_time_budget_still_takes_every_part(): void
+    {
+        config(['wgw.jmap.step_max_seconds' => 5]);
+        $bytes = random_bytes(300_000);
+        $id = $this->createAssembly(strlen($bytes));
+        $parts = array_map(fn (string $chunk): string => $this->uploadPart($chunk, $id), $this->chunks($bytes, 100_000));
+        $this->useSlowDisk();
+
+        $this->assertSame([0, 1, 2], $this->append($id, $parts)['accepted']);
+    }
+
+    public function test_an_append_step_takes_no_part_that_would_end_past_the_time_budget(): void
+    {
+        // 80 ms per part and 200 ms in all: a third part would end at 240 ms.
+        config(['wgw.jmap.step_max_seconds' => 0.2]);
+        $bytes = random_bytes(400_000);
+        $id = $this->createAssembly(strlen($bytes));
+        $parts = array_map(fn (string $chunk): string => $this->uploadPart($chunk, $id), $this->chunks($bytes, 100_000));
+        $this->useSlowDisk();
+
+        $accepted = $this->append($id, $parts)['accepted'];
+        $this->assertNotSame([], $accepted);
+        $this->assertLessThanOrEqual(2, count($accepted));
+    }
+
+    public function test_a_hash_rebuild_step_ends_on_wall_time_and_always_moves_on(): void
+    {
+        // Byte budget 4 MiB; a time budget that is spent at once leaves one
+        // 1 MiB read per call, in append and in finish.
+        config(['wgw.jmap.step_throughput_bytes' => 4 * self::MIB, 'wgw.jmap.step_unlimited_seconds' => 2, 'wgw.jmap.step_time_share' => 0.5]);
+        $bytes = random_bytes(3 * self::MIB);
+        $id = $this->createAssembly(strlen($bytes));
+        $parts = array_map(fn (string $chunk): string => $this->uploadPart($chunk, $id), $this->chunks($bytes, self::MIB));
+        $this->assertSame([0, 1], $this->append($id, array_slice($parts, 0, 2))['accepted']);
+        JmapBlobAssembly::query()->where('assembly_id', $id)->update(['hash_state' => 'garbage']);
+        config(['wgw.jmap.step_max_seconds' => 0.000001]);
+
+        $rebuild = $this->append($id, [$parts[2]], 2);
+        $this->assertSame([], $rebuild['accepted']);
+        $this->assertTrue($rebuild['rebuiltOnly']);
+        $this->assertTrue($rebuild['hashRebuildPending']);
+        $this->assertSame(self::MIB, JmapBlobAssembly::query()->where('assembly_id', $id)->value('hashed_bytes'));
+
+        // The rebuild ends in this call and used up the time: no part yet.
+        $done = $this->append($id, [$parts[2]], 2);
+        $this->assertSame([], $done['accepted']);
+        $this->assertTrue($done['rebuiltOnly']);
+        $this->assertFalse($done['hashRebuildPending']);
+        $this->assertSame([2], $this->append($id, [$parts[2]], 2)['accepted']);
+
+        JmapBlobAssembly::query()->where('assembly_id', $id)->update(['hash_state' => 'garbage']);
+        $calls = 0;
+        do {
+            $finish = $this->method('BlobAssembly/finish', ['id' => $id]);
+            $calls++;
+        } while ($finish['blobId'] === null && $calls < 10);
+        $this->assertSame(3, $calls, 'two calls rebuild 1 MiB each, the third reads the last MiB and finishes');
+        $this->assertSame('jb-'.substr(hash('sha256', $bytes), 0, 40), $finish['blobId']);
     }
 
     public function test_a_retried_append_never_glues_a_part_twice(): void
