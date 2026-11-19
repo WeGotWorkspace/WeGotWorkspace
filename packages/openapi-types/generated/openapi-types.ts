@@ -14088,6 +14088,8 @@ export interface components {
             notebookId: string | null;
             channelId: string | null;
             driveFolderId: string | null;
+            /** @description Path of the Project folder in the Drive, e.g. `/groups/{team}/{name}`. Follows the Project's name. */
+            driveFolderPath: string | null;
         };
         /** @description A Project of one of the caller's Teams: a calendar, task list, notebook, chat channel and Drive folder. Access is Team membership. */
         Project: {

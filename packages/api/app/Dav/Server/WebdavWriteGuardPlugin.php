@@ -6,6 +6,7 @@ namespace App\Dav\Server;
 
 use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Projects\ProjectFolderRegistry;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use Sabre\DAV\Exception\Forbidden;
@@ -33,6 +34,7 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
     public function __construct(
         private WgwStorage $storage,
         private StoragePaths $paths,
+        private ProjectFolderRegistry $projectFolders,
     ) {}
 
     public function initialize(Server $server): void
@@ -131,6 +133,10 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new Forbidden('The Yjs sidecar is server-owned.');
         }
 
+        if (($method === 'DELETE' || $method === 'MOVE') && $this->isProjectFolder($path)) {
+            throw new Forbidden('A Project folder follows its Project. Rename or delete the Project in the app.');
+        }
+
         if ($method === 'DELETE') {
             if (self::isCalendarFolderPath($path)) {
                 throw new Forbidden('Deleting a calendar home or calendar collection is not allowed.');
@@ -208,6 +214,14 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         );
 
         return $this->storage->files()->fileExists($sidecarKey);
+    }
+
+    /** `files/groups/{team}/{name}` registered as a Project folder (#817). */
+    private function isProjectFolder(string $davPath): bool
+    {
+        $p = self::normalizePath($davPath);
+
+        return str_starts_with($p, 'files/') && $this->projectFolders->isProjectFolderKey(substr($p, strlen('files/')));
     }
 
     private static function normalizePath(string $path): string

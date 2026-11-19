@@ -9,6 +9,7 @@ use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapRequestContext;
+use App\Services\Projects\ProjectFolderRegistry;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
@@ -30,6 +31,7 @@ final class FileNodeMapper
         private readonly DriveGroupResolver $groups,
         private readonly FileNodeContentHasher $hasher,
         private readonly JmapRequestContext $context,
+        private readonly ProjectFolderRegistry $projectFolders,
     ) {}
 
     /**
@@ -219,11 +221,14 @@ final class FileNodeMapper
         $mayAddChildren = $mayStructure
             || (strtolower($principal['role']) === 'guest' && $mayEdit);
 
+        // A Project folder follows its Project (#817): never renamed, moved or deleted on its own.
+        $sealed = $isGrantRoot || ($mayStructure && $this->projectFolders->isProjectFolderKey($key));
+
         return [
             'mayRead' => $mayView,
             'mayAddChildren' => $mayAddChildren,
-            'mayRename' => $mayStructure && ! $isGrantRoot,
-            'mayDelete' => $mayStructure && ! $isGrantRoot,
+            'mayRename' => $mayStructure && ! $sealed,
+            'mayDelete' => $mayStructure && ! $sealed,
             'mayModifyContent' => $mayEdit,
             // shareWith writes stay off the envelope; mayShare still
             // reflects DriveShareAuthorizer so the REST share dialog shows.

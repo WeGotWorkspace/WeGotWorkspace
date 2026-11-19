@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Projects;
 
 use App\Models\CalendarInstance;
+use App\Models\JmapFileNode;
 use App\Models\Project;
 use App\Models\ProjectResource;
 use App\Services\Admin\AdminConstants;
@@ -32,6 +33,7 @@ final class ProjectPresenter
         }
         $resources = $this->resourcesOf($projects);
         $instances = $this->ownerInstances($projects, $resources);
+        $folders = $this->liveFolders($resources);
         $adminSlugs = array_flip($this->roles->teamAdminSlugsOf($viewer));
 
         $out = [];
@@ -41,9 +43,19 @@ final class ProjectPresenter
             foreach (ProjectKind::cases() as $kind) {
                 $items[$kind->responseKey()] = null;
             }
+            $items['driveFolderPath'] = null;
             foreach ($resources[(string) $project->id] ?? [] as $resource) {
                 $kind = ProjectKind::tryFrom((string) $resource->kind);
-                if ($kind === null || $kind === ProjectKind::DriveFolder) {
+                if ($kind === ProjectKind::DriveFolder) {
+                    $folder = $folders[(string) $resource->locator] ?? null;
+                    if ($folder !== null) {
+                        $items['driveFolderId'] = (string) $folder->node_id;
+                        $items['driveFolderPath'] = ProjectFolder::virtualPath($folder);
+                    }
+
+                    continue;
+                }
+                if ($kind === null) {
                     continue;
                 }
                 $instance = $instances[self::instanceKey($groupSlug, (int) $resource->locator)] ?? null;
@@ -177,6 +189,34 @@ final class ProjectPresenter
         }
 
         return $byKey;
+    }
+
+    /**
+     * The live Project folders among the registered items, by node id.
+     *
+     * @param  array<string, list<ProjectResource>>  $resources
+     * @return array<string, JmapFileNode>
+     */
+    private function liveFolders(array $resources): array
+    {
+        $nodeIds = [];
+        foreach ($resources as $list) {
+            foreach ($list as $resource) {
+                if ((string) $resource->kind === ProjectKind::DriveFolder->value) {
+                    $nodeIds[] = (string) $resource->locator;
+                }
+            }
+        }
+        if ($nodeIds === []) {
+            return [];
+        }
+
+        return JmapFileNode::query()
+            ->whereIn('node_id', $nodeIds)
+            ->whereNull('deleted_at')
+            ->get(['node_id', 'storage_key'])
+            ->keyBy(static fn (JmapFileNode $node): string => (string) $node->node_id)
+            ->all();
     }
 
     private static function instanceKey(string $groupSlug, int $calendarId): string
