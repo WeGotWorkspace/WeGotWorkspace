@@ -136,7 +136,8 @@ describe("TasksDetailView", () => {
   });
 
   it("moves to another list only once the move is confirmed", () => {
-    const onConfirmMove = vi.fn<(listName: string, move: () => void) => void>();
+    const onConfirmMove =
+      vi.fn<(listName: string, move: () => void, fromListName?: string) => void>();
     const { task, onSave } = renderDetail({ onConfirmMove });
     const target = bootstrap.data.taskLists.find((list) => list.id !== task.taskListId)!;
 
@@ -145,7 +146,8 @@ describe("TasksDetailView", () => {
 
     // Asked, not moved: Cancel is simply never calling `move`.
     expect(onConfirmMove).toHaveBeenCalledTimes(1);
-    expect(onConfirmMove).toHaveBeenCalledWith(target.name, expect.any(Function));
+    const from = bootstrap.data.taskLists.find((list) => list.id === task.taskListId)!;
+    expect(onConfirmMove).toHaveBeenCalledWith(target.name, expect.any(Function), from.name);
     expect(onSave).not.toHaveBeenCalled();
 
     act(() => {

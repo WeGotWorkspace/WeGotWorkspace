@@ -40,6 +40,40 @@
   @apply mb-0;
 }
 
-.chat-composer__mentions {
-  @apply px-2 pt-2;
+/* The mention menu: the shared frosted popover; the menu brings its own padding. */
+.chat-composer__mentions.popover-ui--frost {
+  @apply w-64 p-0;
+}
+
+/* With an avatar before it (thread comments, #2173): avatar, then the card. */
+.chat-composer--leading {
+  @apply flex-row items-end gap-3;
+}
+
+.chat-composer--leading .chat-composer__card {
+  @apply flex-1;
+}
+
+.chat-composer__leading {
+  @apply flex shrink-0 items-center pb-1.5;
+}
+
+.chat-composer__submit {
+  @apply shrink-0 gap-2;
+}
+
+.chat-composer__shortcut {
+  @apply font-sans text-xs font-normal;
+  color: var(--chat-muted, var(--workspace-label-color));
+}
+
+/* A picked mention: the same mark as in a sent message (chat-message.css). */
+.chat-composer .chat-mention-chip {
+  @apply rounded-sm px-0.5;
+  background-color: var(
+    --chat-mention-bg,
+    color-mix(in oklab, var(--color-warning) 32%, transparent)
+  );
+  color: inherit;
+  white-space: nowrap;
 }

@@ -78,4 +78,26 @@ describe("ChatComposer chrome focus", () => {
 
     expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ body: "Hello there" }));
   });
+
+  it("sends mentions on Enter for people that load after mount", async () => {
+    const onSend = vi.fn();
+    const { rerender } = renderComposer({ initialContent: "Hi @Sam de Vries", onSend });
+    const prose = await waitForEditor();
+    // The directory arrives later, as it does in Chat and threads.
+    rerender(
+      <TooltipProvider delayDuration={0}>
+        <ChatComposer
+          initialContent="Hi @Sam de Vries"
+          onSend={onSend}
+          principals={[{ id: "member", displayName: "Sam de Vries" }]}
+        />
+      </TooltipProvider>,
+    );
+
+    fireEvent.keyDown(prose, { key: "Enter" });
+
+    expect(onSend).toHaveBeenCalledWith(
+      expect.objectContaining({ mentions: [{ id: "member", displayName: "Sam de Vries" }] }),
+    );
+  });
 });

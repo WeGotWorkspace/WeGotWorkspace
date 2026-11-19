@@ -13,6 +13,8 @@ export type ChatComposerMentionState = {
   activeIndex: number;
   setActiveIndex: (index: number) => void;
   selectPrincipal: (principal: ChatMentionPrincipal) => void;
+  /** Close the menu for the `@` being typed (Esc, a click outside); a new `@` opens it again. */
+  dismiss: () => void;
   onMenuKeyDown: (event: KeyboardEvent) => boolean;
 };
 
@@ -25,8 +27,11 @@ export function useChatComposerMentions(
   editor: Editor | null,
   principals: readonly ChatMentionPrincipal[],
 ): ChatComposerMentionState {
-  const [query, setQuery] = useState<ChatMentionQuery | null>(null);
+  const [rawQuery, setQuery] = useState<ChatMentionQuery | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Where the dismissed `@` starts: that token stays closed, another one opens.
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+  const query = rawQuery && rawQuery.start !== dismissedAt ? rawQuery : null;
   const matches = query ? filterChatMentionPrincipals(principals, query.query) : [];
 
   useEffect(() => {
@@ -36,6 +41,7 @@ export function useChatComposerMentions(
       const next = extractChatMentionQuery(textBeforeCursor(editor));
       setQuery(next);
       setActiveIndex(0);
+      if (!next) setDismissedAt(null);
     };
 
     sync();
@@ -56,12 +62,19 @@ export function useChatComposerMentions(
         .chain()
         .focus()
         .deleteRange({ from: cursor - tokenLength, to: cursor })
-        .insertContent(`@${principal.displayName} `)
+        .insertContent([
+          { type: "chatMention", attrs: { id: principal.id, label: principal.displayName } },
+          { type: "text", text: " " },
+        ])
         .run();
       setQuery(null);
     },
     [editor, query],
   );
+
+  const dismiss = useCallback(() => {
+    setDismissedAt(rawQuery?.start ?? null);
+  }, [rawQuery]);
 
   const onMenuKeyDown = useCallback(
     (event: KeyboardEvent): boolean => {
@@ -85,13 +98,23 @@ export function useChatComposerMentions(
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        setQuery(null);
+        // Only the menu closes: the composer keeps focus and the draft.
+        event.stopPropagation();
+        dismiss();
         return true;
       }
       return false;
     },
-    [activeIndex, matches, query, selectPrincipal],
+    [activeIndex, dismiss, matches, query, selectPrincipal],
   );
 
-  return { query, matches, activeIndex, setActiveIndex, selectPrincipal, onMenuKeyDown };
+  return {
+    query,
+    matches,
+    activeIndex,
+    setActiveIndex,
+    selectPrincipal,
+    dismiss,
+    onMenuKeyDown,
+  };
 }

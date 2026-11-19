@@ -1,0 +1,58 @@
+@import "../../styles.css" reference;
+
+/* Under the subject's fields; the space and the heading set it apart, no rule. */
+.thread-panel {
+  @apply flex min-w-0 flex-col gap-3 pt-10;
+}
+
+.thread-panel__header {
+  @apply mb-1 flex items-center gap-2;
+}
+
+/* A section title, like the other headings in the detail pane: not a field label. */
+.thread-panel__heading {
+  @apply m-0 text-lg font-semibold text-foreground;
+}
+
+.thread-panel__count {
+  @apply tabular-nums;
+}
+
+.thread-panel__state {
+  @apply text-sm;
+  color: var(--workspace-label-color);
+}
+
+.thread-panel__list,
+.thread-panel__group {
+  @apply m-0 flex list-none flex-col gap-1 p-0;
+}
+
+/* One level of replies, indented under their comment. */
+.thread-panel__replies {
+  @apply flex flex-col gap-2 ps-12;
+}
+
+.thread-panel__failed {
+  @apply flex flex-wrap items-center gap-1 ps-12 text-sm;
+  color: var(--color-error);
+}
+
+.thread-panel__failed-reason {
+  @apply me-2;
+}
+
+.thread-panel__composer {
+  @apply mt-2;
+}
+
+/* Comments line up with the field rows above: the hover pill bleeds a little past
+   the text edge instead of indenting it, and rows sit closer than in Chat. */
+.thread-panel {
+  --list-item-inset: -0.5rem;
+  --list-item-padding-y: 0.375rem;
+}
+
+.thread-panel .chat-message {
+  --chat-message-padding-x: 0.5rem;
+}

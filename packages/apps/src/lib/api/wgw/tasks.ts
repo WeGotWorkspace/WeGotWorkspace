@@ -7,6 +7,7 @@ import type {
   TaskList,
   TaskListCreate,
   TaskListMember,
+  TaskListMembersResponse,
   TaskListPatch,
   TaskPatch,
   TaskTaskListListResponse,
@@ -316,19 +317,19 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
 }
 
 /**
- * The people who can see a task list, for the assignee picker (#2172). Only
- * someone who can edit the list may ask; others get 403.
+ * Who can see a list and how (#2172 audience): for the assignee picker and for
+ * mentions and names in a task thread. Only someone who can edit the list may
+ * ask; others get 403.
  */
 export async function listTaskListMembers(
   taskListId: string,
   opts?: { signal?: AbortSignal },
 ): Promise<TaskListMember[]> {
-  const json = await requestTasksJson(
+  const json = (await requestTasksJson(
     `/tasks/tasklists/${encodeURIComponent(taskListId)}/members`,
     "GET",
     undefined,
     opts,
-  );
-  const list = (json as { list?: unknown } | null)?.list;
-  return Array.isArray(list) ? (list as TaskListMember[]) : [];
+  )) as Partial<TaskListMembersResponse> | undefined;
+  return Array.isArray(json?.list) ? json.list : [];
 }

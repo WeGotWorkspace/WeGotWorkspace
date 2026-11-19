@@ -3,7 +3,7 @@
 .chat-message {
   /* items-start: UserAvatar is a flex column with align-items:center; without
      start alignment it stretches and vertically centers the mark beside tall
-     reply/reaction stacks. pt-0.5 on the avatar optically matches the name line. */
+     reply/reaction stacks. */
   @apply relative flex min-w-0 items-start gap-3;
   /* The list row norm (Notes, Tasks, Contacts): inset from the pane edge, the same
      padding, a rounded hover pill. */
@@ -41,8 +41,10 @@
   @apply pt-1;
 }
 
+/* Name and first line span the avatar: the name's caps start at its top, the
+   first line's baseline sits at its foot (2026-11-18). */
 .chat-message__avatar {
-  @apply shrink-0 pt-0.5;
+  @apply shrink-0;
 }
 
 .chat-message__avatar-spacer {
@@ -54,7 +56,7 @@
 }
 
 .chat-message__header {
-  @apply flex flex-wrap items-baseline gap-1.5;
+  @apply flex flex-wrap items-baseline gap-1.5 leading-[1.125rem];
 }
 
 .chat-message__author {
@@ -102,7 +104,7 @@
 }
 
 .chat-message__body {
-  @apply relative mt-0.5 min-w-0 max-w-full break-words;
+  @apply relative -mt-0.5 min-w-0 max-w-full break-words;
   overflow-wrap: anywhere;
   /* A little quieter than the author, well above the time's label ink. */
   color: var(--chat-body, color-mix(in oklab, var(--workspace-foreground) 80%, transparent));

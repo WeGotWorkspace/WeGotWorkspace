@@ -49,7 +49,9 @@ type TasksDetailViewProps = {
   onToggleComplete: (taskId: string) => void;
   onCreateList?: () => void;
   /** Asks before the task moves to another list; `move` applies it. */
-  onConfirmMove?: (listName: string, move: () => void) => void;
+  onConfirmMove?: (listName: string, move: () => void, fromListName?: string) => void;
+  /** Under the fields: the task's comments (#2173). */
+  footer?: ReactNode;
   /** The list audience for the assignee picker (#2172). */
   loadListMembers?: (taskListId: string) => Promise<TaskListMembersResult>;
   /**
@@ -82,6 +84,7 @@ export function TasksDetailView({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
+  footer,
   loadListMembers,
   textCollab,
   textAccessLost = false,
@@ -102,6 +105,7 @@ export function TasksDetailView({
       onToggleComplete={onToggleComplete}
       onCreateList={onCreateList}
       onConfirmMove={onConfirmMove}
+      footer={footer}
       loadListMembers={loadListMembers}
     />
   );
@@ -155,6 +159,7 @@ function TasksDetailForm({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
+  footer,
   loadListMembers,
 }: Omit<
   TasksDetailViewProps,
@@ -293,7 +298,8 @@ function TasksDetailForm({
           onNotebookChange={(list) => {
             if (list.id === form.listId) return;
             const move = () => update((prev) => ({ ...prev, listId: list.id }), "now");
-            if (onConfirmMove) onConfirmMove(list.name, move);
+            if (onConfirmMove)
+              onConfirmMove(list.name, move, taskListName(form.listId, allTaskLists));
             else move();
           }}
           onCreateNotebook={readOnly ? undefined : onCreateList}
@@ -340,6 +346,7 @@ function TasksDetailForm({
           </TasksDetailField>
         ))}
       </DetailFieldList>
+      {footer}
     </NoteDetailView>
   );
 }

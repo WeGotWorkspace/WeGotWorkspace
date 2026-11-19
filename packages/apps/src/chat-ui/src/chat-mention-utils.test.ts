@@ -65,3 +65,13 @@ describe("highlightChatMentionsMarkdown", () => {
     expect(highlightChatMentionsMarkdown("No one tagged", [])).toBe("No one tagged");
   });
 });
+
+describe("escapeMarkdownHtml", () => {
+  it("escapes tags outside code so they render as text", async () => {
+    const { escapeMarkdownHtml } = await import("@/chat-ui/src/chat-mention-utils");
+    expect(escapeMarkdownHtml('<img src=x onerror="x()">')).toBe('\\<img src=x onerror="x()">');
+    expect(escapeMarkdownHtml("a `<b>` c ```\n<i>\n``` <u>")).toBe("a `<b>` c ```\n<i>\n``` \\<u>");
+    expect(escapeMarkdownHtml("already \\<b>")).toBe("already \\<b>");
+    expect(escapeMarkdownHtml("\\\\<img src=x>")).toBe("\\\\\\<img src=x>");
+  });
+});

@@ -60,7 +60,7 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Thread panel UI.** `ThreadPanel` lives in `thread-ui/` and knows nothing about tasks. Tasks mounts it in the task detail view below the fields, as in the product owner's mockup ([mockup-task-detail.webp](./mockup-task-detail.webp), 2026-11-16).
   - One timeline in time order: comments, each with one level of replies.
   - **Comments only** (product owner, 2026-11-18). No "Show changes" toggle and no activity rows for now; activity entries the server returns are not shown. The heading counts comments and replies.
-  - The composer is the **one shared thread composer** (`ThreadComposer`) that Tasks, Chat and Docs all use (product owner, 2026-11-18): the same mentions, emoji and reactions, send key (⌘↵ / Ctrl+Enter) and limits. Mentions are limited to the list audience. **No attachments**: no paperclip in a thread composer.
+  - The composer is the **one shared thread composer** (`ThreadComposer`) that Tasks, Chat and Docs all use (product owner, 2026-11-18): the same mentions, emoji and reactions, send key (Enter sends, Shift+Enter starts a new line, as in Chat) and limits. Mentions are limited to the list audience. **No attachments**: no paperclip in a thread composer.
   - Messages and reactions use chat-ui and the shared reaction picker.
   - The activity row and its formatter live in `thread-ui/` too. The formatter takes field labels and value renderers from the subject adapter, so another app brings only its own field names.
 
@@ -223,9 +223,9 @@ Technical translation of Epic #2173. Written against `origin/main` at `db6a4f161
 - **Activity row** (chunk G) in `thread-ui/thread-activity-row.tsx`, with the formatter in `thread-ui/format-thread-activity.ts`.
   - The formatter is pure. It takes the entry, the people map, the locale, the time zone and the subject adapter's field labels and value renderers. Tasks supplies labels for its fields; the shared part renders `created`, `moved`, sets and dates. It is covered by Vitest for every field, merged entries and the removed-person case.
 - **Layout** (from the mockup):
-  - The panel starts under a divider below the last field row, headed "Activity" with the number of comments and replies. There is no "Show changes" toggle for now (2026-11-18).
-  - Each entry shows the author's avatar, name and relative time ("2h ago", with the full date on hover), then the body.
-  - The composer is the last row: the current user's avatar, a one-line input "Write a comment…" that grows as you type, and a "Comment" button with its shortcut (⌘↵ / Ctrl+Enter). Typing `@` opens the mention menu; the placeholder hints at it. The mockup's "M to mention" is read as `@`, because a plain letter cannot open a menu in a text field.
+  - The panel starts with space below the last field row (no divider), headed "Comments" with a count badge (product owner, 2026-11-18). The "Show changes" toggle comes with the activity rows.
+  - Each entry shows the author's avatar with the suite presence dot, name and relative time ("2h ago", with the full date on hover), then the body. The name and first line span the avatar's height. A follow-up by the same author within 5 minutes hides avatar and name, the same rule as Chat; a reply in between breaks the run.
+  - The composer is the last row: the current user's avatar, a one-line input "Write a comment…" that grows as you type, and a "Comment" button with its shortcut (↵). Enter sends and Shift+Enter starts a new line, the same as Chat (product owner, 2026-11-18). Typing `@` opens the mention menu, the shared frosted popover that scrolls and closes on Esc or an outside click; the placeholder hints at it. A picked person becomes one "@Name" chip that one Backspace removes; it saves as `@Name`. The mockup's "M to mention" is read as `@`, because a plain letter cannot open a menu in a text field.
 - **Move confirmation.** Every move path in the web app states what happens to the thread:
   - The single-task confirm from the detail view (`requestMoveTask`) keeps its title and adds a second sentence to the description: "Comments and history stay in “{old list}”. People in “{new list}” start with an empty thread."
   - The multi-select "Move to list" dialog shows the same sentence under its description, in the plural.

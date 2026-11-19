@@ -20,6 +20,7 @@ export type UseTextEditorOptions = {
   fetchImageContent?: CreateTextEditorExtensionsOptions["fetchImageContent"];
   /** Docs only: on-screen pages at mount (see `useTextEditorPageSetup` for changes). */
   pagination?: CreateTextEditorExtensionsOptions["pagination"];
+  extraExtensions?: CreateTextEditorExtensionsOptions["extraExtensions"];
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
 } & Pick<UseEditorOptions, "autofocus" | "editorProps">;
 
@@ -32,6 +33,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     ariaLabel,
     fetchImageContent,
     pagination,
+    extraExtensions,
     onUpdate,
     autofocus,
     editorProps,
@@ -42,6 +44,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     format,
     fetchImageContent,
     pagination,
+    extraExtensions,
   };
 
   const editor = useEditor(

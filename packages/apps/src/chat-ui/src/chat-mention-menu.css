@@ -1,36 +1,40 @@
 @import "../../styles.css" reference;
 
+/*
+ * Rows like the suite's other menus (dropdown-menu.css): the menu item size and
+ * radius. The frosted chrome around it is the shared Popover (`frost`).
+ */
 .chat-mention-menu {
-  @apply min-w-48 overflow-hidden rounded-md border shadow-md;
-  border-color: var(
-    --chat-border,
-    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
-  );
-  background-color: var(--chat-surface, var(--workspace-surface));
+  @apply p-1.5;
 }
 
+/* Long rosters scroll inside the menu; the page behind it does not. */
 .chat-mention-menu__list {
-  @apply flex max-h-56 flex-col p-1;
+  @apply flex max-h-60 flex-col overflow-y-auto overscroll-contain;
 }
 
 .chat-mention-menu__option {
-  @apply flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm;
-  color: var(--chat-text, var(--workspace-foreground));
+  @apply flex w-full cursor-default select-none items-center gap-2 px-2 py-1.5 text-left outline-none;
+  font-size: var(--menu-item-font-size);
+  line-height: var(--menu-item-line-height);
+  border-radius: var(--control-radius);
+  color: var(--workspace-foreground);
 }
 
 .chat-mention-menu__option:hover,
 .chat-mention-menu__option[data-active="true"] {
   background-color: var(
-    --chat-hover,
-    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
+    --menu-item-hover-background,
+    color-mix(in oklab, var(--workspace-accent) 4%, var(--workspace-surface))
   );
 }
 
 .chat-mention-menu__name {
-  @apply truncate font-medium;
+  @apply truncate;
 }
 
 .chat-mention-menu__empty {
-  @apply px-3 py-2 text-sm;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 72%, transparent));
+  @apply px-2 py-1.5;
+  font-size: var(--menu-item-font-size);
+  color: var(--muted-foreground);
 }

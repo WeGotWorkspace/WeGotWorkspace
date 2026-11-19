@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import type { ChatMentionPrincipal } from "@/lib/models/chat-types";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
@@ -22,6 +23,15 @@ export function ChatMentionMenu({
   onSelect,
   className,
 }: ChatMentionMenuProps) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  // Arrow keys move the active option; keep it in view in a scrolled list.
+  useEffect(() => {
+    if (!open) return;
+    const active = listRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+    active?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, open, query]);
+
   if (!open) return null;
 
   const matches = filterChatMentionPrincipals(principals, query);
@@ -32,6 +42,7 @@ export function ChatMentionMenu({
         <div className="chat-mention-menu__empty">{chatUiLabels.mentionEmpty}</div>
       ) : (
         <div
+          ref={listRef}
           className="chat-mention-menu__list"
           role="listbox"
           aria-label={chatUiLabels.mentionList}
@@ -52,7 +63,7 @@ export function ChatMentionMenu({
               <UserAvatar
                 displayName={principal.displayName}
                 compact
-                size="md"
+                size="sm"
                 color={avatarColorForUserId(principal.id)}
               />
               <span className="chat-mention-menu__name">{principal.displayName}</span>
