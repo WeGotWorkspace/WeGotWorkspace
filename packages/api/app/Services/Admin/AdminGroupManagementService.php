@@ -16,6 +16,7 @@ use App\Services\Contacts\AddressBookShareInvites;
 use App\Services\Drive\DriveShareRevoker;
 use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
+use App\Services\Projects\DefaultProjectProvisioner;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Teams\TeamMembershipReader;
 use App\Services\Teams\TeamRoles;
@@ -34,6 +35,7 @@ final class AdminGroupManagementService
         private AddressBookShareInvites $addressBookShares,
         private GroupFilesHomeProvisioner $groupFiles,
         private DriveShareRevoker $driveShares,
+        private DefaultProjectProvisioner $defaultProjects,
     ) {}
 
     public function create(string $slug, string $displayName): string
@@ -61,6 +63,8 @@ final class AdminGroupManagementService
         // groups that predate the feature or were seeded outside this service.
         $this->chatDefaults->ensureForGroupSlugs([$slug]);
         $this->addressBooks->ensureForGroupPrincipal($uri, $name);
+        // The Team's calendar, task list and notebook plus a new channel: "{Team name} Project" (#817).
+        $this->defaultProjects->ensureForTeams([$slug]);
 
         return $uri;
     }

@@ -140,8 +140,8 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
         $notebook = ProjectResource::query()->where('project_id', $project['id'])->where('kind', ProjectKind::Notebook->value)->firstOrFail();
         $this->deleteCollection((int) $notebook->locator);
 
-        $first = $this->listProjects('dave')->assertOk()->json('list.0.resources');
-        $second = $this->listProjects('bob')->assertOk()->json('list.0.resources');
+        $first = collect($this->listProjects('dave')->assertOk()->json('list'))->firstWhere('id', $project['id'])['resources'];
+        $second = collect($this->listProjects('bob')->assertOk()->json('list'))->firstWhere('id', $project['id'])['resources'];
 
         $this->assertNotNull($first['notebookId']);
         $this->assertNotSame(

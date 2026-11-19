@@ -32,8 +32,6 @@ final class ProjectService
 {
     public const NAME_MAX_LENGTH = 100;
 
-    private const SLUG_MAX_LENGTH = 80;
-
     private const CREATE_ATTEMPTS = 5;
 
     public function __construct(
@@ -42,6 +40,8 @@ final class ProjectService
         private readonly ProjectCollections $collections,
         private readonly ProjectMarkers $markers,
         private readonly ProjectPresenter $presenter,
+        private readonly ProjectSlugs $slugs,
+        private readonly DefaultProjectProvisioner $defaults,
     ) {}
 
     /** @return list<array<string, mixed>> the Projects of the caller's Teams, the default Project of each Team first */
@@ -51,6 +51,8 @@ final class ProjectService
         if ($teamSlugs === []) {
             return [];
         }
+        // A Team that predates Projects, or whose create was interrupted, gets its default Project here.
+        $this->defaults->ensureForTeams($teamSlugs);
 
         $query = Project::query()
             ->whereIn('group_slug', $teamSlugs)
@@ -159,16 +161,18 @@ final class ProjectService
                     return;
                 }
                 $groupUri = AdminConstants::GROUP_PREFIX.$locked->group_slug;
-                $repaired = false;
-                foreach ($this->presenter->missingCollectionKinds($locked) as $kind) {
-                    $calendarId = $this->collections->create($kind, $groupUri, (string) $locked->slug, (string) $locked->name, $locked->color);
+                $missing = $this->presenter->missingCollectionKinds($locked);
+                foreach ($missing as $kind) {
+                    // The default Project's calendar, task list and notebook are the Team's provisioned ones.
+                    $calendarId = $locked->default_for_group !== null && $kind !== ProjectKind::Channel
+                        ? $this->defaults->provisionedCalendarId($locked, $kind)
+                        : $this->collections->create($kind, $groupUri, (string) $locked->slug, (string) $locked->name, $locked->color);
                     ProjectResource::query()->updateOrCreate(
                         ['project_id' => $locked->id, 'kind' => $kind->value],
                         ['locator' => (string) $calendarId],
                     );
-                    $repaired = true;
                 }
-                if ($repaired) {
+                if ($missing !== []) {
                     $this->markers->bump((string) $locked->group_slug);
                 }
             });
@@ -202,7 +206,7 @@ final class ProjectService
                     if ($team === null) {
                         throw new ApiHttpException(404, 'Team not found.', 'not_found');
                     }
-                    $slug = $this->freeSlug($teamSlug, $name);
+                    $slug = $this->slugs->free($teamSlug, $name);
                     $project = Project::query()->create([
                         'id' => strtolower((string) Str::ulid()),
                         'group_slug' => $teamSlug,
@@ -243,28 +247,6 @@ final class ProjectService
         foreach ($this->collections->ownerInstances($groupUri, array_keys($kindsByCalendarId)) as $calendarId => $instance) {
             $this->collections->writeAppearance($kindsByCalendarId[$calendarId], $instance, (string) $project->name, $project->color);
         }
-    }
-
-    /** `Str::slug` of the name; a clash with a live or archived Project of the Team gets `-2`, `-3`. */
-    private function freeSlug(string $teamSlug, string $name): string
-    {
-        $base = trim(Str::substr(Str::slug($name), 0, self::SLUG_MAX_LENGTH), '-');
-        if ($base === '') {
-            $base = 'project';
-        }
-        $taken = array_flip(Project::query()
-            ->where('group_slug', $teamSlug)
-            ->where('slug', 'like', $base.'%')
-            ->pluck('slug')
-            ->map(static fn (mixed $slug): string => (string) $slug)
-            ->all());
-
-        $candidate = $base;
-        for ($suffix = 2; isset($taken[$candidate]); $suffix++) {
-            $candidate = $base.'-'.$suffix;
-        }
-
-        return $candidate;
     }
 
     private function name(mixed $name): string
