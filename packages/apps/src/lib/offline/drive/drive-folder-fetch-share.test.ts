@@ -131,6 +131,22 @@ describe("createDriveFolderFetchShare", () => {
     expect(names(await b)).toEqual(["own.md"]);
   });
 
+  it("takes the fetching tab's listing when it still comes before its own", async () => {
+    const { tab } = browser();
+    const slow = openFetch();
+    void tab("a")({ username: USER, path: PATH, wave: 10, fetchLive: slow.fetchLive });
+    await vi.advanceTimersByTimeAsync(0);
+    const own = openFetch();
+    const b = tab("b")({ username: USER, path: PATH, wave: 10, fetchLive: own.fetchLive });
+    await vi.advanceTimersByTimeAsync(WAIT_MS);
+    expect(own.fetchLive).toHaveBeenCalledTimes(1);
+
+    slow.finish(listing("slow.md"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(names(await b)).toEqual(["slow.md"]);
+  });
+
   it("stops waiting when the folder view closes", async () => {
     const { tab } = browser();
     const slow = openFetch();

@@ -60,35 +60,40 @@ export function createDriveFolderFetchShare(deps: DriveFolderFetchShareDeps) {
     request: DriveFolderFetchRequest,
   ): Promise<DriveUIData> {
     const { username, path, wave, fetchLive, signal } = request;
-    let heard: DriveFolderFetched | null = null;
-    let wake: () => void = () => undefined;
+    let heard: DriveUIData | null = null;
+    let onHeard: (data: DriveUIData) => void = () => undefined;
+    const listing = new Promise<DriveUIData>((resolve) => {
+      onHeard = resolve;
+    });
     const stopListening = deps.topic.subscribe((message) => {
       if (message.username !== username || message.path !== path || message.wave < wave) return;
-      heard = message;
-      wake();
+      heard = message.data;
+      onHeard(message.data);
     });
-    const heardData = (): DriveUIData | null => (heard as DriveFolderFetched | null)?.data ?? null;
+    const heardSoFar = (): DriveUIData | null => heard;
     try {
       const mine = await deps.lockIfFree(`wgw.drive.folder-fetch.${username}.${path}`, async () => {
         // Another tab finished between the change and this tab's turn.
-        if (heardData()) return null;
+        if (heardSoFar()) return null;
         const data = await fetchLive();
         deps.topic.publish({ v: 1, username, path, wave, data }, { otherTabsOnly: true });
         return data;
       });
       if (mine) return mine;
-      if (!heardData()) {
-        await new Promise<void>((resolve) => {
-          const timer = setTimeout(resolve, deps.waitMs);
-          wake = () => {
-            clearTimeout(timer);
-            resolve();
-          };
-          signal?.addEventListener("abort", wake, { once: true });
-        });
-        signal?.removeEventListener("abort", wake);
-      }
-      return heardData() ?? (await fetchLive());
+      let stopWaiting: () => void = () => undefined;
+      const waited = new Promise<null>((resolve) => {
+        const timer = setTimeout(() => resolve(null), deps.waitMs);
+        stopWaiting = () => {
+          clearTimeout(timer);
+          resolve(null);
+        };
+        signal?.addEventListener("abort", stopWaiting, { once: true });
+      });
+      const shared = await Promise.race([listing, waited]);
+      stopWaiting();
+      signal?.removeEventListener("abort", stopWaiting);
+      // A slow fetching tab may still answer first: take whichever listing comes.
+      return shared ?? (await Promise.race([listing, fetchLive()]));
     } finally {
       stopListening();
     }
