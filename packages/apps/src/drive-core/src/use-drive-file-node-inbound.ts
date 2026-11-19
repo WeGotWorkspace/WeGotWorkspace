@@ -3,7 +3,10 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { driveInboundLabels } from "@/lib/offline/drive/drive-inbound-labels";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
-import { syncDriveFileNodesIfStale } from "@/lib/offline/drive/drive-file-node-push";
+import {
+  notifyDriveRemoteChange,
+  syncDriveFileNodesIfStale,
+} from "@/lib/offline/drive/drive-file-node-push";
 import {
   syncDriveInboundFromFileNodes,
   type DriveInboundSyncResult,
@@ -21,7 +24,8 @@ function shownPaths(paths: readonly string[]): string {
  * pushed `FileNode` state that differs from the stored token (#1663).
  * Callers bump `refreshKey` from `useOfflineReconnectFlush`'s `afterFlush`
  * so inbound runs after the outbox flush. No timer and no poll: without push
- * the folder listings still load on navigation.
+ * the folder listings still load on navigation. A pull that changed something
+ * tells the open listings of every tab, as a push does.
  */
 export function useDriveFileNodeInbound(
   username: string | null | undefined,
@@ -54,6 +58,10 @@ export function useDriveFileNodeInbound(
     let cancelled = false;
     void syncDriveInboundFromFileNodes(owner)
       .then((result) => {
+        // This pull can take a change before its push arrives. The push then
+        // finds the token current and tells nobody, so the open listings of
+        // every tab must hear it from here.
+        if (result.changed || result.listedChanges) notifyDriveRemoteChange(owner);
         if (!cancelled) showKept(result);
       })
       .catch((error: unknown) => {

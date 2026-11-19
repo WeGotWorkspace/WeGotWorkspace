@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   syncTasksIfStale,
   TASKS_INBOUND_PUSH_POLL_MS,
+  TASKS_SHARED_PULL_WAIT_MS,
   useTasksLiveInbound,
 } from "./use-tasks-live-inbound";
 
@@ -13,6 +14,9 @@ const mocks = vi.hoisted(() => ({
   pushConnected: false,
   subscribedTypes: [] as string[],
   listener: null as ((states: Record<string, string>) => unknown) | null,
+  owns: true,
+  seatUsername: undefined as string | null | undefined,
+  takeOver: null as (() => void) | null,
 }));
 
 vi.mock("@/lib/offline/tasks/tasks-inbound-sync", () => ({
@@ -24,6 +28,13 @@ vi.mock("@/lib/offline/tasks/tasks-offline-store", () => ({
 }));
 vi.mock("@/lib/offline/tasks/tasks-bootstrap-sync", () => ({
   notifyTasksBootstrapUpdated: mocks.notify,
+}));
+vi.mock("@/lib/api/wgw/use-shared-inbound-sync", () => ({
+  useInboundSyncSeat: (_app: string, username: string | null, onTakeOver: () => void) => {
+    mocks.seatUsername = username;
+    mocks.takeOver = onTakeOver;
+    return () => mocks.owns;
+  },
 }));
 vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
   useJmapPushConnected: () => mocks.pushConnected,
@@ -43,6 +54,9 @@ beforeEach(() => {
   mocks.pushConnected = false;
   mocks.subscribedTypes = [];
   mocks.listener = null;
+  mocks.owns = true;
+  mocks.seatUsername = undefined;
+  mocks.takeOver = null;
 });
 
 describe("syncTasksIfStale", () => {
@@ -89,9 +103,84 @@ describe("syncTasksIfStale", () => {
   });
 });
 
+describe("syncTasksIfStale in a tab that does not sync", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("confirms the push once the syncing tab stored the state, without a pull", async () => {
+    const result = syncTasksIfStale("admin", { Task: "s2" }, vi.fn(), () => false);
+    await vi.advanceTimersByTimeAsync(600);
+    mocks.readTasksChangesState.mockResolvedValue("s2");
+    await vi.advanceTimersByTimeAsync(600);
+    await expect(result).resolves.toBe(true);
+    expect(mocks.syncTasksInbound).not.toHaveBeenCalled();
+  });
+
+  it("pulls itself when the syncing tab does not store the state in time", async () => {
+    const onChanged = vi.fn(async () => undefined);
+    const result = syncTasksIfStale("admin", { Task: "s2" }, onChanged, () => false);
+    await vi.advanceTimersByTimeAsync(TASKS_SHARED_PULL_WAIT_MS - 600);
+    expect(mocks.syncTasksInbound).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(700);
+    await expect(result).resolves.toBe(true);
+    expect(mocks.syncTasksInbound).toHaveBeenCalledTimes(1);
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("pulls at once when it becomes the syncing tab while it waits", async () => {
+    let owns = false;
+    const result = syncTasksIfStale("admin", { Task: "s2" }, vi.fn(), () => owns);
+    await vi.advanceTimersByTimeAsync(600);
+    expect(mocks.syncTasksInbound).not.toHaveBeenCalled();
+    owns = true;
+    await vi.advanceTimersByTimeAsync(600);
+    await expect(result).resolves.toBe(true);
+    expect(mocks.syncTasksInbound).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("useTasksLiveInbound", () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("takes a seat among the tabs only while enabled", () => {
+    const patchFromCache = vi.fn(async () => undefined);
+    const { rerender } = renderHook(
+      ({ enabled }) => useTasksLiveInbound({ username: "admin", enabled, patchFromCache }),
+      { initialProps: { enabled: false } },
+    );
+    expect(mocks.seatUsername).toBeNull();
+    rerender({ enabled: true });
+    expect(mocks.seatUsername).toBe("admin");
+  });
+
+  it("does not poll while another tab syncs, and polls again once it owns the sync", async () => {
+    vi.useFakeTimers();
+    mocks.owns = false;
+    renderHook(() =>
+      useTasksLiveInbound({ username: "admin", enabled: true, patchFromCache: vi.fn() }),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(mocks.syncTasksInbound).not.toHaveBeenCalled();
+
+    mocks.owns = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(mocks.syncTasksInbound).toHaveBeenCalledTimes(1);
+  });
+
+  it("pulls once and repaints when it takes over from another tab", async () => {
+    const patchFromCache = vi.fn(async () => undefined);
+    renderHook(() => useTasksLiveInbound({ username: "admin", enabled: true, patchFromCache }));
+    await act(async () => {
+      mocks.takeOver?.();
+    });
+    expect(mocks.syncTasksInbound).toHaveBeenCalledTimes(1);
+    expect(patchFromCache).toHaveBeenCalledTimes(1);
   });
 
   it("subscribes to Task and TaskList only while enabled", () => {

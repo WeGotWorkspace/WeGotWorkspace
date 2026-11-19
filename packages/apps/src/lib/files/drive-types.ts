@@ -113,6 +113,12 @@ export type { DriveUploadQueueSnapshot };
 export type DriveAPIOperations = {
   refreshState: (opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
   changeDir: (to: string, opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
+  /**
+   * `changeDir` for a folder that is already open, after the change stamped
+   * `wave` (`subscribeDriveRemoteChanges`). Tabs of one browser that show the
+   * same folder share one fetch. Absent where tabs do not share (guests, mock).
+   */
+  refreshDir?: (to: string, opts: { signal?: AbortSignal; wave: number }) => Promise<DriveUIData>;
   /** List a directory without updating the session working directory. */
   listDirectory: (at: string, opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
   /**
