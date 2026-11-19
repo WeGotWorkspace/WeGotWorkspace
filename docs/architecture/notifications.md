@@ -54,7 +54,7 @@ Later: per-event preferences (inbox on or off, push on or off), already designed
 
 |                 | Silent                                                                                                                                      | Active                                                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| What creates it | any write; the data's own change counter moves                                                                                              | a write or a schedule that `NotifyListener` allow-lists (`meet.started`, `docs.thread_activity`, `calendar.invite`, …) |
+| What creates it | any write; the data's own change counter moves                                                                                              | a write or a schedule that `NotifyListener` allow-lists (`meet.started`, `docs.thread_activity`, `calendar.invite`, `tasks.assigned`, …) |
 | Stored as       | nothing new: the per-user JMAP `state` is derived                                                                                           | a `notifications` row per recipient                                                                                    |
 | Who receives it | everyone whose state changes, i.e. who can read the collection                                                                              | recipients chosen by the producer, never the actor                                                                     |
 | Push type       | `Note`, `Notebook`, `CalendarEvent`, `Calendar`, `ContactCard`, `AddressBook`, `FileNode`, `ChatMessage`, `ChatChannel`, `Task`, `TaskList` | `Notification` (new)                                                                                                   |
@@ -118,7 +118,7 @@ While push is down, the inbox polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) a
    A tab answers another tab's first `tab` message with its own, so a tab that joins (for example one opened in the background) knows every tab's focus at once and elects the same front tab. The decision is kept per browser in `localStorage` (`wgw.offline.notifications.toastDecided`, newest 500), so a row toasts at most once, also when the front tab moves or a slower tab fetches the row later. Rows already unread when the app loads never toast.
 5. The toast uses the existing toast primitive (`ui/sonner.tsx`, `AppToastCallout`) in a notification style. It names the app and the actor, acts on click through the item's `navigate`, and marks the row read on that click. It is `role="status"`, never takes focus, and follows reduced motion.
 6. **No toast for what you are looking at.** If the item's `navigate` points at the screen the toast tab already shows (a comment on the Doc you have open), the item goes to the popover without a toast. The open app already shows the change. "Points at" means the same path (DM peers compared case-insensitively) and every query parameter of `navigate` present on the route with the same value; `/calendar` matches the Calendar start screen, not a week view under `/calendar/…`.
-7. The 15 s poll stays as the fallback and slows to 60 s (`NOTIFICATIONS_INBOX_PUSH_POLL_MS`) while push is connected. When push is down it returns to 15 s, below the 20 s local-ack grace.
+7. The 15 s poll stays as the fallback and slows to 60 s (`NOTIFICATIONS_INBOX_PUSH_POLL_MS`) while push is connected. When push is down it returns to 15 s, below the 20 s local-ack grace. While push is connected only the tab that holds the push stream polls, and it shares the rows on the inbox `crossTabTopic` (`sharePoll`); the other tabs show those rows and send no GET (#2252). On their poll tick they only retry a read ack that failed. With push down every tab polls.
 
 ### Measured (#1668)
 
@@ -161,12 +161,12 @@ The principal presence mesh already carries chat acceleration (`meet-core/src/me
 
 Who receives a chat preview, and the chat `check-now` that follows it (`meet-core/src/meet-mesh-fanout-targets.ts`):
 
-| Channel | Receivers |
-|---|---|
-| DM | the other person |
+| Channel                                    | Receivers                                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| DM                                         | the other person                                                                                       |
 | Team channel, shared channel, meeting chat | the channel's `members`: the server roster (owner side plus sharees, Teams expanded), minus the writer |
-| A cached row without `members` | its explicit user grants in `shareWith`; nobody for a Team channel |
-| A channel the writer has not cached | nobody |
+| A cached row without `members`             | its explicit user grants in `shareWith`; nobody for a Team channel                                     |
+| A channel the writer has not cached        | nobody                                                                                                 |
 
 Never the presence rooms as a whole: each own Team has one (#1921), and it holds every online member of that Team, most of whom may not read the channel. Guests do not join presence rooms. A receiver drops a preview for a channel it does not hold, or whose cached roster lacks the sender or itself, before anything is stored. Unit tests pin this in `meet-mesh-fanout-targets.test.ts`; the live spec `meet-mesh-channel-roster` checks that a coworker who shares another Team (so the same presence room) but not the channel's Team gets no frame.
 

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
+use App\Models\CalendarCollectionMeta;
 use App\Models\CalendarInstance;
 use App\Models\CalendarSubscription;
-use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
@@ -40,14 +40,56 @@ final class CalendarCollectionAccess
      */
     public function accessibleInstances(string $username, CollectionKind $kind)
     {
-        $instances = $this->personalInstances($username, $kind);
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupInstances($slug, $kind) as $groupInstance) {
-                $instances->push($groupInstance);
+        return $this->accessibleInstancesByKind($username, [$kind])[$kind->value];
+    }
+
+    /**
+     * {@see accessibleInstances()} for several kinds with one read of the instances, so the
+     * JMAP push check does not repeat the Team lookups per kind (#2243). Every kind lists
+     * exactly what accessibleInstances() lists for it, in the same order: personal
+     * instances first, then each Team's, each by calendarorder and id. A collection has one
+     * kind, so the filters (all per instance or per calendarid) give the same result per kind.
+     *
+     * @param  non-empty-list<CollectionKind>  $kinds
+     * @return array<string, Collection<int, CalendarInstance>> keyed by the kind's value
+     */
+    public function accessibleInstancesByKind(string $username, array $kinds): array
+    {
+        $owners = [$this->principalUri($username), ...$this->provisionedGroupUris($username)];
+        $ownerRank = [];
+        foreach ($owners as $rank => $owner) {
+            $ownerRank[strtolower($owner)] = $rank;
+        }
+
+        $fetched = CalendarInstance::query()
+            ->with('calendar')
+            ->whereIn('principaluri', $owners)
+            ->whereHas('calendar', fn ($query) => $query->ofKinds($kinds))
+            ->orderBy('calendarorder')
+            ->orderBy('id')
+            ->get()
+            ->all();
+        // usort is stable: inside one owner the calendarorder, id order of the query stays.
+        usort($fetched, static fn (CalendarInstance $a, CalendarInstance $b): int => ($ownerRank[strtolower((string) $a->principaluri)] ?? PHP_INT_MAX)
+            <=> ($ownerRank[strtolower((string) $b->principaluri)] ?? PHP_INT_MAX));
+        $visible = $this->visibleHighestAccess($username, new Collection($fetched));
+
+        $byKind = [];
+        foreach ($kinds as $kind) {
+            $byKind[$kind->value] = new Collection;
+        }
+        $kindOf = count($kinds) === 1 ? [] : CalendarCollectionMeta::query()
+            ->whereIn('calendarid', $visible->map(static fn (CalendarInstance $i): int => (int) $i->calendarid)->unique()->values()->all())
+            ->pluck('kind', 'calendarid')
+            ->all();
+        foreach ($visible as $instance) {
+            $kind = count($kinds) === 1 ? $kinds[0]->value : (string) ($kindOf[(int) $instance->calendarid] ?? '');
+            if (isset($byKind[$kind])) {
+                $byKind[$kind]->push($instance);
             }
         }
 
-        return $this->visibleHighestAccess($username, $instances);
+        return $byKind;
     }
 
     /**
@@ -363,43 +405,17 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * @return Collection<int, CalendarInstance>
+     * The principal uris of the user's Teams that exist, in allowedGroupSlugs() order, after
+     * provisioning their default collections.
+     *
+     * @return list<string>
      */
-    private function personalInstances(string $username, CollectionKind $kind)
+    private function provisionedGroupUris(string $username): array
     {
-        return CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', fn ($query) => $query->ofKind($kind))
-            ->orderBy('calendarorder')
-            ->orderBy('id')
-            ->get();
-    }
+        $displayNames = $this->groups->groupDisplayNames($username);
+        $this->calendarCollectionsProvisioner->ensureForGroupPrincipals($displayNames);
 
-    /**
-     * @return list<CalendarInstance>
-     */
-    private function groupInstances(string $groupSlug, CollectionKind $kind): array
-    {
-        $groupUri = AdminConstants::GROUP_PREFIX.$groupSlug;
-        $group = Principal::query()->where('uri', $groupUri)->first(['uri', 'displayname']);
-        if ($group === null) {
-            return [];
-        }
-
-        $this->calendarCollectionsProvisioner->ensureForGroupPrincipal(
-            (string) $group->uri,
-            (string) ($group->displayname ?? $groupSlug),
-        );
-
-        return array_values(CalendarInstance::query()
-            ->with('calendar')
-            ->where('principaluri', $groupUri)
-            ->whereHas('calendar', fn ($query) => $query->ofKind($kind))
-            ->orderBy('calendarorder')
-            ->orderBy('id')
-            ->get()
-            ->all());
+        return array_map('strval', array_keys($displayNames));
     }
 
     private function principalUri(string $username): string

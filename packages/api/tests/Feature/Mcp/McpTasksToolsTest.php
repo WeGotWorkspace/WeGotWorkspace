@@ -8,7 +8,9 @@ use App\Mcp\Servers\WorkspaceServer;
 use App\Mcp\Tools\TaskListShareTool;
 use App\Mcp\Tools\TaskListWriteTool;
 use App\Mcp\Tools\TaskWriteTool;
+use App\Models\Notification;
 use App\Services\Mcp\McpScopes;
+use App\Services\Notify\TaskAssignedNotify;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use App\Services\Tasks\TaskListRepository;
 use App\Services\Tasks\TaskRepository;
@@ -194,6 +196,59 @@ final class McpTasksToolsTest extends WgwDatabaseTestCase
             ])
             ->assertOk()
             ->assertSee('ok');
+    }
+
+    public function test_task_write_assigns_a_writer_who_is_notified_once_and_rejects_a_reader(): void
+    {
+        $bob = $this->mcpUser('bob');
+        $this->mcpUser('alice');
+        $this->mcpUser('carol');
+        $client = $this->mcpClient();
+        Passport::actingAs($bob, [McpScopes::TASKS_WRITE], 'api', $client);
+
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(TaskListWriteTool::class, ['action' => 'create', 'name' => 'Groceries'])
+            ->assertOk();
+        $listId = $this->taskListIdNamed('bob', 'Groceries');
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(TaskListShareTool::class, [
+                'action' => 'set',
+                'taskListId' => $listId,
+                'shareWith' => [
+                    'alice' => ['mayWriteAll' => true],
+                    'carol' => ['mayWriteAll' => false],
+                ],
+            ])
+            ->assertOk();
+        $attendee = ['@type' => 'Participant', 'roles' => ['attendee']];
+
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(TaskWriteTool::class, [
+                'action' => 'create',
+                'taskListId' => $listId,
+                'title' => 'Buy milk',
+                'participants' => ['u:alice' => $attendee, 'u:bob' => $attendee],
+            ])
+            ->assertOk()
+            ->assertSee('u:alice');
+
+        $rows = Notification::query()->where('action', TaskAssignedNotify::ACTION)->get();
+        $this->assertSame(['alice'], $rows->pluck('principal')->all());
+
+        $taskId = $this->taskIdNamed('bob', $listId, 'Buy milk');
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(TaskWriteTool::class, ['action' => 'update', 'taskId' => $taskId, 'title' => 'Buy oat milk'])
+            ->assertOk();
+        $this->assertSame(1, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
+
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(TaskWriteTool::class, [
+                'action' => 'update',
+                'taskId' => $taskId,
+                'participants' => ['u:carol' => $attendee],
+            ])
+            ->assertHasErrors(['Only people who can edit this task list can be assigned.']);
+        $this->assertSame(1, Notification::query()->where('action', TaskAssignedNotify::ACTION)->count());
     }
 
     private function taskListIdNamed(string $username, string $name): string

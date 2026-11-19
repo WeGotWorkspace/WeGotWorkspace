@@ -12,6 +12,7 @@ use App\Http\Middleware\EnsureMcpEnabled;
 use App\Http\Middleware\EnsureTasksEnabled;
 use App\Http\Middleware\ExposeNotifiedRecipients;
 use App\Http\Middleware\FilterMcpConsentScopes;
+use App\Http\Middleware\LogSlowRequest;
 use App\Http\Middleware\McpCors;
 use App\Http\Middleware\ProtectMcpConsent;
 use App\Http\Middleware\RejectSpaJwtOnMcp;
@@ -68,6 +69,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'wgw.auth' => AuthenticateWgwApi::class,
+            'wgw.slow-log' => LogSlowRequest::class,
             'wgw.role' => RequireWgwRole::class,
             'wgw.guest' => RequireGuestSession::class,
             'wgw.contacts' => EnsureContactsEnabled::class,

@@ -13,11 +13,19 @@ import { encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import { resolveDocsCollabDatabase } from "@/lib/collab/docs-collab-persistence";
 import { DOC_STATUS_RESTORED_WORKING_VERSION } from "./docs-collab-status";
 import { isYDocEmpty } from "@/lib/collab/docs-collab-utils";
+import { readNoteTitle, writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import {
   DEFAULT_DOCS_COLLAB_URLS,
   type DocsCollabMeshMessage,
   type DocsCollabSessionRefs,
+  type DocsCollabUrls,
 } from "./docs-collab-types";
+import {
+  TEXT_FIELDS_BODY,
+  TEXT_FIELDS_TITLE,
+  readTextFields,
+  seedTextFields,
+} from "./docs-collab-text-fields";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 import type { DocsRtcSession } from "./docs-rtc-session";
 import { useDocsCollabJoin } from "./use-docs-collab-join";
@@ -101,6 +109,8 @@ type EchoSessionOptions = {
   updatePendingState?: (pending: boolean, failed?: boolean) => Promise<void>;
   roomNotPersistent?: boolean;
   roomHeldUntilChecked?: boolean;
+  documentShape?: "text-fields";
+  onExternalWrite?: DocsCollabUrls["onExternalWrite"];
 };
 
 function useEchoSession(
@@ -111,11 +121,14 @@ function useEchoSession(
     updatePendingState,
     roomNotPersistent,
     roomHeldUntilChecked,
+    documentShape,
+    onExternalWrite,
   }: EchoSessionOptions = {},
 ): {
   refs: DocsCollabSessionRefs;
   handleMeshMessage: (msg: DocsCollabMeshMessage) => void;
   applyServerBootstrap: (generation: number, authToken: string | undefined) => Promise<void>;
+  mergeServerState: (authToken: string | undefined) => Promise<boolean>;
   trySeedFromFile: () => void;
   snapshotPreview: string | null;
   awaitingContent: boolean;
@@ -131,7 +144,14 @@ function useEchoSession(
   const trySeedFromFile = useCallback(() => {
     trySeedFromFileRef.current();
   }, []);
-  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room, roomNotPersistent, roomHeldUntilChecked };
+  const urls = {
+    ...DEFAULT_DOCS_COLLAB_URLS,
+    room,
+    roomNotPersistent,
+    roomHeldUntilChecked,
+    documentShape,
+    onExternalWrite,
+  };
   const mesh = useDocsCollabMesh({
     refs,
     room,
@@ -161,6 +181,7 @@ function useEchoSession(
     refs,
     handleMeshMessage: mesh.handleMeshMessage,
     applyServerBootstrap: join.applyServerBootstrap,
+    mergeServerState: join.mergeServerState,
     trySeedFromFile: join.trySeedFromFile,
     snapshotPreview: join.snapshotPreview,
     awaitingContent: join.awaitingContent,
@@ -748,5 +769,442 @@ describe("useDocsCollabJoin server bootstrap", () => {
 
     closeSession(hook);
     server.destroy();
+  });
+});
+
+/**
+ * A text-fields resource (Notes, Tasks) serves its title next to the body.
+ * The server stores a writer's state without reading it (#2208), so a state
+ * that does not hold the served text, or cannot be read, is not adopted.
+ */
+describe("useDocsCollabJoin stored state that does not hold the served text", () => {
+  function stubTextFields(
+    state: Uint8Array,
+    body: string,
+    title: string | null,
+    {
+      stateTag = '"text-1"',
+      textTag = '"text-1"',
+      textFails = false,
+    }: { stateTag?: string | null; textTag?: string; textFails?: boolean } = {},
+  ): void {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes("format=yjs")) {
+          return new Response(state as unknown as BodyInit, {
+            status: 200,
+            headers: {
+              ETag: '"sidecar-1"',
+              ...(stateTag ? { "X-Wgw-Content-Tag": stateTag } : {}),
+            },
+          });
+        }
+        if (textFails) return new Response("unavailable", { status: 503 });
+        return Response.json({ body, title }, { headers: { ETag: textTag } });
+      }),
+    );
+  }
+
+  function stateWith(body: string, title: string | null): Uint8Array {
+    const doc = new Y.Doc();
+    writeBody(doc, body);
+    if (title !== null) writeNoteTitle(doc, title);
+    const update = Y.encodeStateAsUpdate(doc);
+    doc.destroy();
+    return update;
+  }
+
+  async function open(room: string) {
+    const hook = renderHook(() => useEchoSession("Ada", { room }));
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    await act(async () => {
+      await hook.result.current.applyServerBootstrap(
+        hook.result.current.refs.joinGenerationRef.current,
+        "token",
+      );
+    });
+    const doc = hook.result.current.refs.ydocRef.current;
+    if (!doc) throw new Error("expected a joined doc");
+    return { hook, doc };
+  }
+
+  function close(
+    hook: ReturnType<typeof renderHook<ReturnType<typeof useEchoSession>, unknown>>,
+  ): void {
+    act(() => {
+      hook.result.current.teardown();
+    });
+    hook.unmount();
+    resetDocsCollabMeshLingerForTests();
+    vi.unstubAllGlobals();
+  }
+
+  it("adopts a state that holds the served title and body", async () => {
+    stubTextFields(stateWith("Same", "Plan"), "Same\n", "Plan");
+    const { hook, doc } = await open("notes/state-matches.md");
+
+    expect(bodyText(doc)).toBe("Same");
+    expect(readNoteTitle(doc)).toBe("Plan");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    close(hook);
+  });
+
+  it("reseeds from the served text when the state holds another text", async () => {
+    stubTextFields(stateWith("Planted", "Other"), "Real\n", "Plan");
+    const { hook, doc } = await open("notes/state-mismatch.md");
+
+    expect(bodyText(doc)).toBe("Real");
+    expect(readNoteTitle(doc)).toBe("Plan");
+    // The next save replaces the stored state with one that holds the text.
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    close(hook);
+  });
+
+  it("reseeds from the served text when the state cannot be read", async () => {
+    stubTextFields(new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]), "Real\n", "Plan");
+    const { hook, doc } = await open("notes/state-garbage.md");
+
+    expect(bodyText(doc)).toBe("Real");
+    expect(readNoteTitle(doc)).toBe("Plan");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    close(hook);
+  });
+
+  it("adopts on bootstrap when the state and the text are not one save", async () => {
+    // A peer saved between the two reads: the text is newer than the state.
+    stubTextFields(stateWith("Same", "Plan"), "Same and more\n", "Plan", {
+      stateTag: '"text-1"',
+      textTag: '"text-2"',
+    });
+    const { hook, doc } = await open("notes/state-race-bootstrap.md");
+
+    expect(bodyText(doc)).toBe("Same");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(false);
+    close(hook);
+  });
+
+  it("adopts a state with no content tag without reading it against the text", async () => {
+    stubTextFields(stateWith("Planted", "Other"), "Real\n", "Plan", { stateTag: null });
+    const { hook, doc } = await open("notes/state-untagged.md");
+
+    expect(bodyText(doc)).toBe("Planted");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    close(hook);
+  });
+
+  it("checks the body of a note with no title", async () => {
+    stubTextFields(stateWith("Same", null), "Same\n", null);
+    const matching = await open("notes/untitled-match.md");
+    expect(bodyText(matching.doc)).toBe("Same");
+    expect(matching.hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    close(matching.hook);
+
+    stubTextFields(stateWith("Planted", null), "Real\n", null);
+    const planted = await open("notes/untitled-planted.md");
+    expect(bodyText(planted.doc)).toBe("Real");
+    expect(planted.hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    close(planted.hook);
+  });
+
+  it("adopts on a reconnect merge when the text read is a newer save", async () => {
+    const writer = new Y.Doc();
+    const body = writeBody(writer, "Same");
+    writeNoteTitle(writer, "Plan");
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same\n", "Plan");
+    const { hook, doc } = await open("notes/state-race-merge.md");
+    body.insert(4, " again");
+    vi.unstubAllGlobals();
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same again and more\n", "Plan", {
+      stateTag: '"text-2"',
+      textTag: '"text-3"',
+    });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(bodyText(doc)).toBe("Same again");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(false);
+    close(hook);
+    writer.destroy();
+  });
+
+  it("still applies the state on a reconnect merge when the text cannot be read", async () => {
+    const writer = new Y.Doc();
+    const body = writeBody(writer, "Same");
+    writeNoteTitle(writer, "Plan");
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same\n", "Plan");
+    const { hook, doc } = await open("notes/state-text-fails.md");
+    body.insert(4, " again");
+    vi.unstubAllGlobals();
+    stubTextFields(Y.encodeStateAsUpdate(writer), "", "Plan", { textFails: true });
+
+    let merged = false;
+    await act(async () => {
+      merged = await hook.result.current.mergeServerState("token");
+    });
+
+    expect(merged).toBe(true);
+    expect(bodyText(doc)).toBe("Same again");
+    close(hook);
+    writer.destroy();
+  });
+
+  it("does not adopt another text on a reconnect merge either", async () => {
+    const writer = new Y.Doc();
+    const body = writeBody(writer, "Same");
+    writeNoteTitle(writer, "Plan");
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same\n", "Plan");
+    const { hook, doc } = await open("notes/state-merge.md");
+    // A later save stores bytes that grew from the same state but hold
+    // text the server never received.
+    body.insert(4, " planted");
+    vi.unstubAllGlobals();
+    stubTextFields(Y.encodeStateAsUpdate(writer), "Same\n", "Plan");
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(bodyText(doc)).toBe("Same");
+    expect(readNoteTitle(doc)).toBe("Plan");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    close(hook);
+    writer.destroy();
+  });
+});
+
+/**
+ * The text-fields shape (#2208): a title and a plain description, joined
+ * through the same session. The server answers `GET …/text` as JSON with
+ * `title`, `description` and `objectEtag`, and `?format=yjs` with the state
+ * or `204`.
+ */
+describe("useDocsCollabJoin text-fields shape", () => {
+  type Served = { state: Uint8Array | null; flag?: boolean; title: string; description: string };
+
+  function serve(served: Served): void {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes("format=yjs")) {
+          if (!served.state) return new Response(null, { status: 204 });
+          return new Response(served.state as unknown as BodyInit, {
+            status: 200,
+            headers: {
+              ETag: '"state-1"',
+              "X-Wgw-Content-Tag": '"text-1"',
+              ...(served.flag ? { "X-Wgw-External-Write": "1" } : {}),
+            },
+          });
+        }
+        return Response.json(
+          { title: served.title, description: served.description, objectEtag: '"obj-1"' },
+          { headers: { ETag: '"text-1"' } },
+        );
+      }),
+    );
+  }
+
+  function stateWith(title: string, description: string): Uint8Array {
+    const doc = new Y.Doc();
+    seedTextFields(doc, { title, description }, null);
+    const update = Y.encodeStateAsUpdate(doc);
+    doc.destroy();
+    return update;
+  }
+
+  async function open(room: string, onExternalWrite?: DocsCollabUrls["onExternalWrite"]) {
+    const hook = renderHook(() =>
+      useEchoSession("Ada", { room, documentShape: "text-fields", onExternalWrite }),
+    );
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    await act(async () => {
+      await hook.result.current.applyServerBootstrap(
+        hook.result.current.refs.joinGenerationRef.current,
+        "token",
+      );
+    });
+    const doc = hook.result.current.refs.ydocRef.current;
+    if (!doc) throw new Error("expected a joined doc");
+    return { hook, doc };
+  }
+
+  async function close(
+    hook: ReturnType<typeof renderHook<ReturnType<typeof useEchoSession>, unknown>>,
+  ): Promise<void> {
+    const persistence = hook.result.current.refs.persistenceRef.current;
+    await persistence?.whenSynced;
+    act(() => {
+      hook.result.current.teardown();
+    });
+    hook.unmount();
+    resetDocsCollabMeshLingerForTests();
+    vi.unstubAllGlobals();
+  }
+
+  it("seeds an empty document from a 204 through the shape, with no editor fragment", async () => {
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/seed-204");
+
+    expect(readTextFields(doc)).toEqual({ title: "Groceries", description: "Buy milk" });
+    expect(doc.share.has("default")).toBe(false);
+    expect(isYDocEmpty(doc)).toBe(false);
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    await close(hook);
+  });
+
+  it("does not seed a document restored from IndexedDB again", async () => {
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const first = await open("tasks/restored");
+    const before = Y.encodeStateVector(first.doc);
+    await close(first.hook);
+
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const second = await open("tasks/restored");
+    expect(readTextFields(second.doc)).toEqual({ title: "Groceries", description: "Buy milk" });
+    expect(Y.encodeStateVector(second.doc)).toEqual(before);
+    expect(second.doc.share.has("default")).toBe(false);
+    await close(second.hook);
+  });
+
+  it("opens a restored seed as the newer server text on a 204, with nothing to save", async () => {
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const first = await open("tasks/restored-204");
+    await close(first.hook);
+
+    serve({ state: null, title: "Groceries", description: "Buy oat milk" });
+    const { hook, doc } = await open("tasks/restored-204");
+    expect(readTextFields(doc)).toEqual({ title: "Groceries", description: "Buy oat milk" });
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    await close(hook);
+  });
+
+  it("adopts a state that holds the served text, not dirty", async () => {
+    serve({
+      state: stateWith("Groceries", "Buy milk"),
+      title: "Groceries",
+      description: "Buy milk",
+    });
+    const { hook, doc } = await open("tasks/state-matches");
+    expect(readTextFields(doc)).toEqual({ title: "Groceries", description: "Buy milk" });
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    await close(hook);
+  });
+
+  it("reseeds from the text when the state holds another description or title", async () => {
+    for (const [room, state] of [
+      ["tasks/other-description", stateWith("Groceries", "Planted")],
+      ["tasks/other-title", stateWith("Planted", "Buy milk")],
+    ] as const) {
+      serve({ state, title: "Groceries", description: "Buy milk" });
+      const { hook, doc } = await open(room);
+      expect(readTextFields(doc)).toEqual({ title: "Groceries", description: "Buy milk" });
+      await close(hook);
+    }
+  });
+
+  it("reseeds from the text over six garbage bytes", async () => {
+    serve({
+      state: new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]),
+      title: "Groceries",
+      description: "Buy milk",
+    });
+    const { hook, doc } = await open("tasks/garbage");
+    expect(readTextFields(doc)).toEqual({ title: "Groceries", description: "Buy milk" });
+    await close(hook);
+  });
+
+  it("reseeds on a reconnect merge of a descendant state with planted text", async () => {
+    const writer = new Y.Doc();
+    seedTextFields(writer, { title: "Groceries", description: "Buy milk" }, null);
+    serve({ state: Y.encodeStateAsUpdate(writer), title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/planted-merge");
+    writer.getText(TEXT_FIELDS_BODY).insert(0, "Planted ");
+    serve({ state: Y.encodeStateAsUpdate(writer), title: "Groceries", description: "Buy milk" });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(readTextFields(doc)).toEqual({ title: "Groceries", description: "Buy milk" });
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    await close(hook);
+    writer.destroy();
+  });
+
+  it("replaces an outside write quietly on a re-read, publishing nothing to save", async () => {
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/quiet-replace");
+    serve({ state: null, title: "Groceries", description: "Buy soy milk" });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(readTextFields(doc).description).toBe("Buy soy milk");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    await close(hook);
+  });
+
+  it("asks, and keeps the document, when this person typed before the outside write", async () => {
+    const onExternalWrite = vi.fn();
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/own-work", onExternalWrite);
+    act(() => {
+      doc.getText(TEXT_FIELDS_BODY).insert(8, "!");
+    });
+    serve({ state: null, title: "Groceries", description: "Buy oat milk" });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(readTextFields(doc).description).toBe("Buy milk!");
+    expect(onExternalWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        markdown: "Buy oat milk",
+        title: "Groceries",
+        objectEtag: '"obj-1"',
+      }),
+    );
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(true);
+    await close(hook);
+  });
+
+  it("keeps an offline edit on a 204 when the served text is what the document took", async () => {
+    const onExternalWrite = vi.fn();
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/own-work-204", onExternalWrite);
+    act(() => {
+      doc.getText(TEXT_FIELDS_BODY).insert(8, "!");
+    });
+
+    await act(async () => {
+      await hook.result.current.mergeServerState("token");
+    });
+
+    expect(readTextFields(doc).description).toBe("Buy milk!");
+    expect(onExternalWrite).not.toHaveBeenCalled();
+    expect(hook.result.current.refs.externalWriteHoldRef.current).toBe(false);
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    await close(hook);
+  });
+
+  it("marks typing in the title as local work", async () => {
+    serve({ state: null, title: "Groceries", description: "Buy milk" });
+    const { hook, doc } = await open("tasks/title-typing");
+    act(() => {
+      doc.getText(TEXT_FIELDS_TITLE).insert(9, "!");
+    });
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    await close(hook);
   });
 });

@@ -96,6 +96,7 @@ export function useDocsCollab({
   });
 
   markDocReadyRef.current = joinHook.markDocReady;
+  refs.rereadServerRef.current = joinHook.mergeServerState;
   trySeedFromFileRef.current = joinHook.trySeedFromFile;
 
   useDocsCollabTabSync({
@@ -178,6 +179,12 @@ export function useDocsCollab({
     };
   }, [autoJoin, room, userName, refs]);
 
+  /** The re-read (spec #2208, The re-read): an app calls it when a push names other text. */
+  const rereadServer = useCallback(
+    () => joinHook.mergeServerState(refs.authTokenRef.current),
+    [joinHook.mergeServerState, refs],
+  );
+
   return {
     session,
     joined,
@@ -196,6 +203,7 @@ export function useDocsCollab({
     connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,
     resolveExternalWrite,
+    rereadServer,
     scheduleSave,
     registerMarkdownGetter,
     onMarkdownChange,

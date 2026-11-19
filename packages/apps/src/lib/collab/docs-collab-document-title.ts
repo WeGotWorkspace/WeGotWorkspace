@@ -10,8 +10,8 @@ import * as Y from "yjs";
 export const NOTE_TITLE_YTEXT_KEY = "note-title";
 
 /** True once the title shared type exists, including a deliberate blank. */
-export function noteTitleIsInDoc(doc: Y.Doc): boolean {
-  return doc.share.has(NOTE_TITLE_YTEXT_KEY);
+export function noteTitleIsInDoc(doc: Y.Doc, key: string = NOTE_TITLE_YTEXT_KEY): boolean {
+  return doc.share.has(key);
 }
 
 /**
@@ -19,9 +19,13 @@ export function noteTitleIsInDoc(doc: Y.Doc): boolean {
  * Reading does not create the type. `SUMMARY` stays the display fallback
  * until a real edit writes the Y.Text.
  */
-export function readNoteTitle(doc: Y.Doc, summary?: string | null): string {
-  if (!noteTitleIsInDoc(doc)) return summary ?? "";
-  return doc.getText(NOTE_TITLE_YTEXT_KEY).toString();
+export function readNoteTitle(
+  doc: Y.Doc,
+  summary?: string | null,
+  key: string = NOTE_TITLE_YTEXT_KEY,
+): string {
+  if (!noteTitleIsInDoc(doc, key)) return summary ?? "";
+  return doc.getText(key).toString();
 }
 
 /**
@@ -34,10 +38,10 @@ export function readNoteTitle(doc: Y.Doc, summary?: string | null): string {
  * call is about to insert. An empty `getText` would register the type and
  * the next save would send `title: ""`.
  */
-export function writeNoteTitle(doc: Y.Doc, next: string): void {
-  if (!doc.share.has(NOTE_TITLE_YTEXT_KEY)) {
+export function writeNoteTitle(doc: Y.Doc, next: string, key: string = NOTE_TITLE_YTEXT_KEY): void {
+  if (!doc.share.has(key)) {
     doc.transact(() => {
-      const text = doc.getText(NOTE_TITLE_YTEXT_KEY);
+      const text = doc.getText(key);
       if (next.length > 0) {
         text.insert(0, next);
         return;
@@ -49,7 +53,7 @@ export function writeNoteTitle(doc: Y.Doc, next: string): void {
     return;
   }
 
-  const text = doc.getText(NOTE_TITLE_YTEXT_KEY);
+  const text = doc.getText(key);
   const current = text.toString();
   if (current === next) return;
   doc.transact(() => {

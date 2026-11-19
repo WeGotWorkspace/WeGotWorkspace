@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Storage\Local;
 
 use App\Services\Jmap\Blobs\StorageFullException;
+use App\Support\Timing\RequestTimings;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -18,10 +19,15 @@ use League\Flysystem\Local\LocalFilesystemAdapter;
  *
  * A write that fails for lack of space (ENOSPC, or a hosting quota's EDQUOT
  * that disk_free_space() does not show) surfaces as StorageFullException.
+ *
+ * Appends, truncates and renames count as storage time in RequestTimings
+ * (#2244); the $onChunk work of an append (hashing) does not.
  */
 class LocalDiskFiles
 {
     private const CHUNK = 1024 * 1024;
+
+    public function __construct(private readonly ?RequestTimings $timings = null) {}
 
     /**
      * A php://temp stream holding $contents (spills to a temp file past
@@ -56,6 +62,8 @@ class LocalDiskFiles
      */
     public function append(Filesystem $disk, string $key, $source, ?int $maxBytes = null, ?callable $onChunk = null): int
     {
+        $started = hrtime(true);
+        $notStorage = 0;
         $path = $this->absolutePath($disk, $key);
         $this->ensureDirectory(dirname($path));
         $target = $this->open($path, 'ab');
@@ -72,7 +80,9 @@ class LocalDiskFiles
                 }
                 $this->write($target, $chunk);
                 if ($onChunk !== null) {
+                    $chunkStarted = hrtime(true);
                     $onChunk($chunk);
+                    $notStorage += hrtime(true) - $chunkStarted;
                 }
                 $written += strlen($chunk);
             }
@@ -80,7 +90,9 @@ class LocalDiskFiles
                 throw StorageFullException::fromLastError('flush') ?? new StorageFullException('The storage is full.');
             }
         } finally {
+            // A network filesystem uploads the written blocks on close.
             fclose($target);
+            $this->timings?->addStorage(hrtime(true) - $started - $notStorage);
         }
 
         return $written;
@@ -92,6 +104,7 @@ class LocalDiskFiles
      */
     public function truncate(Filesystem $disk, string $key, int $size): void
     {
+        $started = hrtime(true);
         $path = $this->absolutePath($disk, $key);
         $this->ensureDirectory(dirname($path));
         $handle = $this->open($path, 'cb');
@@ -99,6 +112,7 @@ class LocalDiskFiles
             ftruncate($handle, max(0, $size));
         } finally {
             fclose($handle);
+            $this->timings?->addStorage(hrtime(true) - $started);
         }
     }
 
@@ -132,7 +146,12 @@ class LocalDiskFiles
             return false;
         }
 
-        return @rename($from, $to);
+        $started = hrtime(true);
+        try {
+            return @rename($from, $to);
+        } finally {
+            $this->timings?->addStorage(hrtime(true) - $started);
+        }
     }
 
     public function sameDevice(string $pathA, string $pathB): bool

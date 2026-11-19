@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MutableRefObject } from "react";
 import * as Y from "yjs";
 import type { DocsCollabSessionRefs } from "./docs-collab-types";
+import { markTextFieldsDoc } from "./docs-collab-text-fields";
 
 const persistCollabSave = vi.hoisted(() => vi.fn());
 
@@ -59,6 +60,7 @@ function sessionRefs(): DocsCollabSessionRefs {
     lastSuccessfulSaveSignatureRef: ref(null),
     sessionRef: ref(null),
     tabSyncRef: ref(null),
+    rereadServerRef: ref(null),
   };
 }
 
@@ -92,6 +94,30 @@ describe("useDocsCollabSave offline", () => {
     await act(async () => {
       result.current.onMarkdownChange(() => "");
       await Promise.resolve();
+    });
+
+    expect(refs.persistenceRef.current?.set).toHaveBeenCalledWith("pendingServerSave", 1);
+  });
+
+  it("marks an offline text-fields edit pending without a markdown getter", async () => {
+    const refs = sessionRefs();
+    markTextFieldsDoc(refs.ydocRef.current!);
+    refs.getMarkdownRef.current = null;
+    refs.localDirtySinceLastSaveRef.current = true;
+    const { result } = renderHook(() =>
+      useDocsCollabSave({
+        refs,
+        room: "task-uid-1",
+        urls: { signalUrl: "/events", documentUrl: "/tasks/1", yjsUrl: "/y", room: "t1" },
+        setDocStatus: vi.fn(),
+        setLastSavedAt: vi.fn(),
+        setPendingSync: vi.fn(),
+        setFailedSync: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.persistToServer();
     });
 
     expect(refs.persistenceRef.current?.set).toHaveBeenCalledWith("pendingServerSave", 1);

@@ -212,8 +212,8 @@ export function wrapMeetChatOperationsWithMesh(
         }
       : undefined,
     reply: operations.reply
-      ? async (parentId, body) => {
-          const saved = await operations.reply!(parentId, body);
+      ? async (parentId, body, opts) => {
+          const saved = await operations.reply!(parentId, body, opts);
           send(saved.channelId, {
             v: 1,
             kind: "channel-message",

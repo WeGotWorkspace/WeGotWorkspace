@@ -29,6 +29,7 @@ import { taskProjectGroupsFromBootstrap } from "@/tasks-core/src/tasks-workspace
 import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
 import { ProjectDialog } from "@/project-dialog/src/project-dialog";
 import { taskProjectDialogLabelsFrom } from "@/tasks-core/src/tasks-project-dialog-labels";
+import { useTaskDetailLiveText } from "@/tasks-core/src/use-task-detail-live-text";
 import { useTasksController } from "@/tasks-core/src/use-tasks-controller";
 import { isViewOnlyTaskList, useTasksSidebarModel } from "@/tasks-core/src/use-tasks-sidebar-model";
 import { TasksNewMenu } from "@/tasks-core/src/tasks-new-menu";
@@ -131,6 +132,10 @@ export function TasksWorkspace({
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const isTouch = useIsTouch();
 
+  const viewer = useMemo(
+    () => ({ username: session.user.username, email: session.user.email }),
+    [session.user.username, session.user.email],
+  );
   const controller = useTasksController({
     data,
     labels,
@@ -139,6 +144,7 @@ export function TasksWorkspace({
     initialView,
     initialTaskId,
     onViewChange,
+    viewer,
   });
 
   const {
@@ -193,6 +199,7 @@ export function TasksWorkspace({
     removeSharedList,
     deleteList,
     icsImport,
+    showLiveText,
   } = controller;
 
   const quickAdd = useCallback(
@@ -248,6 +255,13 @@ export function TasksWorkspace({
     : true;
   const multiSelected = selectedIds.length > 1;
   const editingTask = multiSelected ? null : activeTask;
+  const liveText = useTaskDetailLiveText({
+    task: editingTask,
+    taskLists,
+    username: session.user.username,
+    displayName: session.user.displayName,
+    showLiveText,
+  });
 
   const moveTargets = useMemo(
     () =>
@@ -407,12 +421,16 @@ export function TasksWorkspace({
               taskLists={activeTaskWritable ? writableTaskLists : taskLists}
               allTaskLists={taskLists}
               readOnly={!activeTaskWritable}
-              onSave={(taskId, value) => {
-                void autosaveTask(taskId, value);
+              onSave={(taskId, value, opts) => {
+                void autosaveTask(taskId, value, opts);
               }}
               onToggleComplete={toggleTaskComplete}
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
               onConfirmMove={requestMoveTask}
+              textCollab={liveText.textCollab}
+              textAccessLost={liveText.textAccessLost}
+              textLookingUp={liveText.textLookingUp}
+              onLiveText={liveText.onLiveText}
             />
           ) : (
             <CollectionState icon={<ListTodo className="size-12" />}>

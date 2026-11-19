@@ -29,6 +29,8 @@ export type CollabText = {
   title: string | null;
   /** Entity tag of this text representation. A save names it after an outside write. */
   etag?: string | null;
+  /** The object version, from a text-fields resource; a replacement seed is salted with it. */
+  objectEtag?: string;
 };
 
 export async function loadCollabText(documentUrl: string, authToken?: string): Promise<CollabText> {
@@ -49,13 +51,22 @@ export async function loadCollabText(documentUrl: string, authToken?: string): P
       body?: unknown;
       markdown?: unknown;
       title?: unknown;
+      description?: unknown;
       contentEtag?: unknown;
+      objectEtag?: unknown;
     };
     const title = typeof data.title === "string" ? data.title : null;
+    // A text-fields resource (a task's text) also names the object version a
+    // replacement seed is salted with (#2208).
+    const objectEtag = typeof data.objectEtag === "string" ? data.objectEtag : undefined;
     // A JSON representation whose own tag also moves with metadata names its text separately.
     if (typeof data.contentEtag === "string") etag = data.contentEtag;
-    if (typeof data.markdown === "string") return { markdown: data.markdown, title, etag };
-    if (typeof data.body === "string") return { markdown: data.body, title, etag };
+    if (typeof data.markdown === "string")
+      return { markdown: data.markdown, title, etag, objectEtag };
+    if (typeof data.body === "string") return { markdown: data.body, title, etag, objectEtag };
+    if (typeof data.description === "string") {
+      return { markdown: data.description, title, etag, objectEtag };
+    }
     throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);
   }
   return { markdown: await res.text(), title: null, etag };
@@ -75,6 +86,12 @@ export type YjsSnapshot = {
   etag: string | null;
   externalWrite?: boolean;
   /**
+   * The content tag of the text the stored state was written from
+   * (`X-Wgw-Content-Tag`, Notes and Tasks). The client checks the state
+   * against the text only when the text it read has this tag (#2208).
+   */
+  contentTag?: string | null;
+  /**
    * Set only for a `&fallback=markdown` request when there is no sidecar: the
    * server sent the markdown in the same response.
    */
@@ -83,6 +100,8 @@ export type YjsSnapshot = {
 
 /** Response header that marks a `&fallback=markdown` body as markdown, not sidecar bytes. */
 export const COLLAB_FALLBACK_HEADER = "X-Wgw-Collab-Fallback";
+/** Content tag of the text a stored state was written from (#2208). */
+export const COLLAB_CONTENT_TAG_HEADER = "X-Wgw-Content-Tag";
 
 export type YjsSnapshotLoad = {
   applied: boolean;
@@ -117,6 +136,7 @@ export async function fetchYjsSnapshot(yjsUrl: string, authToken?: string): Prom
     update,
     etag: res.headers.get("ETag"),
     externalWrite: externalWriteFromHeader(res.headers),
+    contentTag: res.headers.get(COLLAB_CONTENT_TAG_HEADER),
   };
 }
 

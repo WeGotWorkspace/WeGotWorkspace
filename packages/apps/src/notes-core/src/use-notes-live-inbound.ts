@@ -3,6 +3,7 @@ import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createNotesJmapClient } from "@/lib/api/wgw/notes-jmap";
 import { noteFromVjournal, type NotesVjournalNote } from "@/lib/api/wgw/notes-vjournal";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useSharedInboundSync } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { JmapNotesAdapter, type JmapNote, type JmapNotebook } from "@/lib/jmap-client";
 import type { Note } from "@/lib/models/note";
 import {
@@ -94,8 +95,9 @@ type UseNotesLiveInboundArgs = {
 /**
  * Live inbound Notes sync over JMAP (#1533): a push for `Note` or `Notebook`
  * runs one `/changes` round right away; the poll backs it up, slower while
- * push is connected. Returns false when JMAP is unavailable, so the caller
- * runs its REST `/changes` interval instead (#1351).
+ * push is connected. One tab per browser does this; the others re-read the
+ * cache it writes (#2252). Returns false when JMAP is unavailable, so the
+ * caller runs its REST `/changes` interval instead (#1351).
  */
 export function useNotesLiveInbound({
   username,
@@ -116,12 +118,22 @@ export function useNotesLiveInbound({
     const patch = () => void latestPatch.current();
     const mapNote = (note: JmapNote) =>
       noteFromVjournal(jmapNoteToVjournal(note), notebooks.current ?? []);
-    const next = new JmapNotesAdapter({
+    const ingested = (work: Promise<unknown>) => {
+      next.ingesting(work);
+      void work.then(patch);
+    };
+    const next: JmapNotesAdapter = new JmapNotesAdapter({
       client: createNotesJmapClient(),
       bodyInRoom: noteBodyInRoom,
       onRemoteNote: (note) => {
-        void withBody(username, note, mapNote, async (id) => (await next.fetchNotes([id]))[0])
-          .then((mapped) => (mapped ? ingestRemoteNote(username, mapped) : null))
+        const ingest = withBody(
+          username,
+          note,
+          mapNote,
+          async (id) => (await next.fetchNotes([id]))[0],
+        ).then((mapped) => (mapped ? ingestRemoteNote(username, mapped) : null));
+        next.ingesting(ingest);
+        void ingest
           .then(patch)
           .catch((error: unknown) => console.warn("[notes] live inbound sync failed", error));
       },
@@ -132,19 +144,14 @@ export function useNotesLiveInbound({
           const blocking = await listNoteIdsBlockingSyncToken(username);
           if (blocking.has(noteId)) return "skipped-pending" as const;
         }),
-      onRemoteNotebook: (notebook) => {
-        void ingestRemoteNotebook(username, jmapNotebookToCollection(notebook)).then(patch);
-      },
-      onRemoteNotebookDestroyed: (notebookId) => {
-        void ingestRemoteNotebookDestroyed(username, notebookId).then(patch);
-      },
-      onRefetchAll: ({ notebooks: books, notes }) => {
-        void reconcileNotesSnapshot(
-          username,
-          notes.map(mapNote),
-          books.map(jmapNotebookToCollection),
-        ).then(patch);
-      },
+      onRemoteNotebook: (notebook) =>
+        ingested(ingestRemoteNotebook(username, jmapNotebookToCollection(notebook))),
+      onRemoteNotebookDestroyed: (notebookId) =>
+        ingested(ingestRemoteNotebookDestroyed(username, notebookId)),
+      onRefetchAll: ({ notebooks: books, notes }) =>
+        ingested(
+          reconcileNotesSnapshot(username, notes.map(mapNote), books.map(jmapNotebookToCollection)),
+        ),
       onSyncError: (error: unknown) => {
         console.warn("[notes] live inbound sync failed", error);
       },
@@ -168,6 +175,8 @@ export function useNotesLiveInbound({
       setAdapter(null);
     };
   }, [enabled, notebooks, username]);
+
+  useSharedInboundSync(adapter, "notes", username, () => void latestPatch.current());
 
   const pushConnected = useJmapPushConnected();
   useEffect(() => {

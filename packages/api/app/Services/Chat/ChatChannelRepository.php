@@ -484,7 +484,7 @@ final class ChatChannelRepository
         // get/changes/state fan-out (they all funnel through this method), and
         // retro-fits pre-existing groups with zero admin migration. Same
         // pattern as the group calendar/notebook provisioning inside
-        // CalendarCollectionAccess::groupInstances.
+        // CalendarCollectionAccess::provisionedGroupUris.
         $this->groupDefaults->ensureForGroupSlugs($this->groups->allowedGroupSlugs($username));
 
         return $this->collectionAccess

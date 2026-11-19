@@ -1,14 +1,145 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { readNoteTitle } from "@/lib/collab/docs-collab-document-title";
+import { readNoteTitle, writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
 import { isRemoteUpdateOrigin } from "@/lib/collab/docs-collab-utils";
 import {
   EXTERNAL_REBUILD_ORIGIN,
+  isReadableYjsUpdate,
   replaceDocumentWithExternalText,
 } from "./docs-collab-external-write";
 
 describe("replaceDocumentWithExternalText", () => {
+  it("reseeds from the text without applying a stored state no client can read (#2208)", () => {
+    const garbage = new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]);
+    expect(isReadableYjsUpdate(garbage)).toBe(false);
+    const make = () => {
+      const ydoc = new Y.Doc();
+      const paragraph = new Y.XmlElement("paragraph");
+      paragraph.insert(0, [new Y.XmlText("local copy")]);
+      ydoc.getXmlFragment("default").insert(0, [paragraph]);
+      replaceDocumentWithExternalText(ydoc, "from outside", "Outside", "markdown", garbage, {
+        dropLocalWork: true,
+      });
+      return ydoc;
+    };
+    const first = make();
+    const second = make();
+
+    expect(readContentFromYDoc(first).trim()).toBe("from outside");
+    expect(readNoteTitle(first)).toBe("Outside");
+    // Two clients that read the same bytes seed the same items.
+    Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
+    expect(readContentFromYDoc(first).trim()).toBe("from outside");
+    // The title too: one item for both clients, not the title twice.
+    expect(readNoteTitle(first)).toBe("Outside");
+    first.destroy();
+    second.destroy();
+  });
+
+  it("writes the title once when two clients rebuild the same readable state", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "old text", "markdown");
+    const state = Y.encodeStateAsUpdate(server);
+    const rebuild = () => {
+      const ydoc = new Y.Doc();
+      replaceDocumentWithExternalText(ydoc, "new text", "New title", "markdown", state);
+      return ydoc;
+    };
+    const first = rebuild();
+    const second = rebuild();
+    Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
+    expect(readNoteTitle(first)).toBe("New title");
+    expect(readContentFromYDoc(first).trim()).toBe("new text");
+    first.destroy();
+    second.destroy();
+    server.destroy();
+  });
+
+  it("does not leave the text blank when an unreadable seed id is already in the document", () => {
+    const garbage = new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", garbage);
+    // The person edits the text away, then the same unreadable bytes and text
+    // come back: the first seed's items are deleted and must not be reused.
+    replaceDocumentWithExternalText(ydoc, "other", "T", "markdown", garbage, {
+      dropLocalWork: true,
+    });
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", garbage, {
+      dropLocalWork: true,
+    });
+    expect(readContentFromYDoc(ydoc).trim()).toBe("same text");
+    ydoc.destroy();
+  });
+
+  it("keeps the title when a rebuild repeats after the person edited it (unreadable state)", () => {
+    const garbage = new Uint8Array([0xff, 0x13, 0x07, 0x01, 0x02, 0x99]);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", garbage);
+    writeNoteTitle(ydoc, "U");
+    replaceDocumentWithExternalText(ydoc, "other", "T", "markdown", garbage, {
+      dropLocalWork: true,
+    });
+    expect(readNoteTitle(ydoc)).toBe("T");
+    ydoc.destroy();
+  });
+
+  it("keeps the title when a rebuild repeats after the person edited it (readable state)", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "stored", "markdown", "s");
+    const state = Y.encodeStateAsUpdate(server);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", state);
+    writeNoteTitle(ydoc, "U");
+    replaceDocumentWithExternalText(ydoc, "other", "T", "markdown", state, {
+      dropLocalWork: true,
+    });
+    expect(readNoteTitle(ydoc)).toBe("T");
+    ydoc.destroy();
+    server.destroy();
+  });
+
+  it("keeps title and body when the same text is rebuilt with dropLocalWork (readable state)", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "stored", "markdown", "s");
+    const state = Y.encodeStateAsUpdate(server);
+    const run = (): Y.Doc => {
+      const d = new Y.Doc();
+      replaceDocumentWithExternalText(d, "same text", "T", "markdown", state);
+      writeNoteTitle(d, "U");
+      replaceDocumentWithExternalText(d, "same text", "T", "markdown", state, {
+        dropLocalWork: true,
+      });
+      return d;
+    };
+    const first = run();
+    const second = run();
+    expect(readNoteTitle(first)).toBe("T");
+    expect(readContentFromYDoc(first)).toBe("same text");
+    Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
+    expect(readNoteTitle(first)).toBe("T");
+    expect(readContentFromYDoc(first).match(/same text/g)).toHaveLength(1);
+    first.destroy();
+    second.destroy();
+    server.destroy();
+  });
+
+  it("restores a deleted seeded body when the same text is rebuilt with dropLocalWork", () => {
+    const server = new Y.Doc();
+    applyContentSeedToYDoc(server, "stored", "markdown", "s");
+    const state = Y.encodeStateAsUpdate(server);
+    const ydoc = new Y.Doc();
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", state);
+    ydoc.getXmlFragment("default").delete(0, ydoc.getXmlFragment("default").length);
+    replaceDocumentWithExternalText(ydoc, "same text", "T", "markdown", state, {
+      dropLocalWork: true,
+    });
+    expect(readContentFromYDoc(ydoc)).toBe("same text");
+    expect(readNoteTitle(ydoc)).toBe("T");
+    ydoc.destroy();
+    server.destroy();
+  });
+
   it("replaces the stale document with the outside text", () => {
     const ydoc = new Y.Doc();
     const paragraph = new Y.XmlElement("paragraph");

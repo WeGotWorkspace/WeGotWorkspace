@@ -8,6 +8,18 @@ import { colorForName } from "@/lib/collab/docs-collab-utils";
  */
 export const NOTE_TITLE_SELECTION_FIELD = "noteTitleSelection";
 
+/**
+ * A plain-text field bound to a `Y.Text`: its shared-type key and the
+ * awareness field its carets travel in. Notes' title is the default; a task's
+ * description binds `plain-body` with its own field (#2208).
+ */
+export type CollabTextField = { key: string; selectionField: string };
+
+export const NOTE_TITLE_FIELD: CollabTextField = {
+  key: NOTE_TITLE_YTEXT_KEY,
+  selectionField: NOTE_TITLE_SELECTION_FIELD,
+};
+
 /** Selection as indexes into the title text. */
 export type TitleSelection = { anchor: number; head: number };
 
@@ -31,9 +43,10 @@ const HEX_COLOR = /^#[0-9a-f]{3,8}$/i;
 export function encodeTitleSelection(
   doc: Y.Doc,
   selection: TitleSelection,
+  key: string = NOTE_TITLE_YTEXT_KEY,
 ): TitleSelectionState | null {
-  if (!noteTitleIsInDoc(doc)) return null;
-  const text = doc.getText(NOTE_TITLE_YTEXT_KEY);
+  if (!noteTitleIsInDoc(doc, key)) return null;
+  const text = doc.getText(key);
   return {
     anchor: relativeJson(text, selection.anchor),
     head: relativeJson(text, selection.head),
@@ -44,9 +57,13 @@ export function encodeTitleSelection(
  * Indexes in the current title for an awareness value from another peer.
  * Null when the value is malformed or does not point into the title.
  */
-export function decodeTitleSelection(doc: Y.Doc, value: unknown): TitleSelection | null {
-  if (!noteTitleIsInDoc(doc) || !isRecord(value)) return null;
-  const text = doc.getText(NOTE_TITLE_YTEXT_KEY);
+export function decodeTitleSelection(
+  doc: Y.Doc,
+  value: unknown,
+  key: string = NOTE_TITLE_YTEXT_KEY,
+): TitleSelection | null {
+  if (!noteTitleIsInDoc(doc, key) || !isRecord(value)) return null;
+  const text = doc.getText(key);
   const anchor = absoluteIndex(doc, text, value.anchor);
   const head = absoluteIndex(doc, text, value.head);
   if (anchor === null || head === null) return null;
@@ -61,6 +78,7 @@ export function listRemoteTitleCarets(
   doc: Y.Doc,
   states: AwarenessStates,
   local: { clientId: number; userName: string },
+  field: CollabTextField = NOTE_TITLE_FIELD,
 ): RemoteTitleCaret[] {
   const localName = normalizeName(local.userName);
   const carets: RemoteTitleCaret[] = [];
@@ -68,7 +86,7 @@ export function listRemoteTitleCarets(
     if (clientId === local.clientId || !state) return;
     const user = readUser(state.user);
     if (!user || normalizeName(user.name) === localName) return;
-    const selection = decodeTitleSelection(doc, state[NOTE_TITLE_SELECTION_FIELD]);
+    const selection = decodeTitleSelection(doc, state[field.selectionField], field.key);
     if (!selection) return;
     carets.push({ clientId, ...user, ...selection });
   });

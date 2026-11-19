@@ -133,6 +133,16 @@ export type WgwAdminUserUpdateRequest = AdminUserUpdateRequest;
 export type WgwAdminGroupCreateRequest = AdminGroupCreateRequest;
 export type WgwAdminGroupUpdateRequest = AdminGroupUpdateRequest;
 export type WgwUpdateStateResponse = UpdateStateResponse;
+export type WgwUpdateProgressResponse = Pick<
+  UpdateStateResponse,
+  | "inProgress"
+  | "phase"
+  | "current"
+  | "download"
+  | "phaseProgress"
+  | "cancelRequested"
+  | "cancelAllowed"
+>;
 export type WgwUpdateApplyRequest = UpdateApplyRequest;
 export type WgwUpdateApplyResponse = UpdateApplyResponse;
 export type WgwUpdateLogResponse = UpdateLogResponse;

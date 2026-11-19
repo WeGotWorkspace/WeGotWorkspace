@@ -5,11 +5,17 @@ import { resolveEventEnd } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import type { CalendarAPIOperations, CalendarUIData } from "@/lib/models/calendar-types";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
+
+/** The window each adapter was told to load, one entry per adapter. */
+const loadedWindows = vi.hoisted(() => [] as unknown[]);
 
 vi.mock("@/lib/jmap-client", async () => {
   const actual = await vi.importActual<typeof import("@/lib/jmap-client")>("@/lib/jmap-client");
   class MockAdapter {
-    initialize = vi.fn(async () => undefined);
+    initialize = vi.fn(async (range: unknown) => {
+      loadedWindows.push(range);
+    });
     startPolling = vi.fn();
     stopPolling = vi.fn();
     sync = vi.fn(async () => undefined);
@@ -63,8 +69,20 @@ const data: CalendarUIData = {
 };
 
 const fakeClient = {} as import("@/lib/jmap-client").JmapClient;
+const otherTabClient = {} as import("@/lib/jmap-client").JmapClient;
 
 describe("useCalendarSurface", () => {
+  // #2252: one tab re-lists for the browser after an expired change log. That
+  // is only enough because no tab's adapter loads a window of its own.
+  it("every tab's adapter loads the bootstrap window, not the period on screen", async () => {
+    loadedWindows.length = 0;
+    renderHook(() => useCalendarSurface(fakeClient, data, "ada@example.com"));
+    renderHook(() => useCalendarSurface(otherTabClient, data, "ada@example.com"));
+
+    await waitFor(() => expect(loadedWindows).toHaveLength(2));
+    expect(loadedWindows).toEqual([calendarBootstrapWindow(), calendarBootstrapWindow()]);
+  });
+
   it.each([true, false] as const)(
     "uses the same EventsAPI context when online is %s and never treats the adapter as the store",
     async (online) => {

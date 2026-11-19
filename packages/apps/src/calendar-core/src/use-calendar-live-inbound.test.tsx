@@ -98,6 +98,9 @@ async function liveAdapter(server: MockJmapServer) {
   return { adapter, methods, ingested };
 }
 
+/** jsdom has no Web Locks, so the hook does not share its sync between tabs here. */
+const noRepaint = () => undefined;
+
 function count(methods: string[], name: string): number {
   return methods.filter((method) => method === name).length;
 }
@@ -121,7 +124,7 @@ describe("useCalendarLiveInbound", () => {
 
   it("subscribes to CalendarEvent and Calendar only once the adapter is ready", async () => {
     const { adapter } = await liveAdapter(server);
-    const { rerender } = renderHook(({ ready }) => useCalendarLiveInbound(ready), {
+    const { rerender } = renderHook(({ ready }) => useCalendarLiveInbound(ready, null, noRepaint), {
       initialProps: { ready: null as JmapEventsAdapter | null },
     });
     expect(hub.subscriptions).toHaveLength(0);
@@ -135,7 +138,7 @@ describe("useCalendarLiveInbound", () => {
 
   it("runs one coalesced sync for pushes with a differing state", async () => {
     const { adapter, methods, ingested } = await liveAdapter(server);
-    renderHook(() => useCalendarLiveInbound(adapter));
+    renderHook(() => useCalendarLiveInbound(adapter, null, noRepaint));
 
     server.remoteCreateEvent({ ...timedEvent, title: "Pushed lunch" });
     server.remoteUpdateEvent(timedEvent.id, { title: "Moved standup" });
@@ -154,7 +157,7 @@ describe("useCalendarLiveInbound", () => {
 
   it("does not sync when the pushed state equals the adapter's own", async () => {
     const { adapter, methods } = await liveAdapter(server);
-    renderHook(() => useCalendarLiveInbound(adapter));
+    renderHook(() => useCalendarLiveInbound(adapter, null, noRepaint));
 
     act(() => push(server.accountId, { CalendarEvent: server.state, Calendar: server.state }));
     const results = await act(settled);
@@ -165,7 +168,7 @@ describe("useCalendarLiveInbound", () => {
 
   it("leaves another account's push alone", async () => {
     const { adapter, methods } = await liveAdapter(server);
-    renderHook(() => useCalendarLiveInbound(adapter));
+    renderHook(() => useCalendarLiveInbound(adapter, null, noRepaint));
 
     act(() => push("someone-else", { CalendarEvent: "other" }));
     await act(settled);
@@ -177,7 +180,7 @@ describe("useCalendarLiveInbound", () => {
     const { adapter } = await liveAdapter(server);
     const startPolling = vi.spyOn(adapter, "startPolling");
     const stopPolling = vi.spyOn(adapter, "stopPolling");
-    const { unmount } = renderHook(() => useCalendarLiveInbound(adapter));
+    const { unmount } = renderHook(() => useCalendarLiveInbound(adapter, null, noRepaint));
     expect(startPolling).toHaveBeenLastCalledWith(CALENDAR_BACKGROUND_POLL_MS);
 
     act(() => {

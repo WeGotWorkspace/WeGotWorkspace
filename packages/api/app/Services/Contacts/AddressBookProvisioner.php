@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Contacts;
 
 use App\Dav\Server\WgwCardBackend;
+use App\Models\Addressbook;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
@@ -59,52 +60,72 @@ final class AddressBookProvisioner
      */
     public function ensureForPrincipal(string $principalUri, string $displayName): array
     {
-        if (! Schema::connection('wgw')->hasTable('addressbooks')) {
-            return ['created' => 0];
+        return ['created' => count($this->ensureForPrincipals([$principalUri => $displayName]))];
+    }
+
+    /**
+     * {@see ensureForPrincipal()} for several principals, with one read of the books they
+     * already have: the JMAP push check asks this for the user and every Team on each
+     * request (#2243).
+     *
+     * @param  array<string, string>  $displayNameByPrincipalUri
+     * @return list<string> the principal uris that got a book
+     */
+    public function ensureForPrincipals(array $displayNameByPrincipalUri): array
+    {
+        if ($displayNameByPrincipalUri === [] || ! Schema::connection('wgw')->hasTable('addressbooks')) {
+            return [];
         }
 
-        $isUserPrincipal = ! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX);
-        $name = $isUserPrincipal
-            ? AddressBookCollectionUris::PERSONAL_DISPLAY_NAME
-            : trim($displayName);
-        if ($name === '') {
-            $name = basename(str_replace('\\', '/', $principalUri));
+        // The rows Sabre's getAddressBooksForUser() lists, keyed by the lower-cased principal uri:
+        // MySQL compares principal uris without case, as that query did.
+        $existing = [];
+        foreach (Addressbook::query()
+            ->whereIn('principaluri', array_map('strval', array_keys($displayNameByPrincipalUri)))
+            ->where('uri', AddressBookCollectionUris::CALDAV_URI)
+            ->orderBy('id')
+            ->get(['id', 'principaluri', 'displayname']) as $book) {
+            $existing[strtolower((string) $book->principaluri)] ??= $book;
         }
 
-        $carddav = WgwCardBackend::fromConnection();
-        foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
-            if (($book['uri'] ?? '') !== AddressBookCollectionUris::CALDAV_URI) {
+        $carddav = null;
+        $created = [];
+        foreach ($displayNameByPrincipalUri as $principalUri => $displayName) {
+            $principalUri = (string) $principalUri;
+            $isUserPrincipal = ! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX);
+            $book = $existing[strtolower($principalUri)] ?? null;
+            if ($book !== null) {
+                if ($isUserPrincipal && (string) ($book->displayname ?? '') !== AddressBookCollectionUris::PERSONAL_DISPLAY_NAME) {
+                    $this->rewriteUserDisplayName($carddav ??= WgwCardBackend::fromConnection(), (string) $book->id);
+                }
+
                 continue;
             }
-            if ($isUserPrincipal) {
-                $this->rewriteUserDisplayName($carddav, $book);
-            }
 
-            return ['created' => 0];
+            $name = $isUserPrincipal
+                ? AddressBookCollectionUris::PERSONAL_DISPLAY_NAME
+                : trim((string) $displayName);
+            if ($name === '') {
+                $name = basename(str_replace('\\', '/', $principalUri));
+            }
+            ($carddav ??= WgwCardBackend::fromConnection())->createAddressBook($principalUri, AddressBookCollectionUris::CALDAV_URI, [
+                '{DAV:}displayname' => $name,
+            ]);
+            $created[] = $principalUri;
         }
 
-        $carddav->createAddressBook($principalUri, AddressBookCollectionUris::CALDAV_URI, [
-            '{DAV:}displayname' => $name,
-        ]);
-
-        return ['created' => 1];
+        return $created;
     }
 
     /**
      * Put the personal book's name back to "Personal" after a DAV client
      * renamed it. The rename goes through Sabre's updateAddressBook, like any
      * other, so the book's sync token moves and sharees and DAV clients see it.
-     *
-     * @param  array<string, mixed>  $book  one row of getAddressBooksForUser()
      */
-    private function rewriteUserDisplayName(WgwCardBackend $carddav, array $book): void
+    private function rewriteUserDisplayName(WgwCardBackend $carddav, string $bookId): void
     {
-        if ((string) ($book['{DAV:}displayname'] ?? '') === AddressBookCollectionUris::PERSONAL_DISPLAY_NAME) {
-            return;
-        }
-
         $propPatch = new PropPatch(['{DAV:}displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME]);
-        $carddav->updateAddressBook($book['id'], $propPatch);
+        $carddav->updateAddressBook($bookId, $propPatch);
         $propPatch->commit();
     }
 

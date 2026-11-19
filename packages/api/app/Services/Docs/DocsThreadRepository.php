@@ -9,11 +9,12 @@ use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\DocsThreadIndex;
-use App\Models\Principal;
 use App\Services\Calendars\CalDavCollections;
 use App\Services\Docs\Conversion\DocsThreadJournalConverter;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Notify\DocsThreadActivityNotify;
+use App\Services\Threads\ThreadAuthorNames;
+use App\Services\Threads\ThreadReactions;
 use App\Services\VObject\VJournalUidGuard;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -205,7 +206,7 @@ final class DocsThreadRepository
         DB::connection('wgw')->transaction(function () use ($object, $instance, $principal, $emoji): void {
             $locked = CalendarObject::query()->whereKey((int) $object->id)->lockForUpdate()->firstOrFail();
             $message = $this->converter->fromObject($locked);
-            $reactions = $this->toggleReactionSet($message['reactions'] ?? [], $emoji, $principal['username']);
+            $reactions = ThreadReactions::toggle($message['reactions'] ?? [], $emoji, $principal['username']);
             $ics = $this->converter->applyReactions($this->rawIcs($locked), $reactions);
             $this->backends->calBackend()->updateCalendarObject(
                 $this->collections->backendId($instance),
@@ -427,7 +428,7 @@ final class DocsThreadRepository
             $roots[] = $message;
         }
 
-        $names = $this->displayNames(array_values(array_unique(array_filter(array_map(
+        $names = ThreadAuthorNames::lookup(array_values(array_unique(array_filter(array_map(
             static fn (array $message): string => (string) ($message['authorId'] ?? ''),
             $messages,
         )))));
@@ -577,60 +578,6 @@ final class DocsThreadRepository
                 'name' => $names[$authorId] ?? $authorId,
             ],
         ];
-    }
-
-    /**
-     * @param  list<string>  $usernames
-     * @return array<string, string>
-     */
-    private function displayNames(array $usernames): array
-    {
-        $usernames = array_values(array_filter($usernames, static fn (string $name): bool => $name !== ''));
-        if ($usernames === []) {
-            return [];
-        }
-
-        $names = [];
-        $principals = Principal::query()
-            ->whereIn('uri', array_map(static fn (string $name): string => 'principals/'.$name, $usernames))
-            ->get(['uri', 'displayname']);
-        foreach ($principals as $principal) {
-            $username = substr((string) $principal->uri, strlen('principals/'));
-            $display = trim((string) ($principal->displayname ?? ''));
-            $names[$username] = $display !== '' ? $display : $username;
-        }
-
-        return $names;
-    }
-
-    /**
-     * @param  list<array{emoji: string, authors: list<string>}>  $reactions
-     * @return list<array{emoji: string, authors: list<string>}>
-     */
-    private function toggleReactionSet(array $reactions, string $emoji, string $username): array
-    {
-        $result = [];
-        $found = false;
-        foreach ($reactions as $reaction) {
-            if ($reaction['emoji'] !== $emoji) {
-                $result[] = $reaction;
-
-                continue;
-            }
-            $found = true;
-            $authors = array_map('strval', $reaction['authors']);
-            $authors = in_array($username, $authors, true)
-                ? array_values(array_diff($authors, [$username]))
-                : [...$authors, $username];
-            if ($authors !== []) {
-                $result[] = ['emoji' => $emoji, 'authors' => $authors];
-            }
-        }
-        if (! $found) {
-            $result[] = ['emoji' => $emoji, 'authors' => [$username]];
-        }
-
-        return $result;
     }
 
     /**

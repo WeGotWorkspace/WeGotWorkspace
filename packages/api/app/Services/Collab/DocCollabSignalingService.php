@@ -99,7 +99,7 @@ final class DocCollabSignalingService
             $this->store->pruneOldRowsSampled();
 
             [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
-            $this->joinAuthorizer->assertMayJoin($room, $principal);
+            $access = $this->joinAuthorizer->authorize($room, $principal);
             $name = mb_substr(trim((string) ($body['name'] ?? '')), 0, 64);
             if ($name === '') {
                 $this->fail('name_required');
@@ -107,7 +107,6 @@ final class DocCollabSignalingService
 
             $peerId = bin2hex(random_bytes(8));
             $now = time();
-            $access = $this->joinAuthorizer->accessFor($room, $principal);
             $browserId = RtcBrowserId::read($body);
             // The access right is computed here and nowhere else: the column
             // defaults to read, so a row that never saw this write cannot edit.
@@ -152,10 +151,10 @@ final class DocCollabSignalingService
 
             [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
-            $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
+            $access = $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
             $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
 
-            $access = $this->refreshAccess($room, $roomKey, $peerId, $principal);
+            $this->store->rewriteAccess($roomKey, $peerId, $access);
             $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
             // A 204 carries no ticket, so the handover window at the start of
             // every grid step answers in full instead.
@@ -184,9 +183,9 @@ final class DocCollabSignalingService
 
             [$principal, $ownerMarker, $room, $roomKey] = $this->peerRequest($request, $body);
             $from = $this->store->readSendFrom($body);
-            $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
+            $access = $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
             $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
-            $access = $this->refreshAccess($room, $roomKey, $from, $principal);
+            $this->store->rewriteAccess($roomKey, $from, $access);
 
             $type = (string) ($body['type'] ?? '');
             if ($type === 'yjs' || $type === 'yjs-sv') {
@@ -256,33 +255,21 @@ final class DocCollabSignalingService
      * the room (poll, send, relay). Losing read access ends the session
      * with a 403 the client acts on, and the caller's peers leave the room.
      * The check runs before the peer lookup, so without access every peer id
-     * gets the same answer.
-     *
-     * @param  array{username: string, role: string}  $principal
-     */
-    private function assertStillMayJoin(string $room, string $roomKey, array $principal, string $ownerMarker): void
-    {
-        try {
-            $this->joinAuthorizer->assertMayJoin($room, $principal);
-        } catch (RealtimeApiException $denied) {
-            $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
-            throw $denied;
-        }
-    }
-
-    /**
-     * A narrowed right is written back to the peer row so the roster other
-     * peers read, and the ticket they verify, both follow the grant.
+     * gets the same answer. Returns the current right; the caller writes it
+     * back to the peer row, so the roster other peers read and the ticket
+     * they verify both follow the grant.
      *
      * @param  array{username: string, role: string}  $principal
      * @return 'read'|'comment'|'write'
      */
-    private function refreshAccess(string $room, string $roomKey, string $peerId, array $principal): string
+    private function assertStillMayJoin(string $room, string $roomKey, array $principal, string $ownerMarker): string
     {
-        $access = $this->joinAuthorizer->accessFor($room, $principal);
-        $this->store->rewriteAccess($roomKey, $peerId, $access);
-
-        return $access;
+        try {
+            return $this->joinAuthorizer->authorize($room, $principal);
+        } catch (RealtimeApiException $denied) {
+            $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
+            throw $denied;
+        }
     }
 
     /**

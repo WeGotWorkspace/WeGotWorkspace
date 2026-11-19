@@ -70,6 +70,10 @@ export function useCalendarSurface(
       adapterRef.current = undefined;
       return;
     }
+    const ingested = (work: Promise<unknown>) => {
+      adapter.ingesting(work);
+      void work.then(() => onInboundChangeRef.current?.());
+    };
     const adapter: JmapEventsAdapter = new JmapEventsAdapter({
       client,
       onSyncError: () => {
@@ -90,23 +94,17 @@ export function useCalendarSurface(
       onRemoteEvent: (event) => {
         const username = usernameRef.current;
         if (!username) return;
-        void ingestRemoteCalendarEvent(username, event).then(() => {
-          onInboundChangeRef.current?.();
-        });
+        ingested(ingestRemoteCalendarEvent(username, event));
       },
       onRemoteCalendar: (calendar) => {
         const username = usernameRef.current;
         if (!username) return;
-        void ingestRemoteCalendar(username, calendarInfoFromJmap(calendar)).then(() => {
-          onInboundChangeRef.current?.();
-        });
+        ingested(ingestRemoteCalendar(username, calendarInfoFromJmap(calendar)));
       },
       onRemoteCalendarDestroyed: (calendarId) => {
         const username = usernameRef.current;
         if (!username) return;
-        void ingestRemoteCalendarDestroyed(username, calendarId).then(() => {
-          onInboundChangeRef.current?.();
-        });
+        ingested(ingestRemoteCalendarDestroyed(username, calendarId));
       },
     });
     adapterRef.current = adapter;
@@ -128,7 +126,7 @@ export function useCalendarSurface(
       }
     };
   }, [client]);
-  useCalendarLiveInbound(liveAdapter);
+  useCalendarLiveInbound(liveAdapter, options?.username, () => onInboundChangeRef.current?.());
 
   const cacheMap = useMemo(
     () => calendarEventsToEngineMap([...data.events], { calendars: data.calendars }),

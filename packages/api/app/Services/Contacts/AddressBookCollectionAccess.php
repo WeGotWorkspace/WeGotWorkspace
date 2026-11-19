@@ -7,7 +7,6 @@ namespace App\Services\Contacts;
 use App\Exceptions\ApiHttpException;
 use App\Models\Addressbook;
 use App\Models\AddressBookShare;
-use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Database\Eloquent\Collection;
@@ -211,22 +210,10 @@ final class AddressBookCollectionAccess
 
     private function ensureVisible(string $username): void
     {
-        $this->provisioner->ensureForPrincipal(
-            $this->principalUri($username),
-            AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
-        );
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $groupUri = AdminConstants::GROUP_PREFIX.$slug;
-            $group = Principal::query()->where('uri', $groupUri)->first(['uri', 'displayname']);
-            if ($group === null) {
-                continue;
-            }
-            $this->provisioner->ensureForGroupPrincipal(
-                (string) $group->uri,
-                (string) ($group->displayname ?? $slug),
-            );
-        }
+        $this->provisioner->ensureForPrincipals([
+            $this->principalUri($username) => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME,
+            ...$this->groups->groupDisplayNames($username),
+        ]);
     }
 
     private function principalUri(string $username): string

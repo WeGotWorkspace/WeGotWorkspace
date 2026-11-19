@@ -220,6 +220,26 @@ Only the **`/tasks`** route ships in v0.9. `workspace-app-icons.ts` may still li
 
 ---
 
+## Decision 17 — Assignees
+
+**Decision:** An assignee is a VTODO `ATTENDEE` (Epic [#2172](https://github.com/WeGotWorkspace/wegotworkspace/issues/2172); spec in [`.agents/specs/2172-task-assignees/`](../../.agents/specs/2172-task-assignees/)). There is no `X-WGW-ASSIGNEE`: Thunderbird and jtx Board show task attendees, and the converter already round-trips them.
+
+| Topic | Rule |
+|-------|------|
+| Participant id | `u:<username>` for someone in the list audience whom the reader may see (by `X-WGW-USERNAME`, or by the email of such a person), `e:<lowercased email>` for any other address, `org` for the `ORGANIZER`. A reader may see themself, the list owners and their Team colleagues (`TaskListAudience::visibleTo`, the picker's rule; product owner, 2026-11-18), so reads differ per reader. On a read, other addresses are never looked up, so a task tells nobody whether an account exists. A `u:` id the reader may see reads with that person's own profile name and email, whatever the stored line says; any other `u:` reads as stored. Assigning the address of a list member the actor could not assign (a reader, or someone they share no Team with) is refused like a `u:` id, with 422 `invalid_participant`; an address of anyone outside the audience is stored as an external guest and never notified. Stable across reads, so a JSON merge patch can add or remove one person (`null` removes). Old positional ids (`att1`) in a patch are 422 `stale_participant_id`. |
+| Stored form | The server writes an assignee as `ATTENDEE;CN=…;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=…;X-WGW-USERNAME=<username>:mailto:<email>`, with the name and address from the profile. Lines another client wrote stay byte-identical on unrelated edits (in-place patcher, #1392). |
+| Who can be assigned | `TaskListAudience`: the owner, the members of an owning Team and every visible sharee (Team grants expanded, hidden grants and disabled accounts left out). Only people with **write** access, so the assignee can tick the task off, and (like the picker) only the actor, the list owner, or someone the actor shares a Team with. REST and MCP reject any other newly added assignee with 422 `invalid_participant` and one fixed sentence that names nobody; attendees a task already has are not re-checked within its list. A REST or MCP move to another list drops the assignees outside the target audience, with their name and address; an `e:` address of someone in that audience stays, and reads as them, only when the mover could assign them there. An ICS import drops `X-WGW-USERNAME`. CalDAV never rejects an `ATTENDEE`. |
+| Organizer | Product owner, 2026-11-18. When a REST or MCP write (so also the web app) adds an attendee to a task with no `ORGANIZER`, the server sets `ORGANIZER` to the acting user (profile email, or the username without one; `CN` = display name; always a person, never a Team). An edit that adds nobody names no organizer. A CalDAV PUT with no stored `ORGANIZER` is stored as sent. Once stored, from any client, the `ORGANIZER` stays: a REST or MCP write cannot add or replace it (422 `invalid_participant`), a PUT without `participants` keeps it, and a CalDAV PUT gets the stored line back (`TaskOrganizerPinPlugin`: same `UID` and `RECURRENCE-ID`, or else on the incoming master), sets `$modified` so no `ETag` is sent, and is never refused. A REST or MCP move to a list whose audience the organizer is not in makes the mover the organizer; a CalDAV `MOVE` changes nothing. It only records who assigned first: RFC 5546 defines iTIP for VTODO, but Sabre does not run it, and we deliberately send no iTIP and track no per-person progress. |
+| Native clients and the organizer | Checked against the client code, not on a device. **Thunderbird 158** (CalDAV calendars always report scheduling support): when the `ORGANIZER` is not one of your addresses and you are an `ATTENDEE`, the task is an invitation. Opening it shows a read-only summary with Accept/Decline instead of the editor; ticking it off, progress and priority from the task list still work. Everyone who is not an attendee edits as before. Our server announces `calendar-auto-schedule`, so Thunderbird sends no invitation mail itself; an Accept/Decline is a normal PUT of `PARTSTAT`. **jtx Board** decides read-only from the collection only and has no invitation handling, so a non-organizer edits as before. **Apple Reminders** shows no attendees; whether it keeps the `ORGANIZER` and `ATTENDEE` lines on its own edit needs a device capture. |
+| Picker | `GET /api/v1/tasks/tasklists/{id}/members`, callable by people who can edit the list. It returns `TaskListAudience::visibleTo` for the caller: the caller, the owners and the people the caller shares a Team with (#1915), read-only members included, each with their access. |
+| Change set | `TaskChangeSet::between(before, after)` is a pure diff. `TaskChangeReactions` runs it after every REST, MCP and CalDAV task write (`TaskChangeObserverPlugin` for CalDAV `PUT`/`DELETE`, 2xx only). Epic #2173's activity log reads the same set. |
+| Notification | `tasks.assigned` to each newly added `u:` assignee with write access, minus the actor; supersede per task and assignee; nothing on unassign; rate limited per actor, per recipient and per pair (`TaskAssignedRateLimiter`). See [suite-notify.md](suite-notify.md). |
+| Assigned to me | A client-side view (`state:assigned-to-me`) over the cross-list task set: participant id `u:<me>`, or an `e:` attendee with the viewer's email (never a `u:` id of someone else); open tasks only; it ignores lists hidden in the sidebar. |
+
+**Why ATTENDEE and not a WGW property:** the assignment then shows in the native clients that display task attendees. Apple Reminders shows none; whether it keeps the lines on its own edit still needs a device capture (see the native clients row).
+
+---
+
 ## UI architecture
 
 `tasks-core` mirrors the **Notes collection shell** — reuse layout and sidebar primitives; do not invent a new workspace layout. Blueprint: [notes-core/README.md](../../packages/apps/src/notes-core/README.md). Shell pattern: [workspace-shells.md](../../packages/apps/docs/workspace-shells.md) (Collection = list + detail + mobile back).
@@ -371,7 +391,7 @@ Native fields map to JMAP `Task` / OpenAPI schema. Unmapped VTODO properties rou
 | `CLASS` | `privacy` | public/private mapping |
 | `RRULE`, `EXDATE`, `RECURRENCE-ID` | `recurrenceRules`, `excludedRecurrenceDates`, `recurrenceOverrides` | [#146](https://github.com/WeGotWorkspace/wegotworkspace/issues/146) |
 | `VALARM` | `alerts` | [#147](https://github.com/WeGotWorkspace/wegotworkspace/issues/147) |
-| `ORGANIZER`, `ATTENDEE` | participants / assignees | [#148](https://github.com/WeGotWorkspace/wegotworkspace/issues/148) |
+| `ORGANIZER`, `ATTENDEE` | `participants` (`org`, `u:<username>`, `e:<email>`) | Assignees are attendees; the server adds `X-WGW-USERNAME`, sets `ORGANIZER` to the first assigner and keeps it fixed (Decision 17, [#2172](https://github.com/WeGotWorkspace/wegotworkspace/issues/2172)) |
 | `RELATED-TO;RELTYPE=PARENT` | (app subtask link) | Flat hierarchy |
 | `RELATED-TO` (other) | `icsProps` or related field | |
 | Unknown / `X-*` | `icsProps` | Round-trip preservation |
@@ -418,6 +438,7 @@ Artisan (idempotent): `wgw:tasks:migrate-default-vtodos`, `wgw:calendars:provisi
 - **Single sidebar view** — no combined state + list filter in v0.9.
 - **Tasks offline** — architecture committed ([#331](https://github.com/WeGotWorkspace/wegotworkspace/issues/331)); v0.9 scheduling per [#313](https://github.com/WeGotWorkspace/wegotworkspace/issues/313).
 - **Tier-2 Yjs collab** — only if rich description editor ships (Decision 15).
+- **Assignees from native clients** — an `ATTENDEE` a CalDAV client adds is stored and shown, but a person who is not an account here, or who cannot edit the list, is never notified (Decision 17).
 - **Due time zones** — the Tasks UI has no time zone picker yet: it saves every due time as floating wall-clock time (`timeZone: null`). A due with a zone (set by another CalDAV client or the API) shows its wall time without the zone, and editing its date, time or All day makes it floating. The API and the ICS mapping still read and write zones ([#1945](https://github.com/WeGotWorkspace/wegotworkspace/issues/1945)).
 
 ---

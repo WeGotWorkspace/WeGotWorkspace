@@ -3,6 +3,7 @@ import { docsEditorFormatFromFileName } from "@/lib/files/docs-editor-format";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
+import { isTextFieldsDoc, isTextFieldsEmpty } from "./docs-collab-text-fields-shape";
 
 /** Origin of an update another tab of this browser sent over the BroadcastChannel. */
 export const BC_TAB_ORIGIN = "bc-tab";
@@ -153,6 +154,8 @@ export function isCollabPayloadTooLarge(error: unknown): boolean {
 }
 
 export function isYDocEmpty(doc: Y.Doc): boolean {
+  // A text-fields document has no `default` fragment, and asking must not create one.
+  if (isTextFieldsDoc(doc)) return isTextFieldsEmpty(doc);
   return doc.getXmlFragment("default").length === 0;
 }
 
