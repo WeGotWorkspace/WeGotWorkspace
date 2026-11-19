@@ -20,6 +20,7 @@ import {
   warmUpApp,
   type Tab,
 } from "./helpers/notes-matrix";
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -74,7 +75,7 @@ test("create whose response is lost, then reopened: one note, listed once", asyn
     // Create offline, then reconnect, so the one create POST goes out on its own.
     await setTabOffline(a, true);
     await a.getByRole("button", { name: "New note" }).click();
-    const body = a.locator(".ProseMirror").first();
+    const body = a.locator(NOTE_EDITOR).first();
     await body.waitFor({ timeout: 15_000 });
     await body.click();
     await body.pressSequentially(marker, { delay: 20 });

@@ -64,6 +64,25 @@ describe("useTaskDetailLiveText", () => {
     rerender();
     expect(parkTask).not.toHaveBeenCalled();
   });
+
+  it("gives the header the open task's room only, and clears it when the room is left", () => {
+    const { result } = renderLive();
+    const source = { session: null, peers: [{ id: "1", name: "Bo" }] };
+    expect(result.current.textPresence).toBeNull();
+
+    act(() => result.current.onPresence("t1.ics", source));
+    expect(result.current.textPresence).toBe(source);
+
+    // Another task's room leaving does not clear the open one's.
+    act(() => result.current.onPresence("other.ics", null));
+    expect(result.current.textPresence).toBe(source);
+
+    act(() => result.current.onPresence("t1.ics", null));
+    expect(result.current.textPresence).toBeNull();
+
+    act(() => result.current.onPresence("other.ics", source));
+    expect(result.current.textPresence).toBeNull();
+  });
 });
 
 describe("taskTextHold", () => {

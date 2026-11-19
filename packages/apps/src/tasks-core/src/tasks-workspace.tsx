@@ -39,6 +39,7 @@ import { ICS_FILE_ACCEPT, icsFileFromList } from "@/lib/ics-import/ics-file";
 import { TasksListPanel } from "@/tasks-core/src/tasks-list-panel";
 import { TasksDetailActionBar, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
 import { TasksThreadSection } from "@/tasks-core/src/tasks-thread-section";
+import { CollabSessionPresence } from "@/text-editor-core/docs-collab";
 import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
 import { composerDefaultDueForView } from "@/tasks-core/src/tasks-task-utils";
 import {
@@ -401,6 +402,11 @@ export function TasksWorkspace({
               backLabel={viewLabel}
               closeMobileDetail={closeTask}
               onDeleteTask={requestDeleteTask}
+              presence={
+                liveText.textPresence ? (
+                  <CollabSessionPresence variant="header" {...liveText.textPresence} />
+                ) : undefined
+              }
             />
           ) : c.detailOpenMobile ? (
             <ActionBar onBack={closeTask} backLabel={viewLabel} />
@@ -440,6 +446,7 @@ export function TasksWorkspace({
                   session={session}
                 />
               }
+              onPresence={liveText.onPresence}
             />
           ) : (
             <CollectionState icon={<ListTodo className="size-12" />}>

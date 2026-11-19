@@ -1,0 +1,312 @@
+@import "../../styles.css" reference;
+
+/*
+ * App rail: the suite's app switcher at every width. Where the sidebar docks it
+ * sits in the layout left of the sidebar; below that it is the leading strip of
+ * the sidebar drawer and slides in and out with it. Home and install (no
+ * switching) do not mount it.
+ */
+.app-rail {
+  --app-rail-width: 4rem;
+  --app-rail-icon-size: 2.25rem;
+}
+
+.app-rail {
+  /* Below the docked sidebar (z-31) so its leading shadow falls on the rail. */
+  @apply relative z-30 flex shrink-0 flex-col items-center gap-4;
+  /* Slides with the sidebar (same motion tokens) when the sidebar is hidden. */
+  transition:
+    translate var(--panel-overlay-duration) var(--panel-overlay-ease),
+    margin var(--panel-overlay-duration) var(--panel-overlay-ease);
+  inline-size: calc(var(--app-rail-width) + env(safe-area-inset-left, 0px));
+  padding-inline-start: env(safe-area-inset-left, 0px);
+  /*
+   * First tile centres on the header controls of every column. Its 44px hit
+   * area is taller than a 40px control, so it starts half the difference higher.
+   */
+  padding-block-start: calc(
+    var(--workspace-header-padding-y) - (2.75rem - var(--workspace-header-control-height)) / 2 +
+      env(safe-area-inset-top, 0px)
+  );
+  padding-block-end: calc(1rem + env(safe-area-inset-bottom, 0px));
+  /* Same paper as the main / detail pane; the sidebar floats between them. */
+  --app-rail-bg: var(--workspace-main-bg, var(--workspace-surface));
+  background-color: var(--app-rail-bg);
+}
+
+/*
+ * Hidden sidebar hides the rail too: both slide off and the main pane takes the
+ * full width. The sidebar toggle's unread dot stands in for the bell meanwhile.
+ * Off-screen like the closed sidebar itself, not `visibility: hidden`: the
+ * connectivity marker on the account button stays readable for tests.
+ */
+.app-rail:has(~ .app-sidebar[data-open="false"]) {
+  translate: -100%;
+  margin-inline-start: calc(-1 * (var(--app-rail-width) + env(safe-area-inset-left, 0px)));
+}
+
+/* Beside the rail the sidebar is a panel with two free edges: round, rule and shadow on both. */
+.app-rail ~ .app-sidebar {
+  border-inline-start: 1px solid var(--workspace-divider-color);
+  border-start-start-radius: var(--sidebar-panel-radius);
+  border-end-start-radius: var(--sidebar-panel-radius);
+}
+
+.app-rail ~ .app-sidebar[data-open="true"] {
+  box-shadow: var(--sidebar-panel-shadow-start), var(--sidebar-panel-shadow-end);
+}
+
+.app-rail__list {
+  @apply m-0 flex list-none flex-col items-center gap-2 p-0;
+  inline-size: 100%;
+}
+
+/*
+   * Notifications bell, first in the rail: a 40px control centred in the same
+   * 44px row as a tile, so it sits on the header line of every column.
+   */
+.app-rail__notifications {
+  @apply flex items-center justify-center;
+  block-size: 2.75rem;
+  /*
+     * Puts the first app tile on the sidebar's primary button: the rest of the
+     * header strip below the bell, plus the button's 0.5rem top gap, less the
+     * rail's own 1rem gap and the tile row's extra height over a control.
+     */
+  margin-block-end: calc(
+    var(--workspace-header-padding-y) - 0.5rem - (2.75rem - var(--workspace-header-control-height))
+  );
+}
+
+.app-rail__notifications:empty {
+  display: none;
+}
+
+/*
+ * The tiles: the one part of the rail that scrolls (short screens, many apps).
+ * No scrollbar in a 64px strip; the bottom padding lets the last tile scroll
+ * clear of the floating account card.
+ */
+.app-rail__scroll {
+  @apply flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto overflow-x-hidden;
+  inline-size: 100%;
+  padding-block-end: 4.5rem;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.app-rail__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.app-rail__list {
+  flex-shrink: 0;
+}
+
+/*
+ * Signed-in user: floats over the foot of the rail, tiles scroll under it. The
+ * avatar itself is the frosted glass (as the account card was in the sidebar);
+ * there is no card around it.
+ */
+.app-rail__account {
+  @apply absolute inset-x-0 z-10 flex justify-center;
+  inset-block-end: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+  /* Punch the presence pip out of the rail's paper. */
+  --user-avatar-presence-ring: var(--app-rail-bg);
+}
+
+.app-rail__account-trigger {
+  @apply flex items-center justify-center rounded-xl outline-none transition-[scale] focus-visible:ring-2 focus-visible:ring-ring;
+  block-size: 2.75rem;
+  inline-size: 2.75rem;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.app-rail__account-trigger .user-avatar__mark {
+  border: 0;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+  transition: background-color 150ms ease;
+}
+
+/* Hover: one clear step up on the glass, in both themes. */
+.app-rail__account-trigger:hover .user-avatar__mark,
+.app-rail__account-trigger[data-state="open"] .user-avatar__mark {
+  background: color-mix(in oklab, var(--workspace-foreground) 12%, var(--frost-background));
+}
+
+.app-rail__account-trigger:active {
+  scale: 0.94;
+}
+
+/*
+ * The account moved to the rail, so the sidebar does not render its account card
+ * (`WorkspaceUserFooter`). The card's wrapper stays for the connectivity live
+ * region and just gives up its spacing.
+ */
+.app-rail ~ .app-sidebar .workspace-sidebar-account-footer {
+  padding: 0;
+}
+
+/* Settings and Admin: a short hairline in the gap sets them apart from the apps. */
+.app-rail__list--utility {
+  @apply relative;
+}
+
+.app-rail__list--utility::before {
+  content: "";
+  @apply absolute;
+  inset-block-start: -0.5rem;
+  inset-inline: 1rem;
+  block-size: 1px;
+  background-color: var(--workspace-divider-color);
+}
+
+.app-rail__item {
+  @apply relative flex justify-center;
+  inline-size: 100%;
+}
+
+.app-rail__link {
+  @apply relative flex items-center justify-center rounded-xl outline-none transition-[opacity,scale] focus-visible:ring-2 focus-visible:ring-ring;
+  /* 44px hit area around the 36px tile. */
+  block-size: 2.75rem;
+  inline-size: 2.75rem;
+  opacity: 0.42;
+}
+
+.app-rail__link:hover,
+.app-rail__link:focus-visible,
+.app-rail__link[aria-current="page"] {
+  opacity: 1;
+}
+
+.app-rail__link:active {
+  scale: 0.94;
+}
+
+.app-rail__icon {
+  block-size: var(--app-rail-icon-size);
+  inline-size: var(--app-rail-icon-size);
+}
+
+/*
+   * New notifications for this app: a dot on the tile's corner, never a count
+   * (the bell carries the number). Stays full strength on a dimmed tile.
+   */
+.app-rail__link[data-unread] {
+  opacity: 1;
+}
+
+.app-rail__link[data-unread]:not(:hover, :focus-visible, [aria-current="page"]) .app-rail__icon {
+  opacity: 0.42;
+}
+
+.app-rail__dot {
+  @apply absolute rounded-full;
+  inset-block-start: 0.125rem;
+  inset-inline-end: 0.125rem;
+  block-size: 0.625rem;
+  inline-size: 0.625rem;
+  background-color: var(--notification-inbox-badge-bg, var(--scheme-selection));
+  box-shadow: 0 0 0 2px var(--app-rail-bg);
+}
+
+/* Current app: an ink pill on the rail's leading edge. */
+.app-rail__item:has(> .app-rail__link[aria-current="page"])::before {
+  content: "";
+  @apply absolute rounded-full;
+  inset-inline-start: 0;
+  inset-block: 0.625rem;
+  inline-size: 3px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  background-color: var(--workspace-foreground);
+}
+
+/*
+   * The rail is the switcher here, so the sidebar header drops its tile, chevron
+   * and menu and keeps the app name as a title.
+   */
+.app-rail ~ .app-sidebar .app-switch-button__icon,
+.app-rail ~ .app-sidebar .app-switch-button__chevron {
+  display: none;
+}
+
+.app-rail ~ .app-sidebar .app-switch-button__trigger {
+  pointer-events: none;
+  min-block-size: var(--workspace-header-control-height);
+  /* No tile to top-align any more: the name centres on the bell and the rail tile. */
+  padding-block: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-rail,
+  .app-rail:has(~ .app-sidebar[data-open="false"]),
+  .app-rail__link {
+    transition: none;
+  }
+}
+
+/*
+ * App switch: the new app's sidebar and panes fade in. Plain CSS on mount, not
+ * the View Transitions API: a transition started while another is running
+ * (a second tile click, the note overlay) can leave the address on the new app
+ * and the page on the old one. The rail itself does not fade, so it holds still.
+ */
+@keyframes app-rail-app-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-rail
+    ~ :not(.app-sidebar__scrim, .workspace-app-layout__panel, .workspace-app-layout__panel-scrim) {
+    animation: app-rail-app-in 160ms ease-out;
+  }
+}
+
+/*
+ * Drawer widths (sidebar is an overlay): the rail is fixed at the screen edge,
+ * above the drawer, and the drawer starts where the rail ends. A closed drawer
+ * also travels the rail's width, so nothing peeks out beside the hidden rail.
+ */
+@media (max-width: calc(72.5rem - 1px)) {
+  .app-rail {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 41;
+    /*
+     * In the drawer the rail has no main pane to borrow its paper from: a step
+     * deeper than the sidebar beside it, so the two read as separate strips.
+     */
+    --app-rail-bg: color-mix(
+      in oklab,
+      black 6%,
+      var(--app-sidebar-bg, var(--workspace-sidebar-surface))
+    );
+  }
+
+  [data-theme="dark"] .app-rail {
+    --app-rail-bg: color-mix(
+      in oklab,
+      black 32%,
+      var(--app-sidebar-bg, var(--workspace-sidebar-surface))
+    );
+  }
+
+  .app-rail ~ .app-sidebar {
+    inset-inline-start: calc(var(--app-rail-width, 4rem) + env(safe-area-inset-left, 0px));
+  }
+
+  .app-rail ~ .app-sidebar[data-open="false"] {
+    translate: calc(-100% - 4rem - env(safe-area-inset-left, 0px));
+  }
+}

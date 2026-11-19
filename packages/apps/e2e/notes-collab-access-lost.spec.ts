@@ -16,6 +16,7 @@ import {
   TEAMMATE,
   warmUpApp,
 } from "./helpers/notes-matrix";
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -38,10 +39,10 @@ test("a member removed from the group loses the open live note", async ({ browse
   try {
     const admin = await openNotesTab(adminContext, OWNER, "admin", events);
     await admin.goto(path);
-    await admin.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await admin.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
     const member = await openNotesTab(memberContext, TEAMMATE, "member", events);
     await member.goto(path);
-    await member.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await member.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
 
     // The session is live: each roster lists the other user.
     const adminRoster = admin.getByLabel("Connected editors");

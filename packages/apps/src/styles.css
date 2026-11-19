@@ -380,11 +380,11 @@
    * recipe per token and reads these, so only this tier swaps for dark.
    * Selection: a flat wash of `--scheme-selection` at `--scheme-selection-strength`,
    * with an inset hairline at `--scheme-selection-edge` (opt-in pressed buttons).
-   * The same sky as dark, a lighter wash on white paper.
+   * Brand blue (`--color-we-got-blue`) in both themes, a lighter wash on white paper.
    */
-  --scheme-selection: oklch(0.68 0.13 240);
+  --scheme-selection: var(--color-we-got-blue);
   --scheme-selection-strength: 12%;
-  /* Hovered list rows: the same sky, about half the selected wash. */
+  /* Hovered list rows: the same blue, about half the selected wash. */
   --scheme-selection-hover-strength: 6%;
   --scheme-selection-edge: 30%;
   /* Selection marks (task checks, multi-select bars): the same colour, stronger. */
@@ -448,8 +448,8 @@
   --track-ins-edge: oklch(0.72 0.19 150 / 0.55);
   --track-del-fg: oklch(0.8 0.1 15);
   --track-del-bg: oklch(0.65 0.2 20 / 0.14);
-  /* Sky selection: flat wash plus a hairline that follows the radius. */
-  --scheme-selection: oklch(0.68 0.13 240);
+  /* Brand-blue selection: flat wash plus a hairline that follows the radius. */
+  --scheme-selection: var(--color-we-got-blue);
   --scheme-selection-strength: 18%;
   --scheme-selection-hover-strength: 9%;
   --scheme-selection-edge: 30%;

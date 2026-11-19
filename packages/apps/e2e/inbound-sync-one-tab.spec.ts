@@ -182,7 +182,11 @@ test("Calendar: one of two tabs syncs", async ({ browser }) => {
     });
   } finally {
     await context.close();
-    await calendarJmap("Calendar/set", { destroy: [calendarId] }).catch(() => undefined);
+    // With its events: a calendar that still holds events is not destroyed otherwise.
+    await calendarJmap("Calendar/set", {
+      destroy: [calendarId],
+      onDestroyRemoveEvents: true,
+    }).catch(() => undefined);
   }
 });
 
@@ -227,11 +231,8 @@ test("Meet chat: one of two tabs syncs", async ({ browser }) => {
 type Shows = (tab: Page, text: string, timeout: number) => Promise<void>;
 
 /**
- * Writes until every tab shows a write: after that each tab's first load is
- * done and its adapter has taken its seat. A write that lands during a tab's
- * first load can be missed for a reason that is not this spec's subject (the
- * load fetched its list before the write and stores it after, #2256), so it
- * is tried again.
+ * One write that every tab shows: after that each tab's first load is done
+ * and its adapter has taken its seat.
  */
 async function warmUp(
   tabs: Page[],
@@ -239,12 +240,9 @@ async function warmUp(
   write: (text: string) => Promise<void>,
   shows: Shows,
 ): Promise<void> {
-  await expect(async () => {
-    await tabs[0]!.waitForTimeout(3_000);
-    const attempt = `${text} ${Date.now().toString(36)}`;
-    await write(attempt);
-    await Promise.all(tabs.map((tab) => shows(tab, attempt, 10_000)));
-  }).toPass({ timeout: 90_000 });
+  await tabs[0]!.waitForTimeout(3_000);
+  await write(text);
+  await Promise.all(tabs.map((tab) => shows(tab, text, 10_000)));
   await tabs[0]!.waitForTimeout(1_000);
 }
 

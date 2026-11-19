@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { JmapCalendarsClient } from "../calendars/JmapCalendarsClient.js";
 import { JmapChatClient } from "../chat/JmapChatClient.js";
+import {
+  CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  JmapContactsClient,
+} from "../contacts/JmapContactsClient.js";
 import { JmapClient } from "../core/JmapClient.js";
 import { DEFAULT_MAX_OBJECTS_IN_GET, getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import {
@@ -180,24 +184,61 @@ describe("clients chunk a get over maxObjectsInGet", () => {
   }
 });
 
-describe("JmapChatClient.getMessages state", () => {
-  it("keeps a stored resume token when explicit ids are fetched", async () => {
-    const { client } = await makeServer(2);
-    client.setState(ACCOUNT, "ChatMessage", "resume-token");
-    await new JmapChatClient(client).getMessages(ACCOUNT, ids(5));
-    expect(client.getState(ACCOUNT, "ChatMessage")).toBe("resume-token");
+describe("the state a get records (#2257)", () => {
+  type Run = (client: JmapClient, asked?: string[]) => Promise<unknown>;
+  const gets: { type: string; run: Run }[] = [
+    {
+      type: "Calendar",
+      run: (c, asked) => new JmapCalendarsClient(c).getCalendars(ACCOUNT, asked),
+    },
+    {
+      type: "CalendarEvent",
+      run: (c, asked) => new JmapCalendarsClient(c).getCalendarEvents(ACCOUNT, asked),
+    },
+    { type: "Notebook", run: (c, asked) => new JmapNotesClient(c).getNotebooks(ACCOUNT, asked) },
+    { type: "Note", run: (c, asked) => new JmapNotesClient(c).getNotes(ACCOUNT, asked) },
+    {
+      type: "AddressBook",
+      run: (c, asked) => new JmapContactsClient(c).getAddressBooks(ACCOUNT, asked),
+    },
+    { type: "ChatChannel", run: (c, asked) => new JmapChatClient(c).getChannels(ACCOUNT, asked) },
+    { type: "ChatMessage", run: (c, asked) => new JmapChatClient(c).getMessages(ACCOUNT, asked) },
+  ];
+
+  for (const { type, run } of gets) {
+    it(`${type}/get for explicit ids keeps the stored changes cursor`, async () => {
+      const { client } = await makeServer(2);
+      client.setState(ACCOUNT, type, "changes-cursor");
+      await run(client, ids(2));
+      expect(client.getState(ACCOUNT, type)).toBe("changes-cursor");
+    });
+
+    it(`${type}/get stores its state when nothing is stored yet`, async () => {
+      const { client } = await makeServer(2);
+      await run(client, []);
+      expect(client.getState(ACCOUNT, type)).toBe("state-1");
+    });
+
+    it(`${type}/get replaces a stored state on a get-all`, async () => {
+      const { client } = await makeServer(2);
+      client.setState(ACCOUNT, type, "expired");
+      await run(client);
+      expect(client.getState(ACCOUNT, type)).toBe("state-1");
+    });
+  }
+
+  it("ContactCard/get for explicit ids keeps the stored changes cursor, also over pages", async () => {
+    const { client } = await makeServer(500);
+    client.setState(ACCOUNT, "ContactCard", "changes-cursor");
+    const contacts = new JmapContactsClient(client);
+    await contacts.getContactCards(ACCOUNT, ids(2));
+    await contacts.getContactCards(ACCOUNT, ids(CONTACT_CARD_GET_MAX_IDS_PER_REQUEST + 1));
+    expect(client.getState(ACCOUNT, "ContactCard")).toBe("changes-cursor");
   });
 
-  it("stores the get state when nothing is stored yet", async () => {
-    const { client } = await makeServer(2);
-    await new JmapChatClient(client).getMessages(ACCOUNT, []);
-    expect(client.getState(ACCOUNT, "ChatMessage")).toBe("state-1");
-  });
-
-  it("replaces a stored token on a get-all refetch", async () => {
-    const { client } = await makeServer(2);
-    client.setState(ACCOUNT, "ChatMessage", "expired");
-    await new JmapChatClient(client).getMessages(ACCOUNT);
-    expect(client.getState(ACCOUNT, "ChatMessage")).toBe("state-1");
+  it("ContactCard/get stores its state when nothing is stored yet", async () => {
+    const { client } = await makeServer(500);
+    await new JmapContactsClient(client).getContactCards(ACCOUNT, []);
+    expect(client.getState(ACCOUNT, "ContactCard")).toBe("state-1");
   });
 });

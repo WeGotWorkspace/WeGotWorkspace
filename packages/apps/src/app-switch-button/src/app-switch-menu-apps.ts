@@ -40,6 +40,13 @@ export function appSwitchUtilityApps(showAdmin: boolean): AppSwitchMenuApp[] {
   return APP_SWITCH_UTILITY_APPS_ALL.filter((app) => app.id !== "admin");
 }
 
+/** The suite app whose pages `pathname` belongs to (`/notes/all/x` is Notes), if any. */
+export function appSwitchAppAtPath(pathname: string): AppSwitchMenuApp | undefined {
+  return APP_SWITCH_WORKSPACE_APPS.find(
+    (app) => pathname === app.to || pathname.startsWith(`${app.to}/`),
+  );
+}
+
 /**
  * Full chrome order shared by AppSwitch and the home/dashboard icon grid:
  * product apps A–Z by label, then Admin / Settings (Admin only when allowed).

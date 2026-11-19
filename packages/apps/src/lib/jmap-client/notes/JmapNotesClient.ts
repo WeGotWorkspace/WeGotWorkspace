@@ -44,7 +44,7 @@ export class JmapNotesClient {
       { accountId, ids: ids ?? null },
       NOTES_USING,
     );
-    this.client.setState(accountId, NOTEBOOK_TYPE, response.state);
+    this.client.recordGetState(accountId, NOTEBOOK_TYPE, response.state, ids);
     return response;
   }
 
@@ -80,7 +80,7 @@ export class JmapNotesClient {
     const response = ids
       ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
       : await getPage(null);
-    this.client.setState(accountId, NOTE_TYPE, response.state);
+    this.client.recordGetState(accountId, NOTE_TYPE, response.state, ids);
     return response;
   }
 

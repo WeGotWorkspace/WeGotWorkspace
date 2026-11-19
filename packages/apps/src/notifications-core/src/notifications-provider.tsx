@@ -20,11 +20,13 @@ import {
   type NotificationsInboxValue,
 } from "@/lib/notifications/notifications-inbox-context";
 import {
+  NOTIFICATION_INBOX_SOUND_MUTED_KEY,
   playInboxNotificationSound,
   readNotificationSoundMuted,
   shouldPlayInboxNotificationSound,
   writeNotificationSoundMuted,
 } from "@/notifications-core/src/notification-inbox-sound";
+import { notificationInScope } from "@/notifications-core/src/notification-scope";
 import type {
   NotificationInboxItem,
   NotificationInboxList,
@@ -92,6 +94,17 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const seededRef = useRef(false);
   const soundMutedRef = useRef(soundMuted);
   soundMutedRef.current = soundMuted;
+  // Mute is one setting per browser: a tab that was open when another tab muted
+  // must go quiet too, and show the muted bell.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === NOTIFICATION_INBOX_SOUND_MUTED_KEY) {
+        setSoundMuted(readNotificationSoundMuted());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
   /** Abort in-flight refreshes; a newer one replaces them. */
   const refreshAbortRef = useRef<AbortController | null>(null);
   /**
@@ -141,10 +154,17 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       seededRef.current = true;
       if (fresh.length > 0) {
         offerToasts(fresh);
-        setUnreadArrivalNonce((n) => n + 1);
-        const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
-        if (shouldPlayInboxNotificationSound(visibility, soundMutedRef.current)) {
-          playInboxNotificationSound();
+        // The chime and the badge pulse follow the tray's scope, like the toasts and
+        // the bell count: with "Current app" picked, another app's news stays quiet.
+        const route = typeof window === "undefined" ? "/" : window.location.pathname;
+        if (fresh.some((item) => notificationInScope(item, route))) {
+          setUnreadArrivalNonce((n) => n + 1);
+          const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
+          // Read the stored setting too: it is current even before the storage event lands.
+          const muted = soundMutedRef.current || readNotificationSoundMuted();
+          if (shouldPlayInboxNotificationSound(visibility, muted)) {
+            playInboxNotificationSound();
+          }
         }
       }
     },

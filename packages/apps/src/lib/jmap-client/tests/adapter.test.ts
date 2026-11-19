@@ -13,7 +13,7 @@ const MARCH: { utcStart: Date; utcEnd: Date } = {
 async function makeAdapter(
   server: MockJmapServer,
   hooks: {
-    onRemoteEvent?: (event: JmapCalendarEvent) => void;
+    onRemoteEvent?: (event: JmapCalendarEvent, snapshot?: { requestedAt: number }) => void;
     onRemoteEventDestroyed?: (eventId: string) => void;
     onRemoteCalendar?: (calendar: JmapCalendar) => void;
     onRemoteCalendarDestroyed?: (calendarId: string) => void;
@@ -65,6 +65,28 @@ describe("JmapEventsAdapter initialization", () => {
     expect(remoteEvents).toEqual(expect.arrayContaining(["ev-timed", "ev-recurring"]));
     expect(adapter).not.toHaveProperty("getEvents");
     expect(adapter).not.toHaveProperty("apply");
+  });
+});
+
+describe("JmapEventsAdapter window load", () => {
+  it("says when the window was requested, so the cache can keep newer rows (#2256)", async () => {
+    const server = new MockJmapServer();
+    seedServer(server);
+    let askedAt = 0;
+    server.beforeRequest = (methodCalls) => {
+      if (methodCalls.some(([name]) => name === "CalendarEvent/query")) askedAt = Date.now();
+    };
+    const requested: (number | undefined)[] = [];
+    const before = Date.now();
+    await makeAdapter(server, {
+      onRemoteEvent: (_event, snapshot) => requested.push(snapshot?.requestedAt),
+    });
+
+    expect(requested.length).toBeGreaterThan(0);
+    for (const requestedAt of requested) {
+      expect(requestedAt).toBeGreaterThanOrEqual(before);
+      expect(requestedAt).toBeLessThanOrEqual(askedAt);
+    }
   });
 });
 

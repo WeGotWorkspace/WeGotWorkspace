@@ -131,15 +131,6 @@
   }
 }
 
-/*
- * Bell lives in the header (sibling of scroll). Unread badge is severity red
- * (`--color-error`) with accent-foreground ink — not the Dark accent.
- */
-.notes-workspace .app-sidebar__notifications {
-  --notification-inbox-badge-bg: var(--color-error);
-  --notification-inbox-badge-fg: var(--workspace-accent-foreground);
-}
-
 /**
  * Portaled notes dialogs/alerts sit outside `.notes-workspace`; repeat accent tokens so
  * {@link Button} and {@link buttonVariants} match the notes shell.

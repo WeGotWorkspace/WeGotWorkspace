@@ -46,8 +46,13 @@ export function useSelectableListState({
         const a = visibleIds.indexOf(lastClickedId);
         const b = visibleIds.indexOf(id);
         if (a === -1 || b === -1) {
+          // No usable anchor: a plain single selection, which also opens the row.
+          // Selecting it without opening left another item open next to it.
           setSelectedIds([id]);
           setSelectionRange(id, id);
+          runPrimarySelect(() => {
+            onPrimarySelect?.(id);
+          });
         } else {
           const [start, end] = a < b ? [a, b] : [b, a];
           const range = visibleIds.slice(start, end + 1);

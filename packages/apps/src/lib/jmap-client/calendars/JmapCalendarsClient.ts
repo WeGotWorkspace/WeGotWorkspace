@@ -41,8 +41,9 @@ function assertSetSucceeded<T>(response: SetResponse<T>): void {
 
 /**
  * Typed Calendar/CalendarEvent methods from the JMAP calendars draft, layered over a
- * {@link JmapClient}. Every method records the returned datatype state on the client so
- * `/changes` can resume from the latest known state.
+ * {@link JmapClient}. A list, `/changes` and `/set` record the returned datatype state on
+ * the client so `/changes` can resume from it. A `/get` for explicit ids keeps a stored
+ * state (see {@link JmapClient.recordGetState}).
  */
 export class JmapCalendarsClient {
   readonly client: JmapClient;
@@ -58,7 +59,7 @@ export class JmapCalendarsClient {
       accountId,
       ids: ids ?? null,
     });
-    this.client.setState(accountId, CALENDAR_TYPE, response.state);
+    this.client.recordGetState(accountId, CALENDAR_TYPE, response.state, ids);
     return response;
   }
 
@@ -102,7 +103,7 @@ export class JmapCalendarsClient {
     const response = ids
       ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
       : await getPage(null);
-    this.client.setState(accountId, CALENDAR_EVENT_TYPE, response.state);
+    this.client.recordGetState(accountId, CALENDAR_EVENT_TYPE, response.state, ids);
     return response;
   }
 
