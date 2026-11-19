@@ -31,9 +31,10 @@ No milestone (Wouter, 2026-11-19: "never mind the milestone, just build"). Draws
 - Meet Basic checks through the shared validator. `path: packages/api/app/Services/Meet/MeetRequestAuth.php:73`
 - Sign-in and protocol limits are separate keys in the cache rate limiter. `path: packages/api/app/Services/Auth/LoginRateLimiter.php:29` and `:58`
 - The client signs in through one function. `path: packages/apps/src/lib/api/wgw/http.ts:466`
+- Today's client throws on a sign-in body without `access_token`, so an `mfa_required` answer locks a user out of the web app until chunk D is on `main`. `path: packages/apps/src/lib/api/wgw/http.ts:243`
 - The login screen is one form inside `AuthenticationPage`. `path: packages/apps/src/login-core/src/login-screen.tsx:108`
 - Settings panels are registered into groups; `account` holds Profile. `path: packages/apps/src/lib/models/settings-types.ts:32`, `path: packages/apps/src/settings-core/src/register-builtin-settings.tsx:56`
-- The newest wgw migration is numbered `000950`. `path: packages/api/database/migrations/wgw/2026_11_18_000950_wgw_create_thread_index.php:1`
+- The newest wgw migration is numbered `000951` on 2026-11-19. `path: packages/api/database/migrations/wgw/2026_11_18_000951_wgw_create_task_yjs_state.php:1`
 - [#984](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/984) conflicts with `main` in more than 30 files, and nine files it edits were deleted or moved on `main` (for example `path: packages/apps/src/login-core/src/login-screen.css`). `cmd: git merge-tree --write-tree --name-only origin/main origin/cursor/totp-2fa-app-passwords-66f2`
 - To verify: the 2026-11-12 comment on [#984](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/984) says the app-passwords part is ported onto current `main` and green. No such branch or PR is on `origin` (`cmd: git branch -r | grep -iE 'app-?pass|mfa'` lists only the #984 branch).
 
@@ -67,8 +68,9 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 1. A (app passwords API) first.
 2. B (app passwords UI) after A.
 3. C (TOTP API, all password callers) after A. C must not land before B is on `main`: without B a user who turns two-factor on has no way to create an app password and their DAV clients stop.
-4. D (sign-in step UI) and E (Security settings and admin UI) after C's contract is merged. Until D lands, nobody can turn two-factor on from the product, so C alone changes no behaviour.
-5. F (docs and live e2e) last.
+4. D (sign-in step UI) and E (Security settings and admin UI) are built in parallel on C's contract.
+5. Landing order on `main`: A → B → C → D → E. C lands only after B; D lands right after C; E lands only after B, C and D are on `main`. E is the chunk that lets a user turn two-factor on from the product; if E landed before D, a user who turned it on would be signed out and the login screen could not take the code.
+6. F (docs and live e2e) last.
 
 ## Open decisions
 
@@ -89,7 +91,9 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 - A password change still ends every session. Proof: `path: packages/api/tests/Unit/Services/Auth/UserSessionRevokerTest.php`, `path: packages/api/tests/Feature/Settings/SettingsProfileTest.php`.
 - Every new route is in the role-access matrix. Proof: `path: packages/api/tests/Architecture/RoleAccessMatrixTest.php`.
 - After chunk A, `main` works without B. Proof: `cmd: php scripts/done-gate.php` in packages/api.
-- After chunk C, `main` works without D and E: no user has a `user_mfa` row, so no sign-in meets a challenge. Proof: `cmd: php scripts/done-gate.php` and `cmd: pnpm test:apps-done-gate`.
+- After chunk C, `main` works without D and E for every user who did not call the enrollment API by hand: no screen turns two-factor on before E, so no such user has an enabled `user_mfa` row. D lands right after C to close that window. Proof: `cmd: php scripts/done-gate.php` and `cmd: pnpm test:apps-done-gate`.
+- After an admin or CLI reset, the password alone signs in again. A wrong change leaves the user locked out. Proof: `path: packages/api/tests/Feature/Auth/MfaAdminTest.php` assertion `test_reset_restores_password_sign_in` (new in chunk C).
+- A start while two-factor is on does not replace or return the live secret. A wrong change lets a password alone turn the second step off. Proof: `path: packages/api/tests/Feature/Auth/MfaSettingsTest.php` assertion `test_start_refused_while_enabled` (new in chunk C).
 
 ## Chunks
 
@@ -119,9 +123,9 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 - **id:** `chunk-c-totp-api`
 - **Skill:** api, security
 - **Inputs:** web sign-in `path: packages/api/app/Services/Auth/AuthTokenService.php:35`; assistant sign-in `path: packages/api/app/Http/Controllers/Mcp/OAuthSessionController.php:51`; session revoke `path: packages/api/app/Services/Auth/UserSessionRevoker.php:20`; the two Basic callers from chunk A
-- **Done when:** `user_mfa`, `mfa_recovery_codes` and `auth_challenges` exist; the `settings/totp` routes, the three `auth/mfa-challenges/{challenge}/…` routes, the admin reset route and `wgw:mfa:reset` work as spec.md describes; `auth/token` and `oauth/session` answer with a challenge for a user with two-factor on; DAV and Meet Basic refuse that user's account password; the per-challenge and per-user limits hold on a second request; turning on, replacing and admin reset end every session; `me` and the settings state carry `mfa.enabled`; the security checklist is answered in the PR.
+- **Done when:** `user_mfa`, `mfa_recovery_codes` and `auth_challenges` exist; the `settings/totp` routes (start, confirm, disable, recovery-code replacement), `POST auth/mfa-challenges/{challenge}/verification`, `POST auth/mfa-challenges/{challenge}/replacement`, the two-step `POST /oauth/session`, the admin reset route and `wgw:mfa:reset` work as spec.md describes; after an admin or CLI reset `auth/token` answers `status: "ok"` with tokens; start answers 409 while two-factor is on; `auth/token` and `oauth/session` answer with a challenge for a user with two-factor on; DAV and Meet Basic refuse that user's account password; the per-challenge and per-user limits hold on a second request; turning on, replacing and admin reset end every session; `me` and the settings state carry `mfa.enabled`; the security checklist is answered in the PR.
 - **Verify with:** `pnpm --filter @wgw/api exec phpunit --filter 'MfaLogin|MfaSettings|MfaAdmin|McpOAuthSession|RefreshTokenBehavior|SettingsProfile'`, then `php scripts/done-gate.php`, then `pnpm check:api-types`
-- **Parallel with:** `chunk-b-app-passwords-ui`
+- **Parallel with:** `chunk-b-app-passwords-ui` for building only; C lands after B is on `main`.
 
 ### Chunk D: Code step at sign-in
 
@@ -131,7 +135,7 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 - **Inputs:** sign-in call `path: packages/apps/src/lib/api/wgw/http.ts:466`; login form `path: packages/apps/src/login-core/src/login-screen.tsx:108`
 - **Done when:** the sign-in call returns a typed result (`ok`, `mfa_required`, `mfa_replace_required`) and lives outside `http.ts` so the file-size baseline holds; the login screen shows a code step inside `AuthenticationPage`, with a link to use a recovery code and the replacement steps after one; the same step works on the assistant connect variant; a pasted `123 456` is accepted; a locked or throttled answer shows when to try again; stories cover each state; Wouter has reviewed the screens.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/login-core src/lib/api/wgw`, Storybook Themes/Login, and a browser run in a fresh profile: sign in with a code, with a recovery code, and through assistant connect.
-- **Parallel with:** `chunk-e-security-settings-ui`
+- **Parallel with:** `chunk-e-security-settings-ui` for building only; D lands right after C, before E.
 
 ### Chunk E: Two-factor in Settings and Admin
 
@@ -141,7 +145,7 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 - **Inputs:** the Security panel from chunk B; password dialog pattern `path: packages/apps/src/settings-core/src/use-settings-profile-form.tsx:169`; admin user actions `path: packages/apps/src/admin-core/src/admin-users-pane.tsx:171`
 - **Done when:** the Security panel has a two-factor row that starts setup (account password, QR code and typed secret, a code, then recovery codes with copy and a confirmation that they are saved); setup warns when a DAV or Meet client recently used the account password and links to app passwords; turning off and replacing recovery codes each ask for a code; the panel shows how many recovery codes are left; the admin user list shows who has two-factor on and offers a reset with a confirm; after turning it on the user lands on the login screen with a message; stories cover each state; Wouter has reviewed the screens.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/settings-core src/admin-core`, Storybook Features/Settings/Panes/Security and Features/Admin, and a browser run: turn on with a real authenticator, sign in again, turn off, admin reset from a second account.
-- **Parallel with:** `chunk-d-sign-in-step`
+- **Parallel with:** `chunk-d-sign-in-step` for building only; E lands last, after B, C and D are on `main`.
 
 ### Chunk F: Docs and live e2e
 
@@ -156,7 +160,7 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 ## Test plan
 
 - [ ] API: OpenAPI → failing feature test → implement → `php scripts/done-gate.php` (the composer done-gate times out locally at 900 s)
-- [ ] API bypass tests, not only happy paths: password-only on each of the four sign-in callers; a challenge of the wrong client kind; a replayed code inside the same 30-second step; the sixth code on one challenge; the eleventh failure across challenges, then a correct code; a second request after a limit trips
+- [ ] API bypass tests, not only happy paths: password-only on each of the four sign-in callers; a challenge of the wrong client kind; a replayed code inside the same 30-second step; the sixth code on one challenge; the eleventh failure across challenges, then a correct code; a second request after a limit trips; a DAV account password that succeeded (warming the verified-password memory) is refused right after two-factor is turned on; an abandoned replacement leaves the recovery code spent
 - [ ] API: a 429 carries `Retry-After` and the `throttled` code
 - [ ] UI: mock-tier Storybook → Vitest for the sign-in result type and code formatting → `play` for the setup flow
 - [ ] Live: one Playwright spec in the live tier (chunk F)

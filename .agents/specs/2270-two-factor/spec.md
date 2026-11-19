@@ -29,9 +29,11 @@ A user can turn on a second sign-in step with an authenticator app (TOTP, RFC 62
 ### Sign-in
 
 - `POST /api/v1/auth/token` keeps its 200 token response for users without two-factor. For a user with two-factor on, a correct password answers 200 with `{ "status": "mfa_required", "challenge": "<64 hex>", "client": "spa" }`, sets no refresh cookie, and issues no tokens. OpenAPI models the two shapes as `oneOf` on a `status` discriminator; the existing token shape gains `status: "ok"`.
-- `POST /api/v1/auth/mfa-challenges/{challenge}/verification` with `{ code }` or `{ recovery_code }` answers with the same token response and refresh cookie that `auth/token` gives today. It is a pre-auth route: the security skill checklist applies.
-- A recovery code does not sign in. It answers `mfa_replace_required` with a new challenge; the user scans a new secret and confirms a code from it before tokens are issued. The used recovery code is spent either way.
-- `POST /oauth/session` (assistant connect) runs the same password-then-challenge sequence and only calls `Auth::guard('web')->login()` after the code is verified. A challenge carries `client: spa | oauth`, and each route refuses a challenge of the other kind, so an `oauth` challenge cannot be redeemed for SPA tokens and the reverse.
+- Pre-auth challenge routes (the security skill checklist applies to each). Both accept only a challenge with `client: spa`:
+  - `POST /api/v1/auth/mfa-challenges/{challenge}/verification` with `{ "code" }` answers `status: "ok"` with the same token response and refresh cookie that `auth/token` gives today, and consumes the challenge. With `{ "recovery_code" }` it issues no tokens: it consumes that challenge, creates a new challenge of kind `replace` with a fresh secret stored only as its `pending_secret`, and answers `{ "status": "mfa_replace_required", "challenge", "client", "secret", "otpauth_uri" }`.
+  - `POST /api/v1/auth/mfa-challenges/{challenge}/replacement` with `{ "code" }` (a code from the new secret) accepts only a `replace` challenge. In one transaction it moves `pending_secret` into `totp_secret`, deletes the old recovery codes and stores a new set, sets `last_used_step`, calls `UserSessionRevoker::revokeAll()`, and only then issues the new token pair, so the new refresh token is inserted after the revoke. It answers the token response plus `recovery_codes` (shown once).
+- A recovery code is spent when it is accepted, before the replacement. Abandoning the replacement does not give it back; the user still has the other codes. A wrong recovery code is not spent and counts as a failed code.
+- `POST /oauth/session` (assistant connect) is the only completion route for `client: oauth`. The first post `{ username, password }` for a user with two-factor on calls neither `login()` nor `session()->regenerate()` on either branch: JSON answers 200 `{ "status": "mfa_required", "challenge", "client": "oauth" }`, the redirect branch returns to the SPA login with the challenge. The second post `{ challenge, code }` (or `{ challenge, recovery_code }`, then `{ challenge, code }` on the `replace` challenge, with the same bodies as the SPA routes) runs `login()` and `regenerate()` only after the code is verified, then answers `{ "ok": true, "redirect" }` as today. A `spa` challenge is refused here and an `oauth` challenge is refused on both API routes, so one cannot be redeemed as the other.
 - Refresh (`POST /auth/refresh`) never asks for a code. A session that was signed in before two-factor was turned on is ended at that moment instead (see Sessions).
 
 ### Every place that accepts a password
@@ -49,20 +51,21 @@ All five must be handled in the chunk that turns two-factor on; a missed one is 
 ### App passwords
 
 - Table `app_passwords`: `username`, `name` (≤ 60), `token_hash` (sha256, unique), `created_at`, `last_used_at`, `last_used_client`, `revoked_at`.
-- The plaintext is 16 random lowercase letters (about 75 bits), shown once, displayed in groups of four; spaces are stripped before hashing. One `hashNormalized()` helper is the only place that hashes, and tests call it.
+- The plaintext is 16 random lowercase letters (about 75 bits), shown once, displayed in groups of four; spaces are stripped before hashing. One `hashNormalized()` helper is the only place that hashes, and tests call it. A match is on `(username, token_hash)`: another user's app password never matches.
 - DAV and Meet Basic try an app password first, then the account password. The account password is refused only when that user has two-factor on. Without two-factor, nothing changes for existing clients.
 - An app password is never accepted on `auth/token`, `oauth/session`, or the current-password check.
-- The DAV verified-password memory (APCu only, never disk or database) stays as it is for account passwords. App passwords are a single indexed sha256 lookup and are not put in that memory.
+- The DAV verified-password memory (APCu only, never disk or database) stays as it is for account passwords. App passwords are a single indexed sha256 lookup and are not put in that memory. For a user with two-factor on, the account password is refused before that memory is read, so an entry warmed before two-factor was turned on does not let the password through.
+- `users.dav_password_used_at` is written by a successful account-password Basic sign-in on DAV or Meet (at most once per five minutes). An app-password success does not write it.
 - Creating an app password requires the account password and shares the sign-in rate limit. `last_used_at` is written at most once per five minutes per row.
 - Failed Basic attempts with an app-password-shaped string count on the existing protocol limiter keys.
 
 ### TOTP
 
-- Library `pragmarx/google2fa`. SHA-1, 6 digits, 30-second step, window of one step either side. `last_used_step` is stored and a code at or below it is refused, so a code cannot be replayed.
+- Library `pragmarx/google2fa`. SHA-1, 6 digits, 30-second step, window of one step either side. `last_used_step` stores the step of the code that matched (not the server's current step), and a code at or below it is refused, so a code cannot be replayed. The verification window is passed explicitly, not left to the library default.
 - Table `user_mfa`: `username` unique, `totp_secret` (Laravel `encrypted` cast, read only through the model property), `enabled_at`, `last_used_step`. A row with a secret and no `enabled_at` is a setup in progress and does not count as on.
-- Table `mfa_recovery_codes`: sha256 of each code, `used_at`. Ten codes per set; replacing the set deletes the old one.
+- Table `mfa_recovery_codes`: sha256 of each code, `used_at`. Ten codes per set; replacing the set deletes the old one. Each code is 8 bytes from `random_bytes` (64 bits), written as 16 lowercase hex characters in groups of four. The hash is sha256 of the code after separators are stripped and it is lowercased. The one-hour lock is only the online limit; the 64 bits are what protects a database dump.
 - Table `auth_challenges`: sha256 of the challenge id, `username`, `kind`, `client`, `pending_secret` (encrypted, replacement only), `attempts`, `expires_at` (10 minutes), `consumed_at`.
-- Enrollment lives under `settings/totp`: start (account password → secret and `otpauth://` URI), confirm (account password and a code → recovery codes), disable (a current code), replace recovery codes (a current code). Confirm answers 409 when two-factor is already on. The QR code is drawn in the browser from the URI; the secret is never sent to a third party.
+- Enrollment lives under `settings/totp`: start (account password → secret and `otpauth://` URI), confirm (account password and a code → recovery codes), disable (a current code), replace recovery codes (a current code). Start and confirm answer 409 while `enabled_at` is set; start then leaves the row unchanged and never returns the existing secret. A setup row without `enabled_at` may be replaced by a new start. Disable, with a current code, is the only signed-in way to turn two-factor off. The QR code is drawn in the browser from the URI; the secret is never sent to a third party.
 - `GET /api/v1/me` and the settings state gain `mfa.enabled`. No `mfa.required`, no `mfa.suggest`.
 
 ### Limits
@@ -80,12 +83,12 @@ All five must be handled in the chunk that turns two-factor on; a missed one is 
 
 ### Admin
 
-- `POST /api/v1/admin/users/{username}/mfa-resets` and `php artisan wgw:mfa:reset {username}` delete the secret and recovery codes and call `revokeAll()`. The admin user list gains `mfaEnabled`.
+- `POST /api/v1/admin/users/{username}/mfa-resets` and `php artisan wgw:mfa:reset {username}` delete the user's `user_mfa` row, recovery codes and open `auth_challenges`, then call `revokeAll()`. They never decrypt the secret. After a reset, `auth/token` answers `status: "ok"` with tokens for the password alone. The admin user list gains `mfaEnabled`.
 - The CLI command is the recovery path for the only admin on an install.
 
 ### Contract
 
-- OpenAPI first, then `pnpm check:api-types`. New routes are added to the role-access matrix. New tables are added to `WgwSchemaParityTest` and `WgwSchemaMigratorTest`. Migrations take the next free number after `000950`.
+- OpenAPI first, then `pnpm check:api-types`. New routes are added to the role-access matrix. New tables are added to `WgwSchemaParityTest` and `WgwSchemaMigratorTest`. Migrations take the next free number after the newest wgw migration on `main` at build time (`000951` on 2026-11-19).
 
 ## Edge cases
 
