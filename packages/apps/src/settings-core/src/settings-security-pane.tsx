@@ -136,6 +136,9 @@ function AppPasswordsBody({ controller }: { controller: SettingsAppPasswordsCont
   );
 }
 
+/** App and Created give way on a phone so the name keeps its width. */
+const NARROW_HIDDEN = "settings-security-pane__wide-only";
+
 function appPasswordColumns(onRemove: (row: AppPassword) => void): DataTableColumn<AppPassword>[] {
   return [
     {
@@ -147,6 +150,8 @@ function appPasswordColumns(onRemove: (row: AppPassword) => void): DataTableColu
       key: "client",
       header: labels.columns.client,
       muted: true,
+      headerClassName: NARROW_HIDDEN,
+      cellClassName: NARROW_HIDDEN,
       render: (row) =>
         row.lastUsedClient ? (
           <span className="settings-security-pane__client" title={row.lastUsedClient}>
@@ -165,6 +170,8 @@ function appPasswordColumns(onRemove: (row: AppPassword) => void): DataTableColu
       key: "created",
       header: labels.columns.created,
       muted: true,
+      headerClassName: NARROW_HIDDEN,
+      cellClassName: NARROW_HIDDEN,
       shrink: true,
       render: (row) => formatListDateTime(row.createdAt),
     },

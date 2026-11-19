@@ -216,6 +216,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'push_subscriptions',
             'rtc_relay_events',
             'jmap_file_node_departures',
+            'app_passwords',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -234,6 +235,7 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'dav_password_used_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));

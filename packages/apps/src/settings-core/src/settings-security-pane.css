@@ -45,3 +45,9 @@
 .settings-two-factor__qr {
   @apply flex justify-center py-3;
 }
+
+@media (max-width: 40rem) {
+  .settings-security-pane__wide-only {
+    display: none;
+  }
+}

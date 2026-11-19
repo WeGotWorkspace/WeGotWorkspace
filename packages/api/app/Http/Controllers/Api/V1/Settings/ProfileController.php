@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Settings;
 
-use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Requests\Api\V1\SettingsProfileRequest;
 use App\Http\Resources\Api\V1\SettingsStateResource;
-use App\Models\AppSetting;
 use App\Models\Principal;
-use App\Services\Auth\LoginRateLimiter;
-use App\Services\Auth\SabreCredentialValidator;
+use App\Services\Auth\CurrentPasswordCheck;
 use App\Services\Auth\UserSessionRevoker;
 use App\Services\Settings\SettingsStateService;
 use App\Services\Settings\UserProfileService;
@@ -22,8 +19,7 @@ final class ProfileController
     public function __construct(
         private UserProfileService $profiles,
         private SettingsStateService $settings,
-        private SabreCredentialValidator $credentials,
-        private LoginRateLimiter $loginLimiter,
+        private CurrentPasswordCheck $currentPassword,
         private UserSessionRevoker $sessions,
     ) {}
 
@@ -97,19 +93,10 @@ final class ProfileController
     private function assertCurrentPassword(SettingsProfileRequest $request, string $username): void
     {
         // TODO(2fa-step-up): replace currentPassword with the step-up token (2FA plan §6).
-        $ip = (string) ($request->ip() ?? '');
-        if (! $this->loginLimiter->allow($username, $ip)) {
-            throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
-        }
-
-        $submitted = $request->validated()['currentPassword'] ?? null;
-        $currentPassword = is_string($submitted) ? $submitted : '';
-        $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
-        if ($currentPassword === '' || ! $this->credentials->validate($username, $currentPassword, $realm)) {
-            $this->loginLimiter->hit($username, $ip);
-            throw new ApiHttpException(403, 'Current password is incorrect.', 'current_password_invalid');
-        }
-
-        $this->loginLimiter->reset($username, $ip);
+        $this->currentPassword->assert(
+            $username,
+            $request->validated()['currentPassword'] ?? null,
+            (string) ($request->ip() ?? ''),
+        );
     }
 }

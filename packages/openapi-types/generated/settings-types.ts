@@ -8,6 +8,10 @@ export type SettingsPaths = {
 };
 
 export type OkResponse = components["schemas"]["OkResponse"];
+export type SettingsAppPassword = components["schemas"]["SettingsAppPassword"];
+export type SettingsAppPasswordCreated = components["schemas"]["SettingsAppPasswordCreated"];
+export type SettingsAppPasswordCreateRequest = components["schemas"]["SettingsAppPasswordCreateRequest"];
+export type SettingsAppPasswordList = components["schemas"]["SettingsAppPasswordList"];
 export type SettingsMcpGrant = components["schemas"]["SettingsMcpGrant"];
 export type SettingsMcpGrantList = components["schemas"]["SettingsMcpGrantList"];
 export type SettingsMcpShareCall = components["schemas"]["SettingsMcpShareCall"];
