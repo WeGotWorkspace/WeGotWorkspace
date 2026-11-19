@@ -1,0 +1,27 @@
+# Engineering tasks — Traffic budget for shared hosting
+
+Source spec: [spec.md](./spec.md)  
+Source plan: [plan.md](./plan.md)
+
+Do not record chunk completion here. The GitHub issue and the test or file that proves the claim are the record.
+
+Spike reference: branch `perf/traffic-governor-spike` holds a working version of every chunk; each PR re-lands its part with tests.
+
+## Chunks
+
+| id | owner / agent | skill | key paths | verify command |
+|----|---------------|-------|-----------|----------------|
+| `calendar-shared-caches` (#2285) | builder | workspace | `packages/apps/src/calendar-core/src/use-calendar-task-due-overlay.ts`, `use-calendar-contact-invitees.ts`, live-inbound hooks → `src/lib/` | `pnpm --dir packages/apps exec vitest run src/calendar-core src/tasks-core src/contacts-core` |
+| `docthread-push` (#2286) | builder | api, workspace | `packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php`, `packages/apps/src/docs-core/src/collab/use-docs-threads-source.ts`, `openapi.json` | `php scripts/done-gate.php`; `pnpm --dir packages/apps exec vitest run src/docs-core` |
+| `idle-cadence` (#2287) | builder | workspace | `src/lib/activity/user-activity.ts`, `src/lib/jmap-client/push/event-source-transport.ts`, `src/lib/rtc/session/poll-cadence.ts`, `peer-mesh.ts`, `src/presence-core/src/presence-rtc-session.ts`, `src/calendar-core/src/use-calendar-api.ts`, `use-calendar-invitations.ts` | `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core` |
+| `calm-recovery` (#2288) | builder | workspace | `src/lib/offline/core/browser-online.ts`, `src/hooks/use-offline-reconnect-flush.ts`, `src/jsdom-setup.ts` | `pnpm --dir packages/apps exec vitest run src/hooks` |
+| `request-loops` (#2289) | builder | workspace | `src/meet-core/src/use-meet-channel-call-activity.ts`, `src/sw.ts` | `pnpm --dir packages/apps exec vitest run src/meet-core` + production preview check |
+| `browser-wide-pacing` (#2290) | builder | workspace | `src/lib/offline/core/background-sync-pacer.ts`, `src/lib/api/wgw/contacts.ts` | `pnpm --dir packages/apps exec vitest run src/lib/offline src/contacts-core` |
+| `sw-governor` (#2291) | builder | workspace, api, security | `src/lib/traffic/request-governor.ts`, `src/sw.ts`, `packages/api/config/wgw.php`, `app/Support/TrafficBudget.php`, `app/Http/Middleware/SendTrafficBudget.php`, `bootstrap/app.php` | `pnpm --dir packages/apps exec vitest run src/lib/traffic`; `vendor/bin/phpunit tests/Unit/Support/TrafficBudgetTest.php` |
+| `harness-and-docs` (#2292) | builder | testing, document | `packages/apps/e2e/traffic-budget.spec.ts`, `e2e/helpers/traffic-meter.ts`, `playwright.traffic.config.mjs`, `docs/realtime-capacity.md` | `WGW_TRAFFIC_MINUTES=3 pnpm --dir packages/apps exec playwright test --config playwright.traffic.config.mjs` |
+
+## Notes
+
+- Chunk ids match `plan.md`.
+- The harness hardcodes ports 9080/5173: run one stack at a time.
+- On scope change: update #2284 first, then re-sync these files and the body-hash in `spec.md`.
