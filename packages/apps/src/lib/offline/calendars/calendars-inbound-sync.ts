@@ -38,8 +38,8 @@ function isCannotCalculateChanges(error: unknown): boolean {
  *
  * It behaves as the adapter's own pull did:
  * - The token is the JMAP client's state in memory, which the window load set.
- *   The client stores the state from each `/changes` and `/get` answer, so the
- *   engine does not write it.
+ *   The client stores the state from each `/changes` answer, so the engine does
+ *   not write it. The `/get` of the changed ids leaves it alone (#2257).
  * - Changed events are fetched in one `/get`; an id it does not return is left out.
  * - An expired token re-lists the loaded window and removes nothing.
  * - An event with a pending write is skipped and reported as a conflict.

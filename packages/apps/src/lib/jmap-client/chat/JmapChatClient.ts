@@ -33,7 +33,7 @@ export class JmapChatClient {
       { accountId, ids: ids ?? null },
       CHAT_USING,
     );
-    this.client.setState(accountId, CHANNEL_TYPE, response.state);
+    this.client.recordGetState(accountId, CHANNEL_TYPE, response.state, ids);
     return response;
   }
 
@@ -66,15 +66,11 @@ export class JmapChatClient {
         { accountId, ids: pageIds },
         CHAT_USING,
       );
-    const hadState = this.client.getState(accountId, MESSAGE_TYPE) !== undefined;
     const response = ids
       ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
       : await getPage(null);
-    // The get state is the full current token. With explicit ids and a stored
-    // token, that token may be a partial `/changes` resume cursor: keep it.
-    if (!ids || !hadState) {
-      this.client.setState(accountId, MESSAGE_TYPE, response.state);
-    }
+    // With explicit ids a stored token is the `/changes` resume cursor: it stays.
+    this.client.recordGetState(accountId, MESSAGE_TYPE, response.state, ids);
     return response;
   }
 
