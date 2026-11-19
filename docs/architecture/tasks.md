@@ -236,7 +236,7 @@ Only the **`/tasks`** route ships in v0.9. `workspace-app-icons.ts` may still li
 | Notification | `tasks.assigned` to each newly added `u:` assignee with write access, minus the actor; supersede per task and assignee; nothing on unassign; rate limited per actor, per recipient and per pair (`TaskAssignedRateLimiter`). See [suite-notify.md](suite-notify.md). |
 | Assigned to me | A client-side view (`state:assigned-to-me`) over the cross-list task set: participant id `u:<me>`, or an `e:` attendee with the viewer's email (never a `u:` id of someone else); open tasks only; it ignores lists hidden in the sidebar. |
 
-**Why ATTENDEE and not a WGW property:** the assignment then shows in the native clients that display task attendees, Apple Reminders shows none; whether it keeps the lines on its own edit still needs a device capture (see the native clients row).
+**Why ATTENDEE and not a WGW property:** the assignment then shows in the native clients that display task attendees. Apple Reminders shows none; whether it keeps the lines on its own edit still needs a device capture (see the native clients row).
 
 ---
 
