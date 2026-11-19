@@ -148,10 +148,9 @@ export type CalendarBootstrapCacheWriteOptions = CalendarSnapshotWriteOptions & 
   /**
    * The bootstrap is a copy of the cache (a calendar-list edit, a subscription
    * refresh), not a server snapshot. `requestedAt` is then only the fence for
-   * rows stored meanwhile; a copied row keeps its own `updatedAt`, because the
-   * rewrite adds no information a snapshot requested earlier could lack. The
-   * events are not written at all: the cache is the truth, and only the events
-   * of a calendar the copy dropped are removed.
+   * rows stored meanwhile. The events are not written at all: the cache is the
+   * truth, and only a stored event the copy omits, whose calendar the copy
+   * dropped too, is removed.
    */
   rewrite?: boolean;
 };
@@ -209,19 +208,17 @@ export async function writeCalendarBootstrapToCache(
   // One transaction: a period loaded on demand must not land between the read
   // and the clear and then be lost.
   await db.transaction("rw", events, db.meta, async () => {
-    const removed = await readRemovedEvents(db);
-    const incoming = bootstrap.data.events.filter(
-      (event) => !removedSince(removed, event.id, requestedAt),
-    );
-    const incomingIds = new Set(incoming.map((event) => event.id));
     const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
     if (options.rewrite) {
       // A copy of the cache can be older than what the cache stores now. The
-      // stored rows stay as they are; only the events of a calendar the copy no
-      // longer lists go, unless a newer or local row says otherwise.
+      // stored rows stay as they are; only a stored event the copy omits goes,
+      // and only when its calendar is gone too, unless a newer or local row
+      // says otherwise.
+      const copiedIds = new Set(bootstrap.data.events.map((event) => event.id));
       const gone = (await events.toArray())
         .filter(
           (row) =>
+            !copiedIds.has(row.id) &&
             !calendarIds.has(row.calendarId) &&
             !row.pendingSync &&
             row.locallyWritten !== true &&
@@ -231,6 +228,11 @@ export async function writeCalendarBootstrapToCache(
       if (gone.length > 0) await events.bulkDelete(gone);
       return;
     }
+    const removed = await readRemovedEvents(db);
+    const incoming = bootstrap.data.events.filter(
+      (event) => !removedSince(removed, event.id, requestedAt),
+    );
+    const incomingIds = new Set(incoming.map((event) => event.id));
     await replaceMirrorRows(
       events,
       incoming.map((event) => eventRow(event, false, false, requestedAt)),

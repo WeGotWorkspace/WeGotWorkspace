@@ -412,6 +412,30 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
     expect(stored.has("ev-gone")).toBe(false);
   });
 
+  it("a cache rewrite keeps a stored event whose calendar the copy does not list", async () => {
+    const onNewCalendar = (id: string, title: string): JmapCalendarEvent => ({
+      ...at(id, title),
+      calendarIds: { "cal-new": true },
+    });
+    await ingest(onNewCalendar("ev-new", "Kept"));
+    const copy = (await readCalendarBootstrapFromCache(username)) as CalendarAppBootstrap;
+    await ingest(onNewCalendar("ev-gone", "Ghost"));
+    const requestedAt = Date.now() + 1;
+
+    await writeCalendarBootstrapToCache(
+      username,
+      {
+        ...copy,
+        data: { ...copy.data, events: copy.data.events.filter((e) => e.id !== "ev-gone") },
+      },
+      { window: liveWindow, requestedAt, rewrite: true },
+    );
+
+    const stored = await events();
+    expect(stored.get("ev-new")).toBe("Kept");
+    expect(stored.has("ev-gone")).toBe(false);
+  });
+
   it("first load: an older snapshot written after a newer one changes nothing", async () => {
     const older = await requestSnapshot();
     const newer = await requestSnapshot();
