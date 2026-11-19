@@ -50,8 +50,8 @@ describe("code formatting", () => {
   });
 
   it("compares recovery codes without separators and case", () => {
-    expect(normalizeRecoveryCode(" ABCDE-fghij ")).toBe("abcdefghij");
-    expect(normalizeRecoveryCode("abcde fghij")).toBe("abcdefghij");
+    expect(normalizeRecoveryCode(" 3F9A-c27e-81D4-0b6e ")).toBe("3f9ac27e81d40b6e");
+    expect(normalizeRecoveryCode("3f9a c27e 81d4 0b6e")).toBe("3f9ac27e81d40b6e");
   });
 });
 
@@ -115,25 +115,41 @@ describe("web app sign-in", () => {
     expect(wgwCurrentAccessToken()).toBe("header.e30.sig");
   });
 
-  it("posts a recovery code and returns the replacement step", async () => {
-    fetchMock.mockResolvedValueOnce(json({ status: "mfa_replace_required", challenge: "c2" }));
-    const step = await createWgwSignInOperations().verify("c1", { recoveryCode: "ABCDE-FGHIJ" });
-    expect(sentBody()).toEqual({ recovery_code: "abcdefghij" });
-    expect(step).toEqual({ status: "mfa_replace_required", challenge: "c2" });
+  it("posts a recovery code and returns the replacement step with its new secret", async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({
+        status: "mfa_replace_required",
+        challenge: "c2",
+        client: "spa",
+        secret: "ABC",
+        otpauth_uri: "otpauth://totp/x?secret=ABC",
+      }),
+    );
+    const step = await createWgwSignInOperations().verify("c1", {
+      recoveryCode: "3F9A-C27E 81D4-0B6E",
+    });
+    expect(sentBody()).toEqual({ recovery_code: "3f9ac27e81d40b6e" });
+    expect(step).toEqual({
+      status: "mfa_replace_required",
+      challenge: "c2",
+      secret: { secret: "ABC", otpauthUri: "otpauth://totp/x?secret=ABC" },
+    });
+    expect(wgwCurrentAccessToken()).toBeNull();
   });
 
-  it("reads the new authenticator and the recovery codes of a replacement", async () => {
-    fetchMock
-      .mockResolvedValueOnce(json({ secret: "ABC", otpauth_uri: "otpauth://totp/x?secret=ABC" }))
-      .mockResolvedValueOnce(json({ ...tokenBody, recovery_codes: ["a", "b"] }));
-    const operations = createWgwSignInOperations();
-    expect(await operations.startReplacement("c2")).toEqual({
-      secret: "ABC",
-      otpauthUri: "otpauth://totp/x?secret=ABC",
-    });
-    const confirmed = await operations.confirmReplacement("c2", "123456");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/v1/auth/mfa-challenges/c2/confirmation");
+  it("refuses a replacement step without a secret", () => {
+    expect(() =>
+      signInStepFromBody({ status: "mfa_replace_required", challenge: "c2" }, "spa"),
+    ).toThrow(SignInError);
+  });
+
+  it("confirms the replacement and reads its recovery codes", async () => {
+    fetchMock.mockResolvedValueOnce(json({ ...tokenBody, recovery_codes: ["a", "b"] }));
+    const confirmed = await createWgwSignInOperations().confirmReplacement("c2", "123 456");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/auth/mfa-challenges/c2/replacement");
+    expect(sentBody()).toEqual({ code: "123456" });
     expect(confirmed.recoveryCodes).toEqual(["a", "b"]);
+    expect(wgwCurrentAccessToken()).toBe("header.e30.sig");
   });
 
   it("throws a typed error with Retry-After on a 429", async () => {
@@ -175,6 +191,22 @@ describe("assistant connect", () => {
     expect(sentBody(1)).toEqual({ challenge: "o1", code: "123456", intent: "i" });
     expect(step).toEqual({ status: "ok", redirect: "/oauth/authorize?s=1" });
     expect(wgwCurrentAccessToken()).toBeNull();
+  });
+
+  it("confirms a replacement on oauth/session and keeps its recovery codes", async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ ok: true, redirect: "/oauth/authorize?s=2", recovery_codes: ["a"] }),
+    );
+    const confirmed = await createWgwAssistantSignInOperations("i").confirmReplacement(
+      "r1",
+      "123456",
+    );
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/oauth/session");
+    expect(sentBody()).toEqual({ challenge: "r1", code: "123456", intent: "i" });
+    expect(confirmed).toEqual({
+      step: { status: "ok", redirect: "/oauth/authorize?s=2" },
+      recoveryCodes: ["a"],
+    });
   });
 
   it("maps refused credentials", async () => {

@@ -87,16 +87,9 @@ export function LoginReplaceStep({
   secret,
 }: {
   signIn: LoginSignIn;
-  secret: { secret: string; otpauthUri: string } | null;
+  secret: { secret: string; otpauthUri: string };
 }) {
   const [code, setCode] = useState("");
-  if (!secret) {
-    return (
-      <p className="login-screen__lead" role="status">
-        {labels.loadingSecret}
-      </p>
-    );
-  }
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void signIn.confirmReplacement(code);

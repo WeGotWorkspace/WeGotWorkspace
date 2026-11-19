@@ -3,7 +3,7 @@ export const twoFactorLabels = {
   codeLabel: "Code",
   codePlaceholder: "123 456",
   recoveryCodeLabel: "Recovery code",
-  recoveryCodePlaceholder: "abcde-fghij",
+  recoveryCodePlaceholder: "abcd-1234-ef56-7890",
   qrLabel: "QR code for your authenticator app",
   secretLabel: "Setup key",
   secretHint: "Can't scan? Enter this key in the app instead.",

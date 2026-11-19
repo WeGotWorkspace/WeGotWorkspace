@@ -8,7 +8,7 @@ export const loginLabels = {
   codeLead: "Enter the 6-digit code from your authenticator app.",
   recoveryLead: "Enter one of the recovery codes you saved when you turned on two-factor sign-in.",
   replaceLead:
-    "That recovery code is now used up. Scan this QR code with your authenticator app, then enter the code it shows.",
+    "That recovery code is now used up, even if you stop here. Scan this QR code with your authenticator app, then enter the code it shows.",
   codesLead:
     "Your old recovery codes no longer work. Each of these works once, when your phone is not at hand.",
   useRecovery: "Use a recovery code",
@@ -19,7 +19,6 @@ export const loginLabels = {
   continue: "Continue",
   signIn: "Sign in",
   signingIn: "Signing in...",
-  loadingSecret: "Preparing a new authenticator...",
   required: "Username and password are required.",
   codeRequired: "Enter the 6-digit code from your app.",
   recoveryRequired: "Enter a recovery code.",

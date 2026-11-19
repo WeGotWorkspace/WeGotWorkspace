@@ -18,7 +18,7 @@ const meta = {
         description: {
           component:
             "The second sign-in step (#2274), mock tier. Sign in as `alice` / `storybook-dev`; code `123456` works, " +
-            "`999999` is throttled, `111111` has expired, recovery code `abcde-fghij` starts a new authenticator.",
+            "`999999` is throttled, `111111` has expired, recovery code `3f9a-c27e-81d4-0b6e` starts a new authenticator.",
         },
       },
     },
