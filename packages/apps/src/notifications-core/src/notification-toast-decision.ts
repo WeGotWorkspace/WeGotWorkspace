@@ -25,6 +25,12 @@ export type ToastDecisionDeps = {
    * since it loaded (the rows present at load never toast anyway).
    */
   visibleSince: () => number;
+  /**
+   * The user's notification scope (inbox tray: all apps, or only the app in
+   * view). A row outside it is not toasted; it still reaches the inbox. Omit for
+   * no scope.
+   */
+  inScope?: (row: NotificationInboxItem, route: string) => boolean;
 };
 
 /**
@@ -96,8 +102,10 @@ export function routeShowsNavigate(route: string, navigate: string): boolean {
  *   OS notification path (#1605);
  * - another tab is in front: that tab decides when it sees the row;
  * - this tab is in front: it toasts the row, unless the row's `navigate`
- *   points at the screen it shows, or the row was created while this tab was
- *   hidden and is fetched only now (the row still goes to the popover).
+ *   points at the screen it shows, the row was created while this tab was
+ *   hidden and is fetched only now, or the row is outside the user's scope
+ *   ("Current app" in the tray, and the row is another app's). The row still
+ *   goes to the popover.
  */
 export async function pickRowsToToast(
   fresh: readonly NotificationInboxItem[],
@@ -117,6 +125,9 @@ export async function pickRowsToToast(
   const route = front.route ?? deps.currentRoute();
   const visibleSince = deps.visibleSince();
   return rows.filter(
-    (row) => createdWhileVisible(row, visibleSince) && !routeShowsNavigate(route, row.navigate),
+    (row) =>
+      createdWhileVisible(row, visibleSince) &&
+      !routeShowsNavigate(route, row.navigate) &&
+      (deps.inScope?.(row, route) ?? true),
   );
 }

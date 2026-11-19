@@ -108,11 +108,7 @@ test.describe("List writes inside the undo delay", () => {
     await unstarFromStarredView(page, name);
 
     await page.waitForTimeout(300);
-    await page
-      .getByRole("button", { name: /switch apps/i })
-      .first()
-      .click();
-    await page.getByRole("menuitem", { name: "Tasks" }).click();
+    await page.getByRole("link", { name: /^Open Tasks/ }).click();
     await expect(page).toHaveURL(/\/tasks/);
 
     await page.waitForTimeout(4_000);

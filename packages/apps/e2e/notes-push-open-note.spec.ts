@@ -15,6 +15,7 @@ import {
   warmUpApp,
   type Tab,
 } from "./helpers/notes-matrix";
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 /** Below the 10 s poll, so only a push can make it. */
 const PUSH_BOUND_MS = 8_000;
@@ -77,7 +78,7 @@ test("a tag and an archive reach a tab that has the note open, by push", async (
     await b.locator(".list-item__button", { hasText: title }).first().click({ timeout: 15_000 });
     await b.locator(".note-detail-view__title").waitFor({ timeout: 15_000 });
     await sleep(1_500);
-    const editor = b.locator(".ProseMirror").first();
+    const editor = b.locator(NOTE_EDITOR).first();
     await editor.waitFor({ timeout: 15_000 });
     await editor.click();
     await editor.press("End");
@@ -103,12 +104,14 @@ test("a tag and an archive reach a tab that has the note open, by push", async (
     // A archives the note. B's open note turns read-only.
     const archived = await patchNote(uid, { status: "CANCELLED" });
     expect(archived.status, JSON.stringify(archived.json)).toBeLessThan(300);
-    await expect(editor, "B's open note turns read-only before the poll").toHaveAttribute(
-      "contenteditable",
-      "false",
-      { timeout: PUSH_BOUND_MS },
+    // Not NOTE_EDITOR: that selector only matches while the body is editable.
+    await expect(
+      b.locator(".ProseMirror").first(),
+      "B's open note turns read-only before the poll",
+    ).toHaveAttribute("contenteditable", "false", { timeout: PUSH_BOUND_MS });
+    await expect(b.locator(".ProseMirror").first(), "B still shows its text").toContainText(
+      `typed-${id}`,
     );
-    await expect(editor, "B still shows its text").toContainText(`typed-${id}`);
 
     // After a reload the cache matches the server.
     await b.reload();

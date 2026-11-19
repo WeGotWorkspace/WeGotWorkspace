@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { Folder } from "lucide-react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
@@ -108,7 +108,12 @@ export const SectionsAndAccountFooter: Story = {
     const canvas = within(canvasElement);
     // Settings is an icon button beside the primary button, never a row or footer item.
     await expect(canvas.queryByRole("button", { name: "Settings" })).toBeNull();
-    await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
+    // Beside the app rail the account sits at the rail's foot: avatar, then a menu with Log out.
+    await userEvent.click(canvas.getByRole("button", { name: /Account menu$/ }));
+    await expect(
+      await within(canvasElement.ownerDocument.body).findByRole("menuitem", { name: "Log out" }),
+    ).toBeVisible();
+    await userEvent.keyboard("{Escape}");
   },
 };
 

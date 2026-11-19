@@ -1,42 +1,37 @@
 @import "../../styles.css" reference;
 
 /*
- * Inbox row as a toast (#1669): the whole callout is the button, so the padding
- * moves from the callout onto it and every pixel of the toast opens the row.
+ * Inbox row as a toast (#1669): the tray row's content on the toaster's frosted
+ * floating surface (frost fill and blur, floating radius, frost shadow). The
+ * whole toast is one button, so every pixel of it opens the row.
  */
-[data-sonner-toast] .notification-toast .callout {
-  padding: 0;
-  overflow: hidden;
+.notification-toast {
+  inline-size: 100%;
+  /* The app badge is punched out of the frost, not the page paper. */
+  --notification-item-badge-ring: color-mix(
+    in oklch,
+    var(--workspace-foreground) 7%,
+    var(--workspace-surface)
+  );
 }
 
-[data-sonner-toast] .notification-toast .callout .menu-item {
-  @apply cursor-pointer rounded-none p-4;
+.notification-toast__open {
+  @apply flex w-full min-w-0 cursor-pointer items-start gap-3.5 p-4 text-left outline-none;
+  border: 0;
+  border-radius: var(--floating-toolbar-radius);
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+  color: var(--workspace-foreground);
+  user-select: none;
 }
 
-[data-sonner-toast] .notification-toast .menu-item--interactive:focus-visible {
+.notification-toast__open:hover {
+  background: color-mix(in oklab, var(--workspace-foreground) 4%, var(--frost-background));
+}
+
+.notification-toast__open:focus-visible {
   outline: 2px solid var(--workspace-foreground);
   outline-offset: -4px;
-  border-radius: var(--control-radius-button-pill);
-}
-
-/* App icon spans the title and app-name rows, like the popover row. */
-[data-sonner-toast] .notification-toast .menu-item__main--stacked .menu-item__icon-slot {
-  grid-row: 1 / span 2;
-  align-self: start;
-}
-
-.notification-toast__app-icon {
-  @apply size-8 overflow-hidden rounded-[6px];
-}
-
-[data-sonner-toast] .notification-toast__title-rest {
-  font-weight: 400;
-}
-
-/* Long DM snippets stay a preview; the full text is one click away. */
-[data-sonner-toast] .notification-toast .app-toast-callout__detail {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
 }

@@ -28,6 +28,7 @@ import {
   type ServerNote,
   type Tab,
 } from "./helpers/notes-matrix";
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 type Tabs = "one" | "same" | "diff";
 type Net = "on" | "off" | "both" | "aOff" | "bOff";
@@ -56,7 +57,7 @@ async function openRow(tab: Tab, title: string) {
 }
 
 async function editor(tab: Tab) {
-  const body = tab.locator(".ProseMirror").first();
+  const body = tab.locator(NOTE_EDITOR).first();
   await body.waitFor({ timeout: 15_000 });
   return body;
 }
