@@ -1876,12 +1876,17 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Group deleted */
+                /** @description Group deleted, with every Project of the Team (live or archived). */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                            deletedProjects: number;
+                        };
+                    };
                 };
                 /** @description Forbidden */
                 403: {
@@ -10113,6 +10118,8 @@ export interface components {
             displayName: string;
             /** @description Usernames of the Team's team admins, sorted. */
             teamAdmins: string[];
+            /** @description Projects of the Team, live or archived. Deleting the Team deletes them. */
+            projectCount: number;
         };
         AdminMailSettings: {
             smtpHost: string;

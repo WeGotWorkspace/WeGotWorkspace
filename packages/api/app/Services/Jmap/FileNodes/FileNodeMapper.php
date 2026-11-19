@@ -221,8 +221,11 @@ final class FileNodeMapper
         $mayAddChildren = $mayStructure
             || (strtolower($principal['role']) === 'guest' && $mayEdit);
 
-        // A Project folder follows its Project (#817): never renamed, moved or deleted on its own.
-        $sealed = $isGrantRoot || ($mayStructure && $this->projectFolders->isProjectFolderKey($key));
+        // A Drive root goes with its user or Team, and FileNode/set refuses it (#819). A
+        // Project folder follows its Project (#817). Neither is renamed, moved or deleted on its own.
+        $sealed = $isGrantRoot
+            || preg_match('#^(users|groups)/[^/]+$#', trim($key, '/')) === 1
+            || ($mayStructure && $this->projectFolders->isProjectFolderKey($key));
 
         return [
             'mayRead' => $mayView,

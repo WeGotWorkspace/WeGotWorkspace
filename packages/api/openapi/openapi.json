@@ -3323,7 +3323,19 @@
         ],
         "responses": {
           "200": {
-            "description": "Group deleted"
+            "description": "Group deleted, with every Project of the Team (live or archived).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok", "deletedProjects"],
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "deletedProjects": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden"
