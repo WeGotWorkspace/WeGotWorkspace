@@ -29,6 +29,9 @@ import type {
 /** Rounds of re-sending parts the server reported missing before giving up. */
 const MISSING_PART_ROUNDS = 3;
 
+/** What a hash-rebuild step reads at least, however slow the server's storage is. */
+const MIN_REBUILD_STEP_BYTES = 1024 * 1024;
+
 export type DriveUploadProgressUpdate = {
   state: DriveUploadChunkState;
   /** Octets of the file the server has as parts. */
@@ -389,9 +392,6 @@ class ChunkedUpload {
     throw new DriveUploadPermanentError("The server did not finish putting the file together.");
   }
 }
-
-/** What a hash-rebuild step reads at least, however slow the server's storage is. */
-const MIN_REBUILD_STEP_BYTES = 1024 * 1024;
 
 /**
  * Parts accepted after one append call. Parts the server lists as accepted
