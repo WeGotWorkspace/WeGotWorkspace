@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Models\DriveShareGrant;
 use App\Models\JmapFileNode;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
@@ -74,10 +75,24 @@ final class FileNodeAccountSupport
             return [$guest->rootKey];
         }
 
-        return array_values(array_unique([
-            ...$this->accountRootsFor($username),
-            ...$this->shareRootKeysFor($username),
-        ]));
+        return $this->rootsWith($username, $this->liveMemberGrantsOf($username));
+    }
+
+    /**
+     * {@see rootsFor()} and {@see memberGrantPairs()} from one read of the member grants, for
+     * the JMAP push check (#2243).
+     *
+     * @return array{roots: list<string>, grantPairs: string}
+     */
+    public function rootsAndGrantPairs(string $username): array
+    {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            return ['roots' => [$guest->rootKey], 'grantPairs' => ''];
+        }
+        $grants = $this->liveMemberGrantsOf($username);
+
+        return ['roots' => $this->rootsWith($username, $grants), 'grantPairs' => $this->grantPairsOf($grants)];
     }
 
     /**
@@ -91,13 +106,43 @@ final class FileNodeAccountSupport
             return '';
         }
 
+        return $this->grantPairsOf($this->liveMemberGrantsOf($username));
+    }
+
+    /**
+     * @return list<DriveShareGrant>
+     */
+    private function liveMemberGrantsOf(string $username): array
+    {
+        return $this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username));
+    }
+
+    /**
+     * @param  list<DriveShareGrant>  $grants
+     */
+    private function grantPairsOf(array $grants): string
+    {
         $pairs = [];
-        foreach ($this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username)) as $grant) {
+        foreach ($grants as $grant) {
             $pairs[] = $grant->id.':'.$grant->access;
         }
         sort($pairs, SORT_STRING);
 
         return implode("\n", $pairs);
+    }
+
+    /**
+     * Own tree + member groups + the share roots of the given live member grants.
+     *
+     * @param  list<DriveShareGrant>  $grants
+     * @return list<string>
+     */
+    private function rootsWith(string $username, array $grants): array
+    {
+        return array_values(array_unique([
+            ...$this->accountRootsFor($username),
+            ...$this->shareRootKeysOf($username, $grants),
+        ]));
     }
 
     /**
@@ -127,13 +172,14 @@ final class FileNodeAccountSupport
     }
 
     /**
+     * @param  list<DriveShareGrant>  $grants
      * @return list<string>
      */
-    private function shareRootKeysFor(string $username): array
+    private function shareRootKeysOf(string $username, array $grants): array
     {
         $accountRoots = $this->accountRootsFor($username);
         $keys = [];
-        foreach ($this->grants->memberShareRootPaths($username, $this->groups->allowedGroupSlugs($username)) as $path) {
+        foreach ($this->grants->shareRootPathsOf($grants) as $path) {
             if ($this->paths->isNotePath($path)) {
                 continue;
             }

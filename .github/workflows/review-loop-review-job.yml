@@ -38,7 +38,8 @@ jobs:
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
       # New commits void an earlier approval. A human push only does this:
-      # re-review is opt-in (draft, then ready) to save agent usage. One
+      # re-review is opt-in (draft, then ready, or the re-review label) to
+      # save agent usage. The label starts a new cycle, like "ready" does. One
       # exception: if the loop has not reviewed since the last "ready", the
       # review asked for is still due (a push right after "ready", such as
       # "Update branch", cancels it), so the new head is reviewed. On a PR
@@ -53,9 +54,13 @@ jobs:
           SENDER: ${{ github.event.sender.login }}
         run: |
           gh pr edit "$PR" --remove-label ready-for-human 2>/dev/null || true
+          if [ "$ACTION" = labeled ]; then
+            # One-shot: the label asks for this review only.
+            gh pr edit "$PR" --remove-label re-review 2>/dev/null || true
+          fi
           if [ "$ACTION" = synchronize ] && [ "$SENDER" != "$BOT" ]; then
             since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
-              | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+              | jq -r '[add[] | select(.event == "ready_for_review" or (.event == "labeled" and .label.name == "re-review")) | .created_at] | max // ""')
             gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
               | jq --arg bot "$BOT" '[add[] | select(.user.login == $bot and .state != "COMMENTED")]' \
               > "$RUNNER_TEMP/loop-reviews.json"
@@ -74,7 +79,7 @@ jobs:
             if [ "$reviewed" -gt 0 ] && ! gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
                 | jq -e --arg m "$marker" 'add | any(.body | contains($m))' > /dev/null; then
               gh pr comment "$PR" --body "$marker
-          Pushes by people do not start an automated review, and any loop approval is dropped. Mark the PR draft and then ready to review again."
+          Pushes by people do not start an automated review, and any loop approval is dropped. Add the re-review label (or mark the PR draft and then ready) to review again."
             fi
             echo "run=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -458,7 +463,7 @@ jobs:
             polish=human
           elif [ "$(jq '.verdict == "approve" and (.polish | length) > 0' "$result")" = true ]; then
             since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
-              | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+              | jq -r '[add[] | select(.event == "ready_for_review" or (.event == "labeled" and .label.name == "re-review")) | .created_at] | max // ""')
             done=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
               | jq --arg bot "$BOT" --arg since "$since" --arg m "$marker" \
                 '[add[] | select(.user.login == $bot and .state == "APPROVED"

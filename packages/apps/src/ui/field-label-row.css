@@ -177,6 +177,40 @@
   margin-block: calc((1.25rem - var(--control-height-sm, 2rem)) / 2);
 }
 
+/* A row with text fields (one, or a list of them): the caption sits on the first field's
+ * line, at the top, never on the middle of a tall control; the description follows right
+ * under the caption. */
+.field-label-row--inline:has(> .field-label-row__control .input) {
+  align-items: start;
+}
+
+.field-label-row--inline:has(> .field-label-row__control .input)
+  > .field-label-row__text
+  > .field-label-row__label,
+.field-label-row--inline:has(> .field-label-row__control .input)
+  > .field-label-row__text
+  > .field-label-row__caption-row {
+  margin-top: calc(
+    (var(--control-height-md, 2.25rem) + var(--input-height-step, 0px) - 1.25rem) / 2
+  );
+}
+
+.field-label-row--inline:has(> .field-label-row__control .input) > .field-label-row__control {
+  margin-block: 0;
+  align-items: flex-start;
+}
+
+/* `fill`: the control runs down beside the description, so a tall list does not push it;
+ * the extra height goes to an empty last row, never between caption and description. */
+.field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input) {
+  grid-template-rows: auto auto 1fr;
+}
+
+.field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input)
+  > .field-label-row__control {
+  grid-row: 1 / -1;
+}
+
 /* A multi-line field: the caption sits on the field's first line, not on its middle. */
 .field-label-row--inline:has(> .field-label-row__control textarea) {
   align-items: baseline;
@@ -222,4 +256,33 @@
 .field-label-row--inline .field-label-row__control > .collection-ghost-select,
 .field-label-row--icon .field-label-row__control > .collection-ghost-select {
   margin-inline: 0;
+}
+
+/* Caption with a chip after it (`labelAccessory`): takes the caption's grid cell. */
+.field-label-row__caption-row {
+  @apply flex min-w-0 flex-wrap items-center gap-2;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+/* The end column has one edge: a quiet control at the end of a row (a ghost or outline
+ * button, a ghost dropdown, an icon button; all clear at rest) pulls its own padding
+ * outward, so its text or icon lines up with tags, switches and fields above and below. */
+.field-label-row--inline
+  .field-label-row__control
+  :is(.button--variant-ghost, .button--variant-outline).button--size-sm:last-child,
+.field-label-row--inline .field-label-row__control .collection-ghost-select:last-child {
+  margin-inline-end: -0.625rem;
+}
+
+.field-label-row--inline
+  .field-label-row__control
+  :is(.button--variant-ghost, .button--variant-outline).button--size-md:last-child {
+  margin-inline-end: -0.75rem;
+}
+
+.field-label-row--inline .field-label-row__control .icon-button--size-md:last-child {
+  margin-inline-end: calc(
+    (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
+  );
 }

@@ -1,5 +1,7 @@
 import { Download, FileArchive, Trash2 } from "lucide-react";
-import { Card } from "@/card/src/card";
+import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
+import { Tag } from "@/tag/src/tag";
+import { formatBytesCompact } from "@/lib/files/file-name-utils";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import { formatHumanDateTime } from "@/admin-core/src/admin-workspace-utils";
 import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
@@ -12,51 +14,46 @@ export type AdminBackupsPaneProps = {
 export function AdminBackupsPane({ controller }: AdminBackupsPaneProps) {
   const backupColumns: DataTableColumn<(typeof controller.updates.backups)[number]>[] = [
     {
-      key: "file",
-      header: "File",
-      headerClassName: "font-medium pb-3 pr-3",
-      cellClassName: "py-3 pr-3",
+      key: "name",
+      header: "Name",
       render: (row) => (
-        <div className="admin-backup-file-row">
-          <FileArchive className="admin-backup-file-icon" />
-          <span className="truncate font-medium">{row.name}</span>
-        </div>
-      ),
-    },
-    {
-      key: "created",
-      header: "Created",
-      headerClassName: "font-medium pb-3 pr-3",
-      cellClassName: "py-3 pr-3 whitespace-nowrap",
-      render: (row) => (
-        <span className="admin-text-muted-65">{formatHumanDateTime(row.modifiedAt)}</span>
+        <span className="list-table__name">
+          <FileArchive aria-hidden />
+          <span>{row.name}</span>
+        </span>
       ),
     },
     {
       key: "version",
       header: "Version",
-      headerClassName: "font-medium pb-3 pr-3",
-      cellClassName: "py-3 pr-3 whitespace-nowrap",
-      render: (row) => (
-        <span className="admin-backup-version-pill">{row.toVersion ?? row.fromVersion ?? "-"}</span>
-      ),
+      shrink: true,
+      render: (row) => {
+        const version = row.toVersion ?? row.fromVersion;
+        return version ? <Tag label={version} /> : null;
+      },
+    },
+    {
+      key: "created",
+      header: "Created",
+      muted: true,
+      shrink: true,
+      render: (row) => formatHumanDateTime(row.modifiedAt),
     },
     {
       key: "size",
       header: "Size",
-      headerClassName: "font-medium pb-3 pr-3",
-      cellClassName: "py-3 pr-3 whitespace-nowrap",
-      render: (row) => (
-        <span className="admin-text-muted-65">{`${Math.round(row.sizeBytes / 1024 / 1024)} MB`}</span>
-      ),
+      align: "end",
+      muted: true,
+      shrink: true,
+      render: (row) => formatBytesCompact(row.sizeBytes),
     },
     {
       key: "actions",
       header: <span className="sr-only">Actions</span>,
-      headerClassName: "font-medium pb-3 w-1",
-      cellClassName: "py-3 whitespace-nowrap text-right",
+      align: "end",
+      shrink: true,
       render: (row) => (
-        <div className="flex items-center gap-1 justify-end">
+        <span className="admin-row-actions">
           {row.downloadable ? (
             <IconActionButton
               label={`Download ${row.name}`}
@@ -71,22 +68,28 @@ export function AdminBackupsPane({ controller }: AdminBackupsPaneProps) {
           >
             <Trash2 className="size-4" />
           </IconActionButton>
-        </div>
+        </span>
       ),
     },
   ];
 
+  if (controller.updates.backups.length === 0) {
+    return (
+      <WorkspacePageSection>
+        <p className="workspace-page-section__lead">
+          No backups yet. One is made before every update.
+        </p>
+      </WorkspacePageSection>
+    );
+  }
+
   return (
-    <Card title="Database backups">
+    <WorkspacePageSection>
       <DataTable
         data={controller.updates.backups}
         columns={backupColumns}
         rowKey={(row) => row.name}
-        className="-mx-6 px-6"
-        tableClassName="w-full text-sm"
-        headerClassName="admin-table-head"
-        rowClassName="admin-data-table-row"
       />
-    </Card>
+    </WorkspacePageSection>
   );
 }

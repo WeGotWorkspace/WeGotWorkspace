@@ -114,7 +114,7 @@ A `429` carries `Retry-After`. The client waits that long and treats push as dow
 
 ### Cost and measurement
 
-Each request boots Laravel and runs a handful of small indexed reads (one per state source, one for the Drive markers). No writes. Measured locally with PHP-FPM and 5 children ([realtime-capacity.md](../realtime-capacity.md#3-s-or-5-s-by-mesh-state-1943), #1943):
+Each request boots Laravel, reads the user's CalDAV collections once for every CalDAV-backed type (notes, calendars, chat, tasks), and reads the address books, the Drive markers and the inbox marker. No writes, except Team provisioning the first time a Team is seen. Measured locally with PHP-FPM and 5 children ([realtime-capacity.md](../realtime-capacity.md#3-s-or-5-s-by-mesh-state-1943), #1943):
 
 | Browsers open | 3 s: requests per minute | busy children (average) | 5 s (mesh linked): requests per minute | busy children (average) |
 |---------------|--------------------------|-------------------------|----------------------------------------|-------------------------|
@@ -123,6 +123,38 @@ Each request boots Laravel and runs a handful of small indexed reads (one per st
 | 32 | 605 | 0.73 | 363 | 0.32 |
 
 The median push request took 41–48 ms. These are laptop numbers with a near-empty data set; a shared host with MySQL is still to measure. `tools/load/rtc-shared-hosting.k6.js` has the push scenario, with the client interval, several accounts and an FPM busy-children sampler. `WGW_JMAP_PUSH_RETRY_MS` is the lever on slow hosts. Once push works, the per-app polls (10 s, chat 4 s, inbox 15 s) can slow down. Their requests are heavier than a push check, so the total can end up lower than today. That is a separate decision after measuring.
+
+#### Making "nothing changed" cheap (#2243)
+
+A push check that finds nothing new is the common case, so its cost is what matters. Before #2243 each CalDAV-backed source read the collections on its own, each time with a Team lookup and a Sabre provisioning check per Team, and the Drive member grants were read three times. On top of that, every JMAP request built all ~50 method handlers only to list the capability URNs.
+
+Now:
+
+- `CalendarCollectionAccess::accessibleInstancesByKind()` reads the personal and Team collections of every requested kind in one query; the four sources take their sync tokens from that one result (Server-Timing entry `caldav`).
+- Team provisioning for calendars and address books checks every Team in one query (`ensureForGroupPrincipals`, `ensureForPrincipals`).
+- `FileNodeAccountSupport::rootsAndGrantPairs()` reads the member grants once for both the roots and the grant part of the Files state.
+- `JmapMethodDispatcher` keeps class names and builds a handler on its first call; `name()` and `capability()` are static. This also speeds up `GET /jmap/session` and every `POST /jmap`.
+
+Same seeded data before and after (one user in four Teams with six own and six shared calendars, five shared folders), all pushed states byte-identical:
+
+| Source | MySQL queries before | after | MySQL p50 before (ms) | after (ms) | SQLite Server-Timing before (ms) | after (ms) |
+|--------|---------------------:|------:|----------------------:|-----------:|---------------------------------:|-----------:|
+| shared CalDAV read | – | (in the rows below) | – | (in the rows below) | – | 3.63 |
+| notes | 23 | 5 | 16.7 | 2.8 | 2.65 | 0.08 |
+| calendars | 24 | 6 | 17.7 | 3.7 | 2.25 | 0.16 |
+| contacts | 19 | 5 | 14.0 | 2.9 | 0.77 | 0.62 |
+| chat | 24 | 7 | 17.4 | 3.8 | 1.57 | 0.03 |
+| files | 8 | 4 | 6.4 | 2.2 | 2.15 | 1.11 |
+| tasks | 23 | 5 | 16.6 | 2.9 | 1.83 | 0.07 |
+| inbox | 1 | 1 | 0.7 | 0.5 | 0.17 | 0.15 |
+| all sources together | 122 | 19 | 89 | 11.0 | | |
+| whole request, booted kernel (with auth) | 129 | 26 | 95.5 | 17.5 | | |
+
+MySQL numbers are MySQL 8 in Docker on a laptop, in-process with a booted kernel; queries are counted with `Questions`, so Sabre's raw PDO reads count too. One source is requested at a time, then all together; per-source "after" numbers include the shared CalDAV read. Server-Timing is SQLite with all sources requested.
+
+Whole request over HTTP (`php -S` with opcache, SQLite, a laptop, 40 requests): push check p50 61.5 ms → 15.9 ms (p95 70.1 → 16.7), `GET /jmap/session` 50.0 → 9.2 ms, `/health` unchanged at about 6 ms. Most of the old cost was the handler construction (about 35 ms per request), not the state reads.
+
+A "something changed" marker per user or per install, so a check could skip the state reads, was not built: every write path (apps, DAV clients, Team and share changes) would have to bump it, and the reads are now cheap enough. Hosted numbers (`WGW_JMAP_PUSH_SERVER_TIMING=1` on a shared host) are still to come.
 
 ## Client: one hub, pluggable transports
 

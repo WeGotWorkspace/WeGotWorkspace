@@ -6,15 +6,13 @@ namespace App\Services\Notes;
 
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
-use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use App\Models\NoteYjsState;
 use App\Services\Calendars\CalendarCollectionAccess;
-use App\Services\Collab\DocCollabDocumentService;
+use App\Services\Collab\CollabTextState;
 use App\Services\Notes\Conversion\NoteJournalConverter;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use PDOException;
 
 /**
@@ -28,7 +26,8 @@ final class NoteCollaborativeWrite
         private readonly NoteRepository $notes,
         private readonly NoteJournalConverter $converter,
         private readonly CalendarCollectionAccess $collectionAccess,
-        private readonly NoteYjsProjection $yjsProjection,
+        private readonly CollabTextState $core,
+        private readonly NoteTextFields $fields,
     ) {}
 
     /**
@@ -50,128 +49,61 @@ final class NoteCollaborativeWrite
 
         $bytes = $body['yjs'];
         /** @var array{instance: CalendarInstance, object: CalendarObject, etag: string} $written */
-        $written = DB::connection('wgw')->transaction(function () use (
-            $located,
-            $noteId,
-            $body,
-            $bytes,
-            $ifMatch,
-            $ifNoneMatch,
-            $externalWriteSeen,
-        ): array {
-            $object = CalendarObject::query()
-                ->whereKey($located['object']->getKey())
-                ->lockForUpdate()
-                ->first();
-            if ($object === null) {
-                throw new ApiHttpException(404, 'Note not found.', 'not_found');
-            }
+        $written = $this->core->locked(
+            $this->fields,
+            $located['object'],
+            'Note not found.',
+            function (CalendarObject $object, ?Model $stored) use (
+                $located,
+                $noteId,
+                $body,
+                $bytes,
+                $ifMatch,
+                $ifNoneMatch,
+                $externalWriteSeen,
+            ): array {
+                $storedEtag = $stored === null ? null : $this->core->stateEtag($stored);
+                $this->core->assertStatePrecondition($ifMatch, $ifNoneMatch, $storedEtag);
+                NoteArchiveGuard::assertNotArchived($this->converter, $object);
+                $this->core->assertNoUnseenExternalWrite($this->fields, $stored, $object, $externalWriteSeen);
+                $this->core->assertStateSize($this->fields, $bytes);
 
-            $stored = NoteYjsState::query()
-                ->where('calendar_object_id', (int) $object->id)
-                ->first();
-            $storedEtag = $stored === null
-                ? null
-                : DocCollabDocumentService::sidecarEtag($this->binaryString($stored->getAttributes()['state'] ?? $stored->state));
-            $this->assertStatePrecondition($ifMatch, $ifNoneMatch, $storedEtag);
-            NoteArchiveGuard::assertNotArchived($this->converter, $object);
-            $this->assertNoUnseenExternalWrite($stored, $object, $externalWriteSeen);
+                $instance = $located['instance'];
+                $patch = ['body' => $body['markdown']];
+                if (array_key_exists('title', $body)) {
+                    $patch['title'] = $body['title'];
+                }
+                $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                $ics = $this->converter->mergeIntoIcs($raw, $patch);
+                try {
+                    $this->backends->calBackend()->updateCalendarObject(
+                        [(int) $instance->calendarid, (int) $instance->id],
+                        (string) $object->uri,
+                        $ics,
+                    );
+                } catch (QueryException|PDOException $exception) {
+                    NoteUidConflict::throwIf($exception);
+                    throw $exception;
+                }
 
-            $instance = $located['instance'];
-            $patch = ['body' => $body['markdown']];
-            if (array_key_exists('title', $body)) {
-                $patch['title'] = $body['title'];
-            }
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            $ics = $this->converter->mergeIntoIcs($raw, $patch);
-            try {
-                $this->backends->calBackend()->updateCalendarObject(
-                    [(int) $instance->calendarid, (int) $instance->id],
-                    (string) $object->uri,
-                    $ics,
-                );
-            } catch (QueryException|PDOException $exception) {
-                NoteUidConflict::throwIf($exception);
-                throw $exception;
-            }
+                $object = CalendarObject::query()
+                    ->where('calendarid', (int) $instance->calendarid)
+                    ->where('uid', $noteId)
+                    ->first();
+                if ($object === null) {
+                    throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
+                }
 
-            $object = CalendarObject::query()
-                ->where('calendarid', (int) $instance->calendarid)
-                ->where('uid', $noteId)
-                ->first();
-            if ($object === null) {
-                throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
-            }
-
-            $this->yjsProjection->store($object, $bytes);
-
-            return [
-                'instance' => $instance,
-                'object' => $object,
-                'etag' => DocCollabDocumentService::sidecarEtag($bytes),
-            ];
-        });
+                return [
+                    'instance' => $instance,
+                    'object' => $object,
+                    'etag' => $this->core->store($this->fields, $object, $bytes),
+                ];
+            },
+        );
 
         $this->notes->indexObject($username, $written['instance'], $written['object']);
 
         return $written['etag'];
-    }
-
-    /**
-     * #1381: a client that holds the current state tag would still write over
-     * an outside CalDAV edit it never saw. While SUMMARY or DESCRIPTION is not
-     * the text the state was written from, the save must name the content it
-     * saw in `X-Wgw-External-Write`. A metadata-only change does not refuse.
-     */
-    private function assertNoUnseenExternalWrite(
-        ?NoteYjsState $stored,
-        CalendarObject $object,
-        ?string $externalWriteSeen,
-    ): void {
-        if ($stored === null || ! $this->yjsProjection->isExternalContentWrite($stored, $object)) {
-            return;
-        }
-        if ($this->yjsProjection->namesContent((string) $externalWriteSeen, $object)) {
-            return;
-        }
-
-        // The message is the code too: the shared client reads `error`.
-        throw new ApiHttpException(409, 'external_write', 'external_write');
-    }
-
-    private function assertStatePrecondition(?string $ifMatch, ?string $ifNoneMatch, ?string $storedEtag): void
-    {
-        $ifMatch = trim((string) $ifMatch);
-        $ifNoneMatch = trim((string) $ifNoneMatch);
-
-        if ($ifMatch === '' && $ifNoneMatch === '') {
-            if ($storedEtag !== null) {
-                throw new ApiHttpException(
-                    428,
-                    'If-Match or If-None-Match is required.',
-                    'precondition_required',
-                );
-            }
-
-            return;
-        }
-
-        if ($ifNoneMatch === '*' && $storedEtag !== null) {
-            throw new ApiHttpException(412, 'Yjs state already exists.', 'precondition_failed');
-        }
-        if ($ifMatch !== '' && ! OptimisticConcurrency::ifMatchSatisfied($ifMatch, $storedEtag)) {
-            throw new ApiHttpException(412, 'Yjs state etag does not match If-Match.', 'precondition_failed');
-        }
-    }
-
-    private function binaryString(mixed $value): string
-    {
-        if (is_resource($value)) {
-            $contents = stream_get_contents($value);
-
-            return is_string($contents) ? $contents : '';
-        }
-
-        return is_string($value) ? $value : '';
     }
 }

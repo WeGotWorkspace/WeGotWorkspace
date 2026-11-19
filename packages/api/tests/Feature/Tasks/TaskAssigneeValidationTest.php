@@ -291,27 +291,22 @@ final class TaskAssigneeValidationTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('dave@example.test', $this->storedIcs($taskId));
     }
 
-    public function test_a_hidden_members_address_is_stored_like_an_address_with_no_account(): void
+    public function test_an_address_of_a_reader_or_an_unassignable_member_is_refused(): void
     {
-        // erin shares no Team with alice, so to erin alice's address is an external guest.
+        // carol can only view the list; erin shares no Team with writer alice.
         $this->shareWithErin();
-        $answers = [];
-        foreach (['alice@example.test', 'nobody@outside.test'] as $address) {
+        foreach (['carol@example.test', 'alice@example.test'] as $address) {
             $taskId = $this->createTask();
             $url = '/api/v1/tasks/items/'.$taskId;
             $etag = (string) $this->asUser('erin')->getJson($url)->assertOk()->json('etag');
-            $participants = $this->asUser('erin')->patchJson($url, ['participants' => [
-                'e:'.$address => ['@type' => 'Participant', 'name' => 'Ally', 'email' => $address, 'roles' => ['attendee']],
-            ]], $this->withIfMatch($etag))->assertOk()->json('participants');
+            $this->asUser('erin')->patchJson($url, ['participants' => [
+                'e:'.$address => ['@type' => 'Participant', 'email' => $address, 'roles' => ['attendee']],
+            ]], $this->withIfMatch($etag))
+                ->assertStatus(422)
+                ->assertJsonPath('code', 'invalid_participant');
 
-            $answers[] = str_replace($address, '<address>', (string) json_encode($participants));
-            $stored = $this->storedIcs($taskId);
-            $this->assertStringNotContainsString('X-WGW-USERNAME', $stored);
-            $this->assertStringNotContainsString('CN=Alice', $stored);
+            $this->assertStringNotContainsString($address, $this->storedIcs($taskId));
         }
-
-        $this->assertSame($answers[0], $answers[1]);
-        $this->assertStringNotContainsString('"username":"alice"', $answers[0]);
     }
 
     public function test_a_reader_sees_only_the_members_they_may_see(): void

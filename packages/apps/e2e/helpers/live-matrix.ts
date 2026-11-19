@@ -49,7 +49,7 @@ async function login(user: string): Promise<Login> {
 }
 
 /** A cached token for API calls from the test (not for a browser, which needs its own login). */
-async function token(user: string): Promise<string> {
+export async function apiToken(user: string): Promise<string> {
   const hit = logins.get(user);
   if (hit && Date.now() - hit.at < 300_000) return hit.accessToken;
   const fresh = await login(user);
@@ -70,7 +70,7 @@ export async function api(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: `Bearer ${await token(user)}`,
+        Authorization: `Bearer ${await apiToken(user)}`,
         ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),

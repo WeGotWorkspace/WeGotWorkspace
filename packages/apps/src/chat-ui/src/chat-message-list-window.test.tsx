@@ -74,10 +74,11 @@ function mountedIds(): string[] {
  * Rows report no size, so the window works from the estimates.
  */
 beforeEach(() => {
-  // Midday, local time: the newest message (an hour ago) is always "Today",
-  // even when the suite runs just after midnight.
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date(2026, 10, 18, 12, 0, 0));
+  // Noon, local time: the newest message sits 1h14m before "now", which would
+  // fall on yesterday when the suite runs between midnight and about 01:15.
+  const noon = new Date();
+  noon.setHours(12, 0, 0, 0);
+  vi.useFakeTimers({ toFake: ["Date"], now: noon });
   renders.length = 0;
   installListLayoutStubs(VIEWPORT_PX);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (

@@ -425,7 +425,7 @@ final class NoteRepository
      * Raw Yjs bytes for one note, or null when the note exists and has no row.
      * List and ordinary detail reads do not call this.
      *
-     * @return array{bytes: string, etag: string, externalWrite: bool}|null
+     * @return array{bytes: string, etag: string, externalWrite: bool, contentTag: string|null}|null
      */
     public function yjsSnapshot(string $username, string $noteId): ?array
     {
@@ -448,6 +448,7 @@ final class NoteRepository
             // The state tag moves only when the bytes move. The journal ETag stays on the JSON GET.
             'etag' => DocCollabDocumentService::sidecarEtag($bytes),
             'externalWrite' => $this->yjsProjection->isExternalContentWrite($row, $located['object']),
+            'contentTag' => $this->yjsProjection->stateContentTag($row),
         ];
     }
 

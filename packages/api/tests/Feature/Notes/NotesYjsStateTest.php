@@ -165,6 +165,30 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->assertContent(self::BINARY);
     }
 
+    public function test_format_yjs_names_the_content_tag_of_the_text_the_state_holds(): void
+    {
+        $note = $this->createNote();
+        $this->patchNote($note['id'], $note['etag'], ['yjs' => self::YJS])->assertOk();
+        $json = $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->assertOk();
+        $contentEtag = (string) $json->json('contentEtag');
+
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertHeader(CollabExternalWrite::CONTENT_TAG_HEADER, $contentEtag);
+
+        // A later text write that bypasses the state keeps naming the old text,
+        // so a client sees the two reads are not one save.
+        $this->patchNote($note['id'], (string) $json->headers->get('ETag'), ['body' => 'Changed elsewhere'])
+            ->assertOk();
+        $after = $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->json('contentEtag');
+        $this->assertNotSame($contentEtag, $after);
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertHeader(CollabExternalWrite::CONTENT_TAG_HEADER, $contentEtag);
+    }
+
     public function test_yjs_write_failure_rolls_back_description_and_etag(): void
     {
         $note = $this->createNote(body: 'original');

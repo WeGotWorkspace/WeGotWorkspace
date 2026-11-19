@@ -26,12 +26,12 @@ final class ChatMessageGetMethod implements JmapMethodInterface
         private readonly ChatMessageRepository $messages,
     ) {}
 
-    public function name(): string
+    public static function name(): string
     {
         return 'ChatMessage/get';
     }
 
-    public function capability(): string
+    public static function capability(): string
     {
         return JmapCapabilities::CHAT;
     }

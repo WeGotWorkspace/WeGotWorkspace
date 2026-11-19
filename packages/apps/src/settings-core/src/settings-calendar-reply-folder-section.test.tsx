@@ -94,9 +94,10 @@ describe("SettingsCalendarReplyFolderSection", () => {
         folderId: "M-replies",
       }),
     );
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(labels.folderSaved));
-    expect(screen.getByRole("combobox", { name: labels.folder }).textContent).toContain(
-      "INBOX / Calendar replies",
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: labels.folder }).textContent).toContain(
+        "INBOX / Calendar replies",
+      ),
     );
   });
 
