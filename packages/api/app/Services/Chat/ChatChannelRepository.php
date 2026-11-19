@@ -327,7 +327,7 @@ final class ChatChannelRepository
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
-        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance, $this->isMeeting($instance));
 
         // Channel delete removes messages; chat_channel_meta cascades with it.
         $this->backends->calBackend()->deleteCalendar($this->collections->backendId($instance));
@@ -431,7 +431,7 @@ final class ChatChannelRepository
         if ($isDefault) {
             $rights['mayShare'] = false;
             $rights['mayDelete'] = false;
-        } elseif (! $this->collectionAccess->mayDeleteGroupOwned($username, $instance)) {
+        } elseif (! $this->collectionAccess->mayDeleteGroupOwned($username, $instance, $kind === ChatChannelMeta::KIND_MEETING)) {
             $rights['mayDelete'] = false;
         }
         $roster = $this->rosterUsernames($instance, $groupSlug);
@@ -527,14 +527,15 @@ final class ChatChannelRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
-        $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
+        $kind = $this->isMeeting($instance) ? ChatChannelMeta::KIND_MEETING : ChatChannelMeta::KIND_CHANNEL;
+        $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance, $kind === ChatChannelMeta::KIND_MEETING);
         if ($newGroupSlug === null) {
             $principalUri = $this->collections->principalUri($username);
         } else {
             if (! in_array($newGroupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
-            $this->collectionAccess->assertMayAddToTeam($username, $newGroupSlug);
+            $this->collectionAccess->assertMayAddChannelToTeam($username, $newGroupSlug, $kind);
             $principalUri = AdminConstants::GROUP_PREFIX.$newGroupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
@@ -791,6 +792,11 @@ final class ChatChannelRepository
         }
 
         return $map;
+    }
+
+    private function isMeeting(CalendarInstance $instance): bool
+    {
+        return $this->metaForCalendar((int) $instance->calendarid)?->kind === ChatChannelMeta::KIND_MEETING;
     }
 
     private function metaForCalendar(int $calendarId): ?ChatChannelMeta

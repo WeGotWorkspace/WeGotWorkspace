@@ -143,6 +143,27 @@ final class TeamCollectionRoleTest extends WgwDatabaseTestCase
         $this->asUser('dave')->postJson('/api/v1/chat/channels', [
             'name' => 'Stand-up', 'kind' => 'meeting', 'groupSlug' => self::TEAM,
         ])->assertCreated()->assertJsonPath('groupSlug', self::TEAM);
+        $room = (string) $this->asUser('dave')->postJson('/api/v1/chat/channels', [
+            'name' => 'Stand-up 2', 'kind' => 'meeting', 'groupSlug' => self::TEAM,
+        ])->assertCreated()->json('id');
+
+        // As before: only an organization admin deletes or moves out a Team meeting room.
+        $this->asUser('dave')->deleteJson('/api/v1/chat/channels/'.$room)->assertForbidden();
+        $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$room)->assertOk()
+            ->assertJsonPath('myRights.mayDelete', true);
+        $this->asUser('alice')->patchJson('/api/v1/chat/channels/'.$room, ['groupSlug' => null])->assertOk()
+            ->assertJsonPath('groupSlug', null);
+        $other = (string) $this->asUser('dave')->postJson('/api/v1/chat/channels', [
+            'name' => 'Stand-up 3', 'kind' => 'meeting', 'groupSlug' => self::TEAM,
+        ])->assertCreated()->json('id');
+        $this->asUser('alice')->deleteJson('/api/v1/chat/channels/'.$other)->assertOk();
+
+        // A member moves their own meeting room into their Team.
+        $mine = (string) $this->asUser('dave')->postJson('/api/v1/chat/channels', [
+            'name' => 'Mine', 'kind' => 'meeting',
+        ])->assertCreated()->json('id');
+        $this->asUser('dave')->patchJson('/api/v1/chat/channels/'.$mine, ['groupSlug' => self::TEAM])->assertOk()
+            ->assertJsonPath('groupSlug', self::TEAM);
 
         $own = $this->calendarSet('dave', ['create' => ['c' => ['name' => 'Private']]]);
         $this->assertArrayHasKey('c', $own['created']);
