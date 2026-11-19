@@ -20,6 +20,13 @@ import {
   type Tab,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /** SAVE_MAX_WAIT_MS is 3 s; the rest is slack for the request and the list refresh. */
@@ -72,7 +79,7 @@ test("a save lands while typing continues, and the tail follows without a keystr
     await a.locator(".list-item__button", { hasText: title }).first().click({ timeout: 15_000 });
     await a.locator(".note-detail-view__title").waitFor({ timeout: 15_000 });
     await sleep(1_500);
-    const editor = a.locator(".ProseMirror").first();
+    const editor = a.locator(NOTE_EDITOR).first();
     await editor.waitFor({ timeout: 15_000 });
     await editor.click();
     await editor.press("End");
@@ -119,7 +126,7 @@ test("a save lands while typing continues, and the tail follows without a keystr
     expect(await converge([a, b], uid, 30_000), "both tabs mirror the server").toEqual({});
     await showAllItems(a);
     await a.locator(".list-item__button", { hasText: title }).first().click({ timeout: 15_000 });
-    await expect(a.locator(".ProseMirror").first()).toContainText(marker, { timeout: 15_000 });
+    await expect(a.locator(NOTE_EDITOR).first()).toContainText(marker, { timeout: 15_000 });
   } finally {
     for (const event of events)
       test.info().annotations.push({ type: "page error", description: event });
@@ -161,7 +168,7 @@ test("text typed while a save is on its way is saved without another keystroke",
     await a.locator(".list-item__button", { hasText: title }).first().click({ timeout: 15_000 });
     await a.locator(".note-detail-view__title").waitFor({ timeout: 15_000 });
     await sleep(1_500);
-    const editor = a.locator(".ProseMirror").first();
+    const editor = a.locator(NOTE_EDITOR).first();
     await editor.waitFor({ timeout: 15_000 });
     await editor.click();
     await editor.press("End");

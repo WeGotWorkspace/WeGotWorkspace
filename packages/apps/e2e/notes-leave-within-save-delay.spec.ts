@@ -23,19 +23,26 @@ import {
   warmUpApp,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /** The editor's text, without collaboration carets and their name labels. */
 function editorText(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const editor = document.querySelector(".ProseMirror");
+  return page.evaluate((selector) => {
+    const editor = document.querySelector(selector);
     if (!editor) return "";
     const copy = editor.cloneNode(true) as HTMLElement;
     copy
       .querySelectorAll('[class*="collaboration-carets"], [class*="collaboration-cursor"]')
       .forEach((node) => node.remove());
     return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
-  });
+  }, NOTE_EDITOR);
 }
 
 const occurrences = (text: string, part: string) => text.split(part).length - 1;
@@ -48,7 +55,7 @@ function savesSentence(request: Request, pathPart: string, sentence: string): bo
 
 async function openEditor(page: Page, path: string): Promise<void> {
   await page.goto(path);
-  await page.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+  await page.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
 }
 
 test("a note left within the save delay reaches the server once", async ({ browser }) => {
@@ -80,7 +87,7 @@ test("a note left within the save delay reaches the server once", async ({ brows
   try {
     const a = await openNotesTab(owner, OWNER, "A", events);
     await openEditor(a, pathX);
-    const body = a.locator(".ProseMirror").first();
+    const body = a.locator(NOTE_EDITOR).first();
     await body.click();
     await a.keyboard.press("ControlOrMeta+End");
 
@@ -108,7 +115,7 @@ test("a note left within the save delay reaches the server once", async ({ brows
     await expect.poll(() => editorText(b), { timeout: 30_000 }).toContain(sentence);
 
     await a.locator(".list-item__button", { hasText: titleX }).first().click({ timeout: 15_000 });
-    await a.locator(".ProseMirror").first().waitFor({ timeout: 30_000 });
+    await a.locator(NOTE_EDITOR).first().waitFor({ timeout: 30_000 });
     await sleep(3_000);
     await expect
       .poll(async () => occurrences(await editorText(a), sentence), {
@@ -140,7 +147,7 @@ test("a document left for the Docs home within the save delay reaches the server
   try {
     const a = await owner.newPage();
     await loginToDocs(a, searchPath);
-    const editor = a.locator(".ProseMirror").first();
+    const editor = a.locator(NOTE_EDITOR).first();
     await editor.click();
     await a.keyboard.press("ControlOrMeta+End");
 
@@ -154,7 +161,7 @@ test("a document left for the Docs home within the save delay reaches the server
 
     const b = await other.newPage();
     await b.goto(docsUrlForFile(`/${searchPath}`));
-    await b.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await b.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
     await expect.poll(() => editorText(b), { timeout: 30_000 }).toContain(sentence);
   } finally {
     await owner.close().catch(() => undefined);

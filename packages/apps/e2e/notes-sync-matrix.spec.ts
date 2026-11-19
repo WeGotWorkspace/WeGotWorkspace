@@ -29,6 +29,13 @@ import {
   type Tab,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 type Tabs = "one" | "same" | "diff";
 type Net = "on" | "off" | "both" | "aOff" | "bOff";
 type Case = { action: Action; tabs: Tabs; net: Net; id: string; title: string; uid: string };
@@ -56,7 +63,7 @@ async function openRow(tab: Tab, title: string) {
 }
 
 async function editor(tab: Tab) {
-  const body = tab.locator(".ProseMirror").first();
+  const body = tab.locator(NOTE_EDITOR).first();
   await body.waitFor({ timeout: 15_000 });
   return body;
 }

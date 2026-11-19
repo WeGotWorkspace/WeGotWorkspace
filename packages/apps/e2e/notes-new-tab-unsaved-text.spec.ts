@@ -17,19 +17,26 @@ import {
   warmUpApp,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /** The editor's text, without collaboration carets and their name labels. */
 function editorText(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const editor = document.querySelector(".ProseMirror");
+  return page.evaluate((selector) => {
+    const editor = document.querySelector(selector);
     if (!editor) return "";
     const copy = editor.cloneNode(true) as HTMLElement;
     copy
       .querySelectorAll('[class*="collaboration-carets"], [class*="collaboration-cursor"]')
       .forEach((node) => node.remove());
     return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
-  });
+  }, NOTE_EDITOR);
 }
 
 const occurrences = (text: string, part: string) => text.split(part).length - 1;
@@ -42,7 +49,7 @@ function isBodySave(request: Request, uid: string): boolean {
 
 async function openNote(page: Page, path: string): Promise<void> {
   await page.goto(path);
-  await page.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+  await page.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
 }
 
 test("a tab opened while another tab's save is pending keeps that tab's text", async ({
@@ -67,7 +74,7 @@ test("a tab opened while another tab's save is pending keeps that tab's text", a
   try {
     const a = await openNotesTab(context, OWNER, "A", events);
     await openNote(a, path);
-    const body = a.locator(".ProseMirror").first();
+    const body = a.locator(NOTE_EDITOR).first();
 
     // A first save gives the server a collaboration state, so tab B adopts a
     // real snapshot below instead of seeding from the text.
@@ -129,8 +136,8 @@ test("a tab opened while another tab's save is pending keeps that tab's text", a
 
     await a.reload();
     await b.reload();
-    await a.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
-    await b.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await a.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
+    await b.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
     const c = await openNotesTab(fresh, OWNER, "C", events);
     await openNote(c, path);
     await sleep(3_000);

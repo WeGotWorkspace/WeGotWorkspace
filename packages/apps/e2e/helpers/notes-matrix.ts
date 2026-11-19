@@ -4,6 +4,13 @@
 import type { Browser, BrowserContext } from "@playwright/test";
 import { api, openUser, OWNER, sleep, TEAMMATE, type Tab } from "./live-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 export { api, openUser, OWNER, setTabOffline, sleep, TEAMMATE, type Tab } from "./live-matrix";
 
 /** The shared notebook both users see: a group with the owner and the teammate. */
@@ -129,7 +136,7 @@ export async function warmUpApp(browser: Browser): Promise<void> {
       .click()
       .catch(() => undefined);
     await tab.locator(".list-item__button", { hasText: title }).first().click({ timeout: 30_000 });
-    await tab.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await tab.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
     await tab.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
   } finally {
     await context.close().catch(() => undefined);

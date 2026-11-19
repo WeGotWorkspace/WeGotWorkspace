@@ -160,16 +160,14 @@ test.describe("Drive upload recovery (live app)", () => {
     expect(page.isClosed()).toBe(false);
 
     // The uploader outlives the Drive view: the warning does too.
-    await page.getByRole("button", { name: "Drive, switch apps" }).click();
-    await page.getByRole("menuitem", { name: /^Notes/ }).click();
+    await page.getByRole("link", { name: /^Open Notes/ }).click();
     await expect(page).toHaveURL(/\/notes/, { timeout: 30_000 });
     await expect(uploadInput(page)).toHaveCount(0);
     await page.waitForTimeout(3_500);
     expect(await closeAsksToLeave(page)).toBe(true);
 
     // Back in Drive, with a second Drive tab waiting on the lock.
-    await page.getByRole("button", { name: /switch apps/ }).click();
-    await page.getByRole("menuitem", { name: /^Drive/ }).click();
+    await page.getByRole("link", { name: /^Open Drive/ }).click();
     await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
     const tabB = await page.context().newPage();
     await openMyDrive(tabB);

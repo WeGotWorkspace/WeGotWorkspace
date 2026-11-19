@@ -21,6 +21,13 @@ import {
   type Tab,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 async function serverCount(): Promise<number> {
@@ -74,7 +81,7 @@ test("create whose response is lost, then reopened: one note, listed once", asyn
     // Create offline, then reconnect, so the one create POST goes out on its own.
     await setTabOffline(a, true);
     await a.getByRole("button", { name: "New note" }).click();
-    const body = a.locator(".ProseMirror").first();
+    const body = a.locator(NOTE_EDITOR).first();
     await body.waitFor({ timeout: 15_000 });
     await body.click();
     await body.pressSequentially(marker, { delay: 20 });

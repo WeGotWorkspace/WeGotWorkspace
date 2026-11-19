@@ -24,24 +24,31 @@ import {
   warmUpApp,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /** The editor's text, without collaboration carets and their name labels. */
 function editorText(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const editor = document.querySelector(".ProseMirror");
+  return page.evaluate((selector) => {
+    const editor = document.querySelector(selector);
     if (!editor) return "";
     const copy = editor.cloneNode(true) as HTMLElement;
     copy
       .querySelectorAll('[class*="collaboration-carets"], [class*="collaboration-cursor"]')
       .forEach((node) => node.remove());
     return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
-  });
+  }, NOTE_EDITOR);
 }
 
 async function openNote(page: Page, path: string): Promise<void> {
   await page.goto(path);
-  await page.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+  await page.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
 }
 
 test("a peer in another browser that drops updates converges without a reload", async ({
@@ -75,7 +82,7 @@ test("a peer in another browser that drops updates converges without a reload", 
       await expect.poll(() => editorText(page), { timeout: 60_000 }).toContain(start);
     }
 
-    const body = a2.locator(".ProseMirror").first();
+    const body = a2.locator(NOTE_EDITOR).first();
     await body.click();
     await a2.keyboard.press("ControlOrMeta+End");
 

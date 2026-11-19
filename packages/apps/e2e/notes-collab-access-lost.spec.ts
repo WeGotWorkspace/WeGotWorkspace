@@ -17,6 +17,13 @@ import {
   warmUpApp,
 } from "./helpers/notes-matrix";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test("a member removed from the group loses the open live note", async ({ browser }) => {
@@ -38,10 +45,10 @@ test("a member removed from the group loses the open live note", async ({ browse
   try {
     const admin = await openNotesTab(adminContext, OWNER, "admin", events);
     await admin.goto(path);
-    await admin.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await admin.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
     const member = await openNotesTab(memberContext, TEAMMATE, "member", events);
     await member.goto(path);
-    await member.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await member.locator(NOTE_EDITOR).first().waitFor({ timeout: 60_000 });
 
     // The session is live: each roster lists the other user.
     const adminRoster = admin.getByLabel("Connected editors");

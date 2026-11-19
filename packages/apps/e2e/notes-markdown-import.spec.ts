@@ -8,6 +8,13 @@
 import { expect, test } from "./helpers/live-test";
 import { prepareNotesForOfflineSync } from "./helpers/notes-live";
 
+/**
+ * The live note body. While the collab session joins, a read-only stand-in shows
+ * the served text; only the editable body is the editor a spec may type in or
+ * read the collab state from.
+ */
+const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+
 const PNG_1PX =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
@@ -52,7 +59,7 @@ test.describe("Notes Markdown import (live app)", () => {
     const row = page.locator(".list-item__button", { hasText: title });
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.click();
-    const editor = page.locator(".ProseMirror");
+    const editor = page.locator(NOTE_EDITOR);
     await expect(editor).toContainText(token, { timeout: 20_000 });
     await expect(page.getByText("travel").first()).toBeVisible();
     const image = editor.locator("img").first();
@@ -68,12 +75,12 @@ test.describe("Notes Markdown import (live app)", () => {
       timeout: 30_000,
     });
     await other.locator(".list-item__button", { hasText: title }).click();
-    await expect(other.locator(".ProseMirror")).toContainText(token, { timeout: 20_000 });
+    await expect(other.locator(NOTE_EDITOR)).toContainText(token, { timeout: 20_000 });
     await other.close();
 
     await page.reload();
     await page.locator(".list-item__button", { hasText: title }).click();
-    await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 20_000 });
+    await expect(page.locator(NOTE_EDITOR)).toContainText(token, { timeout: 20_000 });
     await expect
       .poll(
         () =>
