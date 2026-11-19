@@ -6,7 +6,8 @@
       "mayRead": { "type": "boolean" },
       "mayWrite": { "type": "boolean" },
       "mayShare": { "type": "boolean", "description": "May modify shareWith. True for personal calendar owners and group members." },
-      "mayDelete": { "type": "boolean", "description": "On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false." }
+      "mayDelete": { "type": "boolean", "description": "On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false." },
+      "mayRename": { "type": "boolean", "description": "Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants." }
     },
     "additionalProperties": false,
     "description": "JMAP CalendarRights."
@@ -38,6 +39,7 @@
         "enum": ["personal", "group"],
         "description": "Storage scope: personal (principals/{username}) or group (principals/groups/{slug})."
       },
+      "projectId": { "type": ["string", "null"], "description": "The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead." },
       "groupSlug": {
         "type": ["string", "null"],
         "description": "Group slug when scope is group; null for personal calendars."
@@ -69,6 +71,7 @@
       "subscriptionId": null,
       "scope": "personal",
       "groupSlug": null,
+      "projectId": null,
       "shareWith": null,
       "myRights": {
         "mayRead": true,

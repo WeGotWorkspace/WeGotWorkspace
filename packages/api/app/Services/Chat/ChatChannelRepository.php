@@ -63,6 +63,7 @@ final class ChatChannelRepository
     {
         $instances = $this->accessibleChatInstances($username);
         $metaByCalendar = $this->metaForInstances($instances);
+        $this->collectionAccess->primeProjects($instances);
 
         $list = [];
         foreach ($instances as $instance) {
@@ -260,6 +261,7 @@ final class ChatChannelRepository
             ['topic', 'shareWith', 'groupSlug'],
             'Sharees can only change their own channel name and color.',
         );
+        $this->collectionAccess->assertProjectPatchAllowed($instance, $payload);
 
         $mutations = [];
         if (array_key_exists('name', $payload)) {
@@ -436,7 +438,8 @@ final class ChatChannelRepository
             'groupSlug' => $groupSlug,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            'projectId' => $this->collectionAccess->projectIdOf($instance),
+            'myRights' => [...$rights, 'mayRename' => $this->collectionAccess->mayRename($instance)],
             'isDefault' => $isDefault,
             'topic' => $meta?->topic,
             'guestRoomCode' => $meta?->room_code,

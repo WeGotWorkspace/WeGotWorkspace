@@ -49,7 +49,9 @@ final class NotebookRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
-        $lists = $this->accessibleNotebookInstances($username)
+        $instances = $this->accessibleNotebookInstances($username);
+        $this->collectionAccess->primeProjects($instances);
+        $lists = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -174,6 +176,7 @@ final class NotebookRepository
                 ['description', 'shareWith', 'groupSlug'],
                 'Sharees can only change their own notebook name and color.',
             );
+            $this->collectionAccess->assertProjectPatchAllowed($instance, $payload);
 
             $mutations = $this->collectionAccess->propertyMutations($payload);
 
@@ -559,7 +562,8 @@ final class NotebookRepository
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            'projectId' => $this->collectionAccess->projectIdOf($instance),
+            'myRights' => [...$rights, 'mayRename' => $this->collectionAccess->mayRename($instance)],
         ];
     }
 

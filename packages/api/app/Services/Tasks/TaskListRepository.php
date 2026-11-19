@@ -49,8 +49,9 @@ final class TaskListRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
-        $lists = $this->collectionAccess
-            ->accessibleInstances($username, CollectionKind::TaskList)
+        $instances = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList);
+        $this->collectionAccess->primeProjects($instances);
+        $lists = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -162,6 +163,7 @@ final class TaskListRepository
                 ['description', 'shareWith', 'groupSlug'],
                 'Sharees can only change their own list name and color.',
             );
+            $this->collectionAccess->assertProjectPatchAllowed($instance, $payload);
 
             $mutations = $this->collectionAccess->propertyMutations($payload);
 
@@ -484,7 +486,8 @@ final class TaskListRepository
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            'projectId' => $this->collectionAccess->projectIdOf($instance),
+            'myRights' => [...$rights, 'mayRename' => $this->collectionAccess->mayRename($instance)],
         ];
     }
 

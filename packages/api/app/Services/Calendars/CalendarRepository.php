@@ -48,7 +48,9 @@ final class CalendarRepository
     /** @return array<string, mixed> */
     public function list(string $username): array
     {
-        $calendars = $this->accessibleVeventInstances($username)
+        $instances = $this->accessibleVeventInstances($username);
+        $this->collectionAccess->primeProjects($instances);
+        $calendars = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -168,6 +170,7 @@ final class CalendarRepository
                 ['description', 'timeZone', 'shareWith', 'groupSlug'],
                 'Sharees can only change their own calendar name and color.',
             );
+            $this->collectionAccess->assertProjectPatchAllowed($instance, $payload);
 
             $mutations = $this->collectionAccess->propertyMutations($payload);
             if (array_key_exists('timeZone', $payload)) {
@@ -565,7 +568,8 @@ final class CalendarRepository
             'scope' => $isGroup ? 'group' : 'personal',
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
-            'myRights' => $rights,
+            'projectId' => $this->collectionAccess->projectIdOf($instance),
+            'myRights' => [...$rights, 'mayRename' => $this->collectionAccess->mayRename($instance)],
         ];
     }
 

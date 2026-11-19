@@ -12,6 +12,7 @@ use App\Models\ChatChannelMeta;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Projects\ProjectRegistry;
 use App\Services\Teams\TeamRoles;
 use Illuminate\Database\Eloquent\Collection;
 use Sabre\CalDAV\Plugin as CalDAVPlugin;
@@ -26,6 +27,8 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  */
 final class CalendarCollectionAccess
 {
+    public const PROJECT_ITEM_MESSAGE = 'This belongs to a Project. Rename, recolor or delete the Project instead.';
+
     public function __construct(
         private readonly DriveGroupResolver $groups,
         private readonly CalendarShareInvites $shareInvites,
@@ -33,6 +36,7 @@ final class CalendarCollectionAccess
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly TeamRoles $teamRoles,
         private readonly AdminRoleResolver $admins,
+        private readonly ProjectRegistry $projects,
     ) {}
 
     /**
@@ -185,6 +189,9 @@ final class CalendarCollectionAccess
         if ($this->shareInvites->isSharee($instance)) {
             return true;
         }
+        if ($this->isProjectCollection($instance)) {
+            return false;
+        }
 
         $principalUri = $instance->principaluri;
 
@@ -258,8 +265,66 @@ final class CalendarCollectionAccess
         return true;
     }
 
+    /**
+     * The id of the Project that owns this collection, or null (#817 B1). Read through the
+     * request-scoped registry, so listings that call {@see primeProjects()} pay one query.
+     */
+    public function projectIdOf(CalendarInstance $instance): ?string
+    {
+        return $this->projects->projectIdFor((int) $instance->calendarid);
+    }
+
+    /** @param  iterable<CalendarInstance>  $instances */
+    public function primeProjects(iterable $instances): void
+    {
+        $ids = [];
+        foreach ($instances as $instance) {
+            $ids[] = (int) $instance->calendarid;
+        }
+        $this->projects->prime($ids);
+    }
+
+    /**
+     * Whether the caller may rename or recolor the collection itself. A Project collection
+     * follows its Project, so only a sharee's own copy can be renamed (#817 B1).
+     */
+    public function mayRename(CalendarInstance $instance): bool
+    {
+        return $this->shareInvites->isSharee($instance) || ! $this->isProjectCollection($instance);
+    }
+
+    /**
+     * A Project collection's name and color are the Project's: an owner-side change is 403.
+     * A sharee's own name and color stay theirs; other properties stay writable.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function assertProjectPatchAllowed(CalendarInstance $instance, array $payload): void
+    {
+        if ($this->mayRename($instance)) {
+            return;
+        }
+        // Sending the current value back (a form that posts every field) is no change.
+        $renames = array_key_exists('name', $payload)
+            && trim((string) $payload['name']) !== trim((string) ($instance->displayname ?? ''));
+        $recolors = array_key_exists('color', $payload)
+            && CalendarColorPalette::normalize($payload['color'])
+                !== CalendarColorPalette::normalize($instance->calendarcolor);
+        if ($renames || $recolors) {
+            throw new ApiHttpException(403, self::PROJECT_ITEM_MESSAGE, 'project_item');
+        }
+    }
+
+    private function isProjectCollection(CalendarInstance $instance): bool
+    {
+        return $this->projectIdOf($instance) !== null;
+    }
+
     private function assertGroupOwnedAdmin(string $username, CalendarInstance $instance, string $message, bool $meeting): void
     {
+        if (! $this->shareInvites->isSharee($instance) && $this->isProjectCollection($instance)) {
+            throw new ApiHttpException(403, self::PROJECT_ITEM_MESSAGE, 'project_item');
+        }
         if (! $this->mayDeleteGroupOwned($username, $instance, $meeting)) {
             throw new ApiHttpException(403, $message, 'team_admin_only');
         }
