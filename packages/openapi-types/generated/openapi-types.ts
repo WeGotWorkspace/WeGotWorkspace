@@ -9705,6 +9705,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the Projects of the caller's Teams
+         * @description Per Team, the default Project first, then by name. Archived Projects only with `archived=1`. Reading repairs a live Project whose calendar, task list, notebook or channel is gone.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `1` includes archived Projects. */
+                    archived?: "0" | "1";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a Project
+         * @description Creates the Project with a new calendar, task list, notebook and channel owned by the Team, in one transaction. A slug clash in the Team gets a `-2`, `-3` suffix. 404 when the caller is not a member of the Team; 403 `team_admin_only` for a member who is not a team admin.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a Project
+         * @description 404 for a Project of a Team the caller is not a member of, the same as for an unknown id.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename or recolor a Project
+         * @description Writes the name and color through to the Project's collections. 403 `team_admin_only` for a member who is not a team admin; 409 `archived` for an archived Project.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -13933,6 +14080,46 @@ export interface components {
         };
         TeamWriteResponse: {
             ok: boolean;
+        };
+        /** @description The API ids of what the Project bundles. `null` while an item is missing (ensure repairs it on the next read) and, for `driveFolderId`, until the Project folder exists. The default Project has no Drive folder: its Drive view is the whole Team Drive. */
+        ProjectResources: {
+            calendarId: string | null;
+            taskListId: string | null;
+            notebookId: string | null;
+            channelId: string | null;
+            driveFolderId: string | null;
+        };
+        /** @description A Project of one of the caller's Teams: a calendar, task list, notebook, chat channel and Drive folder. Access is Team membership. */
+        Project: {
+            id: string;
+            teamSlug: string;
+            /** @description Unique per Team, archived Projects included. Does not change on rename. */
+            slug: string;
+            name: string;
+            /** @description Hex color like `#3b82f6`. */
+            color: string | null;
+            /** @description The Team's default Project: its provisioned calendar, task list and notebook plus one channel. */
+            isDefault: boolean;
+            archived: boolean;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** @description Whether the caller may rename, recolor, archive and purge it (team admin of the Team). */
+            mayManage: boolean;
+            resources: components["schemas"]["ProjectResources"];
+        };
+        ProjectListResponse: {
+            list: components["schemas"]["Project"][];
+        };
+        ProjectCreateRequest: {
+            teamSlug: string;
+            name: string;
+            /** @description Hex color like `#3b82f6`. Defaults to a palette color. */
+            color?: string;
+        };
+        /** @description Name and color are written through to the Project's calendar, task list, notebook and channel. Slugs, uris and ids stay. */
+        ProjectPatchRequest: {
+            name?: string;
+            color?: string;
         };
     };
     responses: {

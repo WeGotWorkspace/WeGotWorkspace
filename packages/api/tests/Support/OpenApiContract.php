@@ -181,6 +181,7 @@ final class OpenApiContract
             '{username}' => 'bob',
             '{group}' => 'testgroup',
             '{team}' => 'testteam',
+            '{project}' => '01hzzzzzzzzzzzzzzzzzzzzzzz',
             '{participantId}' => 'peer-alpha',
             '{id}' => 'demo-plugin',
             '{name}' => 'backup.zip',
