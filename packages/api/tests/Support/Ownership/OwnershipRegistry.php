@@ -114,6 +114,8 @@ final class OwnershipRegistry
             'POST /auth/revoke' => 'Proves identity, not object access (spec non-goal).',
             'POST /auth/password-resets' => 'Proves identity, not object access (spec non-goal).',
             'POST /auth/password-resets/{token}' => 'Proves identity, not object access (spec non-goal).',
+            'POST /auth/mfa-challenges/{challenge}/verification' => 'Second sign-in step: proves identity; the challenge id is a single-use secret bound to one user and client (MfaLoginTest::test_challenge_client_is_enforced).',
+            'POST /auth/mfa-challenges/{challenge}/replacement' => 'Second sign-in step after a recovery code: proves identity (MfaLoginTest::test_replacement_stores_the_new_secret_and_ends_every_session).',
             self::jmapKey('Core/echo') => 'Echoes its own arguments.',
         ];
         foreach ($noObject as $operation => $why) {
@@ -126,6 +128,10 @@ final class OwnershipRegistry
             'GET /settings/state' => 'Returns the caller settings.',
             'PUT /settings/profile' => 'Updates the caller profile.',
             'POST /settings/app-passwords' => 'Creates an app password for the caller only; the username comes from the token (AppPasswordTest).',
+            'POST /settings/totp' => 'Starts a setup for the caller only; the username comes from the token (MfaSettingsTest).',
+            'DELETE /settings/totp' => "Turns off the caller's own two-factor only, with their current code (MfaSettingsTest::test_disable_needs_a_current_code).",
+            'POST /settings/totp/confirmation' => "Confirms the caller's own setup only (MfaSettingsTest).",
+            'POST /settings/totp/recovery-codes' => "Replaces the caller's own recovery codes only (MfaSettingsTest::test_new_recovery_codes_replace_the_old_set).",
             'POST /settings/app-passwords/revocations' => "Revokes only the caller's own app passwords (AppPasswordTest::test_revoking_another_users_app_password_is_not_found_and_leaves_it_working).",
             'GET /jmap/session' => 'Returns the caller JMAP session.',
             'GET /calendars/availability' => "Returns the caller's own Team availability settings.",
