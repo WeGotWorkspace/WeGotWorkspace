@@ -47,6 +47,9 @@
       "mcpEnabled": {
         "type": "boolean",
         "description": "Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs."
+      },
+      "mfa": {
+        "$ref": "#/components/schemas/MfaStatus"
       }
     },
     "required": [
@@ -54,7 +57,8 @@
       "groups",
       "isAdmin",
       "logoutUrl",
-      "mcpEnabled"
+      "mcpEnabled",
+      "mfa"
     ]
   }
 }
