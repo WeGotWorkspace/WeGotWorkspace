@@ -9,6 +9,7 @@ import {
   readCalendarBootstrapFromCache,
   removeCalendarEventFromCache,
   upsertCalendarEventInCache,
+  upsertSnapshotCalendarEventInCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars/calendars-offline-store";
 import { calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
@@ -405,6 +406,57 @@ describe("calendars offline store: a snapshot that is older than the cache (#225
       ["ev-back", "Created again"],
       ["ev-old", "Fresh"],
     ]);
+  });
+
+  it("window load: an event of the window does not replace a newer row", async () => {
+    const requestedAt = await requestSnapshot();
+    await ingest(at("ev-old", "Renamed meanwhile"));
+
+    const stored = await upsertSnapshotCalendarEventInCache(
+      username,
+      at("ev-old", "Old"),
+      requestedAt,
+    );
+
+    expect(stored).toBe(false);
+    expect((await events()).get("ev-old")).toBe("Renamed meanwhile");
+  });
+
+  it("window load: an event removed after the window was requested stays gone", async () => {
+    const requestedAt = await requestSnapshot();
+    await removeCalendarEventFromCache(username, "ev-old");
+
+    await upsertSnapshotCalendarEventInCache(username, at("ev-old", "Old"), requestedAt);
+
+    expect((await events()).has("ev-old")).toBe(false);
+  });
+
+  it("window load: stores a new event and replaces an older row", async () => {
+    const requestedAt = await requestSnapshot();
+
+    await upsertSnapshotCalendarEventInCache(username, at("ev-old", "Fresh"), requestedAt);
+    await upsertSnapshotCalendarEventInCache(username, at("ev-new", "New"), requestedAt);
+
+    expect([...(await events())].sort()).toEqual([
+      ["ev-new", "New"],
+      ["ev-old", "Fresh"],
+    ]);
+  });
+
+  it("forgets a removal after ten minutes, at the next snapshot write", async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const removals = () => db.meta.where("key").startsWith("calendars:removed-event:").keys();
+    await removeCalendarEventFromCache(username, "ev-old");
+    await db.meta.put({
+      key: "calendars:removed-event:ev-long-ago",
+      value: String(Date.now() - 11 * 60_000),
+    });
+
+    await writeCalendarBootstrapToCache(username, snapshot([]), { window: liveWindow });
+
+    const left = await removals();
+    expect(left).toContain("calendars:removed-event:ev-old");
+    expect(left).not.toContain("calendars:removed-event:ev-long-ago");
   });
 
   it("period load: keeps an event stored after the period was requested", async () => {

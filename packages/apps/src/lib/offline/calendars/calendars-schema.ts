@@ -17,7 +17,11 @@ export type OfflineCalendarEventRow = {
   /** JSON-serialized JmapCalendarEvent (JSCalendar wire shape). */
   data: string;
   pendingSync: boolean;
-  /** Last local write time (epoch ms). */
+  /**
+   * How fresh the row is (epoch ms): when it was written, or for a row from a
+   * snapshot when that snapshot was requested. A snapshot leaves newer rows
+   * alone (#2256).
+   */
   updatedAt: number;
   /**
    * Set by local upsert/flush remap. A stale live bootstrap must not drop these

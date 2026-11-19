@@ -154,13 +154,15 @@ async function writeCalendarsToCache(
   username: string,
   mutate: (calendars: CalendarInfo[]) => CalendarInfo[],
 ): Promise<void> {
+  const readAt = Date.now();
   const cached = await readCalendarBootstrapFromCache(username);
   if (!cached) return;
-  // The window keeps a period merged between the read above and this write.
+  // The window keeps a period merged between the read above and this write,
+  // `requestedAt` what inbound sync stored between them (#2256).
   await writeCalendarBootstrapToCache(
     username,
     { ...cached, data: { ...cached.data, calendars: mutate(cached.data.calendars) } },
-    { window: calendarBootstrapWindow() },
+    { window: calendarBootstrapWindow(), requestedAt: readAt },
   );
 }
 
@@ -468,7 +470,9 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   // The live snapshot only covers this window; events loaded for other periods
   // stay. One window for the fetch and the writes, also across midnight.
   const window = calendarBootstrapWindow();
-  const liveWindow = { window };
+  // The snapshot can be seconds old when it is written. `requestedAt` keeps
+  // what inbound sync (also another tab's) stored in the meantime (#2256).
+  let requestedAt = Date.now();
   const listSubscriptions = () => listCalendarSubscriptionsLive().catch(() => []);
   const subscriptions = readBrowserOnline() ? listSubscriptions() : undefined;
   let bootstrap = await fetchCalendarLiveBootstrap(window);
@@ -479,20 +483,25 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   // Write first so pendingSync rows survive a live snapshot that raced ahead of
   // flush; then drain the outbox and return the merged cache (not the raw live
   // payload, which would revert optimistic patches in the UI).
-  await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
+  await writeCalendarBootstrapToCache(username, bootstrap, { window, requestedAt });
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
     // Only the read goes out with the bootstrap: refreshes still wait for the outbox flush.
     const list = await (subscriptions ?? listSubscriptions());
     const refreshed = await refreshStaleCalendarSubscriptionsLive(list).catch(() => false);
     if (refreshed) {
+      requestedAt = Date.now();
       bootstrap = await fetchCalendarLiveBootstrap(window);
-      await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
+      await writeCalendarBootstrapToCache(username, bootstrap, { window, requestedAt });
       await runnerFor(username).flush();
     }
-    const merged = (await readCalendarBootstrapFromCache(username)) ?? bootstrap;
-    bootstrap = withSubscriptionUrls(merged, list);
-    await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
+    const readAt = Date.now();
+    const merged = await readCalendarBootstrapFromCache(username);
+    bootstrap = withSubscriptionUrls(merged ?? bootstrap, list);
+    await writeCalendarBootstrapToCache(username, bootstrap, {
+      window,
+      requestedAt: merged ? readAt : requestedAt,
+    });
   }
   const cached = await readCalendarBootstrapFromCache(username);
   return cached ?? bootstrap;
@@ -520,8 +529,9 @@ export async function loadCalendarRangeHybrid(
   range: CalendarUtcRange,
 ): Promise<boolean> {
   if (!readBrowserOnline()) return false;
+  const requestedAt = Date.now();
   const events = await fetchCalendarEventsInRangeLive(range);
-  await mergeCalendarRangeIntoCache(username, range, events);
+  await mergeCalendarRangeIntoCache(username, range, events, { requestedAt });
   return true;
 }
 

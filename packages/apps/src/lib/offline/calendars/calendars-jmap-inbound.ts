@@ -7,6 +7,7 @@ import {
   removeCalendarFromCache,
   upsertCalendarEventInCache,
   upsertCalendarInCache,
+  upsertSnapshotCalendarEventInCache,
 } from "@/lib/offline/calendars/calendars-offline-store";
 import { reportCalendarsSyncConflicts } from "@/lib/offline/calendars/calendars-sync-conflicts";
 
@@ -17,16 +18,33 @@ async function pendingSet(username: string): Promise<Set<string>> {
 /**
  * Ingest a remote JMAP event into Dexie. Pending outbox / pendingSync rows are
  * not overwritten; a clash still goes through `reportCalendarsSyncConflicts`.
+ *
+ * `snapshot` is set for an event of a window load: it was fetched at
+ * `requestedAt`, and a cache row or removal that is newer wins (#2256).
  */
 export async function ingestRemoteCalendarEvent(
   username: string,
   event: JmapCalendarEvent,
-): Promise<"upserted" | "skipped-pending"> {
+): Promise<"upserted" | "skipped-pending">;
+export async function ingestRemoteCalendarEvent(
+  username: string,
+  event: JmapCalendarEvent,
+  snapshot: { requestedAt: number } | undefined,
+): Promise<"upserted" | "skipped-pending" | "skipped-stale">;
+export async function ingestRemoteCalendarEvent(
+  username: string,
+  event: JmapCalendarEvent,
+  snapshot?: { requestedAt: number },
+): Promise<"upserted" | "skipped-pending" | "skipped-stale"> {
   if (!event.id) return "skipped-pending";
   const pending = await pendingSet(username);
   if (pending.has(event.id)) {
     reportCalendarsSyncConflicts([event.id]);
     return "skipped-pending";
+  }
+  if (snapshot) {
+    const stored = await upsertSnapshotCalendarEventInCache(username, event, snapshot.requestedAt);
+    return stored ? "upserted" : "skipped-stale";
   }
   await upsertCalendarEventInCache(username, event, false, false);
   return "upserted";

@@ -9,6 +9,7 @@ import {
 
 const listPending = vi.fn<() => Promise<string[]>>();
 const upsert = vi.fn();
+const upsertSnapshot = vi.fn<(...args: unknown[]) => Promise<boolean>>();
 const remove = vi.fn();
 const upsertCalendar = vi.fn();
 const removeCalendar = vi.fn();
@@ -18,6 +19,7 @@ const reportConflicts = vi.fn();
 vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
   listPendingCalendarEventIds: () => listPending(),
   upsertCalendarEventInCache: (...args: unknown[]) => upsert(...args),
+  upsertSnapshotCalendarEventInCache: (...args: unknown[]) => upsertSnapshot(...args),
   removeCalendarEventFromCache: (...args: unknown[]) => remove(...args),
   upsertCalendarInCache: (...args: unknown[]) => upsertCalendar(...args),
   removeCalendarFromCache: (...args: unknown[]) => removeCalendar(...args),
@@ -41,6 +43,7 @@ describe("calendars-jmap-inbound", () => {
   beforeEach(() => {
     listPending.mockReset();
     upsert.mockReset();
+    upsertSnapshot.mockReset();
     remove.mockReset();
     upsertCalendar.mockReset();
     removeCalendar.mockReset();
@@ -54,6 +57,17 @@ describe("calendars-jmap-inbound", () => {
     await expect(ingestRemoteCalendarEvent("ada", remote)).resolves.toBe("upserted");
     expect(upsert).toHaveBeenCalledWith("ada", remote, false, false);
     expect(reportConflicts).not.toHaveBeenCalled();
+  });
+
+  it("stores an event of a window load only when the cache is not newer (#2256)", async () => {
+    upsertSnapshot.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const snapshot = { requestedAt: 1_000 };
+
+    await expect(ingestRemoteCalendarEvent("ada", remote, snapshot)).resolves.toBe("upserted");
+    await expect(ingestRemoteCalendarEvent("ada", remote, snapshot)).resolves.toBe("skipped-stale");
+
+    expect(upsertSnapshot).toHaveBeenCalledWith("ada", remote, 1_000);
+    expect(upsert).not.toHaveBeenCalled();
   });
 
   it("skips a pending local row and reports the conflict channel", async () => {

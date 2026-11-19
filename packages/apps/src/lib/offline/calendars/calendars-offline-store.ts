@@ -6,7 +6,11 @@ import type {
   CalendarInfo,
 } from "@/lib/models/calendar-types";
 import { rememberOfflineCalendarsUsername } from "@/lib/offline/core/offline-session";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import {
+  offlineAccountKeyFromUsername,
+  offlineDbForAccount,
+  type WgwOfflineDatabase,
+} from "@/lib/offline/core/offline-db";
 import {
   parseMirrorRows,
   readMirrorSession,
@@ -40,6 +44,14 @@ export {
 const META_SESSION = "calendars:session";
 const META_GROUPS_LOADED = "calendars:groups-loaded";
 const META_SYNC_TOKEN_PREFIX = "calendars:sync:";
+/** One `meta` row per recently removed event: the key ends in its id, the value is when. */
+const META_REMOVED_EVENT_PREFIX = "calendars:removed-event:";
+
+/**
+ * How long a removed event is remembered, so a snapshot requested before the
+ * removal cannot bring it back (#2256). A load takes seconds; this is ample.
+ */
+const REMOVED_EVENT_MEMORY_MS = 10 * 60_000;
 
 function eventCalendarId(event: JmapCalendarEvent): string {
   return Object.keys(event.calendarIds ?? {})[0] ?? "";
@@ -49,13 +61,14 @@ function eventRow(
   event: JmapCalendarEvent,
   pendingSync: boolean,
   locallyWritten = false,
+  updatedAt = Date.now(),
 ): OfflineCalendarEventRow {
   return {
     id: event.id,
     calendarId: eventCalendarId(event),
     data: JSON.stringify(event),
     pendingSync,
-    updatedAt: Date.now(),
+    updatedAt,
     ...(locallyWritten ? { locallyWritten: true } : {}),
   };
 }
@@ -87,7 +100,44 @@ export async function readCalendarBootstrapFromCache(
   };
 }
 
-export type CalendarBootstrapCacheWriteOptions = {
+/**
+ * A snapshot (the first load, or one period) can be seconds old when it is
+ * written. What the cache stored in the meantime is newer than the snapshot
+ * and wins (#2256): an inbound sync round of this tab or another one, or a
+ * snapshot that was requested later.
+ */
+export type CalendarSnapshotWriteOptions = {
+  /**
+   * When the snapshot was requested from the server, or read from the cache
+   * for a rewrite (epoch ms, taken before the request). A row written after
+   * that moment is not replaced or dropped, and an event removed after it is
+   * not brought back. Without it the snapshot counts as current.
+   */
+  requestedAt?: number;
+};
+
+type RemovedEvents = ReadonlyMap<string, number>;
+
+/**
+ * When each recently removed event was removed; forgets the ones older than
+ * {@link REMOVED_EVENT_MEMORY_MS}. Runs inside the caller's transaction.
+ */
+async function readRemovedEvents(db: WgwOfflineDatabase): Promise<RemovedEvents> {
+  const rows = await db.meta.where("key").startsWith(META_REMOVED_EVENT_PREFIX).toArray();
+  const forgetBefore = Date.now() - REMOVED_EVENT_MEMORY_MS;
+  const expired = rows.filter((row) => Number(row.value) < forgetBefore).map((row) => row.key);
+  if (expired.length > 0) await db.meta.bulkDelete(expired);
+  return new Map(
+    rows.map((row) => [row.key.slice(META_REMOVED_EVENT_PREFIX.length), Number(row.value)]),
+  );
+}
+
+/** True when the snapshot is older than the removal of `id`. */
+function removedSince(removed: RemovedEvents, id: string, requestedAt: number): boolean {
+  return (removed.get(id) ?? 0) > requestedAt;
+}
+
+export type CalendarBootstrapCacheWriteOptions = CalendarSnapshotWriteOptions & {
   /**
    * The bootstrap window the snapshot's events cover (#1675). A cached event
    * the snapshot omits is dropped only when the window certainly covers it, or
@@ -102,8 +152,10 @@ function keepCachedRowOnBootstrapWrite(
   incomingIds: ReadonlySet<string>,
   calendarIds: ReadonlySet<string>,
   window: CalendarUtcRange | undefined,
+  requestedAt: number,
 ): boolean {
   if (row.pendingSync) return true;
+  if (row.updatedAt > requestedAt) return true;
   if (incomingIds.has(row.id)) return false;
   if (row.locallyWritten === true) return true;
   if (!window || !calendarIds.has(row.calendarId)) return false;
@@ -144,16 +196,23 @@ export async function writeCalendarBootstrapToCache(
     );
     await db.meta.put({ key: META_GROUPS_LOADED, value: "1" });
   }
+  const requestedAt = options.requestedAt ?? Date.now();
   // One transaction: a period loaded on demand must not land between the read
   // and the clear and then be lost.
-  await db.transaction("rw", events, async () => {
-    const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
+  await db.transaction("rw", events, db.meta, async () => {
+    const removed = await readRemovedEvents(db);
+    const incoming = bootstrap.data.events.filter(
+      (event) => !removedSince(removed, event.id, requestedAt),
+    );
+    const incomingIds = new Set(incoming.map((event) => event.id));
     const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
     await replaceMirrorRows(
       events,
-      bootstrap.data.events.map((event) => eventRow(event, false)),
+      // The rows are as fresh as the snapshot, not as its write.
+      incoming.map((event) => eventRow(event, false, false, requestedAt)),
       {
-        keep: (row) => keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window),
+        keep: (row) =>
+          keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window, requestedAt),
       },
     );
   });
@@ -167,23 +226,30 @@ export async function writeCalendarBootstrapToCache(
  * server; one with no occurrence there stays. This is the only place a
  * series deleted while the client was closed, which never occurs in the
  * bootstrap window, is removed. Rows with a pending or just-written local
- * change stay.
+ * change stay, and so does what the cache stored after the period was
+ * requested (see {@link CalendarSnapshotWriteOptions}).
  */
 export async function mergeCalendarRangeIntoCache(
   username: string,
   range: CalendarUtcRange,
   incoming: readonly JmapCalendarEvent[],
+  options: CalendarSnapshotWriteOptions = {},
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const events = calendarsEventsTable(db);
-  await db.transaction("rw", events, async () => {
+  const requestedAt = options.requestedAt ?? Date.now();
+  await db.transaction("rw", events, db.meta, async () => {
     const existing = await events.toArray();
+    const removed = await readRemovedEvents(db);
     const incomingIds = new Set(incoming.map((event) => event.id));
-    const pendingIds = new Set(existing.filter((row) => row.pendingSync).map((row) => row.id));
+    // Rows the period must leave alone: a pending local change, or newer than the period.
+    const keptIds = new Set(
+      existing.filter((row) => row.pendingSync || row.updatedAt > requestedAt).map((row) => row.id),
+    );
     const goneIds = existing
       .filter(
         (row) =>
-          !row.pendingSync &&
+          !keptIds.has(row.id) &&
           row.locallyWritten !== true &&
           !incomingIds.has(row.id) &&
           rangeQueryCoversEvent(parseEventRow(row), range),
@@ -193,7 +259,9 @@ export async function mergeCalendarRangeIntoCache(
       await events.bulkDelete(goneIds);
     }
     await events.bulkPut(
-      incoming.filter((event) => !pendingIds.has(event.id)).map((event) => eventRow(event, false)),
+      incoming
+        .filter((event) => !keptIds.has(event.id) && !removedSince(removed, event.id, requestedAt))
+        .map((event) => eventRow(event, false, false, requestedAt)),
     );
   });
 }
@@ -208,12 +276,45 @@ export async function upsertCalendarEventInCache(
   await calendarsEventsTable(db).put(eventRow(event, pendingSync, locallyWritten));
 }
 
+/**
+ * Stores one event of a snapshot that was requested at `requestedAt` (the
+ * window an open tab loads for inbound sync). The cache wins when it is newer
+ * (see {@link CalendarSnapshotWriteOptions}); returns whether the event was stored.
+ */
+export async function upsertSnapshotCalendarEventInCache(
+  username: string,
+  event: JmapCalendarEvent,
+  requestedAt: number,
+): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const events = calendarsEventsTable(db);
+  return db.transaction("rw", events, db.meta, async () => {
+    const cached = await events.get(event.id);
+    if (cached && (cached.pendingSync || cached.updatedAt > requestedAt)) return false;
+    const removedAt = await db.meta.get(`${META_REMOVED_EVENT_PREFIX}${event.id}`);
+    if (Number(removedAt?.value ?? 0) > requestedAt) return false;
+    await events.put(eventRow(event, false, false, requestedAt));
+    return true;
+  });
+}
+
+/**
+ * Removes the event and remembers the removal for a while, so a snapshot that
+ * was requested earlier and still lists the event does not bring it back.
+ */
 export async function removeCalendarEventFromCache(
   username: string,
   eventId: string,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await calendarsEventsTable(db).delete(eventId);
+  const events = calendarsEventsTable(db);
+  await db.transaction("rw", events, db.meta, async () => {
+    await events.delete(eventId);
+    await db.meta.put({
+      key: `${META_REMOVED_EVENT_PREFIX}${eventId}`,
+      value: String(Date.now()),
+    });
+  });
 }
 
 export async function upsertCalendarInCache(

@@ -98,12 +98,14 @@ async function rewriteCachedCalendars(
   username: string,
   edit: (data: CalendarAppBootstrap["data"]) => Partial<CalendarAppBootstrap["data"]>,
 ): Promise<void> {
+  const readAt = Date.now();
   const latest = await readCalendarBootstrapFromCache(username);
   if (!latest) return;
+  // `requestedAt` keeps what inbound sync stores between the read and the write (#2256).
   await writeCalendarBootstrapToCache(
     username,
     { ...latest, data: { ...latest.data, ...edit(latest.data) } },
-    cacheWindow(),
+    { ...cacheWindow(), requestedAt: readAt },
   );
 }
 
