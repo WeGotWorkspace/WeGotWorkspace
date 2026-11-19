@@ -18,27 +18,27 @@ describe("last app location", () => {
 
   it("remembers the last path and search per app", async () => {
     const { lastAppLocation, rememberAppLocation } = await load();
-    rememberAppLocation("notes", { pathname: "/notes/all/abc", searchStr: "" });
-    rememberAppLocation("docs", { pathname: "/docs", searchStr: "?id=fn-1" });
-    rememberAppLocation("notes", { pathname: "/notes/starred", searchStr: "" });
-    expect(lastAppLocation("notes")).toEqual({ pathname: "/notes/starred", searchStr: "" });
-    expect(lastAppLocation("docs")).toEqual({ pathname: "/docs", searchStr: "?id=fn-1" });
+    rememberAppLocation("notes", { pathname: "/notes/all/abc", search: {} });
+    rememberAppLocation("docs", { pathname: "/docs", search: { id: "fn-1" } });
+    rememberAppLocation("notes", { pathname: "/notes/starred", search: {} });
+    expect(lastAppLocation("notes")).toEqual({ pathname: "/notes/starred", search: {} });
+    expect(lastAppLocation("docs")).toEqual({ pathname: "/docs", search: { id: "fn-1" } });
   });
 
   it("survives a reload in the same tab", async () => {
     const first = await load();
-    first.rememberAppLocation("calendar", { pathname: "/calendar/week/2026-11-18", searchStr: "" });
+    first.rememberAppLocation("calendar", { pathname: "/calendar/week/2026-11-18", search: {} });
     const second = await load();
     expect(second.lastAppLocation("calendar")).toEqual({
       pathname: "/calendar/week/2026-11-18",
-      searchStr: "",
+      search: {},
     });
   });
 
   it("ignores a stored spot that belongs to another app", async () => {
     window.sessionStorage.setItem(
       "wgw.app-rail.last-locations",
-      JSON.stringify({ notes: { pathname: "/admin/users", searchStr: "" } }),
+      JSON.stringify({ notes: { pathname: "/admin/users", search: {} } }),
     );
     const { lastAppLocation } = await load();
     expect(lastAppLocation("notes")).toBeNull();

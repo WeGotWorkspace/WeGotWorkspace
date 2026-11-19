@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { LogOut } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 
 /**
@@ -34,14 +34,16 @@ const AccountTrigger = forwardRef<HTMLButtonElement, AccountTriggerProps>(functi
   ref,
 ) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button ref={ref} type="button" className="app-rail__account-trigger" {...props}>
-          {children}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{hint}</TooltipContent>
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button ref={ref} type="button" className="app-rail__account-trigger" {...props}>
+            {children}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{hint}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 });
 

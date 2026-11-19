@@ -1,5 +1,5 @@
 import { memo, useEffect, type MouseEvent } from "react";
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { prefersReducedMotion } from "@/lib/view-transition";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/app-switch-button/src/app-switch-menu-apps";
 import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
 import { lastAppLocation, rememberAppLocation } from "@/app-rail/src/last-app-location";
 import "@/app-rail/src/app-rail.css";
 
@@ -21,26 +21,24 @@ type AppRailItemProps = {
 };
 
 /**
- * App switch as one View Transition: the old app cross-fades into the new one
- * once it has loaded. The router's own `viewTransition` link option is lost on
- * the redirect every app does (`/notes` to `/notes/all`), so the rail runs the
- * transition around the whole navigation. Returns false when the browser should
- * handle the click itself (new tab, no API, reduced motion).
+ * A tile's click. Another app: back to where the user left it (its start screen
+ * the first time), as one View Transition, so the old app cross-fades into the
+ * new one once it has loaded. The router's own `viewTransition` option is lost
+ * on the redirect every app does (`/notes` to `/notes/all`), so the rail runs
+ * the transition around the whole navigation. The current app's own tile goes
+ * to its start screen. A modified click (new tab) is left to the browser.
  */
-function useAppSwitch(app: AppSwitchMenuApp) {
-  const router = useRouter();
+function useAppSwitch(app: AppSwitchMenuApp, current: boolean) {
+  const navigate = useNavigate();
   return (event: MouseEvent<HTMLAnchorElement>) => {
     const plainClick =
       event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
     if (!plainClick) return;
     event.preventDefault();
-    // Back to where the user left this app; its start screen the first time.
-    const last = lastAppLocation(app.id);
+    const last = current ? null : lastAppLocation(app.id);
     const go = () =>
-      last
-        ? router.navigate({ to: last.pathname, search: router.options.parseSearch(last.searchStr) })
-        : router.navigate({ to: app.to });
-    if (typeof document.startViewTransition !== "function" || prefersReducedMotion()) {
+      last ? navigate({ to: last.pathname, search: last.search }) : navigate({ to: app.to });
+    if (current || typeof document.startViewTransition !== "function" || prefersReducedMotion()) {
       void go();
       return;
     }
@@ -53,24 +51,24 @@ function useAppSwitch(app: AppSwitchMenuApp) {
 }
 
 function AppRailItem({ app, current, unread }: AppRailItemProps) {
-  const switchApp = useAppSwitch(app);
+  const switchApp = useAppSwitch(app, current);
   return (
     <li className="app-rail__item">
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link
-            to={app.to}
-            // Another app: back to its last spot, cross-faded (the rail holds still, see CSS).
-            // The current app's own tile is a plain link to its start screen.
-            onClick={current ? undefined : switchApp}
+          {/* A real link (new tab, copy address); a plain click goes through the router. */}
+          <a
+            href={app.to}
+            onClick={switchApp}
             className="app-rail__link"
-            aria-label={unread ? `${app.label}, new notifications` : app.label}
+            // "Open …": the bare app name is also the name of in-app controls (Meet's "Meet").
+            aria-label={unread ? `Open ${app.label}, new notifications` : `Open ${app.label}`}
             aria-current={current ? "page" : undefined}
             data-unread={unread ? "" : undefined}
           >
             <WorkspaceAppIcon appId={app.id} className="app-rail__icon" variant="switch-trigger" />
             {unread ? <span className="app-rail__dot" aria-hidden /> : null}
-          </Link>
+          </a>
         </TooltipTrigger>
         <TooltipContent side="right">{app.label}</TooltipContent>
       </Tooltip>
@@ -106,43 +104,48 @@ export const AppRail = memo(function AppRail({
 }: AppRailProps) {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const showAdmin = useShowAdminApp();
-  const searchStr = useRouterState({ select: (r) => r.location.searchStr });
+  const search = useRouterState({
+    select: (r) => r.location.search as Record<string, unknown> | undefined,
+  });
   // Keep the current app's last spot up to date for the way back.
   useEffect(() => {
     const here = [...APP_SWITCH_PRODUCT_APPS, ...appSwitchUtilityApps(true)].find(
       (app) => path === app.to || path.startsWith(`${app.to}/`),
     );
-    if (here) rememberAppLocation(here.id, { pathname: path, searchStr });
-  }, [path, searchStr]);
+    if (here) rememberAppLocation(here.id, { pathname: path, search: search ?? {} });
+  }, [path, search]);
   const isCurrent = (app: AppSwitchMenuApp) => path === app.to || path.startsWith(`${app.to}/`);
 
   return (
-    <nav className="app-rail" aria-label="Apps">
-      <div className="app-rail__notifications" ref={notificationsSlotRef} />
-      {/* Tiles scroll when the screen is short; the bell above and the account below stay put. */}
-      <div className="app-rail__scroll">
-        <ul className="app-rail__list">
-          {APP_SWITCH_PRODUCT_APPS.map((app) => (
-            <AppRailItem
-              key={app.id}
-              app={app}
-              current={isCurrent(app)}
-              unread={unreadApps.has(app.id)}
-            />
-          ))}
-        </ul>
-        <ul className="app-rail__list app-rail__list--utility">
-          {[...appSwitchUtilityApps(showAdmin)].sort(byRailUtilityOrder).map((app) => (
-            <AppRailItem
-              key={app.id}
-              app={app}
-              current={isCurrent(app)}
-              unread={unreadApps.has(app.id)}
-            />
-          ))}
-        </ul>
-      </div>
-      <div className="app-rail__account" ref={accountSlotRef} />
-    </nav>
+    // Own provider: the rail also mounts where no suite-level tooltip provider is above it.
+    <TooltipProvider>
+      <nav className="app-rail" aria-label="Apps">
+        <div className="app-rail__notifications" ref={notificationsSlotRef} />
+        {/* Tiles scroll when the screen is short; the bell above and the account below stay put. */}
+        <div className="app-rail__scroll">
+          <ul className="app-rail__list">
+            {APP_SWITCH_PRODUCT_APPS.map((app) => (
+              <AppRailItem
+                key={app.id}
+                app={app}
+                current={isCurrent(app)}
+                unread={unreadApps.has(app.id)}
+              />
+            ))}
+          </ul>
+          <ul className="app-rail__list app-rail__list--utility">
+            {[...appSwitchUtilityApps(showAdmin)].sort(byRailUtilityOrder).map((app) => (
+              <AppRailItem
+                key={app.id}
+                app={app}
+                current={isCurrent(app)}
+                unread={unreadApps.has(app.id)}
+              />
+            ))}
+          </ul>
+        </div>
+        <div className="app-rail__account" ref={accountSlotRef} />
+      </nav>
+    </TooltipProvider>
   );
 });

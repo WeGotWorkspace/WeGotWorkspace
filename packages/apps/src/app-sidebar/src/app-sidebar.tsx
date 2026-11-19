@@ -22,7 +22,10 @@ import {
 } from "@/workspace-shell/src/sidebar-breakpoint";
 import { notificationInboxAppId } from "@/notifications-core/src/notification-inbox-row-meta";
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
-import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-context";
+import {
+  useNotificationsInbox,
+  type NotificationsInboxValue,
+} from "@/lib/notifications/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
 import { publishElementHeight } from "@/lib/publish-element-height";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
@@ -60,8 +63,19 @@ export type AppSidebarProps = {
  */
 function AppSidebarNotifications({ inRail = false }: { inRail?: boolean }) {
   const inbox = useNotificationsInbox();
-  const path = useRouterState({ select: (r) => r.location.pathname });
+  // No inbox (signed out, stories, tests): nothing to show, and no router needed.
   if (!inbox) return null;
+  return <AppSidebarInboxTray inbox={inbox} inRail={inRail} />;
+}
+
+function AppSidebarInboxTray({
+  inbox,
+  inRail,
+}: {
+  inbox: NotificationsInboxValue;
+  inRail: boolean;
+}) {
+  const path = useRouterState({ select: (r) => r.location.pathname });
   const currentApp = APP_SWITCH_PRODUCT_APPS.find(
     (app) => path === app.to || path.startsWith(`${app.to}/`),
   );
