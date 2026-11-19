@@ -31,6 +31,7 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
 
     public function test_create_makes_four_team_collections_and_registers_them(): void
     {
+        $markerBefore = $this->markerOf('t1');
         $project = $this->createProject('bob', 't1', 'Spring launch', '#22C55E');
 
         $this->assertSame('t1', $project['teamSlug']);
@@ -70,7 +71,7 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
         $this->assertSame(ChatChannelMeta::KIND_CHANNEL, $channelMeta->kind);
         $this->assertNull($channelMeta->default_for_group);
 
-        $this->assertSame(['t1' => 1], app(ProjectMarkers::class)->markersFor(['t1']));
+        $this->assertSame($markerBefore + 1, $this->markerOf('t1'));
     }
 
     public function test_a_slug_clash_in_the_team_gets_a_suffix_and_archived_projects_keep_theirs(): void
@@ -106,6 +107,7 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
     public function test_patch_writes_name_and_color_through_and_keeps_ids(): void
     {
         $project = $this->createProject('bob', 't1', 'Launch', '#22c55e');
+        $markerBefore = $this->markerOf('t1');
 
         $patched = $this->asUser('bob')->patchJson('/api/v1/projects/'.$project['id'], ['name' => 'Big launch', 'color' => '#3b82f6'])
             ->assertOk()
@@ -122,7 +124,7 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
                 $this->assertSame('#3b82f6', strtolower(substr((string) $instance->calendarcolor, 0, 7)), $resource->kind);
             }
         }
-        $this->assertSame(['t1' => 2], app(ProjectMarkers::class)->markersFor(['t1']));
+        $this->assertSame($markerBefore + 1, $this->markerOf('t1'));
 
         $this->asUser('bob')->patchJson('/api/v1/projects/'.$project['id'], [])->assertStatus(400);
 
@@ -163,6 +165,11 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
         $this->assertIsArray($listed);
         $this->assertTrue($listed['archived']);
         $this->assertNull($listed['resources']['calendarId'], 'An archived Project is not repaired.');
+    }
+
+    private function markerOf(string $team): int
+    {
+        return app(ProjectMarkers::class)->markersFor([$team])[$team];
     }
 
     private function deleteCollection(int $calendarId): void

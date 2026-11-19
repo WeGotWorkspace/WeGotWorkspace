@@ -34,6 +34,7 @@ final class ProjectCreateRollbackTest extends WgwDatabaseTestCase
         // collaborators, from the first request on.
         $collections = new FailingProjectCollections($this->app->build(ProjectCollections::class));
         $this->app->instance(ProjectCollections::class, $collections);
+        $markers = app(ProjectMarkers::class)->markersFor(['t1']);
 
         foreach ([ProjectKind::TaskList, ProjectKind::Channel] as $failingKind) {
             $collections->failingKind = $failingKind;
@@ -53,7 +54,7 @@ final class ProjectCreateRollbackTest extends WgwDatabaseTestCase
             $this->assertSame(0, ProjectResource::query()->count(), $failingKind->value);
             $this->assertSame($instancesBefore, CalendarInstance::query()->count(), $failingKind->value);
             $this->assertSame($channelsBefore, ChatChannelMeta::query()->count(), $failingKind->value);
-            $this->assertSame(['t1' => 0], app(ProjectMarkers::class)->markersFor(['t1']), $failingKind->value);
+            $this->assertSame($markers, app(ProjectMarkers::class)->markersFor(['t1']), $failingKind->value);
         }
 
         // The next create works and takes the slug the failed ones would have had.
