@@ -163,7 +163,9 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             }
         }
         $cases[] = OwnershipCase::of('POST /notes/notebooks', Actor::Admin, Scope::OtherGroup, Outcome::Forbidden);
-        $cases[] = OwnershipCase::of('PATCH /notes/notebooks/{notebookId}', Actor::Admin, Scope::OwnGroup, Outcome::Allowed)->variant('take-personal');
+        // An organization admin who is not a team admin of crew cannot take its notebook out (#2278).
+        $cases[] = OwnershipCase::of('PATCH /notes/notebooks/{notebookId}', Actor::Admin, Scope::OwnGroup, Outcome::Forbidden)
+            ->withCode('team_admin_only')->variant('take-personal');
         $cases[] = OwnershipCase::of('POST /notes/items', Actor::Admin, Scope::OtherGroup, Outcome::NotFound)->variant('group-default');
         foreach (['PATCH /notes/items/{noteId}', 'JMAP Note/set'] as $op) {
             $cases[] = OwnershipCase::of($op, Actor::Admin, Scope::OtherGroup, Outcome::NotFound)->variant('move-in');
@@ -249,7 +251,7 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
 
         $delete = self::notebookDeleteOutcome($actor, $scope, $visible, $sharee);
         $cases[] = $delete === Outcome::Forbidden
-            ? OwnershipCase::of('DELETE /notes/notebooks/{notebookId}', $actor, $scope, $delete)->withCode('group_delete_admin_only')
+            ? OwnershipCase::of('DELETE /notes/notebooks/{notebookId}', $actor, $scope, $delete)->withCode('team_admin_only')
             : OwnershipCase::of('DELETE /notes/notebooks/{notebookId}', $actor, $scope, $delete);
         if ($jmap) {
             $cases[] = OwnershipCase::of('JMAP Notebook/set', $actor, $scope, $delete)->variant('destroy');
@@ -267,9 +269,9 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
     {
         $cases = [];
 
-        foreach ([Scope::OwnUser, Scope::OwnGroup] as $scope) {
-            $cases[] = OwnershipCase::of('POST /notes/notebooks', $actor, $scope, Outcome::Allowed);
-        }
+        $cases[] = OwnershipCase::of('POST /notes/notebooks', $actor, Scope::OwnUser, Outcome::Allowed);
+        // Adding a notebook to a Team is for its team admins (#2278); neither actor is one in crew.
+        $cases[] = OwnershipCase::of('POST /notes/notebooks', $actor, Scope::OwnGroup, Outcome::Forbidden)->withCode('team_admin_only');
         // The membership check answers 403 for every slug the caller is not
         // in, existing or not, so it reveals nothing (see unknown-group).
         foreach ([Scope::OtherGroup, Scope::FormerGroup] as $scope) {
@@ -311,7 +313,7 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         // groupSlug in a notebook PATCH names a new owner. Taking a group
         // notebook out of the group removes it like a delete does.
         $cases[] = OwnershipCase::of('PATCH /notes/notebooks/{notebookId}', $actor, Scope::OwnGroup, Outcome::Forbidden)
-            ->withCode('group_delete_admin_only')->variant('take-personal');
+            ->withCode('team_admin_only')->variant('take-personal');
         // The actor's own notebook handed to a group it is not in. The
         // membership check answers like an unknown group.
         foreach ([Scope::OtherGroup, Scope::FormerGroup] as $scope) {
@@ -332,7 +334,8 @@ final class NotesOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         return match (true) {
             ! $visible => Outcome::NotFound,
             $sharee => Outcome::Dismissed,
-            $scope === Scope::OwnGroup && $actor === Actor::Member => Outcome::Forbidden,
+            // Team admins only (#2278): not a plain member, not an organization admin.
+            $scope === Scope::OwnGroup => Outcome::Forbidden,
             default => Outcome::Allowed,
         };
     }

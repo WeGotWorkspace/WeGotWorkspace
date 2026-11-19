@@ -8,9 +8,10 @@ use App\Exceptions\ApiHttpException;
 use App\Models\CalendarCollectionMeta;
 use App\Models\CalendarInstance;
 use App\Models\CalendarSubscription;
+use App\Models\ChatChannelMeta;
 use App\Services\Admin\AdminConstants;
-use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Database\Eloquent\Collection;
 use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -29,7 +30,7 @@ final class CalendarCollectionAccess
         private readonly CalendarShareInvites $shareInvites,
         private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
-        private readonly AdminRoleResolver $admins,
+        private readonly TeamRoles $teamRoles,
     ) {}
 
     /**
@@ -172,8 +173,9 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * Group-owned collections (not inbound sharee copies) may be destroyed
-     * only by an instance admin. Sharees still dismiss; personal owners stay.
+     * Team-owned collections (not inbound sharee copies) may be destroyed only
+     * by a team admin of that Team (#2278). An organization admin has no bypass.
+     * Sharees still dismiss; personal owners stay.
      */
     public function mayDeleteGroupOwned(string $username, CalendarInstance $instance): bool
     {
@@ -185,12 +187,15 @@ final class CalendarCollectionAccess
 
         return ! is_string($principalUri)
             || ! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)
-            || $this->admins->isAdmin($username);
+            || $this->teamRoles->mayManageTeamCollections(
+                $username,
+                substr($principalUri, strlen(AdminConstants::GROUP_PREFIX)),
+            );
     }
 
     public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance): void
     {
-        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a team collection.');
+        $this->assertGroupOwnedAdmin($username, $instance, 'Only a team admin can delete a team collection.');
     }
 
     /**
@@ -203,8 +208,32 @@ final class CalendarCollectionAccess
         $this->assertGroupOwnedAdmin(
             $username,
             $instance,
-            'Only an instance admin can move a team collection out of its team.',
+            'Only a team admin can move a team collection out of its team.',
         );
+    }
+
+    /**
+     * Adding a collection to a Team, by creating it there or by moving one in,
+     * is for that Team's team admins (#2278). The caller has checked membership.
+     */
+    public function assertMayAddToTeam(string $username, string $groupSlug): void
+    {
+        $this->teamRoles->assertMayManageTeamCollections(
+            $username,
+            $groupSlug,
+            'Only a team admin can add a collection to a team.',
+        );
+    }
+
+    /**
+     * A named channel is a Team collection. A meeting room started with a Team is not:
+     * every member may open one.
+     */
+    public function assertMayAddChannelToTeam(string $username, string $groupSlug, string $chatKind): void
+    {
+        if ($chatKind !== ChatChannelMeta::KIND_MEETING) {
+            $this->assertMayAddToTeam($username, $groupSlug);
+        }
     }
 
     /**
@@ -226,7 +255,7 @@ final class CalendarCollectionAccess
     private function assertGroupOwnedAdmin(string $username, CalendarInstance $instance, string $message): void
     {
         if (! $this->mayDeleteGroupOwned($username, $instance)) {
-            throw new ApiHttpException(403, $message, 'group_delete_admin_only');
+            throw new ApiHttpException(403, $message, 'team_admin_only');
         }
     }
 

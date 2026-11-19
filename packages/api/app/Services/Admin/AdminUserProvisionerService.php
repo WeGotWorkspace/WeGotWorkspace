@@ -14,6 +14,7 @@ use App\Services\Drive\DriveShareRevoker;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Teams\TeamMembershipReader;
+use App\Services\Teams\TeamRoles;
 use App\Support\AppPaths;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
@@ -174,6 +175,7 @@ final class AdminUserProvisionerService
                     ->delete();
             }
 
+            app(TeamRoles::class)->removeUser($username);
             $this->driveShares->revokeAllUnderPath('/users/'.$username);
             $this->driveShares->revokeAllOwnedBy($username);
             $this->driveShares->removeGrantsToUser($username);

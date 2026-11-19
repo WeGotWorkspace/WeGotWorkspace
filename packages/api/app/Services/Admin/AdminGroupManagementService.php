@@ -18,6 +18,7 @@ use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Teams\TeamMembershipReader;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -109,6 +110,7 @@ final class AdminGroupManagementService
             app(TeamMembershipReader::class)->forget();
 
             $principal->delete();
+            app(TeamRoles::class)->removeTeam($slug);
 
             $this->driveShares->revokeAllUnderPath('/groups/'.$slug);
             $this->driveShares->removeGrantsToGroup($slug);

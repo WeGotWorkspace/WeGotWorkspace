@@ -39,7 +39,7 @@ final class AdminStateService
 
         return [
             'users' => $this->users->listSummaries(),
-            'groups' => $this->groups->listGroupSummaries(),
+            'groups' => $this->groups->listGroupSummariesWithTeamAdmins(),
             // Older installs stored one SMTP endpoint here; Email delivery prefills from it.
             'mail' => [
                 'smtpHost' => (string) ($cfg[SettingKeys::MAIL_SMTP_HOST] ?? ''),

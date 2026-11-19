@@ -12,8 +12,8 @@ const settingsStateFixture = {
     email: "alice@example.test",
   },
   groups: [
-    { id: "g1", displayName: "Editors", memberCount: 3 },
-    { id: "g2", displayName: "Readers", memberCount: 1 },
+    { id: "g1", displayName: "Editors", memberCount: 3, isTeamAdmin: true },
+    { id: "g2", displayName: "Readers", memberCount: 1, isTeamAdmin: false },
   ],
   isAdmin: false,
   logoutUrl: "/api/v1/auth/logout",

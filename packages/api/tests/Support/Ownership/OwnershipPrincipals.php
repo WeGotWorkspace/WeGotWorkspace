@@ -48,4 +48,19 @@ final class OwnershipPrincipals
             self::ALUMNI => [self::MEMBER, self::ADMIN],
         ];
     }
+
+    /**
+     * Who seeds the Team collections of each group, and so is its team admin (#2278).
+     * An actor who leaves alumni keeps a stale row that no longer counts.
+     *
+     * @return array<string, list<string>> group slug => team admin usernames
+     */
+    public static function teamAdmins(): array
+    {
+        return [
+            self::CREW => [self::DAVE],
+            self::OUTSIDERS => [self::CAROL],
+            self::ALUMNI => [self::MEMBER, self::ADMIN],
+        ];
+    }
 }

@@ -48,6 +48,8 @@ export type SettingsGroup = {
   displayName: string;
   /** Members of the Team, the user included. */
   memberCount: number;
+  /** The user is a team admin of this Team (#2278). */
+  isTeamAdmin: boolean;
 };
 
 export type SettingsMcpShareCall = {

@@ -13,6 +13,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Teams\TeamRoles;
 use App\Services\Threads\ThreadPoolUris;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -31,6 +32,7 @@ final class CalDavCollections
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $provisioner,
         private readonly DriveGroupResolver $groups,
+        private readonly TeamRoles $teamRoles,
     ) {}
 
     /**
@@ -207,6 +209,11 @@ final class CalDavCollections
         if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
             throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
         }
+        $this->teamRoles->assertMayManageTeamCollections(
+            $username,
+            $groupSlug,
+            'Only a team admin can add a collection to a team.',
+        );
         $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
         $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
         if ($group === null) {

@@ -18,14 +18,15 @@ use Tests\Support\LegacyAdministratorsTeam;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * Group-owned channels and collections: any member may rename, only an
- * instance admin may delete. Sharee dismiss and protected defaults stay put.
+ * Team-owned channels and collections: any member may rename, only a team
+ * admin of that Team may add or delete one (#2278). Sharee dismiss and
+ * protected defaults stay put. alice is team admin of crew, bob a plain member.
  */
 final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
 {
     private const GROUP = 'crew';
 
-    private const ADMIN_ONLY = 'Only an instance admin can delete a team collection.';
+    private const ADMIN_ONLY = 'Only a team admin can delete a team collection.';
 
     protected function setUp(): void
     {
@@ -46,11 +47,12 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $crew = $this->seedWgwGroup('principals/groups/'.self::GROUP, 'Crew');
         $this->addPrincipalToGroup($crew, $alice);
         $this->addPrincipalToGroup($crew, $bob);
+        $this->appointTeamAdmin(self::GROUP, 'alice');
         // Users here share with each other; Epic #1915 only lets colleagues share.
         $this->seedSharedTeamForEveryone();
     }
 
-    public function test_group_channel_delete_is_admin_only(): void
+    public function test_group_channel_delete_is_team_admin_only(): void
     {
         $personal = (string) $this->asUser('bob')->postJson('/api/v1/chat/channels', [
             'name' => 'Solo', 'kind' => 'channel',
@@ -62,14 +64,14 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertProtectedRest('bob', '/api/v1/chat/channels/'.$defaultId, 'Team default channels cannot be deleted.');
         $this->assertProtectedRest('alice', '/api/v1/chat/channels/'.$defaultId, 'Team default channels cannot be deleted.');
 
-        $created = $this->asUser('bob')->postJson('/api/v1/chat/channels', [
+        $created = $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Crew talk', 'kind' => 'channel', 'groupSlug' => self::GROUP,
         ])->assertCreated()->json();
         $channelId = (string) $created['id'];
-        $this->assertFalse($created['myRights']['mayDelete']);
-        $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$channelId)
+        $this->assertTrue($created['myRights']['mayDelete']);
+        $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$channelId)
             ->assertOk()
-            ->assertJsonPath('myRights.mayDelete', true);
+            ->assertJsonPath('myRights.mayDelete', false);
         $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$channelId, ['name' => 'Crew talk renamed'])
             ->assertOk()
             ->assertJsonPath('name', 'Crew talk renamed');
@@ -90,7 +92,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->asUser('carol')->getJson('/api/v1/chat/channels/'.$shared)->assertNotFound();
     }
 
-    public function test_group_notebook_delete_is_admin_only(): void
+    public function test_group_notebook_delete_is_team_admin_only(): void
     {
         $personal = (string) $this->asUser('bob')->postJson('/api/v1/notes/notebooks', [
             'name' => 'Solo',
@@ -104,14 +106,14 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertProtectedRest('bob', $provisioned, 'The team notebook cannot be deleted.');
         $this->assertProtectedRest('alice', $provisioned, 'The team notebook cannot be deleted.');
 
-        $created = $this->asUser('bob')->postJson('/api/v1/notes/notebooks', [
+        $created = $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
             'name' => 'Crew notes', 'groupSlug' => self::GROUP,
         ])->assertCreated()->json();
         $notebookId = (string) $created['id'];
-        $this->assertFalse($created['myRights']['mayDelete']);
-        $this->asUser('alice')->getJson('/api/v1/notes/notebooks/'.$notebookId)
+        $this->assertTrue($created['myRights']['mayDelete']);
+        $this->asUser('bob')->getJson('/api/v1/notes/notebooks/'.$notebookId)
             ->assertOk()
-            ->assertJsonPath('myRights.mayDelete', true);
+            ->assertJsonPath('myRights.mayDelete', false);
         $this->asUser('bob')->patchJson('/api/v1/notes/notebooks/'.$notebookId, ['name' => 'Crew notes renamed'])
             ->assertOk()
             ->assertJsonPath('name', 'Crew notes renamed');
@@ -134,7 +136,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertNull($this->namedRowOrNull('carol', '/api/v1/notes/notebooks', 'Leave Me'));
     }
 
-    public function test_group_task_list_delete_is_admin_only(): void
+    public function test_group_task_list_delete_is_team_admin_only(): void
     {
         $personal = (string) $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', [
             'name' => 'Solo',
@@ -148,14 +150,14 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertProtectedRest('bob', $provisioned, 'The team task list cannot be deleted.');
         $this->assertProtectedRest('alice', $provisioned, 'The team task list cannot be deleted.');
 
-        $created = $this->asUser('bob')->postJson('/api/v1/tasks/tasklists', [
+        $created = $this->asUser('alice')->postJson('/api/v1/tasks/tasklists', [
             'name' => 'Crew tasks', 'groupSlug' => self::GROUP,
         ])->assertCreated()->json();
         $listId = (string) $created['id'];
-        $this->assertFalse($created['myRights']['mayDelete']);
-        $this->asUser('alice')->getJson('/api/v1/tasks/tasklists/'.$listId)
+        $this->assertTrue($created['myRights']['mayDelete']);
+        $this->asUser('bob')->getJson('/api/v1/tasks/tasklists/'.$listId)
             ->assertOk()
-            ->assertJsonPath('myRights.mayDelete', true);
+            ->assertJsonPath('myRights.mayDelete', false);
         $this->asUser('bob')->patchJson('/api/v1/tasks/tasklists/'.$listId, ['name' => 'Crew tasks renamed'])
             ->assertOk()
             ->assertJsonPath('name', 'Crew tasks renamed');
@@ -178,7 +180,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertNull($this->namedRowOrNull('carol', '/api/v1/tasks/tasklists', 'Leave Me'));
     }
 
-    public function test_group_calendar_delete_is_admin_only(): void
+    public function test_group_calendar_delete_is_team_admin_only(): void
     {
         $personal = $this->jmapCreate('bob', ['name' => 'Solo', 'id' => 'solo']);
         $destroyed = $this->jmap('bob', [
@@ -197,7 +199,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertProtectedCalendar('bob', $provisioned, 'The team calendar cannot be deleted.');
         $this->assertProtectedCalendar('alice', $provisioned, 'The team calendar cannot be deleted.');
 
-        $calendarId = $this->jmapCreate('bob', ['name' => 'Crew calendar', 'groupSlug' => self::GROUP]);
+        $calendarId = $this->jmapCreate('alice', ['name' => 'Crew calendar', 'groupSlug' => self::GROUP]);
         $member = $this->jmapCalendar('bob', $calendarId);
         $this->assertFalse($member['myRights']['mayDelete']);
         $admin = $this->jmapCalendar('alice', $calendarId);
@@ -247,14 +249,14 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
             'principals/groups/'.self::GROUP,
             'Crew',
         );
-        $calendarId = $this->jmapCreate('bob', ['name' => 'Crew calendar', 'groupSlug' => self::GROUP]);
+        $calendarId = $this->jmapCreate('alice', ['name' => 'Crew calendar', 'groupSlug' => self::GROUP]);
 
         try {
             app(CalendarRepository::class)->deleteIncludingContents('bob', $calendarId);
-            $this->fail('Expected the group-admin delete guard.');
+            $this->fail('Expected the team-admin delete guard.');
         } catch (ApiHttpException $exception) {
             $this->assertSame(403, $exception->getStatusCode());
-            $this->assertSame('group_delete_admin_only', $exception->errorCode());
+            $this->assertSame('team_admin_only', $exception->errorCode());
             $this->assertSame(self::ADMIN_ONLY, $exception->getMessage());
         }
 
@@ -280,7 +282,7 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
     {
         $this->asUser($username)->deleteJson($path)
             ->assertForbidden()
-            ->assertJsonPath('code', 'group_delete_admin_only')
+            ->assertJsonPath('code', 'team_admin_only')
             ->assertJsonPath('error', self::ADMIN_ONLY);
     }
 

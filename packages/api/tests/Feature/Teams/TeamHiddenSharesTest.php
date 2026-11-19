@@ -53,6 +53,7 @@ final class TeamHiddenSharesTest extends WgwDatabaseTestCase
 
         $this->seedSharedTeam('t1', 'bob', 'dave');
         $this->seedSharedTeam('t2', 'bob', 'carol');
+        $this->appointTeamAdmin('t2', 'bob');
         $this->seedSharedTeam('t3', 'alice', 'erin');
         foreach (['alice', 'bob', 'carol', 'dave', 'erin'] as $username) {
             app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/'.$username);

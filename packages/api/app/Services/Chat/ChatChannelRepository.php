@@ -114,6 +114,7 @@ final class ChatChannelRepository
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
+            $this->collectionAccess->assertMayAddChannelToTeam($username, $groupSlug, $kind);
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
@@ -533,6 +534,7 @@ final class ChatChannelRepository
             if (! in_array($newGroupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
+            $this->collectionAccess->assertMayAddToTeam($username, $newGroupSlug);
             $principalUri = AdminConstants::GROUP_PREFIX.$newGroupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
