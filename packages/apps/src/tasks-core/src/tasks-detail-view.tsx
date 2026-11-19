@@ -34,7 +34,7 @@ type TasksDetailViewProps = {
   allTaskLists: TaskList[];
   readOnly: boolean;
   /** Saves the whole form; runs after a typing pause, right away for a picked value. */
-  onSave: (taskId: string, value: TasksTaskFormValue) => void;
+  onSave: (taskId: string, value: TasksTaskFormValue, opts?: { skipText?: boolean }) => void;
   /** The done box left of the title, the same toggle as in the list. */
   onToggleComplete: (taskId: string) => void;
   onCreateList?: () => void;
@@ -156,23 +156,17 @@ function TasksDetailForm({
   const formRef = useRef(form);
   formRef.current = form;
   const pendingRef = useRef<{ taskId: string; timer: ReturnType<typeof setTimeout> } | null>(null);
-  const taskRef = useRef(task);
-  taskRef.current = task;
   const inRoomRef = useRef(inRoom);
   inRoomRef.current = inRoom;
-  // In a room the title and description are the room's: the autosave sends
-  // the task's own copy of them, so its patch never names either.
+  // In a room the title and description are the room's: the autosave leaves
+  // both out of its patch.
   const onSaveProp = useRef(onSave);
   onSaveProp.current = onSave;
-  const onSaveRef = useRef((taskId: string, value: TasksTaskFormValue) => {
-    if (!inRoomRef.current) return onSaveProp.current(taskId, value);
-    const own = taskRef.current;
-    onSaveProp.current(taskId, {
-      ...value,
-      title: own.title ?? "",
-      description: own.description ?? "",
-    });
-  });
+  const onSaveRef = useRef((taskId: string, value: TasksTaskFormValue) =>
+    inRoomRef.current
+      ? onSaveProp.current(taskId, value, { skipText: true })
+      : onSaveProp.current(taskId, value),
+  );
 
   const flush = useCallback(() => {
     const pending = pendingRef.current;

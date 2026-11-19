@@ -124,7 +124,7 @@ describe("TasksDetailView in a live room", () => {
   it("writes typing into the document and leaves it out of the autosave", () => {
     vi.useFakeTimers();
     seed("Buy milk", "");
-    const { task, onSave } = renderRoom();
+    const { onSave } = renderRoom();
 
     fireEvent.change(screen.getByLabelText(L.descriptionLabel), { target: { value: "Cold" } });
     fireEvent.change(screen.getByLabelText(L.addTaskName), { target: { value: "Buy oat milk" } });
@@ -136,11 +136,10 @@ describe("TasksDetailView in a live room", () => {
     // The room saves the text: no autosave fired for it.
     expect(onSave).not.toHaveBeenCalled();
 
-    // Another field still autosaves, carrying the task's own title and notes.
+    // Another field still autosaves, told to leave the title and notes out.
     fireEvent.click(screen.getByRole("checkbox", { name: L.markComplete }));
-    for (const [, value] of onSave.mock.calls) {
-      expect(value.title).toBe(task.title ?? "");
-      expect(value.description).toBe(task.description ?? "");
+    for (const [, , opts] of onSave.mock.calls) {
+      expect(opts).toEqual({ skipText: true });
     }
   });
 
