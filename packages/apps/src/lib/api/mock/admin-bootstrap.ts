@@ -43,6 +43,7 @@ const DEFAULT_DATA: AdminUIData = {
       id: "principals/groups/support",
       name: "support",
       displayName: "Support",
+      teamAdmins: [],
     },
   ],
   mail: {

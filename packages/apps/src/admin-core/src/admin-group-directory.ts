@@ -44,7 +44,7 @@ export function appendLocalGroup(
   groups: readonly AdminGroup[],
   group: { id: string; name: string },
 ): AdminGroup[] {
-  return [...groups, { id: group.id, name: group.name, displayName: group.name }];
+  return [...groups, { id: group.id, name: group.name, displayName: group.name, teamAdmins: [] }];
 }
 
 export function renameGroup(
@@ -60,6 +60,17 @@ export function renameGroup(
           displayName: name,
         }
       : group,
+  );
+}
+
+/** The Team's team admins after an edit: usernames of the chosen users who are also members. */
+export function withTeamAdmins(
+  groups: readonly AdminGroup[],
+  groupId: string,
+  teamAdmins: readonly string[],
+): AdminGroup[] {
+  return groups.map((group) =>
+    group.id === groupId ? { ...group, teamAdmins: [...teamAdmins] } : group,
   );
 }
 

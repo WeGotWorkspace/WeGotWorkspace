@@ -147,6 +147,7 @@ export function mapWgwAdminStateToUI(
       id: group.id,
       name: group.name,
       displayName: group.displayName,
+      teamAdmins: group.teamAdmins,
     })),
     mail: {
       smtpHost: state.mail.smtpHost,
@@ -602,12 +603,32 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       const res = await wgwFetch(`/admin/groups/${encodeURIComponent(slug)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ displayName: input.displayName, members: input.members }),
         signal: opts?.signal,
       });
       if (!res.ok)
         throw new WgwRequestError(`PATCH /admin/groups/${slug} failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      if (input.teamAdmins) {
+        // After the member write: only a member can be team admin, and a removed member has
+        // already lost the role.
+        const before = (await fetchAdminState(opts)).groups.find((group) => group.name === slug);
+        const current = before?.teamAdmins ?? [];
+        const wanted = input.teamAdmins;
+        const changes = [
+          ...wanted.filter((u) => !current.includes(u)).map((u) => ["PUT", u] as const),
+          ...current.filter((u) => !wanted.includes(u)).map((u) => ["DELETE", u] as const),
+        ];
+        for (const [method, username] of changes) {
+          const path = `/teams/${encodeURIComponent(slug)}/admins/${encodeURIComponent(username)}`;
+          const roleRes = await wgwFetch(path, { method, signal: opts?.signal });
+          if (!roleRes.ok)
+            throw new WgwRequestError(
+              `${method} ${path} failed (${roleRes.status})`,
+              roleRes.status,
+            );
+        }
+      }
       return fetchAdminUiData(opts);
     },
     deleteGroup: async (groupSlug, opts) => {

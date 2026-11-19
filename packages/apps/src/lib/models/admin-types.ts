@@ -73,6 +73,8 @@ export type AdminGroup = {
   id: string;
   name: string;
   displayName: string;
+  /** Usernames of the Team's team admins (#2278). */
+  teamAdmins: string[];
 };
 
 /** The pre-delivery SMTP endpoint. Email delivery prefills from it when its own host is empty. */
@@ -307,7 +309,7 @@ export type AdminAPIOperations = {
   ) => Promise<AdminUIData>;
   updateGroup: (
     groupSlug: string,
-    input: { displayName?: string; members?: string[] },
+    input: { displayName?: string; members?: string[]; teamAdmins?: string[] },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteGroup: (groupSlug: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
