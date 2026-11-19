@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   BellOff,
@@ -21,6 +21,7 @@ import {
 } from "@/notifications-core/src/notification-inbox-row-meta";
 import { NotificationItemContent } from "@/notifications-core/src/notification-item";
 import {
+  NOTIFICATION_SCOPE_STORAGE_KEY,
   readNotificationScope,
   storeNotificationScope,
   type NotificationScope,
@@ -69,6 +70,17 @@ export function NotificationInboxTray({
   popoverSide = "bottom",
 }: NotificationInboxTrayProps) {
   const [storedScope, setStoredScope] = useState<InboxScope>(readNotificationScope);
+  // One setting per browser: another tab's pick shows here too, as it already
+  // decides this tab's toasts and chime.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === NOTIFICATION_SCOPE_STORAGE_KEY) {
+        setStoredScope(readNotificationScope());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
   const scope: InboxScope = currentAppId ? storedScope : "all";
   const appItems = useMemo(
     () =>

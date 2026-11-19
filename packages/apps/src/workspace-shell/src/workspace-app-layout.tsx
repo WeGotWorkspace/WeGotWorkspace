@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { AppRailAccountPortal } from "@/app-rail/src/app-rail-account";
+import { AppRailAccountPortal, AppRailAccountSlotContext } from "@/app-rail/src/app-rail-account";
 import { IconButton } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useNotificationsInbox } from "@/lib/notifications/notifications-inbox-context";
@@ -152,6 +152,9 @@ export function WorkspaceUserFooter({
   const { online: hookOnline } = useConnectivity();
   const online = onlineOverride ?? hookOnline;
   const connectivityAnnouncement = useConnectivityAnnouncement(online);
+  // Beside the app rail the account is the rail's foot button. The card is then not
+  // rendered at all, so the page has one connectivity marker (`data-connectivity`).
+  const accountInRail = useContext(AppRailAccountSlotContext) != null;
   const trimmedName = name.trim();
   const trimmedDetailLine = detailLine?.trim() ?? "";
   const trimmedInitials = initials.trim();
@@ -163,41 +166,48 @@ export function WorkspaceUserFooter({
   return (
     <>
       {/*
-       * Where the app rail shows, the account lives at its foot and CSS hides this
-       * card. Here, in the one account primitive, so every sidebar gets it.
+       * Where the app rail shows, the account lives at its foot. Here, in the one
+       * account primitive, so every sidebar gets it.
        */}
       <AppRailAccountPortal name={trimmedName} initials={trimmedInitials} onLogout={handleLogout} />
-      <div className="workspace-app-layout__user-footer">
-        {/* Green = online; amber = the signed-in user is offline (pending syncs are blue). */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className="workspace-app-layout__user-identity"
-              data-connectivity={connectivityLabel}
-            >
-              <UserAvatar
-                displayName={avatarName}
-                subtitle={
-                  online ? trimmedDetailLine || undefined : <span className="italic">Offline</span>
-                }
-                presence={online ? "online" : "away"}
-                ariaLabel={`${avatarName} avatar, ${connectivityLabel}`}
-              />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>{online ? "Online" : "Offline"}</TooltipContent>
-        </Tooltip>
-        <span role="status" className="sr-only">
-          {connectivityAnnouncement}
-        </span>
-        <IconButton
-          label="Log out"
-          icon={<LogOut />}
-          onClick={handleLogout}
-          variant="outline"
-          size="md"
-        />
-      </div>
+      {/* Outside the card: it must keep announcing when the card is not rendered. */}
+      <span role="status" className="sr-only">
+        {connectivityAnnouncement}
+      </span>
+      {accountInRail ? null : (
+        <div className="workspace-app-layout__user-footer">
+          {/* Green = online; amber = the signed-in user is offline (pending syncs are blue). */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className="workspace-app-layout__user-identity"
+                data-connectivity={connectivityLabel}
+              >
+                <UserAvatar
+                  displayName={avatarName}
+                  subtitle={
+                    online ? (
+                      trimmedDetailLine || undefined
+                    ) : (
+                      <span className="italic">Offline</span>
+                    )
+                  }
+                  presence={online ? "online" : "away"}
+                  ariaLabel={`${avatarName} avatar, ${connectivityLabel}`}
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{online ? "Online" : "Offline"}</TooltipContent>
+          </Tooltip>
+          <IconButton
+            label="Log out"
+            icon={<LogOut />}
+            onClick={handleLogout}
+            variant="outline"
+            size="md"
+          />
+        </div>
+      )}
     </>
   );
 }

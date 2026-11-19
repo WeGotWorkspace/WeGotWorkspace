@@ -17,14 +17,13 @@
   /* Slides with the sidebar (same motion tokens) when the sidebar is hidden. */
   transition:
     translate var(--panel-overlay-duration) var(--panel-overlay-ease),
-    margin var(--panel-overlay-duration) var(--panel-overlay-ease),
-    visibility 0s;
+    margin var(--panel-overlay-duration) var(--panel-overlay-ease);
   inline-size: calc(var(--app-rail-width) + env(safe-area-inset-left, 0px));
   padding-inline-start: env(safe-area-inset-left, 0px);
   /*
-     * First tile centres on the header controls of every column. Its 44px hit
-     * area is taller than a 40px control, so it starts half the difference higher.
-     */
+   * First tile centres on the header controls of every column. Its 44px hit
+   * area is taller than a 40px control, so it starts half the difference higher.
+   */
   padding-block-start: calc(
     var(--workspace-header-padding-y) - (2.75rem - var(--workspace-header-control-height)) / 2 +
       env(safe-area-inset-top, 0px)
@@ -36,18 +35,14 @@
 }
 
 /*
-   * Hidden sidebar hides the rail too: both slide off and the main pane takes the
-   * full width. The sidebar toggle's unread dot stands in for the bell meanwhile.
-   * Hidden from focus and assistive tech once the slide is done.
-   */
+ * Hidden sidebar hides the rail too: both slide off and the main pane takes the
+ * full width. The sidebar toggle's unread dot stands in for the bell meanwhile.
+ * Off-screen like the closed sidebar itself, not `visibility: hidden`: the
+ * connectivity marker on the account button stays readable for tests.
+ */
 .app-rail:has(~ .app-sidebar[data-open="false"]) {
   translate: -100%;
   margin-inline-start: calc(-1 * (var(--app-rail-width) + env(safe-area-inset-left, 0px)));
-  visibility: hidden;
-  transition:
-    translate var(--panel-overlay-duration) var(--panel-overlay-ease),
-    margin var(--panel-overlay-duration) var(--panel-overlay-ease),
-    visibility 0s var(--panel-overlay-duration);
 }
 
 /* Beside the rail the sidebar is a panel with two free edges: round, rule and shadow on both. */
@@ -149,10 +144,13 @@
   scale: 0.94;
 }
 
-/* The account moved to the rail: the sidebar's own account card steps out. */
-.app-rail ~ .app-sidebar .workspace-sidebar-account-footer,
-.app-rail ~ .app-sidebar .workspace-app-layout__user-footer {
-  display: none;
+/*
+ * The account moved to the rail, so the sidebar does not render its account card
+ * (`WorkspaceUserFooter`). The card's wrapper stays for the connectivity live
+ * region and just gives up its spacing.
+ */
+.app-rail ~ .app-sidebar .workspace-sidebar-account-footer {
+  padding: 0;
 }
 
 /* Settings and Admin: a short hairline in the gap sets them apart from the apps. */

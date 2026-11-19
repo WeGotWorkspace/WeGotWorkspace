@@ -41,6 +41,16 @@ export function rememberAppLocation(appId: WorkspaceAppId, location: LastAppLoca
   }
 }
 
+/** Forget every remembered spot (sign-out: the next account must not inherit them). */
+export function clearLastAppLocations(): void {
+  memory = {};
+  try {
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage blocked: the in-memory copy is already empty.
+  }
+}
+
 /** The remembered spot inside `appId`, if it still belongs to that app. */
 export function lastAppLocation(appId: WorkspaceAppId): LastAppLocation | null {
   const known = load()[appId];

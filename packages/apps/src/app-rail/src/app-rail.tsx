@@ -1,9 +1,9 @@
 import { memo, useEffect, type MouseEvent } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { prefersReducedMotion } from "@/lib/view-transition";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import {
   APP_SWITCH_PRODUCT_APPS,
+  appSwitchAppAtPath,
   appSwitchUtilityApps,
   type AppSwitchMenuApp,
 } from "@/app-switch-button/src/app-switch-menu-apps";
@@ -22,10 +22,12 @@ type AppRailItemProps = {
 
 /**
  * A tile's click. Another app: back to where the user left it (its start screen
- * the first time), as one View Transition, so the old app cross-fades into the
- * new one once it has loaded. The router's own `viewTransition` option is lost
- * on the redirect every app does (`/notes` to `/notes/all`), so the rail runs
- * the transition around the whole navigation. The current app's own tile goes
+ * the first time), cross-faded by the router's own view transition. The router
+ * writes the address first and starts the transition around the render, so the
+ * History API is never called inside a transition callback (Chrome and iOS drop
+ * such writes). An app's start screen redirects (`/notes` to `/notes/all`) and
+ * the router drops the transition on a redirect, so only a remembered spot
+ * cross-fades; the first visit just switches. The current app's own tile goes
  * to its start screen. A modified click (new tab) is left to the browser.
  */
 function useAppSwitch(app: AppSwitchMenuApp, current: boolean) {
@@ -36,17 +38,11 @@ function useAppSwitch(app: AppSwitchMenuApp, current: boolean) {
     if (!plainClick) return;
     event.preventDefault();
     const last = current ? null : lastAppLocation(app.id);
-    const go = () =>
-      last ? navigate({ to: last.pathname, search: last.search }) : navigate({ to: app.to });
-    if (current || typeof document.startViewTransition !== "function" || prefersReducedMotion()) {
-      void go();
+    if (last) {
+      void navigate({ to: last.pathname, search: last.search, viewTransition: true });
       return;
     }
-    document.startViewTransition(async () => {
-      await go();
-      // Let React commit the new app before the browser takes the "after" snapshot.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    void navigate({ to: app.to });
   };
 }
 
@@ -77,9 +73,9 @@ function AppRailItem({ app, current, unread }: AppRailItemProps) {
 }
 
 /**
- * Suite app rail: one tile per app, left of the AppSidebar. CSS shows it only
- * on wide landscape viewports (see `app-rail.css`); below that the sidebar
- * header's AppSwitchButton is the switcher.
+ * Suite app rail: one tile per app, the app switcher at every width. Docked left
+ * of the AppSidebar from the sidebar's dock width; below it, the leading strip of
+ * the sidebar drawer (see `app-rail.css`). Home and install do not mount it.
  */
 type AppRailProps = {
   /** Receives the bottom slot element that the sidebar's account footer fills. */
@@ -109,12 +105,11 @@ export const AppRail = memo(function AppRail({
   });
   // Keep the current app's last spot up to date for the way back.
   useEffect(() => {
-    const here = [...APP_SWITCH_PRODUCT_APPS, ...appSwitchUtilityApps(true)].find(
-      (app) => path === app.to || path.startsWith(`${app.to}/`),
-    );
+    const here = appSwitchAppAtPath(path);
     if (here) rememberAppLocation(here.id, { pathname: path, search: search ?? {} });
   }, [path, search]);
-  const isCurrent = (app: AppSwitchMenuApp) => path === app.to || path.startsWith(`${app.to}/`);
+  const currentAppId = appSwitchAppAtPath(path)?.id;
+  const isCurrent = (app: AppSwitchMenuApp) => app.id === currentAppId;
 
   return (
     // Own provider: the rail also mounts where no suite-level tooltip provider is above it.

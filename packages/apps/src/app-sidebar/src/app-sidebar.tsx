@@ -12,7 +12,10 @@ import { AppRailAccountSlotContext } from "@/app-rail/src/app-rail-account";
 import { useAppRailVisible } from "@/app-rail/src/use-app-rail-visible";
 import { createPortal } from "react-dom";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
-import { APP_SWITCH_PRODUCT_APPS } from "@/app-switch-button/src/app-switch-menu-apps";
+import {
+  APP_SWITCH_PRODUCT_APPS,
+  appSwitchAppAtPath,
+} from "@/app-switch-button/src/app-switch-menu-apps";
 import { useRouterState } from "@tanstack/react-router";
 import { bindOpenSidebarStatusBar } from "@/app-sidebar/src/sidebar-status-bar";
 import { cn } from "@/lib/utils";
@@ -76,9 +79,8 @@ function AppSidebarInboxTray({
   inRail: boolean;
 }) {
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const currentApp = APP_SWITCH_PRODUCT_APPS.find(
-    (app) => path === app.to || path.startsWith(`${app.to}/`),
-  );
+  // Settings and Admin raise no notifications: no scope to offer there.
+  const currentApp = APP_SWITCH_PRODUCT_APPS.find((app) => app.id === appSwitchAppAtPath(path)?.id);
   return (
     <div className="app-sidebar__notifications">
       <NotificationInboxTray

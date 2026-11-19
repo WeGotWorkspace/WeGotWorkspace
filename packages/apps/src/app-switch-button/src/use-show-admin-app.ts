@@ -8,6 +8,11 @@ import { fetchWeGotWorkspaceHomeState } from "@/wegotworkspace/src/wegotworkspac
  */
 let lastKnownShowAdmin: boolean | null = null;
 
+/** Drop the remembered answer (sign-out: it was the previous account's). */
+export function forgetShowAdminApp(): void {
+  lastKnownShowAdmin = null;
+}
+
 /**
  * Whether the Admin app should appear in chrome (home grid + app switch).
  * Reuses {@link fetchWeGotWorkspaceHomeState}'s `showAdmin` (the admin role, `isAdmin`).

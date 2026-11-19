@@ -9,14 +9,14 @@ import { notificationInboxAppId } from "@/notifications-core/src/notification-in
  */
 export type NotificationScope = "all" | "app";
 
-const SCOPE_STORAGE_KEY = "wgw.notifications.tray-scope";
+export const NOTIFICATION_SCOPE_STORAGE_KEY = "wgw.notifications.tray-scope";
 
 /** Apps that raise no notifications of their own: the scope does not apply there. */
 const UNSCOPED_APP_IDS = new Set<WorkspaceAppId>(["settings", "admin"]);
 
 export function readNotificationScope(): NotificationScope {
   try {
-    return window.localStorage.getItem(SCOPE_STORAGE_KEY) === "app" ? "app" : "all";
+    return window.localStorage.getItem(NOTIFICATION_SCOPE_STORAGE_KEY) === "app" ? "app" : "all";
   } catch {
     return "all";
   }
@@ -24,7 +24,7 @@ export function readNotificationScope(): NotificationScope {
 
 export function storeNotificationScope(scope: NotificationScope): void {
   try {
-    window.localStorage.setItem(SCOPE_STORAGE_KEY, scope);
+    window.localStorage.setItem(NOTIFICATION_SCOPE_STORAGE_KEY, scope);
   } catch {
     // Private mode or blocked storage: the scope just resets on reload.
   }

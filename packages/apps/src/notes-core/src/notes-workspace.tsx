@@ -86,6 +86,7 @@ import { ProjectDialog } from "@/project-dialog/src/project-dialog";
 import { personalOwnerLabel } from "@/lib/workspace/workspace-session";
 import { Callout } from "@/callout/src/callout";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
+import { noteDetailMode } from "@/notes-core/src/note-detail-mode";
 import "@/notes-core/src/notes-workspace.css";
 
 function NotesSidebarRows({
@@ -353,14 +354,11 @@ export function NotesWorkspace({
     syncConflictNoteIds,
   );
 
-  // Empty detail = no multi-select and no selected note. Do not use `!!active`
-  // alone: cmd/ctrl-deselect and view selection-reset clear selectedIds while
-  // leaving a stale activeId — list looks unselected but the action bar stayed.
-  // Do not require `selectedIds[0] === active.id` either: a click selects the row
-  // at once and opens the note in a transition, so for one render the two differ.
-  // Requiring a match swapped the open note for the empty state and back (a flash);
-  // the previous note stays up until the new one is ready, as in Contacts.
-  const showSingleNoteDetail = selectedIds.length === 1 && !!active;
+  // See `noteDetailMode`: the open note stays up while a clicked one opens (no
+  // flash of the empty state), but read-only, so typing cannot land in it.
+  const detailMode = noteDetailMode(selectedIds, active?.id);
+  const showSingleNoteDetail = detailMode !== "empty";
+  const noteInputLocked = noteReadOnly || detailMode === "opening";
   const notesDetailTint =
     showSingleNoteDetail && active ? notebookDisplayColor(active, notebookCollections) : undefined;
   const collabSessionActive = showSingleNoteDetail && noteBodyCollab != null;
@@ -608,14 +606,16 @@ export function NotesWorkspace({
                 title={active.title ?? ""}
                 storedTitle={active.title ?? null}
                 titlePlaceholder={L.titlePlaceholder}
-                autoFocusTitle={focusTitleAfterCreate && !noteReadOnly}
+                autoFocusTitle={focusTitleAfterCreate && !noteInputLocked}
                 onAutoFocusTitleConsumed={() => setFocusTitleAfterCreate(false)}
                 onTitleChange={
-                  noteReadOnly ? undefined : (title) => projectNoteTitle(setNotes, active.id, title)
+                  noteInputLocked
+                    ? undefined
+                    : (title) => projectNoteTitle(setNotes, active.id, title)
                 }
                 onTitleEdit={
                   // Saved like a collab title: no "Saved" toast.
-                  noteReadOnly
+                  noteInputLocked
                     ? undefined
                     : (title) => updateNote(active.id, { title }, { autoSaveToast: false })
                 }
@@ -633,7 +633,7 @@ export function NotesWorkspace({
                 pullQuote={active.pullQuote}
                 body={active.body}
                 collab={accessLost ? undefined : noteBodyCollab}
-                readOnly={noteReadOnly}
+                readOnly={noteInputLocked}
                 eyebrow={
                   <>
                     <NotesDetailNotebookSelect

@@ -4,7 +4,9 @@ import { LogOut } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { UserAvatar, initialsFromDisplayName } from "@/user-avatar/src/user-avatar";
+import { clearLastAppLocations } from "@/app-rail/src/last-app-location";
+import { forgetShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 
 /**
  * The rail's bottom slot. AppSidebar publishes the element; the sidebar's
@@ -58,13 +60,20 @@ function AppRailAccount({ name, initials, onLogout }: AppRailAccountProps) {
     <DropdownMenu
       align="start"
       trigger={
-        <AccountTrigger hint={`${avatarName} (${connectivityLabel})`}>
-          {/* The avatar names the button: its initials are visible text, so the name comes from content. */}
+        <AccountTrigger
+          hint={`${avatarName} (${connectivityLabel})`}
+          // The page's connectivity marker (e2e waits on it); the sidebar card had it before.
+          data-connectivity={connectivityLabel}
+        >
+          {/*
+            The avatar names the button. The name carries the initials the mark
+            shows, so the visible text is part of it (WCAG 2.5.3).
+          */}
           <UserAvatar
             displayName={avatarName}
             compact
             presence={online ? "online" : "away"}
-            ariaLabel={`${avatarName}, ${connectivityLabel}. Account menu`}
+            ariaLabel={`${avatarName}, ${initialsFromDisplayName(avatarName) || "?"}, ${connectivityLabel}. Account menu`}
           />
         </AccountTrigger>
       }
@@ -73,7 +82,12 @@ function AppRailAccount({ name, initials, onLogout }: AppRailAccountProps) {
           id: "logout",
           label: "Log out",
           icon: <LogOut className="size-4" aria-hidden />,
-          onClick: () => onLogout?.(),
+          onClick: () => {
+            // The next person in this tab starts clean: no remembered spots, no Admin answer.
+            clearLastAppLocations();
+            forgetShowAdminApp();
+            onLogout?.();
+          },
         },
       ]}
     />
