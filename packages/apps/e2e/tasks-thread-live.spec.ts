@@ -35,7 +35,7 @@ async function openTask(tab: Tab, title: string): Promise<void> {
   ).toHaveValue(title, { timeout: 10_000 });
 }
 
-const panel = (tab: Tab) => tab.getByRole("region", { name: "Activity" });
+const panel = (tab: Tab) => tab.getByRole("region", { name: "Comments" });
 
 test("task comments reach another open tab, survive a reload, and read offline", async ({
   browser,
@@ -63,7 +63,7 @@ test("task comments reach another open tab, survive a reload, and read offline",
     const typed = `typed ${id}`;
     await panel(tabA).locator(".ProseMirror").click();
     await tabA.keyboard.type(typed);
-    await tabA.keyboard.press("ControlOrMeta+Enter");
+    await tabA.keyboard.press("Enter");
     await expect(panel(tabA).getByText(typed)).toHaveCount(1, { timeout: 15_000 });
     await expect(panel(tabB).getByText(typed)).toHaveCount(1, { timeout: SEEN_MS });
 

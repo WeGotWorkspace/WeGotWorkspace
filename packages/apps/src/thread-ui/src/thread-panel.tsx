@@ -199,6 +199,11 @@ export function ThreadPanel({ client, adapter, presence, className }: ThreadPane
         </p>
       ) : thread.status === "gone" ? null : (
         <>
+          {thread.lastUpdated !== null ? (
+            <p className="thread-panel__state thread-panel__last-updated">
+              {threadUiLabels.lastUpdated(formatThreadTime(thread.lastUpdated))}
+            </p>
+          ) : null}
           {thread.writeError ? (
             <p className="thread-panel__failed-reason" role="alert">
               {threadUiLabels.notSaved}: {threadUiLabels.failure[thread.writeError]}

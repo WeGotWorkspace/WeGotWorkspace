@@ -1,5 +1,7 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import "fake-indexeddb/auto";
+import { readThreadCache } from "@/lib/offline/threads/thread-cache";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ThreadPanel } from "@/thread-ui/src/thread-panel";
 import { threadUiLabels } from "@/thread-ui/src/thread-labels";
@@ -186,5 +188,31 @@ describe("ThreadPanel", () => {
 
     await waitFor(() => expect(screen.getByText("After")).toBeTruthy());
     expect(screen.queryByText("Before")).toBeNull();
+  });
+
+  it("shows a cached thread offline with its Last updated line", async () => {
+    const { client, adapter } = setup([entry("C1", { body: "Cached comment" })]);
+    await loaded();
+    await waitFor(async () => expect(await readThreadCache("alice", subject)).not.toBeNull());
+    cleanup();
+
+    const offline = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      const down = {
+        ...client,
+        list: async () => {
+          throw new TypeError("Failed to fetch");
+        },
+      };
+      render(
+        <TooltipProvider delayDuration={0}>
+          <ThreadPanel client={down} adapter={adapter} />
+        </TooltipProvider>,
+      );
+      await waitFor(() => expect(screen.getByText("Cached comment")).toBeTruthy());
+      expect(screen.getByText(/^Last updated /)).toBeTruthy();
+    } finally {
+      offline.mockRestore();
+    }
   });
 });

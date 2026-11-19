@@ -14,6 +14,7 @@ export const threadUiLabels = {
   readOnly: "You can read this conversation but not comment.",
   notSent: "Not sent",
   notSaved: "Not saved",
+  lastUpdated: (time: string) => `Last updated ${time}`,
   retry: "Try again",
   copyText: "Copy text",
   discard: "Discard",
