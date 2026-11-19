@@ -89,6 +89,94 @@ test("failed migration restores the pre-upgrade clone and previous commit", asyn
   assert.ok(stops.length >= 2, "writers stopped before the clone and again before the restore");
 });
 
+const isDump = (c) => c.includes(" exec -T db sh -c mariadb-dump ");
+const isRestore = (c) => c.includes(" exec -T db sh -c mariadb ") && c.includes("< /wgw-content/.team-sim/db.sql");
+
+/** An installed data dir, as the app leaves it after the first boot. */
+function installedFixture() {
+  const f = fixture();
+  writeFileSync(join(f.data, ".installed"), "2026-11-19\n");
+  const shell = recordingShell();
+  const instance = createInstance({ shell, project: "wgw-sim", checkout: join(f.root, "checkout"), dataDir: f.data, snapshotsDir: f.snapshots, repoRoot: f.root, fetchImpl: async () => ({ ok: true }) });
+  return { f, shell, instance };
+}
+const withDump = (f) => {
+  mkdirSync(join(f.data, ".team-sim"), { recursive: true });
+  writeFileSync(join(f.data, ".team-sim", "db.sql"), "-- dump\n");
+};
+
+test("the database is dumped into the data dir with the writers stopped, before the snapshot clone", () => {
+  const { f, shell, instance } = installedFixture();
+  takeSnapshot({ shell, instance, date: "2026-11-19", dataDir: f.data, snapshotsDir: f.snapshots, envFile: f.env, meta: {} });
+  const stop = shell.calls.findIndex((c) => c.includes(" stop web scheduler"));
+  const dump = shell.calls.findIndex(isDump);
+  const clone = shell.calls.findIndex((c) => c.startsWith("cp "));
+  assert.ok(stop >= 0 && stop < dump && dump < clone, `stop, dump, clone in that order: ${stop}, ${dump}, ${clone}`);
+  assert.ok(existsSync(join(f.data, ".team-sim")), "the dump's directory exists before the database writes into it");
+});
+
+test("the upgrade dumps before the rollback clone, and a rollback loads that dump again", async () => {
+  const { f, shell, instance } = installedFixture();
+  withDump(f);
+  const result = await instance.upgrade({
+    rollbackDir: join(f.root, "rollback"),
+    steps: { fastForward: () => {}, build: async () => {}, start: async () => {}, migrate: () => { throw new Error("migration failed"); } },
+  });
+  assert.equal(result.ok, false);
+  const dump = shell.calls.findIndex(isDump);
+  const clone = shell.calls.findIndex((c) => c.startsWith("cp "));
+  const back = shell.calls.findIndex((c) => c.startsWith("mv "));
+  const restore = shell.calls.findIndex(isRestore);
+  assert.ok(dump >= 0 && dump < clone, "dump before the rollback clone");
+  assert.ok(back >= 0 && back < restore, "the data dir is put back before its dump is loaded");
+});
+
+test("a data dir that was never installed has nothing to dump or restore", () => {
+  const f = fixture();
+  const shell = recordingShell();
+  const instance = createInstance({ shell, project: "wgw-sim", checkout: join(f.root, "checkout"), dataDir: f.data, snapshotsDir: f.snapshots, repoRoot: f.root });
+  assert.equal(instance.dumpDb(), false);
+  assert.equal(instance.restoreDb(), false);
+  assert.ok(!shell.calls.some((c) => c.startsWith("docker ")));
+});
+
+test("the first boot starts web alone, so web and scheduler do not both install", async () => {
+  const f = fixture();
+  const shell = recordingShell();
+  const instance = createInstance({ shell, project: "wgw-sim", checkout: join(f.root, "checkout"), dataDir: f.data, snapshotsDir: f.snapshots, repoRoot: f.root, fetchImpl: async () => ({ ok: true }) });
+  await instance.start();
+  const ups = shell.calls.filter((c) => c.includes(" up -d --wait "));
+  assert.match(ups[0], / web$/);
+  assert.ok(!/ (web|db)$/.test(ups[1]), "then the whole project");
+});
+
+test("an installed data dir with an empty database gets its dump back, or the start is refused", async () => {
+  const emptyDb = (shell) => {
+    const run = shell.run;
+    shell.run = (cmd, args, opts) => (args.join(" ").includes("information_schema.tables") ? { status: 0, stdout: "0\n", stderr: "" } : run(cmd, args, opts));
+  };
+  const a = installedFixture();
+  withDump(a.f);
+  emptyDb(a.shell);
+  await a.instance.start();
+  const restore = a.shell.calls.findIndex(isRestore);
+  const web = a.shell.calls.findIndex((c) => / up -d --wait --wait-timeout 300$/.test(c));
+  assert.ok(restore >= 0 && restore < web, "restored before the app starts");
+
+  const b = installedFixture();
+  emptyDb(b.shell);
+  await assert.rejects(() => b.instance.start(), /database is empty and there is no dump/);
+  assert.ok(!b.shell.calls.some((c) => / up -d --wait --wait-timeout 300$/.test(c)), "the app is not started on an empty database");
+});
+
+test("replay loads the snapshot's dump into its own database and drops that database afterwards", () => {
+  const src = readFileSync(new URL("../replay/replay.mjs", import.meta.url), "utf8");
+  assert.ok(src.indexOf("instance.restoreDb()") < src.indexOf("await instance.start()"), "restore before start");
+  assert.equal(src.match(/instance\.down\(\{ volumes: true \}\)/g)?.length, 2, "a clean volume before, and none left after");
+  const live = readFileSync(new URL("../night/night.mjs", import.meta.url), "utf8") + readFileSync(new URL("../../bin/sim.mjs", import.meta.url), "utf8");
+  assert.ok(!/volumes: true/.test(live), "the live project never drops its database volume");
+});
+
 test("refuses data and snapshot dirs on different volumes", () => {
   const p = guardProblems({ project: "wgw-sim", checkout: "/c", composeFile: "/c/compose.dev.yml", dataDir: "/a/data", snapshotsDir: "/Volumes/ext/snaps",
     probes: { portOwner: () => null, gitRoot: () => null, device: (d) => (d.startsWith("/Volumes") ? 9 : 1) } });

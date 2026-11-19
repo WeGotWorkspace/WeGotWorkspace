@@ -667,14 +667,7 @@ final class InstallerWizardService
             ];
         }
 
-        $host = (string) ($db['mysql_host'] ?? '127.0.0.1');
-        $port = (int) ($db['mysql_port'] ?? 3306);
-        $name = (string) ($db['mysql_db'] ?? '');
-        $user = (string) ($db['mysql_user'] ?? '');
-        $pass = (string) ($db['mysql_password'] ?? '');
-        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $host, $port, $name);
-
-        return ['dsn' => $dsn, 'user' => $user, 'password' => $pass];
+        return InstallerEnvWriter::mysqlPdo($db);
     }
 
     private function normalizeDriver(mixed $driver): string

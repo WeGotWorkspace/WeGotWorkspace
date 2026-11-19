@@ -96,6 +96,24 @@ final class WgwInstallEnvTest extends TestCase
         $this->assertTrue(app(WgwInstallEnv::class)->hasDatabaseFromEnv());
     }
 
+    public function test_database_from_env_is_null_until_the_driver_and_every_mysql_value_are_set(): void
+    {
+        $this->assertNull(app(WgwInstallEnv::class)->databaseFromEnv());
+
+        $this->setInstallConfig(['db_driver' => 'mysql', 'db_host' => 'db', 'db_database' => 'wgw', 'db_user' => 'wgw']);
+        $this->assertNull(app(WgwInstallEnv::class)->databaseFromEnv(), 'no password');
+
+        $this->setInstallConfig(['db_password' => 'secret', 'db_port' => '3307']);
+        $this->assertSame([
+            'driver' => 'mysql',
+            'mysql_host' => 'db',
+            'mysql_port' => 3307,
+            'mysql_db' => 'wgw',
+            'mysql_user' => 'wgw',
+            'mysql_password' => 'secret',
+        ], app(WgwInstallEnv::class)->databaseFromEnv());
+    }
+
     public function test_omitted_mysql_password_uses_env_only_for_the_same_server(): void
     {
         $this->setInstallConfig([

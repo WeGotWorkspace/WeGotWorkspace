@@ -17,7 +17,8 @@ const PROJECT = "wgw-sim-replay";
 /**
  * `sim replay <date>`: the night again on that night's code and keys. The
  * snapshot is cloned into a scratch data dir and served by a second Compose
- * project from a scratch worktree at the night's commit. Nothing is migrated
+ * project from a scratch worktree at the night's commit, with the snapshot's
+ * database dump loaded into that project's own database. Nothing is migrated
  * or written to the world first: the snapshot already holds the state the
  * night's plan was computed from, and the plan computed now must hash the
  * same. With `--action N` it plays the actions up to N; with `--plan-only` it
@@ -59,6 +60,12 @@ export async function runReplay({ date, action, minutes = 55, planOnly = false, 
   copyFileSync(join(paths.snapshots, date, "env"), env);
   writeFileSync(env, readFileSync(env, "utf8").replace(/^APP_URL=.*$/m, `APP_URL=${originOf(PROJECT)}`));
   await instance.build();
+  instance.down({ volumes: true });
+  if (!instance.restoreDb()) {
+    log(`the snapshot of ${date} holds no database dump (taken before the instance ran on MariaDB); it cannot be replayed`);
+    if (!keep) cleanup(shell, scratch, repoRoot);
+    return { ok: false, plan };
+  }
   await instance.start();
 
   // 3. The actions up to N, in real time on the same squeeze as the night.
@@ -85,7 +92,7 @@ export async function runReplay({ date, action, minutes = 55, planOnly = false, 
   const target = Number.isFinite(upTo) ? outcomes.find((o) => o.n === upTo) : null;
   if (target) log(`#${upTo} ${target.persona} ${target.kind}: ${target.status}${target.error ? ` — ${target.error}` : ""}`);
   if (!keep) {
-    instance.down();
+    instance.down({ volumes: true });
     cleanup(shell, scratch, repoRoot);
   }
   return { ok: true, plan, outcomes, target };

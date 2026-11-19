@@ -17,6 +17,12 @@ export const FORBIDDEN_PORTS = Object.freeze([9080, 5173, 4173, 1025, 8025, 9090
 export const ADMIN_PASSWORD = "team-sim-admin-local";
 export const personaPassword = (id) => `kade-${id}-local-2026`;
 
+/**
+ * The instance's MariaDB, a service inside each Compose project with its data
+ * in a named volume and no host port. Local-only credentials, like the ones above.
+ */
+export const DB = Object.freeze({ name: "wgw", user: "wgw", password: "team-sim-db-local", rootPassword: "team-sim-db-root-local" });
+
 export function simHome(env = process.env) {
   return resolve(env.WGW_SIM_HOME || join(homedir(), ".wgw-sim"));
 }
@@ -41,5 +47,14 @@ export function layout(home = simHome()) {
 
 /** Harness state inside the data dir, so every snapshot carries it. */
 export const stateDir = (dataDir) => join(dataDir, ".team-sim");
+
+/**
+ * The database dump that travels with the data dir. It is written with the
+ * writers stopped, right before every clone of the data dir, so a snapshot or
+ * rollback copy holds the files and the database of the same moment.
+ */
+export const dbDumpFile = (dataDir) => join(stateDir(dataDir), "db.sql");
+/** Where the `db` service sees the data dir (for the dump only; its own data is in a volume). */
+export const DB_DUMP_IN_CONTAINER = "/wgw-content/.team-sim/db.sql";
 
 export const origin = (project) => `http://127.0.0.1:${PROJECTS[project].http}`;

@@ -8,6 +8,11 @@ Everything runs on this machine. The instance listens on `127.0.0.1:9290`
 (replay `:9291`), MailHog on `:2590/:2580` (replay `:2591/:2581`); the dev and
 PR-test ports are refused. Data, snapshots, runs and reports live under
 `~/.wgw-sim` (override with `WGW_SIM_HOME`), never in a repository checkout.
+The database is MariaDB 11 in the Compose project's own volume, as in the
+Docker install; a dump of it travels with the data dir (`.team-sim/db.sql`),
+so every snapshot and rollback copy holds the files and the database of the
+same moment. `sim down` keeps the volume. If the volume is lost, the next
+start loads the last dump.
 
 ## Commands
 
@@ -67,11 +72,13 @@ Read the morning report, then:
 
 ## A night
 
-1. Upgrade: fast-forward the worktree, build, start, migrate. On failure the
-   pre-upgrade clone and commit are restored and the night stops.
+1. Upgrade: dump the database into the data dir, clone it, fast-forward the
+   worktree, build, start, migrate. On failure the pre-upgrade clone, its
+   database dump and the commit are restored and the night stops.
 2. Reconcile the world (people, Teams, mail settings, project channels, task
    lists and folders) for tonight's date.
-3. Snapshot the data dir (APFS clone) with the writers stopped; the planner
+3. Snapshot the data dir (database dump, then an APFS clone) with the
+   writers stopped; the planner
    computes tonight's action list from that clone. `meta.json` keeps the
    commit and the action-list hash for replay.
 4. Actions in real time: each persona runs its own actions in order; three or
