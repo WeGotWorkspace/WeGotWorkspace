@@ -63,7 +63,7 @@ const ADMIN_SECTIONS_MODEL: readonly AdminSectionDescriptor[] = [
   {
     id: "mcp",
     group: "services",
-    label: "Connected assistants",
+    label: "AI assistants",
     description: "Let people connect Claude, ChatGPT or Mistral to their workspace.",
     icon: <Sparkles className="size-3.5" />,
   },

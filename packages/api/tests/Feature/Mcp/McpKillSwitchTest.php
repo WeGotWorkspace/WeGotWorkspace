@@ -41,7 +41,7 @@ final class McpKillSwitchTest extends WgwDatabaseTestCase
     {
         $this->get('/oauth/authorize')
             ->assertForbidden()
-            ->assertSee('Connected assistants are turned off', false)
+            ->assertSee('AI assistants are turned off', false)
             ->assertDontSee('Connect assistant', false);
     }
 

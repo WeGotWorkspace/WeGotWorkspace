@@ -162,6 +162,11 @@
   color: var(--button-severity-color);
 }
 
+/* Ghost keeps the severity ink at rest; `.button--variant-ghost` sets its own color later. */
+.button.button--variant-ghost.button--severity-danger {
+  color: var(--button-severity-color);
+}
+
 /* Off toggles (aria-pressed false) show the same danger wash at rest, not only on hover. */
 .button.button--variant-outline.button--severity-danger[aria-pressed="false"] {
   color: var(--button-severity-color);

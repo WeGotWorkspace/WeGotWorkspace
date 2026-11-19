@@ -1,12 +1,12 @@
 # Connect an AI assistant (MCP)
 
-WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Cursor, or Claude Code act **as you** on this instance (files, calendar, and the other apps you grant). This is not an in-app chat panel. Your administrator must turn **Connected assistants** on in Admin before anyone can connect.
+WeGotWorkspace can expose a remote MCP server so Claude, ChatGPT, Mistral, Cursor, or Claude Code act **as you** on this instance (files, calendar, and the other apps you grant). This is not an in-app chat panel. Your administrator must turn **AI assistants** on in Admin before anyone can connect.
 
 ## What you need
 
 - A **public HTTPS** URL for this instance (assistants on the public internet cannot reach `http://192.168.x.x`).
 - An account on the instance.
-- The **Connected assistants** kill-switch enabled (Admin → Connected assistants). It is off by default.
+- The **AI assistants** kill-switch enabled (Admin → AI assistants). It is off by default.
 
 LAN-only **local Docker** installs can use a tunnel (ngrok, Tailscale Funnel, Cloudflare Tunnel, or similar) so the assistant can complete HTTPS OAuth. Production already has a public site origin — **do not set a tunnel URL there.**
 
@@ -19,13 +19,13 @@ Each developer uses **their own** tunnel host (personal ngrok account). Set it i
 WGW_MCP_PUBLIC_ORIGIN=https://YOUR-SUBDOMAIN.ngrok-free.dev
 ```
 
-Restart the API after changing `.env`. Admin → Connected assistants then copies `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp`. OAuth discovery (`issuer`, `authorization_endpoint`, `resource`) uses that origin instead of `wegotworkspace.localhost`.
+Restart the API after changing `.env`. Admin → AI assistants then copies `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp`. OAuth discovery (`issuer`, `authorization_endpoint`, `resource`) uses that origin instead of `wegotworkspace.localhost`.
 
 Do **not** rewrite the `Host` header to `wegotworkspace.localhost`. If the tunnel still overwrites `Host`, `WGW_MCP_PUBLIC_ORIGIN` is the source of truth for advertised OAuth URLs in local/dev.
 
 You will sign in on the instance when you connect. The assistant uses the same WeGotWorkspace login screen as the web app. A Passport **web session** is required for consent — a tab that is already signed in with a SPA JWT is not enough, and that JWT is never accepted on `/mcp`. If this browser already has a valid web session from a previous assistant connect, you skip the form and go to consent.
 
-Content the assistant reads may leave this instance for the vendor’s model. Uncheck any permission you do not want on the consent page. You can revoke a single assistant later in **Settings → Connected assistants**.
+Content the assistant reads may leave this instance for the vendor’s model. Uncheck any permission you do not want on the consent page. You can revoke a single assistant later in **Settings → AI assistants**.
 
 ## Permissions (read vs write)
 
@@ -68,7 +68,7 @@ Existing assistants that already hold a **bare** scope keep working. Bare ids ar
 
 ## Tools
 
-The `capabilities` tool lists **MCP names** (not PHP class names). Tools for a domain appear only when that app is enabled (Admin kill-switches: Files, Calendar, Contacts, Tasks, Notes; Mail via mail enabled). Meet has no separate Admin kill-switch; its tools stay in the catalog when Connected assistants is on.
+The `capabilities` tool lists **MCP names** (not PHP class names). Tools for a domain appear only when that app is enabled (Admin kill-switches: Files, Calendar, Contacts, Tasks, Notes; Mail via mail enabled). Meet has no separate Admin kill-switch; its tools stay in the catalog when AI assistants is on.
 
 Search is `*.read`. Share is `*.write`, except `drive_share` and `docs_share`, which require `drive.share` and can only create member shares.
 
@@ -86,7 +86,7 @@ Always available when MCP is on: `whoami`, `capabilities`.
 
 `meet_create_scheduled` needs `meet.write`. Creating the calendar event half also needs `calendar.write`; without it the tool still creates the meeting-kind channel and returns the href.
 
-**Not MCP apps:** Admin and Settings are not exposed as suite apps on MCP. There is no mail client and no mail tool. `whoami` (scope `settings`) reports `mailClient: false`. The retired `mail.read` and `mail.send` scopes are no longer advertised or offered on consent; Passport still recognizes them so tokens that already have them keep refreshing, and Settings → Connected assistants lists them under Other so an old grant can be revoked. There are no Admin tools and no Settings CRUD tools. See [packages/api/docs/mail/README.md](../packages/api/docs/mail/README.md).
+**Not MCP apps:** Admin and Settings are not exposed as suite apps on MCP. There is no mail client and no mail tool. `whoami` (scope `settings`) reports `mailClient: false`. The retired `mail.read` and `mail.send` scopes are no longer advertised or offered on consent; Passport still recognizes them so tokens that already have them keep refreshing, and Settings → AI assistants lists them under Other so an old grant can be revoked. There are no Admin tools and no Settings CRUD tools. See [packages/api/docs/mail/README.md](../packages/api/docs/mail/README.md).
 
 **Meet** has no join, call, or RTC/signaling tools. Channel and message CRUD only.
 
@@ -130,11 +130,11 @@ That warning means Claude’s probe to `/mcp` failed. Typical causes:
    ngrok http https://localhost:443 --url=https://YOUR-SUBDOMAIN.ngrok-free.dev --host-header=YOUR-SUBDOMAIN.ngrok-free.dev
    ```
    Paste that same origin — `https://YOUR-SUBDOMAIN.ngrok-free.dev/mcp` — into ChatGPT/Claude.
-3. **Connected assistants is off.** Admin → Connected assistants must be on and saved. When it is off, `/mcp` returns 403.
+3. **AI assistants is off.** Admin → AI assistants must be on and saved. When it is off, `/mcp` returns 403.
 4. **Authorize URL shows the workspace 404 page** (“Page not found” / “Go to Drive”). The PWA service worker served the SPA instead of Laravel. Unregister service workers for this origin (DevTools → Application → Service Workers) and retry. A rebuilt worker ignores `/oauth`, `/mcp`, and `/.well-known/oauth-*`.
 5. **Sign-in and consent succeed, then the assistant shows “Authorization with … failed.”** The browser completed `/oauth/authorize`; the vendor’s **servers** then call `/oauth/token` and `/mcp`. They cannot reach `https://wegotworkspace.localhost`. Re-add the connector using the public tunnel origin — not `localhost`.
 6. **Sign-in succeeds, then “your account was authorized, but … returned an error when connecting.”** The vendor stored the token, then `POST /mcp` (initialize) failed. Confirm the connector URL is the public `/mcp` origin, then retry — a UI rebuild is not required. On this instance that handshake is an authenticated JSON-RPC `initialize`; HTTP 500 here is a server bug, not a missing frontend build.
-7. **Consent succeeds, but Settings → Connected assistants only lists `mail.read` / `mail.send` / `settings`.** Claude requested the advertised `*.read` / `*.write` catalog; the stored OAuth client was still snapshotted on the older combined ids (`calendar`, `drive`, …). Passport then dropped every non-overlapping scope. Reconnect after this instance refreshes the client allowlist (revoke the assistant, then add the connector again) so the new authorize can grant Calendar, Drive, Notes, and the rest.
+7. **Consent succeeds, but Settings → AI assistants only lists `mail.read` / `mail.send` / `settings`.** Claude requested the advertised `*.read` / `*.write` catalog; the stored OAuth client was still snapshotted on the older combined ids (`calendar`, `drive`, …). Passport then dropped every non-overlapping scope. Reconnect after this instance refreshes the client allowlist (revoke the assistant, then add the connector again) so the new authorize can grant Calendar, Drive, Notes, and the rest.
 
 From a second machine (or a phone on cellular), confirm:
 
@@ -172,10 +172,10 @@ Use this checklist after a code change that touches MCP OAuth scopes, CIMD, or `
 
 Shared steps (every vendor):
 
-1. **Revoke** any existing grant for that vendor in Settings → Connected assistants.
+1. **Revoke** any existing grant for that vendor in Settings → AI assistants.
 2. **Reconnect** using the **public** `https://<host>/mcp` URL. Do **not** rewrite the tunnel `Host` header to `wegotworkspace.localhost`.
 3. On consent, grant **Read** and (if you intend to write) **Write** per app. Confirm the page lists `calendar.read` / `calendar.write` (and the other apps), not only `mail.read` / `mail.send` / `settings`. Staying connected is not a permission on this page.
-4. After consent, Settings → Connected assistants must show `*.read` / `*.write` ids (for the apps you approved), **not** only `mail.read` + `mail.send` + `settings`. `offline_access` is not listed there.
+4. After consent, Settings → AI assistants must show `*.read` / `*.write` ids (for the apps you approved), **not** only `mail.read` + `mail.send` + `settings`. `offline_access` is not listed there.
 5. Smoke tools: `whoami`, `capabilities`, then one read tool for an app you granted (`calendar_list`, `drive_list`, or `notes_search`).
 6. Call a write tool **only if** that app’s `*.write` (or the matching legacy alias) was granted. A read-only grant must refuse write.
 7. **CIMD stale-scope trap:** if Settings shows only mail + settings after a catalog change, the OAuth client was snapshotted on the old combined ids (`calendar`, `drive`, …). Revoke, reconnect, and complete consent again so the client allowlist can include `*.read` / `*.write`. See Claude troubleshooting item 7 above.
@@ -202,8 +202,8 @@ The same OAuth flow applies. Loopback redirects such as `http://127.0.0.1:<port>
 
 ## Revoke or turn off
 
-- **One assistant:** Settings → Connected assistants → Revoke access. Access and refresh tokens for that client stop working immediately.
-- **Whole instance:** Admin → Connected assistants → turn off and save. Every outstanding grant is revoked. Turning it back on does not restore old connections.
+- **One assistant:** Settings → AI assistants → Revoke access. Access and refresh tokens for that client stop working immediately.
+- **Whole instance:** Admin → AI assistants → turn off and save. Every outstanding grant is revoked. Turning it back on does not restore old connections.
 
 ## Self-host / Apache notes
 

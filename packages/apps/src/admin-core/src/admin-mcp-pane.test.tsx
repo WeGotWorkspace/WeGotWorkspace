@@ -69,7 +69,7 @@ function connectionUrlField() {
 
 function assistantsSwitch() {
   return screen.getByRole("switch", {
-    name: "Allow connected assistants",
+    name: "Allow AI assistants",
     hidden: true,
   });
 }
@@ -83,7 +83,7 @@ describe("AdminMcpPane", () => {
         "People choose for themselves in Settings. Turning this off disconnects everyone.",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Allow connected assistants")).toBeTruthy();
+    expect(screen.getByText("Allow AI assistants")).toBeTruthy();
     expect(screen.queryByText(/MCP access|consent page|outstanding/i)).toBeNull();
     expect(assistantsSwitch().getAttribute("aria-checked")).toBe("false");
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
@@ -135,7 +135,7 @@ describe("AdminMcpPane", () => {
     fireEvent.click(assistantsSwitch());
 
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog.textContent).toContain("Turn off connected assistants?");
+    expect(dialog.textContent).toContain("Turn off AI assistants?");
     expect(dialog.textContent).toContain(
       "Turning this off disconnects all assistants. People will need to connect again.",
     );

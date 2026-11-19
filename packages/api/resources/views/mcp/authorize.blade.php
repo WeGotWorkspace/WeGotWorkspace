@@ -38,7 +38,7 @@
             <p class="mcp-warn" role="note">
                 <strong class="mcp-warn__title">Content you allow here leaves this instance</strong>
                 Data is sent to the assistant vendor’s model.
-                You can revoke access later in Settings → Connected assistants.
+                You can revoke access later in Settings → AI assistants.
             </p>
             <div class="mcp-scope-groups" role="group" aria-labelledby="mcp-permissions-heading" aria-describedby="mcp-permissions-hint">
                 @foreach ($scopeGroups as $group)

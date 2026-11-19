@@ -7,6 +7,8 @@ import "./card.css";
 export type CardProps = {
   title?: string;
   titleIcon?: ReactNode;
+  /** Right after the title, such as a source tag. */
+  titleAccessory?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -43,6 +45,7 @@ function CardIconActionButton({ icon, label, onClick, disabled }: CardIconAction
 export function Card({
   title,
   titleIcon,
+  titleAccessory,
   description,
   children,
   className,
@@ -63,6 +66,7 @@ export function Card({
               </span>
             ) : null}
             {title ? <h2 className="card__title">{title}</h2> : null}
+            {titleAccessory}
           </div>
         ) : null}
         {description ? <p className="card__description">{description}</p> : null}

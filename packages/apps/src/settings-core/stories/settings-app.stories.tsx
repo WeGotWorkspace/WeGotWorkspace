@@ -37,7 +37,7 @@ export const Default: Story = {
     await expect(nav.queryByRole("button", { name: "Mail" })).toBeNull();
     await expect(nav.getByRole("button", { name: "Calendar" })).toBeTruthy();
     await expect(nav.queryByRole("button", { name: "Notifications" })).toBeNull();
-    await expect(nav.getByRole("button", { name: "Connected assistants" })).toBeTruthy();
+    await expect(nav.getByRole("button", { name: "AI assistants" })).toBeTruthy();
   },
 };
 
@@ -52,7 +52,7 @@ export const DisabledByAdmin: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const nav = settingsNav(canvasElement);
-    await expect(nav.queryByRole("button", { name: "Connected assistants" })).toBeNull();
+    await expect(nav.queryByRole("button", { name: "AI assistants" })).toBeNull();
     await expect(canvas.queryByRole("textbox", { name: "Connection URL" })).toBeNull();
     await expect(nav.getByRole("button", { name: "Profile" })).toBeTruthy();
     await expect(nav.queryByRole("button", { name: "Mail" })).toBeNull();

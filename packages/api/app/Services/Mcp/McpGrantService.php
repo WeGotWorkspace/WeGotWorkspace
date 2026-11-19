@@ -158,7 +158,7 @@ final class McpGrantService
             ->where('event_type', McpAuditLogger::TOOL_CALL)
             ->max('created_at');
 
-        return is_string($at) && $at !== '' ? $at : null;
+        return is_string($at) && $at !== '' ? Carbon::parse($at)->toIso8601String() : null;
     }
 
     private function originFromRedirects(Client $client): string

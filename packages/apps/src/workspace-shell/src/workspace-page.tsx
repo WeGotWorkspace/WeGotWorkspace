@@ -59,11 +59,14 @@ export function WorkspacePageHeader({
 export function WorkspacePageSection({
   title,
   icon,
+  titleAccessory,
   action,
   className,
   children,
 }: {
   title?: string;
+  /** Right after the title, such as a source tag. */
+  titleAccessory?: ReactNode;
   /** Marks the section, like the section rows in dialogs (Team access, Public link). */
   icon?: ReactNode;
   /** End of the title row, such as a status tag or an add button. */
@@ -76,6 +79,7 @@ export function WorkspacePageSection({
       className={className ? `workspace-page-section ${className}` : "workspace-page-section"}
       title={title}
       titleIcon={icon}
+      titleAccessory={titleAccessory}
       action={action}
     >
       {children}

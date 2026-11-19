@@ -24,7 +24,7 @@ export type McpConsentPermissionsCardProps = {
   readOnly?: boolean;
   /**
    * Card chrome around the permissions list. Default `true` for consent.
-   * Settings Connected assistants passes `false`.
+   * Settings AI assistants passes `false`.
    */
   framed?: boolean;
   /** Heading above the scopes list. Default matches OAuth consent. */
@@ -59,7 +59,7 @@ function grantedIdsForReadOnly(
 
 /**
  * Shared Connect-assistant permissions card (app groups, descriptions, switches,
- * warning). Interactive on the consent mock; `readOnly` on Settings Connected assistants.
+ * warning). Interactive on the consent mock; `readOnly` on Settings AI assistants.
  */
 export function McpConsentPermissionsCard({
   groups,

@@ -18,7 +18,7 @@ function McpPaneHarness({ enabled = false }: { enabled?: boolean }) {
 }
 
 const meta = {
-  title: "Features/Admin/Panes/Connected assistants",
+  title: "Features/Admin/Panes/AI assistants",
   component: AdminMcpPane,
   parameters: {
     layout: "fullscreen",
@@ -48,15 +48,13 @@ export const ConfirmDisable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await userEvent.click(
-      canvas.getByRole("switch", { name: "Allow connected assistants enabled" }),
-    );
+    await userEvent.click(canvas.getByRole("switch", { name: "Allow AI assistants" }));
     const dialog = await body.findByRole("alertdialog");
-    await expect(dialog).toHaveTextContent("Turn off connected assistants?");
+    await expect(dialog).toHaveTextContent("Turn off AI assistants?");
     await expect(dialog).toHaveTextContent("People will need to connect again");
     await expect(
       canvas.getByRole("switch", {
-        name: "Allow connected assistants enabled",
+        name: "Allow AI assistants",
         hidden: true,
       }),
     ).toHaveAttribute("aria-checked", "true");

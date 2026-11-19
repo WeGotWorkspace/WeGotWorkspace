@@ -1,6 +1,6 @@
 /**
  * Hostname (and non-default port) for a client origin — no `https://`.
- * Shared by Connect-assistant consent and Settings Connected assistants.
+ * Shared by Connect-assistant consent and Settings AI assistants.
  */
 export function displayOriginHost(origin: string): string {
   try {

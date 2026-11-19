@@ -81,7 +81,7 @@ export function registerBuiltinSettings(): void {
   });
   registerPanel({
     id: "assistants",
-    label: "Connected assistants",
+    label: "AI assistants",
     description: "Assistants that can act as you",
     icon: <Bot className="size-3.5" />,
     group: "connections",

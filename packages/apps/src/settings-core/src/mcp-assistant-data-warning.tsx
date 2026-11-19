@@ -6,7 +6,7 @@ import "./mcp-assistant-data-warning.css";
 export const MCP_ASSISTANT_DATA_WARNING_TITLE = "Content you allow here leaves this instance";
 
 export const MCP_ASSISTANT_DATA_WARNING_CONSENT_MESSAGE =
-  "Data is sent to the assistant vendor’s model. You can revoke access later in Settings → Connected assistants.";
+  "Data is sent to the assistant vendor’s model. You can revoke access later in Settings → AI assistants.";
 
 export type McpAssistantDataWarningProps = {
   /** Defaults to the consent-page body (includes “revoke later in Settings”). */
@@ -14,7 +14,7 @@ export type McpAssistantDataWarningProps = {
 };
 
 /**
- * Warning for Connect-assistant OAuth consent. Not shown on Settings → Connected assistants.
+ * Warning for Connect-assistant OAuth consent. Not shown on Settings → AI assistants.
  */
 export function McpAssistantDataWarning({
   message = MCP_ASSISTANT_DATA_WARNING_CONSENT_MESSAGE,

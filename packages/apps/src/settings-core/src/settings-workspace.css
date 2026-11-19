@@ -77,61 +77,50 @@
   @apply text-sm text-muted-foreground;
 }
 
-.settings-workspace .settings-connected-assistants-pane,
-.settings-workspace .settings-assistants-pane {
-  @apply flex flex-col gap-4 max-w-xl;
-}
-
-.settings-workspace .settings-connected-assistants-pane--empty {
-  @apply gap-4;
-}
-
-.settings-workspace .settings-connected-assistants-pane--connected {
-  @apply gap-12;
-}
-
+/* AI assistants: a section per assistant, inline rows for apps and connections. */
 .settings-workspace .settings-assistants-pane__empty {
   @apply text-sm text-muted-foreground;
-}
-
-.settings-workspace .settings-assistants-pane a {
-  @apply underline underline-offset-2;
-  color: var(--workspace-accent);
 }
 
 .settings-workspace .settings-assistants-pane__error {
   @apply text-sm text-destructive;
 }
 
-.settings-workspace .settings-assistants-pane__grants {
-  @apply flex flex-col gap-16;
+.settings-workspace .field-label-row__description a {
+  @apply underline underline-offset-2;
+  color: inherit;
 }
 
-.settings-workspace .settings-assistants-pane__grant {
-  @apply flex flex-col gap-4;
+/* The assistant is the section: its name in full ink above the app tags and connection rows. */
+.settings-workspace .settings-assistant {
+  --card-title-color: var(--workspace-foreground);
 }
 
-.settings-workspace .settings-assistants-pane__grant-header {
-  @apply relative pr-10;
+/* Rounded like the launcher tiles (1/6 radius), a step smaller than the tag text. */
+/* Revoke all hangs past the edge like the ghost Revoke in the rows (the row's
+ * optical offset), so both labels end on the content edge. */
+.settings-workspace .settings-assistant .card__header .button--variant-ghost:last-child {
+  margin-inline-end: -0.75rem;
 }
 
-.settings-workspace .settings-assistants-pane__grant-identity {
-  @apply flex min-w-0 flex-col items-start gap-1;
+/* Revoke per connection is quieter than Revoke all; full ink on hover and focus. */
+.settings-workspace
+  .settings-assistant__connection
+  .button.button--severity-danger:not(:hover, :focus-visible) {
+  color: color-mix(in oklab, var(--button-severity-color) 75%, transparent);
 }
 
-.settings-workspace .settings-assistants-pane__grant-name {
-  @apply m-0 text-4xl font-normal leading-none;
-  font-family: var(--font-serif);
-  color: var(--workspace-foreground);
+.settings-workspace .settings-assistant__app-icon {
+  @apply size-3.5 shrink-0 overflow-hidden;
+  border-radius: calc(100% / 6);
 }
 
-.settings-workspace .settings-assistants-pane__grant-origin {
-  @apply m-0 text-base font-normal leading-normal;
-  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+.settings-workspace .settings-assistant__apps {
+  @apply flex flex-wrap gap-2 pb-3;
 }
 
-.settings-workspace .settings-assistants-pane__grant-revoke {
-  @apply absolute top-0 right-0;
+.settings-workspace .settings-assistant__app {
+  @apply inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring;
 }
 
 .settings-workspace .settings-assistants-pane__share-calls {
