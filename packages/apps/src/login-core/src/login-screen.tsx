@@ -82,13 +82,19 @@ export function LoginScreen({
       const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
       if (oauthConnect) {
         const intent = search.get("intent");
-        await wgwEstablishMcpWebSession(normalizedUsername, password, intent);
+        // The server keeps the full authorize query in the session and returns it
+        // here; the login URL only carries `/oauth/authorize` (WAF-safe).
+        const serverTarget = await wgwEstablishMcpWebSession(normalizedUsername, password, intent);
         try {
           await wgwLoginWithCredentials(normalizedUsername, password);
         } catch {
           // Passport authorize needs the web session; SPA JWT is optional.
         }
-        window.location.assign(resolvedReturnPath);
+        const useServerTarget =
+          serverTarget !== null &&
+          isWgwOAuthAuthorizeReturnPath(serverTarget) &&
+          serverTarget.includes("?");
+        window.location.assign(useServerTarget ? serverTarget : resolvedReturnPath);
         return;
       }
       await wgwLoginWithCredentials(normalizedUsername, password);

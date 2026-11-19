@@ -206,4 +206,33 @@ describe("LoginScreen", () => {
     });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it("assigns the full authorize URL the server returns for a bare return path", async () => {
+    const serverTarget = "/oauth/authorize?client_id=abc&prompt=consent&state=s1";
+    vi.mocked(wgwEstablishMcpWebSession).mockResolvedValueOnce(serverTarget);
+    window.history.replaceState({}, "", "/login?return=%2Foauth%2Fauthorize&intent=intent-token");
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+
+    render(<LoginScreen />);
+    submitCredentials();
+
+    await waitFor(() => {
+      expect(assign).toHaveBeenCalledWith(serverTarget);
+    });
+  });
+
+  it("ignores a server target that is not the authorize path", async () => {
+    vi.mocked(wgwEstablishMcpWebSession).mockResolvedValueOnce("/admin");
+    window.history.replaceState({}, "", "/login?return=%2Foauth%2Fauthorize&intent=intent-token");
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+
+    render(<LoginScreen />);
+    submitCredentials();
+
+    await waitFor(() => {
+      expect(assign).toHaveBeenCalledWith("/oauth/authorize");
+    });
+  });
 });

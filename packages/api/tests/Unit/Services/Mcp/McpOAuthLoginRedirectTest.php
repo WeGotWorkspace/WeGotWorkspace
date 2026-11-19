@@ -40,15 +40,14 @@ final class McpOAuthLoginRedirectTest extends TestCase
         );
     }
 
-    public function test_spa_login_url_includes_return_and_intent(): void
+    public function test_spa_login_url_carries_bare_authorize_path_and_intent(): void
     {
-        $request = $this->requestWithIntended('/oauth/authorize?client_id=abc');
-        $url = McpOAuthLoginRedirect::spaLoginUrl($request, 'intent-token', 'invalid');
+        $url = McpOAuthLoginRedirect::spaLoginUrl('intent-token', 'invalid');
         $query = [];
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
         $this->assertSame('/login', parse_url($url, PHP_URL_PATH));
-        $this->assertSame('/oauth/authorize?client_id=abc', $query['return'] ?? null);
+        $this->assertSame(McpOAuthLoginRedirect::AUTHORIZE_PATH, $query['return'] ?? null);
         $this->assertSame('intent-token', $query['intent'] ?? null);
         $this->assertSame('invalid', $query['error'] ?? null);
     }
