@@ -7,6 +7,7 @@ namespace App\Services\Teams;
 use App\Exceptions\ApiHttpException;
 use App\Models\TeamAdmin;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Projects\ProjectMarkers;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 
@@ -38,6 +39,7 @@ final class TeamRoles
     public function __construct(
         private readonly TeamColleagues $colleagues,
         private readonly Closure $organizationAdmins,
+        private readonly ProjectMarkers $projectMarkers,
     ) {}
 
     /** Team admin of `principals/groups/{groupSlug}` and still a member of it. */
@@ -139,6 +141,8 @@ final class TeamRoles
             // Two appointments of the same person at once: the row is there.
         }
         $this->forget();
+        // `mayManage` on the Team's Projects changed for this user: move the `Project` push state.
+        $this->projectMarkers->bump(trim($groupSlug));
     }
 
     public function dismiss(string $groupSlug, string $username): void
@@ -148,6 +152,7 @@ final class TeamRoles
             ->where('username', TeamMembershipReader::normalise($username))
             ->delete();
         $this->forget();
+        $this->projectMarkers->bump(trim($groupSlug));
     }
 
     /**

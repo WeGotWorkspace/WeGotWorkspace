@@ -59,4 +59,18 @@ final class JmapEventSourceProjectTest extends WgwDatabaseTestCase
 
         $this->assertArrayHasKey('Project', $this->changedStates($this->readEventSource($erin, 'Project', $start['id']), 'erin'));
     }
+
+    public function test_appointing_and_dismissing_a_team_admin_moves_the_state(): void
+    {
+        Cache::flush();
+        $dave = $this->issueBearerTokenFor('dave');
+        $start = $this->readEventSource($dave, 'Project');
+
+        $this->asUser('bob')->putJson('/api/v1/teams/t1/admins/dave')->assertOk();
+        $appointed = $this->readEventSource($dave, 'Project', $start['id']);
+        $this->assertArrayHasKey('Project', $this->changedStates($appointed, 'dave'));
+
+        $this->asUser('bob')->deleteJson('/api/v1/teams/t1/admins/dave')->assertOk();
+        $this->assertArrayHasKey('Project', $this->changedStates($this->readEventSource($dave, 'Project', $appointed['id']), 'dave'));
+    }
 }

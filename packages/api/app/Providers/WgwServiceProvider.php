@@ -27,6 +27,7 @@ use App\Services\Jmap\Guest\GuestJmapAccounts;
 use App\Services\Jmap\Guest\GuestJmapGateway;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
+use App\Services\Projects\ProjectMarkers;
 use App\Services\Tasks\Threads\TaskThreadSubject;
 use App\Services\Teams\TeamColleagues;
 use App\Services\Teams\TeamMembershipReader;
@@ -85,6 +86,7 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->scoped(TeamRoles::class, static fn ($app): TeamRoles => new TeamRoles(
             $app->make(TeamColleagues::class),
             static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
+            $app->make(ProjectMarkers::class),
         ));
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(TeamColleagues::class)) {
