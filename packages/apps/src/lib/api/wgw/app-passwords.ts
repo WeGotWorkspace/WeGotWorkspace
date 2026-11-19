@@ -5,6 +5,12 @@ import {
   wgwReadJson,
 } from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import type {
+  SettingsAppPassword,
+  SettingsAppPasswordCreated,
+  SettingsAppPasswordCreateRequest,
+  SettingsAppPasswordList,
+} from "@wgw/openapi-types/settings-types";
 
 /**
  * Named app passwords for calendar, contacts and meeting apps (#2271, #2272). The plaintext
@@ -15,24 +21,13 @@ import { WgwRequestError } from "@/lib/api/wgw/request-error";
  */
 const PATH = "/settings/app-passwords";
 
-export type AppPassword = {
-  id: number;
-  name: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-  /** The client that last signed in with it, from its User-Agent ("DAVx5/4.4", "macOS/15 …"). */
-  lastUsedClient: string | null;
-};
+export type AppPassword = SettingsAppPassword;
 
-export type AppPasswordCreated = {
-  /** Sixteen lowercase letters, shown once. */
-  password: string;
-  appPassword: AppPassword;
-};
+export type AppPasswordCreated = SettingsAppPasswordCreated;
 
 export type AppPasswordOperations = {
   list: () => Promise<AppPassword[]>;
-  create: (input: { name: string; currentPassword: string }) => Promise<AppPasswordCreated>;
+  create: (input: SettingsAppPasswordCreateRequest) => Promise<AppPasswordCreated>;
   revoke: (id: number) => Promise<void>;
   revokeAll: () => Promise<void>;
 };
@@ -78,7 +73,7 @@ export function createWgwAppPasswordOperations(): AppPasswordOperations {
     list: async () => {
       const res = await wgwFetch(PATH);
       if (!res.ok) throw await failure(res, "GET", PATH);
-      const body = (await wgwReadJson(res)) as { appPasswords?: AppPassword[] };
+      const body = (await wgwReadJson(res)) as Partial<SettingsAppPasswordList>;
       return Array.isArray(body.appPasswords) ? body.appPasswords : [];
     },
     create: async (input) => {
