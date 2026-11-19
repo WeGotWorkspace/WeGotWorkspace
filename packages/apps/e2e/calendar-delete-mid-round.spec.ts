@@ -75,9 +75,14 @@ test("a delete between the changes and the get of one round is removed by the ne
       .toBe(0);
   } finally {
     await context?.close();
-    await jmap([["Calendar/set", { accountId: OWNER, destroy: [calendarId] }, "d"]]).catch(
-      () => undefined,
-    );
+    // With its events: a calendar that still holds events is not destroyed otherwise.
+    await jmap([
+      [
+        "Calendar/set",
+        { accountId: OWNER, destroy: [calendarId], onDestroyRemoveEvents: true },
+        "d",
+      ],
+    ]).catch(() => undefined);
   }
 });
 
