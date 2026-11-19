@@ -74,6 +74,10 @@ function mountedIds(): string[] {
  * Rows report no size, so the window works from the estimates.
  */
 beforeEach(() => {
+  // Midday, local time: the newest message (an hour ago) is always "Today",
+  // even when the suite runs just after midnight.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 18, 12, 0, 0));
   renders.length = 0;
   installListLayoutStubs(VIEWPORT_PX);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (
@@ -104,6 +108,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("ChatMessageList with 1,000 messages", () => {
