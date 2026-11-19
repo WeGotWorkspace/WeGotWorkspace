@@ -8,7 +8,7 @@ Rebuild the opt-in TOTP sign-in step and named app passwords from draft PR #984 
 
 ## Budget
 
-Not assigned. The request behind it is two-factor before the first hosted tenants (comment on #984, 2026-11-12). See Open decisions, item 0: no chunk starts until this line names a budget and what it displaces.
+No milestone (Wouter, 2026-11-19: "never mind the milestone, just build"). Draws from build time next to the open Pioneer programme work; displaces nothing scheduled. The UI chunks (B, D, E) draw from Wouter's review time.
 
 ## Non-goals
 
@@ -72,7 +72,7 @@ Considered: porting #984's outbox edits — rejected because they only handled t
 
 ## Open decisions
 
-- [ ] 0 (all chunks): which budget this draws from and what it displaces.
+- [x] 0 (all chunks): no milestone; build now — decided 2026-11-19. See Budget.
 - [x] 1 (C, E): admin policy off / admins / everyone — decided 2026-11-19: out of this work. See Non-goals and Considered.
 - [x] 2 (C, E): after turning two-factor on, the current browser is signed out too, like a password change — decided 2026-11-19. See Considered.
 - [x] 3 (A): chunk A is built here, not taken from the port offered on #984 — decided 2026-11-19. See Considered.
