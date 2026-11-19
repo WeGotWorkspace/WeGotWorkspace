@@ -57,9 +57,9 @@ describe("code formatting", () => {
 
 describe("signInFailureReason", () => {
   it("reads the password step", () => {
-    expect(signInFailureReason(401, "unauthorized", "password")).toBe("credentials");
-    expect(signInFailureReason(429, "throttled", "password")).toBe("throttled");
-    expect(signInFailureReason(500, undefined, "password")).toBe("failed");
+    expect(signInFailureReason(401, "unauthorized", "credentials")).toBe("credentials");
+    expect(signInFailureReason(429, "throttled", "credentials")).toBe("throttled");
+    expect(signInFailureReason(500, undefined, "credentials")).toBe("failed");
   });
 
   it("reads the code step", () => {
