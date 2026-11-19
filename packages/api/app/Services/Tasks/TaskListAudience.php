@@ -22,9 +22,11 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  * One answer for assignee validation, the assignee picker and assignment
  * notifications. `visibleTo` narrows it to the people one person may see:
  * themself, the list owners, and their Team colleagues (product owner,
- * 2026-11-18). Reads, the picker and assignment all use that view, so a person
- * sharee learns nothing about a Team they are not in. It is computed per call and never cached, so Team changes
- * show on the next request.
+ * 2026-11-18). Reads and the picker use that view, so a reader learns nothing
+ * about a Team they are not in. Assignment matches an added address against
+ * the whole audience and refuses a member the actor could not assign with the
+ * same 422 as a `u:` id. It is computed per call and never cached, so Team
+ * changes show on the next request.
  */
 final class TaskListAudience
 {
