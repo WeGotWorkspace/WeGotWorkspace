@@ -18,6 +18,7 @@ const next = {
   showWithoutTime: undefined,
   timeZone: null,
   alerts: undefined,
+  participants: undefined,
 };
 
 describe("taskEditPatch in a room", () => {
