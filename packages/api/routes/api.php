@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Admin\AppUrlController as AdminAppUrlController;
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
+use App\Http\Controllers\Api\V1\Admin\MfaResetsController as AdminMfaResetsController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StateController as AdminStateController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\V1\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Api\V1\Auth\ConsumePasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\JwksController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
+use App\Http\Controllers\Api\V1\Auth\MfaChallengeController;
 use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
@@ -62,6 +64,7 @@ use App\Http\Controllers\Api\V1\Settings\AppPasswordsController as SettingsAppPa
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
+use App\Http\Controllers\Api\V1\Settings\TotpController as SettingsTotpController;
 use App\Http\Controllers\Api\V1\System\CapabilitiesController;
 use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
@@ -110,6 +113,10 @@ Route::get('jmap/folder-download-ticket/{secret}/{name}', [JmapFolderDownloadTic
     ->where('secret', DownloadTicketService::SECRET_PATTERN)
     ->where('name', '[^/]+')
     ->middleware('throttle:240,1');
+Route::post('auth/mfa-challenges/{challenge}/verification', [MfaChallengeController::class, 'verify'])
+    ->where('challenge', '[A-Za-z0-9]{1,128}');
+Route::post('auth/mfa-challenges/{challenge}/replacement', [MfaChallengeController::class, 'replace'])
+    ->where('challenge', '[A-Za-z0-9]{1,128}');
 Route::post('auth/password-resets/{token}', ConsumePasswordResetController::class)
     ->where('token', '[A-Fa-f0-9]+');
 
@@ -248,6 +255,10 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
 
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
+    Route::post('settings/totp', [SettingsTotpController::class, 'start']);
+    Route::delete('settings/totp', [SettingsTotpController::class, 'disable']);
+    Route::post('settings/totp/confirmation', [SettingsTotpController::class, 'confirm']);
+    Route::post('settings/totp/recovery-codes', [SettingsTotpController::class, 'recoveryCodes']);
     Route::get('settings/app-passwords', [SettingsAppPasswordsController::class, 'index']);
     Route::post('settings/app-passwords', [SettingsAppPasswordsController::class, 'store']);
     Route::post('settings/app-passwords/revocations', [SettingsAppPasswordsController::class, 'revokeAll']);
@@ -432,6 +443,8 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
     Route::patch('users/{username}', [AdminUsersController::class, 'update'])
         ->where('username', '[a-z0-9_-]+');
     Route::delete('users/{username}', [AdminUsersController::class, 'destroy'])
+        ->where('username', '[a-z0-9_-]+');
+    Route::post('users/{username}/mfa-resets', AdminMfaResetsController::class)
         ->where('username', '[a-z0-9_-]+');
     Route::post('groups', [AdminGroupsController::class, 'store']);
     Route::patch('groups/{group}', [AdminGroupsController::class, 'update'])

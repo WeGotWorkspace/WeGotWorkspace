@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Models\User;
+use App\Services\Auth\Mfa\UserMfaService;
 use Closure;
 use Illuminate\Support\Carbon;
 
@@ -18,6 +19,10 @@ use Illuminate\Support\Carbon;
  * remembered. A sign-in with the account password is recorded in
  * `users.dav_password_used_at`, at most once per five minutes, so the user can
  * see which clients still need an app password.
+ *
+ * With two-factor on (#2273) the account password is refused before the
+ * caller's check runs, so a password remembered in APCu from before cannot
+ * sign in either. Only app passwords work then.
  */
 final class ProtocolCredentials
 {
@@ -26,6 +31,7 @@ final class ProtocolCredentials
     public function __construct(
         private AppPasswordService $appPasswords,
         private UserEnabledGuard $enabled,
+        private UserMfaService $mfa,
     ) {}
 
     /**
@@ -42,6 +48,9 @@ final class ProtocolCredentials
             return $this->enabled->isEnabled($username);
         }
 
+        if ($this->mfa->isEnabled($username)) {
+            return false;
+        }
         if (! $accountPasswordMatches() || ! $this->enabled->isEnabled($username)) {
             return false;
         }

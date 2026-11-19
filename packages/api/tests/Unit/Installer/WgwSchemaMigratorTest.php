@@ -217,6 +217,9 @@ final class WgwSchemaMigratorTest extends TestCase
             'rtc_relay_events',
             'jmap_file_node_departures',
             'app_passwords',
+            'user_mfa',
+            'mfa_recovery_codes',
+            'auth_challenges',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
