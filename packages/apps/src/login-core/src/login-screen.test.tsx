@@ -38,7 +38,6 @@ function okOperations(redirect: string | null = null): SignInOperations {
   return {
     signIn: vi.fn().mockResolvedValue({ status: "ok", redirect }),
     verify: vi.fn(),
-    startReplacement: vi.fn(),
     confirmReplacement: vi.fn(),
   };
 }
@@ -295,7 +294,7 @@ describe("LoginScreen second step", () => {
     fireEvent.click(await screen.findByRole("button", { name: labels.useRecovery }));
     const recovery = await screen.findByLabelText(twoFactorLabels.recoveryCodeLabel);
     expect(recovery.getAttribute("autocomplete")).toBe("off");
-    fireEvent.change(recovery, { target: { value: " ABCDE fghij " } });
+    fireEvent.change(recovery, { target: { value: " 3F9A c27e-81D4 0b6e " } });
     fireEvent.click(screen.getByRole("button", { name: labels.verify }));
 
     expect(await screen.findByRole("heading", { name: labels.replaceTitle })).toBeTruthy();

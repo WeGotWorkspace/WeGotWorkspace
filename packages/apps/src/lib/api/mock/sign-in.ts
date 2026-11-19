@@ -2,6 +2,7 @@ import {
   normalizeRecoveryCode,
   normalizeTotpCode,
   SignInError,
+  type AuthenticatorSecret,
   type SignInOperations,
   type SignInStep,
 } from "@/lib/api/wgw/auth-sign-in";
@@ -16,21 +17,29 @@ export const MOCK_SIGN_IN = {
   throttledCode: "999999",
   /** Answers 404: the challenge expired. */
   expiredCode: "111111",
-  recoveryCode: "abcde-fghij",
+  /** Recovery codes are 16 lowercase hex characters in groups of four. */
+  recoveryCode: "3f9a-c27e-81d4-0b6e",
   secret: "JBSWY3DPEHPK3PXP",
   recoveryCodes: [
-    "kq7rm-2xv9p",
-    "a8d3f-wn6ty",
-    "p4hzc-9mbe2",
-    "t6yuv-3ks8q",
-    "x2nfg-7jr4w",
-    "c9bwe-5qd6m",
-    "h3tpk-8vy2n",
-    "m5rxa-4cz7f",
-    "e7jqs-6gw3b",
-    "w8ufd-2nk5h",
+    "a41c-9e07-d3b2-5f68",
+    "07be-42d9-c1a5-e836",
+    "d95f-3a1c-60e4-b27d",
+    "6c28-f0b9-17ad-4e53",
+    "b3e7-58c2-a90f-1d64",
+    "2f01-dc96-7b3e-85a4",
+    "e8a4-1b75-3c0d-f926",
+    "91d6-e2f3-4a87-0cb5",
+    "5a3b-07c8-ef12-96d4",
+    "c7f2-6d49-b85e-3a01",
   ],
 } as const;
+
+function mockSecret(): AuthenticatorSecret {
+  return {
+    secret: MOCK_SIGN_IN.secret,
+    otpauthUri: `otpauth://totp/WeGotWorkspace:alice?secret=${MOCK_SIGN_IN.secret}&issuer=WeGotWorkspace`,
+  };
+}
 
 function refused(status: number, code: string, reason: SignInError["reason"]): SignInError {
   return new SignInError(`mock ${code}`, status, code, reason, status === 429 ? 3600 : null);
@@ -38,7 +47,7 @@ function refused(status: number, code: string, reason: SignInError["reason"]): S
 
 /**
  * The login screen's steps without a server (#2274 stories and tests): the password, then for
- * `alice` a code or a recovery code, then after a recovery code a new authenticator. `redirect`
+ * `alice` a code or a recovery code, then after a recovery code a new authenticator (its secret comes with the step). `redirect`
  * is the assistant connect target the `ok` step carries.
  */
 export function createMockSignInOperations(
@@ -64,24 +73,18 @@ export function createMockSignInOperations(
       await wait();
       if ("recoveryCode" in proof) {
         if (
-          normalizeRecoveryCode(proof.recoveryCode) !== MOCK_SIGN_IN.recoveryCode.replace("-", "")
+          normalizeRecoveryCode(proof.recoveryCode) !==
+          normalizeRecoveryCode(MOCK_SIGN_IN.recoveryCode)
         ) {
           throw refused(401, "mfa_code_invalid", "invalid_code");
         }
-        return { status: "mfa_replace_required", challenge: challenge() };
+        return { status: "mfa_replace_required", challenge: challenge(), secret: mockSecret() };
       }
       const code = normalizeTotpCode(proof.code);
       if (code === MOCK_SIGN_IN.throttledCode) throw refused(429, "throttled", "throttled");
       if (code === MOCK_SIGN_IN.expiredCode) throw refused(404, "not_found", "expired");
       if (code !== MOCK_SIGN_IN.code) throw refused(401, "mfa_code_invalid", "invalid_code");
       return ok;
-    },
-    startReplacement: async () => {
-      await wait();
-      return {
-        secret: MOCK_SIGN_IN.secret,
-        otpauthUri: `otpauth://totp/WeGotWorkspace:alice?secret=${MOCK_SIGN_IN.secret}&issuer=WeGotWorkspace`,
-      };
     },
     confirmReplacement: async (_challenge, code) => {
       await wait();

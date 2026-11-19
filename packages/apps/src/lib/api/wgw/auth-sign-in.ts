@@ -12,28 +12,28 @@ import { WgwRequestError } from "@/lib/api/wgw/request-error";
  * Sign-in with an optional second step (#2270, #2274). `auth/token` and `oauth/session` answer
  * a correct password with tokens (or the assistant's web session), or, for a user with
  * two-factor on, with a challenge. A code redeems the challenge; a recovery code answers
- * `mfa_replace_required` and the user sets up a new authenticator before tokens follow.
+ * `mfa_replace_required` with a new challenge and a new secret, and the user confirms a code
+ * from that secret before tokens follow. The recovery code is spent either way.
  *
  * The web app and assistant connect run the same steps on different routes; an `oauth`
  * challenge is only accepted on `oauth/session` and a `spa` one only on the API routes.
  */
+/** A new authenticator for a replacement, drawn as a QR code in the browser. */
+export type AuthenticatorSecret = { secret: string; otpauthUri: string };
+
 export type SignInStep =
   | { status: "ok"; redirect: string | null }
   | { status: "mfa_required"; challenge: string }
-  | { status: "mfa_replace_required"; challenge: string };
+  | { status: "mfa_replace_required"; challenge: string; secret: AuthenticatorSecret };
 
 /** What proves the second step: a code from the app, or one recovery code. */
 export type SignInProof = { code: string } | { recoveryCode: string };
-
-/** A new authenticator for a replacement, drawn as a QR code in the browser. */
-export type AuthenticatorSecret = { secret: string; otpauthUri: string };
 
 export type ReplacementConfirmed = { step: SignInStep; recoveryCodes: string[] };
 
 export type SignInOperations = {
   signIn: (username: string, password: string) => Promise<SignInStep>;
   verify: (challenge: string, proof: SignInProof) => Promise<SignInStep>;
-  startReplacement: (challenge: string) => Promise<AuthenticatorSecret>;
   confirmReplacement: (challenge: string, code: string) => Promise<ReplacementConfirmed>;
 };
 
@@ -105,12 +105,18 @@ function safeRedirect(value: unknown): string | null {
     : null;
 }
 
+function noSecret(): SignInError {
+  return new SignInError("Replacement returned no secret.", 500, undefined, "failed", null);
+}
+
 /** The step a 200 body describes. Tokens in an `ok` web-app body are applied here. */
 export function signInStepFromBody(body: unknown, client: "spa" | "oauth"): SignInStep {
   const o = record(body);
   const challenge = typeof o.challenge === "string" ? o.challenge : "";
-  if ((o.status === "mfa_required" || o.status === "mfa_replace_required") && challenge) {
-    return { status: o.status, challenge };
+  if (o.status === "mfa_required" && challenge) return { status: o.status, challenge };
+  if (o.status === "mfa_replace_required" && challenge) {
+    if (typeof o.secret !== "string" || typeof o.otpauth_uri !== "string") throw noSecret();
+    return { status: o.status, challenge, secret: { secret: o.secret, otpauthUri: o.otpauth_uri } };
   }
   if (client === "spa") wgwApplyMemberTokens(o);
   return { status: "ok", redirect: client === "oauth" ? safeRedirect(o.redirect) : null };
@@ -171,21 +177,6 @@ function proofBody(proof: SignInProof): Record<string, string> {
     : { recovery_code: normalizeRecoveryCode(proof.recoveryCode) };
 }
 
-async function startReplacement(challenge: string): Promise<AuthenticatorSecret> {
-  const { body } = await post(challengePath(challenge, "totp"), {}, "code");
-  const o = record(body);
-  if (typeof o.secret !== "string" || typeof o.otpauth_uri !== "string") {
-    throw new SignInError(
-      "Authenticator setup returned no secret.",
-      500,
-      undefined,
-      "failed",
-      null,
-    );
-  }
-  return { secret: o.secret, otpauthUri: o.otpauth_uri };
-}
-
 /** The web app: `auth/token`, then the challenge routes. */
 export function createWgwSignInOperations(): SignInOperations {
   return {
@@ -201,10 +192,9 @@ export function createWgwSignInOperations(): SignInOperations {
       );
       return signInStepFromBody(body, "spa");
     },
-    startReplacement,
     confirmReplacement: async (challenge, code) => {
       const { body } = await post(
-        challengePath(challenge, "confirmation"),
+        challengePath(challenge, "replacement"),
         { code: normalizeTotpCode(code) },
         "code",
       );
@@ -243,7 +233,6 @@ export function createWgwAssistantSignInOperations(intent?: string | null): Sign
       const { body } = await session({ challenge, ...proofBody(proof) }, "code");
       return signInStepFromBody(body, "oauth");
     },
-    startReplacement,
     confirmReplacement: async (challenge, code) => {
       const { body } = await session({ challenge, code: normalizeTotpCode(code) }, "code");
       return { step: signInStepFromBody(body, "oauth"), recoveryCodes: recoveryCodesFrom(body) };
@@ -260,7 +249,6 @@ export function createLocalSignInOperations(): SignInOperations {
       return ok;
     },
     verify: async () => ok,
-    startReplacement: async () => ({ secret: "", otpauthUri: "" }),
     confirmReplacement: async () => ({ step: ok, recoveryCodes: [] }),
   };
 }

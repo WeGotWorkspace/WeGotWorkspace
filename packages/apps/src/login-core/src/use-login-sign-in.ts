@@ -13,7 +13,7 @@ import { loginLabels as labels } from "@/login-core/src/login-labels";
 export type LoginStep =
   | { kind: "password" }
   | { kind: "code"; challenge: string; recovery: boolean }
-  | { kind: "replace"; challenge: string; secret: AuthenticatorSecret | null }
+  | { kind: "replace"; challenge: string; secret: AuthenticatorSecret }
   | { kind: "codes"; codes: string[]; done: SignInStep };
 
 function formatTime(ms: number): string {
@@ -104,9 +104,7 @@ export function useLoginSignIn(
       setStep({ kind: "code", challenge: next.challenge, recovery: false });
       return;
     }
-    setStep({ kind: "replace", challenge: next.challenge, secret: null });
-    const secret = await operations.startReplacement(next.challenge);
-    setStep({ kind: "replace", challenge: next.challenge, secret });
+    setStep({ kind: "replace", challenge: next.challenge, secret: next.secret });
   };
 
   return {
