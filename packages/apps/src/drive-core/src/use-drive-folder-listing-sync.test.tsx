@@ -225,6 +225,28 @@ describe("useDriveFolderListingSync on another user's change (#1663)", () => {
     expect(next.map((file) => file.id)).toEqual(["f-1"]);
   });
 
+  it("refreshes through refreshDir with the change's time stamp, so tabs can share the fetch", async () => {
+    const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
+    const refreshDir = vi
+      .fn<NonNullable<DriveAPIOperations["refreshDir"]>>()
+      .mockResolvedValue(listing([]));
+    const ctx = setup({ changeDir, refreshDir });
+    await flush();
+    ctx.setFiles.mockClear();
+    vi.setSystemTime(new Date("2026-11-19T10:00:00Z"));
+
+    act(() => notifyDriveRemoteChange(USER));
+    await flush();
+
+    // The first load is this tab's own; only the refresh after a change is shared.
+    expect(changeDir).toHaveBeenCalledTimes(1);
+    expect(refreshDir).toHaveBeenCalledTimes(1);
+    expect(refreshDir.mock.calls[0][0]).toBe("/users/alice/Projects");
+    expect(refreshDir.mock.calls[0][1].wave).toBe(Date.parse("2026-11-19T10:00:00Z"));
+    const next = lastUpdate(ctx.setFiles)([driveFileFromEntry(ROW, USER)]);
+    expect(next).toEqual([]);
+  });
+
   it("keeps rows of writes that wait in the outbox", async () => {
     const changeDir = vi.fn<DriveAPIOperations["changeDir"]>().mockResolvedValue(listing([ROW]));
     const { setFiles } = await loaded(changeDir);

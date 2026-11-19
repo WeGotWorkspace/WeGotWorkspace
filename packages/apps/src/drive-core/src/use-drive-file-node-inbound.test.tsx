@@ -14,9 +14,13 @@ const guestSession = vi.hoisted(() => ({ value: false }));
 vi.mock("@/lib/api/wgw/http", () => ({ wgwIsGuestSession: () => guestSession.value }));
 
 const syncDriveFileNodesIfStale = vi.hoisted(() => vi.fn());
+const notifyDriveRemoteChange = vi.hoisted(() => vi.fn());
 const useJmapStateChange = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/offline/drive/drive-file-node-push", () => ({ syncDriveFileNodesIfStale }));
+vi.mock("@/lib/offline/drive/drive-file-node-push", () => ({
+  notifyDriveRemoteChange,
+  syncDriveFileNodesIfStale,
+}));
 vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({ useJmapStateChange }));
 
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -31,6 +35,7 @@ describe("useDriveFileNodeInbound", () => {
     syncDriveInboundFromFileNodes.mockReset();
     show.mockReset();
     syncDriveFileNodesIfStale.mockReset().mockResolvedValue(true);
+    notifyDriveRemoteChange.mockReset();
     useJmapStateChange.mockReset();
     syncDriveInboundFromFileNodes.mockResolvedValue({
       changed: true,
@@ -46,6 +51,39 @@ describe("useDriveFileNodeInbound", () => {
       description: "Your unsaved copy of /users/ada/unsaved.md is still here.",
     });
     expect(syncDriveInboundFromFileNodes).toHaveBeenCalledWith("ada");
+  });
+
+  it("tells the open listings when its own pull changed something", async () => {
+    // The pull can take a change before its push arrives; the push then tells nobody.
+    renderHook(() => useDriveFileNodeInbound("ada", 0));
+    await waitFor(() => expect(notifyDriveRemoteChange).toHaveBeenCalledTimes(1));
+    expect(notifyDriveRemoteChange).toHaveBeenCalledWith("ada");
+  });
+
+  it("tells the open listings about a change it listed but could not place in the cache", async () => {
+    syncDriveInboundFromFileNodes.mockResolvedValue({
+      changed: false,
+      listedChanges: true,
+      usedFullResync: false,
+      keptUnsavedPaths: [],
+    });
+    const onSettled = vi.fn();
+    renderHook(() => useDriveFileNodeInbound("ada", 0, onSettled));
+    await waitFor(() => expect(onSettled).toHaveBeenCalled());
+    expect(notifyDriveRemoteChange).toHaveBeenCalledWith("ada");
+  });
+
+  it("leaves the listings alone when its pull found nothing", async () => {
+    syncDriveInboundFromFileNodes.mockResolvedValue({
+      changed: false,
+      listedChanges: false,
+      usedFullResync: false,
+      keptUnsavedPaths: [],
+    });
+    const onSettled = vi.fn();
+    renderHook(() => useDriveFileNodeInbound("ada", 0, onSettled));
+    await waitFor(() => expect(onSettled).toHaveBeenCalled());
+    expect(notifyDriveRemoteChange).not.toHaveBeenCalled();
   });
 
   it("logs a sync failure", async () => {

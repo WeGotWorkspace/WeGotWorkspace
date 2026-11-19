@@ -35,6 +35,10 @@ import {
   normalizeDriveAvailabilityPath,
 } from "@/lib/offline/drive/drive-availability-store";
 import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
+import {
+  fetchDriveFolderOncePerBrowser,
+  listenForSharedDriveFolderFetches,
+} from "@/lib/offline/drive/drive-folder-fetch-share";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
@@ -157,11 +161,65 @@ export function createHybridDriveOperations(
 ): DriveAPIOperations {
   const live = createWgwDriveOperations(bootstrap?.data.cwd ?? "/");
   let cachedBootstrap = bootstrap ?? null;
+  // Before the first change: another tab's listing can come before this tab asks.
+  listenForSharedDriveFolderFetches();
 
   const ensureBootstrap = async (): Promise<DriveAppBootstrap | null> => {
     if (cachedBootstrap) return cachedBootstrap;
     cachedBootstrap = await readDriveBootstrapFromCache(username);
     return cachedBootstrap;
+  };
+
+  /** Write a live listing to this tab's bootstrap and the shared cache. */
+  const commitListing = async (data: DriveUIData): Promise<void> => {
+    if (cachedBootstrap) {
+      cachedBootstrap = { ...cachedBootstrap, data };
+      await writeDriveBootstrapToCache(username, cachedBootstrap);
+    }
+    await refreshDriveDirectoryCache(username, data);
+  };
+
+  /**
+   * `changeDir`. With `wave` (a refresh after a change) the tabs that show
+   * this folder share one fetch. That read writes nothing: only the listing
+   * the share returns is committed, and not when `signal` is already aborted.
+   */
+  const openDir = async (
+    to: string,
+    opts?: { signal?: AbortSignal; wave?: number },
+  ): Promise<DriveUIData> => {
+    const target = normalizeApiVirtualPath(to);
+    const pending = await pendingUploadFolderState(username, target);
+    if (pending) return pending;
+    if (readBrowserOnline()) {
+      try {
+        let data: DriveUIData;
+        if (opts?.wave === undefined) {
+          data = await live.changeDir(target, { signal: opts?.signal });
+          await commitListing(data);
+        } else {
+          data = await fetchDriveFolderOncePerBrowser({
+            username,
+            path: target,
+            wave: opts.wave,
+            fetchLive: (signal = opts.signal) => live.listDirectory(target, { signal }),
+            signal: opts.signal,
+          });
+          if (opts.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+          await commitListing(data);
+        }
+        if (cachedBootstrap && cachedBootstrap.data !== data) {
+          cachedBootstrap = { ...cachedBootstrap, data };
+        }
+        return withUploadPlaceholders(username, data);
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error, opts?.signal);
+      }
+    }
+    const boot = await ensureBootstrap();
+    const cached = boot ? await readCachedDriveState(username, target) : null;
+    if (cached) return cached;
+    throw new Error("This folder is not available offline.");
   };
 
   return {
@@ -190,28 +248,8 @@ export function createHybridDriveOperations(
       if (cached) return cached;
       throw new Error("Drive is not available offline yet.");
     },
-    changeDir: async (to, opts) => {
-      const target = normalizeApiVirtualPath(to);
-      const pending = await pendingUploadFolderState(username, target);
-      if (pending) return pending;
-      if (readBrowserOnline()) {
-        try {
-          const data = await live.changeDir(target, opts);
-          if (cachedBootstrap) {
-            cachedBootstrap = { ...cachedBootstrap, data };
-            await writeDriveBootstrapToCache(username, cachedBootstrap);
-          }
-          await refreshDriveDirectoryCache(username, data);
-          return withUploadPlaceholders(username, data);
-        } catch (error) {
-          rethrowUnlessOfflineQueue(error, opts?.signal);
-        }
-      }
-      const boot = await ensureBootstrap();
-      const cached = boot ? await readCachedDriveState(username, target) : null;
-      if (cached) return cached;
-      throw new Error("This folder is not available offline.");
-    },
+    changeDir: (to, opts) => openDir(to, opts),
+    refreshDir: (to, opts) => openDir(to, opts),
     readCachedDirectory: async (at) => {
       const cached = await readCachedDriveState(username, normalizeApiVirtualPath(at));
       return cached && cached.directory.files.length > 0 ? cached : null;

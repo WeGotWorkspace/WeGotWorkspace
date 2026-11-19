@@ -64,12 +64,17 @@ function subscribeFolderRemoteRefresh({
 }: FolderRemoteRefreshArgs): () => void {
   const controller = new AbortController();
   const shown = () => !controller.signal.aborted && syncedFolderPathRef.current === folderViewPath;
+  // Time stamp of the newest change heard; the same in every tab.
+  let wave = 0;
   const refresh = async () => {
     // A folder that is still loading gets the current rows from that load.
     if (!shown()) return;
     const apiPath = apiPathFromUiPath(folderViewPath, currentUsername, groupRootNamesRef.current);
     const [nextData, keepStaged] = await Promise.all([
-      operations.changeDir(apiPath, { signal: controller.signal }),
+      // Tabs of one browser that show this folder share the fetch.
+      operations.refreshDir
+        ? operations.refreshDir(apiPath, { signal: controller.signal, wave })
+        : operations.changeDir(apiPath, { signal: controller.signal }),
       driveOutboxHasPending(currentUsername),
     ]);
     if (!shown() || uiPathFromApiPath(nextData.cwd, currentUsername) !== folderViewPath) return;
@@ -111,7 +116,8 @@ function subscribeFolderRemoteRefresh({
     })();
   };
   // A new push starts a fresh retry schedule; the timer calls `run` directly.
-  const onChange = () => {
+  const onChange = (at: number) => {
+    wave = Math.max(wave, at);
     failures = 0;
     run();
   };

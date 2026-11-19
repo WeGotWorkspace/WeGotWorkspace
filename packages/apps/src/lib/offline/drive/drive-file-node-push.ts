@@ -12,7 +12,7 @@ import {
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 
 const topic = cacheChangedTopic(DRIVE_DOMAIN);
-const localListeners = new Set<{ username: string; onChange: () => void }>();
+const localListeners = new Set<{ username: string; onChange: (at: number) => void }>();
 
 /**
  * Tell every tab of this browser, this one included, that another user's
@@ -20,20 +20,30 @@ const localListeners = new Set<{ username: string; onChange: () => void }>();
  * open listings fetch their folder again.
  * The tabs share one `FileNode/changes` token: a tab that did not pull would
  * otherwise see an equal state and keep its old listing.
+ * Every tab gets the same time stamp for the change, so the tabs that show
+ * one folder can tell which fetch answers it (`drive-folder-fetch-share.ts`).
  */
 export function notifyDriveRemoteChange(username: string): void {
+  const at = Date.now();
   for (const listener of localListeners) {
-    if (listener.username === username) listener.onChange();
+    if (listener.username === username) listener.onChange(at);
   }
-  topic.notifyOtherTabs(username);
+  topic.notifyOtherTabs(username, at);
 }
 
-/** Hear {@link notifyDriveRemoteChange} for `username`, from any tab. */
-export function subscribeDriveRemoteChanges(username: string, onChange: () => void): () => void {
+/**
+ * Hear {@link notifyDriveRemoteChange} for `username`, from any tab. `at` is
+ * the change's time stamp: the sender's, or this tab's clock for a notice
+ * without one (a tab still on an older build).
+ */
+export function subscribeDriveRemoteChanges(
+  username: string,
+  onChange: (at: number) => void,
+): () => void {
   if (!username) return () => undefined;
   const local = { username, onChange };
   localListeners.add(local);
-  const offOtherTabs = topic.subscribe(username, onChange);
+  const offOtherTabs = topic.subscribe(username, (at) => onChange(at ?? Date.now()));
   return () => {
     localListeners.delete(local);
     offOtherTabs();
