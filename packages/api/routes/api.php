@@ -361,9 +361,9 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     // feature-gate middleware: domain availability is expressed through the
     // advertised capabilities and the `using` guard (JmapCapabilitySet), so
     // disabling one domain never takes the whole envelope down.
-    Route::post('jmap', [JmapApiController::class, 'handle']);
+    Route::post('jmap', [JmapApiController::class, 'handle'])->middleware('wgw.slow-log');
     Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapBlobController::class, 'download']);
-    Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload']);
+    Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload'])->middleware('wgw.slow-log');
     // Download tickets (#1500): issue on the authenticated route; the ticket
     // URL itself is public (below) because a native download sends no header.
     Route::post('jmap/download-tickets/{accountId}', [JmapDownloadTicketController::class, 'store']);
@@ -388,8 +388,8 @@ Route::get('jmap/session', JmapSessionController::class)
 // that re-checks the share before any body is read (GuestUploadGate).
 Route::middleware(['wgw.auth', 'throttle:wgw-api', 'throttle:'.GuestUploadRateLimiters::UPLOAD, 'wgw.guest'])
     ->group(function (): void {
-        Route::post('jmap/guest', [JmapApiController::class, 'handleGuest']);
-        Route::post('jmap/guest/upload/{accountId}', [JmapBlobController::class, 'uploadGuest']);
+        Route::post('jmap/guest', [JmapApiController::class, 'handleGuest'])->middleware('wgw.slow-log');
+        Route::post('jmap/guest/upload/{accountId}', [JmapBlobController::class, 'uploadGuest'])->middleware('wgw.slow-log');
     });
 
 Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
