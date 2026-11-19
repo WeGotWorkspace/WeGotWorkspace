@@ -36,6 +36,20 @@ describe("cacheChangedTopic", () => {
     otherTab.close();
   });
 
+  it("carries the sender's time stamp when it gives one", async () => {
+    const onChange = vi.fn();
+    const stop = cacheChangedTopic("test-app-e").subscribe("alice", onChange);
+    const otherTab = new BroadcastChannel("wgw.test-app-e.bootstrap");
+
+    otherTab.postMessage({ type: "test-app-e-bootstrap-updated", username: "alice", at: 1234 });
+    otherTab.postMessage({ type: "test-app-e-bootstrap-updated", username: "alice" });
+    await delivered();
+
+    expect(onChange.mock.calls).toEqual([[1234], [undefined]]);
+    stop();
+    otherTab.close();
+  });
+
   it("tells this tab and the other tabs when asked for all tabs", async () => {
     const topic = cacheChangedTopic("test-app-d");
     const here = vi.fn();

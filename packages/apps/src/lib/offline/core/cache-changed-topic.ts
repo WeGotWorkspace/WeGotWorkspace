@@ -1,18 +1,21 @@
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
 
-type CacheChanged = { type: string; username: string };
+type CacheChanged = { type: string; username: string; at?: number };
 
 export type CacheChangedTopic = {
   /** Tell the other tabs that the shared cache changed. This tab already shows it. */
-  notifyOtherTabs: (username: string) => void;
+  notifyOtherTabs: (username: string, at?: number) => void;
   /**
    * Tell every tab, this one included. For a cache written outside the view
    * that shows it (an inbound pull run by another app hook), so this tab's
    * open view re-reads it too.
    */
   notifyAllTabs: (username: string) => void;
-  /** Hear another tab's change for the same offline account. */
-  subscribe: (username: string, onChange: () => void) => () => void;
+  /**
+   * Hear another tab's change for the same offline account. `at` is the time
+   * stamp the sender gave the change, when it gave one.
+   */
+  subscribe: (username: string, onChange: (at?: number) => void) => () => void;
 };
 
 /**
@@ -30,9 +33,12 @@ export function cacheChangedTopic(domain: string): CacheChangedTopic {
       typeof (value as CacheChanged).username === "string",
   );
   return {
-    notifyOtherTabs(username) {
+    notifyOtherTabs(username, at) {
       if (!username) return;
-      topic.publish({ type, username }, { otherTabsOnly: true });
+      topic.publish(
+        { type, username, ...(at === undefined ? {} : { at }) },
+        { otherTabsOnly: true },
+      );
     },
     notifyAllTabs(username) {
       if (!username) return;
@@ -41,7 +47,9 @@ export function cacheChangedTopic(domain: string): CacheChangedTopic {
     subscribe(username, onChange) {
       if (!username) return () => undefined;
       return topic.subscribe((message) => {
-        if (message.username === username) onChange();
+        if (message.username === username) {
+          onChange(typeof message.at === "number" ? message.at : undefined);
+        }
       });
     },
   };

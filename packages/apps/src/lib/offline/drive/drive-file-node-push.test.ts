@@ -55,6 +55,8 @@ describe("syncDriveFileNodesIfStale", () => {
     expect(syncDriveInboundFromFileNodes).toHaveBeenCalledTimes(1);
     expect(syncDriveInboundFromFileNodes).toHaveBeenCalledWith(USER);
     expect(onChange).toHaveBeenCalledTimes(1);
+    // The change's time stamp, which every tab gets the same.
+    expect(onChange.mock.calls[0][0]).toBeTypeOf("number");
     expect(onSynced).toHaveBeenCalledWith(CHANGED);
     off();
   });
