@@ -145,6 +145,7 @@ describe("createDriveFolderFetchShare", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(names(await b)).toEqual(["slow.md"]);
+    expect(own.fetchLive.mock.calls[0]?.[0]?.aborted).toBe(true);
   });
 
   it("stops waiting when the folder view closes", async () => {
@@ -167,7 +168,8 @@ describe("createDriveFolderFetchShare", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     controller.abort();
-    await expect(b).rejects.toThrow("aborted");
+    await expect(b).rejects.toMatchObject({ name: "AbortError" });
+    expect(own).not.toHaveBeenCalled();
   });
 
   it("fetches each folder and each account on its own", async () => {

@@ -43,8 +43,8 @@ export type DriveFolderFetchRequest = {
    * may not hold this one, so it is not taken over.
    */
   wave: number;
-  /** The live fetch, including this tab's cache writes. */
-  fetchLive: () => Promise<DriveUIData>;
+  /** The live fetch, including this tab's cache writes. Aborting `signal` stops it. */
+  fetchLive: (signal?: AbortSignal) => Promise<DriveUIData>;
   signal?: AbortSignal;
 };
 
@@ -75,7 +75,7 @@ export function createDriveFolderFetchShare(deps: DriveFolderFetchShareDeps) {
       const mine = await deps.lockIfFree(`wgw.drive.folder-fetch.${username}.${path}`, async () => {
         // Another tab finished between the change and this tab's turn.
         if (heardSoFar()) return null;
-        const data = await fetchLive();
+        const data = await fetchLive(signal);
         deps.topic.publish({ v: 1, username, path, wave, data }, { otherTabsOnly: true });
         return data;
       });
@@ -92,8 +92,21 @@ export function createDriveFolderFetchShare(deps: DriveFolderFetchShareDeps) {
       const shared = await Promise.race([listing, waited]);
       stopWaiting();
       signal?.removeEventListener("abort", stopWaiting);
-      // A slow fetching tab may still answer first: take whichever listing comes.
-      return shared ?? (await Promise.race([listing, fetchLive()]));
+      if (shared) return shared;
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      // A slow fetching tab may still answer first: take whichever listing
+      // comes and stop the local fetch so it writes nothing older.
+      const local = new AbortController();
+      const stopLocal = () => local.abort();
+      signal?.addEventListener("abort", stopLocal, { once: true });
+      const fetched = fetchLive(local.signal);
+      fetched.catch(() => undefined);
+      try {
+        return await Promise.race([listing, fetched]);
+      } finally {
+        signal?.removeEventListener("abort", stopLocal);
+        local.abort();
+      }
     } finally {
       stopListening();
     }

@@ -190,7 +190,7 @@ export function createHybridDriveOperations(
     if (pending) return pending;
     if (readBrowserOnline()) {
       try {
-        const fetchLive = () => fetchDir(target, opts?.signal);
+        const fetchLive = (signal = opts?.signal) => fetchDir(target, signal);
         const data =
           opts?.wave === undefined
             ? await fetchLive()
