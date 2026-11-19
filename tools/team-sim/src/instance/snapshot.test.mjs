@@ -100,6 +100,10 @@ function installedFixture() {
   const instance = createInstance({ shell, project: "wgw-sim", checkout: join(f.root, "checkout"), dataDir: f.data, snapshotsDir: f.snapshots, repoRoot: f.root, fetchImpl: async () => ({ ok: true }) });
   return { f, shell, instance };
 }
+const emptyDb = (shell) => {
+  const run = shell.run;
+  shell.run = (cmd, args, opts) => (args.join(" ").includes("information_schema.tables") ? { status: 0, stdout: "0\n", stderr: "" } : run(cmd, args, opts));
+};
 const withDump = (f) => {
   mkdirSync(join(f.data, ".team-sim"), { recursive: true });
   writeFileSync(join(f.data, ".team-sim", "db.sql"), "-- dump\n");
@@ -129,6 +133,24 @@ test("the upgrade dumps before the rollback clone, and a rollback loads that dum
   const restore = shell.calls.findIndex(isRestore);
   assert.ok(dump >= 0 && dump < clone, "dump before the rollback clone");
   assert.ok(back >= 0 && back < restore, "the data dir is put back before its dump is loaded");
+  const reset = shell.calls.findIndex((c) => c.includes("reset --hard"));
+  assert.ok(reset >= 0 && reset < restore, "the worktree is reset before the dump is loaded");
+});
+
+test("an upgrade on a lost volume restores the last dump before it dumps, or refuses without one", async () => {
+  const steps = { fastForward: () => {}, build: async () => {}, start: async () => {}, migrate: () => ({}) };
+  const a = installedFixture();
+  withDump(a.f);
+  emptyDb(a.shell);
+  await a.instance.upgrade({ rollbackDir: join(a.f.root, "rollback"), steps });
+  const restore = a.shell.calls.findIndex(isRestore);
+  const dump = a.shell.calls.findIndex(isDump);
+  assert.ok(restore >= 0 && restore < dump, "restore comes before the first dump");
+
+  const b = installedFixture();
+  emptyDb(b.shell);
+  await assert.rejects(() => b.instance.upgrade({ rollbackDir: join(b.f.root, "rollback"), steps }), /no dump to restore/);
+  assert.ok(!b.shell.calls.some(isDump), "an empty database is never dumped");
 });
 
 test("a data dir that was never installed has nothing to dump or restore", () => {
@@ -151,10 +173,6 @@ test("the first boot starts web alone, so web and scheduler do not both install"
 });
 
 test("an installed data dir with an empty database gets its dump back, or the start is refused", async () => {
-  const emptyDb = (shell) => {
-    const run = shell.run;
-    shell.run = (cmd, args, opts) => (args.join(" ").includes("information_schema.tables") ? { status: 0, stdout: "0\n", stderr: "" } : run(cmd, args, opts));
-  };
   const a = installedFixture();
   withDump(a.f);
   emptyDb(a.shell);

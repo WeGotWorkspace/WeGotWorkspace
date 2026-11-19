@@ -97,6 +97,8 @@ export function createInstance({ shell, project, checkout, dataDir, liveDataDir,
   function dumpDb() {
     if (!installed()) return false;
     mkdirSync(stateDir(dataDir), { recursive: true });
+    // A lost volume must be restored from the last dump first, never dumped over it.
+    ensureDbMatchesDataDir();
     dbUp();
     dbShell(`mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" --single-transaction --routines --add-drop-database --databases "$MARIADB_DATABASE" --result-file=${DB_DUMP_IN_CONTAINER}.part && mv ${DB_DUMP_IN_CONTAINER}.part ${DB_DUMP_IN_CONTAINER}`);
     return true;
@@ -126,7 +128,7 @@ export function createInstance({ shell, project, checkout, dataDir, liveDataDir,
 
   async function start() {
     mkdirSync(dataDir, { recursive: true });
-    // First boot: web alone, so web and scheduler do not both install into the empty database.
+    // First boot: web alone first; it runs the install, the scheduler only waits for it.
     if (installed()) ensureDbMatchesDataDir();
     else compose(["up", "-d", "--wait", "--wait-timeout", "300", "web"]);
     compose(["up", "-d", "--wait", "--wait-timeout", "300"]);
@@ -205,12 +207,14 @@ export function createInstance({ shell, project, checkout, dataDir, liveDataDir,
   /** Back to the previous night's data and commit; the stack stays stopped. */
   function rollback({ rollbackDir, sha: target }) {
     stopWriters();
-    if (existsSync(join(rollbackDir, "data")) || shell.dryRun) {
+    const restoreData = existsSync(join(rollbackDir, "data")) || shell.dryRun;
+    if (restoreData) {
       removeDir(shell, dataDir);
       shell.run("mv", [join(rollbackDir, "data"), dataDir]);
-      restoreDb();
     }
     shell.run("git", ["-C", checkout, "reset", "--hard", "--quiet", target]);
+    // After the reset, so the previous night's compose file loads the dump and a failure cannot skip the reset.
+    if (restoreData) restoreDb();
   }
 
   return { guard, ensureDocker, ensureWorktree, sha, fastForward, build, start, waitHealthy, migrate, stopWriters, dumpDb, restoreDb, down, upgrade, rollback, artisan, compose, ensureAppUrl, invocation: inv };
