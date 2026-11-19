@@ -34,9 +34,8 @@ export const MOCK_APP_PASSWORDS: AppPassword[] = [
 
 function mockPlaintext(): string {
   const letters = "abcdefghijklmnopqrstuvwxyz";
-  let out = "";
-  for (let i = 0; i < 16; i += 1) out += letters[Math.floor(Math.random() * letters.length)];
-  return out;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => letters[byte % letters.length]).join("");
 }
 
 /**
