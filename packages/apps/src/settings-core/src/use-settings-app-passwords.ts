@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/create-workspace-source";
 import { createMockAppPasswordOperations } from "@/lib/api/mock/app-passwords";
 import {
+  APP_PASSWORD_LIMIT,
   APP_PASSWORD_NAME_MAX,
   AppPasswordThrottledError,
   createWgwAppPasswordOperations,
@@ -51,10 +52,10 @@ export type AppPasswordRemoval = { kind: "one"; row: AppPassword } | { kind: "al
 
 /** The inline message under the account password for a failed create; null when it is not one. */
 export function appPasswordCreateFieldError(error: unknown, now = Date.now()): string | null {
-  if (error instanceof AppPasswordThrottledError) {
+  if (error instanceof AppPasswordThrottledError && error.retryAfterSeconds !== null) {
     return labels.throttled(formatTime(now + error.retryAfterSeconds * 1000));
   }
-  if (isApiError(error) && error.status === 429) return labels.throttled(formatTime(now + 60_000));
+  if (isApiError(error) && error.status === 429) return labels.throttled(null);
   if (isApiError(error) && error.status === 403) return labels.wrongPassword;
   return null;
 }
@@ -158,6 +159,10 @@ export function useSettingsAppPasswords(
       const fieldError = appPasswordCreateFieldError(error);
       if (fieldError) {
         form.setError("currentPassword", { message: fieldError });
+        return;
+      }
+      if (isApiError(error) && error.code === "app_password_limit") {
+        showError(labels.limitReached(APP_PASSWORD_LIMIT));
         return;
       }
       showError(isFetchNetworkError(error) ? labels.offlineAction : labels.createFailed);

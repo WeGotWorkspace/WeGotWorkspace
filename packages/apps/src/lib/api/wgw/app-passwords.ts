@@ -10,7 +10,8 @@ import { WgwRequestError } from "@/lib/api/wgw/request-error";
  * Named app passwords for calendar, contacts and meeting apps (#2271, #2272). The plaintext
  * comes back once, from create; the list never carries it. Creating one asks for the account
  * password: a wrong one is 403 `current_password_invalid`, too many tries are 429 `throttled`
- * with `Retry-After` (the sign-in limit).
+ * (no `Retry-After`), more than 50 active ones are 422 `app_password_limit`. A bad name is 400.
+ * Delete and revoke-all answer 200 `{ ok: true }`.
  */
 const PATH = "/settings/app-passwords";
 
@@ -39,17 +40,21 @@ export type AppPasswordOperations = {
 /** Longest name the server stores. */
 export const APP_PASSWORD_NAME_MAX = 60;
 
-/** A 429: the sign-in limit says when the next try may run (`Retry-After`, seconds). */
+/**
+ * A 429. `retryAfterSeconds` is the `Retry-After` header when the server sent one; the
+ * create limit (the profile current-password check) sends none, so it is null there.
+ */
 export class AppPasswordThrottledError extends WgwRequestError {
-  readonly retryAfterSeconds: number;
+  readonly retryAfterSeconds: number | null;
 
-  constructor(message: string, retryAfterSeconds: number, code?: string) {
+  constructor(message: string, retryAfterSeconds: number | null, code?: string) {
     super(message, 429, code);
     this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
-const DEFAULT_RETRY_AFTER_SECONDS = 60;
+/** At most this many active app passwords per user: 422 `app_password_limit`. */
+export const APP_PASSWORD_LIMIT = 50;
 
 async function failure(res: Response, method: string, path: string): Promise<WgwRequestError> {
   const body = await res.text();
@@ -61,7 +66,7 @@ async function failure(res: Response, method: string, path: string): Promise<Wgw
     const seconds = Number(res.headers.get("Retry-After"));
     return new AppPasswordThrottledError(
       message,
-      Number.isFinite(seconds) && seconds > 0 ? seconds : DEFAULT_RETRY_AFTER_SECONDS,
+      Number.isFinite(seconds) && seconds > 0 ? seconds : null,
       code,
     );
   }

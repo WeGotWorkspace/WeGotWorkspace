@@ -86,6 +86,12 @@ describe("appPasswordCreateFieldError", () => {
     expect(message).toBe(labels.throttled(at));
   });
 
+  it("says to try later on a 429 without Retry-After", () => {
+    expect(appPasswordCreateFieldError(new AppPasswordThrottledError("x", null, "throttled"))).toBe(
+      labels.throttled(null),
+    );
+  });
+
   it("leaves other failures to the toast", () => {
     expect(appPasswordCreateFieldError(new WgwRequestError("x", 500))).toBeNull();
     expect(appPasswordCreateFieldError(new TypeError("Failed to fetch"))).toBeNull();
@@ -170,13 +176,25 @@ describe("SettingsSecurityPane", () => {
     expect(screen.queryByLabelText(labels.createdLabel)).toBeNull();
   });
 
-  it("says when to try again when the sign-in limit is reached", async () => {
+  it("says to try again later when the sign-in limit is reached", async () => {
     renderPane([]);
     const dialog = await openCreate();
     type(labels.nameLabel, "Phone");
     type(labels.currentPasswordLabel, "throttled");
     fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
-    expect(await within(dialog).findByText(/^Too many tries\. Try again at /)).toBeTruthy();
+    expect(await within(dialog).findByText(labels.throttled(null))).toBeTruthy();
+  });
+
+  it("says to remove one first at the limit of 50", async () => {
+    const operations = renderPane([]);
+    vi.mocked(operations.create).mockRejectedValueOnce(
+      new WgwRequestError("x", 422, "app_password_limit"),
+    );
+    const dialog = await openCreate();
+    type(labels.nameLabel, "Phone");
+    type(labels.currentPasswordLabel, MOCK_ACCOUNT_PASSWORD);
+    fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(labels.limitReached(50)));
   });
 
   it("removes one app password after a confirm", async () => {

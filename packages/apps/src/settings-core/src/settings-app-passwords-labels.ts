@@ -23,7 +23,10 @@ export const appPasswordLabels = {
   currentPasswordLabel: "Account password",
   currentPasswordRequired: "Enter your account password",
   wrongPassword: "Account password is incorrect",
-  throttled: (time: string) => `Too many tries. Try again at ${time}.`,
+  throttled: (time: string | null) =>
+    time ? `Too many tries. Try again at ${time}.` : "Too many tries. Try again later.",
+  limitReached: (max: number) =>
+    `You have ${max} app passwords. Remove one you no longer use, then try again.`,
   offlineAction: "You are offline. Try again when the connection is back.",
   createFailed: "Could not create the app password",
   create: "Create",
