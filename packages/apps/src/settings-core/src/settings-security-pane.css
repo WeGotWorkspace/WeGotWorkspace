@@ -32,3 +32,16 @@
 .settings-security-pane__secret-row > .input {
   @apply min-w-0 flex-1;
 }
+
+/* Two-factor sign-in (#2275). Dialogs portal out of the pane, so these stay unscoped. */
+.settings-two-factor__note {
+  @apply pt-3;
+}
+
+.settings-two-factor__callout {
+  @apply mt-3;
+}
+
+.settings-two-factor__qr {
+  @apply flex justify-center py-3;
+}

@@ -51,7 +51,12 @@ export class AppPasswordThrottledError extends WgwRequestError {
 
 const DEFAULT_RETRY_AFTER_SECONDS = 60;
 
-async function failure(res: Response, method: string, path: string): Promise<WgwRequestError> {
+/** The error for a failed settings request: 429 carries `Retry-After`, the rest status + code. */
+export async function settingsRequestFailure(
+  res: Response,
+  method: string,
+  path: string,
+): Promise<WgwRequestError> {
   const body = await res.text();
   const detail = wgwErrorMessageFromBody(body, res.status, res.statusText);
   const parsed = parseApiErrorJson(body.trim())?.code;
@@ -72,7 +77,7 @@ export function createWgwAppPasswordOperations(): AppPasswordOperations {
   return {
     list: async () => {
       const res = await wgwFetch(PATH);
-      if (!res.ok) throw await failure(res, "GET", PATH);
+      if (!res.ok) throw await settingsRequestFailure(res, "GET", PATH);
       const body = (await wgwReadJson(res)) as { appPasswords?: AppPassword[] };
       return Array.isArray(body.appPasswords) ? body.appPasswords : [];
     },
@@ -82,19 +87,19 @@ export function createWgwAppPasswordOperations(): AppPasswordOperations {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      if (!res.ok) throw await failure(res, "POST", PATH);
+      if (!res.ok) throw await settingsRequestFailure(res, "POST", PATH);
       return (await wgwReadJson(res)) as AppPasswordCreated;
     },
     revoke: async (id) => {
       const path = `${PATH}/${encodeURIComponent(String(id))}`;
       const res = await wgwFetch(path, { method: "DELETE" });
       // Already gone (another tab, another device) is what the user asked for.
-      if (!res.ok && res.status !== 404) throw await failure(res, "DELETE", path);
+      if (!res.ok && res.status !== 404) throw await settingsRequestFailure(res, "DELETE", path);
     },
     revokeAll: async () => {
       const path = `${PATH}/revocations`;
       const res = await wgwFetch(path, { method: "POST" });
-      if (!res.ok) throw await failure(res, "POST", path);
+      if (!res.ok) throw await settingsRequestFailure(res, "POST", path);
     },
   };
 }

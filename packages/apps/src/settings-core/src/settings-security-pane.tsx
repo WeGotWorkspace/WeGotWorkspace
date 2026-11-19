@@ -13,6 +13,11 @@ import {
 import { copyShareText } from "@/share-ui/share-path-utils";
 import { appPasswordLabels as labels } from "@/settings-core/src/settings-app-passwords-labels";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
+import { SettingsTwoFactorSection } from "@/settings-core/src/settings-two-factor-section";
+import {
+  useSettingsTwoFactor,
+  type SettingsTwoFactorOptions,
+} from "@/settings-core/src/use-settings-two-factor";
 import {
   useSettingsAppPasswords,
   type SettingsAppPasswordsController,
@@ -42,19 +47,27 @@ import { Input } from "@/ui/input";
 import "./settings-security-pane.css";
 
 /**
- * Settings → Security (#2272): app passwords for calendar, contacts and meeting apps. Each is
- * made for one app, shown once, and can be removed on its own or all at once.
+ * Settings → Security: two-factor sign-in (#2275), then app passwords for calendar, contacts
+ * and meeting apps (#2272). Each app password is made for one app, shown once, and can be
+ * removed on its own or all at once.
  */
 export function SettingsSecurityPane({
   operations,
+  twoFactor,
 }: {
   /** Stories and tests; the app uses the live REST resource (mock without an API). */
   operations?: AppPasswordOperations;
+  twoFactor?: SettingsTwoFactorOptions;
 }) {
   const controller = useSettingsAppPasswords(operations);
+  const twoFactorController = useSettingsTwoFactor(twoFactor);
   const ready = controller.phase === "ready";
   return (
     <>
+      <SettingsTwoFactorSection
+        controller={twoFactorController}
+        onMakeAppPassword={controller.openCreate}
+      />
       <SettingsPaneCard
         title={labels.title}
         icon={<KeyRound aria-hidden />}

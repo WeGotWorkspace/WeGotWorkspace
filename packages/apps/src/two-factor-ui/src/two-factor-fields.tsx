@@ -20,6 +20,10 @@ type CodeFieldProps = {
   autoFocus?: boolean;
   /** The id of a message about this field (a wrong code), for screen readers. */
   describedBy?: string;
+  /** A message shown under the field (a dialog has no shared error line like the login). */
+  error?: string;
+  /** Under the message: the phone-clock hint after a wrong code. */
+  clockHint?: boolean;
 };
 
 /**
@@ -34,8 +38,12 @@ export function TwoFactorCodeField({
   disabled,
   autoFocus,
   describedBy,
+  error,
+  clockHint = false,
 }: CodeFieldProps) {
   const id = useId();
+  const errorId = `${id}-error`;
+  const described = error ? errorId : describedBy;
   const inputRef = useRef<HTMLInputElement>(null);
   // `autoFocus` misses a field that mounts disabled (the step appears while its request ends).
   useEffect(() => {
@@ -48,24 +56,32 @@ export function TwoFactorCodeField({
       fill={layout === "inline"}
       label={recovery ? labels.recoveryCodeLabel : labels.codeLabel}
     >
-      <Input
-        ref={inputRef}
-        id={id}
-        name={recovery ? "recovery_code" : "code"}
-        className="two-factor-code-input"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        inputMode={recovery ? "text" : "numeric"}
-        autoComplete={recovery ? "off" : "one-time-code"}
-        autoCapitalize="off"
-        spellCheck={false}
-        placeholder={recovery ? labels.recoveryCodePlaceholder : labels.codePlaceholder}
-        maxLength={recovery ? 32 : 9}
-        aria-invalid={describedBy ? true : undefined}
-        aria-describedby={describedBy}
-        disabled={disabled}
-        required
-      />
+      <div className="two-factor-code-control">
+        <Input
+          ref={inputRef}
+          id={id}
+          name={recovery ? "recovery_code" : "code"}
+          className="two-factor-code-input"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          inputMode={recovery ? "text" : "numeric"}
+          autoComplete={recovery ? "off" : "one-time-code"}
+          autoCapitalize="off"
+          spellCheck={false}
+          placeholder={recovery ? labels.recoveryCodePlaceholder : labels.codePlaceholder}
+          maxLength={recovery ? 32 : 9}
+          aria-invalid={described ? true : undefined}
+          aria-describedby={described}
+          disabled={disabled}
+          required
+        />
+        {error ? (
+          <p id={errorId} className="two-factor-field-error" role="alert">
+            {error}
+            {clockHint ? <span className="two-factor-field-hint">{labels.clockHint}</span> : null}
+          </p>
+        ) : null}
+      </div>
     </FieldLabelRow>
   );
 }

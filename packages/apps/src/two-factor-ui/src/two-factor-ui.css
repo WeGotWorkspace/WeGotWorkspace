@@ -30,3 +30,16 @@
 .two-factor-recovery-codes__saved {
   @apply flex items-center gap-2 text-sm;
 }
+
+.two-factor-code-control {
+  @apply flex w-full min-w-0 flex-col;
+}
+
+/* Same look as a form message (`FormTextField`). */
+.two-factor-field-error {
+  @apply m-0 mt-1.5 text-[0.8rem] font-medium text-destructive;
+}
+
+.two-factor-field-hint {
+  @apply mt-1 block font-normal text-muted-foreground;
+}
