@@ -249,7 +249,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::get('settings/state', SettingsStateController::class);
     // Member management by a team admin of the Team or an organization admin (#2278).
     // The controller answers a Team the caller may not manage like an unknown Team.
-    Route::prefix('teams/{team}')->where(['team' => '[a-z0-9][a-z0-9_-]{1,62}', 'username' => '[a-z0-9][a-z0-9_-]{1,62}'])
+    Route::prefix('teams/{team}')->where(['team' => '[a-z0-9_-]+', 'username' => '[a-z0-9_-]+'])
         ->group(function (): void {
             Route::get('members', [TeamMembersController::class, 'index']);
             Route::get('member-candidates', [TeamMembersController::class, 'candidates']);
