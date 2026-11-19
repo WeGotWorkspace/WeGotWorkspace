@@ -60,20 +60,21 @@ export class SignInError extends WgwRequestError {
 }
 
 /**
- * The password step: 401 is a wrong username or password. The code step: 401/422 is a wrong
+ * The credentials step: 401 is a wrong username or password. The code step: 401/422 is a wrong
  * code unless the server says the account itself is refused (`unauthorized`, a user disabled
  * in between). A used or expired challenge is 404/410.
  */
 export function signInFailureReason(
   status: number,
   code: string | undefined,
-  step: "password" | "code",
+  step: "credentials" | "code",
 ): SignInFailure {
   if (status === 429) return "throttled";
   if (status === 404 || status === 410) return "expired";
   if (code === "mfa_code_invalid") return "invalid_code";
   if (status === 401 || status === 422) {
-    if (step === "password" || code === "unauthorized" || code === "invalid") return "credentials";
+    if (step === "credentials" || code === "unauthorized" || code === "invalid")
+      return "credentials";
     return "invalid_code";
   }
   if (status === 403) return "credentials";
@@ -132,7 +133,7 @@ const DEFAULT_THROTTLE_SECONDS: number | null = null;
 async function post(
   url: string,
   body: unknown,
-  step: "password" | "code",
+  step: "credentials" | "code",
 ): Promise<{ body: unknown }> {
   const res = await fetch(url, {
     method: "POST",
@@ -181,7 +182,7 @@ function proofBody(proof: SignInProof): Record<string, string> {
 export function createWgwSignInOperations(): SignInOperations {
   return {
     signIn: async (username, password) => {
-      const { body } = await post(apiUrl("/auth/token"), { username, password }, "password");
+      const { body } = await post(apiUrl("/auth/token"), { username, password }, "credentials");
       return signInStepFromBody(body, "spa");
     },
     verify: async (challenge, proof) => {
@@ -213,15 +214,15 @@ export function createWgwAssistantSignInOperations(intent?: string | null): Sign
     const token = intent?.trim();
     return token ? { ...body, intent: token } : body;
   };
-  const session = (body: Record<string, string>, step: "password" | "code") =>
+  const session = (body: Record<string, string>, step: "credentials" | "code") =>
     post(wgwOAuthSessionUrl(), withIntent(body), step);
   return {
     signIn: async (username, password) => {
-      const { body } = await session({ username, password }, "password");
+      const { body } = await session({ username, password }, "credentials");
       const step = signInStepFromBody(body, "oauth");
       if (step.status === "ok") {
         try {
-          const spa = await post(apiUrl("/auth/token"), { username, password }, "password");
+          const spa = await post(apiUrl("/auth/token"), { username, password }, "credentials");
           signInStepFromBody(spa.body, "spa");
         } catch {
           // Passport authorize needs the web session; the web-app tokens are optional.
