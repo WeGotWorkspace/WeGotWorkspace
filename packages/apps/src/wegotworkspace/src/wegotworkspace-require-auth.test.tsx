@@ -93,6 +93,22 @@ describe("WeGotWorkspaceRequireAuth", () => {
     expect(wgwEnsureSession).not.toHaveBeenCalled();
   });
 
+  it("redirects a signed-out launch of the Meet workspace at bare /meet", async () => {
+    // `/meet` counts as a public path (guest lobby, `?room=` landings), but the
+    // wrapped workspace only mounts there for members: an installed Meet app
+    // opened without a session must reach /login, not a bootstrap error.
+    mockPathname = "/meet";
+
+    render(<Authenticated />);
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/login",
+        search: { return: "/meet" },
+      });
+    });
+  });
+
   it("awaits ensure when session may still restore, then allows", async () => {
     let resolveEnsure!: () => void;
     vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(false);
