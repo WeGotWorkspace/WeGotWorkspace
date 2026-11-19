@@ -264,6 +264,9 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::post('projects', [ProjectsController::class, 'store']);
     Route::get('projects/{project}', [ProjectsController::class, 'show'])->where('project', '[0-9a-z]{26}');
     Route::patch('projects/{project}', [ProjectsController::class, 'update'])->where('project', '[0-9a-z]{26}');
+    Route::delete('projects/{project}', [ProjectsController::class, 'destroy'])->where('project', '[0-9a-z]{26}');
+    Route::post('projects/{project}/archive', [ProjectsController::class, 'archive'])->where('project', '[0-9a-z]{26}');
+    Route::post('projects/{project}/unarchive', [ProjectsController::class, 'unarchive'])->where('project', '[0-9a-z]{26}');
     Route::put('settings/profile', SettingsProfileController::class);
     Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
     Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])

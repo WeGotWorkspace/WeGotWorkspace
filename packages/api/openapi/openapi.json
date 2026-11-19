@@ -2721,6 +2721,153 @@
             "$ref": "#/components/responses/JmapConflict"
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Purge an archived Project",
+        "description": "Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. A purge that stopped half-way completes on retry. 403 `team_admin_only` for a member who is not a team admin.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-z]{26}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Purged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
+    "/projects/{project}/archive": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Archive a Project",
+        "description": "The four collections disappear for everyone, sharees included, and the Project folder moves to a server-owned tree with its node ids. The slug stays reserved. Archiving an archived Project changes nothing. 409 `default_project` for the default Project; 403 `team_admin_only` for a member who is not a team admin.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-z]{26}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
+      }
+    },
+    "/projects/{project}/unarchive": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Unarchive a Project",
+        "description": "The collections come back with the same ids, and the folder moves back with the same node ids and grants (a suffix when its name was taken meanwhile). 409 `default_project` for the default Project; 403 `team_admin_only` for a member who is not a team admin.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-z]{26}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        }
       }
     },
     "/threads/{subjectType}/{subjectId}/entries": {

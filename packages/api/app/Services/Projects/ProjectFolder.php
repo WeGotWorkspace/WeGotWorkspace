@@ -8,6 +8,8 @@ use App\Models\JmapFileNode;
 use App\Services\Drive\DrivePathBookkeeping;
 use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeRelocator;
+use App\Storage\ProjectArchivePaths;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Str;
 
@@ -31,6 +33,7 @@ final class ProjectFolder
         private readonly DrivePathBookkeeping $bookkeeping,
         private readonly GroupFilesHomeProvisioner $teamHomes,
         private readonly ProjectFolderRegistry $registry,
+        private readonly FileNodeRelocator $relocator,
     ) {}
 
     /** Create the folder in the Team Drive and return its node id. A name clash gets a ` (2)` suffix. */
@@ -71,11 +74,67 @@ final class ProjectFolder
         if ($toKey === $fromKey) {
             return;
         }
+        $this->moveTo($fromKey, $toKey);
+    }
+
+    private function moveTo(string $fromKey, string $toKey): void
+    {
         if (! $this->storage->files()->move($fromKey, $toKey)) {
-            throw new \RuntimeException('The Project folder could not be renamed.');
+            throw new \RuntimeException('The Project folder could not be moved.');
         }
         $this->bookkeeping->afterMove($fromKey, $toKey);
         $this->registry->forget();
+    }
+
+    private function freeArchiveKey(string $key): string
+    {
+        $disk = $this->storage->files();
+        for ($suffix = 2; $disk->exists($key.'-'.$suffix); $suffix++) {
+        }
+
+        return $key.'-'.$suffix;
+    }
+
+    /**
+     * Archive: move the folder into the server-owned tree, `groups/{team}/.project-archive/{slug}`.
+     * Node ids, shares and stars move with it; nothing under that tree reaches a client (#819).
+     */
+    public function archive(string $nodeId, string $teamSlug, string $projectSlug): void
+    {
+        $node = $this->live($nodeId);
+        if ($node === null || ProjectArchivePaths::isUnder((string) $node->storage_key)) {
+            return;
+        }
+        $disk = $this->storage->files();
+        $toKey = ProjectArchivePaths::keyFor($teamSlug, $projectSlug);
+        if (! $disk->directoryExists(dirname($toKey))) {
+            $disk->makeDirectory(dirname($toKey));
+        }
+        if ($disk->exists($toKey)) {
+            // A leftover of an earlier archive that failed half-way: never overwrite it.
+            $toKey = $this->freeArchiveKey($toKey);
+        }
+        $this->moveTo((string) $node->storage_key, $toKey);
+    }
+
+    /** Unarchive: move the folder back next to the Team's other folders. A name taken meanwhile gets a suffix. */
+    public function unarchive(string $nodeId, string $teamSlug, string $projectName): void
+    {
+        $node = $this->live($nodeId);
+        if ($node === null || ! ProjectArchivePaths::isUnder((string) $node->storage_key)) {
+            return;
+        }
+        $this->moveTo((string) $node->storage_key, $this->freeKey($teamSlug, self::folderName($projectName), null));
+    }
+
+    /** Purge: the folder goes to the Drive trash of the member who purged, where they can still restore files. */
+    public function trashFor(string $nodeId, string $username): void
+    {
+        $node = $this->live($nodeId);
+        if ($node !== null) {
+            $this->relocator->trashForOwner($node, $username);
+            $this->registry->forget();
+        }
     }
 
     /** `/groups/{team}/{name}`, the virtual path the Drive app shows. */

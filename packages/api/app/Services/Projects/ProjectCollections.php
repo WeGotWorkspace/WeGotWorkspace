@@ -117,6 +117,18 @@ class ProjectCollections
      * uris (`{slug}`, `tasks-{slug}`, `notes-{slug}`) or the `group-` API ids.
      * A channel id is unique across the instance and comes from the channel allocator.
      */
+    /**
+     * Hard-delete a collection with its items and sharee copies (purge, #819). Nothing to do
+     * when it is already gone, so a purge that stopped half-way completes on retry.
+     */
+    public function delete(string $groupPrincipalUri, int $calendarId): void
+    {
+        $instance = $this->ownerInstances($groupPrincipalUri, [$calendarId])[$calendarId] ?? null;
+        if ($instance !== null) {
+            $this->backends->calBackend()->deleteCalendar($this->collections->backendId($instance));
+        }
+    }
+
     private function allocateUri(ProjectKind $kind, string $groupPrincipalUri, string $projectSlug, string $name): string
     {
         return match ($kind) {

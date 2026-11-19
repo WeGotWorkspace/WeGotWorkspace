@@ -9,6 +9,7 @@ use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
+use App\Services\Projects\ProjectRegistry;
 use App\Services\Teams\TeamColleagues;
 use App\Services\Threads\ThreadPoolUris;
 use Illuminate\Support\Facades\DB;
@@ -339,6 +340,10 @@ final class WgwCalendarBackend extends CalPDO
             ...$this->dismissedShareCalendarIds($principalUri),
             ...app(CalendarShareVisibility::class)->hiddenShareeCalendarIds((string) $principalUri, $shareeIds),
         ]);
+        // An archived Project's collections are gone for everyone, owner side included, until unarchived (#819).
+        foreach ($this->archivedProjectCalendarIds($calendarIds) as $archivedId) {
+            $hidden[$archivedId] = true;
+        }
 
         return array_values(array_filter($calendars, static function (array $calendar) use ($hidden, $dismissed): bool {
             $id = $calendar['id'] ?? null;
@@ -349,6 +354,17 @@ final class WgwCalendarBackend extends CalPDO
             return ! array_key_exists($calendarId, $hidden)
                 && ! ($isSharee && array_key_exists($calendarId, $dismissed));
         }));
+    }
+
+    /**
+     * @param  list<int>  $calendarIds
+     * @return list<int>
+     */
+    private function archivedProjectCalendarIds(array $calendarIds): array
+    {
+        $projects = app(ProjectRegistry::class);
+
+        return array_values(array_filter($calendarIds, static fn (int $id): bool => $projects->isArchived($id)));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Dav\Storage;
 
 use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Drive\DocAttachmentPaths;
+use App\Storage\ProjectArchivePaths;
 use Sabre\DAV;
 
 class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\IMoveTarget, DAV\IQuota
@@ -38,6 +39,9 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
             throw new DAV\Exception\Forbidden('Permission denied to . and ..');
         }
         $key = $this->childKey($name);
+        if (ProjectArchivePaths::isUnder($key)) {
+            throw new DAV\Exception\NotFound('File could not be located');
+        }
         if ($this->filesystem->directoryExists($key)) {
             return $this->makeDirectoryNode($key);
         }
@@ -54,6 +58,9 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
             throw new DAV\Exception\Forbidden('Permission denied to . and ..');
         }
         $key = $this->childKey($name);
+        if (ProjectArchivePaths::isUnder($key)) {
+            return false;
+        }
 
         return $this->filesystem->directoryExists($key) || $this->filesystem->fileExists($key);
     }
@@ -67,7 +74,7 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
         $prefix = $this->key === '' ? '' : $this->key.'/';
         foreach ($this->filesystem->directories($this->key) as $dirKey) {
             $name = substr($dirKey, strlen($prefix));
-            if ($name === DocAttachmentPaths::DIR) {
+            if ($name === DocAttachmentPaths::DIR || ProjectArchivePaths::isUnder($dirKey)) {
                 continue;
             }
             if ($name !== '' && $name !== '.' && $name !== '..') {

@@ -9,6 +9,7 @@ use App\Services\Collab\CollabSidecarMover;
 use App\Services\Collab\DocYjsStateStore;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Storage\ProjectArchivePaths;
 use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Str;
@@ -83,6 +84,10 @@ final class FileNodeIndexService
      */
     public function isVisibleKey(string $key, array $roots): bool
     {
+        // Archived Project folders keep their nodes but no client sees them (#819).
+        if (ProjectArchivePaths::isUnder($key)) {
+            return false;
+        }
         foreach ($roots as $root) {
             if ($key === $root || str_starts_with($key, $root.'/')) {
                 return true;

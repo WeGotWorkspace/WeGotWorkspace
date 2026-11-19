@@ -50,7 +50,8 @@ final class ProjectPresenter
                     $folder = $folders[(string) $resource->locator] ?? null;
                     if ($folder !== null) {
                         $items['driveFolderId'] = (string) $folder->node_id;
-                        $items['driveFolderPath'] = ProjectFolder::virtualPath($folder);
+                        // An archived Project's folder sits in the server-owned archive tree: no path to open (#819).
+                        $items['driveFolderPath'] = $project->archived_at === null ? ProjectFolder::virtualPath($folder) : null;
                     }
 
                     continue;

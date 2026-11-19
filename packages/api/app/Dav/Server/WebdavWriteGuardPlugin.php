@@ -7,6 +7,7 @@ namespace App\Dav\Server;
 use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Drive\DocAttachmentPaths;
 use App\Services\Projects\ProjectFolderRegistry;
+use App\Storage\ProjectArchivePaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use Sabre\DAV\Exception\Forbidden;
@@ -113,6 +114,10 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
 
     public function beforeMethod(RequestInterface $request, ResponseInterface $response): void
     {
+        // Archived Project folders are server-owned (#819): no method reaches them, reads included.
+        if (ProjectArchivePaths::davIsProtected($request->getPath())) {
+            throw new NotFound('File could not be located');
+        }
         $method = $request->getMethod();
         if (! in_array($method, ['DELETE', 'MKCOL', 'PUT', 'MOVE', 'COPY', 'PROPPATCH', 'PATCH'], true)) {
             return;
@@ -167,6 +172,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             }
             if (DocAttachmentPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The .attachments tree is server-owned.');
+            }
+            if (ProjectArchivePaths::davIsProtected($destPath)) {
+                throw new Forbidden('Archived Project folders are server-owned.');
             }
             if (CollabSidecarPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The Yjs sidecar is server-owned.');
