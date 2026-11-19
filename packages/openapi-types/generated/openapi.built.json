@@ -36,6 +36,7 @@
             "AuthTokenResponse": {
                 "type": "object",
                 "required": [
+                    "status",
                     "access_token",
                     "token_type",
                     "expires_in",
@@ -44,6 +45,13 @@
                     "username"
                 ],
                 "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ok"
+                        ],
+                        "description": "Always `ok` on a token response; the sign-in answer is a `oneOf` on this field."
+                    },
                     "access_token": {
                         "type": "string"
                     },
@@ -73,7 +81,8 @@
                 "type": "object",
                 "required": [
                     "username",
-                    "role"
+                    "role",
+                    "mfa"
                 ],
                 "properties": {
                     "username": {
@@ -86,6 +95,9 @@
                             "user",
                             "admin"
                         ]
+                    },
+                    "mfa": {
+                        "$ref": "#/components/schemas/MfaStatus"
                     }
                 }
             },
@@ -685,6 +697,10 @@
                     "isAdmin": {
                         "type": "boolean",
                         "description": "Whether the user has the admin role."
+                    },
+                    "mfaEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the user signs in with an authenticator code."
                     }
                 },
                 "required": [
@@ -695,7 +711,8 @@
                     "groups",
                     "createdAt",
                     "enabled",
-                    "isAdmin"
+                    "isAdmin",
+                    "mfaEnabled"
                 ]
             },
             "AdminGroupSummary": {
@@ -1390,6 +1407,9 @@
                     "mcpEnabled": {
                         "type": "boolean",
                         "description": "Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs."
+                    },
+                    "mfa": {
+                        "$ref": "#/components/schemas/MfaStatus"
                     }
                 },
                 "required": [
@@ -1397,7 +1417,8 @@
                     "groups",
                     "isAdmin",
                     "logoutUrl",
-                    "mcpEnabled"
+                    "mcpEnabled",
+                    "mfa"
                 ]
             },
             "SettingsProfileRequest": {
@@ -12852,6 +12873,335 @@
                         "type": "boolean"
                     }
                 }
+            },
+            "SettingsAppPassword": {
+                "type": "object",
+                "description": "A named password for one calendar, contacts, files or meeting app. The secret itself is never listed.",
+                "required": [
+                    "id",
+                    "name",
+                    "createdAt",
+                    "lastUsedAt",
+                    "lastUsedClient"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 60
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "lastUsedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Last DAV or Meet Basic sign-in with this password, written at most once per five minutes."
+                    },
+                    "lastUsedClient": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 120,
+                        "description": "User-Agent of that sign-in, cut to 120 characters."
+                    }
+                }
+            },
+            "SettingsAppPasswordList": {
+                "type": "object",
+                "required": [
+                    "appPasswords"
+                ],
+                "properties": {
+                    "appPasswords": {
+                        "type": "array",
+                        "description": "Active app passwords of the caller, newest first. Revoked ones are not listed.",
+                        "items": {
+                            "$ref": "#/components/schemas/SettingsAppPassword"
+                        }
+                    }
+                }
+            },
+            "SettingsAppPasswordCreateRequest": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "currentPassword"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                    },
+                    "currentPassword": {
+                        "type": "string",
+                        "maxLength": 4096,
+                        "description": "The account password. An app password is not accepted here. Failures count on the sign-in rate limit."
+                    }
+                },
+                "example": {
+                    "name": "Phone calendar",
+                    "currentPassword": "correct horse battery staple"
+                }
+            },
+            "SettingsAppPasswordCreated": {
+                "type": "object",
+                "required": [
+                    "appPassword",
+                    "password"
+                ],
+                "properties": {
+                    "appPassword": {
+                        "$ref": "#/components/schemas/SettingsAppPassword"
+                    },
+                    "password": {
+                        "type": "string",
+                        "pattern": "^[a-z]{16}$",
+                        "description": "The new password: 16 lowercase letters. Returned once and never again. Clients show it in groups of four; spaces are ignored when it is used."
+                    }
+                }
+            },
+            "AuthLoginResponse": {
+                "description": "Answer to a correct username and password. `ok` carries tokens and sets the refresh cookie; `mfa_required` carries a challenge for the code step and sets no cookie.",
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/AuthTokenResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MfaRequiredResponse"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "status",
+                    "mapping": {
+                        "ok": "#/components/schemas/AuthTokenResponse",
+                        "mfa_required": "#/components/schemas/MfaRequiredResponse"
+                    }
+                }
+            },
+            "MfaRequiredResponse": {
+                "type": "object",
+                "required": [
+                    "status",
+                    "challenge",
+                    "client"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "mfa_required"
+                        ]
+                    },
+                    "challenge": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Single-use challenge id, valid for 10 minutes. Only its sha256 is stored."
+                    },
+                    "client": {
+                        "type": "string",
+                        "enum": [
+                            "spa",
+                            "oauth"
+                        ],
+                        "description": "`spa` challenges complete on `auth/mfa-challenges/…`; `oauth` challenges only on `POST /oauth/session`."
+                    }
+                }
+            },
+            "MfaReplaceRequiredResponse": {
+                "type": "object",
+                "description": "A recovery code was accepted and spent. No tokens yet: scan the new secret and send a code from it to the replacement route.",
+                "required": [
+                    "status",
+                    "challenge",
+                    "client",
+                    "secret",
+                    "otpauth_uri"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "mfa_replace_required"
+                        ]
+                    },
+                    "challenge": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "client": {
+                        "type": "string",
+                        "enum": [
+                            "spa",
+                            "oauth"
+                        ]
+                    },
+                    "secret": {
+                        "type": "string",
+                        "description": "New base32 TOTP secret, for typing in by hand."
+                    },
+                    "otpauth_uri": {
+                        "type": "string",
+                        "description": "`otpauth://totp/…` URI; the client draws the QR code from it."
+                    }
+                }
+            },
+            "MfaChallengeVerifyRequest": {
+                "type": "object",
+                "description": "Exactly one of `code` (6 digits; spaces ignored) or `recovery_code` (16 hex characters; spaces and dashes ignored).",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "maxLength": 32
+                    },
+                    "recovery_code": {
+                        "type": "string",
+                        "maxLength": 64
+                    }
+                },
+                "example": {
+                    "code": "123 456"
+                }
+            },
+            "MfaVerificationResponse": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/AuthTokenResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MfaReplaceRequiredResponse"
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "status",
+                    "mapping": {
+                        "ok": "#/components/schemas/AuthTokenResponse",
+                        "mfa_replace_required": "#/components/schemas/MfaReplaceRequiredResponse"
+                    }
+                }
+            },
+            "MfaCodeRequest": {
+                "type": "object",
+                "required": [
+                    "code"
+                ],
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "description": "Current 6-digit authenticator code; spaces ignored."
+                    }
+                },
+                "example": {
+                    "code": "123456"
+                }
+            },
+            "MfaReplacementResponse": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/AuthTokenResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/MfaRecoveryCodesResponse"
+                    }
+                ]
+            },
+            "MfaRecoveryCodesResponse": {
+                "type": "object",
+                "required": [
+                    "recovery_codes"
+                ],
+                "properties": {
+                    "recovery_codes": {
+                        "type": "array",
+                        "minItems": 10,
+                        "maxItems": 10,
+                        "description": "Ten new recovery codes, 16 lowercase hex characters in groups of four. Shown once; the previous set no longer works.",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}$"
+                        }
+                    }
+                }
+            },
+            "MfaStatus": {
+                "type": "object",
+                "required": [
+                    "enabled",
+                    "recoveryCodesRemaining"
+                ],
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Whether a code is asked at sign-in. A setup that was started but not confirmed is not on."
+                    },
+                    "recoveryCodesRemaining": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
+            "TotpSetupStartRequest": {
+                "type": "object",
+                "required": [
+                    "currentPassword"
+                ],
+                "properties": {
+                    "currentPassword": {
+                        "type": "string",
+                        "maxLength": 4096
+                    }
+                }
+            },
+            "TotpSetupStartResponse": {
+                "type": "object",
+                "required": [
+                    "secret",
+                    "otpauth_uri",
+                    "davPasswordUsedAt"
+                ],
+                "properties": {
+                    "secret": {
+                        "type": "string",
+                        "description": "New base32 secret for this setup. A new start replaces an unconfirmed one."
+                    },
+                    "otpauth_uri": {
+                        "type": "string"
+                    },
+                    "davPasswordUsedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Last time a calendar, contacts, files or meeting app signed in with the account password. Those apps stop working once two-factor is on; create app passwords for them first."
+                    }
+                }
+            },
+            "TotpSetupConfirmRequest": {
+                "type": "object",
+                "required": [
+                    "currentPassword",
+                    "code"
+                ],
+                "properties": {
+                    "currentPassword": {
+                        "type": "string",
+                        "maxLength": 4096
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 32
+                    }
+                }
             }
         },
         "responses": {
@@ -13006,7 +13356,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Token issued. The JSON body has no refresh_token; the refresh token is Set-Cookie.",
+                        "description": "`status: ok`: token issued; the JSON body has no refresh_token, the refresh token is Set-Cookie. `status: mfa_required` (two-factor on): a challenge for the code step, no tokens and no cookie.",
                         "headers": {
                             "Set-Cookie": {
                                 "description": "HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL.",
@@ -13018,7 +13368,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AuthTokenResponse"
+                                    "$ref": "#/components/schemas/AuthLoginResponse"
                                 }
                             }
                         }
@@ -23353,6 +23703,733 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     }
                 }
+            }
+        },
+        "/settings/app-passwords": {
+            "get": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "List the caller's app passwords",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Active app passwords, newest first",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsAppPasswordList"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "post": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Create a named app password for DAV and Meet Basic sign-in",
+                "description": "Requires the account password, which shares the sign-in rate limit. The plaintext is in this response only.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SettingsAppPasswordCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "App password created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsAppPasswordCreated"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Name missing, blank or longer than 60 characters, or currentPassword missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Current password is incorrect (`current_password_invalid`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The caller already has 50 active app passwords (`app_password_limit`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many sign-in attempts (`throttled`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/settings/app-passwords/revocations": {
+            "post": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Revoke every app password of the caller",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All app passwords revoked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/settings/app-passwords/{appPasswordId}": {
+            "delete": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Revoke one app password of the caller",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "appPasswordId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "App password revoked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active app password with this id for the caller",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/admin/users/{username}/mfa-resets": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Reset a user's two-factor sign-in",
+                "description": "Deletes the user's authenticator, recovery codes and open challenges without reading the secret, then ends every session of the user. The password alone signs in again. Same as `php artisan wgw:mfa:reset {username}`.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reset",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found (`not_found`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "admin"
+            }
+        },
+        "/auth/mfa-challenges/{challenge}/verification": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Complete a two-factor sign-in with an authenticator code or a recovery code",
+                "description": "Pre-auth. Accepts only a `spa` challenge. A code answers `status: ok` with tokens and the refresh cookie and consumes the challenge. A recovery code is spent, consumes the challenge and answers `mfa_replace_required` with a new `replace` challenge and secret; no tokens.",
+                "parameters": [
+                    {
+                        "name": "challenge",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MfaChallengeVerifyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signed in, or a new authenticator is needed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MfaVerificationResponse"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "HttpOnly wgw_refresh cookie, as on `POST /auth/token`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Neither or both of `code` and `recovery_code` (`bad_request`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Wrong or already used code (`mfa_code_invalid`), or the user was disabled or deleted (`unauthorized`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown, expired, used or `oauth` challenge (`not_found`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The stored secret cannot be read (`mfa_unavailable`); an admin reset fixes it",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/auth/mfa-challenges/{challenge}/replacement": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Confirm a new authenticator after a recovery code and sign in",
+                "description": "Pre-auth. Accepts only a `spa` challenge of kind `replace`. In one transaction: stores the new secret, replaces the recovery codes, ends every session of the user, then issues a new token pair.",
+                "parameters": [
+                    {
+                        "name": "challenge",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MfaCodeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "New authenticator saved and signed in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MfaReplacementResponse"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "HttpOnly wgw_refresh cookie, as on `POST /auth/token`.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Code missing (`bad_request`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Wrong code (`mfa_code_invalid`), or the user was disabled or deleted (`unauthorized`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown, expired, used, `oauth` or non-`replace` challenge (`not_found`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/settings/totp": {
+            "post": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Start two-factor setup",
+                "description": "Account password → a new secret and `otpauth://` URI. Two-factor is not on until confirmed. 409 while it is on; the live secret is never returned.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TotpSetupStartRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Setup started",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TotpSetupStartResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "currentPassword missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Current password is incorrect (`current_password_invalid`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Two-factor is already on (`mfa_already_enabled`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many sign-in attempts (`throttled`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            },
+            "delete": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Turn two-factor off",
+                "description": "Needs a current code. Revokes no session; app passwords stay valid and the account password works on DAV and Meet Basic again.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MfaCodeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Two-factor is off",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Code missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Wrong or already used code (`mfa_code_invalid`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Two-factor is not on (`mfa_not_enabled`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/settings/totp/confirmation": {
+            "post": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Confirm two-factor setup with a code",
+                "description": "Account password and a code from the new secret → ten recovery codes. Ends every session of the user, this one included.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TotpSetupConfirmRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Two-factor is on",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MfaRecoveryCodesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Field missing, or no setup was started (`mfa_setup_missing`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Current password is incorrect (`current_password_invalid`) or wrong code (`mfa_code_invalid`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Two-factor is already on (`mfa_already_enabled`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/settings/totp/recovery-codes": {
+            "post": {
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Replace the recovery codes",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MfaCodeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "New recovery codes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MfaRecoveryCodesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Code missing",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Wrong or already used code (`mfa_code_invalid`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Two-factor is not on (`mfa_not_enabled`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "user"
             }
         }
     }

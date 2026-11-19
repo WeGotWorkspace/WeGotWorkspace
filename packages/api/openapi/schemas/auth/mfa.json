@@ -1,0 +1,139 @@
+{
+  "AuthLoginResponse": {
+    "description": "Answer to a correct username and password. `ok` carries tokens and sets the refresh cookie; `mfa_required` carries a challenge for the code step and sets no cookie.",
+    "oneOf": [
+      { "$ref": "#/components/schemas/AuthTokenResponse" },
+      { "$ref": "#/components/schemas/MfaRequiredResponse" }
+    ],
+    "discriminator": {
+      "propertyName": "status",
+      "mapping": {
+        "ok": "#/components/schemas/AuthTokenResponse",
+        "mfa_required": "#/components/schemas/MfaRequiredResponse"
+      }
+    }
+  },
+  "MfaRequiredResponse": {
+    "type": "object",
+    "required": ["status", "challenge", "client"],
+    "properties": {
+      "status": { "type": "string", "enum": ["mfa_required"] },
+      "challenge": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$",
+        "description": "Single-use challenge id, valid for 10 minutes. Only its sha256 is stored."
+      },
+      "client": {
+        "type": "string",
+        "enum": ["spa", "oauth"],
+        "description": "`spa` challenges complete on `auth/mfa-challenges/…`; `oauth` challenges only on `POST /oauth/session`."
+      }
+    }
+  },
+  "MfaReplaceRequiredResponse": {
+    "type": "object",
+    "description": "A recovery code was accepted and spent. No tokens yet: scan the new secret and send a code from it to the replacement route.",
+    "required": ["status", "challenge", "client", "secret", "otpauth_uri"],
+    "properties": {
+      "status": { "type": "string", "enum": ["mfa_replace_required"] },
+      "challenge": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "client": { "type": "string", "enum": ["spa", "oauth"] },
+      "secret": { "type": "string", "description": "New base32 TOTP secret, for typing in by hand." },
+      "otpauth_uri": { "type": "string", "description": "`otpauth://totp/…` URI; the client draws the QR code from it." }
+    }
+  },
+  "MfaChallengeVerifyRequest": {
+    "type": "object",
+    "description": "Exactly one of `code` (6 digits; spaces ignored) or `recovery_code` (16 hex characters; spaces and dashes ignored).",
+    "properties": {
+      "code": { "type": "string", "maxLength": 32 },
+      "recovery_code": { "type": "string", "maxLength": 64 }
+    },
+    "example": { "code": "123 456" }
+  },
+  "MfaVerificationResponse": {
+    "oneOf": [
+      { "$ref": "#/components/schemas/AuthTokenResponse" },
+      { "$ref": "#/components/schemas/MfaReplaceRequiredResponse" }
+    ],
+    "discriminator": {
+      "propertyName": "status",
+      "mapping": {
+        "ok": "#/components/schemas/AuthTokenResponse",
+        "mfa_replace_required": "#/components/schemas/MfaReplaceRequiredResponse"
+      }
+    }
+  },
+  "MfaCodeRequest": {
+    "type": "object",
+    "required": ["code"],
+    "properties": {
+      "code": { "type": "string", "maxLength": 32, "description": "Current 6-digit authenticator code; spaces ignored." }
+    },
+    "example": { "code": "123456" }
+  },
+  "MfaReplacementResponse": {
+    "allOf": [
+      { "$ref": "#/components/schemas/AuthTokenResponse" },
+      { "$ref": "#/components/schemas/MfaRecoveryCodesResponse" }
+    ]
+  },
+  "MfaRecoveryCodesResponse": {
+    "type": "object",
+    "required": ["recovery_codes"],
+    "properties": {
+      "recovery_codes": {
+        "type": "array",
+        "minItems": 10,
+        "maxItems": 10,
+        "description": "Ten new recovery codes, 16 lowercase hex characters in groups of four. Shown once; the previous set no longer works.",
+        "items": { "type": "string", "pattern": "^[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}$" }
+      }
+    }
+  },
+  "Principal": {
+    "type": "object",
+    "required": ["username", "role", "mfa"],
+    "properties": {
+      "username": { "type": "string" },
+      "role": { "type": "string", "enum": ["guest", "user", "admin"] },
+      "mfa": { "$ref": "#/components/schemas/MfaStatus" }
+    }
+  },
+  "MfaStatus": {
+    "type": "object",
+    "required": ["enabled", "recoveryCodesRemaining"],
+    "properties": {
+      "enabled": { "type": "boolean", "description": "Whether a code is asked at sign-in. A setup that was started but not confirmed is not on." },
+      "recoveryCodesRemaining": { "type": "integer", "minimum": 0 }
+    }
+  },
+  "TotpSetupStartRequest": {
+    "type": "object",
+    "required": ["currentPassword"],
+    "properties": {
+      "currentPassword": { "type": "string", "maxLength": 4096 }
+    }
+  },
+  "TotpSetupStartResponse": {
+    "type": "object",
+    "required": ["secret", "otpauth_uri", "davPasswordUsedAt"],
+    "properties": {
+      "secret": { "type": "string", "description": "New base32 secret for this setup. A new start replaces an unconfirmed one." },
+      "otpauth_uri": { "type": "string" },
+      "davPasswordUsedAt": {
+        "type": ["string", "null"],
+        "format": "date-time",
+        "description": "Last time a calendar, contacts, files or meeting app signed in with the account password. Those apps stop working once two-factor is on; create app passwords for them first."
+      }
+    }
+  },
+  "TotpSetupConfirmRequest": {
+    "type": "object",
+    "required": ["currentPassword", "code"],
+    "properties": {
+      "currentPassword": { "type": "string", "maxLength": 4096 },
+      "code": { "type": "string", "maxLength": 32 }
+    }
+  }
+}
