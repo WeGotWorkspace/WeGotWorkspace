@@ -165,21 +165,19 @@ export function createHybridDriveOperations(
     return cachedBootstrap;
   };
 
-  /** The live listing of `target`, written to this tab's bootstrap and the shared cache. */
-  const fetchDir = async (target: string, signal?: AbortSignal): Promise<DriveUIData> => {
-    const data = await live.changeDir(target, { signal });
+  /** Write a live listing to this tab's bootstrap and the shared cache. */
+  const commitListing = async (data: DriveUIData): Promise<void> => {
     if (cachedBootstrap) {
       cachedBootstrap = { ...cachedBootstrap, data };
       await writeDriveBootstrapToCache(username, cachedBootstrap);
     }
     await refreshDriveDirectoryCache(username, data);
-    return data;
   };
 
   /**
    * `changeDir`. With `wave` (a refresh after a change) the tabs that show
-   * this folder share one fetch; the tab that takes over a listing keeps it as
-   * its bootstrap, and the fetching tab wrote the cache.
+   * this folder share one fetch. That read writes nothing: only the listing
+   * the share returns is committed, and not when `signal` is already aborted.
    */
   const openDir = async (
     to: string,
@@ -190,17 +188,21 @@ export function createHybridDriveOperations(
     if (pending) return pending;
     if (readBrowserOnline()) {
       try {
-        const fetchLive = (signal = opts?.signal) => fetchDir(target, signal);
-        const data =
-          opts?.wave === undefined
-            ? await fetchLive()
-            : await fetchDriveFolderOncePerBrowser({
-                username,
-                path: target,
-                wave: opts.wave,
-                fetchLive,
-                signal: opts.signal,
-              });
+        let data: DriveUIData;
+        if (opts?.wave === undefined) {
+          data = await live.changeDir(target, { signal: opts?.signal });
+          await commitListing(data);
+        } else {
+          data = await fetchDriveFolderOncePerBrowser({
+            username,
+            path: target,
+            wave: opts.wave,
+            fetchLive: (signal = opts.signal) => live.listDirectory(target, { signal }),
+            signal: opts.signal,
+          });
+          if (opts.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+          await commitListing(data);
+        }
         if (cachedBootstrap && cachedBootstrap.data !== data) {
           cachedBootstrap = { ...cachedBootstrap, data };
         }

@@ -49,7 +49,7 @@ function openFetch() {
   let finish: (data: DriveUIData) => void = () => undefined;
   let fail: (error: Error) => void = () => undefined;
   const fetchLive = vi.fn(
-    () =>
+    (_signal?: AbortSignal) =>
       new Promise<DriveUIData>((resolve, reject) => {
         finish = resolve;
         fail = reject;

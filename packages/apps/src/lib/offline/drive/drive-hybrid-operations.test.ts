@@ -139,9 +139,9 @@ describe("createHybridDriveOperations readCachedDirectory", () => {
     await writeDriveBootstrapToCache(username, bootstrap());
     const ops = createHybridDriveOperations(username, bootstrap());
     const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
-      changeDir: ReturnType<typeof vi.fn>;
+      listDirectory: ReturnType<typeof vi.fn>;
     };
-    live.changeDir.mockResolvedValue({
+    live.listDirectory.mockResolvedValue({
       ...bootstrap().data,
       cwd: "/users/alice/Projects",
       directory: {
@@ -153,8 +153,8 @@ describe("createHybridDriveOperations readCachedDirectory", () => {
     const data = await ops.refreshDir?.("/users/alice/Projects", { wave: 10 });
 
     expect(data?.directory.files.map((file) => file.name)).toEqual(["new.md"]);
-    expect(live.changeDir).toHaveBeenCalledTimes(1);
-    expect(live.changeDir.mock.calls[0][0]).toBe("/users/alice/Projects");
+    expect(live.listDirectory).toHaveBeenCalledTimes(1);
+    expect(live.listDirectory.mock.calls[0][0]).toBe("/users/alice/Projects");
   });
 
   it("returns null for a folder with no cached rows", async () => {
