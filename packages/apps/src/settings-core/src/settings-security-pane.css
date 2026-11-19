@@ -32,3 +32,9 @@
 .settings-security-pane__secret-row > .input {
   @apply min-w-0 flex-1;
 }
+
+@media (max-width: 40rem) {
+  .settings-security-pane__wide-only {
+    display: none;
+  }
+}
