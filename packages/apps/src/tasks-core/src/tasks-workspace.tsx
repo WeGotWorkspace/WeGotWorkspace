@@ -132,6 +132,10 @@ export function TasksWorkspace({
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
   const isTouch = useIsTouch();
 
+  const viewer = useMemo(
+    () => ({ username: session.user.username, email: session.user.email }),
+    [session.user.username, session.user.email],
+  );
   const controller = useTasksController({
     data,
     labels,
@@ -140,6 +144,7 @@ export function TasksWorkspace({
     initialView,
     initialTaskId,
     onViewChange,
+    viewer,
   });
 
   const {

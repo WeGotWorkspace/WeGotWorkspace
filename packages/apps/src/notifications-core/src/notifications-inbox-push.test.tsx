@@ -62,7 +62,11 @@ vi.mock("@/notifications-core/src/inbox-fan-out", async (importOriginal) => ({
   defaultInboxFanOut: () => tabs.here!,
 }));
 
-import { ackLocalNotifications, listNotifications } from "@/lib/api/wgw/notifications";
+import {
+  ackLocalNotifications,
+  ackNotifications,
+  listNotifications,
+} from "@/lib/api/wgw/notifications";
 import { INBOX_SHARE_WAIT_MS } from "@/notifications-core/src/use-notifications-inbox-push";
 import {
   NOTIFICATIONS_INBOX_POLL_MS,
@@ -449,6 +453,105 @@ describe("notification inbox on push", () => {
       await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_POLL_MS);
     });
     expect(listCalls()).toBe(4);
+  });
+
+  /** Fake timers: mount, let the first fetch land, then connect push. */
+  async function mountConnected(): Promise<void> {
+    vi.useFakeTimers();
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    setPushConnected(true);
+  }
+
+  const advance = (ms: number) =>
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+
+  it("while push is connected the stream tab's poll shares its rows with the other tabs (#2252)", async () => {
+    await mountConnected();
+    const inOther = vi.fn();
+    tabs.other!.onPollShared(inOther);
+    vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
+
+    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS);
+    await advance(1);
+
+    expect(listCalls()).toBe(2);
+    expect(inOther).toHaveBeenCalledWith({ list: [row], unreadCount: 1 });
+  });
+
+  it("a poll that failed shares nothing", async () => {
+    await mountConnected();
+    const inOther = vi.fn();
+    tabs.other!.onPollShared(inOther);
+    vi.mocked(listNotifications).mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS);
+    await advance(1);
+
+    expect(listCalls()).toBe(2);
+    expect(inOther).not.toHaveBeenCalled();
+  });
+
+  it("a tab without the stream does not poll while push is connected; its bell and list show the shared rows", async () => {
+    hub.state.leading = false;
+    await mountConnected();
+
+    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS * 3);
+    expect(listCalls()).toBe(1);
+
+    tabs.other!.sharePoll({ list: [row], unreadCount: 1 });
+    await advance(1);
+    expect(listCalls()).toBe(1);
+    expect(probe.inbox?.items).toEqual([row]);
+    expect(probe.inbox?.unreadCount).toBe(1);
+    // A visible tab that shows a row acks it, wherever the row came from.
+    expect(ackedIds()).toContain("n1");
+
+    tabs.other!.sharePoll({ list: [], unreadCount: 0 });
+    await advance(1);
+    expect(probe.inbox?.items).toEqual([]);
+    expect(probe.inbox?.unreadCount).toBe(0);
+  });
+
+  it("a tab without the stream polls again as soon as push is down", async () => {
+    hub.state.leading = false;
+    await mountConnected();
+    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS);
+    expect(listCalls()).toBe(1);
+
+    setPushConnected(false);
+    await advance(NOTIFICATIONS_INBOX_POLL_MS);
+    expect(listCalls()).toBe(2);
+  });
+
+  it("a tab without the stream still retries a failed read ack on its poll tick", async () => {
+    hub.state.leading = false;
+    vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
+    vi.mocked(ackNotifications).mockReset().mockRejectedValue(new TypeError("Failed to fetch"));
+    await mountConnected();
+
+    await act(async () => {
+      await probe.inbox?.onMarkAllRead();
+    });
+    // The ack's own retries (2 s, 10 s, 30 s) end before the first poll tick.
+    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS - 1);
+    const beforeTick = vi.mocked(ackNotifications).mock.calls.length;
+    expect(beforeTick).toBe(4);
+
+    vi.mocked(ackNotifications).mockResolvedValue(undefined);
+    await advance(1);
+
+    expect(vi.mocked(ackNotifications).mock.calls.length).toBe(beforeTick + 1);
+    expect(vi.mocked(ackNotifications).mock.lastCall).toEqual([["n1"]]);
+    expect(listCalls()).toBe(1);
   });
 
   it("keeps the fallback poll below the 20 s local-ack grace", () => {
