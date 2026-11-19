@@ -7,13 +7,7 @@
 // offline with the dialog open disables Import, and no notebook is made.
 import { expect, test } from "./helpers/live-test";
 import { prepareNotesForOfflineSync } from "./helpers/notes-live";
-
-/**
- * The live note body. While the collab session joins, a read-only stand-in shows
- * the served text; only the editable body is the editor a spec may type in or
- * read the collab state from.
- */
-const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 const PNG_1PX =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";

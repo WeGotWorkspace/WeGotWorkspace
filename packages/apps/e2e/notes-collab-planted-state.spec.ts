@@ -18,13 +18,7 @@ import {
   serverNote,
   warmUpApp,
 } from "./helpers/notes-matrix";
-
-/**
- * The live note body. While the collab session joins, a read-only stand-in shows
- * the served text; only the editable body is the editor a spec may type in or
- * read the collab state from.
- */
-const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -182,6 +176,8 @@ test("a reloaded note shows its text read-only first, then the live editor takes
     const standIn = await a.evaluate(
       () => (window as unknown as { __noteStandIn: BodyState[] }).__noteStandIn,
     );
+    // The stand-in painted the served text at least once before the editor took over.
+    expect(standIn.map((state) => state.text)).toContain("Served text");
     // Whenever the stand-in showed, it was busy and not editable.
     for (const state of standIn) {
       expect(state.busy).toBe("true");

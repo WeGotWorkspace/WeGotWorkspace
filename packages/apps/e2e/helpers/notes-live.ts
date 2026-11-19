@@ -5,7 +5,7 @@ import { expect, type Page } from "@playwright/test";
  * the served text; only the editable body is the editor a spec may type in or
  * read the collab state from.
  */
-const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+export const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
 
 export const E2E_USERNAME = process.env.WGW_E2E_USERNAME ?? "admin";
 export const E2E_PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";

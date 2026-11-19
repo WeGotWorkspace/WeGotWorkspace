@@ -48,13 +48,13 @@ describe("AppRail", () => {
     expect(tile("Open Tasks").querySelector(".app-rail__dot")).toBeNull();
   });
 
-  it("opens an app at its start screen the first time, without a view transition", () => {
+  it("opens an app at its start screen the first time", () => {
     render(<AppRail />);
     fireEvent.click(tile("Open Calendar"));
     expect(navigate).toHaveBeenCalledExactlyOnceWith({ to: "/calendar" });
   });
 
-  it("returns to the remembered spot through the router's own view transition", () => {
+  it("returns to the remembered spot with a plain navigation, never a view transition", () => {
     const startViewTransition = vi.fn();
     Object.defineProperty(document, "startViewTransition", {
       configurable: true,
@@ -63,13 +63,9 @@ describe("AppRail", () => {
     rememberAppLocation("docs", { pathname: "/docs", search: { id: "fn-1" } });
     render(<AppRail />);
     fireEvent.click(tile("Open Docs"));
-    expect(navigate).toHaveBeenCalledExactlyOnceWith({
-      to: "/docs",
-      search: { id: "fn-1" },
-      viewTransition: true,
-    });
-    // The rail never opens a transition itself: a History write inside a transition
-    // callback is dropped on Chrome and iOS, so the router writes first and wraps the render.
+    // No `viewTransition` option and no transition of its own: the route has to
+    // commit even while another view transition is running.
+    expect(navigate).toHaveBeenCalledExactlyOnceWith({ to: "/docs", search: { id: "fn-1" } });
     expect(startViewTransition).not.toHaveBeenCalled();
     Reflect.deleteProperty(document, "startViewTransition");
   });
@@ -85,11 +81,7 @@ describe("AppRail", () => {
     location = { pathname: "/calendar/month/2026-11-19", search: {} };
     render(<AppRail />);
     fireEvent.click(tile("Open Notes"));
-    expect(navigate).toHaveBeenCalledExactlyOnceWith({
-      to: "/notes/all/abc",
-      search: {},
-      viewTransition: true,
-    });
+    expect(navigate).toHaveBeenCalledExactlyOnceWith({ to: "/notes/all/abc", search: {} });
   });
 
   it("leaves a modified click to the browser (new tab)", () => {

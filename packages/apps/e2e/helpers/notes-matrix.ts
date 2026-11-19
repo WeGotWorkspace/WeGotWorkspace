@@ -3,13 +3,7 @@
 // API calls and per-tab offline live in `live-matrix.ts`.
 import type { Browser, BrowserContext } from "@playwright/test";
 import { api, openUser, OWNER, sleep, TEAMMATE, type Tab } from "./live-matrix";
-
-/**
- * The live note body. While the collab session joins, a read-only stand-in shows
- * the served text; only the editable body is the editor a spec may type in or
- * read the collab state from.
- */
-const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+import { NOTE_EDITOR } from "./notes-live";
 
 export { api, openUser, OWNER, setTabOffline, sleep, TEAMMATE, type Tab } from "./live-matrix";
 

@@ -15,13 +15,7 @@ import {
   warmUpApp,
   type Tab,
 } from "./helpers/notes-matrix";
-
-/**
- * The live note body. While the collab session joins, a read-only stand-in shows
- * the served text; only the editable body is the editor a spec may type in or
- * read the collab state from.
- */
-const NOTE_EDITOR = '.ProseMirror[contenteditable="true"]';
+import { NOTE_EDITOR } from "./helpers/notes-live";
 
 /** Below the 10 s poll, so only a push can make it. */
 const PUSH_BOUND_MS = 8_000;
