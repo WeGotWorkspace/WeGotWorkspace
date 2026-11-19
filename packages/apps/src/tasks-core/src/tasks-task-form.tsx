@@ -39,6 +39,8 @@ export type TasksTaskFormValue = {
   showWithoutTime?: boolean;
   timeZone?: string | null;
   alerts?: Task["alerts"];
+  /** Assignees and any other participants, as the task has them (#2172). */
+  participants?: Task["participants"];
 };
 
 export const DEFAULT_WORKFLOW_STATUS: TaskWorkflowStatus = "needs-action";
@@ -68,6 +70,7 @@ export function taskToFormValue(task: Task, fallbackListId: string): TasksTaskFo
     showWithoutTime: taskDueIsDateOnly(task.due, task.showWithoutTime),
     timeZone: task.timeZone ?? null,
     alerts: task.alerts,
+    participants: task.participants,
   };
 }
 

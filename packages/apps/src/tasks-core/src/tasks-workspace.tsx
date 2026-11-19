@@ -433,6 +433,7 @@ export function TasksWorkspace({
               onToggleComplete={toggleTaskComplete}
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
               onConfirmMove={requestMoveTask}
+              loadListMembers={operations?.listTaskListMembers}
               textCollab={liveText.textCollab}
               textAccessLost={liveText.textAccessLost}
               textLookingUp={liveText.textLookingUp}

@@ -18,6 +18,7 @@ import {
   getTask,
   importTasksLive,
   listTaskListChanges,
+  listTaskListMembers,
   patchTask,
   patchTaskList,
   putTask,
@@ -41,10 +42,13 @@ import {
   removeTaskListFromCache,
   tasksOutboxTaskId,
   upsertTaskInCache,
+  readCachedTaskListMembers,
+  writeCachedTaskListMembers,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
   writeTasksChangesState,
 } from "@/lib/offline/tasks/tasks-offline-store";
+import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks/tasks-outbox-flush";
@@ -140,6 +144,15 @@ async function queueOfflineCreate(username: string, body: TaskCreate): Promise<T
     }),
   });
   return optimistic;
+}
+
+/**
+ * Whether a write to `taskId` is still in the outbox. A later write must queue behind
+ * it: sent at once, it would land first and the older queued patch would undo it.
+ */
+async function hasQueuedTaskWrite(username: string, taskId: string): Promise<boolean> {
+  const rows = await listOutboxMutationsForDomain(username, TASKS_DOMAIN);
+  return rows.some((row) => tasksOutboxTaskId(row) === taskId);
 }
 
 async function queueOfflinePatch(
@@ -320,6 +333,11 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
       if (!readBrowserOnline()) {
         return queueOfflinePatch(username, taskId, patch, existing, opts);
       }
+      if (await hasQueuedTaskWrite(username, taskId)) {
+        const queued = await queueOfflinePatch(username, taskId, patch, existing, opts);
+        void runner.flushAfterWrite();
+        return queued;
+      }
       const etag = concurrencyEtag(existing, opts);
       try {
         const task = await patchTask(taskId, patch, { ...opts, ifMatch: etag });
@@ -371,6 +389,22 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
         rethrowUnlessOfflineQueue(error, opts);
         return queueOfflineMove(username, taskId, taskListId, existing, opts);
       }
+    },
+    listTaskListMembers: async (taskListId) => {
+      if (readBrowserOnline()) {
+        try {
+          const members = await listTaskListMembers(taskListId);
+          try {
+            await writeCachedTaskListMembers(username, taskListId, members);
+          } catch {
+            // Cache only: the picker still has the live answer.
+          }
+          return { members, fromCache: false };
+        } catch (error) {
+          if (!isFetchNetworkError(error)) throw error;
+        }
+      }
+      return { members: await readCachedTaskListMembers(username, taskListId), fromCache: true };
     },
     importTasks: async (icsText, opts) => {
       if (!readBrowserOnline()) {

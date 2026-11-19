@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { Bell, CalendarDays, CircleCheck, Flag, MoreHorizontal, Trash2, Sun } from "lucide-react";
+import {
+  Bell,
+  CalendarDays,
+  CircleCheck,
+  Flag,
+  MoreHorizontal,
+  Trash2,
+  Sun,
+  User,
+} from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NotebookSelect } from "@/project-dialog/src/notebook-select";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
-import type { Task, TaskList } from "@/lib/models/tasks-types";
+import type { Task, TaskList, TaskListMembersResult } from "@/lib/models/tasks-types";
+import { TasksAssigneesField } from "@/tasks-core/src/tasks-assignees-field";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { taskListName } from "@/tasks-core/src/tasks-task-utils";
 import { isTaskCompleted } from "@/lib/models/task-fields";
@@ -40,6 +50,8 @@ type TasksDetailViewProps = {
   onCreateList?: () => void;
   /** Asks before the task moves to another list; `move` applies it. */
   onConfirmMove?: (listName: string, move: () => void) => void;
+  /** The list audience for the assignee picker (#2172). */
+  loadListMembers?: (taskListId: string) => Promise<TaskListMembersResult>;
   /**
    * The live room for the title and description (#2208). While it is open
    * they are typed together and saved by the room; the other fields keep the
@@ -70,6 +82,7 @@ export function TasksDetailView({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
+  loadListMembers,
   textCollab,
   textAccessLost = false,
   textLookingUp = false,
@@ -89,6 +102,7 @@ export function TasksDetailView({
       onToggleComplete={onToggleComplete}
       onCreateList={onCreateList}
       onConfirmMove={onConfirmMove}
+      loadListMembers={loadListMembers}
     />
   );
   return (
@@ -141,6 +155,7 @@ function TasksDetailForm({
   onToggleComplete,
   onCreateList,
   onConfirmMove,
+  loadListMembers,
 }: Omit<
   TasksDetailViewProps,
   "textCollab" | "textAccessLost" | "textLookingUp" | "onLiveText" | "onPresence"
@@ -295,6 +310,16 @@ function TasksDetailForm({
         onBlur={flush}
       />
       <DetailFieldList className="tasks-detail-view__fields">
+        <TasksDetailField icon={<User />} title={L.assigneeLabel}>
+          <TasksAssigneesField
+            L={L}
+            listId={form.listId}
+            participants={form.participants}
+            disabled={readOnly}
+            loadMembers={loadListMembers}
+            onChange={(participants) => update((prev) => ({ ...prev, participants }), "now")}
+          />
+        </TasksDetailField>
         <TasksDetailField icon={<CircleCheck />} title={L.addTaskStatus}>
           {controls.status}
         </TasksDetailField>

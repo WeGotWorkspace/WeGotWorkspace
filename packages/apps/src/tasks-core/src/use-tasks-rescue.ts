@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
 import { tasksRescueOperations } from "@/lib/offline/tasks/tasks-parked-writes";
+import { readCachedTaskListMembers } from "@/lib/offline/tasks/tasks-offline-store";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import type { RescueAdapter } from "@/rescue-ui/rescue-adapter";
 import { useContainerRescue } from "@/rescue-ui/use-container-rescue";
@@ -37,10 +38,17 @@ export function useTasksRescue({
       domain: TASKS_DOMAIN,
       containers: taskLists,
       canWrite: canWriteTaskList,
-      operations: operations ? tasksRescueOperations(operations) : undefined,
+      operations: operations
+        ? tasksRescueOperations(operations, {
+            username,
+            readCachedMembers: username
+              ? (taskListId) => readCachedTaskListMembers(username, taskListId)
+              : undefined,
+          })
+        : undefined,
       afterSettle,
     }),
-    [afterSettle, operations, taskLists],
+    [afterSettle, operations, taskLists, username],
   );
 
   const { writableContainers, ...rescue } = useContainerRescue(username, adapter);
