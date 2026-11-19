@@ -23,11 +23,18 @@ function taskEditValues(input: TasksTaskFormValue) {
   };
 }
 
-function taskEditPatch(task: Task, next: ReturnType<typeof taskEditValues>): TaskPatch {
+/** `skipText`: a room holds the title and description, so the patch names neither. */
+export function taskEditPatch(
+  task: Task,
+  next: ReturnType<typeof taskEditValues>,
+  opts?: { skipText?: boolean },
+): TaskPatch {
   const patch: TaskPatch = {};
-  if (next.title !== (task.title ?? "")) patch.title = next.title;
-  if (next.description !== (task.description?.trim() || null)) {
-    patch.description = next.description;
+  if (!opts?.skipText) {
+    if (next.title !== (task.title ?? "")) patch.title = next.title;
+    if (next.description !== (task.description?.trim() || null)) {
+      patch.description = next.description;
+    }
   }
   if (next.due !== (task.due ?? null)) patch.due = next.due;
   if (dueEditSendsShowWithoutTime(task, next.due, next.showWithoutTime)) {
@@ -205,7 +212,7 @@ export function useTaskDetailAutosave({
   );
 
   const saveTaskNow = useCallback(
-    async (taskId: string, input: TasksTaskFormValue) => {
+    async (taskId: string, input: TasksTaskFormValue, opts?: { skipText?: boolean }) => {
       if (!operations) return;
       const task = tasksRef.current.find((item) => item.id === taskId);
       if (!task) return;
@@ -217,7 +224,7 @@ export function useTaskDetailAutosave({
 
       const next = taskEditValues({ ...input, title });
       const listChanged = input.listId !== task.taskListId;
-      const patch = taskEditPatch(task, next);
+      const patch = taskEditPatch(task, next, opts);
       const hasPatch = Object.keys(patch).length > 0;
       if (!hasPatch && !listChanged) return;
 
@@ -259,8 +266,8 @@ export function useTaskDetailAutosave({
   );
 
   const autosaveTask = useCallback(
-    (taskId: string, input: TasksTaskFormValue): Promise<void> =>
-      enqueue(taskId, () => saveTaskNow(taskId, input)),
+    (taskId: string, input: TasksTaskFormValue, opts?: { skipText?: boolean }): Promise<void> =>
+      enqueue(taskId, () => saveTaskNow(taskId, input, opts)),
     [enqueue, saveTaskNow],
   );
 

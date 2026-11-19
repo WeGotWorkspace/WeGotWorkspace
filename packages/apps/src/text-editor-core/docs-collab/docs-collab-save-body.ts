@@ -37,8 +37,9 @@ export function collabSaveBody(
     getMarkdownRef: { current: (() => string) | null };
     markdownOverrideRef: { current: string | null };
   },
+  holdSave?: () => boolean,
 ): CollabSaveBody | null {
-  if (!ydoc) return null;
+  if (!ydoc || holdSave?.()) return null;
   const getMd = refs.getMarkdownRef.current;
   const override = refs.markdownOverrideRef.current;
   const textFields = isTextFieldsDoc(ydoc);

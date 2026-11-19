@@ -1,3 +1,4 @@
+import type { CollabExternalWriteDialogLabels } from "@/collab-ui/collab-external-write-dialog";
 import { noPeopleOrTeamsFoundCopy, sharePrincipalCopy } from "@/share-ui/share-labels";
 import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
@@ -167,6 +168,12 @@ export type TasksUILabels = {
   assigneeNoAccess: string;
   assigneeExternal: string;
   assigneeMore: (count: number) => string;
+  /** Live text (#2208): why the save waits, access lost, and the outside-edit question. */
+  liveTextTitleRequired: string;
+  liveTextTooLong: string;
+  liveTextAccessLostTitle: string;
+  liveTextAccessLost: string;
+  liveTextExternalWrite: CollabExternalWriteDialogLabels;
   /** Multi-select: the selection bar, the detail pane and the move dialog. */
   selectionLabel: string;
   selectionTitle: (count: number) => string;
@@ -385,6 +392,18 @@ export const defaultTasksLabels: TasksUILabels = {
   assigneeNoAccess: "No longer has access",
   assigneeExternal: "Not in this workspace",
   assigneeMore: (count) => `+${count}`,
+  liveTextTitleRequired: "A task needs a title",
+  liveTextTooLong: "Too long to save. Shorten it to save again.",
+  liveTextAccessLostTitle: "Access lost",
+  liveTextAccessLost:
+    "You no longer have access to this task. Your last changes were not saved here.",
+  liveTextExternalWrite: {
+    title: "This task was changed elsewhere",
+    description: (name) =>
+      `"${name}" was changed elsewhere, and you also have unsaved changes. Nothing has been overwritten.`,
+    keepMine: "Keep mine",
+    useOutside: "Use the other version",
+  },
   selectionLabel: "Multiple selection",
   selectionTitle: (count) => (count === 1 ? "1 task selected" : `${count} tasks selected`),
   selectionComplete: "Mark complete",

@@ -30,6 +30,7 @@ final class AdminAccessControlTest extends WgwDatabaseTestCase
         $this->putJson('/api/v1/admin/settings', ['values' => []])->assertUnauthorized();
         $this->postJson('/api/v1/admin/mail-delivery/test')->assertUnauthorized();
         $this->getJson('/api/v1/admin/updates/state')->assertUnauthorized();
+        $this->getJson('/api/v1/admin/updates/progress')->assertUnauthorized();
         $this->postJson('/api/v1/admin/search/jobs')->assertUnauthorized();
     }
 
@@ -46,6 +47,7 @@ final class AdminAccessControlTest extends WgwDatabaseTestCase
             ])->assertForbidden();
             $this->withBearer($token)->postJson('/api/v1/admin/mail-delivery/test')->assertForbidden();
             $this->withBearer($token)->getJson('/api/v1/admin/updates/state')->assertForbidden();
+            $this->withBearer($token)->getJson('/api/v1/admin/updates/progress')->assertForbidden();
             $this->withBearer($token)->postJson('/api/v1/admin/search/jobs')->assertForbidden();
             $this->withBearer($token)->postJson('/api/v1/admin/update-jobs', ['type' => 'check'])->assertForbidden();
             $this->withBearer($token)->deleteJson('/api/v1/admin/backups/example.zip')->assertForbidden();
