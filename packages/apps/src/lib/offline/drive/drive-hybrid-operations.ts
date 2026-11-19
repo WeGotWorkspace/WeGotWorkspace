@@ -35,7 +35,10 @@ import {
   normalizeDriveAvailabilityPath,
 } from "@/lib/offline/drive/drive-availability-store";
 import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
-import { fetchDriveFolderOncePerBrowser } from "@/lib/offline/drive/drive-folder-fetch-share";
+import {
+  fetchDriveFolderOncePerBrowser,
+  listenForSharedDriveFolderFetches,
+} from "@/lib/offline/drive/drive-folder-fetch-share";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
@@ -158,6 +161,8 @@ export function createHybridDriveOperations(
 ): DriveAPIOperations {
   const live = createWgwDriveOperations(bootstrap?.data.cwd ?? "/");
   let cachedBootstrap = bootstrap ?? null;
+  // Before the first change: another tab's listing can come before this tab asks.
+  listenForSharedDriveFolderFetches();
 
   const ensureBootstrap = async (): Promise<DriveAppBootstrap | null> => {
     if (cachedBootstrap) return cachedBootstrap;

@@ -132,7 +132,9 @@ test("Drive: tabs on the same folder share one listing fetch per change", async 
     await other.goto(folderUrl(sub));
     await shows(other, "sub-seed.txt", 30_000);
     await connected;
-    await same[0]!.waitForTimeout(3_000);
+    // A tab's start-up loads its folder more than once and runs its own
+    // FileNode pull; count only once every tab has gone quiet.
+    await quiet([...calls, otherCalls]);
 
     // Three tabs on the folder: all show the file, one fetched the listing.
     let before = calls.map((count) => count());
@@ -287,6 +289,26 @@ const put = (folder: string, name: string) =>
 const isTasksChanges = (url: string) => url.includes("/api/v1/tasks/tasklists/changes");
 /** The folder listing: `GET files/context` starts every `changeDir`. */
 const isFolderListing = (url: string) => url.includes("/api/v1/files/context");
+
+/** Resolves once none of the counters moved for 4 s (longer than the 3 s push interval). */
+async function quiet(counters: Array<() => number>): Promise<void> {
+  const read = () => counters.map((count) => count()).join(",");
+  let last = read();
+  let since = Date.now();
+  await expect
+    .poll(
+      () => {
+        const now = read();
+        if (now !== last) {
+          last = now;
+          since = Date.now();
+        }
+        return Date.now() - since;
+      },
+      { timeout: 60_000, intervals: [500] },
+    )
+    .toBeGreaterThanOrEqual(4_000);
+}
 
 function countRequests(tab: Page, matches: (url: string) => boolean): () => number {
   let count = 0;

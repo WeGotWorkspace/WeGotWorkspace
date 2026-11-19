@@ -7,6 +7,7 @@ import { createDriveFolderFetchShare, type DriveFolderFetched } from "./drive-fo
 const USER = "alice";
 const PATH = "/users/alice/Projects";
 const WAIT_MS = 5_000;
+const KEEP_MS = 10_000;
 
 function listing(name: string): DriveUIData {
   return {
@@ -32,6 +33,7 @@ function browser(options: { locks?: boolean } = {}) {
       return createDriveFolderFetchShare({
         topic: bus.topic(),
         waitMs: WAIT_MS,
+        keepMs: KEEP_MS,
         lockIfFree:
           options.locks === false
             ? (_name, task) => task()
@@ -199,6 +201,46 @@ describe("createDriveFolderFetchShare", () => {
 
     expect(names(await a)).toEqual(["a.md"]);
     expect(names(await b)).toEqual(["b.md"]);
+  });
+
+  it("takes a listing that arrived before this tab handled the change", async () => {
+    const { tab, bus } = browser();
+    // This tab listens from its start, before it asks for anything.
+    const late = tab("b");
+    bus.topic().publish({ v: 1, username: USER, path: PATH, wave: 10, data: listing("fast.md") });
+    await vi.advanceTimersByTimeAsync(50);
+    const own = vi.fn();
+
+    const result = late({ username: USER, path: PATH, wave: 10, fetchLive: own });
+
+    expect(names(await result)).toEqual(["fast.md"]);
+    expect(own).not.toHaveBeenCalled();
+  });
+
+  it("does not take a kept listing for an older change, or one kept too long", async () => {
+    const { tab, bus } = browser();
+    const late = tab("b");
+    bus.topic().publish({ v: 1, username: USER, path: PATH, wave: 10, data: listing("old.md") });
+    await vi.advanceTimersByTimeAsync(50);
+
+    const newer = late({
+      username: USER,
+      path: PATH,
+      wave: 20,
+      fetchLive: vi.fn(async () => listing("newer.md")),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(names(await newer)).toEqual(["newer.md"]);
+
+    await vi.advanceTimersByTimeAsync(KEEP_MS);
+    const same = late({
+      username: USER,
+      path: PATH,
+      wave: 10,
+      fetchLive: vi.fn(async () => listing("again.md")),
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(names(await same)).toEqual(["again.md"]);
   });
 
   it("hands the next tab a listing that arrived just before its turn", async () => {
