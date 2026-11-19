@@ -9540,7 +9540,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Too many sign-in attempts (`throttled`); carries `Retry-After` */
+                /** @description Too many sign-in attempts (`throttled`) */
                 429: {
                     headers: {
                         [name: string]: unknown;

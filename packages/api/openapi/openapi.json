@@ -6934,7 +6934,7 @@
             }
           },
           "429": {
-            "description": "Too many sign-in attempts (`throttled`); carries `Retry-After`",
+            "description": "Too many sign-in attempts (`throttled`)",
             "content": {
               "application/json": {
                 "schema": {
