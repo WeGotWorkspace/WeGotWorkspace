@@ -165,17 +165,25 @@ export function TaskTextSession({
   // session's own teardown, which runs as a passive effect.
   const peersRef = useRef(0);
   peersRef.current = session.peers.length;
+  const scheduleSaveRef = useRef(session.scheduleSave);
+  scheduleSaveRef.current = session.scheduleSave;
   useLayoutEffect(() => {
     if (!ydoc) return;
     return () => {
       if (peersRef.current > 0) return;
       const current = readTextFields(ydoc);
       if (current.title.trim() !== "") return;
-      const base = readTextFieldsBase(ydoc)?.title ?? served.title;
+      const stored = readTextFieldsBase(ydoc);
+      const base = stored?.title ?? served.title;
       if (base.trim() === "") return;
       writeNoteTitle(ydoc, base);
-      // Nothing saves, so no push puts the stored title back on the list row.
-      onLiveTextRef.current?.(taskId, readTextFields(ydoc), false);
+      const restored = readTextFields(ydoc);
+      // Notes typed while the blank title held the save are not on the server:
+      // arm the save, so leaving the room saves them with the stored title.
+      const unsaved = restored.description !== (stored?.description ?? served.description);
+      if (unsaved) scheduleSaveRef.current();
+      // No push puts the stored title back on the list row.
+      onLiveTextRef.current?.(taskId, restored, unsaved);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ydoc]);

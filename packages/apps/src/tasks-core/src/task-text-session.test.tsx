@@ -14,6 +14,7 @@ import {
 // The shared session is tested in text-editor-core: a stand-in hands this
 // component a joined document, so the test covers what Tasks adds on leaving.
 const doc = { current: new Y.Doc() };
+const scheduleSave = vi.fn();
 vi.mock("@/text-editor-core/docs-collab", () => ({
   useDocsCollab: () => ({
     session: { ydoc: doc.current, awareness: null, user: { name: "Anna" } },
@@ -21,7 +22,7 @@ vi.mock("@/text-editor-core/docs-collab", () => ({
     awaitingContent: false,
     peers: [],
     lastSavedAt: null,
-    scheduleSave: vi.fn(),
+    scheduleSave: () => scheduleSave(),
     rereadServer: vi.fn(() => Promise.resolve()),
     resolveExternalWrite: vi.fn(),
   }),
@@ -73,6 +74,34 @@ describe("TaskTextSession leaving with a blank title", () => {
       "t1",
       { title: "Buy milk", description: "Two cartons" },
       false,
+    );
+    expect(scheduleSave).not.toHaveBeenCalled();
+  });
+
+  it("saves notes the blank title held back, with the stored title", () => {
+    scheduleSave.mockClear();
+    doc.current = new Y.Doc();
+    doc.current.getText(TEXT_FIELDS_TITLE).insert(0, "");
+    doc.current.getText(TEXT_FIELDS_BODY).insert(0, "Three cartons");
+    doc.current
+      .getMap(TEXT_FIELDS_META)
+      .set("base", { title: "Buy milk", description: "Two cartons", contentTag: null, vector: {} });
+    const onLiveText = vi.fn();
+    const task = { id: "t1", title: "Buy milk", description: "Two cartons" } as unknown as Task;
+
+    const view = render(
+      <TaskTextSession collab={collab} task={task} L={defaultTasksLabels} onLiveText={onLiveText}>
+        <div />
+      </TaskTextSession>,
+    );
+    view.unmount();
+
+    // The leave saves what the save timer holds: title and notes together.
+    expect(scheduleSave).toHaveBeenCalledTimes(1);
+    expect(onLiveText).toHaveBeenLastCalledWith(
+      "t1",
+      { title: "Buy milk", description: "Three cartons" },
+      true,
     );
   });
 });
