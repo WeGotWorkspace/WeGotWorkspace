@@ -41,7 +41,8 @@ final class ProjectAccessTest extends WgwDatabaseTestCase
                 $refused->assertNotFound();
                 $this->assertSame($unknown->json(), $refused->json(), "{$caller}: {$name} must answer like an unknown id.");
             }
-            $this->assertSame([], $this->listProjects($caller)->assertOk()->json('list'), "{$caller} lists no Project of T1.");
+            $teams = array_column($this->listProjects($caller)->assertOk()->json('list'), 'teamSlug');
+            $this->assertNotContains('t1', $teams, "{$caller} lists no Project of T1.");
         }
 
         $this->asUser('bob')->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('name', 'Launch');
@@ -52,10 +53,10 @@ final class ProjectAccessTest extends WgwDatabaseTestCase
         $id = (string) $this->createProject('bob', 't1', 'Launch')['id'];
 
         $list = $this->listProjects('dave')->assertOk()->json('list');
-        $this->assertCount(1, $list);
-        $this->assertSame($id, $list[0]['id']);
-        $this->assertFalse($list[0]['mayManage']);
-        $this->assertTrue($this->listProjects('bob')->json('list.0.mayManage'));
+        $this->assertSame(['T1 Project', 'Launch'], array_column($list, 'name'), 'The default Project first.');
+        $this->assertSame($id, $list[1]['id']);
+        $this->assertFalse($list[1]['mayManage']);
+        $this->assertTrue($this->listProjects('bob')->json('list.1.mayManage'));
 
         $this->asUser('dave')->postJson('/api/v1/projects', ['teamSlug' => 't1', 'name' => 'Mine'])
             ->assertForbidden()
@@ -64,7 +65,7 @@ final class ProjectAccessTest extends WgwDatabaseTestCase
             ->assertForbidden()
             ->assertJsonPath('code', 'team_admin_only');
 
-        $this->assertSame('Launch', $this->listProjects('bob')->json('list.0.name'));
+        $this->assertSame('Launch', $this->listProjects('bob')->json('list.1.name'));
     }
 
     public function test_create_needs_membership_of_the_team(): void
@@ -87,7 +88,7 @@ final class ProjectAccessTest extends WgwDatabaseTestCase
         $this->createProject('bob', 't1', 'Launch');
         $this->createProject('carol', 't2', 'Studio work');
 
-        $this->assertSame(['Launch'], array_column($this->listProjects('dave')->json('list'), 'name'));
-        $this->assertSame(['Studio work'], array_column($this->listProjects('carol')->json('list'), 'name'));
+        $this->assertSame(['T1 Project', 'Launch'], array_column($this->listProjects('dave')->json('list'), 'name'));
+        $this->assertSame(['T2 Project', 'Studio work'], array_column($this->listProjects('carol')->json('list'), 'name'));
     }
 }
