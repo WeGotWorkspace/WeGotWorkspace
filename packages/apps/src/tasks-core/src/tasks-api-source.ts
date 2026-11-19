@@ -1,13 +1,24 @@
-import { createTasksAppBootstrap, type TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
+import {
+  createTasksAppBootstrap,
+  MOCK_TASK_LIST_COLLEAGUES,
+  type TasksAppBootstrap,
+} from "@/lib/api/mock/tasks-bootstrap";
 import {
   createWorkspaceSource,
   mocksInBuild,
   mocksNotInBuild,
 } from "@/lib/api/create-workspace-source";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import type { Task, TaskList, TaskListPatch, TasksAPIOperations } from "@/lib/models/tasks-types";
+import type {
+  Task,
+  TaskList,
+  TaskListMember,
+  TaskListPatch,
+  TasksAPIOperations,
+} from "@/lib/models/tasks-types";
 import { taskAlertsFromList } from "@/tasks-core/src/tasks-task-utils";
 import { applyTaskAlertsPatch } from "@/lib/models/task-alerts";
+import { applyTaskParticipantsPatch } from "@/lib/offline/tasks/tasks-patch-merge";
 import {
   filterSharePrincipals,
   mergeShareWith,
@@ -102,6 +113,7 @@ function createMockTasksOperations(
             taskListId: listId,
             categories: patch.categories ?? task.categories,
             alerts: applyTaskAlertsPatch(task.alerts, patch.alerts),
+            participants: applyTaskParticipantsPatch(task.participants, patch.participants),
           };
           return updated;
         }),
@@ -171,6 +183,16 @@ function createMockTasksOperations(
           excludeId: bootstrap.session.user.username,
         }),
       );
+    },
+    listTaskListMembers: async () => {
+      const { user } = getBootstrap().session;
+      const viewer: TaskListMember = {
+        username: user.username ?? "me",
+        displayName: user.displayName || user.username || "Me",
+        email: user.email ?? null,
+        access: "write",
+      };
+      return { members: [viewer, ...MOCK_TASK_LIST_COLLEAGUES], fromCache: false };
     },
     deleteTaskList: async (taskListId, opts) => {
       updateTaskLists((lists) => lists.filter((list) => list.id !== taskListId));

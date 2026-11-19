@@ -98,6 +98,7 @@ export const liveTierSpecs = [
   "settings-calendar-availability",
   "settings-offline-clear-cache",
   "sync-notice-bar",
+  "tasks-assignees",
   "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",

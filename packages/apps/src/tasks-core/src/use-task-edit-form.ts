@@ -15,6 +15,7 @@ const FORM_FIELD_GROUPS: (keyof TasksTaskFormValue)[][] = [
   ["priority"],
   ["due", "showWithoutTime", "timeZone"],
   ["alerts"],
+  ["participants"],
 ];
 
 function sameFieldValue(a: unknown, b: unknown): boolean {

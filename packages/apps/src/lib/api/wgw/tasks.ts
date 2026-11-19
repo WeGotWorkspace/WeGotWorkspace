@@ -316,7 +316,11 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
   };
 }
 
-/** Who can see a list and how (#2172 audience): for mentions and names in a task thread. */
+/**
+ * Who can see a list and how (#2172 audience): for the assignee picker and for
+ * mentions and names in a task thread. Only someone who can edit the list may
+ * ask; others get 403.
+ */
 export async function listTaskListMembers(
   taskListId: string,
   opts?: { signal?: AbortSignal },

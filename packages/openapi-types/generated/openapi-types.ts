@@ -11890,8 +11890,9 @@ export interface components {
             alerts?: {
                 [key: string]: components["schemas"]["TaskAlert"] | null;
             } | null;
+            /** @description JSON merge patch of the participants map, keyed by participant id (`u:<username>`, `e:<email>`, `org`). An entry sets that person, a null entry removes them (#2172). */
             participants?: {
-                [key: string]: components["schemas"]["TaskParticipant"];
+                [key: string]: components["schemas"]["TaskParticipant"] | null;
             };
             icsProps?: {
                 [key: string]: string;
