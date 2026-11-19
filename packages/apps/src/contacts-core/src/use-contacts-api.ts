@@ -25,7 +25,7 @@ import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import type { ContactsUIData } from "@/lib/models/contacts-types";
 import { createDefaultContactsApiSource, type ContactsApiSource } from "./contacts-api-source";
-import { useContactsLiveInbound } from "./use-contacts-live-inbound";
+import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
 
 export type UseContactsAPIOptions = {
   onSyncConflict?: (cardIds: string[]) => void;
