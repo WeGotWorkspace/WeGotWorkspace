@@ -218,13 +218,13 @@ describe("when it is on", () => {
     expect(signOut).not.toHaveBeenCalled();
   });
 
-  it("says when code entry is paused", async () => {
+  it("says when code entry may run again", async () => {
     renderPane({ enabled: true, recoveryCodesRemaining: 9 });
     fireEvent.click(await screen.findByRole("button", { name: labels.turnOff }));
     await screen.findByRole("dialog");
     type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.throttledCode);
     click(labels.disableConfirm);
-    expect(await screen.findByText(/^Too many wrong codes\./)).toBeTruthy();
+    expect(await screen.findByText(/^Too many tries\. Try again at /)).toBeTruthy();
   });
 });
 

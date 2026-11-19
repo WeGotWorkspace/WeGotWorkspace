@@ -54,8 +54,8 @@ export const twoFactorSettingsLabels = {
   disableConfirm: "Turn off",
   codeRequired: "Enter the 6-digit code from your app",
   wrongCode: "That code is not right.",
-  throttled: (time: string) => `Too many tries. Try again at ${time}.`,
-  codesPaused: (time: string) => `Too many wrong codes. Code entry is paused until ${time}.`,
+  throttled: (time: string | null) =>
+    time ? `Too many tries. Try again at ${time}.` : "Too many tries. Try again later.",
   alreadyOn: "Two-factor sign-in is already on. Reload the page to see it.",
   offlineAction: "You are offline. Try again when the connection is back.",
   failed: "Something went wrong. Try again.",

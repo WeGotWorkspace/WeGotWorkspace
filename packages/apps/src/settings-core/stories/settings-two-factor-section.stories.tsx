@@ -155,6 +155,6 @@ export const CodesPaused: Story = {
     await userEvent.click(await body.findByRole("button", { name: labels.replaceCodes }));
     await typeCode(canvasElement, MOCK_SIGN_IN.throttledCode);
     await userEvent.click(body.getByRole("button", { name: labels.replaceConfirm }));
-    await expect(await body.findByText(/^Too many wrong codes\./)).toBeInTheDocument();
+    await expect(await body.findByText(/^Too many tries\. Try again at /)).toBeInTheDocument();
   },
 };

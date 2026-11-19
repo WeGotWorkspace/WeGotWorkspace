@@ -8,7 +8,7 @@ import type { TwoFactorOperations, TwoFactorState } from "@/lib/api/wgw/two-fact
 /**
  * In-memory stand-in for `/api/v1/settings/totp` with the server's rules: the account password
  * is `storybook-dev` (`throttled` trips the limit), the code is `123456` (`999999` trips the
- * per-user pause). `davPasswordUsedAt` is what start reports about calendar and contacts apps.
+ * one-hour per-user pause). `davPasswordUsedAt` is what start reports about calendar and contacts apps.
  */
 export function createMockTwoFactorOperations(
   initial: TwoFactorState = { enabled: false, recoveryCodesRemaining: null },
@@ -27,7 +27,7 @@ export function createMockTwoFactorOperations(
   const checkCode = (code: string) => {
     const digits = normalizeTotpCode(code);
     if (digits === MOCK_SIGN_IN.throttledCode) {
-      throw new AppPasswordThrottledError("mock 429", 3600, "mfa_locked");
+      throw new AppPasswordThrottledError("mock 429", 3600, "throttled");
     }
     if (digits !== MOCK_SIGN_IN.code)
       throw new WgwRequestError("mock 422", 422, "mfa_code_invalid");

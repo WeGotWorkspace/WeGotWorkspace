@@ -60,13 +60,10 @@ export function twoFactorFailure(
   step: "password" | "code",
   now = Date.now(),
 ): TwoFactorFailure {
-  const at = (seconds: number) => formatTime(now + seconds * 1000);
   if (error instanceof AppPasswordThrottledError) {
-    const message =
-      error.code === "mfa_locked"
-        ? labels.codesPaused(at(error.retryAfterSeconds))
-        : labels.throttled(at(error.retryAfterSeconds));
-    return { field: step, message, wrongCode: false };
+    const seconds = error.retryAfterSeconds;
+    const at = seconds === null ? null : formatTime(now + seconds * 1000);
+    return { field: step, message: labels.throttled(at), wrongCode: false };
   }
   if (isFetchNetworkError(error)) {
     return { field: null, message: labels.offlineAction, wrongCode: false };
@@ -79,7 +76,7 @@ export function twoFactorFailure(
     return { field: "code", message: labels.wrongCode, wrongCode: true };
   }
   if (error.status === 429) {
-    return { field: step, message: labels.throttled(at(60)), wrongCode: false };
+    return { field: step, message: labels.throttled(null), wrongCode: false };
   }
   return { field: null, message: labels.failed, wrongCode: false };
 }
