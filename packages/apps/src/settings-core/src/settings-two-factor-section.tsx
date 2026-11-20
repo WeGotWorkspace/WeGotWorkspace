@@ -91,6 +91,7 @@ function TwoFactorRows({ controller }: { controller: SettingsTwoFactorController
         <Button
           type="button"
           variant="outline"
+          severity={state.enabled ? "danger" : undefined}
           onClick={state.enabled ? controller.openDisable : controller.openSetup}
         >
           {state.enabled ? labels.turnOff : labels.turnOn}
