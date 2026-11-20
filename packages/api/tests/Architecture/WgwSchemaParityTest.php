@@ -94,6 +94,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'access_token_epoch'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));

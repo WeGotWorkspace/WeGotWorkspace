@@ -153,6 +153,36 @@ final class AccessTokenEpochTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_refresh_minted_before_a_bump_is_refused_and_ended(): void
+    {
+        $first = $this->issueTokenPair('bob');
+        // The bump committed but the refresh revoke has not run yet.
+        $this->bumpAccessEpoch();
+
+        $this->postRefresh($first['refresh_token'])->assertUnauthorized();
+        $this->assertSame(
+            0,
+            ApiRefreshToken::query()->where('username', 'bob')->where('revoked', 0)->count(),
+        );
+
+        $second = $this->issueTokenPair('bob');
+        $this->assertAccepted($second['access_token']);
+        $this->postRefresh($second['refresh_token'])->assertOk();
+    }
+
+    public function test_grace_replay_after_a_bump_is_refused_and_ended(): void
+    {
+        $first = $this->issueTokenPair('bob');
+        $this->postRefresh($first['refresh_token'])->assertOk();
+        $this->bumpAccessEpoch();
+
+        $this->postRefresh($first['refresh_token'])->assertUnauthorized();
+        $this->assertSame(
+            0,
+            ApiRefreshToken::query()->where('username', 'bob')->where('revoked', 0)->count(),
+        );
+    }
+
     public function test_access_token_from_a_refresh_carries_the_epoch(): void
     {
         $pair = $this->issueTokenPair('bob');

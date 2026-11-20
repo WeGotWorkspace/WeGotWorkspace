@@ -24,10 +24,12 @@ final class UserSessionRevoker
             return;
         }
 
-        // Bump first: a sign-in that inserts its refresh token after the revoke below
-        // then reads the new epoch and refuses itself (AuthTokenService::tokenResponse).
-        User::query()->where('username', $username)->increment('access_token_epoch');
-        $this->refreshTokens->revokeAllForUsername($username);
+        // One transaction, so a crash cannot commit the bump alone. A refresh token minted
+        // under the old epoch is refused by AuthTokenService::tokenResponse either way.
+        User::query()->getConnection()->transaction(function () use ($username): void {
+            User::query()->where('username', $username)->increment('access_token_epoch');
+            $this->refreshTokens->revokeAllForUsername($username);
+        });
 
         $user = User::query()->where('username', $username)->first();
         if ($user !== null) {

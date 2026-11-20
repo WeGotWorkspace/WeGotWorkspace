@@ -51,6 +51,7 @@ async function restorePassword(): Promise<void> {
     });
     return;
   }
+  throw new Error(`Could not restore ${TEAMMATE}'s password: neither password signs in.`);
 }
 
 test.describe("Password change ends every session", () => {
@@ -68,7 +69,11 @@ test.describe("Password change ends every session", () => {
       const dialog = pageA.getByRole("dialog", { name: "Change password" });
       await dialog.getByLabel("Current password").fill(ORIGINAL);
       await dialog.getByLabel("New password").fill(CHANGED);
+      const saved = pageA.waitForResponse(
+        (res) => res.url().includes("/settings/profile") && res.request().method() === "PUT",
+      );
       await dialog.getByRole("button", { name: "Change password" }).click();
+      expect((await saved).ok()).toBe(true);
 
       // A: the next app it opens shows the sign-in form, not an error page.
       await pageA.goto("/drive");

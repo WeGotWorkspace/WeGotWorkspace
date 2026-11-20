@@ -83,16 +83,10 @@ final class AuthTokenService
             throw new ApiHttpException(503, 'JWT key configuration missing.', 'config_error');
         }
 
-        // The epoch is read inside the rotation transaction, before the successor
-        // exists, so a revokeAll() that commits after it refuses this access token.
-        $epoch = null;
+        // The successor keeps the epoch its parent was minted under (see tokenResponse).
         $rotated = $this->refreshTokens->consume(
             $refreshToken,
-            function (string $username, string $familyId) use (&$epoch): string {
-                $epoch = $this->currentEpoch($username);
-
-                return $this->issueRefreshToken($username, $familyId);
-            },
+            fn (string $username, string $familyId, int $epoch): string => $this->issueRefreshToken($username, $familyId, $epoch),
         );
         if ($rotated === null) {
             throw new ApiHttpException(401, 'Invalid refresh token.', 'unauthorized');
@@ -101,7 +95,7 @@ final class AuthTokenService
         $username = $rotated['username'];
         $this->requireEnabled($username);
 
-        return $this->tokenResponse($username, $this->roleFor($username), $rotated['refresh_token'], $epoch);
+        return $this->tokenResponse($username, $this->roleFor($username), $rotated['refresh_token']);
     }
 
     /**
@@ -160,11 +154,11 @@ final class AuthTokenService
         return $epoch === null ? null : (int) $epoch;
     }
 
-    private function issueRefreshToken(string $username, string $familyId): string
+    private function issueRefreshToken(string $username, string $familyId, int $epoch): string
     {
         $this->requireEnabled($username);
 
-        return $this->refreshTokens->issueRotated($username, $this->roleFor($username), $familyId);
+        return $this->refreshTokens->issueRotated($username, $this->roleFor($username), $familyId, $epoch);
     }
 
     private function requireEnabled(string $username): void
@@ -213,7 +207,7 @@ final class AuthTokenService
      */
     private function issueTokenPair(string $username, string $role, ?int $epoch): array
     {
-        return $this->tokenResponse($username, $role, $this->refreshTokens->issue($username, $role), $epoch);
+        return $this->tokenResponse($username, $role, $this->refreshTokens->issue($username, $role, null, $epoch));
     }
 
     /**
@@ -228,7 +222,7 @@ final class AuthTokenService
      *   username: string
      * }
      */
-    private function tokenResponse(string $username, string $role, string $refreshToken, ?int $epochBefore = null): array
+    private function tokenResponse(string $username, string $role, string $refreshToken): array
     {
         $ttl = $this->jwtConfig->accessTtl();
         $uid = 0;
@@ -237,10 +231,12 @@ final class AuthTokenService
             $user = User::query()->where('username', $username)->first(['id', 'access_token_epoch']);
             $uid = $user === null ? 0 : (int) $user->id;
             $epoch = $user === null ? null : (int) $user->access_token_epoch;
-            // The refresh token is already stored. revokeAll() bumps the epoch before it
-            // revokes refresh tokens, so a bump seen here means this token either got
-            // revoked or was inserted after that revoke: end it and refuse the sign-in.
-            if ($epoch !== null && $epochBefore !== null && $epoch > $epochBefore) {
+            // The refresh row remembers the epoch it was minted under (sign-in: read before
+            // the password check; rotation: the parent's). A user row ahead of it means a
+            // sign-out everywhere landed since, also when that revoke has not reached this
+            // row yet or this is a grace replay: end the token and refuse.
+            $minted = $this->refreshTokens->epochFor($refreshToken);
+            if ($epoch !== null && $minted !== null && $epoch > $minted) {
                 $this->refreshTokens->revoke($refreshToken);
                 throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
             }
