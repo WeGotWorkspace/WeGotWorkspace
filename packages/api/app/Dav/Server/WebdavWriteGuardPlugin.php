@@ -133,6 +133,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new Forbidden('The Yjs sidecar is server-owned.');
         }
 
+        if (($method === 'DELETE' || $method === 'MOVE') && self::isDriveRoot($path)) {
+            throw new Forbidden('A Drive root goes with its user or Team.');
+        }
         if (($method === 'DELETE' || $method === 'MOVE') && $this->isProjectFolder($path)) {
             throw new Forbidden('A Project folder follows its Project. Rename or delete the Project in the app.');
         }
@@ -240,6 +243,12 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
      * True for {@code files}, {@code files/users}, {@code files/groups}, or any {@code files/…} path that is
      * not under {@code files/users/{user}/} or {@code files/groups/{group}/}.
      */
+    /** `files/users/{name}` or `files/groups/{team}` itself (#819: the Team Drive root stays). */
+    private static function isDriveRoot(string $path): bool
+    {
+        return preg_match('#^files/(users|groups)/[^/]+$#', self::normalizePath($path)) === 1;
+    }
+
     private static function isStrayFilesPath(string $path): bool
     {
         $p = self::normalizePath($path);
