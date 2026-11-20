@@ -229,9 +229,9 @@ describe("createBrowserSlots", () => {
     const storage = stubBrowser(fakeLocks());
     const [tabA, tabB] = [createBrowserSlots(), createBrowserSlots()];
     const claims = await Promise.all([
-      tabA.claim(10_000, 3_000),
-      tabB.claim(10_000, 3_000),
-      tabA.claim(10_000, 3_000),
+      tabA.claim(10_000, 3_000, "first"),
+      tabB.claim(10_000, 3_000, "first"),
+      tabA.claim(10_000, 3_000, "first"),
     ]);
     expect(claims).toEqual([{ slot: 10_000 }, { slot: 13_000 }, { slot: 16_000 }]);
     expect(storage.values.get("wgw.backgroundSync.nextSlotAt")).toBe("19000");
@@ -248,7 +248,9 @@ describe("createBrowserSlots", () => {
     const storage = memoryStorage();
     storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 29_000));
     stubBrowser(fakeLocks(), storage);
-    expect(await createBrowserSlots().claim(10_000, 3_000)).toEqual({ slot: 39_000 });
+    // Bulk work does not book that slot ahead: it asks again when it is free.
+    expect(await createBrowserSlots().claim(10_000, 3_000)).toEqual({ heldUntil: 39_000 });
+    expect(await createBrowserSlots().claim(10_000, 3_000, "first")).toEqual({ slot: 39_000 });
   });
 
   it("shares a contacts hold across tabs: another tab's Docs claim waits for it", async () => {
@@ -263,8 +265,8 @@ describe("createBrowserSlots", () => {
   it("falls back to the tab's own schedule without Web Locks", async () => {
     const storage = stubBrowser(undefined);
     const slots = createBrowserSlots();
-    expect(await slots.claim(10_000, 3_000)).toEqual({ slot: 10_000 });
-    expect(await slots.claim(10_000, 3_000)).toEqual({ slot: 13_000 });
+    expect(await slots.claim(10_000, 3_000, "first")).toEqual({ slot: 10_000 });
+    expect(await slots.claim(10_000, 3_000, "first")).toEqual({ slot: 13_000 });
     expect(storage.values.size).toBe(0);
   });
 
@@ -273,8 +275,8 @@ describe("createBrowserSlots", () => {
       request: () => Promise.reject(new DOMException("denied", "SecurityError")),
     });
     const slots = createBrowserSlots();
-    expect(await slots.claim(10_000, 3_000)).toEqual({ slot: 10_000 });
-    expect(await slots.claim(10_000, 3_000)).toEqual({ slot: 13_000 });
+    expect(await slots.claim(10_000, 3_000, "first")).toEqual({ slot: 10_000 });
+    expect(await slots.claim(10_000, 3_000, "first")).toEqual({ slot: 13_000 });
   });
 });
 
@@ -305,6 +307,17 @@ describe("priority", () => {
     }
     return { tab, runUntil, now: () => clock };
   }
+
+  it("bulk work never books slots ahead of a contact page that comes later", async () => {
+    const slots = createMemorySlots();
+    // Three Docs and Drive syncs ask at once: one gets the free slot, the others
+    // reserve nothing and ask again when the next slot is free.
+    expect(await slots.claim(10_000, 3_000, "bulk")).toEqual({ slot: 10_000 });
+    expect(await slots.claim(10_000, 3_000, "bulk")).toEqual({ heldUntil: 13_000 });
+    expect(await slots.claim(10_000, 3_000, "bulk")).toEqual({ heldUntil: 13_000 });
+    // A contact page that arrives later still gets the very next slot.
+    expect(await slots.claim(11_000, 3_000, "first")).toEqual({ slot: 13_000 });
+  });
 
   it("contact pages take every slot while they flow; Docs bodies wait for them", async () => {
     const { tab, runUntil, now } = sharedSchedule();

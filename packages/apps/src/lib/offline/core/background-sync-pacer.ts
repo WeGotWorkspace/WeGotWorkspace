@@ -82,10 +82,12 @@ export type BackgroundSyncPacer = {
 export type BackgroundSyncClaim = { slot: number } | { heldUntil: number };
 
 /**
- * Hands out request slots. `claim` reserves the first free slot at or after
- * `at`; the next claim gets one `intervalMs` later. A `first` claim holds
- * `bulk` claims back until one interval after its slot, so the next `first`
- * page gets the next slot; a held `bulk` claim reserves nothing.
+ * Hands out request slots, one `intervalMs` apart. A `first` claim reserves
+ * the first free slot at or after `at` (several `first` claims queue) and
+ * holds `bulk` claims back until one interval after its slot, so the next
+ * `first` page gets the next slot too. A `bulk` claim only takes a slot that
+ * is free now; otherwise it is told when to ask again and reserves nothing, so
+ * bulk work never books slots ahead of a `first` page that comes later.
  */
 export type BackgroundSyncSlots = {
   claim: (
@@ -110,8 +112,11 @@ function claimSlot(
 ): BackgroundSyncClaim {
   const fresh = (time: number) => (Number.isFinite(time) && time - at < 10 * intervalMs ? time : 0);
   const heldUntil = fresh(schedule.heldUntil);
-  if (priority === "bulk" && heldUntil > at) return { heldUntil };
-  const slot = Math.max(fresh(schedule.nextSlotAt), at);
+  const nextSlotAt = fresh(schedule.nextSlotAt);
+  if (priority === "bulk" && Math.max(heldUntil, nextSlotAt) > at) {
+    return { heldUntil: Math.max(heldUntil, nextSlotAt) };
+  }
+  const slot = Math.max(nextSlotAt, at);
   schedule.nextSlotAt = slot + intervalMs;
   if (priority === "first") schedule.heldUntil = slot + 2 * intervalMs;
   return { slot };
