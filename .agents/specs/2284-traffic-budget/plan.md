@@ -62,12 +62,13 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 
 ## Open decisions
 
-- [ ] Chunk G: the Helm chart is not in this repository (no `Chart.yaml` found). To verify: where it lives, and that it sets `WGW_INSTALL_CHANNEL=docker` or `WGW_TRAFFIC_PROFILE=standard`. Chunk G's env work in this repo does not wait on it.
+- [x] Chunk G: the Helm chart is not in this repository (no `Chart.yaml` found). Chunk G does not edit a chart; the install docs name `WGW_INSTALL_CHANNEL` / `WGW_TRAFFIC_PROFILE`, and whoever maintains the chart sets `WGW_TRAFFIC_PROFILE=standard`.
+- [ ] Idle budget (chunk C): measured after chunk I, one idle Docs tab makes 15 requests/min (push 10, two 30 s room heartbeats 4, notifications 1) against ≤ 10. Push at 6 s idle alone is 10/min. Wouter decides which gives: the idle budget, the idle push interval (slower idle join), or the heartbeats.
 
 ## Invariants
 
 - Calendar never sends a full Tasks bootstrap when a Tasks cache exists, and focus/reconnect send none. A wrong change brings back the host's named `tasks/items` burst. Proof: `path: packages/apps/src/calendar-core/src/use-calendar-task-due-overlay.test.tsx` assertions "paints the cache and sends no full load when there is one", "loads Tasks once without a cache, and showing the tab again reloads nothing".
-- Calendar never calls `listCards` while a Contacts cache exists. A wrong change re-downloads the address book per keystroke pause. Proof: `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.test.tsx` "refresh re-reads the cache the live sync keeps current, without a download".
+- Calendar never calls `listCards`, with or without a Contacts cache. A wrong change re-downloads the address book on open or per keystroke pause. Proof: `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.test.tsx` "refresh re-reads the cache the live sync keeps current, without a download", plus a search-with-no-cache case (chunk L).
 - A thread write in a pool the user cannot reach does not change that user's `DocThread` state (no cross-tenant signal). Proof: `path: packages/api/tests/Feature/Jmap/JmapPushDocThreadStateTest.php` (added in chunk B).
 - With push down, Docs threads still arrive (poll resumes). Proof: `path: packages/apps/src/docs-core/src/collab/use-docs-threads-source.test.tsx` (chunk B).
 - Active users keep today's cadence; only idle or long-alone states slow down. Proof: `path: packages/apps/src/lib/rtc/session/poll-cadence.test.ts` (chunk C).
@@ -79,7 +80,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - A room activity where the caller has no peer does not change that caller's `RtcRoom` state, and `seen_at` heartbeats do not change it at all. A wrong change leaks presence across tenants, or makes push state change every poll. Proof: `path: packages/api/tests/Feature/Jmap/JmapPushRtcRoomStateTest.php` (chunk I).
 - A lone peer behind the doorbell still heartbeats below the peer timeout. A wrong change drops lone users from rosters after 60 s. Proof: `path: packages/apps/src/lib/rtc/session/poll-cadence.test.ts` (chunk I).
 - While push is unhealthy every app's backup poll resumes within one interval. A wrong change freezes live updates behind a broken proxy. Proof: `path: packages/apps/src/lib/api/wgw/push-health.test.ts` (chunk K).
-- A push request with every type stays ≤ 25 ms on the reference stack. A wrong change makes the most frequent request heavy for 5 FPM children. Proof: `cmd: WGW_TRAFFIC_MINUTES=3 pnpm --dir packages/apps exec playwright test --config playwright.traffic.config.mjs` (report field `pushMs`, chunk M).
+- A push request with every type stays ≤ 25 ms on the reference stack. A wrong change makes the most frequent request heavy for 5 FPM children. Proof: `cmd: WGW_TRAFFIC_MINUTES=3 pnpm --dir packages/apps exec playwright test --config playwright.traffic.config.mjs` (report field `pushMs`, chunk H).
 - A new network poll without a listed reason fails CI. Proof: `path: packages/apps/src/lib/traffic/network-polls.test.ts` (chunk M).
 - After each chunk, main works without the next one (every chunk is independent of the governor). Proof: `cmd: pnpm --dir packages/apps exec vitest run` and `cmd: composer --working-dir packages/api done-gate` per PR.
 
@@ -90,14 +91,14 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Inputs:** overlay and invitee behaviour above — `path: packages/apps/src/calendar-core/src/use-calendar-task-due-overlay.ts:78`, `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.ts:19`; live inbound hooks — `path: packages/apps/src/tasks-core/src/use-tasks-live-inbound.ts:103`
 - **Done when:** #2285 AC met; the two live-inbound hooks live under `src/lib` with their tests; no `wgw-boundaries/import-boundaries` warning in calendar-core.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core src/tasks-core src/contacts-core`; `pnpm --dir packages/apps exec eslint src/calendar-core`
-- **Parallel with:** B, C, D, E
+- **Parallel with:** B, D, E
 
 ### Chunk B: docthread-push (#2286)
 - **Skill:** api, then workspace
 - **Inputs:** `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:147`, `:249`; `path: packages/apps/src/docs-core/src/collab/use-docs-threads-source.ts:165`
 - **Done when:** #2286 AC met; OpenAPI lists `DocThread`; `docs/architecture/jmap-push.md` updated.
 - **Verify with:** `composer --working-dir packages/api done-gate` (or `php scripts/done-gate.php` locally); `pnpm --dir packages/apps exec vitest run src/docs-core`
-- **Parallel with:** A, C, D, E
+- **Parallel with:** A, D, E
 
 ### Chunk C: idle-cadence (#2287)
 - **Skill:** workspace (rescoped: idle push 6 s; room slowdowns are the push-down fallback)
@@ -111,21 +112,21 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Inputs:** `path: packages/apps/src/lib/offline/core/browser-online.ts:29`
 - **Done when:** #2288 AC met.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/hooks src/calendar-core src/tasks-core src/meet-core`
-- **Parallel with:** A, B, C, E
+- **Parallel with:** A, B, E
 
 ### Chunk E: request-loops (#2289)
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/meet-core/src/use-meet-channel-call-activity.ts:127`; `path: packages/apps/src/sw.ts:33`
 - **Done when:** #2289 AC met, including the production-build check (no icon request on app switch).
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/meet-core`; production preview on :4190, Network panel while switching apps
-- **Parallel with:** A, B, C, D
+- **Parallel with:** A, B, D
 
 ### Chunk F: browser-wide-pacing (#2290)
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/lib/offline/core/background-sync-pacer.ts:14`
 - **Done when:** #2290 AC met; cold start measured with the harness.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline src/contacts-core`
-- **Parallel with:** A–E
+- **Parallel with:** A, B, D, E
 
 ### Chunk G: sw-governor (#2291)
 - **Skill:** workspace, api, security (cache/limiter key derived from the request: coalesce key includes the Authorization header)
@@ -178,7 +179,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 
 ## Removed since previous revision
 
-None — every heading of the first revision is kept; the doorbell rule was added (2026-11-19).
+None — every heading of the first revision is kept; the doorbell rule was added (2026-11-19). 2026-11-20 (second review): the Calendar invariant drops its "while a Contacts cache exists" exception, the slow lone-room interval is the push-down fallback only, chunk C no longer runs in parallel with A–E, and the Helm item is closed.
 
 ## Test plan
 
