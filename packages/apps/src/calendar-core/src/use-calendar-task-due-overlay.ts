@@ -1,3 +1,5 @@
+import { collectionsInProject } from "@/lib/projects/project-match";
+import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
@@ -27,14 +29,20 @@ function emptyOverlayState(): CalendarTaskDueOverlayState {
   };
 }
 
-function overlayStateFromData(
+/** With a Project selected, Reminders shows only its task list (#818 C3). */
+export function overlayStateFromData(
   data: TasksUIData,
   hiddenListIds: ReadonlySet<string>,
+  projectId: string | null = null,
 ): CalendarTaskDueOverlayState {
-  const model = buildTaskDueOverlayModel(data.tasks, data.taskLists, { hiddenListIds });
+  const taskLists = collectionsInProject(data.taskLists, projectId);
+  const shownIds = new Set(taskLists.map((list) => list.id));
+  const tasks =
+    projectId === null ? data.tasks : data.tasks.filter((t) => shownIds.has(t.taskListId));
+  const model = buildTaskDueOverlayModel(tasks, taskLists, { hiddenListIds });
   return {
-    taskLists: data.taskLists,
-    tasks: data.tasks,
+    taskLists,
+    tasks,
     overlayEvents: model.events,
     markers: model.markers,
   };
@@ -63,6 +71,7 @@ export function useCalendarTaskDueOverlay({
   hiddenListIds,
 }: UseCalendarTaskDueOverlayArgs): CalendarTaskDueOverlayState {
   const [liveData, setLiveData] = useState<TasksUIData | null>(null);
+  const projectId = useSelectedProjectId();
   const refreshInFlightRef = useRef(false);
   const presetMode = preset != null;
 
@@ -146,6 +155,6 @@ export function useCalendarTaskDueOverlay({
   return useMemo(() => {
     const data = preset ?? liveData;
     if (!data) return emptyOverlayState();
-    return overlayStateFromData(data, hiddenListIds);
-  }, [hiddenListIds, liveData, preset]);
+    return overlayStateFromData(data, hiddenListIds, projectId);
+  }, [hiddenListIds, liveData, preset, projectId]);
 }
