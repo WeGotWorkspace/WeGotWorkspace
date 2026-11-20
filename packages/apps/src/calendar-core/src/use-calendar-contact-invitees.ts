@@ -21,9 +21,7 @@ export type CalendarContactInviteesState = {
  * the whole address book on open: on a cold start that doubled the Contacts
  * download as an unpaced burst (shared hosting traffic budget). Without a
  * cache the list starts empty; teammates and a typed email still work.
- */
-
-/**
+ *
  * Typing in the invitee search re-reads the cache, which the Contacts live
  * inbound sync keeps current (mounted below, one syncing tab per browser).
  * Only when this browser has no contacts cache at all does it ask the server.
