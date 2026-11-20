@@ -7,6 +7,7 @@ import {
   requiredGroupName,
   usersWithoutGroup,
   validateNewGroup,
+  withTeamAdmins,
 } from "@/admin-core/src/admin-group-directory";
 import { mutationErrorMessage } from "@/admin-core/src/admin-mutation-feedback";
 import type { AdminMutationSliceArgs } from "@/admin-core/src/admin-mutation-slice";
@@ -43,7 +44,15 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
     return true;
   };
 
-  const updateGroup = async (groupId: string, input: { name: string; memberUserIds: string[] }) => {
+  const updateGroup = async (
+    groupId: string,
+    input: { name: string; memberUserIds: string[]; teamAdminUserIds: string[] },
+  ) => {
+    // Only a member can be team admin.
+    const teamAdmins = memberUsernames(
+      users,
+      input.teamAdminUserIds.filter((id) => input.memberUserIds.includes(id)),
+    );
     const required = requiredGroupName(input.name);
     if (!required.ok) {
       showError(required.message);
@@ -54,6 +63,7 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
         const next = await operations.updateGroup(groupId, {
           displayName: required.name,
           members: memberUsernames(users, input.memberUserIds),
+          teamAdmins,
         });
         applyAdminData(next);
         showSuccess("Team saved");
@@ -63,7 +73,9 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
         return false;
       }
     }
-    setGroups((prev) => renameGroup(prev, groupId, required.name));
+    setGroups((prev) =>
+      withTeamAdmins(renameGroup(prev, groupId, required.name), groupId, teamAdmins),
+    );
     setUsers((prev) => applyGroupMembership(prev, groupId, input.memberUserIds));
     showSuccess("Team saved");
     return true;

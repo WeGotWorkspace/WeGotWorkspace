@@ -166,7 +166,12 @@ export function registerBuiltinSettings(): void {
   registerSlice({
     id: "memberships",
     panelIds: ["memberships"],
-    render: (props) => <SettingsMembershipsPane groups={props.memberships} />,
+    render: (props) => (
+      <SettingsMembershipsPane
+        groups={props.memberships}
+        currentUsername={props.profile.username}
+      />
+    ),
   });
   registerSlice({
     id: "offline",

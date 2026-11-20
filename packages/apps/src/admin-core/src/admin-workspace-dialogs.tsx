@@ -21,6 +21,7 @@ import {
 } from "@/ui/dialog";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
@@ -40,8 +41,8 @@ type UserDialogProps = {
 
 function adminRoleHint(lockedOn: boolean): string {
   return lockedOn
-    ? "You cannot remove your own administrator access."
-    : "Can manage users, Teams and settings.";
+    ? "You cannot remove your own organization admin role."
+    : "Creates users and Teams, assigns people to Teams, and changes settings.";
 }
 
 export function UserDialog({
@@ -125,7 +126,7 @@ export function UserDialog({
           </FormField>
           <FormField
             layout="inline"
-            label="Administrator"
+            label="Organization admin"
             htmlFor={adminSwitchId}
             description={<span id={adminHintId}>{adminRoleHint(adminLockedOn)}</span>}
           >
@@ -271,11 +272,23 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
 type GroupDialogProps = {
   open: boolean;
   title: string;
-  initial?: { id: string; displayName: string };
+  initial?: { id: string; displayName: string; teamAdmins: string[] };
   users: Array<{ id: string; displayName: string; username: string; groups: string[] }>;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: { name: string; memberUserIds: string[] }) => void;
+  onSubmit: (payload: {
+    name: string;
+    memberUserIds: string[];
+    teamAdminUserIds: string[];
+  }) => void;
 };
+
+function teamAdminUserIdsOf(
+  initial: GroupDialogProps["initial"],
+  users: GroupDialogProps["users"],
+): string[] {
+  if (!initial) return [];
+  return users.filter((user) => initial.teamAdmins.includes(user.username)).map((user) => user.id);
+}
 
 export function GroupDialog({
   open,
@@ -290,6 +303,9 @@ export function GroupDialog({
   const [memberUserIds, setMemberUserIds] = useState<string[]>(
     initial ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id) : [],
   );
+  const [teamAdminUserIds, setTeamAdminUserIds] = useState<string[]>(() =>
+    teamAdminUserIdsOf(initial, users),
+  );
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!open) {
@@ -299,6 +315,7 @@ export function GroupDialog({
     if (wasOpenRef.current) return;
     wasOpenRef.current = true;
     setName(initial?.displayName ?? "");
+    setTeamAdminUserIds(teamAdminUserIdsOf(initial, users));
     setMemberUserIds(
       initial
         ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id)
@@ -328,7 +345,10 @@ export function GroupDialog({
           />
         </FormField>
         {initial ? (
-          <FormField label="Members">
+          <FormField
+            label="Members"
+            description="A team admin adds and removes members and manages the Team's Projects."
+          >
             <ul className="admin-group-member-list">
               {users.map((user) => (
                 <li key={user.id} className="admin-group-member-row">
@@ -338,6 +358,26 @@ export function GroupDialog({
                     size="md"
                     className="flex-1"
                   />
+                  {memberUserIds.includes(user.id) ? (
+                    <Select
+                      value={teamAdminUserIds.includes(user.id) ? "teamAdmin" : "member"}
+                      onValueChange={(next) =>
+                        setTeamAdminUserIds((prev) =>
+                          next === "teamAdmin"
+                            ? [...prev.filter((id) => id !== user.id), user.id]
+                            : prev.filter((id) => id !== user.id),
+                        )
+                      }
+                    >
+                      <SelectTrigger size="sm" aria-label={`Role of ${user.displayName}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="teamAdmin">Team admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : null}
                   <Switch
                     checked={memberUserIds.includes(user.id)}
                     onCheckedChange={() => toggleMember(user.id)}
@@ -352,7 +392,10 @@ export function GroupDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onSubmit({ name, memberUserIds })} disabled={!name.trim()}>
+          <Button
+            onClick={() => onSubmit({ name, memberUserIds, teamAdminUserIds })}
+            disabled={!name.trim()}
+          >
             Save
           </Button>
         </DialogFooter>

@@ -5,24 +5,12 @@
  * Use these instead of long `className` / `style` stacks on pane TSX — see `.agents/skills/apps-ui/`.
  */
 
-/* --- Lists (users, groups, group dialog) --- */
-:is(.admin-workspace, .admin-dialog-surface) .admin-divided-list > * + * {
-  border-top: 1px solid color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row {
-  @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
-}
-
+/* --- Lists (users, Teams): rows come from ui/avatar-list; these are the admin-only parts --- */
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-status-tag {
   @apply shrink-0;
   /* Ink-mixed warning so 12px chip text meets 4.5:1 on the cream wash. */
   --tag-fg: color-mix(in oklab, var(--color-warning) 32%, var(--workspace-foreground));
   --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__actions {
-  @apply flex shrink-0 items-center gap-1;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-tags {
@@ -314,11 +302,4 @@
 
 .admin-workspace .admin-fix-link > svg {
   @apply size-4;
-}
-
-/* Row actions (edit, password, delete) end on the column edge like the page rows. */
-.admin-workspace .admin-list-row__actions > .icon-button--size-md:last-child {
-  margin-inline-end: calc(
-    (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
-  );
 }
