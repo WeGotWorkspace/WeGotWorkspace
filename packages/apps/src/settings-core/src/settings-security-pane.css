@@ -73,6 +73,16 @@
   @apply min-w-0 flex-1;
 }
 
+/* The copy button sits beside the field, inside the row: it keeps its own edge instead of the
+ * inline row's end pull (`ui/field-label-row.css`); pulled, it widened the dialog body by its
+ * padding, the body scrolled sideways and the first click on Done only scrolled it. */
+.field-label-row--inline
+  .field-label-row__control
+  .settings-security-pane__secret-row
+  > .icon-button--size-md:last-child {
+  margin-inline-end: 0;
+}
+
 /* Two-factor sign-in (#2275). Dialogs portal out of the pane, so these stay unscoped. */
 .settings-two-factor__note {
   @apply pt-3;
