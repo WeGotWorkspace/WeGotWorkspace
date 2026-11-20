@@ -21,3 +21,22 @@
 .project-filter-select__item {
   @apply inline-flex min-w-0 items-center gap-2;
 }
+
+/*
+ * The sidebar footer floats over the scrolling list (no surface of its own), so the
+ * filter gets the account card's frost, like everything else that sits there.
+ */
+.app-sidebar__footer .project-filter-select {
+  min-block-size: var(--control-height-md);
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+}
+
+.app-sidebar__footer .project-filter-select:hover:not(:disabled),
+.app-sidebar__footer .project-filter-select[data-state="open"] {
+  background: color-mix(in oklch, var(--workspace-foreground) 8%, var(--frost-background));
+}
