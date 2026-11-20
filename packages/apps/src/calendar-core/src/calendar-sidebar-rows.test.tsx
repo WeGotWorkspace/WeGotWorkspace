@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
-import { MyCalendarsSidebarSection } from "@/calendar-core/src/calendar-sidebar-rows";
+import {
+  CalendarSidebarRows,
+  MyCalendarsSidebarSection,
+} from "@/calendar-core/src/calendar-sidebar-rows";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 
 const calendars = [
@@ -74,5 +77,62 @@ describe("MyCalendarsSidebarSection", () => {
       "false",
     );
     expect(screen.queryByText("Personal")).toBeNull();
+  });
+});
+
+describe("CalendarSidebarRows for a Project calendar", () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
+  function editButtonsFor(rows: CalendarInfo[]) {
+    render(
+      <TooltipProvider delayDuration={0}>
+        <CalendarSidebarRows
+          calendars={rows}
+          hiddenCalendarIds={new Set()}
+          canDeleteCalendars
+          canUnsubscribe
+          editLabel="Edit calendar"
+          subscribedLabel="Subscribed"
+          viewOnlyLabel="View only"
+          pendingSyncLabel="Pending"
+          onToggleVisibility={vi.fn()}
+          onSelectDefault={vi.fn()}
+          onEdit={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+    return screen.queryAllByRole("button", { name: "Edit calendar" });
+  }
+
+  it("has no edit pencil on the owner side of a Project calendar", () => {
+    const buttons = editButtonsFor([
+      { id: "plain", name: "Plain", color: "#0ea5e9", mayDelete: true },
+      { id: "project", name: "Project", color: "#f43f5e", mayDelete: true, projectId: "p-1" },
+      {
+        id: "locked",
+        name: "Locked",
+        color: "#22c55e",
+        projectId: "p-1",
+        mayRename: false,
+      },
+    ]);
+    expect(buttons).toHaveLength(1);
+  });
+
+  it("keeps the pencil on a sharee's own copy of a Project calendar", () => {
+    const buttons = editButtonsFor([
+      {
+        id: "shared",
+        name: "Shared",
+        color: "#0ea5e9",
+        projectId: "p-1",
+        mayRename: true,
+        isSharee: true,
+        mayWrite: false,
+      },
+    ]);
+    expect(buttons).toHaveLength(1);
   });
 });

@@ -6,6 +6,7 @@ import {
 import {
   canOpenCalendarSettings,
   canWriteCalendarCollection,
+  isProjectLockedCalendar,
 } from "@/calendar-core/src/calendar-collection-write";
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
@@ -94,7 +95,7 @@ export function CalendarSidebarRows({
           ? canUnsubscribe
           : (calendar.mayDelete !== false || isSharedWithMeCalendar(calendar)) &&
             canDeleteCalendars;
-        const canManage = mayEdit || mayDelete;
+        const canManage = !isProjectLockedCalendar(calendar) && (mayEdit || mayDelete);
         const selected = calendar.id === defaultCalendarId;
         return (
           <CollectionSidebarRow
