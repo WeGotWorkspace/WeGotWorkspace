@@ -83,10 +83,18 @@ The id is a plain list of independent per-type hashes, never one hash over the w
 | `FileNode`                   | a change marker per visible root, plus the user's member grants (below) | existing; grants since #1926                                                                                   |
 | `Task`, `TaskList`           | task list instances + synctokens (`TaskListRepository`)                 | no JMAP type today. Use the type names from the JMAP Tasks draft, so a later JMAP Tasks surface can keep them. |
 | `Notification`               | a change marker per principal on `notifications` (below)                | WGW type for active news; the client fetches the inbox                                                         |
+| `DocThread`                  | Docs thread pools behind the user's Drive roots (below)                 | WGW type (#2286); the open document calls `files/threads/changes`                                              |
 
 Every state read is O(collections or roots the user can see), never O(changes on the server).
 
-Docs threads also live in `calendarchanges`, but their access comes from the Drive ACL (`DriveShareAuthorizer`), not calendar shares. They are a later slice.
+### Docs threads: pools behind the Drive roots
+
+Docs comment and suggestion threads live in one hidden VJOURNAL pool per file owner (a user or a Team, `docs-threads`, kind `DocsThreadPool`). Their access comes from the Drive ACL (`DriveShareAuthorizer`), not calendar shares, so the `DocThread` state follows the user's Drive roots (`FileNodeAccountSupport::rootsAndGrantPairs`, `DocThreadPushState`, #2286):
+
+- **Whole owner tree** (`users/<me>`, `groups/<team>`): the pool's sync token. The user can read every thread in it.
+- **Share root deeper in someone else's tree:** a digest of the uid and etag of the threads and replies on documents at or under that root (`docs_thread_index` joined with `calendarobjects`). A comment on another document of the same owner does not move it, so a grantee learns nothing about documents they cannot read.
+
+A user without a pool behind any root gets `0:`. Two indexed reads, plus one per share root.
 
 ### Drive: a change marker per root
 
@@ -245,6 +253,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Notification inbox | `Notification`               | inbox fetch in one tab, fanned out to the others, local-ack (built, `use-notifications-inbox-push.ts`); in-app toast in the front tab (built, `use-notification-toasts.ts`; [notifications.md](notifications.md#active-news-on-the-client))                                                                    |
 | Drive, Docs home   | `FileNode`                   | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
 | Tasks              | `Task`, `TaskList`           | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`)                                                                                                                                                         |
+| Docs threads       | `DocThread`                  | the open document calls `files/threads/changes` once per push (built, `use-docs-threads-source.ts`); the 4 s poll runs only while push is down (#2286)                                                                                                                                                         |
 
 **One syncing tab per app.** Notes, Contacts, Calendar and Meet chat share one inbound sync per browser, app and account (#2252, `JmapInboundAdapter.shareAcrossTabs`, `inbound-sync-share.ts`). The tab that holds the Web Lock `wgw-inbound-sync/<app>/<account>` runs the push rounds and the fallback poll; the other tabs skip both and re-read the shared cache when the syncing tab says a round is done. A tab that is behind on a push confirms it when that message arrives; if none comes within 5 s (`SHARED_ROUND_WAIT_MS`: the syncing tab loaded after the change, so it had nothing to pull), it pulls for itself. That lock follows the stream's rule above: every such tab holds a second lock while it is visible, and a hidden holder gives the sync lock back and queues again while another tab with that app is visible (it checks when it becomes hidden, when it gets the lock, and when a tab says it is visible). A hidden tab does not run its poll, so with push down the updates still arrive in the visible tab. An explicit `sync()` (the user acted in that tab) always runs.
 
