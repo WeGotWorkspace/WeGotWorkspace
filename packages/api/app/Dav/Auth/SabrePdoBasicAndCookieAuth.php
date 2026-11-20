@@ -6,7 +6,7 @@ namespace App\Dav\Auth;
 
 use App\Models\User;
 use App\Services\Auth\LoginRateLimiter;
-use App\Services\Auth\UserEnabledGuard;
+use App\Services\Auth\ProtocolCredentials;
 use Sabre\DAV\Auth\Backend\PDOBasicAuth;
 use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
@@ -36,7 +36,15 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
             throw new TooManyAttempts($limiter->protocolRetryAfter($user, $clientIp));
         }
 
-        if (! $this->passwordMatches($user, (string) $password) || ! app(UserEnabledGuard::class)->isEnabled($user)) {
+        $password = (string) $password;
+        $userAgent = request()->userAgent();
+        $valid = app(ProtocolCredentials::class)->verify(
+            $user,
+            $password,
+            is_string($userAgent) ? $userAgent : null,
+            fn (): bool => $this->passwordMatches($user, $password),
+        );
+        if (! $valid) {
             $limiter->hitProtocol($user, $clientIp);
 
             return false;

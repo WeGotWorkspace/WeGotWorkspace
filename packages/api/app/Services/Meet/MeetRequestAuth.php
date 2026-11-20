@@ -8,6 +8,7 @@ use App\Dav\Auth\SabreUiAuthGate;
 use App\Exceptions\ApiHttpException;
 use App\Services\Auth\BearerAuthenticationService;
 use App\Services\Auth\LoginRateLimiter;
+use App\Services\Auth\ProtocolCredentials;
 use App\Services\Auth\SabreCredentialValidator;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,7 @@ final class MeetRequestAuth
         private BearerAuthenticationService $bearer,
         private SabreCredentialValidator $credentials,
         private LoginRateLimiter $limiter,
+        private ProtocolCredentials $protocolCredentials,
     ) {}
 
     /**
@@ -68,9 +70,20 @@ final class MeetRequestAuth
         $ip = $request->ip();
         $clientIp = is_string($ip) ? $ip : '';
         if (! $this->limiter->allowProtocol($username, $clientIp)) {
-            throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
+            throw new ApiHttpException(
+                429,
+                'Too many login attempts. Please try again later.',
+                'throttled',
+                headers: ['Retry-After' => $this->limiter->protocolRetryAfter($username, $clientIp)],
+            );
         }
-        if (! $this->credentials->validate($username, $password, $realm)) {
+        $valid = $this->protocolCredentials->verify(
+            $username,
+            $password,
+            $request->userAgent(),
+            fn (): bool => $this->credentials->validate($username, $password, $realm),
+        );
+        if (! $valid) {
             $this->limiter->hitProtocol($username, $clientIp);
 
             return null;
