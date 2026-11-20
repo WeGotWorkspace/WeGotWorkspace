@@ -3,7 +3,11 @@ import { listCards } from "@/lib/api/wgw/contacts";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
+import {
+  readContactsBootstrapFromCache,
+  readContactsColdDownload,
+} from "@/lib/offline/contacts/contacts-offline-store";
+import { refreshCachedContacts } from "@/lib/offline/contacts/contacts-hybrid-operations";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type CalendarContactInviteesState = {
@@ -18,12 +22,6 @@ export type CalendarContactInviteesState = {
  * download as an unpaced burst (shared hosting traffic budget). Without a
  * cache the list starts empty; teammates and a typed email still work.
  */
-export async function loadCalendarContactCards(username: string): Promise<ContactCard[]> {
-  const account = username.trim();
-  if (!account) return [];
-  const cached = await readContactsBootstrapFromCache(account);
-  return cached?.data.cards ?? [];
-}
 
 /**
  * Typing in the invitee search re-reads the cache, which the Contacts live
@@ -45,62 +43,76 @@ export async function refreshCalendarContactCards(username: string): Promise<Con
 
 export function useCalendarContactInvitees(username?: string): CalendarContactInviteesState {
   const [cards, setCards] = useState<ContactCard[]>([]);
-  const [hasCache, setHasCache] = useState(false);
+  // A cache exists and its first download is finished, so sync tokens are stored.
+  const [cacheComplete, setCacheComplete] = useState(false);
   const loadGen = useRef(0);
   const { online } = useConnectivity();
+  const account = username?.trim() ?? "";
 
   const rereadCache = useCallback(async () => {
-    const account = username?.trim() ?? "";
     if (!account) return;
     const cached = await readContactsBootstrapFromCache(account);
-    if (cached) {
-      setHasCache(true);
-      setCards(cached.data.cards);
-    }
-  }, [username]);
+    if (cached) setCards(cached.data.cards);
+  }, [account]);
+
+  const readCacheState = useCallback(
+    async (gen: number) => {
+      const cached = await readContactsBootstrapFromCache(account);
+      const coldDownload = cached ? await readContactsColdDownload(account) : null;
+      if (loadGen.current !== gen) return;
+      setCacheComplete(Boolean(cached) && !coldDownload);
+      if (cached) setCards(cached.data.cards);
+    },
+    [account],
+  );
+
+  // The live adapter starts from the server's current state, not the stored
+  // tokens: catch the cache up once, as the Contacts app does, then re-read it.
+  useEffect(() => {
+    if (!account || !cacheComplete || !online || !wgwLiveApiEnabled()) return;
+    let cancelled = false;
+    void refreshCachedContacts(account)
+      .then(() => {
+        if (!cancelled) return rereadCache();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [account, cacheComplete, online, rereadCache]);
 
   // Keeps the cache current without a full download: a push or a /changes
-  // round, run by one tab per browser. Needs a cache (and its sync token) first.
+  // round, run by one tab per browser. Needs a finished first download first.
   useContactsLiveInbound({
-    username: username?.trim() || null,
-    enabled: hasCache && online && wgwLiveApiEnabled(),
+    username: account || null,
+    enabled: cacheComplete && online && wgwLiveApiEnabled(),
     patchFromCache: rereadCache,
   });
 
   useEffect(() => {
-    const account = username?.trim() ?? "";
     if (!account) {
       setCards([]);
+      setCacheComplete(false);
       return;
     }
-
     const gen = ++loadGen.current;
-    void readContactsBootstrapFromCache(account).then((cached) => {
-      if (loadGen.current !== gen) return;
-      setHasCache(Boolean(cached));
-      setCards(cached?.data.cards ?? []);
-    });
-  }, [username]);
+    setCards([]);
+    setCacheComplete(false);
+    void readCacheState(gen);
+  }, [account, readCacheState]);
 
   const refreshCards = useCallback(() => {
-    const account = username?.trim() ?? "";
     if (!account) return;
-
     const gen = ++loadGen.current;
-    void readContactsBootstrapFromCache(account).then((cached) => {
+    // Contacts (maybe in another tab) may have written the cache since: pick it
+    // up, and start the live sync once its first download is finished.
+    void readCacheState(gen).then(async () => {
       if (loadGen.current !== gen) return;
-      // Contacts (maybe in another tab) wrote the cache since: use it and start the live sync.
-      if (cached) {
-        setHasCache(true);
-        setCards(cached.data.cards);
-        return;
-      }
-      void refreshCalendarContactCards(account).then((next) => {
-        if (next == null || loadGen.current !== gen) return;
-        setCards(next);
-      });
+      const next = await refreshCalendarContactCards(account);
+      if (next == null || loadGen.current !== gen) return;
+      setCards(next);
     });
-  }, [username]);
+  }, [account, readCacheState]);
 
   return { cards, refreshCards };
 }

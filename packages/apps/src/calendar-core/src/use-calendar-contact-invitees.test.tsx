@@ -5,17 +5,33 @@ import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
-  loadCalendarContactCards,
   refreshCalendarContactCards,
   useCalendarContactInvitees,
 } from "@/calendar-core/src/use-calendar-contact-invitees";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
+import {
+  readContactsBootstrapFromCache,
+  readContactsColdDownload,
+} from "@/lib/offline/contacts/contacts-offline-store";
+import { refreshCachedContacts } from "@/lib/offline/contacts/contacts-hybrid-operations";
 import { listCards } from "@/lib/api/wgw/contacts";
 import { TooltipProvider } from "@/ui/tooltip";
 import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
 
 vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   readContactsBootstrapFromCache: vi.fn(),
+  readContactsColdDownload: vi.fn(),
+}));
+
+vi.mock("@/lib/offline/contacts/contacts-hybrid-operations", () => ({
+  refreshCachedContacts: vi.fn(),
+}));
+
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwLiveApiEnabled: () => true,
+}));
+
+vi.mock("@/hooks/use-connectivity", () => ({
+  useConnectivity: () => ({ online: true }),
 }));
 
 vi.mock("@/lib/api/wgw/contacts", () => ({
@@ -51,39 +67,6 @@ const liveJane = {
   },
 } as unknown as ContactCard;
 
-describe("loadCalendarContactCards", () => {
-  beforeEach(() => {
-    vi.mocked(readContactsBootstrapFromCache).mockReset();
-    vi.mocked(listCards).mockReset();
-  });
-
-  it("returns cached cards on cache hit without calling listCards", async () => {
-    const bootstrap = createContactsAppBootstrap({
-      data: { addressBooks: [], cards: [cachedJane] },
-    });
-    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(bootstrap);
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
-
-    await expect(loadCalendarContactCards("alice")).resolves.toEqual([cachedJane]);
-    expect(readContactsBootstrapFromCache).toHaveBeenCalledWith("alice");
-    expect(listCards).not.toHaveBeenCalled();
-  });
-
-  it("never downloads the address book on open: an empty cache gives an empty list", async () => {
-    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
-
-    await expect(loadCalendarContactCards("alice")).resolves.toEqual([]);
-    expect(listCards).not.toHaveBeenCalled();
-  });
-
-  it("returns an empty list when username is missing", async () => {
-    await expect(loadCalendarContactCards("")).resolves.toEqual([]);
-    expect(readContactsBootstrapFromCache).not.toHaveBeenCalled();
-    expect(listCards).not.toHaveBeenCalled();
-  });
-});
-
 describe("refreshCalendarContactCards", () => {
   beforeEach(() => {
     vi.mocked(readContactsBootstrapFromCache).mockReset();
@@ -114,6 +97,9 @@ describe("refreshCalendarContactCards", () => {
 describe("useCalendarContactInvitees", () => {
   beforeEach(() => {
     vi.mocked(readContactsBootstrapFromCache).mockReset();
+    vi.mocked(readContactsColdDownload).mockReset().mockResolvedValue(null);
+    vi.mocked(refreshCachedContacts).mockReset().mockResolvedValue(undefined);
+    vi.mocked(useContactsLiveInbound).mockClear();
     vi.mocked(listCards).mockReset();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -139,6 +125,47 @@ describe("useCalendarContactInvitees", () => {
     await waitFor(() => {
       expect(result.current.cards).toEqual([cachedJane]);
     });
+  });
+
+  it("does not enable the sync while the first download is unfinished", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
+    );
+    vi.mocked(readContactsColdDownload).mockResolvedValue({
+      remainingCardIds: ["x"],
+    } as never);
+
+    const { result } = renderHook(() => useCalendarContactInvitees("alice"));
+    await waitFor(() => {
+      expect(result.current.cards).toEqual([cachedJane]);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(refreshCachedContacts).not.toHaveBeenCalled();
+    for (const [args] of vi.mocked(useContactsLiveInbound).mock.calls) {
+      expect(args.enabled).toBe(false);
+    }
+  });
+
+  it("catches a complete cache up once from its tokens, without listCards", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
+    );
+
+    const { result } = renderHook(() => useCalendarContactInvitees("alice"));
+    await waitFor(() => {
+      expect(refreshCachedContacts).toHaveBeenCalledTimes(1);
+    });
+    expect(refreshCachedContacts).toHaveBeenCalledWith("alice");
+    await waitFor(() => {
+      expect(vi.mocked(useContactsLiveInbound)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ enabled: true }),
+      );
+    });
+    expect(result.current.cards).toEqual([cachedJane]);
+    expect(refreshCachedContacts).toHaveBeenCalledTimes(1);
+    expect(listCards).not.toHaveBeenCalled();
   });
 
   it("falls back to [] when live load throws", async () => {

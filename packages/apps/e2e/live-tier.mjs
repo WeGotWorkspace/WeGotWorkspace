@@ -17,6 +17,7 @@ export const liveTierSpecs = [
   "calendar-list-autosave-reload",
   "calendar-offline-week-event",
   "calendar-push",
+  "calendar-shared-caches",
   "calendar-team-availability-offline",
   "contacts-first-download",
   "contacts-first-open-count",
