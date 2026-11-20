@@ -1,17 +1,22 @@
 /**
  * Paces background sync requests (Drive content, Docs bodies) so they never
- * use up the account's request budget (600/min, shared by every tab and
- * device). One pacer per tab: Drive and Docs sync share it.
+ * use up the request budget. Drive and Docs sync share one pacer per tab, and
+ * every tab draws its turns from one browser-wide schedule (a Web Lock around a
+ * shared next-slot time), so five open apps download no faster than one.
  *
- * - A fixed request rate, well under the account budget.
+ * - A fixed request rate for the whole browser, well under the host's per-IP limit.
  * - On 429 every background request pauses: `Retry-After` when the server
  *   sends it, otherwise an exponential backoff.
  * - A click or key press pauses background requests briefly, so the user's own
  *   request does not queue behind them.
  */
 
-/** 2 per second. The account budget is 600/min for all tabs and devices together. */
-export const BACKGROUND_SYNC_REQUESTS_PER_MINUTE = 120;
+/**
+ * One every 3 s for the whole browser. The app's own account budget (600/min)
+ * is not the limit that matters on shared hosting: the host's firewall counts
+ * every tab and device behind one IP and may block well before that.
+ */
+export const BACKGROUND_SYNC_REQUESTS_PER_MINUTE = 20;
 /** Pause after a click or key press before background requests resume. */
 export const BACKGROUND_SYNC_USER_IDLE_MS = 1500;
 const BACKOFF_BASE_MS = 5_000;
@@ -66,8 +71,58 @@ export type BackgroundSyncPacer = {
   noteUserActivity: () => void;
 };
 
+/**
+ * Hands out request slots. `claim` reserves the first free slot at or after
+ * `at` and returns its time; the next claim gets one `intervalMs` later.
+ */
+export type BackgroundSyncSlots = {
+  claim: (at: number, intervalMs: number) => Promise<number>;
+};
+
+export function createMemorySlots(): BackgroundSyncSlots {
+  let nextSlotAt = 0;
+  return {
+    async claim(at, intervalMs) {
+      const slot = Math.max(nextSlotAt, at);
+      nextSlotAt = slot + intervalMs;
+      return slot;
+    },
+  };
+}
+
+const SHARED_SLOT_KEY = "wgw.backgroundSync.nextSlotAt";
+const SHARED_SLOT_LOCK = "wgw.backgroundSync.slot";
+
+/**
+ * Slots shared by every tab of this browser: the next free time lives in
+ * localStorage, and a Web Lock makes read-and-reserve atomic across tabs.
+ * Falls back to this tab's own schedule without Web Locks or storage.
+ */
+export function createBrowserSlots(): BackgroundSyncSlots {
+  const local = createMemorySlots();
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks || typeof localStorage === "undefined") return local;
+  return {
+    async claim(at, intervalMs) {
+      try {
+        return await locks.request(SHARED_SLOT_LOCK, () => {
+          const stored = Number(localStorage.getItem(SHARED_SLOT_KEY));
+          // A stored time far ahead is stale (clock change, old setting): ignore it.
+          const next = Number.isFinite(stored) && stored - at < 10 * intervalMs ? stored : 0;
+          const slot = Math.max(next, at);
+          localStorage.setItem(SHARED_SLOT_KEY, String(slot + intervalMs));
+          return slot;
+        });
+      } catch {
+        return local.claim(at, intervalMs);
+      }
+    },
+  };
+}
+
 export type BackgroundSyncPacerOptions = {
   requestsPerMinute?: number;
+  slots?: BackgroundSyncSlots;
   userIdleMs?: number;
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
@@ -100,25 +155,33 @@ export function createBackgroundSyncPacer({
   userIdleMs = BACKGROUND_SYNC_USER_IDLE_MS,
   now = Date.now,
   sleep = defaultSleep,
+  slots = createMemorySlots(),
 }: BackgroundSyncPacerOptions = {}): BackgroundSyncPacer {
   const intervalMs = 60_000 / requestsPerMinute;
-  let nextSlotAt = 0;
   let backoffUntil = 0;
   let backoffStreak = 0;
   let userActiveAt = Number.NEGATIVE_INFINITY;
 
+  async function waitUntilClear(signal?: AbortSignal): Promise<void> {
+    while (true) {
+      if (signal?.aborted) throw abortError();
+      const at = now();
+      const readyAt = Math.max(backoffUntil, userActiveAt + userIdleMs);
+      if (readyAt <= at) return;
+      await sleep(readyAt - at, signal);
+    }
+  }
+
   return {
     async acquire(signal) {
-      while (true) {
-        if (signal?.aborted) throw abortError();
-        const at = now();
-        const readyAt = Math.max(nextSlotAt, backoffUntil, userActiveAt + userIdleMs);
-        if (readyAt <= at) {
-          nextSlotAt = at + intervalMs;
-          return;
-        }
-        await sleep(readyAt - at, signal);
-      }
+      // Backoff and the user's own requests first, then a browser-wide slot.
+      await waitUntilClear(signal);
+      const at = now();
+      const slot = await slots.claim(at, intervalMs);
+      if (slot > at) await sleep(slot - at, signal);
+      // The user clicked, or the server said 429, while this request waited for
+      // its slot: they still go first. The slot is spent; no second claim.
+      await waitUntilClear(signal);
     },
     reportRateLimited(retryAfterMs) {
       const delay = retryAfterMs ?? Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** backoffStreak);
@@ -136,10 +199,13 @@ export function createBackgroundSyncPacer({
 
 let sharedPacer: BackgroundSyncPacer | null = null;
 
-/** The tab's pacer. The first call starts listening for clicks and key presses. */
+/**
+ * The tab's pacer, drawing slots from the browser-wide schedule. The first
+ * call starts listening for clicks and key presses.
+ */
 export function backgroundSyncPacer(): BackgroundSyncPacer {
   if (sharedPacer) return sharedPacer;
-  const pacer = createBackgroundSyncPacer();
+  const pacer = createBackgroundSyncPacer({ slots: createBrowserSlots() });
   sharedPacer = pacer;
   if (typeof window !== "undefined") {
     const onActivity = () => pacer.noteUserActivity();

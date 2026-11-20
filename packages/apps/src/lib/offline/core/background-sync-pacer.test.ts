@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BackgroundSyncRateLimitedError,
   createBackgroundSyncPacer,
+  createBrowserSlots,
+  createMemorySlots,
   isRateLimitedError,
   parseRetryAfterMs,
   retryAfterMsFromError,
@@ -139,5 +141,130 @@ describe("createBackgroundSyncPacer", () => {
     const pending = pacer.acquire(controller.signal);
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("shared slots", () => {
+  it("two tabs drawing from one schedule go no faster than one", async () => {
+    let clock = 1_000_000;
+    const slots = createMemorySlots();
+    const tab = () =>
+      createBackgroundSyncPacer({
+        requestsPerMinute: 20,
+        slots,
+        now: () => clock,
+        sleep: async (ms) => {
+          clock += ms;
+        },
+      });
+    const [docs, drive] = [tab(), tab()];
+    const starts: number[] = [];
+    for (let index = 0; index < 6; index += 1) {
+      await (index % 2 === 0 ? docs : drive).acquire();
+      starts.push(clock);
+    }
+    // Six requests over two tabs, still one every 3 s.
+    expect(starts.map((at) => at - 1_000_000)).toEqual([0, 3_000, 6_000, 9_000, 12_000, 15_000]);
+  });
+});
+
+describe("waiting for a slot", () => {
+  it("lets a click during the wait for a slot go first", async () => {
+    let clock = 1_000_000;
+    const pacer = createBackgroundSyncPacer({
+      requestsPerMinute: 20,
+      userIdleMs: 1_500,
+      now: () => clock,
+      sleep: async (ms) => {
+        // The user clicks halfway through the wait for the second slot.
+        if (clock - 1_000_000 < 1_500 && clock + ms > 1_001_500) {
+          clock = 1_001_500;
+          pacer.noteUserActivity();
+          return;
+        }
+        clock += ms;
+      },
+    });
+    await pacer.acquire();
+    await pacer.acquire();
+    // Slot at +3 s would have been taken; the click at +1.5 s holds it until +3 s anyway.
+    expect(clock - 1_000_000).toBe(3_000);
+  });
+});
+
+/** A Web Lock stand-in: runs callbacks one at a time, like `navigator.locks.request`. */
+function fakeLocks() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return {
+    request: (_name: string, callback: () => unknown) => {
+      const run = tail.then(() => callback());
+      tail = run.catch(() => undefined);
+      return run;
+    },
+  };
+}
+
+function memoryStorage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => void values.set(key, value),
+    removeItem: (key: string) => void values.delete(key),
+    values,
+  };
+}
+
+describe("createBrowserSlots", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubBrowser(locks: unknown, storage = memoryStorage()) {
+    vi.stubGlobal("navigator", { locks });
+    vi.stubGlobal("localStorage", storage);
+    return storage;
+  }
+
+  it("hands two tabs consecutive slots from one shared schedule", async () => {
+    const storage = stubBrowser(fakeLocks());
+    const [tabA, tabB] = [createBrowserSlots(), createBrowserSlots()];
+    const claims = await Promise.all([
+      tabA.claim(10_000, 3_000),
+      tabB.claim(10_000, 3_000),
+      tabA.claim(10_000, 3_000),
+    ]);
+    expect(claims).toEqual([10_000, 13_000, 16_000]);
+    expect(storage.values.get("wgw.backgroundSync.nextSlotAt")).toBe("19000");
+  });
+
+  it("ignores a stored slot more than ten intervals ahead", async () => {
+    const storage = memoryStorage();
+    storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 31_000));
+    stubBrowser(fakeLocks(), storage);
+    expect(await createBrowserSlots().claim(10_000, 3_000)).toBe(10_000);
+  });
+
+  it("keeps a stored slot within ten intervals", async () => {
+    const storage = memoryStorage();
+    storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 29_000));
+    stubBrowser(fakeLocks(), storage);
+    expect(await createBrowserSlots().claim(10_000, 3_000)).toBe(39_000);
+  });
+
+  it("falls back to the tab's own schedule without Web Locks", async () => {
+    const storage = stubBrowser(undefined);
+    const slots = createBrowserSlots();
+    expect(await slots.claim(10_000, 3_000)).toBe(10_000);
+    expect(await slots.claim(10_000, 3_000)).toBe(13_000);
+    expect(storage.values.size).toBe(0);
+  });
+
+  it("falls back to the tab's own schedule when the lock or storage fails", async () => {
+    stubBrowser({
+      request: () => Promise.reject(new DOMException("denied", "SecurityError")),
+    });
+    const slots = createBrowserSlots();
+    expect(await slots.claim(10_000, 3_000)).toBe(10_000);
+    expect(await slots.claim(10_000, 3_000)).toBe(13_000);
   });
 });
