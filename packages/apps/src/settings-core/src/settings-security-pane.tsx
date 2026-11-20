@@ -47,8 +47,8 @@ import { Input } from "@/ui/input";
 import "./settings-security-pane.css";
 
 /**
- * Settings → Security: two-factor sign-in (#2275), then app passwords for calendar, contacts
- * and meeting apps (#2272). Each app password is made for one app, shown once, and can be
+ * Settings → Security: two-factor sign-in (#2275), then app passwords for calendar and
+ * contacts apps (#2272). Each app password is made for one app, shown once, and can be
  * removed on its own or all at once.
  */
 export function SettingsSecurityPane({

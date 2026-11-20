@@ -20,7 +20,7 @@ export type TwoFactorState = {
 };
 
 export type TwoFactorSetup = AuthenticatorSecret & {
-  /** When a calendar, contacts or meeting app last signed in with the account password. */
+  /** When a calendar or contacts app last signed in with the account password. */
   davPasswordUsedAt: string | null;
 };
 

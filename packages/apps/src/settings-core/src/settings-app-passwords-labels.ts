@@ -1,9 +1,9 @@
 /** Copy for Settings → Security → App passwords (#2272). */
 export const appPasswordLabels = {
   panel: "Security",
-  panelDescription: "Two-factor sign-in, and app passwords for calendar, contacts and meeting apps",
+  panelDescription: "Two-factor sign-in, and app passwords for calendar and contacts apps",
   title: "App passwords",
-  lead: "Calendar, contacts and meeting apps on your phone or computer can sign in with an app password instead of your account password. Make one per app, so you can remove it on its own.",
+  lead: "Calendar and contacts apps on your phone or computer sign in with an app password instead of your account password. With two-factor sign-in on, they need one. Make one per app, so you can remove it on its own.",
   empty: "No app passwords yet.",
   loading: "Loading app passwords…",
   offline: "You are offline. App passwords show when the connection is back.",
@@ -43,7 +43,7 @@ export const appPasswordLabels = {
   removeDescription: "Apps that use this password are signed out on their next sync.",
   removeAllTitle: "Remove all app passwords?",
   removeAllDescription:
-    "Every calendar, contacts and meeting app that uses an app password is signed out on its next sync.",
+    "Every calendar and contacts app that uses an app password is signed out on its next sync.",
   removeConfirm: "Remove",
   removeAllConfirm: "Remove all",
   removed: "App password removed",
