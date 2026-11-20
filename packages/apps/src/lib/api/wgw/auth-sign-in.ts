@@ -62,7 +62,7 @@ export class SignInError extends WgwRequestError {
 /**
  * The credentials step: 401 is a wrong username or password. The code step: 401/422 is a wrong
  * code unless the server says the account itself is refused (`unauthorized`, a user disabled
- * in between). A used or expired challenge is 404/410.
+ * in between). A used or expired challenge is 404/410. Anything else, 403 included, is "failed".
  */
 export function signInFailureReason(
   status: number,
@@ -77,7 +77,7 @@ export function signInFailureReason(
       return "credentials";
     return "invalid_code";
   }
-  if (status === 403) return "credentials";
+  // 403 is a refused request (an assistant connect from the wrong origin), not a wrong password.
   return "failed";
 }
 
