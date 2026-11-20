@@ -13,7 +13,7 @@ import type {
 } from "@wgw/openapi-types/settings-types";
 
 /**
- * Named app passwords for calendar, contacts and meeting apps (#2271, #2272). The plaintext
+ * Named app passwords for calendar and contacts apps (#2271, #2272). The plaintext
  * comes back once, from create; the list never carries it. Creating one asks for the account
  * password: a wrong one is 403 `current_password_invalid`, too many tries are 429 `throttled`
  * (with `Retry-After`), more than 50 active ones are 422 `app_password_limit`. A bad name is 400.

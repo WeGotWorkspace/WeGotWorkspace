@@ -42,7 +42,7 @@ import { Input } from "@/ui/input";
 import "./settings-security-pane.css";
 
 /**
- * Settings → Security (#2272): app passwords for calendar, contacts and meeting apps. Each is
+ * Settings → Security (#2272): app passwords for calendar and contacts apps. Each is
  * made for one app, shown once, and can be removed on its own or all at once.
  */
 export function SettingsSecurityPane({
