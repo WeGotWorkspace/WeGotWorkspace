@@ -1,7 +1,7 @@
 /** Copy for Settings → Security → App passwords (#2272). */
 export const appPasswordLabels = {
   panel: "Security",
-  panelDescription: "App passwords for calendar, contacts and meeting apps",
+  panelDescription: "Two-factor sign-in, and app passwords for calendar, contacts and meeting apps",
   title: "App passwords",
   lead: "Calendar, contacts and meeting apps on your phone or computer can sign in with an app password instead of your account password. Make one per app, so you can remove it on its own.",
   empty: "No app passwords yet.",
