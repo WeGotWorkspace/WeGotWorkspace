@@ -94,7 +94,6 @@ export function useSettingsAppPasswords(
 ): SettingsAppPasswordsController {
   // Fixed for the pane's life: a new list source would need a new pane.
   const [ops] = useState(() => operations ?? defaultAppPasswordOperations());
-  const opsRef = useRef(ops);
   const { showSuccess, showError } = useAppToast();
   const [phase, setPhase] = useState<ServerSettingsPhase>("loading");
   const [rows, setRows] = useState<AppPassword[]>([]);
@@ -113,7 +112,7 @@ export function useSettingsAppPasswords(
       loadServerSettings({
         quiet,
         requestRef,
-        read: () => opsRef.current.list(),
+        read: () => ops.list(),
         isDirty: () => false,
         isOffline: isFetchNetworkError,
         setPhase,
@@ -144,7 +143,7 @@ export function useSettingsAppPasswords(
 
   const submitCreate = form.handleSubmit(async (values) => {
     try {
-      const result = await opsRef.current.create({
+      const result = await ops.create({
         name: values.name.trim(),
         currentPassword: values.currentPassword,
       });
@@ -152,8 +151,8 @@ export function useSettingsAppPasswords(
         result.appPassword,
         ...current.filter((row) => row.id !== result.appPassword.id),
       ]);
-      // The account password is not needed any more; only the name stays for the title.
-      form.reset({ name: values.name.trim(), currentPassword: "" });
+      // Neither the name nor the account password is needed any more.
+      form.reset(EMPTY_FORM);
       setCreated(result.password);
     } catch (error) {
       const fieldError = appPasswordCreateFieldError(error);
@@ -174,11 +173,11 @@ export function useSettingsAppPasswords(
     setRemoving(true);
     try {
       if (removal.kind === "all") {
-        await opsRef.current.revokeAll();
+        await ops.revokeAll();
         setRows([]);
         showSuccess(labels.removedAll);
       } else {
-        await opsRef.current.revoke(removal.row.id);
+        await ops.revoke(removal.row.id);
         setRows((current) => current.filter((row) => row.id !== removal.row.id));
         showSuccess(labels.removed);
       }

@@ -16,7 +16,7 @@ import type {
  * Named app passwords for calendar, contacts and meeting apps (#2271, #2272). The plaintext
  * comes back once, from create; the list never carries it. Creating one asks for the account
  * password: a wrong one is 403 `current_password_invalid`, too many tries are 429 `throttled`
- * (no `Retry-After`), more than 50 active ones are 422 `app_password_limit`. A bad name is 400.
+ * (with `Retry-After`), more than 50 active ones are 422 `app_password_limit`. A bad name is 400.
  * Delete and revoke-all answer 200 `{ ok: true }`.
  */
 const PATH = "/settings/app-passwords";
@@ -36,8 +36,8 @@ export type AppPasswordOperations = {
 export const APP_PASSWORD_NAME_MAX = 60;
 
 /**
- * A 429. `retryAfterSeconds` is the `Retry-After` header when the server sent one; the
- * create limit (the profile current-password check) sends none, so it is null there.
+ * A 429. `retryAfterSeconds` is the `Retry-After` header when the server sent one, null
+ * for a 429 without it.
  */
 export class AppPasswordThrottledError extends WgwRequestError {
   readonly retryAfterSeconds: number | null;

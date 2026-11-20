@@ -23539,6 +23539,15 @@
                     },
                     "429": {
                         "description": "Too many sign-in attempts (`throttled`); carries `Retry-After`",
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the sign-in limiter allows another attempt.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {

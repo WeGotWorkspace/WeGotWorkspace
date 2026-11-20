@@ -9543,6 +9543,8 @@ export interface paths {
                 /** @description Too many sign-in attempts (`throttled`); carries `Retry-After` */
                 429: {
                     headers: {
+                        /** @description Seconds until the sign-in limiter allows another attempt. */
+                        "Retry-After"?: number;
                         [name: string]: unknown;
                     };
                     content: {

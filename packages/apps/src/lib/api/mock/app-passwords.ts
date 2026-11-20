@@ -60,7 +60,7 @@ export function createMockAppPasswordOperations(
     create: async ({ name, currentPassword }) => {
       await wait();
       if (currentPassword === "throttled") {
-        throw new AppPasswordThrottledError("Too many attempts", null, "throttled");
+        throw new AppPasswordThrottledError("Too many attempts", 600, "throttled");
       }
       if (currentPassword !== MOCK_ACCOUNT_PASSWORD) {
         throw new WgwRequestError(
