@@ -24,7 +24,7 @@ export const loginLabels = {
   recoveryRequired: "Enter a recovery code.",
   invalid: "That username or password does not match this server.",
   wrongCode: "That code does not match.",
-  expired: "The sign-in took too long. Enter your password again.",
+  expired: "That sign-in step has ended. Enter your password again.",
   throttled: (at: string | null) =>
     at
       ? `Too many sign-in attempts. Try again at ${at}.`
