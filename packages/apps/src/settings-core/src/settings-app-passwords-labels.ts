@@ -13,6 +13,8 @@ export const appPasswordLabels = {
   removeAllButton: "Remove all",
   columns: { name: "Name", created: "Created", lastUsed: "Last used", client: "App" },
   neverUsed: "Never",
+  /** The App column before the first sign-in with it. */
+  noClient: "N/A",
   remove: (name: string) => `Remove ${name}`,
   createTitle: "New app password",
   createDescription: "Name it after the app or device that will use it.",

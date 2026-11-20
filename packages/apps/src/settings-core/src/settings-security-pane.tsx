@@ -158,7 +158,9 @@ function appPasswordColumns(onRemove: (row: AppPassword) => void): DataTableColu
           <span className="settings-security-pane__client" title={row.lastUsedClient}>
             {row.lastUsedClient}
           </span>
-        ) : null,
+        ) : (
+          labels.noClient
+        ),
     },
     {
       key: "lastUsed",
