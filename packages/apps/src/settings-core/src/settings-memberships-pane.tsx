@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { SettingsTeamMembersDialog } from "@/settings-core/src/settings-team-members-dialog";
-import { teamMembersLabels as labels } from "@/settings-core/src/settings-team-members-labels";
+import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
 import { defaultTeamMembersOperations } from "@/settings-core/src/settings-team-members-source";
 import { AvatarList, AvatarListAction, AvatarListRow } from "@/ui/avatar-list";
 import type { TeamMembersOperations } from "@/lib/api/wgw/teams";

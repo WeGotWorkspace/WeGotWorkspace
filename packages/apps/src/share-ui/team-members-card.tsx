@@ -9,7 +9,7 @@ import {
   type ShareSearchOption,
 } from "@/share-ui/share-principal-search-dropdown";
 import { ShareRowSelect, type ShareRowSelectOption } from "@/share-ui/share-row-select";
-import { teamMembersLabels as labels } from "@/settings-core/src/settings-team-members-labels";
+import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
 
 export type TeamRole = "member" | "teamAdmin";
 
