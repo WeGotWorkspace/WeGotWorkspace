@@ -5,7 +5,11 @@ import type { JmapPushHubLike } from "@/lib/api/wgw/use-jmap-state-change";
 import type { StateChangeListener } from "@/lib/jmap-client/push/state-change-subscription";
 import { DocsThreadsRequestError } from "./docs-threads-errors";
 import type { DocsFileThread, DocsThreadsClient } from "./docs-threads-types";
-import { DOCS_THREADS_POLL_MS, useDocsThreadsSource } from "./use-docs-threads-source";
+import {
+  DOCS_THREADS_MAX_CHANGE_PAGES,
+  DOCS_THREADS_POLL_MS,
+  useDocsThreadsSource,
+} from "./use-docs-threads-source";
 
 const PATH = "/users/bob/docs/plan.md";
 
@@ -284,6 +288,63 @@ describe("useDocsThreadsSource behind the push doorbell (#2286)", () => {
       answers = await push.ring("1:principals/bob:2");
     });
     expect(answers).toEqual([false]);
+  });
+
+  const page = (newState: string, created: string[], hasMoreChanges: boolean) => ({
+    oldState: "",
+    newState,
+    created,
+    updated: [],
+    destroyed: [],
+    hasMoreChanges,
+  });
+
+  it("follows hasMoreChanges until the page that names the new thread", async () => {
+    const server = createThreadsServer();
+    server.add("t1");
+    const { result, push } = await mountWithPush(server, true);
+
+    // The shared document's state fell a page behind: the first page holds
+    // only other documents' rows, the new comment is on the second.
+    server.add("t22");
+    server.client.changes
+      .mockResolvedValueOnce(page("p1", [], true))
+      .mockResolvedValueOnce(page("p2", ["t22"], false));
+    let answers: Array<boolean | void> = [];
+    await act(async () => {
+      answers = await push.ring("1:principals/bob:2");
+    });
+
+    expect(answers).toEqual([true]);
+    expect(server.client.changes).toHaveBeenCalledTimes(2);
+    expect(server.client.changes).toHaveBeenNthCalledWith(2, PATH, "p1");
+    expect(ids(result.current.fileThreads)).toEqual(["t1", "t22"]);
+  });
+
+  it("answers false at the page cap and goes on from the last state on the next push", async () => {
+    const server = createThreadsServer();
+    server.add("t1");
+    const { push } = await mountWithPush(server, true);
+
+    let served = 0;
+    server.client.changes.mockImplementation(async () => {
+      served += 1;
+      return page(`p${served}`, [], true);
+    });
+    let answers: Array<boolean | void> = [];
+    await act(async () => {
+      answers = await push.ring("1:principals/bob:2");
+    });
+    expect(answers).toEqual([false]);
+    expect(server.client.changes).toHaveBeenCalledTimes(DOCS_THREADS_MAX_CHANGE_PAGES);
+
+    server.client.changes.mockReset();
+    server.client.changes.mockResolvedValueOnce(page("done", [], false));
+    await act(async () => {
+      answers = await push.ring("1:principals/bob:2");
+    });
+    expect(answers).toEqual([true]);
+    expect(server.client.changes).toHaveBeenCalledWith(PATH, `p${DOCS_THREADS_MAX_CHANGE_PAGES}`);
   });
 
   it("does not subscribe without a live client (snapshot or no polling)", async () => {
