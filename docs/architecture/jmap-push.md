@@ -145,18 +145,18 @@ Now:
 
 Same seeded data before and after (one user in four Teams with six own and six shared calendars, five shared folders), all pushed states byte-identical:
 
-| Source                                   | MySQL queries before |               after | MySQL p50 before (ms) |          after (ms) | SQLite Server-Timing before (ms) | after (ms) |
-| ---------------------------------------- | -------------------: | ------------------: | --------------------: | ------------------: | -------------------------------: | ---------: |
-| shared CalDAV read                       |                    – | (in the rows below) |                     – | (in the rows below) |                                – |       3.63 |
-| notes                                    |                   23 |                   5 |                  16.7 |                 2.8 |                             2.65 |       0.08 |
-| calendars                                |                   24 |                   6 |                  17.7 |                 3.7 |                             2.25 |       0.16 |
-| contacts                                 |                   19 |                   5 |                  14.0 |                 2.9 |                             0.77 |       0.62 |
-| chat                                     |                   24 |                   7 |                  17.4 |                 3.8 |                             1.57 |       0.03 |
-| files                                    |                    8 |                   4 |                   6.4 |                 2.2 |                             2.15 |       1.11 |
-| tasks                                    |                   23 |                   5 |                  16.6 |                 2.9 |                             1.83 |       0.07 |
-| inbox                                    |                    1 |                   1 |                   0.7 |                 0.5 |                             0.17 |       0.15 |
-| all sources together                     |                  122 |                  19 |                    89 |                11.0 |                                  |            |
-| whole request, booted kernel (with auth) |                  129 |                  26 |                  95.5 |                17.5 |                                  |            |
+| Source | MySQL queries before | after | MySQL p50 before (ms) | after (ms) | SQLite Server-Timing before (ms) | after (ms) |
+|--------|---------------------:|------:|----------------------:|-----------:|---------------------------------:|-----------:|
+| shared CalDAV read | – | (in the rows below) | – | (in the rows below) | – | 3.63 |
+| notes | 23 | 5 | 16.7 | 2.8 | 2.65 | 0.08 |
+| calendars | 24 | 6 | 17.7 | 3.7 | 2.25 | 0.16 |
+| contacts | 19 | 5 | 14.0 | 2.9 | 0.77 | 0.62 |
+| chat | 24 | 7 | 17.4 | 3.8 | 1.57 | 0.03 |
+| files | 8 | 4 | 6.4 | 2.2 | 2.15 | 1.11 |
+| tasks | 23 | 5 | 16.6 | 2.9 | 1.83 | 0.07 |
+| inbox | 1 | 1 | 0.7 | 0.5 | 0.17 | 0.15 |
+| all sources together | 122 | 19 | 89 | 11.0 | | |
+| whole request, booted kernel (with auth) | 129 | 26 | 95.5 | 17.5 | | |
 
 MySQL numbers are MySQL 8 in Docker on a laptop, in-process with a booted kernel; queries are counted with `Questions`, so Sabre's raw PDO reads count too. One source is requested at a time, then all together; per-source "after" numbers include the shared CalDAV read. Server-Timing is SQLite with all sources requested.
 
