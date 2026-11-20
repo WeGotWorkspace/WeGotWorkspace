@@ -102,10 +102,10 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** A, D, E
 
 ### Chunk C: idle-cadence (#2287)
-- **Skill:** workspace (rescoped: idle push 6 s; room slowdowns are the push-down fallback)
-- **Inputs:** `path: packages/apps/src/lib/jmap-client/push/event-source-transport.ts:28`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`
+- **Skill:** workspace, api, security (rescoped: idle push 6 s; room slowdowns are the push-down fallback; heartbeat-on-push adds the server side)
+- **Inputs:** `path: packages/apps/src/lib/jmap-client/push/event-source-transport.ts:28`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`; `path: packages/apps/src/lib/rtc/session/mesh-poll-loop.ts`; `path: packages/apps/src/lib/api/wgw/jmap-push.ts`; `path: packages/api/app/Http/Controllers/Api/V1/Jmap/JmapEventSourceController.php`; `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php`; `path: packages/api/app/Services/Rtc/Signaling/HttpSignalingMailbox.php`
 - **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows; heartbeat-on-push lands here: the push read refreshes `seen_at` only for the peers its browser names, and a feature test proves a caller cannot refresh another account's or another device's peer (that peer still expires after `peerTimeoutSeconds`); room heartbeat and notifications polls run only while push is down.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core`
+- **Verify with:** `php scripts/done-gate.php` (or `vendor/bin/phpunit --filter 'JmapPush|Signaling'`); `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core src/notifications-core`
 - **Parallel with:** none (after I)
 
 ### Chunk D: calm-recovery (#2288)
