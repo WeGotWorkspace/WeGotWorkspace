@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Drive;
 
 use App\Events\EventDispatch;
-use App\Exceptions\ApiHttpException;
 use App\Http\Support\RangeResponder;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRelocator;
-use App\Services\Projects\ProjectFolderRegistry;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
@@ -37,7 +35,6 @@ final class DriveService
         private FileNodeRelocator $relocator,
         private DrivePathBookkeeping $pathBookkeeping,
         private RangeResponder $ranges,
-        private ProjectFolderRegistry $projectFolders,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -197,7 +194,6 @@ final class DriveService
         $disk = $this->disk();
         $fromKey = $this->paths->virtualToStorageKey($fromPath);
         $toKey = $this->paths->virtualToStorageKey($toPath);
-        $this->assertNotProjectFolder($fromKey);
         if (! $disk->exists($fromKey)) {
             throw new \InvalidArgumentException('Source not found.');
         }
@@ -232,7 +228,6 @@ final class DriveService
             $this->authorizer->assertMayManageStructure($path, $principal);
             $this->authorizer->assertNotGrantScopeRoot($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
-            $this->assertNotProjectFolder($key);
             $node = $this->fileNodes->liveByKey($key) ?? $this->fileNodes->recordCreate($key);
             if ($node !== null && $this->relocator->trashIfGrantee($node, $principal)) {
                 continue;
@@ -795,14 +790,6 @@ final class DriveService
         return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1
             || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath)
             || CollabSidecarPaths::isHiddenBrowseVirtualPath($virtualPath);
-    }
-
-    /** A Project folder follows its Project (#817): it is renamed, moved or deleted only through the Project. */
-    private function assertNotProjectFolder(string $key): void
-    {
-        if ($this->projectFolders->isProjectFolderKey($key)) {
-            throw new ApiHttpException(403, 'A Project folder follows its Project. Rename or delete the Project instead.', 'project_folder');
-        }
     }
 
     private function disk(): Filesystem

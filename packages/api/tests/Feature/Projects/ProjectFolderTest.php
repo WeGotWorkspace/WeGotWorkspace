@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Projects;
 
 use App\Dav\Server\WebdavWriteGuardPlugin;
+use App\Exceptions\ApiHttpException;
 use App\Models\JmapFileNode;
 use App\Models\ProjectResource;
+use App\Services\Drive\DriveService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Projects\ProjectKind;
@@ -148,6 +150,32 @@ final class ProjectFolderTest extends WgwDatabaseTestCase
         $guard->beforeMethod(new SabreRequest('DELETE', '/files/groups/t1/Launch/Drafts'), new SabreResponse);
         $guard->beforeMethod(new SabreRequest('DELETE', '/files/groups/t1/Other'), new SabreResponse);
         $this->addToAssertionCount(1);
+    }
+
+    public function test_drive_service_cannot_rename_or_delete_the_folder_itself(): void
+    {
+        $this->createProject('bob', 't1', 'Launch');
+        $this->files()->put('groups/t1/Launch/notes.txt', 'x');
+        $drive = app(DriveService::class);
+        $bob = ['username' => 'bob', 'role' => 'user'];
+
+        foreach ([
+            fn () => $drive->renameItem($bob, '/groups/t1', 'Launch', 'Other'),
+            fn () => $drive->deleteItems($bob, [['path' => '/groups/t1/Launch']]),
+        ] as $call) {
+            try {
+                $call();
+                $this->fail('The Project folder must be refused.');
+            } catch (ApiHttpException $e) {
+                $this->assertSame('project_folder', $e->errorCode());
+            }
+        }
+        $this->assertTrue($this->files()->directoryExists('groups/t1/Launch'));
+
+        // Inside the folder, Drive works as before.
+        $drive->renameItem($bob, '/groups/t1/Launch', 'notes.txt', 'plan.txt');
+        $drive->deleteItems($bob, [['path' => '/groups/t1/Launch/plan.txt']]);
+        $this->assertFalse($this->files()->fileExists('groups/t1/Launch/plan.txt'));
     }
 
     /** @param list<array{0: string, 1: array<string, mixed>, 2: string}> $calls */
