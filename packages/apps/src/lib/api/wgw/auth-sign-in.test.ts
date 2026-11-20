@@ -69,7 +69,7 @@ describe("signInFailureReason", () => {
     expect(signInFailureReason(401, "unauthorized", "code")).toBe("credentials");
     expect(signInFailureReason(404, "not_found", "code")).toBe("expired");
     expect(signInFailureReason(410, undefined, "code")).toBe("expired");
-    expect(signInFailureReason(429, "mfa_locked", "code")).toBe("throttled");
+    expect(signInFailureReason(429, "throttled", "code")).toBe("throttled");
   });
 });
 

@@ -27,14 +27,11 @@ export const loginLabels = {
   invalid: "That username or password does not match this server.",
   wrongCode: "That code does not match.",
   expired: "That sign-in step has ended. Enter your password again.",
+  tooManyWrongCodes: "Too many wrong codes. Sign in again with your password.",
   throttled: (at: string | null) =>
     at
       ? `Too many sign-in attempts. Try again at ${at}.`
       : "Too many sign-in attempts. Wait a few minutes and try again.",
-  codesPaused: (at: string | null) =>
-    at
-      ? `Code entry is paused after too many wrong codes. Try again at ${at}.`
-      : "Code entry is paused after too many wrong codes. Try again in an hour.",
   offline: "You are offline. Connect to the internet and try again.",
   failed: "Could not sign in.",
 } as const;

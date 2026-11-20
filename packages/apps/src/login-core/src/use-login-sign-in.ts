@@ -33,13 +33,18 @@ export function loginFailureMessage(error: unknown, now = Date.now()): string {
       return labels.expired;
     case "throttled": {
       const at = error.retryAfterSeconds ? formatTime(now + error.retryAfterSeconds * 1000) : null;
-      if (error.code === "mfa_locked") return labels.codesPaused(at);
       return labels.throttled(at);
     }
     default:
       return labels.failed;
   }
 }
+
+/**
+ * Wrong codes one challenge takes before the server ends it (#2273). The server then answers
+ * 404 like any gone challenge, so the client counts to say why it is back at the password.
+ */
+export const CHALLENGE_WRONG_CODE_LIMIT = 5;
 
 /** After this failure the password has to be typed again: the challenge is gone. */
 function needsPasswordAgain(error: unknown): boolean {
@@ -76,6 +81,8 @@ export function useLoginSignIn(
   const [wrongCode, setWrongCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  /** Wrong codes sent on the current challenge. */
+  const wrongCodesRef = useRef(0);
 
   const run = async (work: () => Promise<void>) => {
     if (busyRef.current) return;
@@ -86,9 +93,19 @@ export function useLoginSignIn(
     try {
       await work();
     } catch (cause) {
-      setError(loginFailureMessage(cause));
-      if (cause instanceof SignInError && cause.reason === "invalid_code") setWrongCode(true);
-      if (needsPasswordAgain(cause)) setStep({ kind: "password" });
+      const ended =
+        cause instanceof SignInError &&
+        cause.reason === "expired" &&
+        wrongCodesRef.current >= CHALLENGE_WRONG_CODE_LIMIT;
+      setError(ended ? labels.tooManyWrongCodes : loginFailureMessage(cause));
+      if (cause instanceof SignInError && cause.reason === "invalid_code") {
+        wrongCodesRef.current += 1;
+        setWrongCode(true);
+      }
+      if (needsPasswordAgain(cause)) {
+        wrongCodesRef.current = 0;
+        setStep({ kind: "password" });
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -96,6 +113,7 @@ export function useLoginSignIn(
   };
 
   const advance = async (next: SignInStep) => {
+    wrongCodesRef.current = 0;
     if (next.status === "ok") {
       await onSignedIn(next);
       return;
@@ -155,6 +173,7 @@ export function useLoginSignIn(
       if (step.kind === "codes") void run(async () => onSignedIn(step.done));
     },
     startOver: () => {
+      wrongCodesRef.current = 0;
       setError("");
       setWrongCode(false);
       setStep({ kind: "password" });
