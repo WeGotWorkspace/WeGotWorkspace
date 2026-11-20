@@ -1,5 +1,4 @@
 import { useId, type FormEvent } from "react";
-import { ShieldCheck } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { RECOVERY_CODE_COUNT, type TwoFactorSetup } from "@/lib/api/wgw/two-factor-settings";
@@ -47,8 +46,7 @@ export function SettingsTwoFactorSection({
 }) {
   return (
     <>
-      <SettingsPaneCard title={labels.title} icon={<ShieldCheck aria-hidden />}>
-        <p className="workspace-page-section__lead">{labels.lead}</p>
+      <SettingsPaneCard title={labels.title}>
         <TwoFactorRows controller={controller} />
       </SettingsPaneCard>
       <TwoFactorStepDialog controller={controller} onMakeAppPassword={onMakeAppPassword} />
@@ -79,7 +77,7 @@ function TwoFactorRows({ controller }: { controller: SettingsTwoFactorController
       <FieldLabelRow
         layout="inline"
         label={labels.statusLabel}
-        description={state.enabled ? labels.statusOnDescription : labels.statusOffDescription}
+        description={labels.statusDescription}
         labelAccessory={
           <Tag
             label={state.enabled ? labels.statusOn : labels.statusOff}

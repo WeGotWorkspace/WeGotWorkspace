@@ -1,10 +1,9 @@
 import { useId } from "react";
-import { Copy, KeyRound } from "lucide-react";
+import { Copy } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
-import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { formatListDateTime } from "@/lib/datetime/format-list-date";
+import { formatRelativeDay, parseTimestamp } from "@/lib/datetime/format-list-date";
 import {
   formatAppPassword,
   type AppPassword,
@@ -64,18 +63,17 @@ export function SettingsSecurityPane({
   const controller = useSettingsAppPasswords(operations, twoFactorController.state.enabled);
   const ready = controller.phase === "ready";
   return (
-    <>
+    <div className="settings-security-pane">
       <SettingsTwoFactorSection
         controller={twoFactorController}
         onMakeAppPassword={controller.openCreate}
       />
       <SettingsPaneCard
         title={labels.title}
-        icon={<KeyRound aria-hidden />}
         action={
           ready ? (
             <span className="settings-security-pane__actions">
-              {controller.rows.length > 0 ? (
+              {controller.rows.length > 1 ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -97,7 +95,7 @@ export function SettingsSecurityPane({
       </SettingsPaneCard>
       <CreateAppPasswordDialog controller={controller} />
       <RemoveAppPasswordDialog controller={controller} />
-    </>
+    </div>
   );
 }
 
@@ -124,74 +122,52 @@ function AppPasswordsBody({ controller }: { controller: SettingsAppPasswordsCont
     return <p className="settings-security-pane__note">{labels.empty}</p>;
   }
   return (
-    <DataTable
-      className="settings-security-pane__table"
-      data={rows}
-      columns={appPasswordColumns((row) => controller.askRemove({ kind: "one", row }))}
-      rowKey={(row) => String(row.id)}
-    />
+    <>
+      {rows.map((row) => (
+        <FieldLabelRow
+          key={row.id}
+          layout="inline"
+          className="settings-security-pane__row"
+          label={row.name}
+          description={appPasswordDescription(row)}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            severity="danger"
+            aria-label={labels.remove(row.name)}
+            onClick={() => controller.askRemove({ kind: "one", row })}
+          >
+            {labels.removeButton}
+          </Button>
+        </FieldLabelRow>
+      ))}
+    </>
   );
 }
 
-/** App and Created give way on a phone so the name keeps its width. */
-const NARROW_HIDDEN = "settings-security-pane__wide-only";
+/** "Created 20 Nov · Last used 2 days ago · Thunderbird/128.4", or "· Not used yet". */
+export function appPasswordDescription(row: AppPassword, now = new Date()): string {
+  const parts = [labels.created(formatDay(row.createdAt, now))];
+  const used = row.lastUsedAt ? parseTimestamp(row.lastUsedAt) : null;
+  if (used === null) parts.push(labels.notUsed);
+  else {
+    parts.push(labels.lastUsed(formatRelativeDay(new Date(used), now, { capitalised: false })));
+    if (row.lastUsedClient) parts.push(row.lastUsedClient);
+  }
+  return parts.join(" · ");
+}
 
-function appPasswordColumns(onRemove: (row: AppPassword) => void): DataTableColumn<AppPassword>[] {
-  return [
-    {
-      key: "name",
-      header: labels.columns.name,
-      render: (row) => <span className="list-table__name">{row.name}</span>,
-    },
-    {
-      key: "client",
-      header: labels.columns.client,
-      muted: true,
-      headerClassName: NARROW_HIDDEN,
-      cellClassName: NARROW_HIDDEN,
-      render: (row) =>
-        row.lastUsedClient ? (
-          <span className="settings-security-pane__client" title={row.lastUsedClient}>
-            {row.lastUsedClient}
-          </span>
-        ) : (
-          labels.noClient
-        ),
-    },
-    {
-      key: "lastUsed",
-      header: labels.columns.lastUsed,
-      muted: true,
-      shrink: true,
-      render: (row) => (row.lastUsedAt ? formatListDateTime(row.lastUsedAt) : labels.neverUsed),
-    },
-    {
-      key: "created",
-      header: labels.columns.created,
-      muted: true,
-      headerClassName: NARROW_HIDDEN,
-      cellClassName: NARROW_HIDDEN,
-      shrink: true,
-      render: (row) => formatListDateTime(row.createdAt),
-    },
-    {
-      key: "actions",
-      header: <span className="sr-only">Actions</span>,
-      align: "end",
-      shrink: true,
-      render: (row) => (
-        <Button
-          type="button"
-          variant="outline"
-          severity="danger"
-          aria-label={labels.remove(row.name)}
-          onClick={() => onRemove(row)}
-        >
-          {labels.removeButton}
-        </Button>
-      ),
-    },
-  ];
+/** Day and month; the year too when it is not this year. */
+function formatDay(raw: string, now: Date): string {
+  const ms = parseTimestamp(raw);
+  if (ms === null) return raw;
+  const date = new Date(ms);
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  }).format(date);
 }
 
 function CreateAppPasswordDialog({ controller }: { controller: SettingsAppPasswordsController }) {

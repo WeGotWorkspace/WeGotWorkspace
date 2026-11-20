@@ -16,7 +16,10 @@ import { createMockTwoFactorOperations } from "@/lib/api/mock/two-factor-setting
 import { twoFactorLabels } from "@/two-factor-ui/src/two-factor-labels";
 import { twoFactorSettingsLabels } from "@/settings-core/src/settings-two-factor-labels";
 import { appPasswordLabels as labels } from "@/settings-core/src/settings-app-passwords-labels";
-import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
+import {
+  appPasswordDescription,
+  SettingsSecurityPane,
+} from "@/settings-core/src/settings-security-pane";
 import { appPasswordCreateFieldError } from "@/settings-core/src/use-settings-app-passwords";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -71,6 +74,37 @@ afterEach(() => {
   cleanup();
 });
 
+describe("appPasswordDescription", () => {
+  const now = new Date(2026, 10, 20, 12, 0);
+  const row: AppPassword = {
+    id: 1,
+    name: "Phone",
+    createdAt: new Date(2026, 10, 20, 9, 0).toISOString(),
+    lastUsedAt: null,
+    lastUsedClient: null,
+  };
+
+  it("says when it was made and that it was not used yet", () => {
+    expect(appPasswordDescription(row, now)).toMatch(/^Created (20 Nov|Nov 20) · Not used yet$/);
+  });
+
+  it("adds when and by which app it was last used", () => {
+    const used = {
+      ...row,
+      lastUsedAt: new Date(2026, 10, 18, 9, 0).toISOString(),
+      lastUsedClient: "Thunderbird/128.4",
+    };
+    expect(appPasswordDescription(used, now)).toMatch(
+      /^Created (20 Nov|Nov 20) · Last used 2 days ago · Thunderbird\/128\.4$/,
+    );
+  });
+
+  it("shows the year of an older one", () => {
+    const old = { ...row, createdAt: new Date(2025, 5, 3).toISOString() };
+    expect(appPasswordDescription(old, now)).toMatch(/2025/);
+  });
+});
+
 describe("formatAppPassword", () => {
   it("groups sixteen letters in fours and ignores spaces already there", () => {
     expect(formatAppPassword("abcdefghijklmnop")).toBe("abcd efgh ijkl mnop");
@@ -111,22 +145,28 @@ describe("appPasswordCreateFieldError", () => {
 });
 
 describe("SettingsSecurityPane", () => {
-  it("lists app passwords with name, app, last used and created", async () => {
+  it("lists app passwords as rows: name, when made, when and by which app last used", async () => {
     renderPane();
-    const table = await screen.findByRole("table");
-    expect(within(table).getByText("iPhone calendar")).toBeTruthy();
-    expect(within(table).getByText("Thunderbird/128.4")).toBeTruthy();
-    expect(within(table).getByText(labels.neverUsed)).toBeTruthy();
-    expect(within(table).getAllByRole("row")).toHaveLength(MOCK_APP_PASSWORDS.length + 1);
+    expect(await screen.findByText("iPhone calendar")).toBeTruthy();
+    expect(screen.getByText(/Last used .* · Thunderbird\/128\.4$/)).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    for (const row of MOCK_APP_PASSWORDS) {
+      expect(screen.getByRole("button", { name: labels.remove(row.name) })).toBeTruthy();
+    }
+    expect(screen.getByRole("button", { name: labels.removeAllButton })).toBeTruthy();
   });
 
-  it("says N/A in the App column for an app password that was never used", async () => {
+  it("says Not used yet for an app password that was never used", async () => {
     renderPane();
-    const table = await screen.findByRole("table");
-    const row = within(table).getByText("Old Android").closest("tr");
-    expect(row).toBeTruthy();
-    expect(within(row as HTMLElement).getByText(labels.noClient)).toBeTruthy();
-    expect(within(row as HTMLElement).getByText(labels.neverUsed)).toBeTruthy();
+    expect(await screen.findByText(/^Created .* · Not used yet$/)).toBeTruthy();
+  });
+
+  it("offers Remove all only from two app passwords", async () => {
+    renderPane(MOCK_APP_PASSWORDS.slice(0, 1));
+    expect(
+      await screen.findByRole("button", { name: labels.remove(MOCK_APP_PASSWORDS[0]!.name) }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: labels.removeAllButton })).toBeNull();
   });
 
   it("shows the empty state without a Remove all button", async () => {
@@ -157,7 +197,7 @@ describe("SettingsSecurityPane", () => {
 
     fireEvent.click(screen.getByRole("button", { name: labels.done }));
     await waitFor(() => expect(screen.queryByLabelText(labels.createdLabel)).toBeNull());
-    expect(within(await screen.findByRole("table")).getByText("Phone")).toBeTruthy();
+    expect(await screen.findByText("Phone")).toBeTruthy();
 
     // Opening again starts empty: the plaintext is gone.
     const again = await openCreate();

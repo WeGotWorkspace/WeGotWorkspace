@@ -1,7 +1,6 @@
 /** Copy for Settings → Security → Two-factor sign-in (#2275). */
 export const twoFactorSettingsLabels = {
   title: "Two-factor sign-in",
-  lead: "After your password, the web app and assistant connect also ask for a code from an authenticator app on your phone.",
   loading: "Loading…",
   offline: "You are offline. Two-factor sign-in shows when the connection is back.",
   loadFailed: "Could not load two-factor sign-in.",
@@ -9,15 +8,14 @@ export const twoFactorSettingsLabels = {
   statusLabel: "Authenticator app",
   statusOn: "On",
   statusOff: "Off",
-  statusOnDescription: "Signing in asks for a code from your app",
-  statusOffDescription: "Signing in asks for your password only",
+  statusDescription: "Code from an authenticator app on your phone",
   turnOn: "Turn on",
   turnOff: "Turn off",
   codesLabel: "Recovery codes",
   codesLeft: (left: number, total: number) =>
-    `${left} of ${total} left. Each one signs you in once without your phone.`,
-  codesLeftUnknown: "Each one signs you in once without your phone.",
-  codesNoneLeft: "None left. Make new ones while you still have your phone.",
+    `${left} of ${total} left · One-time emergency access`,
+  codesLeftUnknown: "One-time emergency access",
+  codesNoneLeft: "None left · Make new ones while you still have your phone",
   replaceCodes: "Replace",
   cancel: "Cancel",
   next: "Next",
