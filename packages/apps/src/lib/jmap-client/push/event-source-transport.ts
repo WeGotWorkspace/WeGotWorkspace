@@ -7,6 +7,8 @@ export type PushTiming = {
   retryMs: number;
   /** Reconnect interval while every tab of the browser is hidden. */
   hiddenRetryMs: number;
+  /** Reconnect interval while a tab is visible but nobody used any tab for a while (#2294). */
+  idleRetryMs: number;
   /** Ceiling of the failure backoff. */
   maxBackoffMs: number;
   /** Wait after `501` or a response that is not an event stream: push is off on this server. */
@@ -27,6 +29,7 @@ export type PushTiming = {
 export const DEFAULT_PUSH_TIMING: PushTiming = {
   retryMs: 3_000,
   hiddenRetryMs: 30_000,
+  idleRetryMs: 6_000,
   maxBackoffMs: 60_000,
   unavailableRetryMs: 300_000,
   wakeGapMs: 2_000,
@@ -66,6 +69,8 @@ export type EventSourceTransportOptions = {
   /** `Last-Event-ID` for the next request, rebuilt from confirmed hashes. */
   lastEventId: () => Promise<string | null> | string | null;
   everyTabHidden?: () => Promise<boolean> | boolean;
+  /** True while nobody used any tab of this browser for a while (`lib/activity/user-activity.ts`). */
+  userIdle?: () => boolean;
   /** Push connected (`true`) or down; called on change only. */
   onStatus?: (connected: boolean) => void;
   connectivity: PushConnectivity;
@@ -186,7 +191,9 @@ export class EventSourceTransport implements PushTransport {
 
   /** The wait after a good response, before any wake. */
   #regularDelay(visibleMs: number, hidden: boolean): number {
-    return hidden ? Math.max(visibleMs, this.#timing.hiddenRetryMs) : visibleMs;
+    if (hidden) return Math.max(visibleMs, this.#timing.hiddenRetryMs);
+    if (this.#options.userIdle?.()) return Math.max(visibleMs, this.#timing.idleRetryMs);
+    return visibleMs;
   }
 
   #stop(): void {

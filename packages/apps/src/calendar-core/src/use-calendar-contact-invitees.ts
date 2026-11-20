@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listCards } from "@/lib/api/wgw/contacts";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { useConnectivity } from "@/hooks/use-connectivity";
+import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
+import {
+  readContactsBootstrapFromCache,
+  readContactsColdDownload,
+} from "@/lib/offline/contacts/contacts-offline-store";
+import { refreshCachedContacts } from "@/lib/offline/contacts/contacts-hybrid-operations";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type CalendarContactInviteesState = {
@@ -8,22 +15,22 @@ export type CalendarContactInviteesState = {
   refreshCards: () => void;
 };
 
-export async function loadCalendarContactCards(username: string): Promise<ContactCard[]> {
+/**
+ * Invitee suggestions come from the Contacts app's offline cache, which its
+ * paced first download and live sync keep current. Calendar never downloads
+ * the whole address book on open: on a cold start that doubled the Contacts
+ * download as an unpaced burst (shared hosting traffic budget). Without a
+ * cache the list starts empty; teammates and a typed email still work.
+ *
+ * Typing in the invitee search re-reads the cache, which the Contacts live
+ * inbound sync keeps current (mounted below, one syncing tab per browser).
+ * Only when this browser has no contacts cache at all does it ask the server.
+ */
+export async function refreshCalendarContactCards(username: string): Promise<ContactCard[] | null> {
   const account = username.trim();
-  if (!account) return [];
-
+  if (!account) return null;
   const cached = await readContactsBootstrapFromCache(account);
   if (cached) return cached.data.cards;
-
-  try {
-    return await listCards();
-  } catch {
-    // Offline / JMAP / expired session: empty list; teammates and typed email still work.
-    return [];
-  }
-}
-
-export async function refreshCalendarContactCards(): Promise<ContactCard[] | null> {
   try {
     return await listCards();
   } catch {
@@ -34,31 +41,76 @@ export async function refreshCalendarContactCards(): Promise<ContactCard[] | nul
 
 export function useCalendarContactInvitees(username?: string): CalendarContactInviteesState {
   const [cards, setCards] = useState<ContactCard[]>([]);
+  // A cache exists and its first download is finished, so sync tokens are stored.
+  const [cacheComplete, setCacheComplete] = useState(false);
   const loadGen = useRef(0);
+  const { online } = useConnectivity();
+  const account = username?.trim() ?? "";
+
+  const rereadCache = useCallback(async () => {
+    if (!account) return;
+    const cached = await readContactsBootstrapFromCache(account);
+    if (cached) setCards(cached.data.cards);
+  }, [account]);
+
+  const readCacheState = useCallback(
+    async (gen: number) => {
+      const cached = await readContactsBootstrapFromCache(account);
+      const coldDownload = cached ? await readContactsColdDownload(account) : null;
+      if (loadGen.current !== gen) return;
+      setCacheComplete(Boolean(cached) && !coldDownload);
+      if (cached) setCards(cached.data.cards);
+    },
+    [account],
+  );
+
+  // The live adapter starts from the server's current state, not the stored
+  // tokens: catch the cache up once, as the Contacts app does, then re-read it.
+  useEffect(() => {
+    if (!account || !cacheComplete || !online || !wgwLiveApiEnabled()) return;
+    let cancelled = false;
+    void refreshCachedContacts(account)
+      .then(() => {
+        if (!cancelled) return rereadCache();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [account, cacheComplete, online, rereadCache]);
+
+  // Keeps the cache current without a full download: a push or a /changes
+  // round, run by one tab per browser. Needs a finished first download first.
+  useContactsLiveInbound({
+    username: account || null,
+    enabled: cacheComplete && online && wgwLiveApiEnabled(),
+    patchFromCache: rereadCache,
+  });
 
   useEffect(() => {
-    const account = username?.trim() ?? "";
     if (!account) {
       setCards([]);
+      setCacheComplete(false);
       return;
     }
-
     const gen = ++loadGen.current;
-    void loadCalendarContactCards(account).then((next) => {
-      if (loadGen.current === gen) setCards(next);
-    });
-  }, [username]);
+    setCards([]);
+    setCacheComplete(false);
+    void readCacheState(gen);
+  }, [account, readCacheState]);
 
   const refreshCards = useCallback(() => {
-    const account = username?.trim() ?? "";
     if (!account) return;
-
     const gen = ++loadGen.current;
-    void refreshCalendarContactCards().then((next) => {
+    // Contacts (maybe in another tab) may have written the cache since: pick it
+    // up, and start the live sync once its first download is finished.
+    void readCacheState(gen).then(async () => {
+      if (loadGen.current !== gen) return;
+      const next = await refreshCalendarContactCards(account);
       if (next == null || loadGen.current !== gen) return;
       setCards(next);
     });
-  }, [username]);
+  }, [account, readCacheState]);
 
   return { cards, refreshCards };
 }

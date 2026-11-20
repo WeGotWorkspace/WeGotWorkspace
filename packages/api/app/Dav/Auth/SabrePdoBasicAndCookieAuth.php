@@ -32,12 +32,20 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
         $ip = request()->ip();
         $clientIp = is_string($ip) ? $ip : '';
         $user = (string) $username;
+        $password = (string) $password;
+        $userAgent = request()->userAgent();
         if (! $limiter->allowProtocol($user, $clientIp)) {
+            // Throttled: only a valid app password still gets in; the account
+            // password is not checked. No hit and no reset on that success.
+            $credentials = app(ProtocolCredentials::class);
+            if ($credentials->verifyAppPasswordOnly($user, $password, is_string($userAgent) ? $userAgent : null)) {
+                return true;
+            }
+            $limiter->hitProtocol($user, $clientIp);
+
             throw new TooManyAttempts($limiter->protocolRetryAfter($user, $clientIp));
         }
 
-        $password = (string) $password;
-        $userAgent = request()->userAgent();
         $valid = app(ProtocolCredentials::class)->verify(
             $user,
             $password,

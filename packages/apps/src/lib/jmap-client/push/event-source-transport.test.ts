@@ -136,6 +136,35 @@ describe("EventSourceTransport", () => {
     stop();
   });
 
+  it("waits 6 s instead of 3 s while nobody uses any tab, and 3 s again once they do (#2294)", async () => {
+    let idle = true;
+    const { transport, fetch, sink } = setup({ userIdle: () => idle });
+    const stop = transport.start(sink);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5_999);
+    expect(at(fetch)).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(at(fetch)).toBe(2);
+
+    idle = false;
+    await vi.advanceTimersByTimeAsync(6_000);
+    expect(at(fetch)).toBe(3);
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(at(fetch)).toBe(4);
+    stop();
+  });
+
+  it("keeps the hidden interval when every tab is hidden and the user is idle", async () => {
+    const { transport, fetch, sink } = setup({ everyTabHidden: () => true, userIdle: () => true });
+    const stop = transport.start(sink);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(at(fetch)).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(at(fetch)).toBe(2);
+    stop();
+  });
+
   it("ignores a data event that is not a StateChange", async () => {
     const { transport, fetch, sink, onStatus } = setup();
     fetch.mockResolvedValueOnce(sse("event: state\ndata: {oops\n\nevent: state\ndata: [1]\n\n"));

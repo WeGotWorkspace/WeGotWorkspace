@@ -6,6 +6,7 @@ namespace App\Services\Auth;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\AppSetting;
+use App\Models\AuthChallenge;
 use App\Models\User;
 use App\Services\Auth\Mfa\MfaSignIn;
 
@@ -62,7 +63,7 @@ final class AuthTokenService
 
         $this->rateLimiter->reset($username, $ip);
 
-        return $this->mfa->challengeAfterPassword($username, 'spa') ?? $this->issueForUsername($username);
+        return $this->mfa->challengeAfterPassword($username, AuthChallenge::CLIENT_SPA) ?? $this->issueForUsername($username);
     }
 
     /**

@@ -30,7 +30,11 @@ type PushSubscriptionChangeEvent = ExtendableEvent & {
 };
 
 // skipWaiting stays false in production: a new worker waits until existing tabs close.
-precacheAndRoute(self.__WB_MANIFEST);
+// Icons and manifests carry `?v=` (cache bust); without ignoring it every app
+// switch fetched them from the host instead of the precache (shared hosting budget).
+precacheAndRoute(self.__WB_MANIFEST, {
+  ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^v$/],
+});
 if (import.meta.env.PROD) {
   registerRoute(
     new NavigationRoute(createHandlerBoundToURL("index.html"), {
