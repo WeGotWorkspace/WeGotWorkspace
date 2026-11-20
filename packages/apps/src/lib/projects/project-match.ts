@@ -34,3 +34,20 @@ export function projectOfCollection(
 ): WorkspaceProject | null {
   return projects.find((project) => project.resources[kind] === collectionId) ?? null;
 }
+
+/**
+ * Collections under the filter, by the `projectId` the server sends on each JMAP
+ * collection (#817 B1). "All Projects" keeps every collection; a Project keeps only its own.
+ */
+export function collectionsInProject<T extends { projectId?: string | null }>(
+  collections: readonly T[],
+  projectId: string | null,
+): T[] {
+  if (projectId === null) return [...collections];
+  return collections.filter((collection) => collection.projectId === projectId);
+}
+
+/** A Project collection: its name, color and lifetime follow the Project. */
+export function isProjectCollection(collection: { projectId?: string | null }): boolean {
+  return typeof collection.projectId === "string" && collection.projectId !== "";
+}

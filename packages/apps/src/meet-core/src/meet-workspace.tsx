@@ -16,7 +16,11 @@ import {
   meetChannelComposerPlaceholder,
   meetChannelTitle,
 } from "@/meet-core/src/meet-channel-label";
-import { partitionMeetChannels } from "@/meet-core/src/meet-channel-partition";
+import {
+  meetSelectionUnderProject,
+  partitionMeetChannels,
+} from "@/meet-core/src/meet-channel-partition";
+import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
 import {
   calendarEventsForMeetingChannel,
   clockLabelForMeetingChannel,
@@ -206,16 +210,23 @@ export function MeetWorkspace({
     setSelectedId((current) => (current === next ? current : next));
   }, [liveCallChannelId, routeChannelId, unmatchedAdHocRoom]);
 
-  const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
+  const projectId = useSelectedProjectId();
+  const sections = useMemo(() => partitionMeetChannels(channels, projectId), [channels, projectId]);
+  // A Project selected: a hidden open channel falls back to the Project's channel.
+  useEffect(() => {
+    setSelectedId((current) => meetSelectionUnderProject(current, channels, projectId));
+  }, [channels, projectId]);
   const leftoverUpcoming = useMemo(
     () =>
-      leftoverUpcomingMeetings(
-        upcomingMeetings,
-        channels,
-        sections.meetings,
-        calendar?.workspaceOrigin ?? "",
-      ).filter((row) => leftoverBelongsInTodaySidebar(row, nowTick)),
-    [calendar?.workspaceOrigin, channels, nowTick, sections.meetings, upcomingMeetings],
+      projectId !== null
+        ? []
+        : leftoverUpcomingMeetings(
+            upcomingMeetings,
+            channels,
+            sections.meetings,
+            calendar?.workspaceOrigin ?? "",
+          ).filter((row) => leftoverBelongsInTodaySidebar(row, nowTick)),
+    [calendar?.workspaceOrigin, channels, nowTick, projectId, sections.meetings, upcomingMeetings],
   );
   const todayMeetings = useMemo(
     () =>
@@ -622,6 +633,7 @@ export function MeetWorkspace({
             channelCallAudioOnly={channelCallAudioOnly}
             meetingStartLabel={meetingStartLabel}
             onCreateChannel={() => dialogs.openCreate("channel")}
+            canCreateChannel={projectId === null}
             onCreateMeeting={() => dialogs.setCreateMeetingOpen(true)}
             onJoinUpcomingMeeting={onJoinUpcomingMeeting}
             onEditUpcomingMeeting={calendar ? dialogs.openEditLeftover : undefined}

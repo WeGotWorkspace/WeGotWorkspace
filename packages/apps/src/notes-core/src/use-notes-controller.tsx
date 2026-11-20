@@ -12,6 +12,7 @@ import { useNotesMutations } from "./use-notes-mutations";
 import { useNotesNotebookMutations } from "./use-notes-notebook-mutations";
 import { useNotesShell } from "./use-notes-shell";
 import { useNotesTagRename, useNotesTagRenameCollaborators } from "./use-notes-tag-rename";
+import { useCloseNoteOutsideProject, useNotesProjectScope } from "./use-notes-project-scope";
 
 type UseNotesControllerArgs = {
   data: NotesUIData;
@@ -49,7 +50,10 @@ export function useNotesController({
     initialView,
     onViewChange,
   });
-  const list = useNotesList({ shell, initialNoteId, onNoteChange });
+  const projectScope = useNotesProjectScope(shell);
+  const { projectSelected, projectNotebooks } = projectScope;
+  const list = useNotesList({ shell: projectScope.listShell, initialNoteId, onNoteChange });
+  useCloseNoteOutsideProject(list.active, projectNotebooks, list.closeMobileDetail);
   useNoteCreated(shell.setNotes);
   useNoteDropped(shell.setNotes, (title) =>
     shell.showMutationError(shell.L.noteDeletedElsewhere(title)),
@@ -100,11 +104,13 @@ export function useNotesController({
     L: shell.L,
     notes: shell.notes,
     setNotes: shell.setNotes,
-    notebooks: shell.notebooks,
-    sharedNotebooks: shell.sharedNotebooks,
-    notebookCollections: shell.notebookCollections,
+    // With a Project selected the sidebar lists only its notebooks (#818).
+    notebooks: projectSelected ? [] : shell.notebooks,
+    sharedNotebooks: projectSelected ? [] : shell.sharedNotebooks,
+    notebookCollections: projectNotebooks ?? shell.notebookCollections,
     groups: shell.groups,
-    canManageNotebooks: notebookMutations.canManageNotebooks,
+    // "New notebook" is hidden while a Project is selected.
+    canManageNotebooks: notebookMutations.canManageNotebooks && !projectSelected,
     notebookDialog: notebookMutations.notebookDialog,
     setNotebookDialog: notebookMutations.setNotebookDialog,
     openCreateNotebookDialog: notebookMutations.openCreateNotebookDialog,
@@ -124,7 +130,7 @@ export function useNotesController({
     archived: shell.archived,
     selectedIds: list.selectedIds,
     selectionMode: list.selectionMode,
-    canCreateNote: shell.canCreateNote,
+    canCreateNote: projectScope.canCreateNote,
     searchQuery: shell.searchQuery,
     searchInputRef: shell.searchInputRef,
     moveDialog: mutations.moveDialog,

@@ -38,6 +38,8 @@ export type MeetWorkspaceSidebarProps = {
   channelCallAudioOnly: (channelId: string) => boolean;
   meetingStartLabel: (channel: MeetChannel) => string | null;
   onCreateChannel: () => void;
+  /** False while a Project is selected: a new channel would not belong to it. */
+  canCreateChannel?: boolean;
   onCreateMeeting: () => void;
   onJoinUpcomingMeeting?: (href: string) => void;
   onEditUpcomingMeeting?: (meeting: MeetUpcomingMeeting) => void;
@@ -62,6 +64,7 @@ export function MeetWorkspaceSidebar({
   channelCallAudioOnly,
   meetingStartLabel,
   onCreateChannel,
+  canCreateChannel = true,
   onCreateMeeting,
   onJoinUpcomingMeeting,
   onEditUpcomingMeeting,
@@ -78,14 +81,18 @@ export function MeetWorkspaceSidebar({
           menuLabel={meetLabels.newChannelMenu}
           icon={<Video />}
           onMainAction={onCreateMeeting}
-          items={[
-            {
-              id: "create-channel",
-              label: meetLabels.newChannel,
-              icon: <Hash aria-hidden />,
-              onClick: onCreateChannel,
-            },
-          ]}
+          items={
+            canCreateChannel
+              ? [
+                  {
+                    id: "create-channel",
+                    label: meetLabels.newChannel,
+                    icon: <Hash aria-hidden />,
+                    onClick: onCreateChannel,
+                  },
+                ]
+              : []
+          }
         />
       }
       footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
@@ -105,6 +112,17 @@ export function MeetWorkspaceSidebar({
         <SidebarSection title={meetLabels.sidebarSharedWithMe}>
           <MeetSidebarRows
             channels={sections.shared}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            channelHasLiveCall={channelHasLiveCall}
+            channelCallAudioOnly={channelCallAudioOnly}
+          />
+        </SidebarSection>
+      ) : null}
+      {sections.projects.length > 0 ? (
+        <SidebarSection title={meetLabels.sidebarProjects}>
+          <MeetSidebarRows
+            channels={sections.projects}
             selectedId={selectedId}
             onSelect={onSelect}
             channelHasLiveCall={channelHasLiveCall}
