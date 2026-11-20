@@ -96,6 +96,22 @@ final class LoginRateLimiter
         );
     }
 
+    public function retryAfter(string $username, string $ip): int
+    {
+        if ($this->isDisabled()) {
+            return 1;
+        }
+
+        [$user, $ipNorm] = $this->normalized($username, $ip);
+
+        return max(
+            1,
+            $this->rateLimiter->availableIn($this->ipKey($ipNorm)),
+            $this->rateLimiter->availableIn($this->userIpKey($user, $ipNorm)),
+            $this->rateLimiter->availableIn($this->userKey($user)),
+        );
+    }
+
     public function reset(string $username, string $ip): void
     {
         if ($this->isDisabled()) {

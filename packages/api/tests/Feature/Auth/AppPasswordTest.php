@@ -143,10 +143,12 @@ final class AppPasswordTest extends WgwDatabaseTestCase
         }
 
         // The next attempt is refused before the password is checked, even a correct one ...
-        $this->withBearer($token)->postJson('/api/v1/settings/app-passwords', [
+        $throttled = $this->withBearer($token)->postJson('/api/v1/settings/app-passwords', [
             'name' => 'Phone',
             'currentPassword' => 'secret',
-        ])->assertStatus(429)->assertJsonPath('code', 'throttled');
+        ]);
+        $throttled->assertStatus(429)->assertJsonPath('code', 'throttled');
+        $this->assertGreaterThan(0, (int) $throttled->headers->get('Retry-After'));
 
         // ... and the web sign-in of the same user from the same address is on the same counter.
         $this->postJson('/api/v1/auth/token', ['username' => 'bob', 'password' => 'secret'])
