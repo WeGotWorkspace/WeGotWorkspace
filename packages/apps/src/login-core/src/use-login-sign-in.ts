@@ -33,7 +33,6 @@ export function loginFailureMessage(error: unknown, now = Date.now()): string {
       return labels.expired;
     case "throttled": {
       const at = error.retryAfterSeconds ? formatTime(now + error.retryAfterSeconds * 1000) : null;
-      if (error.code === "mfa_locked") return labels.codesPaused(at);
       return labels.throttled(at);
     }
     default:

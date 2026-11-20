@@ -29,10 +29,6 @@ export const loginLabels = {
     at
       ? `Too many sign-in attempts. Try again at ${at}.`
       : "Too many sign-in attempts. Wait a few minutes and try again.",
-  codesPaused: (at: string | null) =>
-    at
-      ? `Code entry is paused after too many wrong codes. Try again at ${at}.`
-      : "Code entry is paused after too many wrong codes. Try again in an hour.",
   offline: "You are offline. Connect to the internet and try again.",
   failed: "Could not sign in.",
 } as const;

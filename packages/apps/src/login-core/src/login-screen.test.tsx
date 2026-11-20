@@ -259,19 +259,6 @@ describe("LoginScreen second step", () => {
     );
   });
 
-  it("names the hour-long pause when the server says code entry is locked", async () => {
-    const operations = createMockSignInOperations();
-    vi.spyOn(operations, "verify").mockRejectedValue(
-      new SignInError("x", 429, "mfa_locked", "throttled", 3600),
-    );
-    render(<LoginScreen operations={operations} />);
-    signInAsTwoFactorUser();
-    await submitCode("123456");
-    expect((await screen.findByRole("alert")).textContent).toMatch(
-      /^Code entry is paused after too many wrong codes\. Try again at /,
-    );
-  });
-
   it("goes back to the password when the challenge expired", async () => {
     render(<LoginScreen operations={createMockSignInOperations()} />);
     signInAsTwoFactorUser();

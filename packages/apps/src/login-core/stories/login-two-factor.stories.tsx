@@ -88,6 +88,17 @@ export const Throttled: Story = {
   },
 };
 
+export const Expired: Story = {
+  name: "Expired challenge",
+  render: () => <Screen />,
+  play: async ({ canvasElement }) => {
+    const page = await signInAsAlice(canvasElement);
+    await enterCode(page, MOCK_SIGN_IN.expiredCode);
+    await expect(await page.findByText(labels.expired)).toBeVisible();
+    await expect(page.getByLabelText("Username")).toBeVisible();
+  },
+};
+
 export const RecoveryCode: Story = {
   name: "Recovery code",
   render: () => <Screen />,
