@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Projects;
 
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Services\Projects\ProjectLifecycle;
 use App\Services\Projects\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,10 @@ use Illuminate\Http\Request;
  */
 final class ProjectsController
 {
-    public function __construct(private readonly ProjectService $projects) {}
+    public function __construct(
+        private readonly ProjectService $projects,
+        private readonly ProjectLifecycle $lifecycle,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -38,6 +42,24 @@ final class ProjectsController
     public function update(Request $request, string $project): JsonResponse
     {
         return response()->json($this->projects->patch($this->username($request), $project, $this->payload($request)));
+    }
+
+    public function archive(Request $request, string $project): JsonResponse
+    {
+        return response()->json($this->lifecycle->archive($this->username($request), $project));
+    }
+
+    public function unarchive(Request $request, string $project): JsonResponse
+    {
+        return response()->json($this->lifecycle->unarchive($this->username($request), $project));
+    }
+
+    /** Purge: only an archived Project (#819). */
+    public function destroy(Request $request, string $project): JsonResponse
+    {
+        $this->lifecycle->purge($this->username($request), $project);
+
+        return response()->json(['ok' => true]);
     }
 
     /** @return array<string, mixed> */

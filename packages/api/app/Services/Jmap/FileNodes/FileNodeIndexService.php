@@ -59,39 +59,6 @@ final class FileNodeIndexService
     // ---------------------------------------------------------------
     // Visibility
 
-    /**
-     * Storage-key prefixes of the account's own tree: the personal home plus
-     * member group trees. Live member-grant share roots are visible to the
-     * grantee (#990) but are not minted here — FileNodeAccountSupport indexes
-     * them with their real parent.
-     *
-     * @param  list<string>  $groupSlugs
-     * @return list<string>
-     */
-    public function visibleRoots(string $username, array $groupSlugs): array
-    {
-        $roots = ['users/'.$username];
-        foreach ($groupSlugs as $slug) {
-            $roots[] = 'groups/'.$slug;
-        }
-
-        return $roots;
-    }
-
-    /**
-     * @param  list<string>  $roots
-     */
-    public function isVisibleKey(string $key, array $roots): bool
-    {
-        foreach ($roots as $root) {
-            if ($key === $root || str_starts_with($key, $root.'/')) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private function isHiddenKey(string $key): bool
     {
         return ! StorageKeyClass::classify($key)->isFileIndexed();
@@ -572,7 +539,7 @@ final class FileNodeIndexService
      */
     private function indexMissingRoots(string $username, array $groupSlugs): void
     {
-        foreach ($this->visibleRoots($username, $groupSlugs) as $root) {
+        foreach (FileNodeVisibility::roots($username, $groupSlugs) as $root) {
             if ($this->liveByKey($root) !== null) {
                 continue;
             }
@@ -685,7 +652,7 @@ final class FileNodeIndexService
         $updated = [];
         $destroyed = [];
         foreach ($rows as $row) {
-            if (! $this->isVisibleKey((string) $row->storage_key, $roots)) {
+            if (! FileNodeVisibility::isVisibleKey((string) $row->storage_key, $roots)) {
                 continue;
             }
             $nodeId = (string) $row->node_id;
@@ -704,7 +671,7 @@ final class FileNodeIndexService
         // Nodes that moved out of sight are destroyed for this caller (#2036).
         array_push($destroyed, ...$this->departures->destroyedSince(
             $since,
-            fn (string $key): bool => $this->isVisibleKey($key, $roots),
+            fn (string $key): bool => FileNodeVisibility::isVisibleKey($key, $roots),
         ));
 
         return [

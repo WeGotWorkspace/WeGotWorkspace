@@ -382,7 +382,7 @@ final class DriveShareService
         $now = Carbon::now();
         $inForce = function (DriveShare $share) use ($now): bool {
             return $this->presenter->isShareLive($share, $now)
-                && ! $this->scope->isInProductTrash((string) $share->path)
+                && ! $this->scope->isInert((string) $share->path)
                 && $this->ownerReach->ownerReachesShare($share);
         };
 

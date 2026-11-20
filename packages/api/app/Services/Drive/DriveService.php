@@ -787,9 +787,7 @@ final class DriveService
 
     private function isHiddenBrowsePath(string $virtualPath): bool
     {
-        return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1
-            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath)
-            || CollabSidecarPaths::isHiddenBrowseVirtualPath($virtualPath);
+        return DriveHiddenPaths::isHidden($virtualPath) || CollabSidecarPaths::isHiddenBrowseVirtualPath($virtualPath);
     }
 
     private function disk(): Filesystem

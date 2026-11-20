@@ -108,10 +108,10 @@ final class CalendarCollectionAccess
      */
     public function visibleHighestAccess(string $username, $instances)
     {
-        return $this->shareVisibility->rejectDismissedSharees(
+        return $this->withoutArchivedProjects($this->shareVisibility->rejectDismissedSharees(
             $username,
             $this->preferHighestAccessPerCalendar($this->shareVisibility->rejectHiddenSharees($username, $instances)),
-        );
+        ));
     }
 
     /**
@@ -365,7 +365,21 @@ final class CalendarCollectionAccess
      */
     public function withoutDismissedOrHidden(string $username, Collection $instances): Collection
     {
-        return $this->shareVisibility->rejectInvisibleSharees($username, $instances);
+        return $this->withoutArchivedProjects($this->shareVisibility->rejectInvisibleSharees($username, $instances));
+    }
+
+    /**
+     * The collections of an archived Project are gone for everyone, sharees included, until
+     * it is unarchived (#819 B2).
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function withoutArchivedProjects(Collection $instances): Collection
+    {
+        return $instances
+            ->reject(fn (CalendarInstance $instance): bool => $this->projects->isArchived((int) $instance->calendarid))
+            ->values();
     }
 
     /**
@@ -486,7 +500,10 @@ final class CalendarCollectionAccess
         $team = $teamUris === [] ? new Collection : $owned($teamUris)
             ->reject(fn (CalendarInstance $instance): bool => $this->isTeamSubscription((string) $instance->uri));
 
-        return ['personal' => array_values($personal->all()), 'team' => array_values($team->all())];
+        return [
+            'personal' => array_values($this->withoutArchivedProjects($personal->values())->all()),
+            'team' => array_values($this->withoutArchivedProjects($team->values())->all()),
+        ];
     }
 
     /**
