@@ -12,6 +12,7 @@ use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\RoomTestHelper;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -98,6 +99,7 @@ final class JmapPushRtcHeartbeatTest extends WgwDatabaseTestCase
         $this->assertCount(RtcPushHeartbeat::MAX_PEERS, RtcPushHeartbeat::parse($many)['collab']);
     }
 
+    /** @return TestResponse<Response> */
     private function pushRead(string $username, string $peers): TestResponse
     {
         return $this->call('GET', '/api/v1/jmap/events/RtcRoom/state/0', server: $this->transformHeadersToServerVars([
