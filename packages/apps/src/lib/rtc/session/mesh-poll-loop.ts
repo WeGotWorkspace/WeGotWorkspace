@@ -9,6 +9,7 @@ import {
   steadyPollDelayMs,
   type MeshPollCadenceSnapshot,
 } from "@/lib/rtc/session/poll-cadence";
+import { pushRoomDoorbell, type RoomDoorbell } from "@/lib/rtc/session/room-doorbell";
 import type { RtcPollIntervals } from "@/lib/rtc/types";
 
 /**
@@ -31,6 +32,11 @@ export type MeshPollLoopContext = {
   log: (event: string, details?: unknown) => void;
   scheduleTimeout: typeof setTimeout;
   cancelTimeout: typeof clearTimeout;
+  /**
+   * The push doorbell (#2294). Undefined takes this browser's push hub; null turns it off,
+   * so the room keeps its own cadence.
+   */
+  doorbell?: RoomDoorbell | null;
 };
 
 export class MeshPollLoop {
@@ -42,7 +48,16 @@ export class MeshPollLoop {
 
   private lastLoggedPollDelayMs: number | null = null;
 
-  constructor(private readonly context: MeshPollLoopContext) {}
+  /** Between the first schedule and `stop()` / `release()`: a ring may poll. */
+  private running = false;
+
+  private readonly doorbell: RoomDoorbell | null;
+
+  private doorbellCleanup: (() => void) | null = null;
+
+  constructor(private readonly context: MeshPollLoopContext) {
+    this.doorbell = context.doorbell === undefined ? pushRoomDoorbell() : context.doorbell;
+  }
 
   onVisibilityChange(): void {
     if (!this.context.myId()) return;
@@ -57,9 +72,11 @@ export class MeshPollLoop {
 
   schedule(steady = false): void {
     if (!this.context.myId()) return;
-    this.stop();
+    this.clearTimer();
+    this.running = true;
+    this.listenToDoorbell();
     const intervals = this.context.pollIntervals();
-    const cadence = this.context.cadence();
+    const cadence = { ...this.context.cadence(), doorbell: this.doorbell?.connected === true };
     const delay = steady ? steadyPollDelayMs(intervals, cadence) : intervals.connectingMs;
     this.logDelay(delay, steady, cadence);
     this.pollTimer = this.context.scheduleTimeout(() => {
@@ -85,16 +102,46 @@ export class MeshPollLoop {
   }
 
   stop(): void {
+    this.running = false;
+    this.clearTimer();
+  }
+
+  private clearTimer(): void {
     if (this.pollTimer === null) return;
     this.context.cancelTimeout(this.pollTimer);
     this.pollTimer = null;
   }
 
-  /** Drop the in-flight guard and the logged delay so the next join polls cleanly. */
+  /** Drop the in-flight guard, the logged delay and the doorbell so the next join polls cleanly. */
   release(): void {
+    this.running = false;
     this.pollInFlight = false;
     this.pendingKick = false;
     this.lastLoggedPollDelayMs = null;
+    this.doorbellCleanup?.();
+    this.doorbellCleanup = null;
+  }
+
+  /**
+   * A ring polls at once (a newcomer, a leaver or a message for this tab's peer); a status
+   * change reschedules, so the heartbeat starts when push connects and the room's own
+   * cadence comes back as soon as it drops.
+   */
+  private listenToDoorbell(): void {
+    const doorbell = this.doorbell;
+    if (!doorbell || this.doorbellCleanup) return;
+    const unsubscribeRing = doorbell.subscribe(() => {
+      if (!this.running) return;
+      this.context.log("doorbell-ring");
+      this.kick();
+    });
+    const unsubscribeStatus = doorbell.subscribeStatus(() => {
+      if (this.running && !this.pollInFlight) this.schedule(true);
+    });
+    this.doorbellCleanup = () => {
+      unsubscribeRing();
+      unsubscribeStatus();
+    };
   }
 
   private logDelay(delay: number, steady: boolean, cadence: MeshPollCadenceSnapshot): void {

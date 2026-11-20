@@ -2,15 +2,17 @@
 
 Reference profile: PHP-FPM with `pm.max_children = 5`. One child serves one request. The instance does not call a third party for real-time traffic.
 
-Clients poll their own signaling route. After a room is connected the cadence backs off (`packages/apps/src/lib/rtc/session/poll-cadence.ts`):
+Clients poll their own signaling route only while a peer connects. Otherwise the JMAP push stream is the doorbell (#2294): its `RtcRoom` state changes when a peer joins or leaves a room the user is in, or a message reaches one of their peers, and each of the user's rooms then polls once. A room behind the doorbell only heartbeats, below the shortest peer timeout (Meet 60 s, Docs and presence 90 s), so a lone peer stays on the roster (`packages/apps/src/lib/rtc/session/poll-cadence.ts`, `room-doorbell.ts`):
 
-| Channel | While connecting | Nobody reachable in the room | Every reachable peer linked |
-| --- | --- | --- | --- |
-| Meet | 400 ms, then 1.2 s | 4 s when alone | 4 s |
-| Docs | 400 ms, then 1.2 s | 2 s | 5 s |
-| Presence | 400 ms, then 1.2 s | 4 s | 20 s |
+| Channel | While connecting | Push connected, nobody connecting | Push down: nobody reachable | Push down: every reachable peer linked |
+| --- | --- | --- | --- | --- |
+| Meet | 400 ms, then 1.2 s | 30 s heartbeat | 4 s when alone | 4 s |
+| Docs | 400 ms, then 1.2 s | 30 s heartbeat | 2 s | 5 s |
+| Presence | 400 ms, then 1.2 s | 30 s heartbeat (slower with the Team scale below) | 4 s | 20 s |
 
-In Docs and Presence a peer counts as connecting for 20 s after it appears on the roster or its link drops (`UNLINKED_PEER_FAST_WINDOW_MS`). After that it no longer holds the room at 1.2 s: a page that closed without its leave beacon, or a browser whose WebRTC never opens, used to keep every room it shared at the connecting cadence (#2156). A Docs peer linked through the presence mesh (collab reuse) counts as linked. The 2 s for an empty Docs room is also how long a newcomer who is not linked yet waits to be found.
+The push stream itself reconnects every 3 s while someone works, every 6 s while a tab is visible but nobody touched any tab of the browser for 2 minutes (`lib/activity/user-activity.ts`; the first input wakes it at once), and every 30 s while every tab is hidden. A newcomer is therefore seen within one push round plus one poll: about 3.5 s active, about 7 s idle.
+
+In Docs and Presence a peer counts as connecting for 20 s after it appears on the roster or its link drops (`UNLINKED_PEER_FAST_WINDOW_MS`). After that it no longer holds the room at 1.2 s: a page that closed without its leave beacon, or a browser whose WebRTC never opens, used to keep every room it shared at the connecting cadence (#2156). A Docs peer linked through the presence mesh (collab reuse) counts as linked. With push down, the 2 s for an empty Docs room is also how long a newcomer who is not linked yet waits to be found.
 
 Docs over the HTTP fallback (no data channel) polls 1 s while edits flow and for 30 s after the last one, then 2 s.
 

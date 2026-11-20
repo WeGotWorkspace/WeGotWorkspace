@@ -21,6 +21,7 @@ use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notify\NotificationInboxMarkers;
+use App\Services\Rtc\Signaling\RtcRoomPushState;
 use App\Services\Tasks\TaskListRepository;
 use App\Support\WgwSettings;
 use Illuminate\Database\Eloquent\Collection;
@@ -39,6 +40,8 @@ use Illuminate\Database\Eloquent\Collection;
  *
  * `DocThread` (#2286) composes the Docs thread pools behind the user's file roots
  * ({@see DocThreadPushState}): a share root covers only the threads under it.
+ * `RtcRoom` (#2294) is the doorbell for signaling rooms where the user has a live peer
+ * ({@see RtcRoomPushState}); heartbeats (`seen_at`) do not move it.
  *
  * `FileNode` is the exception in what is hashed: the pushed value is the
  * global sequence `FileNode/changes` expects, but the hash covers the sorted
@@ -62,6 +65,7 @@ final class JmapPushStateResolver
         'TaskList',
         'Notification',
         'DocThread',
+        'RtcRoom',
     ];
 
     /** Types that share one state source are resolved once. */
@@ -79,6 +83,7 @@ final class JmapPushStateResolver
         'TaskList' => 'tasks',
         'Notification' => 'inbox',
         'DocThread' => 'docthreads',
+        'RtcRoom' => 'rtcrooms',
     ];
 
     /** Sources whose state is a composite over CalDAV collections of one kind. */
@@ -116,6 +121,7 @@ final class JmapPushStateResolver
         private readonly NotificationInboxMarkers $inbox,
         private readonly JmapCapabilitySet $capabilities,
         private readonly DocThreadPushState $docThreads,
+        private readonly RtcRoomPushState $rtcRooms,
     ) {}
 
     /**
@@ -232,6 +238,7 @@ final class JmapPushStateResolver
             'tasks' => (string) $this->taskLists->changesOf($instances ?? [], null)['newState'],
             'inbox' => (string) $this->inbox->markerFor($username),
             'docthreads' => $this->docThreads->stateFor($this->rootsAndGrantPairs($username)['roots']),
+            'rtcrooms' => $this->rtcRooms->stateFor($username),
             default => throw new \LogicException('Unknown push state source '.$source),
         };
 
