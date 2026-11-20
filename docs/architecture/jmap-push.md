@@ -74,16 +74,17 @@ The id is a plain list of independent per-type hashes, never one hash over the w
 
 ### Types
 
-| Type                         | State source                                                            | Note                                                                                                           |
-| ---------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `Note`, `Notebook`           | notebook instances + synctokens                                         | existing JMAP types                                                                                            |
-| `CalendarEvent`, `Calendar`  | calendar instances + synctokens                                         | existing                                                                                                       |
-| `ContactCard`, `AddressBook` | address book listings + synctokens                                      | existing                                                                                                       |
-| `ChatMessage`, `ChatChannel` | channel instances + synctokens                                          | existing                                                                                                       |
-| `FileNode`                   | a change marker per visible root, plus the user's member grants (below) | existing; grants since #1926                                                                                   |
-| `Task`, `TaskList`           | task list instances + synctokens (`TaskListRepository`)                 | no JMAP type today. Use the type names from the JMAP Tasks draft, so a later JMAP Tasks surface can keep them. |
-| `Notification`               | a change marker per principal on `notifications` (below)                | WGW type for active news; the client fetches the inbox                                                         |
-| `DocThread`                  | Docs thread pools behind the user's Drive roots (below)                 | WGW type (#2286); the open document calls `files/threads/changes`                                              |
+| Type                         | State source                                                                                  | Note                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `Note`, `Notebook`           | notebook instances + synctokens                                                               | existing JMAP types                                                                                            |
+| `CalendarEvent`, `Calendar`  | calendar instances + synctokens                                                               | existing                                                                                                       |
+| `ContactCard`, `AddressBook` | address book listings + synctokens                                                            | existing                                                                                                       |
+| `ChatMessage`, `ChatChannel` | channel instances + synctokens                                                                | existing                                                                                                       |
+| `FileNode`                   | a change marker per visible root, plus the user's member grants (below)                       | existing; grants since #1926                                                                                   |
+| `Task`, `TaskList`           | task list instances + synctokens (`TaskListRepository`)                                       | no JMAP type today. Use the type names from the JMAP Tasks draft, so a later JMAP Tasks surface can keep them. |
+| `Notification`               | a change marker per principal on `notifications` (below)                                      | WGW type for active news; the client fetches the inbox                                                         |
+| `DocThread`                  | Docs thread pools behind the user's Drive roots (below)                                       | WGW type (#2286); the open document calls `files/threads/changes`                                              |
+| `RtcRoom`                    | roster signature and newest message per signaling room where the user has a live peer (below) | WGW type (#2294); the user's rooms poll their mailbox once                                                     |
 
 Every state read is O(collections or roots the user can see), never O(changes on the server).
 
@@ -95,6 +96,17 @@ Docs comment and suggestion threads live in one hidden VJOURNAL pool per file ow
 - **Share root deeper in someone else's tree:** a digest of the uid and etag of the threads and replies on documents at or under that root (`docs_thread_index` joined with `calendarobjects`). A comment on another document of the same owner does not move it, so a grantee learns nothing about documents they cannot read.
 
 A user without a pool behind any root gets `0:`. Two indexed reads, plus one per share root.
+
+### Signaling rooms: the room doorbell
+
+The `RtcRoom` state (`RtcRoomPushState`, #2294) covers, per channel table (Docs collab, presence, Meet), every room where the user has a live peer: `owner_user` is the user and `seen_at` is within the channel's peer timeout. Per room it hashes the roster signature the room poll returns (`HttpSignalingMailbox::rosterSignature`: peer ids, names, owner, access, caps, network class; never `seen_at`, which every heartbeat moves) over the live peers, plus the newest message id addressed to one of the user's peers. The value is `<rooms>.<hash>`, or `0` without a room.
+
+- A peer joining or leaving, or a message to one of the user's peers, changes it; a heartbeat does not.
+- A room where the user has no live peer never reaches the state, so it reflects no room the user has not joined (presence of other people in other rooms stays invisible).
+- Reads per channel: the user's live peers (index `owner_user, seen_at`), the live peers of those rooms (`room`), and the newest message per own peer (`room, to_peer, id`).
+- Signaling payloads (offers, answers, ICE) stay on the room route; push only rings.
+
+On the client each room's poll loop (`MeshPollLoop`) listens to the doorbell (`room-doorbell.ts`): a ring polls at once; while push is connected and no rostered peer is being dialled, the room only heartbeats every 30 s; while push is down it keeps its own cadence ([realtime-capacity.md](../realtime-capacity.md)). A Meet mailbox drops acknowledged messages, so its newest message id can go down after a poll and ring once more; that costs one extra poll per message.
 
 ### Drive: a change marker per root
 
@@ -217,7 +229,7 @@ We write that reader ourselves, about a hundred lines with tests, instead of dep
 Behaviour:
 
 - `types=*`, `closeafter=state`, `ping=0`. The URL comes from the session's `eventSourceUrl`; a guest share session has no push.
-- After the response ends, reconnect after the server's `retry` while a tab is visible or in a live Meet call, or after 30 s when every tab is hidden and none is in a call. A hidden tab in a call local-acks (#1605), so it has to see a new inbox row within the 20 s local-ack grace; at 30 s it often missed it and push alerted during the call (#2129). While this browser's presence mesh has held a link for 30 s, the visible interval is `retry` × 5/3: 5 s instead of 3 s ([below](#interval-by-mesh-state)).
+- After the response ends, reconnect after the server's `retry` while a tab is visible or in a live Meet call (6 s instead of 3 s while nobody touched any tab for 2 minutes, #2294), or after 30 s when every tab is hidden and none is in a call. A hidden tab in a call local-acks (#1605), so it has to see a new inbox row within the 20 s local-ack grace; at 30 s it often missed it and push alerted during the call (#2129). While this browser's presence mesh has held a link for 30 s, the visible interval is `retry` × 5/3: 5 s instead of 3 s ([below](#interval-by-mesh-state)).
 - A wake reconnects at once, also right after a regular reconnect. Two early reconnects start at least 2 s apart (`wakeGapMs`).
 - Offline: stop. Online again: reconnect at once. The reconnect flush already syncs the apps.
 - `401`: refresh the token through the shared auth path, then reconnect.
@@ -254,6 +266,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Drive, Docs home   | `FileNode`                   | `FileNode/changes` through `use-drive-file-node-inbound.ts`, then the open folder and the Docs home lists load again in place (built, `drive-file-node-push.ts`). One tab per browser makes the call; the others repaint from a cross-tab notice. No poll: without push, folders load on navigation as before. |
 | Tasks              | `Task`, `TaskList`           | `syncTasksInbound` when the pushed state differs from the stored task-list changes state, which is the same value (built, `use-tasks-live-inbound.ts`)                                                                                                                                                         |
 | Docs threads       | `DocThread`                  | the open document calls `files/threads/changes` once per push (built, `use-docs-threads-source.ts`); the 4 s poll runs only while push is down (#2286)                                                                                                                                                         |
+| Signaling rooms    | `RtcRoom`                    | each Docs, presence and Meet room of the tab polls its mailbox once (built, `mesh-poll-loop.ts`, `room-doorbell.ts`); without push the rooms keep their own cadence                                                                                                                                            |
 
 **One syncing tab per app.** Notes, Contacts, Calendar and Meet chat share one inbound sync per browser, app and account (#2252, `JmapInboundAdapter.shareAcrossTabs`, `inbound-sync-share.ts`). The tab that holds the Web Lock `wgw-inbound-sync/<app>/<account>` runs the push rounds and the fallback poll; the other tabs skip both and re-read the shared cache when the syncing tab says a round is done. A tab that is behind on a push confirms it when that message arrives; if none comes within 5 s (`SHARED_ROUND_WAIT_MS`: the syncing tab loaded after the change, so it had nothing to pull), it pulls for itself. That lock follows the stream's rule above: every such tab holds a second lock while it is visible, and a hidden holder gives the sync lock back and queues again while another tab with that app is visible (it checks when it becomes hidden, when it gets the lock, and when a tab says it is visible). A hidden tab does not run its poll, so with push down the updates still arrive in the visible tab. An explicit `sync()` (the user acted in that tab) always runs.
 

@@ -5,6 +5,7 @@ import {
   wgwIsGuestSession,
   wgwLiveApiEnabled,
 } from "@/lib/api/wgw/http";
+import { installUserActivity, onUserResumed, userIsIdle } from "@/lib/activity/user-activity";
 import { JmapRequestError } from "@/lib/jmap-client/core/errors";
 import { EventSourceTransport } from "@/lib/jmap-client/push/event-source-transport";
 import { isPushMessage, JmapPushHub, type PushMessage } from "@/lib/jmap-client/push/jmap-push-hub";
@@ -120,6 +121,8 @@ function createHub(): JmapPushHub {
         fetch: (url, init) => wgwFetch(url, init),
         lastEventId: ctx.lastEventId,
         everyTabHidden: ctx.everyTabHidden,
+        // 6 s instead of 3 s while nobody used any tab for 2 min (#2294).
+        userIdle: () => userIsIdle(),
         onStatus: ctx.onStatus,
         connectivity: {
           online: getConnectivitySnapshot,
@@ -148,5 +151,11 @@ let hub: JmapPushHub | null | undefined;
 export function defaultJmapPushHub(): JmapPushHub | null {
   if (hub !== undefined) return hub;
   hub = typeof window !== "undefined" && wgwLiveApiEnabled() ? createHub() : null;
+  if (hub) {
+    installUserActivity();
+    const created = hub;
+    // Back from idle: the longer idle interval must not hold up the first news.
+    onUserResumed(() => created.wake("active"));
+  }
   return hub;
 }

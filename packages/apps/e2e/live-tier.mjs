@@ -26,6 +26,7 @@ export const liveTierSpecs = [
   "contacts-open-draft-merge",
   "contacts-push",
   "docs-collab-access-revoked",
+  "docs-collab-doorbell",
   "docs-collab-external-write",
   "docs-collab-racing-open",
   "docs-collab-solo-read",

@@ -42,7 +42,7 @@ final class HttpSignalingMailbox
         }
 
         $peers = $this->store->peerList($room, $peerId, $withOwner);
-        $rosterSig = $this->rosterSignature($peers);
+        $rosterSig = self::rosterSignature($peers);
 
         if (
             $knownRosterSig !== null
@@ -77,7 +77,7 @@ final class HttpSignalingMailbox
         return [
             'peers' => $peers,
             'messages' => $this->messagesSinceCursor($room, $peerId, 0),
-            'rosterSig' => $this->rosterSignature($peers),
+            'rosterSig' => self::rosterSignature($peers),
         ];
     }
 
@@ -181,11 +181,11 @@ final class HttpSignalingMailbox
     /**
      * Signature over the visible roster (ids, names, owner, and the C1 facts,
      * order-independent). `seen_at` is deliberately excluded — it changes on
-     * every poll touch.
+     * every poll touch. The `RtcRoom` push state (#2294) hashes rosters the same way.
      *
      * @param  list<array{id: string, name: string, user?: string, access?: string, caps?: list<string>, net?: string}>  $peers
      */
-    private function rosterSignature(array $peers): string
+    public static function rosterSignature(array $peers): string
     {
         $parts = array_map(
             static fn (array $peer): string => implode("\x1f", [
