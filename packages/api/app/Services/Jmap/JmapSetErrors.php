@@ -30,7 +30,7 @@ final class JmapSetErrors
         $type = match ($e->errorCode()) {
             'not_found' => 'notFound',
             'bad_request', 'invalidProperties' => 'invalidProperties',
-            'forbidden', 'team_admin_only' => 'forbidden',
+            'forbidden', 'team_admin_only', 'project_item' => 'forbidden',
             // #1535: an archived note does not change until it is restored.
             'note_archived' => 'forbidden',
             'stateMismatch', 'precondition_failed' => 'stateMismatch',

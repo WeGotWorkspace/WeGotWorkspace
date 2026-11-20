@@ -21,6 +21,7 @@ use App\Dav\Server\DocYjsStateDavPlugin;
 use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
+use App\Dav\Server\ProjectCollectionPropPatchPlugin;
 use App\Dav\Server\PropIdEnsuringPlugin;
 use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
@@ -114,6 +115,7 @@ final class SabreServerFactory
 
         $server->addPlugin($authPlugin);
         $server->addPlugin(app(WebdavWriteGuardPlugin::class));
+        $server->addPlugin(app(ProjectCollectionPropPatchPlugin::class));
         $server->addPlugin(app(DocYjsStateDavPlugin::class));
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(app(FileNodeIndexPlugin::class));

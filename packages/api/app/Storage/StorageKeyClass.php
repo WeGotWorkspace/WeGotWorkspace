@@ -18,6 +18,8 @@ enum StorageKeyClass: string
     case Trash = 'trash';
     case Attachment = 'attachment';
     case Hidden = 'hidden';
+    /** Under `groups/{team}/.project-archive/`: kept in the file index, out of search and client reach (#819). */
+    case ProjectArchive = 'project_archive';
 
     private const TRASH_DIR = '.Trash';
 
@@ -52,6 +54,11 @@ enum StorageKeyClass: string
             if ($segment === self::NOTES_ARCHIVE_DIR && $underNotes) {
                 continue;
             }
+            if ($segment === ProjectArchivePaths::DIR) {
+                $class = self::moreRestrictive($class, self::ProjectArchive);
+
+                continue;
+            }
             if (str_starts_with($segment, '.')) {
                 return self::Hidden;
             }
@@ -61,8 +68,8 @@ enum StorageKeyClass: string
     }
 
     /**
-     * Hidden beats trash beats attachment beats note beats regular, whatever
-     * order the segments appear in.
+     * Hidden beats project archive beats trash beats attachment beats note beats regular,
+     * whatever order the segments appear in.
      */
     private static function moreRestrictive(self $current, self $candidate): self
     {
@@ -76,7 +83,8 @@ enum StorageKeyClass: string
             self::Note => 1,
             self::Attachment => 2,
             self::Trash => 3,
-            self::Hidden => 4,
+            self::ProjectArchive => 4,
+            self::Hidden => 5,
         };
     }
 

@@ -110,6 +110,20 @@ final class OwnershipRegistry
                 'why' => 'Member management of the Team in the path (#2278): a team admin of it or an organization admin; anyone else gets the 404 of an unknown Team.',
             ];
         }
+        foreach ([
+            'GET /projects',
+            'POST /projects',
+            'GET /projects/{project}',
+            'PATCH /projects/{project}',
+            'DELETE /projects/{project}',
+            'POST /projects/{project}/archive',
+            'POST /projects/{project}/unarchive',
+        ] as $operation) {
+            $exempt[$operation] = [
+                'reason' => ExemptionReason::TeamRole,
+                'why' => 'Projects of the caller\'s Teams (#817): reads need membership of the owning Team, writes the team-admin role for it; anyone else gets the 404 of an unknown Project or Team.',
+            ];
+        }
 
         $noObject = [
             'GET /health' => 'Liveness probe.',

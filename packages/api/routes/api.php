@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\V1\Notes\NotebooksController;
 use App\Http\Controllers\Api\V1\Notes\NotesController;
 use App\Http\Controllers\Api\V1\Notify\NotificationsController;
 use App\Http\Controllers\Api\V1\Notify\PushSubscriptionsController;
+use App\Http\Controllers\Api\V1\Projects\ProjectsController;
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
@@ -259,6 +260,14 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
             Route::put('admins/{username}', [TeamMembersController::class, 'appoint']);
             Route::delete('admins/{username}', [TeamMembersController::class, 'dismiss']);
         });
+    // Projects of the caller's Teams (#817): membership reads, the team-admin role writes.
+    Route::get('projects', [ProjectsController::class, 'index']);
+    Route::post('projects', [ProjectsController::class, 'store']);
+    Route::get('projects/{project}', [ProjectsController::class, 'show'])->where('project', '[0-9a-z]{26}');
+    Route::patch('projects/{project}', [ProjectsController::class, 'update'])->where('project', '[0-9a-z]{26}');
+    Route::delete('projects/{project}', [ProjectsController::class, 'destroy'])->where('project', '[0-9a-z]{26}');
+    Route::post('projects/{project}/archive', [ProjectsController::class, 'archive'])->where('project', '[0-9a-z]{26}');
+    Route::post('projects/{project}/unarchive', [ProjectsController::class, 'unarchive'])->where('project', '[0-9a-z]{26}');
     Route::put('settings/profile', SettingsProfileController::class);
     Route::get('settings/app-passwords', [SettingsAppPasswordsController::class, 'index']);
     Route::post('settings/app-passwords', [SettingsAppPasswordsController::class, 'store']);

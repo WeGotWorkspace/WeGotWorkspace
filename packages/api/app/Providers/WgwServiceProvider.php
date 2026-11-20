@@ -27,6 +27,9 @@ use App\Services\Jmap\Guest\GuestJmapAccounts;
 use App\Services\Jmap\Guest\GuestJmapGateway;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
+use App\Services\Projects\ProjectFolderRegistry;
+use App\Services\Projects\ProjectMarkers;
+use App\Services\Projects\ProjectRegistry;
 use App\Services\Tasks\Threads\TaskThreadSubject;
 use App\Services\Teams\TeamColleagues;
 use App\Services\Teams\TeamMembershipReader;
@@ -82,9 +85,14 @@ final class WgwServiceProvider extends ServiceProvider
             $app->make(TeamMembershipReader::class),
             static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
         ));
+        // Project folder keys (#817): read once per request by the Drive guards.
+        $this->app->scoped(ProjectFolderRegistry::class);
+        // Which Project owns a collection (#817 B1): read once per request by the collection guards.
+        $this->app->scoped(ProjectRegistry::class);
         $this->app->scoped(TeamRoles::class, static fn ($app): TeamRoles => new TeamRoles(
             $app->make(TeamColleagues::class),
             static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
+            $app->make(ProjectMarkers::class),
         ));
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(TeamColleagues::class)) {
@@ -95,6 +103,12 @@ final class WgwServiceProvider extends ServiceProvider
             }
             if ($app->resolved(TeamRoles::class)) {
                 $app->make(TeamRoles::class)->forget();
+            }
+            if ($app->resolved(ProjectFolderRegistry::class)) {
+                $app->make(ProjectFolderRegistry::class)->forget();
+            }
+            if ($app->resolved(ProjectRegistry::class)) {
+                $app->make(ProjectRegistry::class)->forget();
             }
             $app->forgetInstance(WgwSettings::class);
         });

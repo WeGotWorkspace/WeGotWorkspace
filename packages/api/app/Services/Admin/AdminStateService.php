@@ -9,6 +9,7 @@ use App\Services\Calendars\CalendarImipService;
 use App\Services\Installer\DataDirCandidateResolver;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
+use App\Services\Projects\ProjectTeamTeardown;
 use App\Services\Rtc\MeetVideoProfile;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\GroupDirectoryService;
@@ -28,6 +29,7 @@ final class AdminStateService
         private ApiUrlBuilder $urls,
         private RtcSettingsService $rtcSettings,
         private DataDirCandidateResolver $dataDirs,
+        private ProjectTeamTeardown $projects,
     ) {}
 
     /**
@@ -39,7 +41,7 @@ final class AdminStateService
 
         return [
             'users' => $this->users->listSummaries(),
-            'groups' => $this->groups->listGroupSummariesWithTeamAdmins(),
+            'groups' => $this->groupsWithProjectCounts(),
             // Older installs stored one SMTP endpoint here; Email delivery prefills from it.
             'mail' => [
                 'smtpHost' => (string) ($cfg[SettingKeys::MAIL_SMTP_HOST] ?? ''),
@@ -170,5 +172,22 @@ final class AdminStateService
             // The stored switch, not the served one: admin edits what it set.
             'forceRelay' => $this->rtcSettings->storedFlag(SettingKeys::RTC_FORCE_RELAY),
         ];
+    }
+
+    /**
+     * The Teams with their team admins and the number of Projects that would go with
+     * each (#819: the delete confirmation names it).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function groupsWithProjectCounts(): array
+    {
+        $groups = $this->groups->listGroupSummariesWithTeamAdmins();
+        $counts = $this->projects->countsByTeam(array_map(static fn (array $group): string => (string) $group['name'], $groups));
+
+        return array_map(
+            static fn (array $group): array => $group + ['projectCount' => $counts[(string) $group['name']] ?? 0],
+            $groups,
+        );
     }
 }
