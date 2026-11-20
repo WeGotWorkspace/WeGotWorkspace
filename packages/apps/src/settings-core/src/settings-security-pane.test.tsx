@@ -176,13 +176,13 @@ describe("SettingsSecurityPane", () => {
     expect(screen.queryByLabelText(labels.createdLabel)).toBeNull();
   });
 
-  it("says to try again later when the sign-in limit is reached", async () => {
+  it("says when to try again when the sign-in limit is reached", async () => {
     renderPane([]);
     const dialog = await openCreate();
     type(labels.nameLabel, "Phone");
     type(labels.currentPasswordLabel, "throttled");
     fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
-    expect(await within(dialog).findByText(labels.throttled(null))).toBeTruthy();
+    expect(await within(dialog).findByText(/^Too many tries\. Try again at .+\.$/)).toBeTruthy();
   });
 
   it("says to remove one first at the limit of 50", async () => {
