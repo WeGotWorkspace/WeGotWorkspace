@@ -63,7 +63,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 ## Open decisions
 
 - [x] Chunk G: the Helm chart is not in this repository (no `Chart.yaml` found). Chunk G does not edit a chart. A Helm install that uses the Docker image already gets `WGW_INSTALL_CHANNEL=docker` from `docker/install/Dockerfile`, and chunk G maps that channel to the standard profile; `WGW_TRAFFIC_PROFILE` stays an explicit override.
-- [x] Idle budget (chunk C): measured after chunk I, one idle Docs tab made 15 requests/min (push 10, two 30 s room heartbeats 4, notifications 1) against ≤ 10. Decided 2026-11-20 (Wouter): keep idle push at 6 s and the ≤ 10 budget; room heartbeats and the notifications poll ride the push request. A push read refreshes `seen_at` only for the peers this browser sends with it (never other devices' peers), and the notification inbox gets a push type. Target: one idle Docs tab ≈ 10/min, newcomer seen within ~6 s idle.
+- [x] Idle budget (chunk C): measured after chunk I, one idle Docs tab made 15 requests/min (push 10, two 30 s room heartbeats 4, notifications 1) against ≤ 10. Decided 2026-11-20 (Wouter): keep idle push at 6 s and the ≤ 10 budget; room heartbeats and the notifications poll ride the push request. A push read refreshes `seen_at` only for the peers this browser sends with it (never other devices' peers), and the notifications poll is replaced by the existing `Notification` push type (pull on change). Target: one idle Docs tab ≈ 10/min, newcomer seen within ~6 s idle.
 
 ## Invariants
 
@@ -104,7 +104,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 ### Chunk C: idle-cadence (#2287)
 - **Skill:** workspace (rescoped: idle push 6 s; room slowdowns are the push-down fallback)
 - **Inputs:** `path: packages/apps/src/lib/jmap-client/push/event-source-transport.ts:28`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`
-- **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows.
+- **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows; heartbeat-on-push lands here: the push read refreshes `seen_at` only for the peers its browser names, and a feature test proves a caller cannot refresh another account's or another device's peer (that peer still expires after `peerTimeoutSeconds`); room heartbeat and notifications polls run only while push is down.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core`
 - **Parallel with:** none (after I)
 
@@ -161,7 +161,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Skill:** workspace, api (projection test)
 - **Inputs:** `path: packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts:26`; `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.ts:35`
 - **Done when:** #2297 AC met; 2000 contacts offline in under 60 s in the cold-start scenario; Calendar's invitee hook starts or joins the shared cold download instead of calling `listCards`, and its test "asks the server only without any cache" now expects no `listCards` call.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/contacts-core src/lib/offline`; harness cold start
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/contacts-core src/calendar-core src/lib/offline`; harness cold start
 - **Parallel with:** G (after F)
 
 ### Chunk M: doorbell-rule (#2298)
