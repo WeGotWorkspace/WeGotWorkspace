@@ -25,6 +25,7 @@ function UsersPaneHarness() {
           createdAt: "",
           enabled: true,
           isAdmin: true,
+          mfaEnabled: true,
         },
         {
           id: "bob",
@@ -195,14 +196,17 @@ export const AdminRole: Story = {
   },
 };
 
-/** #2275: who has two-factor on, and the admin reset behind a confirm. */
+/**
+ * #2275: who has two-factor on, and the admin reset behind a confirm. Not on your own row:
+ * you turn yours off in Settings → Security (decided by Wouter 2026-11-20).
+ */
 export const ResetTwoFactor: Story = {
   tags: ["vitest-ci"],
   render: () => <UsersPaneHarness />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await expect(canvas.getAllByText("Two-factor")).toHaveLength(1);
+    await expect(canvas.getAllByText("Two-factor")).toHaveLength(2);
     await expect(
       canvas.queryByRole("button", { name: "Reset two-factor sign-in for Alice Example" }),
     ).toBeNull();
@@ -214,7 +218,7 @@ export const ResetTwoFactor: Story = {
     await expect(confirm).toHaveTextContent("Reset two-factor sign-in for Bob Example?");
     await userEvent.click(within(confirm).getByRole("button", { name: "Reset" }));
     await waitFor(() => {
-      expect(canvas.queryByText("Two-factor")).toBeNull();
+      expect(canvas.getAllByText("Two-factor")).toHaveLength(1);
     });
     toast.dismiss();
   },

@@ -131,7 +131,8 @@ export function AdminUsersPane({
                   >
                     <KeyRound className="size-4" />
                   </IconActionButton>
-                  {user.mfaEnabled ? (
+                  {/* Your own two-factor is turned off in Settings → Security, with a code (#2275). */}
+                  {user.mfaEnabled && !isSelf ? (
                     <IconActionButton
                       label={`Reset two-factor sign-in for ${user.displayName}`}
                       onClick={() =>
