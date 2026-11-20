@@ -1,3 +1,7 @@
-import { fetchContactCardPages, fetchContactsLiveBootstrap } from "@/lib/api/wgw/contacts";
+import {
+  fetchContactCardPages,
+  fetchContactCardPhotos,
+  fetchContactsLiveBootstrap,
+} from "@/lib/api/wgw/contacts";
 
-export { fetchContactCardPages, fetchContactsLiveBootstrap };
+export { fetchContactCardPages, fetchContactCardPhotos, fetchContactsLiveBootstrap };

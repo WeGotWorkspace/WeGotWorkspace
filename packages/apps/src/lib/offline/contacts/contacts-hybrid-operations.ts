@@ -46,13 +46,16 @@ import {
   removeContactCardFromCache,
   saveContactsColdDownloadPage,
   startContactsColdDownload,
+  startContactsPhotoPass,
   type ContactsColdDownload,
   upsertAddressBookInCache,
   upsertContactCardInCache,
   writeAddressBooksSyncToken,
   writeContactsBootstrapToCache,
+  withStoredPhotos,
   writeSyncToken,
 } from "@/lib/offline/contacts/contacts-offline-store";
+import { runContactsPhotoPass } from "@/lib/offline/contacts/contacts-photo-pass";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import {
   flushContactsOutbox,
@@ -383,18 +386,27 @@ export async function fetchContactsHybridBootstrap(
     const books = bookIdsOf(bootstrap.data.addressBooks);
     if (await finishContactsColdDownload(username, savedPages.id, books)) {
       await sendQueuedEditsAfterDownload(username);
+      void runContactsPhotoPass(username);
     }
     return bootstrap;
   }
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
-  await writeContactsBootstrapToCache(username, bootstrap);
+  // The pages were photo-less: keep the stored photos until the photo pass is through.
+  const cards = await withStoredPhotos(username, bootstrap.data.cards);
+  const withPhotos = { ...bootstrap, data: { ...bootstrap.data, cards } };
+  await writeContactsBootstrapToCache(username, withPhotos);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
+  await startContactsPhotoPass(
+    username,
+    cards.map((card) => card.id),
+  );
   if (await discardContactsColdDownload(username)) {
     await sendQueuedEditsAfterDownload(username);
   }
-  return bootstrap;
+  void runContactsPhotoPass(username);
+  return withPhotos;
 }
 
 /** Ends a resume early: another download owns the marker now. */
@@ -446,6 +458,7 @@ function resumeContactsColdDownload(
       const books = bookIdsOf(saved.data.addressBooks);
       if (await finishContactsColdDownload(username, progress.id, books)) {
         await sendQueuedEditsAfterDownload(username);
+        void runContactsPhotoPass(username);
       }
     } catch (error) {
       if (!(error instanceof ColdDownloadTakenOver)) throw error;
@@ -462,8 +475,13 @@ async function finishContactsDownload(
   saved: ContactsAppBootstrap,
   reportProgress?: (bootstrap: ContactsAppBootstrap) => void,
 ): Promise<ContactsAppBootstrap> {
+  if (!readBrowserOnline()) return saved;
   const progress = await readContactsColdDownload(username);
-  if (!progress || !readBrowserOnline()) return saved;
+  if (!progress) {
+    // A photo pass that a reload or a lost connection stopped goes on.
+    void runContactsPhotoPass(username);
+    return saved;
+  }
   return resumeContactsColdDownload(username, saved, progress, reportProgress);
 }
 

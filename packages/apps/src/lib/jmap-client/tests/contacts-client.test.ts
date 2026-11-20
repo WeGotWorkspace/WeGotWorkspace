@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
+  CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA,
   JmapContactsClient,
 } from "../contacts/JmapContactsClient.js";
 import { CONTACTS_CAPABILITY, CORE_CAPABILITY, type JmapInvocation } from "../core/types.js";
@@ -94,7 +95,7 @@ describe("JmapContactsClient contract batches", () => {
     expect(recorded[0]?.[3]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
     expect(recorded[1]?.[0]).toEqual([
       "ContactCard/get",
-      { accountId: ACCOUNT, ids: ["card-1"] },
+      { accountId: ACCOUNT, ids: ["card-1"], properties: CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA },
       expect.any(String),
     ]);
   });
@@ -133,9 +134,9 @@ describe("JmapContactsClient contract batches", () => {
     ]);
   });
 
-  it("caps ContactCard/get to one small page per HTTP request even when maxObjectsInGet is 500", async () => {
+  it("asks for photo-less pages of 200 cards, one per HTTP request, even when maxObjectsInGet is 500", async () => {
     const ids = Array.from(
-      { length: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST + 3 },
+      { length: CONTACT_CARD_PHOTOLESS_PAGE_SIZE + 3 },
       (_, index) => `card-${index}`,
     );
     const { contacts, recorded } = await makeClient(
@@ -167,23 +168,24 @@ describe("JmapContactsClient contract batches", () => {
       },
     });
     expect(got.cards.list).toHaveLength(ids.length);
-    expect(pages).toEqual([CONTACT_CARD_GET_MAX_IDS_PER_REQUEST, ids.length]);
+    expect(CONTACT_CARD_PHOTOLESS_PAGE_SIZE).toBe(200);
+    expect(pages).toEqual([CONTACT_CARD_PHOTOLESS_PAGE_SIZE, ids.length]);
     const getBatches = recorded.slice(1);
     expect(getBatches).toHaveLength(2);
     expect(getBatches[0]).toHaveLength(1);
-    expect((getBatches[0]?.[0]?.[1].ids as string[]).length).toBe(
-      CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
-    );
+    expect((getBatches[0]?.[0]?.[1].ids as string[]).length).toBe(CONTACT_CARD_PHOTOLESS_PAGE_SIZE);
     expect((getBatches[1]?.[0]?.[1].ids as string[]).length).toBe(3);
+    for (const batch of getBatches) {
+      expect(batch[0]?.[1].properties).toEqual(CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA);
+    }
+    expect(CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA).not.toContain("media");
   });
 
   it("reports the contacts still to come with every page, leaving groups out", async () => {
-    const ids = Array.from(
-      { length: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST + 3 },
-      (_, index) => `card-${index}`,
-    );
+    const pageSize = CONTACT_CARD_PHOTOLESS_PAGE_SIZE;
+    const ids = Array.from({ length: pageSize + 3 }, (_, index) => `card-${index}`);
     // One group in the first page, two in the second.
-    const groupIds = ["card-1", "card-40", "card-42"];
+    const groupIds = ["card-1", `card-${pageSize}`, `card-${pageSize + 2}`];
     const { contacts, recorded } = await makeClient(
       (calls) =>
         calls.map(([name, args, id]) => {
@@ -217,7 +219,7 @@ describe("JmapContactsClient contract batches", () => {
       },
     });
 
-    // After page 1: card-40..card-42 are left, two of them groups.
+    // After page 1: three cards are left, two of them groups.
     expect(pending).toEqual([1, 0]);
     expect(recorded[0]?.map(([name, args]) => [name, args.filter])).toEqual([
       ["AddressBook/get", undefined],
@@ -365,6 +367,82 @@ describe("JmapContactsClient contract batches", () => {
       "get card-9",
       "resume card-9 left 0",
     ]);
+  });
+
+  it("a resumed download asks for the same photo-less pages", async () => {
+    const { contacts, recorded } = await makeClient((calls) =>
+      calls.map(([name, args, id]) =>
+        methodResponse(
+          name,
+          {
+            accountId: ACCOUNT,
+            state: "1:",
+            list: ((args.ids as string[]) ?? []).map((cardId) => ({ id: cardId })),
+            notFound: [],
+          },
+          id,
+        ),
+      ),
+    );
+    const ids = Array.from({ length: 250 }, (_, index) => `card-${index}`);
+
+    await contacts.getContactCardPages(ACCOUNT, ids, () => undefined);
+
+    expect(recorded.map(([[name, args]]) => [name, (args.ids as string[]).length])).toEqual([
+      ["ContactCard/get", 200],
+      ["ContactCard/get", 50],
+    ]);
+    for (const [[, args]] of recorded) {
+      expect(args.properties).toEqual(CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA);
+    }
+  });
+
+  it("the photo pass asks only for media and state, one paced page of 200 at a time", async () => {
+    const events: string[] = [];
+    const { contacts, recorded } = await makeClient((calls) =>
+      calls.map(([name, args, id]) => {
+        const pageIds = (args.ids as string[]) ?? [];
+        events.push(`get ${pageIds.length}`);
+        return methodResponse(
+          name,
+          {
+            accountId: ACCOUNT,
+            state: "1:",
+            list: pageIds.map((cardId) => ({ id: cardId, state: `${cardId}-s` })),
+            notFound: [],
+          },
+          id,
+        );
+      }),
+    );
+    const ids = Array.from({ length: 450 }, (_, index) => `card-${index}`);
+
+    await contacts.getContactCardMediaPages(
+      ACCOUNT,
+      ids,
+      ({ remainingIds }) => {
+        events.push(`saved, ${remainingIds.length} left`);
+      },
+      async () => {
+        events.push("slot");
+      },
+    );
+
+    expect(events).toEqual([
+      "slot",
+      "get 200",
+      "saved, 250 left",
+      "slot",
+      "get 200",
+      "saved, 50 left",
+      "slot",
+      "get 50",
+      "saved, 0 left",
+    ]);
+    for (const [[name, args]] of recorded) {
+      expect(name).toBe("ContactCard/get");
+      expect(args.properties).toEqual(["media", "state"]);
+    }
   });
 
   it("query+get uses the #ids ResultReference", async () => {

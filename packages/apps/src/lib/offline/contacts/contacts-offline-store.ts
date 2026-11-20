@@ -33,6 +33,7 @@ export {
 const META_ADDRESS_BOOKS_STATE = "contacts:addressBooks:state";
 const META_SESSION = "contacts:session";
 const META_COLD_DOWNLOAD = "contacts:coldDownload";
+const META_PHOTO_PASS = "contacts:photoPass";
 
 function metaKeyForBookState(bookId: string): string {
   return `contacts:book:${bookId}:state`;
@@ -200,7 +201,8 @@ export async function finishContactsColdDownload(
   bookIds: string[],
 ): Promise<boolean> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  return db.transaction("rw", db.meta, async () => {
+  const cards = contactsCardsTable(db);
+  return db.transaction("rw", cards, db.meta, async () => {
     const progress = parseColdDownload((await db.meta.get(META_COLD_DOWNLOAD))?.value);
     if (!progress || progress.id !== downloadId) return false;
     await db.meta.put({ key: META_ADDRESS_BOOKS_STATE, value: progress.addressBookState });
@@ -208,7 +210,92 @@ export async function finishContactsColdDownload(
       await db.meta.put({ key: metaKeyForBookState(bookId), value: progress.contactCardState });
     }
     await db.meta.delete(META_COLD_DOWNLOAD);
+    // The pages were photo-less: every saved card still needs its photo.
+    await db.meta.put({
+      key: META_PHOTO_PASS,
+      value: JSON.stringify((await cards.toCollection().primaryKeys()).map(String)),
+    });
     return true;
+  });
+}
+
+/**
+ * Card ids whose photos a photo-less download left out and the photo pass has
+ * not fetched yet. Empty when there is nothing to fetch.
+ */
+export async function readContactsPhotoPass(username: string): Promise<string[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const value = (await db.meta.get(META_PHOTO_PASS))?.value;
+  if (!value) return [];
+  try {
+    const ids = JSON.parse(value) as unknown;
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A photo-less download replaced the copy: fetch the photos of `cardIds`. */
+export async function startContactsPhotoPass(username: string, cardIds: string[]): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(cardIds) });
+}
+
+/**
+ * A photo-less download over a stored copy: cards keep the photos stored for
+ * the same version of the card until the photo pass refreshes them, so the
+ * list does not drop to initials meanwhile.
+ */
+export async function withStoredPhotos(
+  username: string,
+  cards: ContactCard[],
+): Promise<ContactCard[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await contactsCardsTable(db).bulkGet(cards.map((card) => card.id));
+  return cards.map((card, index) => {
+    const row = rows[index];
+    if (card.media || !row) return card;
+    const stored = JSON.parse(row.data) as ContactCard;
+    return stored.media && stored.state && stored.state === card.state
+      ? { ...card, media: stored.media }
+      : card;
+  });
+}
+
+/** What the photo pass fetches per card: its photos and the version they belong to. */
+export type ContactCardPhotos = Pick<ContactCard, "id" | "media" | "state">;
+
+/**
+ * Saves one photo page and the ids still to fetch, in one transaction. A card
+ * takes the photos only when its stored version is the one they came with:
+ * an older or newer stored card is left to the live sync, which fetches it
+ * whole. Cards with unsynced local edits keep the local row. Returns how many
+ * cards changed.
+ */
+export async function saveContactsPhotoPage(
+  username: string,
+  photos: ContactCardPhotos[],
+  remainingCardIds: string[],
+): Promise<number> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = contactsCardsTable(db);
+  return db.transaction("rw", table, db.meta, async () => {
+    const rows = await table.bulkGet(photos.map((entry) => entry.id));
+    const changed: OfflineContactCardRow[] = [];
+    photos.forEach((entry, index) => {
+      const row = rows[index];
+      if (!row || row.pendingSync) return;
+      const card = JSON.parse(row.data) as ContactCard;
+      if (!entry.state || card.state !== entry.state || !entry.media) return;
+      changed.push(contactCardRow({ ...card, media: entry.media }, false));
+    });
+    if (changed.length) await table.bulkPut(changed);
+    if (remainingCardIds.length) {
+      await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(remainingCardIds) });
+    } else {
+      await db.meta.delete(META_PHOTO_PASS);
+    }
+    return changed.length;
   });
 }
 

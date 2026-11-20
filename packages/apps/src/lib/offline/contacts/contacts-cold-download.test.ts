@@ -8,6 +8,7 @@ import {
   readAddressBooksSyncToken,
   readContactsBootstrapFromCache,
   readContactsColdDownload,
+  readContactsPhotoPass,
   readSyncToken,
   startContactsColdDownload,
   upsertContactCardInCache,
@@ -72,6 +73,7 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
 vi.mock("@/lib/api/wgw/contacts-bootstrap", () => ({
   fetchContactsLiveBootstrap: vi.fn(),
   fetchContactCardPages: vi.fn(),
+  fetchContactCardPhotos: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/api/wgw/contacts-sync", () => ({
@@ -82,8 +84,13 @@ vi.mock("@/lib/api/wgw/contacts-sync", () => ({
 
 import {
   fetchContactCardPages,
+  fetchContactCardPhotos,
   fetchContactsLiveBootstrap,
 } from "@/lib/api/wgw/contacts-bootstrap";
+import {
+  runContactsPhotoPass,
+  subscribeContactsCacheChanged,
+} from "@/lib/offline/contacts/contacts-photo-pass";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
   fetchContactsHybridBootstrap,
@@ -114,6 +121,24 @@ function gate() {
   return { open, opened };
 }
 
+/** Empty offline store and a fresh localStorage, as on a new device. */
+async function freshDevice(): Promise<void> {
+  const memory = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => memory.get(key) ?? null,
+    setItem: (key: string, value: string) => void memory.set(key, value),
+    removeItem: (key: string) => void memory.delete(key),
+    clear: () => memory.clear(),
+  };
+  vi.stubGlobal("window", { localStorage: storage });
+  vi.stubGlobal("localStorage", storage);
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.outbox.clear();
+  await contactsCardsTable(db).clear();
+  await contactsBooksTable(db).clear();
+  await db.meta.clear();
+}
+
 async function cachedIds(): Promise<string[]> {
   const cached = await readContactsBootstrapFromCache(username);
   return (cached?.data.cards ?? []).map((row) => row.id).sort();
@@ -130,20 +155,7 @@ describe("contacts first download, saved page by page", () => {
     syncContactBooksAfterAddressBookChanges.mockResolvedValue(undefined);
     pullAddressBookChanges.mockResolvedValue(undefined);
     syncAllContactBooks.mockResolvedValue(undefined);
-    const memory = new Map<string, string>();
-    const storage = {
-      getItem: (key: string) => memory.get(key) ?? null,
-      setItem: (key: string, value: string) => void memory.set(key, value),
-      removeItem: (key: string) => void memory.delete(key),
-      clear: () => memory.clear(),
-    };
-    vi.stubGlobal("window", { localStorage: storage });
-    vi.stubGlobal("localStorage", storage);
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    await db.outbox.clear();
-    await contactsCardsTable(db).clear();
-    await contactsBooksTable(db).clear();
-    await db.meta.clear();
+    await freshDevice();
   });
 
   afterEach(() => {
@@ -443,5 +455,194 @@ describe("contacts first download, saved page by page", () => {
     expect(await cachedIds()).toEqual(["a", "b"]);
     expect(await readContactsColdDownload(username)).toBeNull();
     expect(await readSyncToken(username, "default")).toBe("cards-at-query");
+  });
+});
+
+const photo = (blobId: string) =>
+  ({ p1: { "@type": "Media", kind: "photo", blobId } }) as unknown as ContactCard["media"];
+
+async function cachedCard(id: string): Promise<ContactCard | undefined> {
+  return (await readContactsBootstrapFromCache(username))?.data.cards.find((row) => row.id === id);
+}
+
+/** A first download of `ids` in one photo-less page each, start to finish. */
+function downloadInPages(ids: string[]) {
+  vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
+    await options?.onStart?.({
+      session,
+      addressBooks: [book],
+      cardIds: ids,
+      groupIds: [],
+      syncAnchor,
+    });
+    for (const [index, id] of ids.entries()) {
+      await options?.onCardPage?.({ cards: [card(id)], remainingCardIds: ids.slice(index + 1) });
+    }
+    return {
+      session,
+      data: { addressBooks: [book], cards: ids.map((id) => card(id)) },
+      syncAnchor,
+    };
+  });
+}
+
+describe("contacts photo pass after a photo-less first download", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(fetchContactCardPhotos).mockResolvedValue(undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await freshDevice();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches the photos once every card is in, and saves them to the cards", async () => {
+    downloadInPages(["a", "b"]);
+    const order: string[] = [];
+    vi.mocked(fetchContactCardPhotos).mockImplementation(async (ids, onPage) => {
+      order.push(`photos for ${ids.join(",")}`);
+      await onPage({
+        photos: [
+          { id: "a", state: "a-state", media: photo("blob-a") },
+          { id: "b", state: "b-state" },
+        ],
+        remainingCardIds: [],
+      });
+    });
+
+    const loaded = await fetchContactsHybridBootstrap();
+    order.push(`download done with ${loaded.data.cards.length} cards`);
+    await runContactsPhotoPass(username);
+
+    // The photo-less list opens first (initials); the photos follow.
+    expect(loaded.data.cards.every((row) => !row.media)).toBe(true);
+    expect(order).toEqual(["download done with 2 cards", "photos for a,b"]);
+    expect((await cachedCard("a"))?.media).toEqual(photo("blob-a"));
+    expect((await cachedCard("b"))?.media).toBeUndefined();
+    expect(await readContactsPhotoPass(username)).toEqual([]);
+  });
+
+  it("an unfinished download fetches no photos yet", async () => {
+    stopAfterFirstPage(["a", "b"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    await runContactsPhotoPass(username);
+
+    expect(fetchContactCardPhotos).not.toHaveBeenCalled();
+    expect(await readContactsPhotoPass(username)).toEqual([]);
+  });
+
+  it("a photo pass stopped halfway goes on from the ids left on the next boot", async () => {
+    downloadInPages(["a", "b"]);
+    vi.mocked(fetchContactCardPhotos).mockImplementationOnce(async (_ids, onPage) => {
+      await onPage({
+        photos: [{ id: "a", state: "a-state", media: photo("blob-a") }],
+        remainingCardIds: ["b"],
+      });
+      throw new TypeError("network error");
+    });
+    await fetchContactsHybridBootstrap();
+    await runContactsPhotoPass(username);
+    expect(await readContactsPhotoPass(username)).toEqual(["b"]);
+
+    vi.mocked(fetchContactCardPhotos).mockImplementationOnce(async (ids, onPage) => {
+      expect(ids).toEqual(["b"]);
+      await onPage({
+        photos: [{ id: "b", state: "b-state", media: photo("blob-b") }],
+        remainingCardIds: [],
+      });
+    });
+    await loadContactsBootstrapForBoot();
+    await runContactsPhotoPass(username);
+
+    expect(fetchContactCardPhotos).toHaveBeenCalledTimes(2);
+    expect((await cachedCard("a"))?.media).toEqual(photo("blob-a"));
+    expect((await cachedCard("b"))?.media).toEqual(photo("blob-b"));
+    expect(await readContactsPhotoPass(username)).toEqual([]);
+  });
+
+  it("keeps a card whose stored version differs or that has local edits as it is", async () => {
+    downloadInPages(["a", "b"]);
+    await fetchContactsHybridBootstrap();
+    await upsertContactCardInCache(username, card("b", "Edited offline"), true);
+    vi.mocked(fetchContactCardPhotos).mockImplementation(async (_ids, onPage) => {
+      await onPage({
+        photos: [
+          // Changed on the server since the download: the live sync fetches it whole.
+          { id: "a", state: "a-state-2", media: photo("blob-new") },
+          { id: "b", state: "b-state", media: photo("blob-b") },
+        ],
+        remainingCardIds: [],
+      });
+    });
+
+    await runContactsPhotoPass(username);
+
+    expect((await cachedCard("a"))?.media).toBeUndefined();
+    expect((await cachedCard("b"))?.media).toBeUndefined();
+    expect((await cachedCard("b"))?.name?.full).toBe("Edited offline");
+  });
+
+  it("tells the open views to re-read the cache after a page with photos", async () => {
+    downloadInPages(["a"]);
+    const heard = vi.fn();
+    const stop = subscribeContactsCacheChanged(username, heard);
+    vi.mocked(fetchContactCardPhotos).mockImplementation(async (_ids, onPage) => {
+      await onPage({
+        photos: [{ id: "a", state: "a-state", media: photo("blob-a") }],
+        remainingCardIds: [],
+      });
+    });
+
+    await fetchContactsHybridBootstrap();
+    await runContactsPhotoPass(username);
+    stop();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it("a refresh over a stored copy keeps the photos of unchanged cards until the pass", async () => {
+    await writeContactsBootstrapToCache(username, {
+      session,
+      data: {
+        addressBooks: [book],
+        cards: [
+          { ...card("a"), media: photo("blob-a") },
+          { ...card("b"), media: photo("blob-b-old") },
+        ],
+      },
+    });
+    vi.mocked(fetchContactsLiveBootstrap).mockResolvedValue({
+      session,
+      data: { addressBooks: [book], cards: [card("a"), { ...card("b"), state: "b-state-2" }] },
+      syncAnchor,
+    });
+
+    const loaded = await fetchContactsHybridBootstrap();
+    await runContactsPhotoPass(username);
+
+    const byId = new Map(loaded.data.cards.map((row) => [row.id, row]));
+    expect(byId.get("a")?.media).toEqual(photo("blob-a"));
+    // b changed: its old photo may be gone; initials until the pass brings the new one.
+    expect(byId.get("b")?.media).toBeUndefined();
+    expect(vi.mocked(fetchContactCardPhotos).mock.calls[0]?.[0]).toEqual(["a", "b"]);
+  });
+
+  it("an offline boot fetches no photos", async () => {
+    downloadInPages(["a"]);
+    vi.mocked(fetchContactCardPhotos).mockRejectedValueOnce(new TypeError("network error"));
+    await fetchContactsHybridBootstrap();
+    await runContactsPhotoPass(username);
+    const callsOnline = vi.mocked(fetchContactCardPhotos).mock.calls.length;
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+    await loadContactsBootstrapForBoot();
+    await runContactsPhotoPass(username);
+
+    expect(vi.mocked(fetchContactCardPhotos).mock.calls.length).toBe(callsOnline);
+    expect(await readContactsPhotoPass(username)).toEqual(["a"]);
   });
 });
