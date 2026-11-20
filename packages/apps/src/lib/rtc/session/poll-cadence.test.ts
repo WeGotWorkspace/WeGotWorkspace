@@ -117,7 +117,7 @@ describe("behind the push doorbell (#2294)", () => {
   });
 
   it("arms no steady poll when the push read carries the peer (#2287), but still dials fast", () => {
-    const carried = { ...alone("collab", true), pushHeartbeat: true };
+    const carried = { ...alone("meet", true), pushHeartbeat: true };
     expect(steadyPollDelayMs(intervals, carried)).toBe(Number.POSITIVE_INFINITY);
     expect(steadyPollDelayMs(intervals, { ...carried, hidden: true })).toBe(
       Number.POSITIVE_INFINITY,
@@ -130,7 +130,9 @@ describe("behind the push doorbell (#2294)", () => {
     };
     expect(steadyPollDelayMs(intervals, dialing)).toBe(intervals.steadyMs);
     // Push down: the peer's own cadence, whatever the heartbeat flag says.
-    expect(steadyPollDelayMs(intervals, { ...carried, doorbell: false })).toBe(2_000);
+    expect(steadyPollDelayMs(intervals, { ...carried, doorbell: false })).toBe(
+      steadyPollDelayMs(intervals, alone("meet", false)),
+    );
   });
 
   it("keeps today's cadence while push is down", () => {

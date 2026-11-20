@@ -52,8 +52,12 @@ function createRegistry(
   return { tabKey: KEY_PREFIX + randomKey(), peers: new Map(), timer: null, storage, now };
 }
 
-/** Channels whose peer tables the server refreshes on a push read. */
-const HEARTBEAT_CHANNELS: ReadonlySet<SignalingChannel> = new Set(["collab", "principal", "meet"]);
+/**
+ * Channels whose peers a push read keeps alive. Meet only: the collab and presence polls
+ * re-read the share or Team grant, so those rooms keep their 30 s heartbeat poll and a
+ * revoked member still leaves the roster within that bound.
+ */
+const HEARTBEAT_CHANNELS: ReadonlySet<SignalingChannel> = new Set(["meet"]);
 
 /** Whether a push read can keep this channel's peers alive. */
 export function pushHeartbeatCovers(channel: SignalingChannel): boolean {
@@ -132,7 +136,11 @@ export function pushHeartbeatHeaderValue(): string | null {
         const key = storage.key(index);
         if (!key?.startsWith(KEY_PREFIX) || key === registry.tabKey) continue;
         const entry = parseEntry(storage.getItem(key));
-        if (!entry || entry.at < cutoff) continue;
+        if (!entry || entry.at < cutoff) {
+          storage.removeItem(key);
+          index -= 1;
+          continue;
+        }
         for (const peer of entry.peers) all.add(peer);
       }
     } catch {
