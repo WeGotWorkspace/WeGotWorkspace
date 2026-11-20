@@ -99,6 +99,17 @@ export const Expired: Story = {
   },
 };
 
+export const TooManyWrongCodes: Story = {
+  name: "Too many wrong codes",
+  render: () => <Screen />,
+  play: async ({ canvasElement }) => {
+    const page = await signInAsAlice(canvasElement);
+    for (let i = 0; i <= MOCK_SIGN_IN.wrongCodeLimit; i++) await enterCode(page, "654 321");
+    await expect(await page.findByText(labels.tooManyWrongCodes)).toBeVisible();
+    await expect(page.getByLabelText("Username")).toBeVisible();
+  },
+};
+
 export const RecoveryCode: Story = {
   name: "Recovery code",
   render: () => <Screen />,

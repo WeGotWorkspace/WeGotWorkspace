@@ -25,6 +25,7 @@ export const loginLabels = {
   invalid: "That username or password does not match this server.",
   wrongCode: "That code does not match.",
   expired: "That sign-in step has ended. Enter your password again.",
+  tooManyWrongCodes: "Too many wrong codes. Sign in again with your password.",
   throttled: (at: string | null) =>
     at
       ? `Too many sign-in attempts. Try again at ${at}.`

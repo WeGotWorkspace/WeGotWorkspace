@@ -63,6 +63,22 @@ function signInAsTwoFactorUser() {
   submitCredentials(MOCK_SIGN_IN.twoFactorUser, MOCK_SIGN_IN.password);
 }
 
+/** Sends wrong codes one at a time, each answered before the next. */
+async function sendWrongCodes(operations: SignInOperations, count: number) {
+  const verify = vi.spyOn(operations, "verify");
+  for (let i = 0; i < count; i++) {
+    await submitCode("654321");
+    await waitFor(() => expect(verify).toHaveBeenCalledTimes(i + 1));
+    await verify.mock.results[i]?.value.catch(() => undefined);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: labels.verify }).hasAttribute("disabled")).toBe(
+        false,
+      ),
+    );
+  }
+  verify.mockRestore();
+}
+
 describe("LoginScreen", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
@@ -266,6 +282,28 @@ describe("LoginScreen second step", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(labels.expired);
     expect(screen.getByRole("heading", { name: labels.welcome })).toBeTruthy();
     expect(screen.getByPlaceholderText("yourname")).toBeTruthy();
+  });
+
+  it("says too many wrong codes when the challenge ends after the limit", async () => {
+    const operations = createMockSignInOperations();
+    render(<LoginScreen operations={operations} />);
+    signInAsTwoFactorUser();
+    await sendWrongCodes(operations, MOCK_SIGN_IN.wrongCodeLimit);
+    expect(screen.getByRole("alert").textContent).toBe(labels.wrongCode);
+    await submitCode("654321");
+    expect((await screen.findByRole("alert")).textContent).toBe(labels.tooManyWrongCodes);
+    expect(screen.getByPlaceholderText("yourname")).toBeTruthy();
+  });
+
+  it("does not blame wrong codes from an earlier challenge", async () => {
+    const operations = createMockSignInOperations();
+    render(<LoginScreen operations={operations} />);
+    signInAsTwoFactorUser();
+    await sendWrongCodes(operations, MOCK_SIGN_IN.wrongCodeLimit);
+    fireEvent.click(screen.getByRole("button", { name: labels.startOver }));
+    signInAsTwoFactorUser();
+    await submitCode(MOCK_SIGN_IN.expiredCode);
+    expect((await screen.findByRole("alert")).textContent).toBe(labels.expired);
   });
 
   it("starts over from the code step", async () => {

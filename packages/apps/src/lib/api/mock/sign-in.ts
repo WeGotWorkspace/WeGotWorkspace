@@ -17,6 +17,8 @@ export const MOCK_SIGN_IN = {
   throttledCode: "999999",
   /** Answers 404: the challenge expired. */
   expiredCode: "111111",
+  /** Wrong codes one challenge takes; the next code gets 404 like the server (#2273). */
+  wrongCodeLimit: 5,
   /** Recovery codes are 16 lowercase hex characters in groups of four. */
   recoveryCode: "3f9a-c27e-81d4-0b6e",
   secret: "JBSWY3DPEHPK3PXP",
@@ -58,6 +60,11 @@ export function createMockSignInOperations(
     options.latencyMs ? new Promise((resolve) => setTimeout(resolve, options.latencyMs)) : null;
   let serial = 0;
   const challenge = () => `mock-challenge-${++serial}`;
+  const wrongCodes = new Map<string, number>();
+  const wrong = (id: string): SignInError => {
+    wrongCodes.set(id, (wrongCodes.get(id) ?? 0) + 1);
+    return refused(401, "mfa_code_invalid", "invalid_code");
+  };
   return {
     signIn: async (username, password) => {
       await wait();
@@ -69,21 +76,24 @@ export function createMockSignInOperations(
         ? { status: "mfa_required", challenge: challenge() }
         : ok;
     },
-    verify: async (_challenge, proof) => {
+    verify: async (id, proof) => {
       await wait();
+      if ((wrongCodes.get(id) ?? 0) >= MOCK_SIGN_IN.wrongCodeLimit) {
+        throw refused(404, "not_found", "expired");
+      }
       if ("recoveryCode" in proof) {
         if (
           normalizeRecoveryCode(proof.recoveryCode) !==
           normalizeRecoveryCode(MOCK_SIGN_IN.recoveryCode)
         ) {
-          throw refused(401, "mfa_code_invalid", "invalid_code");
+          throw wrong(id);
         }
         return { status: "mfa_replace_required", challenge: challenge(), secret: mockSecret() };
       }
       const code = normalizeTotpCode(proof.code);
       if (code === MOCK_SIGN_IN.throttledCode) throw refused(429, "throttled", "throttled");
       if (code === MOCK_SIGN_IN.expiredCode) throw refused(404, "not_found", "expired");
-      if (code !== MOCK_SIGN_IN.code) throw refused(401, "mfa_code_invalid", "invalid_code");
+      if (code !== MOCK_SIGN_IN.code) throw wrong(id);
       return ok;
     },
     confirmReplacement: async (_challenge, code) => {
