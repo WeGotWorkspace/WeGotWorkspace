@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { MeshPollLoop, type MeshPollLoopContext } from "@/lib/rtc/session/mesh-poll-loop";
-import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
+import {
+  DOORBELL_HEARTBEAT_POLL_INTERVAL_MS,
+  type MeshPollCadenceSnapshot,
+} from "@/lib/rtc/session/poll-cadence";
+import type { RoomDoorbell } from "@/lib/rtc/session/room-doorbell";
 import { MEET_RTC_POLL_INTERVALS } from "@/lib/rtc/types";
 
 function stableMeetCadence(): MeshPollCadenceSnapshot {
@@ -38,6 +42,7 @@ function createLoop(overrides: Partial<MeshPollLoopContext> = {}) {
       return scheduled.length as unknown as ReturnType<typeof setTimeout>;
     }) as typeof setTimeout,
     cancelTimeout: vi.fn() as typeof clearTimeout,
+    doorbell: null,
     ...overrides,
   };
   return { loop: new MeshPollLoop(context), context, scheduled };
@@ -98,5 +103,90 @@ describe("MeshPollLoop.kick", () => {
     // release cleared pendingKick; finally still schedules, but as steady (4000 ms idle).
     expect(scheduled.length).toBeGreaterThanOrEqual(2);
     expect(scheduled[scheduled.length - 1]?.delay).toBe(4000);
+  });
+});
+
+function fakeDoorbell(connected: boolean) {
+  const rings = new Set<() => void>();
+  const statuses = new Set<(connected: boolean) => void>();
+  let now = connected;
+  const doorbell: RoomDoorbell = {
+    get connected() {
+      return now;
+    },
+    subscribe: (onRing) => {
+      rings.add(onRing);
+      return () => rings.delete(onRing);
+    },
+    subscribeStatus: (listener) => {
+      statuses.add(listener);
+      return () => statuses.delete(listener);
+    },
+  };
+  return {
+    doorbell,
+    rings,
+    ring: () => rings.forEach((onRing) => onRing()),
+    setConnected(next: boolean) {
+      now = next;
+      statuses.forEach((listener) => listener(next));
+    },
+  };
+}
+
+describe("MeshPollLoop behind the push doorbell (#2294)", () => {
+  it("heartbeats while push is connected and polls at once when the doorbell rings", async () => {
+    const bell = fakeDoorbell(true);
+    const { loop, scheduled, context } = createLoop({ doorbell: bell.doorbell });
+
+    loop.schedule(true);
+    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+
+    bell.ring();
+    expect(scheduled.at(-1)?.delay).toBe(MEET_RTC_POLL_INTERVALS.connectingMs);
+    scheduled.at(-1)?.fn();
+    await flushMicrotasks();
+    expect(context.poll).toHaveBeenCalledTimes(1);
+    // Nobody is connecting after that poll: back to the heartbeat.
+    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+  });
+
+  it("goes back to the room's own cadence as soon as push drops", () => {
+    const bell = fakeDoorbell(true);
+    const { loop, scheduled } = createLoop({ doorbell: bell.doorbell });
+    loop.schedule(true);
+
+    bell.setConnected(false);
+    expect(scheduled.at(-1)?.delay).toBe(4000);
+
+    bell.setConnected(true);
+    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+  });
+
+  it("keeps a kicked poll when push connects right after the ring", async () => {
+    const bell = fakeDoorbell(false);
+    const { loop, scheduled, context } = createLoop({ doorbell: bell.doorbell });
+    loop.schedule(true);
+
+    bell.ring();
+    bell.setConnected(true);
+    expect(scheduled.at(-1)?.delay).toBe(MEET_RTC_POLL_INTERVALS.connectingMs);
+    scheduled.at(-1)?.fn();
+    await flushMicrotasks();
+    expect(context.poll).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores rings after stop and unsubscribes on release", () => {
+    const bell = fakeDoorbell(true);
+    const { loop, scheduled } = createLoop({ doorbell: bell.doorbell });
+    loop.schedule(true);
+    const before = scheduled.length;
+
+    loop.stop();
+    bell.ring();
+    expect(scheduled).toHaveLength(before);
+
+    loop.release();
+    expect(bell.rings.size).toBe(0);
   });
 });

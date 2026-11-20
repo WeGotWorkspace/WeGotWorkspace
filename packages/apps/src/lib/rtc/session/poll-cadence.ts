@@ -18,6 +18,12 @@ const COLLAB_STABLE_POLL_INTERVAL_MS = 5_000;
 const MEET_IDLE_POLL_INTERVAL_MS = 4000;
 /** Hidden-tab backoff — applies only when the mesh holds no peer connections at all. */
 const HIDDEN_IDLE_POLL_INTERVAL_MS = 60000;
+/**
+ * Room heartbeat while the push doorbell is connected and nobody is connecting (#2294).
+ * Below the shortest peer timeout (Meet, 60 s; collab and presence 90 s), so a lone peer
+ * stays on the roster; newcomers are found through the doorbell, not this poll.
+ */
+export const DOORBELL_HEARTBEAT_POLL_INTERVAL_MS = 30_000;
 /** Encoded knocker roster names — keep fast poll while guests wait for admit. */
 const MEET_KNOCK_ROSTER_PREFIX = "__wgw_knock__:";
 
@@ -37,6 +43,8 @@ export type MeshPollCadenceSnapshot = {
   isDialing?: (peerId: string, linkedNow: boolean) => boolean;
   /** A collab peer linked through another channel (collab reuse over the presence mesh). */
   linkedElsewhere?: (peerId: string) => boolean;
+  /** The push doorbell is connected (`room-doorbell.ts`): newcomers ring instead of being polled for. */
+  doorbell?: boolean;
 };
 
 function allPeersConnected(
@@ -50,6 +58,17 @@ function isCollabDataMesh(snapshot: MeshPollCadenceSnapshot): boolean {
   return (
     snapshot.channel === "collab" && snapshot.bindingKind === "data" && snapshot.rtcSignalsEnabled
   );
+}
+
+/**
+ * A rostered peer is still being dialled: not linked, and (with a roster clock) new enough
+ * to count. While one is, the room keeps its fast cadence even behind the doorbell.
+ */
+export function isAnyPeerConnecting(snapshot: MeshPollCadenceSnapshot): boolean {
+  return snapshot.roomPeers.some((peer) => {
+    const linked = isCollabPeerLinked(snapshot, peer.id);
+    return snapshot.isDialing ? snapshot.isDialing(peer.id, linked) : !linked;
+  });
 }
 
 function isCollabPeerLinked(snapshot: MeshPollCadenceSnapshot, peerId: string): boolean {
@@ -104,7 +123,8 @@ function isHiddenWithoutPeerConnections(snapshot: MeshPollCadenceSnapshot): bool
 
 /**
  * Delay before the next steady-state poll: the configured cadence, stretched by
- * whichever idle backoff the mesh currently qualifies for.
+ * whichever idle backoff the mesh currently qualifies for, or to the doorbell
+ * heartbeat while push is connected and no peer is connecting (#2294).
  */
 export function steadyPollDelayMs(
   intervals: RtcPollIntervals,
@@ -115,6 +135,10 @@ export function steadyPollDelayMs(
     delay = collabDelayMs(intervals, snapshot);
   } else if (hasStableMeetTopology(snapshot)) {
     delay = Math.max(delay, MEET_IDLE_POLL_INTERVAL_MS);
+  }
+  // Behind the doorbell a quiet room only heartbeats; it never polls more than before.
+  if (snapshot.doorbell && !isAnyPeerConnecting(snapshot)) {
+    delay = Math.max(delay, DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
   }
   if (isHiddenWithoutPeerConnections(snapshot)) {
     delay = Math.max(delay, HIDDEN_IDLE_POLL_INTERVAL_MS);

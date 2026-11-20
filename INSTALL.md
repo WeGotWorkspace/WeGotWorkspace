@@ -118,7 +118,7 @@ An SQLite install keeps its database in write-ahead log (WAL) mode, so people wh
 
 - The web-server user needs write access to the directory that holds `db.sqlite` (it already did).
 - Copy or back up the three files together, or take a snapshot with `sqlite3 db.sqlite ".backup backup.sqlite"`. A copy of `db.sqlite` alone, taken while the site runs, can miss the latest changes. The backup that **Admin → Updates** takes before an update is a complete snapshot.
-- WAL needs a local disk. On a network share (NFS, SMB), set `WGW_DB_SQLITE_JOURNAL_MODE=delete` in `packages/api/.env`.
+- WAL needs a local disk. On a network share (NFS, SMB), set `WGW_DB_SQLITE_JOURNAL_MODE=delete` in `packages/api/.env`. A folder that Docker Desktop on macOS shares into a container counts as a network share: PHP processes crash and the database is corrupted within an hour. A Docker volume is a local disk.
 
 Existing installs switch to WAL on the first request after the update. Nothing to do. The setting is stored in the database file, so an older release keeps working with it.
 

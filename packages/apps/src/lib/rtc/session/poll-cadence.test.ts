@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RtcPollIntervals } from "@/lib/rtc/types";
 import {
+  DOORBELL_HEARTBEAT_POLL_INTERVAL_MS,
   hasStableCollabTopology,
   steadyPollDelayMs,
   type MeshPollCadenceSnapshot,
@@ -90,5 +91,67 @@ describe("collab idle cadence (#2156)", () => {
     const capped: RtcPollIntervals = { connectingMs: 400, steadyMs: 2_000, maxDelayMs: 2_000 };
     const linked = collab({ roomPeers: [peer], linkStateOf: () => "connected" });
     expect(steadyPollDelayMs(capped, linked)).toBe(2_000);
+  });
+});
+
+describe("behind the push doorbell (#2294)", () => {
+  const intervals: RtcPollIntervals = { connectingMs: 400, steadyMs: 1200 };
+  const alone = (channel: MeshPollCadenceSnapshot["channel"], doorbell: boolean) =>
+    ({
+      channel,
+      bindingKind: channel === "meet" ? "media" : "data",
+      rtcSignalsEnabled: true,
+      roomPeers: [],
+      linkStateOf: () => null,
+      hidden: false,
+      peerConnectionCount: 0,
+      doorbell,
+    }) satisfies MeshPollCadenceSnapshot;
+
+  it("a lone peer only heartbeats, below every channel's peer timeout (60-90 s)", () => {
+    for (const channel of ["collab", "principal", "meet"] as const) {
+      const delay = steadyPollDelayMs(intervals, alone(channel, true));
+      expect(delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+      expect(delay).toBeLessThan(60_000);
+    }
+  });
+
+  it("keeps today's cadence while push is down", () => {
+    expect(steadyPollDelayMs(intervals, alone("collab", false))).toBe(2_000);
+    expect(steadyPollDelayMs(intervals, alone("principal", false))).toBe(1_200);
+  });
+
+  it("keeps the connecting cadence while a peer is being dialled", () => {
+    const snapshot: MeshPollCadenceSnapshot = {
+      ...alone("collab", true),
+      roomPeers: [{ id: "bb".repeat(8), name: "Bo" }],
+      linkStateOf: () => "connecting",
+      isDialing: () => true,
+    };
+    expect(steadyPollDelayMs(intervals, snapshot)).toBe(intervals.steadyMs);
+
+    // Past the dial window the peer no longer counts: back to the heartbeat.
+    expect(steadyPollDelayMs(intervals, { ...snapshot, isDialing: () => false })).toBe(
+      DOORBELL_HEARTBEAT_POLL_INTERVAL_MS,
+    );
+  });
+
+  it("heartbeats a fully linked room too, and never polls faster than before", () => {
+    const linked: MeshPollCadenceSnapshot = {
+      ...alone("meet", true),
+      roomPeers: [{ id: "peer-2", name: "Alex" }],
+      linkStateOf: () => "connected",
+      peerConnectionCount: 1,
+    };
+    expect(steadyPollDelayMs(intervals, linked)).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+    expect(
+      steadyPollDelayMs({ connectingMs: 400, steadyMs: 40_000 }, alone("principal", true)),
+    ).toBe(40_000);
+  });
+
+  it("leaves the HTTP fallback's one-second cap alone", () => {
+    expect(steadyPollDelayMs({ ...intervals, maxDelayMs: 1_000 }, alone("collab", true))).toBe(
+      1_000,
+    );
   });
 });

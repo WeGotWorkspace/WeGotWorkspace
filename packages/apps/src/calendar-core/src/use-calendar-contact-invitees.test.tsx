@@ -5,20 +5,41 @@ import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { CalendarInviteesCard } from "@/calendar-core/src/calendar-invitees-card";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import {
-  loadCalendarContactCards,
   refreshCalendarContactCards,
   useCalendarContactInvitees,
 } from "@/calendar-core/src/use-calendar-contact-invitees";
-import { readContactsBootstrapFromCache } from "@/lib/offline/contacts/contacts-offline-store";
+import {
+  readContactsBootstrapFromCache,
+  readContactsColdDownload,
+} from "@/lib/offline/contacts/contacts-offline-store";
+import { refreshCachedContacts } from "@/lib/offline/contacts/contacts-hybrid-operations";
 import { listCards } from "@/lib/api/wgw/contacts";
 import { TooltipProvider } from "@/ui/tooltip";
+import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
 
 vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   readContactsBootstrapFromCache: vi.fn(),
+  readContactsColdDownload: vi.fn(),
+}));
+
+vi.mock("@/lib/offline/contacts/contacts-hybrid-operations", () => ({
+  refreshCachedContacts: vi.fn(),
+}));
+
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwLiveApiEnabled: () => true,
+}));
+
+vi.mock("@/hooks/use-connectivity", () => ({
+  useConnectivity: () => ({ online: true }),
 }));
 
 vi.mock("@/lib/api/wgw/contacts", () => ({
   listCards: vi.fn(),
+}));
+
+vi.mock("@/lib/offline/contacts/use-contacts-live-inbound", () => ({
+  useContactsLiveInbound: vi.fn(),
 }));
 
 const cachedJane = {
@@ -46,65 +67,39 @@ const liveJane = {
   },
 } as unknown as ContactCard;
 
-describe("loadCalendarContactCards", () => {
+describe("refreshCalendarContactCards", () => {
   beforeEach(() => {
     vi.mocked(readContactsBootstrapFromCache).mockReset();
     vi.mocked(listCards).mockReset();
   });
 
-  it("returns cached cards on cache hit without calling listCards", async () => {
-    const bootstrap = createContactsAppBootstrap({
-      data: { addressBooks: [], cards: [cachedJane] },
-    });
-    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(bootstrap);
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
-
-    await expect(loadCalendarContactCards("alice")).resolves.toEqual([cachedJane]);
-    expect(readContactsBootstrapFromCache).toHaveBeenCalledWith("alice");
+  it("reads the cache when there is one", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
+    );
+    await expect(refreshCalendarContactCards("alice")).resolves.toEqual([cachedJane]);
     expect(listCards).not.toHaveBeenCalled();
   });
 
-  it("fetches live cards when the cache is empty", async () => {
+  it("asks the server only without any cache", async () => {
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
     vi.mocked(listCards).mockResolvedValue([liveJane]);
-
-    await expect(loadCalendarContactCards("alice")).resolves.toEqual([liveJane]);
-    expect(listCards).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns an empty list when the cache is empty and live listCards throws", async () => {
-    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
-    vi.mocked(listCards).mockRejectedValue(new Error("offline"));
-
-    await expect(loadCalendarContactCards("alice")).resolves.toEqual([]);
-  });
-
-  it("returns an empty list when username is missing", async () => {
-    await expect(loadCalendarContactCards("")).resolves.toEqual([]);
-    expect(readContactsBootstrapFromCache).not.toHaveBeenCalled();
-    expect(listCards).not.toHaveBeenCalled();
-  });
-});
-
-describe("refreshCalendarContactCards", () => {
-  beforeEach(() => {
-    vi.mocked(listCards).mockReset();
-  });
-
-  it("returns live cards", async () => {
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
-    await expect(refreshCalendarContactCards()).resolves.toEqual([liveJane]);
+    await expect(refreshCalendarContactCards("alice")).resolves.toEqual([liveJane]);
   });
 
   it("returns null when live listCards throws", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
     vi.mocked(listCards).mockRejectedValue(new Error("offline"));
-    await expect(refreshCalendarContactCards()).resolves.toBeNull();
+    await expect(refreshCalendarContactCards("alice")).resolves.toBeNull();
   });
 });
 
 describe("useCalendarContactInvitees", () => {
   beforeEach(() => {
     vi.mocked(readContactsBootstrapFromCache).mockReset();
+    vi.mocked(readContactsColdDownload).mockReset().mockResolvedValue(null);
+    vi.mocked(refreshCachedContacts).mockReset().mockResolvedValue(undefined);
+    vi.mocked(useContactsLiveInbound).mockClear();
     vi.mocked(listCards).mockReset();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -132,6 +127,47 @@ describe("useCalendarContactInvitees", () => {
     });
   });
 
+  it("does not enable the sync while the first download is unfinished", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
+    );
+    vi.mocked(readContactsColdDownload).mockResolvedValue({
+      remainingCardIds: ["x"],
+    } as never);
+
+    const { result } = renderHook(() => useCalendarContactInvitees("alice"));
+    await waitFor(() => {
+      expect(result.current.cards).toEqual([cachedJane]);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(refreshCachedContacts).not.toHaveBeenCalled();
+    for (const [args] of vi.mocked(useContactsLiveInbound).mock.calls) {
+      expect(args.enabled).toBe(false);
+    }
+  });
+
+  it("catches a complete cache up once from its tokens, without listCards", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
+    );
+
+    const { result } = renderHook(() => useCalendarContactInvitees("alice"));
+    await waitFor(() => {
+      expect(refreshCachedContacts).toHaveBeenCalledTimes(1);
+    });
+    expect(refreshCachedContacts).toHaveBeenCalledWith("alice");
+    await waitFor(() => {
+      expect(vi.mocked(useContactsLiveInbound)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ enabled: true }),
+      );
+    });
+    expect(result.current.cards).toEqual([cachedJane]);
+    expect(refreshCachedContacts).toHaveBeenCalledTimes(1);
+    expect(listCards).not.toHaveBeenCalled();
+  });
+
   it("falls back to [] when live load throws", async () => {
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
     vi.mocked(listCards).mockRejectedValue(new Error("JMAP error"));
@@ -143,34 +179,43 @@ describe("useCalendarContactInvitees", () => {
     expect(result.current.cards).toEqual([]);
   });
 
-  it("replaces a stale cache with live listCards on refresh", async () => {
+  it("refresh re-reads the cache the live sync keeps current, without a download", async () => {
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
       createContactsAppBootstrap({
         data: { addressBooks: [], cards: [cachedJane] },
       }),
     );
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
 
     const { result } = renderHook(() => useCalendarContactInvitees("alice"));
     await waitFor(() => {
       expect(result.current.cards).toEqual([cachedJane]);
     });
+    // The live inbound sync runs once a cache exists.
+    await waitFor(() => {
+      expect(vi.mocked(useContactsLiveInbound)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ username: "alice" }),
+      );
+    });
 
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [liveJane] } }),
+    );
     await act(async () => {
       result.current.refreshCards();
     });
     await waitFor(() => {
       expect(result.current.cards).toEqual([liveJane]);
     });
-    expect(listCards).toHaveBeenCalledTimes(1);
+    expect(listCards).not.toHaveBeenCalled();
   });
 
-  it("keeps the last good list when live refresh throws", async () => {
-    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+  it("keeps the last good list when a refresh without cache fails", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValueOnce(
       createContactsAppBootstrap({
         data: { addressBooks: [], cards: [cachedJane] },
       }),
     );
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
     vi.mocked(listCards).mockRejectedValue(new Error("offline"));
 
     const { result } = renderHook(() => useCalendarContactInvitees("alice"));
@@ -185,13 +230,12 @@ describe("useCalendarContactInvitees", () => {
     expect(result.current.cards).toEqual([cachedJane]);
   });
 
-  it("shows a live contact row after search when cache is stale", async () => {
+  it("shows a contact the live sync added after search, from the cache", async () => {
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
       createContactsAppBootstrap({
         data: { addressBooks: [], cards: [cachedJane] },
       }),
     );
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
 
     function Harness() {
       const { cards, refreshCards } = useCalendarContactInvitees("alice");
@@ -212,8 +256,12 @@ describe("useCalendarContactInvitees", () => {
 
     render(<Harness />);
     await waitFor(() => {
-      expect(listCards).not.toHaveBeenCalled();
+      expect(readContactsBootstrapFromCache).toHaveBeenCalled();
     });
+    // Contacts (another tab) pulled a new card into the shared cache.
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane, liveJane] } }),
+    );
 
     fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
       target: { value: "Live" },
@@ -223,7 +271,7 @@ describe("useCalendarContactInvitees", () => {
     await waitFor(() => {
       expect(screen.getByRole("option", { name: /Live Jane.*Jane@Host · Work/i })).toBeTruthy();
     });
-    expect(listCards).toHaveBeenCalled();
+    expect(listCards).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText(defaultCalendarLabels.eventAttendeesAdd), {
       target: { value: "ali" },
