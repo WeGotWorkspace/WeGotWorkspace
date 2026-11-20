@@ -3,7 +3,7 @@ export const appPasswordLabels = {
   panel: "Security",
   panelDescription: "App passwords for calendar and contacts apps",
   title: "App passwords",
-  lead: "Calendar and contacts apps on your phone or computer sign in with an app password instead of your account password. With two-factor sign-in on, they need one. Make one per app, so you can remove it on its own.",
+  lead: "For calendar and contacts apps that can't ask for a two-factor code.",
   empty: "No app passwords yet.",
   loading: "Loading app passwords…",
   offline: "You are offline. App passwords show when the connection is back.",
@@ -11,10 +11,10 @@ export const appPasswordLabels = {
   retry: "Try again",
   newButton: "Create app password",
   removeAllButton: "Remove all",
-  columns: { name: "Name", created: "Created", lastUsed: "Last used", client: "App" },
-  neverUsed: "Never",
-  /** The App column before the first sign-in with it. */
-  noClient: "N/A",
+  /** A row's description: when it was made, when and by which app it was last used. */
+  created: (day: string) => `Created ${day}`,
+  notUsed: "Not used yet",
+  lastUsed: (when: string) => `Last used ${when}`,
   /** The row's button; its accessible name is `remove(name)`. */
   removeButton: "Remove",
   remove: (name: string) => `Remove ${name}`,

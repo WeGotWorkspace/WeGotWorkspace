@@ -1,9 +1,54 @@
 @import "../../styles.css" reference;
 
-/* Settings → Security: app passwords in the suite list look (`ui/list-table.css`). */
+/*
+ * Settings → Security: quiet section titles (the card's own title variables) with a hairline
+ * under them; the rows are inline FieldLabelRows, which draw the hairlines between them.
+ */
+.settings-security-pane {
+  --card-title-size: var(--input-font-size-md, 0.875rem);
+  --card-title-color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+}
+
+.settings-security-pane .workspace-page-section > .card__header {
+  @apply pb-2;
+  margin-block-end: 0;
+  border-bottom: 1px solid var(--workspace-divider-color);
+}
+
+/* On a phone the title keeps its line and the header buttons wrap under it. */
+.settings-security-pane .workspace-page-section > .card__header .card__header-row {
+  @apply flex-wrap gap-y-1;
+}
+
+.settings-security-pane .workspace-page-section > .card__header .card__title-block {
+  flex: 1 0 auto;
+}
+
+/* One end edge with the rows below: the last quiet header button pulls its padding out, like
+ * the end control of an inline FieldLabelRow (`ui/field-label-row.css`). */
+.settings-security-pane__actions > .button--size-md:last-child {
+  margin-inline-end: -0.75rem;
+}
+
+/* The one-line purpose under a title sits below the hairline, like a row's description. */
+.settings-security-pane .workspace-page-section__lead {
+  @apply mt-3 mb-0;
+}
+
+/* Loading, offline, failed or empty sits where the first row would, with a row's spacing. */
+.settings-security-pane
+  .workspace-page-section__lead
+  + :is(.settings-security-pane__note, .settings-security-pane__failure) {
+  @apply pt-4;
+}
+
+/* A row has only its Remove button on the label line, so the description may run wide. */
+.settings-security-pane__row .field-label-row__description {
+  max-width: none;
+}
 
 .settings-security-pane__actions {
-  @apply flex items-center gap-2;
+  @apply ms-auto flex items-center gap-2;
 }
 
 .settings-security-pane__note {
@@ -12,11 +57,6 @@
 
 .settings-security-pane__failure {
   @apply flex flex-wrap items-center gap-3;
-}
-
-/* A User-Agent can be long: one line, the whole string in its tooltip. */
-.settings-security-pane__client {
-  @apply block max-w-[14rem] truncate;
 }
 
 /* Grouped in fours, read aloud or typed on a phone: a fixed-width face keeps groups aligned. */
@@ -31,10 +71,4 @@
 
 .settings-security-pane__secret-row > .input {
   @apply min-w-0 flex-1;
-}
-
-@media (max-width: 40rem) {
-  .settings-security-pane__wide-only {
-    display: none;
-  }
 }
