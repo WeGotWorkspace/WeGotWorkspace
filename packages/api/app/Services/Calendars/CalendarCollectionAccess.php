@@ -154,18 +154,21 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * Sharees may change their instance name/color only.
+     * Sharees may change their instance name/color only. On the owner side, a Project
+     * collection's name and color are the Project's (#817 B1).
      *
      * @param  list<string>  $disallowedKeys
      * @param  array<string, mixed>  $payload
      */
-    public function assertShareePatchAllowed(
+    public function assertPatchAllowed(
         CalendarInstance $instance,
         array $payload,
         array $disallowedKeys,
         string $message,
     ): void {
         if (! $this->shareInvites->isSharee($instance)) {
+            $this->assertProjectPatchAllowed($instance, $payload);
+
             return;
         }
 
@@ -265,23 +268,24 @@ final class CalendarCollectionAccess
         return true;
     }
 
-    /**
-     * The id of the Project that owns this collection, or null (#817 B1). Read through the
-     * request-scoped registry, so listings that call {@see primeProjects()} pay one query.
-     */
+    /** The id of the Project that owns this collection, or null (#817 B1). */
     public function projectIdOf(CalendarInstance $instance): ?string
     {
         return $this->projects->projectIdFor((int) $instance->calendarid);
     }
 
-    /** @param  iterable<CalendarInstance>  $instances */
-    public function primeProjects(iterable $instances): void
+    /**
+     * The Project fields of a collection response: `projectId`, and `myRights` with `mayRename`.
+     *
+     * @param  array<string, bool>  $rights
+     * @return array{projectId: ?string, myRights: array<string, bool>}
+     */
+    public function projectFields(CalendarInstance $instance, array $rights): array
     {
-        $ids = [];
-        foreach ($instances as $instance) {
-            $ids[] = (int) $instance->calendarid;
-        }
-        $this->projects->prime($ids);
+        return [
+            'projectId' => $this->projectIdOf($instance),
+            'myRights' => [...$rights, 'mayRename' => $this->mayRename($instance)],
+        ];
     }
 
     /**
@@ -299,7 +303,7 @@ final class CalendarCollectionAccess
      *
      * @param  array<string, mixed>  $payload
      */
-    public function assertProjectPatchAllowed(CalendarInstance $instance, array $payload): void
+    private function assertProjectPatchAllowed(CalendarInstance $instance, array $payload): void
     {
         if ($this->mayRename($instance)) {
             return;
