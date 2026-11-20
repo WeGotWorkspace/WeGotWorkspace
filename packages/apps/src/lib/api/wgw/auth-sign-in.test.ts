@@ -60,6 +60,7 @@ describe("signInFailureReason", () => {
     expect(signInFailureReason(401, "unauthorized", "credentials")).toBe("credentials");
     expect(signInFailureReason(429, "throttled", "credentials")).toBe("throttled");
     expect(signInFailureReason(500, undefined, "credentials")).toBe("failed");
+    expect(signInFailureReason(403, "invalid_request", "credentials")).toBe("failed");
   });
 
   it("reads the code step", () => {
