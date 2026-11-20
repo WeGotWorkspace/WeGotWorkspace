@@ -1,19 +1,10 @@
 import { fetchContactCardPhotos } from "@/lib/api/wgw/contacts-bootstrap";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { cacheChangedTopic } from "@/lib/offline/core/cache-changed-topic";
 import {
   readContactsPhotoPass,
   saveContactsPhotoPage,
 } from "@/lib/offline/contacts/contacts-offline-store";
-import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
-
-const topic = cacheChangedTopic(CONTACTS_DOMAIN);
-
-/**
- * Hear a change to the Contacts cache written outside the view (photos from
- * the photo pass), in this tab or another one of the same offline account.
- */
-export const subscribeContactsCacheChanged = topic.subscribe;
+import { notifyContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 
 const PHOTO_PASS_LOCK = "wgw.contacts.photoPass";
 const running = new Map<string, Promise<void>>();
@@ -42,7 +33,7 @@ async function fetchPhotos(username: string): Promise<void> {
   if (ids.length === 0 || !readBrowserOnline()) return;
   await fetchContactCardPhotos(ids, async ({ photos, remainingCardIds }) => {
     const changed = await saveContactsPhotoPage(username, photos, remainingCardIds);
-    if (changed > 0) topic.notifyAllTabs(username);
+    if (changed > 0) notifyContactsCacheChanged(username);
   });
 }
 

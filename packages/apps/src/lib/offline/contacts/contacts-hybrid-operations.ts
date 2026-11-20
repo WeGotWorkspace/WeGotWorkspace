@@ -56,6 +56,7 @@ import {
   writeSyncToken,
 } from "@/lib/offline/contacts/contacts-offline-store";
 import { runContactsPhotoPass } from "@/lib/offline/contacts/contacts-photo-pass";
+import { notifyContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import {
   flushContactsOutbox,
@@ -346,15 +347,47 @@ async function sendQueuedEditsAfterDownload(username: string): Promise<void> {
   await runnerFor(username).flush();
 }
 
+const FIRST_DOWNLOAD_LOCK = "wgw.contacts.firstDownload";
+
+/**
+ * Runs a first download (or its resume) in one tab of this browser at a time,
+ * so Contacts and Calendar tabs never fetch the same address book twice. A tab
+ * that waited here finds the other tab's copy afterwards. Without Web Locks
+ * every tab downloads for itself.
+ */
+function oneDownloadPerBrowser<T>(work: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks) return work();
+  return locks.request(FIRST_DOWNLOAD_LOCK, work) as Promise<T>;
+}
+
 /**
  * Full download. On a device with no copy, each card page is saved as it
  * arrives, behind a marker this download owns; once the last page is in, only
- * the query-time tokens are stored (no rewrite of the saved pages). With a
- * stored copy (complete, or an unfinished one reached outside
+ * the query-time tokens are stored (no rewrite of the saved pages). That first
+ * download runs in one tab per browser: a tab that waited for another tab's
+ * download returns (or resumes) that copy instead. With a stored copy
+ * (complete, or an unfinished one reached outside
  * {@link loadContactsBootstrapHybrid}) nothing changes until the full snapshot
  * is in; then it replaces the copy in one transaction.
  */
 export async function fetchContactsHybridBootstrap(
+  onProgress?: (bootstrap: ContactsBootstrap) => void,
+): Promise<ContactsBootstrap> {
+  const known = readOfflineContactsUsername();
+  if (known && (await hasContactsCopy(known))) return downloadAllContacts(onProgress);
+  return oneDownloadPerBrowser(async () => {
+    const name = readOfflineContactsUsername();
+    const saved = name ? await readContactsBootstrapFromCache(name) : null;
+    if (!name || !saved) return downloadAllContacts(onProgress);
+    // Another tab ran the first download while this one waited.
+    const progress = await readContactsColdDownload(name);
+    if (!progress) return saved;
+    return resumeContactsColdDownload(name, saved, progress, onProgress, true);
+  });
+}
+
+async function downloadAllContacts(
   onProgress?: (bootstrap: ContactsBootstrap) => void,
 ): Promise<ContactsBootstrap> {
   let saving: { username: string; id: string } | null = null;
@@ -373,8 +406,9 @@ export async function fetchContactsHybridBootstrap(
       saving = { username: name, id };
     },
     onCardPage: async ({ cards, remainingCardIds }) => {
-      if (saving)
-        await saveContactsColdDownloadPage(saving.username, saving.id, cards, remainingCardIds);
+      if (!saving) return;
+      await saveContactsColdDownloadPage(saving.username, saving.id, cards, remainingCardIds);
+      notifyContactsCacheChanged(saving.username);
     },
   });
   const username = bootstrap.session.user.username;
@@ -427,6 +461,8 @@ function resumeContactsColdDownload(
   saved: ContactsAppBootstrap,
   progress: ContactsColdDownload,
   reportProgress?: (bootstrap: ContactsAppBootstrap) => void,
+  /** The caller holds the one-download-per-browser lock already. */
+  locked = false,
 ): Promise<ContactsAppBootstrap> {
   const inFlight = resumesInFlight.get(username);
   if (inFlight) return inFlight;
@@ -441,9 +477,12 @@ function resumeContactsColdDownload(
         pendingContactCount: countPendingContacts(remainingCardIds, groupIds),
       });
     publish(progress.remainingCardIds);
-    try {
-      if (progress.remainingCardIds.length > 0) {
-        await fetchContactCardPages(progress.remainingCardIds, async (page) => {
+    const fetchRest = async () => {
+      // Another tab may have fetched some or all of the rest while this one waited.
+      const current = await readContactsColdDownload(username);
+      if (!current || current.id !== progress.id) return;
+      if (current.remainingCardIds.length > 0) {
+        await fetchContactCardPages(current.remainingCardIds, async (page) => {
           const kept = await saveContactsColdDownloadPage(
             username,
             progress.id,
@@ -453,6 +492,7 @@ function resumeContactsColdDownload(
           if (!kept) throw new ColdDownloadTakenOver();
           for (const card of kept) cards.set(card.id, card);
           publish(page.remainingCardIds);
+          notifyContactsCacheChanged(username);
         });
       }
       const books = bookIdsOf(saved.data.addressBooks);
@@ -460,6 +500,9 @@ function resumeContactsColdDownload(
         await sendQueuedEditsAfterDownload(username);
         void runContactsPhotoPass(username);
       }
+    };
+    try {
+      await (locked ? fetchRest() : oneDownloadPerBrowser(fetchRest));
     } catch (error) {
       if (!(error instanceof ColdDownloadTakenOver)) throw error;
     }
@@ -483,6 +526,28 @@ async function finishContactsDownload(
     return saved;
   }
   return resumeContactsColdDownload(username, saved, progress, reportProgress);
+}
+
+let ensuring: Promise<void> | null = null;
+
+/**
+ * For apps that read the Contacts cache (Calendar invitee search): fills it
+ * once for every app by starting, resuming or joining the Contacts first
+ * download — paced, in large photo-less pages, one tab per browser. Never
+ * downloads a complete copy again, and does nothing offline. Pages land in
+ * the cache as they arrive and every tab hears of them.
+ */
+export function ensureContactsDownloaded(): Promise<void> {
+  ensuring ??= (async () => {
+    if (!readBrowserOnline()) return;
+    const username = readOfflineContactsUsername();
+    const saved = username ? await readContactsBootstrapFromCache(username) : null;
+    if (username && saved && !(await readContactsColdDownload(username))) return;
+    await loadContactsBootstrapHybrid();
+  })().finally(() => {
+    ensuring = null;
+  });
+  return ensuring;
 }
 
 /**

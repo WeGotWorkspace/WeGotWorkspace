@@ -11,7 +11,7 @@ import {
   ingestRemoteContactCardDestroyed,
   reconcileContactsSnapshot,
 } from "@/lib/offline/contacts/contacts-jmap-inbound";
-import { subscribeContactsCacheChanged } from "@/lib/offline/contacts/contacts-photo-pass";
+import { subscribeContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 
 /** Inbound `/changes` poll while push is down. */
@@ -94,7 +94,7 @@ export function useContactsLiveInbound({
 
   useSharedInboundSync(adapter, "contacts", username, () => void latestPatch.current());
 
-  // Photos saved by the photo pass (in any tab) after a photo-less first download.
+  // First-download pages and photos saved outside this view, in any tab.
   useEffect(() => {
     if (!username) return;
     return subscribeContactsCacheChanged(username, () => void latestPatch.current());

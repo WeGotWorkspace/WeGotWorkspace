@@ -87,12 +87,11 @@ import {
   fetchContactCardPhotos,
   fetchContactsLiveBootstrap,
 } from "@/lib/api/wgw/contacts-bootstrap";
-import {
-  runContactsPhotoPass,
-  subscribeContactsCacheChanged,
-} from "@/lib/offline/contacts/contacts-photo-pass";
+import { runContactsPhotoPass } from "@/lib/offline/contacts/contacts-photo-pass";
+import { subscribeContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
+  ensureContactsDownloaded,
   fetchContactsHybridBootstrap,
   getContactsSyncRunner,
   loadContactsBootstrapForBoot,
@@ -589,6 +588,7 @@ describe("contacts photo pass after a photo-less first download", () => {
   it("tells the open views to re-read the cache after a page with photos", async () => {
     downloadInPages(["a"]);
     const heard = vi.fn();
+    await fetchContactsHybridBootstrap();
     const stop = subscribeContactsCacheChanged(username, heard);
     vi.mocked(fetchContactCardPhotos).mockImplementation(async (_ids, onPage) => {
       await onPage({
@@ -597,7 +597,6 @@ describe("contacts photo pass after a photo-less first download", () => {
       });
     });
 
-    await fetchContactsHybridBootstrap();
     await runContactsPhotoPass(username);
     stop();
 
@@ -644,5 +643,80 @@ describe("contacts photo pass after a photo-less first download", () => {
 
     expect(vi.mocked(fetchContactCardPhotos).mock.calls.length).toBe(callsOnline);
     expect(await readContactsPhotoPass(username)).toEqual(["a"]);
+  });
+});
+
+describe("one first download per browser", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(fetchContactCardPhotos).mockResolvedValue(undefined);
+    await freshDevice();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("a second tab that starts while the first downloads waits and reads that copy", async () => {
+    const pageGate = gate();
+    vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
+      await options?.onStart?.({
+        session,
+        addressBooks: [book],
+        cardIds: ["a", "b"],
+        groupIds: [],
+        syncAnchor,
+      });
+      await options?.onCardPage?.({ cards: [card("a")], remainingCardIds: ["b"] });
+      await pageGate.opened;
+      await options?.onCardPage?.({ cards: [card("b")], remainingCardIds: [] });
+      return { session, data: { addressBooks: [book], cards: [card("a"), card("b")] }, syncAnchor };
+    });
+
+    // Contacts (or Calendar) in one tab, and another app's tab right after it.
+    const first = fetchContactsHybridBootstrap();
+    const second = fetchContactsHybridBootstrap();
+    pageGate.open();
+    const [, joined] = await Promise.all([first, second]);
+
+    expect(fetchContactsLiveBootstrap).toHaveBeenCalledTimes(1);
+    expect(fetchContactCardPages).not.toHaveBeenCalled();
+    expect(joined.data.cards.map((row) => row.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("every saved page tells the open views to re-read the cache", async () => {
+    downloadInPages(["a", "b"]);
+    const heard = vi.fn();
+    const stop = subscribeContactsCacheChanged(username, heard);
+
+    await fetchContactsHybridBootstrap();
+    stop();
+
+    expect(heard).toHaveBeenCalledTimes(2);
+  });
+
+  it("ensureContactsDownloaded leaves a complete copy alone and finishes an unfinished one", async () => {
+    downloadInPages(["a"]);
+    await fetchContactsHybridBootstrap();
+    vi.mocked(fetchContactsLiveBootstrap).mockClear();
+
+    await ensureContactsDownloaded();
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(fetchContactCardPages).not.toHaveBeenCalled();
+
+    await freshDevice();
+    stopAfterFirstPage(["a", "b"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    vi.mocked(fetchContactsLiveBootstrap).mockClear();
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b")], remainingCardIds: [] });
+    });
+
+    await ensureContactsDownloaded();
+
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(fetchContactCardPages).toHaveBeenCalledWith(["b"], expect.any(Function));
+    expect(await cachedIds()).toEqual(["a", "b"]);
   });
 });
