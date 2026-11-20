@@ -1,0 +1,23 @@
+@import "../../styles.css" reference;
+
+/*
+ * Project filter at the foot of the sidebar: the suite's ghost select, the selected
+ * Project's dot (or a folder mark for All Projects), full row width.
+ */
+.project-filter-select {
+  @apply w-full;
+  margin-inline-start: 0;
+}
+
+.project-filter-select__dot {
+  @apply inline-block size-2.5 shrink-0 rounded-full;
+  background-color: var(--collection-row-color, var(--workspace-muted-foreground, currentColor));
+}
+
+.project-filter-select__icon {
+  @apply size-4 shrink-0 opacity-70;
+}
+
+.project-filter-select__item {
+  @apply inline-flex min-w-0 items-center gap-2;
+}

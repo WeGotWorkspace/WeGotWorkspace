@@ -19,6 +19,7 @@ const installerTypesPath = path.resolve(generatedDir, "installer-types.ts");
 const contactsTypesPath = path.resolve(generatedDir, "contacts-types.ts");
 const calendarsTypesPath = path.resolve(generatedDir, "calendars-types.ts");
 const tasksTypesPath = path.resolve(generatedDir, "tasks-types.ts");
+const projectsTypesPath = path.resolve(generatedDir, "projects-types.ts");
 const chatTypesPath = path.resolve(generatedDir, "chat-types.ts");
 const notificationsTypesPath = path.resolve(generatedDir, "notifications-types.ts");
 
@@ -122,6 +123,12 @@ export async function generateOpenApiDomainTypes() {
     domainPrefix: ["Task", "Tasks"],
     pathPrefix: "tasks",
     outputPath: tasksTypesPath,
+  });
+  buildDomainTypesModule({
+    domainName: "Projects",
+    domainPrefix: "Project",
+    pathPrefix: "projects",
+    outputPath: projectsTypesPath,
   });
   buildDomainTypesModule({
     domainName: "Chat",
