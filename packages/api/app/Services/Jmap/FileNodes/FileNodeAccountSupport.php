@@ -60,7 +60,7 @@ final class FileNodeAccountSupport
             return [$guest->rootKey];
         }
 
-        return $this->index->visibleRoots($username, $this->groups->allowedGroupSlugs($username));
+        return FileNodeVisibility::roots($username, $this->groups->allowedGroupSlugs($username));
     }
 
     /**
@@ -184,7 +184,7 @@ final class FileNodeAccountSupport
                 continue;
             }
             $key = $this->paths->virtualToStorageKey($path);
-            if ($this->index->isVisibleKey($key, $accountRoots)) {
+            if (FileNodeVisibility::isVisibleKey($key, $accountRoots)) {
                 continue;
             }
             $keys[$key] = $key;
@@ -199,7 +199,7 @@ final class FileNodeAccountSupport
     public function visibleLiveNode(string $nodeId, array $roots, ?JmapFileNode $loaded = null): ?JmapFileNode
     {
         $node = $loaded ?? $this->index->liveByNodeId($nodeId);
-        if ($node === null || ! $this->index->isVisibleKey((string) $node->storage_key, $roots)) {
+        if ($node === null || ! FileNodeVisibility::isVisibleKey((string) $node->storage_key, $roots)) {
             return null;
         }
 
