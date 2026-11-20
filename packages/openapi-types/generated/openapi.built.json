@@ -12931,9 +12931,9 @@
             },
             "SettingsAppPasswordCreateRequest": {
                 "type": "object",
+                "description": "Send `code` when the caller has two-factor on (the account password is not accepted then), otherwise `currentPassword`. `GET /me` → `mfa.enabled` says which.",
                 "required": [
-                    "name",
-                    "currentPassword"
+                    "name"
                 ],
                 "properties": {
                     "name": {
@@ -12944,7 +12944,12 @@
                     "currentPassword": {
                         "type": "string",
                         "maxLength": 4096,
-                        "description": "The account password. An app password is not accepted here. Failures count on the sign-in rate limit."
+                        "description": "The account password, when two-factor is off. An app password is not accepted here. Failures count on the sign-in rate limit."
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "description": "A current authenticator code, when two-factor is on. Recovery codes are not accepted. Same checks as `POST /settings/totp/recovery-codes`: replay guard, sign-in rate limit and per-user code lock."
                     }
                 },
                 "example": {
@@ -23735,7 +23740,7 @@
                     "Settings"
                 ],
                 "summary": "Create a named app password for DAV and Meet Basic sign-in",
-                "description": "Requires the account password, which shares the sign-in rate limit. The plaintext is in this response only.",
+                "description": "Requires a current authenticator code when the caller has two-factor on, otherwise the account password; either path shares the matching rate limit. The plaintext is in this response only.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -23763,7 +23768,7 @@
                         }
                     },
                     "400": {
-                        "description": "Name missing, blank or longer than 60 characters, or currentPassword missing",
+                        "description": "Name missing, blank or longer than 60 characters, or `currentPassword` missing when two-factor is off",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23773,7 +23778,7 @@
                         }
                     },
                     "403": {
-                        "description": "Current password is incorrect (`current_password_invalid`)",
+                        "description": "Current password is incorrect (`current_password_invalid`), or wrong or already used code (`mfa_code_invalid`)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23783,7 +23788,7 @@
                         }
                     },
                     "422": {
-                        "description": "The caller already has 50 active app passwords (`app_password_limit`)",
+                        "description": "The caller already has 50 active app passwords (`app_password_limit`); or two-factor is on and `code` is missing (`mfa_code_required`; the account password is not accepted then)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -23793,7 +23798,7 @@
                         }
                     },
                     "429": {
-                        "description": "Too many sign-in attempts (`throttled`)",
+                        "description": "Too many attempts (`throttled`): the sign-in limits, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
                         "content": {
                             "application/json": {
                                 "schema": {
