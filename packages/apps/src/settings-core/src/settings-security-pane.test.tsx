@@ -108,6 +108,15 @@ describe("SettingsSecurityPane", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(MOCK_APP_PASSWORDS.length + 1);
   });
 
+  it("says N/A in the App column for an app password that was never used", async () => {
+    renderPane();
+    const table = await screen.findByRole("table");
+    const row = within(table).getByText("Old Android").closest("tr");
+    expect(row).toBeTruthy();
+    expect(within(row as HTMLElement).getByText(labels.noClient)).toBeTruthy();
+    expect(within(row as HTMLElement).getByText(labels.neverUsed)).toBeTruthy();
+  });
+
   it("shows the empty state without a Remove all button", async () => {
     renderPane([]);
     expect(await screen.findByText(labels.empty)).toBeTruthy();
