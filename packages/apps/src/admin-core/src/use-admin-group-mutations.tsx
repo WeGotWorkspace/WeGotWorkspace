@@ -47,8 +47,6 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
   const updateGroup = async (
     groupId: string,
     input: { name: string; memberUserIds: string[]; teamAdminUserIds: string[] },
-    /** Autosave: the dialog's status tag reports success, so no toast. */
-    { silent = false }: { silent?: boolean } = {},
   ) => {
     // Only a member can be team admin.
     const teamAdmins = memberUsernames(
@@ -68,7 +66,7 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
           teamAdmins,
         });
         applyAdminData(next);
-        if (!silent) showSuccess("Team saved");
+        showSuccess("Team saved");
         return true;
       } catch (error) {
         showError(mutationErrorMessage(error, "Could not update team"));
@@ -79,7 +77,7 @@ export function useAdminGroupMutations({ operations, shell, showSuccess, showErr
       withTeamAdmins(renameGroup(prev, groupId, required.name), groupId, teamAdmins),
     );
     setUsers((prev) => applyGroupMembership(prev, groupId, input.memberUserIds));
-    if (!silent) showSuccess("Team saved");
+    showSuccess("Team saved");
     return true;
   };
 

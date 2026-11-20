@@ -133,7 +133,7 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
         }}
         onSave={(draft) =>
           editingGroup
-            ? controller.actions.updateGroup(editingGroup.id, draft, { silent: true })
+            ? controller.actions.updateGroup(editingGroup.id, draft)
             : Promise.resolve(false)
         }
       />
