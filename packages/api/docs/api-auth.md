@@ -177,7 +177,7 @@ A form post (not JSON) for a user with two-factor on does not sign in; it goes b
 
 ### Calendar, contacts, files and Meet apps
 
-With two-factor on, DAV Basic and Meet Basic refuse the account password, before the verified-password memory is read, so a password remembered from before does not work either. Those apps use app passwords (`/api/v1/settings/app-passwords`). With two-factor on, creating one takes a current authenticator code (`code`) instead of the account password (`currentPassword`); without `code` it answers 422 `mfa_code_required`. `users.dav_password_used_at`, shown when setup starts, tells the user which apps still use the account password.
+With two-factor on, DAV Basic and Meet Basic refuse the account password, before the verified-password memory is read, so a password remembered from before does not work either. Those apps use app passwords (`/api/v1/settings/app-passwords`). A valid app password signs in even while the protocol sign-in limit for that user or address is reached; the limit only blocks account-password attempts (an old client still sending the account password cannot lock out the new app passwords). With two-factor on, creating one takes a current authenticator code (`code`) instead of the account password (`currentPassword`); without `code` it answers 422 `mfa_code_required`. `users.dav_password_used_at`, shown when setup starts, tells the user which apps still use the account password.
 
 ### Settings
 

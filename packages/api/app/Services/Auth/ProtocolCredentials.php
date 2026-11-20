@@ -60,6 +60,25 @@ final class ProtocolCredentials
         return true;
     }
 
+    /**
+     * The app-password half of verify(), for a caller whose protocol sign-in
+     * limit is reached: a valid app password still signs in, the account
+     * password is not checked at all (#2273). App passwords are ~75 random
+     * bits behind one indexed sha256 lookup, so this gives no guessing gain,
+     * and an old client still sending the account password after two-factor
+     * was turned on cannot lock out the user's new app passwords.
+     */
+    public function verifyAppPasswordOnly(string $username, string $password, ?string $client): bool
+    {
+        $username = strtolower(trim($username));
+        if ($username === '' || $password === '') {
+            return false;
+        }
+
+        return $this->appPasswords->matches($username, $password, $client)
+            && $this->enabled->isEnabled($username);
+    }
+
     private function touchAccountPasswordUse(string $username): void
     {
         $now = Carbon::now();

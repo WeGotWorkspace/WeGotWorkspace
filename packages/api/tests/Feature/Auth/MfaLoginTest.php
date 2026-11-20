@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserMfa;
 use App\Services\Auth\AppPasswordService;
 use App\Services\Auth\AuthTokenService;
+use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\Mfa\AuthChallengeService;
 use App\Services\Auth\Mfa\MfaCodeLimiter;
 use App\Services\Auth\PasswordRecoveryService;
@@ -552,6 +553,22 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->dav('bob', $plain)->assertStatus(207);
         $this->assertSame('bob', $this->meet('bob', $plain));
         $this->dav('carol', 'secret')->assertStatus(207);
+    }
+
+    public function test_an_old_client_with_the_account_password_does_not_lock_out_new_app_passwords(): void
+    {
+        $this->turnOnMfa('bob');
+        // The old phone keeps syncing with the account password after two-factor is on.
+        for ($attempt = 0; $attempt < LoginRateLimiter::PROTOCOL_USER_IP_LIMIT + 5; $attempt++) {
+            $status = $this->dav('bob', 'secret')->status();
+            $this->assertContains($status, [401, 429]);
+        }
+        $this->dav('bob', 'secret')->assertStatus(429);
+
+        // The new app password, made on the same machine, works at once.
+        $plain = app(AppPasswordService::class)->create('bob', 'Mac calendar')['password'];
+        $this->dav('bob', $plain)->assertStatus(207);
+        $this->assertSame('bob', $this->meet('bob', $plain));
     }
 
     public function test_dav_account_password_warmed_memory_refused_right_after_two_factor_on(): void
