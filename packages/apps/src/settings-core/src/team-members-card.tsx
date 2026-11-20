@@ -60,6 +60,7 @@ export function TeamMembersCard({
   const addFieldId = useId();
   return (
     <ShareAccessCard
+      className="team-members-card"
       htmlFor={addFieldId}
       icon={<Users aria-hidden />}
       title={labels.sectionTitle}

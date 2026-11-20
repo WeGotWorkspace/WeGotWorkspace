@@ -23,8 +23,6 @@ import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Switch } from "@/ui/switch";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
-import { TeamMembersCard } from "@/settings-core/src/team-members-card";
-import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
 
 type UserDialogPayload = { username: string; displayName: string; email: string; isAdmin: boolean };
 
@@ -271,92 +269,24 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
 
 type GroupDialogProps = {
   open: boolean;
-  title: string;
-  initial?: { id: string; displayName: string; teamAdmins: string[] };
-  users: Array<{
-    id: string;
-    displayName: string;
-    username: string;
-    email?: string;
-    groups: string[];
-  }>;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: {
-    name: string;
-    memberUserIds: string[];
-    teamAdminUserIds: string[];
-  }) => void;
+  onSubmit: (payload: { name: string }) => void;
 };
 
-function teamAdminUserIdsOf(
-  initial: GroupDialogProps["initial"],
-  users: GroupDialogProps["users"],
-): string[] {
-  if (!initial) return [];
-  return users.filter((user) => initial.teamAdmins.includes(user.username)).map((user) => user.id);
-}
-
-export function GroupDialog({
-  open,
-  title,
-  initial,
-  users,
-  onOpenChange,
-  onSubmit,
-}: GroupDialogProps) {
-  const [name, setName] = useState(initial?.displayName ?? "");
+/** New team: a name, then Create. Members are added afterwards in Edit team. */
+export function GroupDialog({ open, onOpenChange, onSubmit }: GroupDialogProps) {
+  const [name, setName] = useState("");
   const nameId = useId();
-  const [memberUserIds, setMemberUserIds] = useState<string[]>(
-    initial ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id) : [],
-  );
-  const [teamAdminUserIds, setTeamAdminUserIds] = useState<string[]>(() =>
-    teamAdminUserIdsOf(initial, users),
-  );
-  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (!open) {
-      wasOpenRef.current = false;
-      return;
-    }
-    if (wasOpenRef.current) return;
-    wasOpenRef.current = true;
-    setName(initial?.displayName ?? "");
-    setQuery("");
-    setTeamAdminUserIds(teamAdminUserIdsOf(initial, users));
-    setMemberUserIds(
-      initial
-        ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id)
-        : [],
-    );
-  }, [open, initial, users]);
-  const [query, setQuery] = useState("");
-  const needle = query.trim().toLowerCase();
-  const candidates: ShareSearchOption[] =
-    needle === ""
-      ? []
-      : users
-          .filter(
-            (user) =>
-              !memberUserIds.includes(user.id) &&
-              [user.displayName, user.username, user.email ?? ""].some((field) =>
-                field.toLowerCase().includes(needle),
-              ),
-          )
-          .map((user) => ({
-            id: user.id,
-            displayName: user.displayName,
-            principalType: "user" as const,
-            meta: user.email ? user.email : user.username,
-          }));
+    if (open) setName("");
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="admin-dialog-surface">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {initial ? "Rename and assign members." : "Create a new team."}
-          </DialogDescription>
+          <DialogTitle>New team</DialogTitle>
+          <DialogDescription>Create a new team.</DialogDescription>
         </DialogHeader>
         <FormField layout="inline" fill label="Team name" htmlFor={nameId}>
           <Input
@@ -366,43 +296,12 @@ export function GroupDialog({
             onChange={(event) => setName(event.currentTarget.value)}
           />
         </FormField>
-        {initial ? (
-          <TeamMembersCard
-            members={users
-              .filter((user) => memberUserIds.includes(user.id))
-              .map((user) => ({
-                id: user.id,
-                displayName: user.displayName,
-                username: user.username,
-                isTeamAdmin: teamAdminUserIds.includes(user.id),
-              }))}
-            query={query}
-            onQueryChange={setQuery}
-            candidates={candidates}
-            minQueryLength={1}
-            onAdd={(userId) => setMemberUserIds((prev) => [...prev, userId])}
-            onRoleChange={(member, role) =>
-              setTeamAdminUserIds((prev) =>
-                role === "teamAdmin"
-                  ? [...prev.filter((id) => id !== member.id), member.id]
-                  : prev.filter((id) => id !== member.id),
-              )
-            }
-            onRemove={(member) => {
-              setMemberUserIds((prev) => prev.filter((id) => id !== member.id));
-              setTeamAdminUserIds((prev) => prev.filter((id) => id !== member.id));
-            }}
-          />
-        ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={() => onSubmit({ name, memberUserIds, teamAdminUserIds })}
-            disabled={!name.trim()}
-          >
-            Save
+          <Button onClick={() => onSubmit({ name })} disabled={!name.trim()}>
+            Create
           </Button>
         </DialogFooter>
       </DialogContent>
