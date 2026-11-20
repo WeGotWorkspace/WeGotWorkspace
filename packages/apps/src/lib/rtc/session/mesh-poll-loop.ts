@@ -9,6 +9,10 @@ import {
   steadyPollDelayMs,
   type MeshPollCadenceSnapshot,
 } from "@/lib/rtc/session/poll-cadence";
+import {
+  pushHeartbeatCovers,
+  registerPushHeartbeatPeer,
+} from "@/lib/rtc/session/push-heartbeat-peers";
 import { pushRoomDoorbell, type RoomDoorbell } from "@/lib/rtc/session/room-doorbell";
 import type { RtcPollIntervals } from "@/lib/rtc/types";
 
@@ -58,6 +62,9 @@ export class MeshPollLoop {
 
   private doorbellCleanup: (() => void) | null = null;
 
+  /** This loop's peer as named on push reads (#2287), and its release. */
+  private heartbeat: { peer: string; release: () => void } | null = null;
+
   constructor(private readonly context: MeshPollLoopContext) {
     this.doorbell = context.doorbell === undefined ? pushRoomDoorbell() : context.doorbell;
   }
@@ -79,10 +86,14 @@ export class MeshPollLoop {
     this.running = true;
     this.listenToDoorbell();
     const intervals = this.context.pollIntervals();
-    const cadence = { ...this.context.cadence(), doorbell: this.doorbell?.connected === true };
+    const base = this.context.cadence();
+    const pushHeartbeat = this.doorbell !== null && this.holdHeartbeat(base.channel);
+    const cadence = { ...base, doorbell: this.doorbell?.connected === true, pushHeartbeat };
     const delay = steady ? steadyPollDelayMs(intervals, cadence) : intervals.connectingMs;
     this.logDelay(delay, steady, cadence);
     this.kickedTimerPending = !steady;
+    // No steady poll: push reads keep the peer alive; a ring or a status change wakes us.
+    if (!Number.isFinite(delay)) return;
     this.pollTimer = this.context.scheduleTimeout(() => {
       void this.pollOnce()
         .catch((error: unknown) => this.handlePollError(error))
@@ -108,6 +119,27 @@ export class MeshPollLoop {
   stop(): void {
     this.running = false;
     this.clearTimer();
+    this.dropHeartbeat();
+  }
+
+  /** Names this loop's current peer on push reads; true when push carries its heartbeat. */
+  private holdHeartbeat(channel: MeshPollCadenceSnapshot["channel"]): boolean {
+    const peerId = this.context.myId();
+    if (!peerId || !pushHeartbeatCovers(channel)) {
+      this.dropHeartbeat();
+      return false;
+    }
+    const peer = `${channel}:${peerId}`;
+    if (this.heartbeat?.peer !== peer) {
+      this.dropHeartbeat();
+      this.heartbeat = { peer, release: registerPushHeartbeatPeer(channel, peerId) };
+    }
+    return true;
+  }
+
+  private dropHeartbeat(): void {
+    this.heartbeat?.release();
+    this.heartbeat = null;
   }
 
   private clearTimer(): void {
@@ -125,12 +157,13 @@ export class MeshPollLoop {
     this.lastLoggedPollDelayMs = null;
     this.doorbellCleanup?.();
     this.doorbellCleanup = null;
+    this.dropHeartbeat();
   }
 
   /**
    * A ring polls at once (a newcomer, a leaver or a message for this tab's peer); a status
-   * change reschedules, so the heartbeat starts when push connects and the room's own
-   * cadence comes back as soon as it drops.
+   * change reschedules, so the heartbeat (or no poll at all, #2287) starts when push
+   * connects and the room's own cadence comes back as soon as it drops.
    */
   private listenToDoorbell(): void {
     const doorbell = this.doorbell;
