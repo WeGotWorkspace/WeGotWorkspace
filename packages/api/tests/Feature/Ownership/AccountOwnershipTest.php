@@ -6,6 +6,7 @@ namespace Tests\Feature\Ownership;
 
 use App\Events\EventDispatch;
 use App\Events\WorkspaceEvent;
+use App\Models\AppPassword;
 use App\Models\CollabMessage;
 use App\Models\CollabPeer;
 use App\Models\MeetMessage;
@@ -16,6 +17,7 @@ use App\Models\PrincipalPeer;
 use App\Models\PushSubscription;
 use App\Models\RtcRelayEvent;
 use App\Models\User;
+use App\Services\Auth\AppPasswordService;
 use App\Services\Collab\CollabRoomPolicy;
 use App\Services\Drive\DriveService;
 use App\Services\Jmap\Blobs\FreeSpaceSource;
@@ -77,6 +79,7 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
     private const LIST_OPS = [
         'GET /notifications',
         'GET /settings/mcp-grants',
+        'GET /settings/app-passwords',
         'GET /workspace/state',
     ];
 
@@ -86,6 +89,7 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
         'POST /notifications/push/subscriptions',
         'DELETE /notifications/push/subscriptions',
         'DELETE /settings/mcp-grants/{clientId}',
+        'DELETE /settings/app-passwords/{appPasswordId}',
     ];
 
     private const JOIN = 'POST /rooms/{roomId}/participants';
@@ -529,6 +533,8 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
             'DELETE /notifications/push/subscriptions' => $this->runPushDestroy($case),
             'GET /settings/mcp-grants' => $this->runGrantList($case),
             'DELETE /settings/mcp-grants/{clientId}' => $this->runGrantRevoke($case),
+            'GET /settings/app-passwords' => $this->runAppPasswordList($case),
+            'DELETE /settings/app-passwords/{appPasswordId}' => $this->runAppPasswordRevoke($case),
             'GET /workspace/state' => $this->runWorkspaceState($case),
             'POST /meetings/rooms' => $this->runMeetingCreate($case),
             'GET /meetings/rooms/{roomId}' => $this->runMeetingShow($case),
@@ -1008,6 +1014,66 @@ final class AccountOwnershipTest extends WgwDatabaseTestCase implements Ownershi
         }
 
         $response = $this->assertUnchanged(fn () => $this->grantClientIds($owner), $send, $case->key());
+        $this->assertRestOutcome($response, $case);
+    }
+
+    // ---- App passwords -------------------------------------------------------
+
+    private function seedAppPassword(string $username): int
+    {
+        app(AppPasswordService::class)->create($username, 'Ownership phone');
+
+        return (int) AppPassword::query()->where('username', $username)->max('id');
+    }
+
+    /**
+     * @return array<int, string|null>
+     */
+    private function appPasswordSnapshot(string $username): array
+    {
+        return AppPassword::query()
+            ->where('username', $username)
+            ->orderBy('id')
+            ->pluck('revoked_at', 'id')
+            ->map(static fn ($value): ?string => $value === null ? null : (string) $value)
+            ->all();
+    }
+
+    private function runAppPasswordList(OwnershipCase $case): void
+    {
+        $owner = $case->actor === Actor::Anonymous ? OwnershipPrincipals::CAROL : $this->recordOwner($case);
+        $id = $this->seedAppPassword($owner);
+        $response = $this->requestAs($case->actor, 'GET', '/settings/app-passwords?username=carol');
+        if ($case->outcome === Outcome::Unauthenticated) {
+            $this->assertRestOutcome($response, $case);
+
+            return;
+        }
+
+        $response->assertOk();
+        $ids = array_map('intval', array_column((array) $response->json('appPasswords'), 'id'));
+        if ($case->outcome === Outcome::Allowed) {
+            $this->assertContains($id, $ids, $case->key());
+
+            return;
+        }
+        $this->assertIdsAbsent([$id], $ids, $case->key());
+    }
+
+    private function runAppPasswordRevoke(OwnershipCase $case): void
+    {
+        $owner = $case->actor === Actor::Anonymous ? OwnershipPrincipals::CAROL : $this->recordOwner($case);
+        $id = $this->seedAppPassword($owner);
+        $send = fn (): TestResponse => $this->requestAs($case->actor, 'DELETE', '/settings/app-passwords/'.$id);
+
+        if ($case->outcome === Outcome::Allowed) {
+            $this->assertRestOutcome($send(), $case);
+            $this->assertNotNull(AppPassword::query()->whereKey($id)->value('revoked_at'), $case->key().': app password still active.');
+
+            return;
+        }
+
+        $response = $this->assertUnchanged(fn () => $this->appPasswordSnapshot($owner), $send, $case->key());
         $this->assertRestOutcome($response, $case);
     }
 

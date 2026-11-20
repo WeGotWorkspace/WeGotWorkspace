@@ -9,6 +9,7 @@ use App\Models\CalendarReplyMailbox;
 use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Auth\AppPasswordService;
 use App\Services\Auth\UserSessionRevoker;
 use App\Services\Drive\DriveShareRevoker;
 use App\Services\Installer\InstallerSeeder;
@@ -29,6 +30,7 @@ final class AdminUserProvisionerService
         private UserSessionRevoker $sessions,
         private DriveShareRevoker $driveShares,
         private AdminRoleWriter $roles,
+        private AppPasswordService $appPasswords,
     ) {}
 
     /**
@@ -182,6 +184,7 @@ final class AdminUserProvisionerService
         $this->sessions->revokeAll($username);
         User::query()->where('username', $username)->delete();
         CalendarReplyMailbox::query()->where('username', $username)->delete();
+        $this->appPasswords->forgetUser($username);
 
         $userFiles = rtrim($this->paths->dataDir(), '/').'/files/users/'.$username;
         if (is_dir($userFiles)) {
