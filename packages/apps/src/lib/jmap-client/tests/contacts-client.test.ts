@@ -445,6 +445,28 @@ describe("JmapContactsClient contract batches", () => {
     }
   });
 
+  it("the photo pass keeps its pages within a smaller maxObjectsInGet", async () => {
+    const sizes: number[] = [];
+    const { contacts } = await makeClient(
+      (calls) =>
+        calls.map(([name, args, id]) => {
+          const pageIds = (args.ids as string[]) ?? [];
+          sizes.push(pageIds.length);
+          return methodResponse(
+            name,
+            { accountId: ACCOUNT, state: "1:", list: [], notFound: [] },
+            id,
+          );
+        }),
+      { maxObjectsInGet: 150, maxCallsInRequest: 8 },
+    );
+    const ids = Array.from({ length: 320 }, (_, index) => `card-${index}`);
+
+    await contacts.getContactCardMediaPages(ACCOUNT, ids, () => undefined);
+
+    expect(sizes).toEqual([150, 150, 20]);
+  });
+
   it("query+get uses the #ids ResultReference", async () => {
     const { contacts, recorded } = await makeClient((calls) => {
       const queryId = calls[0]?.[2] ?? "c1";

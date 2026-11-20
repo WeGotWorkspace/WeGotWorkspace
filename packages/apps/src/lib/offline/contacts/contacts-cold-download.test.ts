@@ -10,7 +10,9 @@ import {
   readContactsColdDownload,
   readContactsPhotoPass,
   readSyncToken,
+  saveContactsColdDownloadPage,
   startContactsColdDownload,
+  startContactsPhotoPass,
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts/contacts-offline-store";
@@ -525,6 +527,74 @@ describe("contacts photo pass after a photo-less first download", () => {
     expect(await readContactsPhotoPass(username)).toEqual([]);
   });
 
+  it("a pass replaced mid-page leaves the new list in place, and that list is fetched", async () => {
+    downloadInPages(["a", "b", "c"]);
+    const inFirstPage = gate();
+    const letFirstPageFinish = gate();
+    const fetched: string[][] = [];
+    vi.mocked(fetchContactCardPhotos).mockImplementation(async (ids, onPage, signal) => {
+      fetched.push(ids);
+      if (fetched.length === 1) {
+        inFirstPage.open();
+        await letFirstPageFinish.opened;
+        await onPage({ photos: [{ id: "a", state: "a-state" }], remainingCardIds: ["b", "c"] });
+        // The second page would come next; a replaced pass stops before it.
+        if (signal?.aborted) throw new DOMException("Background sync aborted", "AbortError");
+        await onPage({ photos: [{ id: "b", state: "b-state" }], remainingCardIds: [] });
+        return;
+      }
+      await onPage({
+        photos: ids.map((id) => ({ id, state: `${id}-state`, media: photo(`blob-${id}`) })),
+        remainingCardIds: [],
+      });
+    });
+
+    await fetchContactsHybridBootstrap();
+    const pass = runContactsPhotoPass(username);
+    await inFirstPage.opened;
+    // A Refresh installs a new list while the first page is still being saved.
+    await startContactsPhotoPass(username, ["c", "d"]);
+    letFirstPageFinish.open();
+    await pass;
+
+    expect(fetched).toEqual([
+      ["a", "b", "c"],
+      ["c", "d"],
+    ]);
+    expect((await cachedCard("c"))?.media).toEqual(photo("blob-c"));
+    expect(await readContactsPhotoPass(username)).toEqual([]);
+  });
+
+  it("another tab waits for the running pass instead of skipping a newer list", async () => {
+    downloadInPages(["a"]);
+    await fetchContactsHybridBootstrap();
+    await runContactsPhotoPass(username);
+    vi.mocked(fetchContactCardPhotos).mockClear();
+    // Another tab holds the photo-pass lock.
+    const otherTabDone = gate();
+    let otherHolds: () => void = () => undefined;
+    const holding = new Promise<void>((resolve) => {
+      otherHolds = resolve;
+    });
+    const otherTab = navigator.locks.request(`wgw.contacts.photoPass/${username}`, async () => {
+      otherHolds();
+      await otherTabDone.opened;
+    });
+    await holding;
+    await startContactsPhotoPass(username, ["a"]);
+    vi.mocked(fetchContactCardPhotos).mockImplementation(async (ids, onPage) => {
+      await onPage({ photos: [{ id: "a", state: "a-state" }], remainingCardIds: [] });
+    });
+
+    const pass = runContactsPhotoPass(username);
+    otherTabDone.open();
+    await otherTab;
+    await pass;
+
+    expect(vi.mocked(fetchContactCardPhotos).mock.calls.map(([ids]) => ids)).toEqual([["a"]]);
+    expect(await readContactsPhotoPass(username)).toEqual([]);
+  });
+
   it("an unfinished download fetches no photos yet", async () => {
     stopAfterFirstPage(["a", "b"]);
     await fetchContactsHybridBootstrap().catch(() => undefined);
@@ -627,7 +697,9 @@ describe("contacts photo pass after a photo-less first download", () => {
     expect(byId.get("a")?.media).toEqual(photo("blob-a"));
     // b changed: its old photo may be gone; initials until the pass brings the new one.
     expect(byId.get("b")?.media).toBeUndefined();
-    expect(vi.mocked(fetchContactCardPhotos).mock.calls[0]?.[0]).toEqual(["a", "b"]);
+    // Only b goes to the photo pass: a kept its unchanged photo, so a Refresh
+    // does not download every photo again.
+    expect(vi.mocked(fetchContactCardPhotos).mock.calls[0]?.[0]).toEqual(["b"]);
   });
 
   it("an offline boot fetches no photos", async () => {
@@ -683,6 +755,58 @@ describe("one first download per browser", () => {
     expect(fetchContactsLiveBootstrap).toHaveBeenCalledTimes(1);
     expect(fetchContactCardPages).not.toHaveBeenCalled();
     expect(joined.data.cards.map((row) => row.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("a tab that gets the lock never waits on its own queued resume (no deadlock)", async () => {
+    // Tab B runs the first download and holds the lock.
+    const bCloses = gate();
+    let bHolds: () => void = () => undefined;
+    const bHolding = new Promise<void>((resolve) => {
+      bHolds = resolve;
+    });
+    const tabB = navigator.locks.request("wgw.contacts.firstDownload", async () => {
+      bHolds();
+      await bCloses.opened;
+    });
+    await bHolding;
+
+    // 1. In this tab, a Calendar search before B saved anything queues for the lock.
+    const search = fetchContactsHybridBootstrap();
+    // 2. B saves its first page.
+    await startContactsColdDownload(username, session, [book], {
+      id: "download-b",
+      ...syncAnchor,
+      remainingCardIds: ["a", "b"],
+      groupIds: [],
+    });
+    await saveContactsColdDownloadPage(username, "download-b", [card("a")], ["b"]);
+    // 3. This tab switches to Contacts: its boot starts a resume, which queues for the lock too.
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b")], remainingCardIds: [] });
+    });
+    const boot = loadContactsBootstrapForBoot();
+    await vi.waitFor(async () => {
+      const queued = (await navigator.locks.query()).pending ?? [];
+      expect(queued.filter((lock) => lock.name === "wgw.contacts.firstDownload")).toHaveLength(2);
+    });
+    // 4. B closes before it finished.
+    bCloses.open();
+    await tabB;
+
+    // 5. The search gets the lock first and resumes; the boot's resume then finds it done.
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("deadlock: the first-download lock was never released")),
+        2_000,
+      ),
+    );
+    const [fromSearch, fromBoot] = await Promise.race([Promise.all([search, boot]), timeout]);
+
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(fetchContactCardPages).toHaveBeenCalledTimes(1);
+    expect(fromSearch.data.cards.map((row) => row.id).sort()).toEqual(["a", "b"]);
+    expect(fromBoot.data.cards.map((row) => row.id).sort()).toEqual(["a", "b"]);
+    expect(await readContactsColdDownload(username)).toBeNull();
   });
 
   it("every saved page tells the open views to re-read the cache", async () => {

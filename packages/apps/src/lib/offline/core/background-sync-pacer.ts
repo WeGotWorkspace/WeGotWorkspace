@@ -100,9 +100,14 @@ export type BackgroundSyncSlots = {
 /** The schedule's shared state: next free slot and the end of a `first` hold. */
 type SlotSchedule = { nextSlotAt: number; heldUntil: number };
 
+/** How many intervals ahead a claim may reserve (its slot, or its hold). */
+const SLOT_HORIZON_INTERVALS = 10;
+
 /**
- * One claim against `schedule` (mutated). A time more than ten intervals
- * ahead is stale (clock change, old setting) and ignored.
+ * One claim against `schedule` (mutated). A claim never reserves past the
+ * horizon: with a queue that full it reserves nothing and is told when to ask
+ * again. So a stored time past the horizon can only be stale (clock change,
+ * old setting) and is ignored, and a long live queue is never reset.
  */
 function claimSlot(
   schedule: SlotSchedule,
@@ -110,15 +115,18 @@ function claimSlot(
   intervalMs: number,
   priority: BackgroundSyncPriority,
 ): BackgroundSyncClaim {
-  const fresh = (time: number) => (Number.isFinite(time) && time - at < 10 * intervalMs ? time : 0);
+  const horizon = SLOT_HORIZON_INTERVALS * intervalMs;
+  const fresh = (time: number) => (Number.isFinite(time) && time - at <= horizon ? time : 0);
   const heldUntil = fresh(schedule.heldUntil);
   const nextSlotAt = fresh(schedule.nextSlotAt);
   if (priority === "bulk" && Math.max(heldUntil, nextSlotAt) > at) {
     return { heldUntil: Math.max(heldUntil, nextSlotAt) };
   }
   const slot = Math.max(nextSlotAt, at);
+  const end = slot + (priority === "first" ? 2 : 1) * intervalMs;
+  if (end - at > horizon) return { heldUntil: end - horizon };
   schedule.nextSlotAt = slot + intervalMs;
-  if (priority === "first") schedule.heldUntil = slot + 2 * intervalMs;
+  if (priority === "first") schedule.heldUntil = end;
   return { slot };
 }
 

@@ -235,11 +235,12 @@ export class JmapContactsClient {
     onPage: (page: ContactCardPage) => void | Promise<void>,
     beforePage?: () => Promise<void>,
   ): Promise<void> {
-    for (let index = 0; index < ids.length; index += MEDIA_PAGES.pageSize) {
+    const pageSize = Math.min(this.#maxObjectsInGet(), MEDIA_PAGES.pageSize);
+    for (let index = 0; index < ids.length; index += pageSize) {
       await beforePage?.();
-      const pageIds = ids.slice(index, index + MEDIA_PAGES.pageSize);
+      const pageIds = ids.slice(index, index + pageSize);
       const page = await this.#getContactCardsPage(accountId, pageIds, MEDIA_PAGES.properties);
-      await onPage({ page, remainingIds: ids.slice(index + MEDIA_PAGES.pageSize) });
+      await onPage({ page, remainingIds: ids.slice(index + pageSize) });
     }
   }
 

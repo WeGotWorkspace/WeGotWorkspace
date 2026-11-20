@@ -28,8 +28,8 @@ export type CalendarContactInviteesState = {
  * inbound sync keeps current (mounted below, one syncing tab per browser).
  * When this browser has no complete contacts cache, a search starts (or
  * joins) the shared Contacts first download: paced, in large photo-less
- * pages, once for every app. Its pages show up as they land (the cache-changed
- * topic re-reads the cache); this resolves with the cards once it is done.
+ * pages, once for every app. A search during that download shows what is
+ * cached so far; this resolves with the cards once the download is done.
  */
 export async function refreshCalendarContactCards(username: string): Promise<ContactCard[] | null> {
   const account = username.trim();

@@ -211,34 +211,61 @@ export async function finishContactsColdDownload(
     }
     await db.meta.delete(META_COLD_DOWNLOAD);
     // The pages were photo-less: every saved card still needs its photo.
-    await db.meta.put({
-      key: META_PHOTO_PASS,
-      value: JSON.stringify((await cards.toCollection().primaryKeys()).map(String)),
-    });
+    await writePhotoPass(db, (await cards.toCollection().primaryKeys()).map(String));
     return true;
   });
 }
 
 /**
- * Card ids whose photos a photo-less download left out and the photo pass has
- * not fetched yet. Empty when there is nothing to fetch.
+ * The photos still to fetch: the card ids a photo-less download left without
+ * them, under the id of the pass that fetches them. A newer download installs
+ * a new pass (new id); an older pass still running must then leave it alone.
  */
-export async function readContactsPhotoPass(username: string): Promise<string[]> {
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const value = (await db.meta.get(META_PHOTO_PASS))?.value;
-  if (!value) return [];
+export type ContactsPhotoPass = { id: string; cardIds: string[] };
+
+function parsePhotoPass(value: string | undefined): ContactsPhotoPass | null {
+  if (!value) return null;
   try {
-    const ids = JSON.parse(value) as unknown;
-    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
+    const parsed = JSON.parse(value) as Partial<ContactsPhotoPass> | null;
+    if (!parsed || typeof parsed.id !== "string" || !Array.isArray(parsed.cardIds)) return null;
+    const cardIds = parsed.cardIds.filter((id): id is string => typeof id === "string");
+    return cardIds.length ? { id: parsed.id, cardIds } : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
-/** A photo-less download replaced the copy: fetch the photos of `cardIds`. */
-export async function startContactsPhotoPass(username: string, cardIds: string[]): Promise<void> {
+async function writePhotoPass(
+  db: ReturnType<typeof offlineDbForAccount>,
+  cardIds: string[],
+): Promise<void> {
+  if (cardIds.length === 0) {
+    await db.meta.delete(META_PHOTO_PASS);
+    return;
+  }
+  const pass: ContactsPhotoPass = { id: crypto.randomUUID(), cardIds };
+  await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(pass) });
+}
+
+/** The photo pass still to run, or null when every photo is in. */
+export async function readContactsPhotoPassRun(
+  username: string,
+): Promise<ContactsPhotoPass | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(cardIds) });
+  return parsePhotoPass((await db.meta.get(META_PHOTO_PASS))?.value);
+}
+
+/** Card ids whose photos are still to fetch. Empty when there is nothing to fetch. */
+export async function readContactsPhotoPass(username: string): Promise<string[]> {
+  return (await readContactsPhotoPassRun(username))?.cardIds ?? [];
+}
+
+/**
+ * A photo-less download replaced the copy: a new pass fetches the photos of
+ * `cardIds` (those without one). It replaces any pass still running.
+ */
+export async function startContactsPhotoPass(username: string, cardIds: string[]): Promise<void> {
+  await writePhotoPass(offlineDbForAccount(offlineAccountKeyFromUsername(username)), cardIds);
 }
 
 /**
@@ -266,17 +293,19 @@ export async function withStoredPhotos(
 export type ContactCardPhotos = Pick<ContactCard, "id" | "media" | "state">;
 
 /**
- * Saves one photo page and the ids still to fetch, in one transaction. A card
- * takes the photos only when its stored version is the one they came with:
- * an older or newer stored card is left to the live sync, which fetches it
- * whole. Cards with unsynced local edits keep the local row. Returns how many
- * cards changed.
+ * Saves one photo page of pass `passId` and the ids still to fetch, in one
+ * transaction. A card takes the photos only when its stored version is the
+ * one they came with: an older or newer stored card is left to the live sync,
+ * which fetches it whole. Cards with unsynced local edits keep the local row.
+ * The marker only moves while it still names this pass; when a newer pass has
+ * replaced it, `superseded` tells the caller to stop and run that one.
  */
 export async function saveContactsPhotoPage(
   username: string,
+  passId: string,
   photos: ContactCardPhotos[],
   remainingCardIds: string[],
-): Promise<number> {
+): Promise<{ changed: number; superseded: boolean }> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = contactsCardsTable(db);
   return db.transaction("rw", table, db.meta, async () => {
@@ -290,12 +319,15 @@ export async function saveContactsPhotoPage(
       changed.push(contactCardRow({ ...card, media: entry.media }, false));
     });
     if (changed.length) await table.bulkPut(changed);
+    const current = parsePhotoPass((await db.meta.get(META_PHOTO_PASS))?.value);
+    if (current?.id !== passId) return { changed: changed.length, superseded: true };
     if (remainingCardIds.length) {
-      await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(remainingCardIds) });
+      const pass: ContactsPhotoPass = { id: passId, cardIds: remainingCardIds };
+      await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(pass) });
     } else {
       await db.meta.delete(META_PHOTO_PASS);
     }
-    return changed.length;
+    return { changed: changed.length, superseded: false };
   });
 }
 

@@ -176,9 +176,9 @@ describe("waiting for a slot", () => {
       userIdleMs: 1_500,
       now: () => clock,
       sleep: async (ms) => {
-        // The user clicks halfway through the wait for the second slot.
-        if (clock - 1_000_000 < 1_500 && clock + ms > 1_001_500) {
-          clock = 1_001_500;
+        // The user clicks late in the wait for the second slot (+3 s).
+        if (clock - 1_000_000 < 2_500 && clock + ms > 1_002_500) {
+          clock = 1_002_500;
           pacer.noteUserActivity();
           return;
         }
@@ -187,8 +187,8 @@ describe("waiting for a slot", () => {
     });
     await pacer.acquire();
     await pacer.acquire();
-    // Slot at +3 s would have been taken; the click at +1.5 s holds it until +3 s anyway.
-    expect(clock - 1_000_000).toBe(3_000);
+    // The slot at +3 s is not used before the click's 1.5 s pause ends at +4 s.
+    expect(clock - 1_000_000).toBe(4_000);
   });
 });
 
@@ -246,11 +246,59 @@ describe("createBrowserSlots", () => {
 
   it("keeps a stored slot within ten intervals", async () => {
     const storage = memoryStorage();
-    storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 29_000));
+    storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 24_000));
     stubBrowser(fakeLocks(), storage);
     // Bulk work does not book that slot ahead: it asks again when it is free.
-    expect(await createBrowserSlots().claim(10_000, 3_000)).toEqual({ heldUntil: 39_000 });
-    expect(await createBrowserSlots().claim(10_000, 3_000, "first")).toEqual({ slot: 39_000 });
+    expect(await createBrowserSlots().claim(10_000, 3_000)).toEqual({ heldUntil: 34_000 });
+    expect(await createBrowserSlots().claim(10_000, 3_000, "first")).toEqual({ slot: 34_000 });
+  });
+
+  it("never treats a full live queue as stale: twelve waiters at once stay one interval apart", async () => {
+    const storage = stubBrowser(fakeLocks());
+    const tabs = [createBrowserSlots(), createBrowserSlots(), createBrowserSlots()];
+    const claims = await Promise.all(
+      Array.from({ length: 12 }, (_, index) => tabs[index % 3]!.claim(10_000, 3_000, "first")),
+    );
+    // Nine slots (and the last one's hold) fit the horizon; the rest reserve
+    // nothing and ask again once the queue has moved on.
+    expect(claims.slice(0, 9)).toEqual(
+      Array.from({ length: 9 }, (_, index) => ({ slot: 10_000 + index * 3_000 })),
+    );
+    expect(claims.slice(9)).toEqual(Array.from({ length: 3 }, () => ({ heldUntil: 13_000 })));
+    expect(storage.values.get("wgw.backgroundSync.nextSlotAt")).toBe("37000");
+  });
+
+  it("twelve contact-page waiters in three tabs (the only claims that queue) start strictly one interval apart", async () => {
+    stubBrowser(fakeLocks());
+    let clock = 10_000;
+    const timers: { at: number; resolve: () => void }[] = [];
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        timers.push({ at: clock + ms, resolve });
+      });
+    const starts: number[] = [];
+    const tabs = Array.from({ length: 3 }, () =>
+      createBackgroundSyncPacer({
+        requestsPerMinute: 20,
+        slots: createBrowserSlots(),
+        now: () => clock,
+        sleep,
+      }),
+    );
+    const waiters = Array.from({ length: 12 }, (_, index) =>
+      tabs[index % 3]!.acquire(undefined, "first").then(() => starts.push(clock)),
+    );
+    // Run the fake clock, waking sleepers in time order.
+    while (starts.length < 12) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      timers.sort((left, right) => left.at - right.at);
+      const next = timers.shift();
+      if (!next) continue;
+      clock = Math.max(clock, next.at);
+      next.resolve();
+    }
+    await Promise.all(waiters);
+    expect(starts).toEqual(Array.from({ length: 12 }, (_, index) => 10_000 + index * 3_000));
   });
 
   it("shares a contacts hold across tabs: another tab's Docs claim waits for it", async () => {

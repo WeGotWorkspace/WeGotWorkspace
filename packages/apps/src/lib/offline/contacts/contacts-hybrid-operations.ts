@@ -432,9 +432,10 @@ async function downloadAllContacts(
   const withPhotos = { ...bootstrap, data: { ...bootstrap.data, cards } };
   await writeContactsBootstrapToCache(username, withPhotos);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
+  // Only cards without a photo now: those kept from the stored copy need none.
   await startContactsPhotoPass(
     username,
-    cards.map((card) => card.id),
+    cards.filter((card) => !card.media).map((card) => card.id),
   );
   if (await discardContactsColdDownload(username)) {
     await sendQueuedEditsAfterDownload(username);
@@ -454,6 +455,9 @@ const resumesInFlight = new Map<string, Promise<ContactsAppBootstrap>>();
  * `/changes` replays everything since that query. Page saves and the finish
  * only apply while the marker still names this download. One resume per user
  * at a time: a second caller (a Refresh, a reconnect) joins the running one.
+ * A caller that holds the first-download lock never joins: the running resume
+ * may itself be waiting for that lock. It runs its own; the other one finds
+ * the download finished once it gets the lock.
  * Throws on a network or HTTP error; the saved pages and the marker stay.
  */
 function resumeContactsColdDownload(
@@ -464,7 +468,7 @@ function resumeContactsColdDownload(
   /** The caller holds the one-download-per-browser lock already. */
   locked = false,
 ): Promise<ContactsAppBootstrap> {
-  const inFlight = resumesInFlight.get(username);
+  const inFlight = locked ? undefined : resumesInFlight.get(username);
   if (inFlight) return inFlight;
   const run = (async () => {
     const cards = new Map(saved.data.cards.map((card) => [card.id, card]));
@@ -507,9 +511,13 @@ function resumeContactsColdDownload(
       if (!(error instanceof ColdDownloadTakenOver)) throw error;
     }
     return (await readContactsBootstrapFromCache(username)) ?? saved;
-  })().finally(() => resumesInFlight.delete(username));
-  resumesInFlight.set(username, run);
-  return run;
+  })();
+  if (locked) return run;
+  const registered = run.finally(() => {
+    if (resumesInFlight.get(username) === registered) resumesInFlight.delete(username);
+  });
+  resumesInFlight.set(username, registered);
+  return registered;
 }
 
 /** Resumes the first download when one is unfinished; otherwise returns `saved`. */
