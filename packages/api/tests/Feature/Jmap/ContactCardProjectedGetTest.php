@@ -107,7 +107,7 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
     /**
      * @param  list<string>  $ids
      * @param  list<string>|null  $properties
-     * @return list<array<string, mixed>>
+     * @return list<array<mixed>>
      */
     private function getCards(array $ids, ?array $properties = null): array
     {
@@ -121,8 +121,13 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
             ->json('methodResponses.0.1.list');
         $this->assertIsArray($list);
         $this->assertCount(count($ids), $list);
+        $cards = [];
+        foreach ($list as $card) {
+            $this->assertIsArray($card);
+            $cards[] = $card;
+        }
 
-        return $list;
+        return $cards;
     }
 
     /**
@@ -135,7 +140,9 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
         $file = dirname(__DIR__, 5).'/packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts';
         $this->assertFileExists($file);
         $source = (string) file_get_contents($file);
-        $this->assertSame(1, preg_match('/CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA = \[(.*?)\];/s', $source, $list));
+        if (preg_match('/CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA = \[(.*?)\];/s', $source, $list) !== 1) {
+            $this->fail('CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA not found in '.$file);
+        }
         preg_match_all('/"([^"]+)"/', $list[1], $names);
         $this->assertNotEmpty($names[1]);
 
@@ -143,8 +150,8 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
     }
 
     /**
-     * @param  array<string, mixed>  $card
-     * @return list<string>
+     * @param  array<mixed>  $card
+     * @return list<int|string>
      */
     private function sortedKeys(array $card): array
     {
