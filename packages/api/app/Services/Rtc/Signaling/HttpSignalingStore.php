@@ -266,6 +266,8 @@ final class HttpSignalingStore
         return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $selfId)
+            // Same liveness test as the push roster, so the poll a ring triggers agrees with it.
+            ->where('seen_at', '>=', time() - $this->policy->peerTimeoutSeconds)
             ->get($columns)
             ->map(fn (Model $row): array => $this->rosterEntry($row, $withOwner))
             ->all());

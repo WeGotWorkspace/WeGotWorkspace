@@ -46,6 +46,9 @@ export class MeshPollLoop {
 
   private pendingKick = false;
 
+  /** The armed timer is a non-steady (kicked or connecting) poll. */
+  private kickedTimerPending = false;
+
   private lastLoggedPollDelayMs: number | null = null;
 
   /** Between the first schedule and `stop()` / `release()`: a ring may poll. */
@@ -79,6 +82,7 @@ export class MeshPollLoop {
     const cadence = { ...this.context.cadence(), doorbell: this.doorbell?.connected === true };
     const delay = steady ? steadyPollDelayMs(intervals, cadence) : intervals.connectingMs;
     this.logDelay(delay, steady, cadence);
+    this.kickedTimerPending = !steady;
     this.pollTimer = this.context.scheduleTimeout(() => {
       void this.pollOnce()
         .catch((error: unknown) => this.handlePollError(error))
@@ -110,6 +114,7 @@ export class MeshPollLoop {
     if (this.pollTimer === null) return;
     this.context.cancelTimeout(this.pollTimer);
     this.pollTimer = null;
+    this.kickedTimerPending = false;
   }
 
   /** Drop the in-flight guard, the logged delay and the doorbell so the next join polls cleanly. */
@@ -136,7 +141,9 @@ export class MeshPollLoop {
       this.kick();
     });
     const unsubscribeStatus = doorbell.subscribeStatus(() => {
-      if (this.running && !this.pollInFlight) this.schedule(true);
+      // A kicked poll already armed must not slip to the heartbeat: the ring that arrives
+      // with the response that connects push is delivered before the status change.
+      if (this.running && !this.pollInFlight && !this.kickedTimerPending) this.schedule(true);
     });
     this.doorbellCleanup = () => {
       unsubscribeRing();

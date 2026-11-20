@@ -163,6 +163,19 @@ describe("MeshPollLoop behind the push doorbell (#2294)", () => {
     expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
   });
 
+  it("keeps a kicked poll when push connects right after the ring", async () => {
+    const bell = fakeDoorbell(false);
+    const { loop, scheduled, context } = createLoop({ doorbell: bell.doorbell });
+    loop.schedule(true);
+
+    bell.ring();
+    bell.setConnected(true);
+    expect(scheduled.at(-1)?.delay).toBe(MEET_RTC_POLL_INTERVALS.connectingMs);
+    scheduled.at(-1)?.fn();
+    await flushMicrotasks();
+    expect(context.poll).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores rings after stop and unsubscribes on release", () => {
     const bell = fakeDoorbell(true);
     const { loop, scheduled } = createLoop({ doorbell: bell.doorbell });
