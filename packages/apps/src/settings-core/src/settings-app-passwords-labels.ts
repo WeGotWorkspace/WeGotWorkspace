@@ -29,7 +29,7 @@ export const appPasswordLabels = {
     `You have ${max} app passwords. Remove one you no longer use, then try again.`,
   offlineAction: "You are offline. Try again when the connection is back.",
   createFailed: "Could not create the app password",
-  create: "Create",
+  create: "Save",
   cancel: "Cancel",
   createdTitle: "Your new app password",
   createdDescription:
