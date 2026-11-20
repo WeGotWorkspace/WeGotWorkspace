@@ -17,7 +17,7 @@ use Psr\Clock\ClockInterface;
 final class JwtCodec
 {
     /**
-     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp: int, iat?: int, uid?: int, sid?: string}  $claims
+     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp: int, iat?: int, uid?: int, sid?: string, ep?: int}  $claims
      * @param array{
      *   privateKey: string,
      *   publicKey: string,
@@ -55,6 +55,11 @@ final class JwtCodec
             // session-bound grants (download tickets) end with the session.
             $builder = $builder->withClaim('sid', (string) $claims['sid']);
         }
+        if (array_key_exists('ep', $claims)) {
+            // users.ui_session_epoch when minted: a sign-out everywhere bumps it
+            // and bearer auth refuses tokens with a lower value.
+            $builder = $builder->withClaim('ep', (int) $claims['ep']);
+        }
         $token = $builder->getToken($config->signer(), $config->signingKey());
 
         return $token->toString();
@@ -68,7 +73,7 @@ final class JwtCodec
      *   audience: string,
      *   kid: string
      * } $cfg
-     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, uid?: int, sid?: string}|null
+     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, uid?: int, sid?: string, ep?: int}|null
      */
     public static function validate(string $token, array $cfg): ?array
     {
@@ -143,6 +148,13 @@ final class JwtCodec
             if (is_string($sid) && $sid !== '') {
                 $claims['sid'] = $sid;
             }
+        }
+        if ($parsed->claims()->has('ep')) {
+            $ep = $parsed->claims()->get('ep');
+            if (! is_int($ep)) {
+                return null;
+            }
+            $claims['ep'] = $ep;
         }
 
         return $claims;
