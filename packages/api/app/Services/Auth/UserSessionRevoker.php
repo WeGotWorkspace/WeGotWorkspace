@@ -11,7 +11,7 @@ use Laravel\Passport\Passport;
 /**
  * Drops bearer refresh tokens, Passport grants, and push subscriptions for one user.
  *
- * Each call bumps ui_session_epoch and access_token_epoch.
+ * revokeAll() bumps ui_session_epoch and access_token_epoch; bumpEpoch() bumps only ui_session_epoch.
  */
 final class UserSessionRevoker
 {
