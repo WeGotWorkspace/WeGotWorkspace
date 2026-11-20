@@ -31,3 +31,14 @@ export function useProjectFilter(
   const set = useCallback((value: ProjectFilterValue) => writeProjectFilter(value), []);
   return [effectiveProjectFilter(stored, knownIds), set];
 }
+
+/**
+ * The selected Project's id, or null for "All Projects" (and before the Projects load,
+ * so an app never hides everything while it waits).
+ */
+export function useSelectedProjectId(store: ProjectsStore = projectsStore()): string | null {
+  const [filter] = useProjectFilter(store);
+  const { status } = useProjects(store);
+  if (status !== "ready" && status !== "offline") return null;
+  return filter === "all" ? null : filter.slice(2);
+}
