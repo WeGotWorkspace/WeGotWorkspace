@@ -9,6 +9,7 @@ use App\Http\Middleware\AuthenticateWgwApi;
 use App\Models\User;
 use App\Services\Auth\CurrentPasswordCheck;
 use App\Services\Auth\LoginRateLimiter;
+use App\Services\Auth\Mfa\CurrentCodeCheck;
 use App\Services\Auth\Mfa\MfaCodeCheck;
 use App\Services\Auth\Mfa\TotpService;
 use App\Services\Auth\Mfa\UserMfaService;
@@ -29,6 +30,7 @@ final class TotpController
         private MfaCodeCheck $codes,
         private CurrentPasswordCheck $currentPassword,
         private LoginRateLimiter $limiter,
+        private CurrentCodeCheck $currentCode,
     ) {}
 
     public function start(Request $request): JsonResponse
@@ -97,11 +99,7 @@ final class TotpController
         if (! $this->mfa->isEnabled($username)) {
             throw UserMfaService::notEnabled();
         }
-        $this->assertSignInLimit($username, $request);
-        if (! $this->codes->acceptTotp($username, $code)) {
-            $this->wrongCode($username, $request);
-        }
-        $this->limiter->reset($username, $this->ip($request));
+        $this->currentCode->assert($username, $code, $this->ip($request));
     }
 
     private function assertSignInLimit(string $username, Request $request): void
@@ -116,7 +114,7 @@ final class TotpController
     {
         $this->limiter->hit($username, $this->ip($request));
 
-        throw new ApiHttpException(403, 'That code is not right. Check the time on your phone and try again.', 'mfa_code_invalid');
+        throw CurrentCodeCheck::wrongCode();
     }
 
     private function required(Request $request, string $key, int $max): string

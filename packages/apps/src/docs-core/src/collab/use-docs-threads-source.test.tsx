@@ -1,6 +1,8 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { JmapPushHubLike } from "@/lib/api/wgw/use-jmap-state-change";
+import type { StateChangeListener } from "@/lib/jmap-client/push/state-change-subscription";
 import { DocsThreadsRequestError } from "./docs-threads-errors";
 import type { DocsFileThread, DocsThreadsClient } from "./docs-threads-types";
 import { DOCS_THREADS_POLL_MS, useDocsThreadsSource } from "./use-docs-threads-source";
@@ -89,7 +91,7 @@ async function polls(count: number) {
 
 async function mountSynced(server: ReturnType<typeof createThreadsServer>) {
   const hook = renderHook(() =>
-    useDocsThreadsSource({ client: server.client, path: PATH, poll: true }),
+    useDocsThreadsSource({ client: server.client, path: PATH, poll: true, pushHub: null }),
   );
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0);
@@ -166,5 +168,133 @@ describe("useDocsThreadsSource after an expired sync state (#1930)", () => {
 
     expect(warn).not.toHaveBeenCalled();
     expect(ids(result.current.fileThreads)).toEqual(["t1", "t22"]);
+  });
+});
+
+/** A push hub the test connects, disconnects and rings by hand. */
+function fakePushHub() {
+  const listeners: Array<{ types: readonly string[]; listener: StateChangeListener }> = [];
+  const statusListeners = new Set<(connected: boolean) => void>();
+  let connected = false;
+  const hub: JmapPushHubLike = {
+    get connected() {
+      return connected;
+    },
+    subscribe: (types, listener) => {
+      const entry = { types, listener };
+      listeners.push(entry);
+      return () => {
+        listeners.splice(listeners.indexOf(entry), 1);
+      };
+    },
+    subscribeStatus: (listener) => {
+      statusListeners.add(listener);
+      return () => statusListeners.delete(listener);
+    },
+  };
+  return {
+    hub,
+    listeners,
+    setConnected(next: boolean) {
+      connected = next;
+      for (const listener of statusListeners) listener(next);
+    },
+    /** Pushes a `DocThread` state; resolves with what each listener answered. */
+    async ring(state: string) {
+      return Promise.all(
+        listeners
+          .filter((entry) => entry.types.includes("DocThread"))
+          .map((entry) => entry.listener({ DocThread: state }, "bob")),
+      );
+    },
+  };
+}
+
+describe("useDocsThreadsSource behind the push doorbell (#2286)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function mountWithPush(server: ReturnType<typeof createThreadsServer>, connected: boolean) {
+    const push = fakePushHub();
+    push.setConnected(connected);
+    const hook = renderHook(() =>
+      useDocsThreadsSource({ client: server.client, path: PATH, poll: true, pushHub: push.hub }),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    return { ...hook, push };
+  }
+
+  it("sends no poll while push is connected and pulls once per DocThread push", async () => {
+    const server = createThreadsServer();
+    server.add("t1");
+    const { result, push } = await mountWithPush(server, true);
+    expect(ids(result.current.fileThreads)).toEqual(["t1"]);
+
+    await polls(5);
+    expect(server.client.changes).not.toHaveBeenCalled();
+
+    server.add("t22");
+    let answers: Array<boolean | void> = [];
+    await act(async () => {
+      answers = await push.ring("1:principals/bob:2");
+    });
+    expect(answers).toEqual([true]);
+    expect(server.client.changes).toHaveBeenCalledTimes(1);
+    expect(ids(result.current.fileThreads)).toEqual(["t1", "t22"]);
+  });
+
+  it("polls while push is down, stops when it connects and resumes when it drops", async () => {
+    const server = createThreadsServer();
+    server.add("t1");
+    const { result, push } = await mountWithPush(server, false);
+
+    await polls(2);
+    expect(server.client.changes).toHaveBeenCalledTimes(2);
+
+    act(() => push.setConnected(true));
+    await polls(3);
+    expect(server.client.changes).toHaveBeenCalledTimes(2);
+
+    act(() => push.setConnected(false));
+    server.add("t22");
+    await polls(1);
+    expect(server.client.changes).toHaveBeenCalledTimes(3);
+    expect(ids(result.current.fileThreads)).toEqual(["t1", "t22"]);
+  });
+
+  it("answers false on a failed pull, so the hub offers the state again", async () => {
+    const server = createThreadsServer();
+    server.add("t1");
+    const { push } = await mountWithPush(server, true);
+    server.client.changes.mockRejectedValueOnce(
+      new DocsThreadsRequestError("GET /files/threads/changes failed (503)", 503),
+    );
+
+    let answers: Array<boolean | void> = [];
+    await act(async () => {
+      answers = await push.ring("1:principals/bob:2");
+    });
+    expect(answers).toEqual([false]);
+  });
+
+  it("does not subscribe without a live client (snapshot or no polling)", async () => {
+    const server = createThreadsServer();
+    const push = fakePushHub();
+    renderHook(() =>
+      useDocsThreadsSource({ client: server.client, path: PATH, poll: false, pushHub: push.hub }),
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(push.listeners).toHaveLength(0);
   });
 });

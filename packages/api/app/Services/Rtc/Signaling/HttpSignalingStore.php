@@ -261,39 +261,61 @@ final class HttpSignalingStore
     public function peerList(string $room, string $selfId, ?bool $withOwner = null): array
     {
         $withOwner ??= $this->policy->rosterIncludesOwner;
+        $columns = $this->rosterColumns();
+
+        return array_values($this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', '!=', $selfId)
+            // Same liveness test as the push roster, so the poll a ring triggers agrees with it.
+            ->where('seen_at', '>=', time() - $this->policy->peerTimeoutSeconds)
+            ->get($columns)
+            ->map(fn (Model $row): array => $this->rosterEntry($row, $withOwner))
+            ->all());
+    }
+
+    /**
+     * One roster entry from a peer row selected with {@see rosterColumns()}.
+     *
+     * @return array{id: string, name: string, user?: string, access?: string, caps?: list<string>, net?: string}
+     */
+    public function rosterEntry(Model $row, bool $withOwner): array
+    {
+        $peer = [
+            'id' => (string) $row->getAttribute('id'),
+            'name' => (string) $row->getAttribute('name'),
+        ];
+        $owner = (string) ($row->getAttribute('owner_user') ?? '');
+        if ($withOwner && str_starts_with($owner, 'u:')) {
+            $peer['user'] = $this->ownerUsername($owner);
+        }
+        if ($this->policy->rosterIncludesAccess) {
+            $peer['access'] = RtcPeerAccess::normalize($row->getAttribute('access'));
+        }
+        $caps = RtcPeerCaps::decode($row->getAttribute('caps'));
+        if ($caps !== []) {
+            $peer['caps'] = $caps;
+        }
+        $net = trim((string) ($row->getAttribute('net') ?? ''));
+        if ($net !== '') {
+            $peer['net'] = $net;
+        }
+
+        return $peer;
+    }
+
+    /**
+     * Columns {@see rosterEntry()} reads.
+     *
+     * @return list<string>
+     */
+    public function rosterColumns(): array
+    {
         $columns = ['peer_id as id', 'name', 'caps', 'net', 'owner_user'];
         if ($this->policy->rosterIncludesAccess) {
             $columns[] = 'access';
         }
 
-        return array_values($this->peerQuery()
-            ->where('room', $room)
-            ->where('peer_id', '!=', $selfId)
-            ->get($columns)
-            ->map(function ($row) use ($withOwner): array {
-                $peer = [
-                    'id' => (string) $row->getAttribute('id'),
-                    'name' => (string) $row->getAttribute('name'),
-                ];
-                $owner = (string) ($row->owner_user ?? '');
-                if ($withOwner && str_starts_with($owner, 'u:')) {
-                    $peer['user'] = $this->ownerUsername($owner);
-                }
-                if ($this->policy->rosterIncludesAccess) {
-                    $peer['access'] = RtcPeerAccess::normalize($row->getAttribute('access'));
-                }
-                $caps = RtcPeerCaps::decode($row->getAttribute('caps'));
-                if ($caps !== []) {
-                    $peer['caps'] = $caps;
-                }
-                $net = trim((string) ($row->getAttribute('net') ?? ''));
-                if ($net !== '') {
-                    $peer['net'] = $net;
-                }
-
-                return $peer;
-            })
-            ->all());
+        return $columns;
     }
 
     /**

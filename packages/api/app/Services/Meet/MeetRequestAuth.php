@@ -70,6 +70,12 @@ final class MeetRequestAuth
         $ip = $request->ip();
         $clientIp = is_string($ip) ? $ip : '';
         if (! $this->limiter->allowProtocol($username, $clientIp)) {
+            // Throttled: only a valid app password still gets in (#2273).
+            if ($this->protocolCredentials->verifyAppPasswordOnly($username, $password, $request->userAgent())) {
+                return $username;
+            }
+            $this->limiter->hitProtocol($username, $clientIp);
+
             throw new ApiHttpException(
                 429,
                 'Too many login attempts. Please try again later.',

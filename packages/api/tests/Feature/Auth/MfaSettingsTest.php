@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Models\AppPassword;
 use App\Models\MfaRecoveryCode;
 use App\Models\User;
 use App\Models\UserMfa;
@@ -136,7 +137,11 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         // A recovery code is not a current code.
         $this->settings('DELETE', 'settings/totp', ['code' => $turnedOn['recovery_codes'][0]])->assertForbidden();
 
+        $other = app(AuthTokenService::class)->issueForUsername('bob');
         $this->settings('DELETE', 'settings/totp', ['code' => $this->code($turnedOn['secret'])])->assertOk()->assertJsonPath('ok', true);
+
+        // Turning it off ends no other session.
+        $this->postRefresh($other['refresh_token'])->assertOk();
 
         $this->assertSame(0, UserMfa::query()->count());
         $this->assertSame(0, MfaRecoveryCode::query()->count());
@@ -174,6 +179,73 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
             ->assertStatus(429)
             ->assertHeader('Retry-After');
         $this->assertSame(1, UserMfa::query()->count());
+    }
+
+    // ---- Creating an app password with two-factor on ----------------------
+
+    public function test_app_password_create_takes_a_current_code_when_two_factor_is_on(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+
+        $created = $this->settings('POST', 'settings/app-passwords', ['name' => 'Phone', 'code' => $this->code($secret)])
+            ->assertCreated();
+
+        $this->assertMatchesRegularExpression('/^[a-z]{16}$/', (string) $created->json('password'));
+        $this->dav('bob', (string) $created->json('password'))->assertStatus(207);
+        // The code's step is used now.
+        $this->assertSame(intdiv(Carbon::now()->getTimestamp(), 30), UserMfa::query()->where('username', 'bob')->value('last_used_step'));
+    }
+
+    public function test_app_password_create_refuses_the_password_when_two_factor_is_on(): void
+    {
+        $this->turnOnMfa('bob');
+
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'Phone', 'currentPassword' => 'secret'])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'mfa_code_required');
+        $this->assertSame(0, AppPassword::query()->where('username', 'bob')->count());
+    }
+
+    public function test_app_password_create_refuses_a_replayed_or_recovery_code(): void
+    {
+        $turnedOn = $this->turnOnMfa('bob');
+        $code = $this->code($turnedOn['secret']);
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'One', 'code' => $code])->assertCreated();
+
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'Two', 'code' => $code])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'mfa_code_invalid');
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'Two', 'code' => $turnedOn['recovery_codes'][0]])
+            ->assertForbidden();
+        $this->assertSame(1, AppPassword::query()->where('username', 'bob')->count());
+        $this->assertSame(10, MfaRecoveryCode::query()->where('username', 'bob')->whereNull('used_at')->count());
+    }
+
+    public function test_app_password_create_wrong_codes_count_on_the_limits(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+
+        $statuses = [];
+        for ($i = 0; $i < LoginRateLimiter::USER_IP_LIMIT + 1; $i++) {
+            $statuses[] = $this->settings('POST', 'settings/app-passwords', ['name' => 'Phone', 'code' => $this->code($secret, 3)])->status();
+        }
+
+        $this->assertSame(array_merge(array_fill(0, LoginRateLimiter::USER_IP_LIMIT, 403), [429]), $statuses);
+        // The same counter as the other code routes: turning two-factor off is limited too.
+        $this->settings('DELETE', 'settings/totp', ['code' => $this->code($secret)])->assertStatus(429)->assertHeader('Retry-After');
+        $this->assertSame(0, AppPassword::query()->where('username', 'bob')->count());
+    }
+
+    public function test_app_password_create_without_two_factor_still_takes_the_password(): void
+    {
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'Phone', 'code' => '123456'])
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'Phone', 'currentPassword' => 'wrong'])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'current_password_invalid');
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'Phone', 'currentPassword' => 'secret'])
+            ->assertCreated();
     }
 
     public function test_status_on_me_and_settings_state(): void

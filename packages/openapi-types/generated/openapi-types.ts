@@ -5118,7 +5118,7 @@ export interface paths {
         };
         /**
          * JMAP event source (short-burst push)
-         * @description RFC 8620 §7.3 event source, short-burst only (#1660). The response always ends at once: when a state differs from `Last-Event-ID` it holds one `state` event (a StateChange with only the differing types), its `id` and `retry`; otherwise only `retry: <WGW_JMAP_PUSH_RETRY_MS>` (default 3000). The `id` is `v1;Type=<128-bit hex hash>;…`, one independent hash per type, so a client can rebuild it from the per-type hashes it confirmed. A missing, unknown or malformed `Last-Event-ID` sends every requested type. States are the ones `Foo/get` returns (`Task` and `TaskList` use the REST task list state; `Notification` is the per-principal inbox marker). For `FileNode` the value is the global sequence `FileNode/changes` expects, sent only when the hash over the user's Drive root markers changed. Types of a disabled app are left out. Own rate limit: about 60 requests a minute per user and `X-WGW-Browser-Id`, with a ceiling of about 300 a minute per account; this route does not spend the shared API budget.
+         * @description RFC 8620 §7.3 event source, short-burst only (#1660). The response always ends at once: when a state differs from `Last-Event-ID` it holds one `state` event (a StateChange with only the differing types), its `id` and `retry`; otherwise only `retry: <WGW_JMAP_PUSH_RETRY_MS>` (default 3000). The `id` is `v1;Type=<128-bit hex hash>;…`, one independent hash per type, so a client can rebuild it from the per-type hashes it confirmed. A missing, unknown or malformed `Last-Event-ID` sends every requested type. States are the ones `Foo/get` returns (`Task` and `TaskList` use the REST task list state; `Notification` is the per-principal inbox marker; `DocThread` composes the Docs thread pools behind the user's Drive roots, a share root covering only the threads under it, and the client then calls `files/threads/changes`; `RtcRoom` hashes the roster, without `seen_at`, and the newest message to the user's peers of every signaling room where the user has a live peer, and the rooms then poll their own route once). For `FileNode` the value is the global sequence `FileNode/changes` expects, sent only when the hash over the user's Drive root markers changed. Types of a disabled app are left out. Own rate limit: about 60 requests a minute per user and `X-WGW-Browser-Id`, with a ceiling of about 300 a minute per account; this route does not spend the shared API budget.
          */
         get: {
             parameters: {
@@ -5130,7 +5130,7 @@ export interface paths {
                     "X-WGW-Browser-Id"?: string;
                 };
                 path: {
-                    /** @description `*` or a comma-separated list of type names: Note, Notebook, CalendarEvent, Calendar, ContactCard, AddressBook, ChatMessage, ChatChannel, FileNode, Task, TaskList, Notification. Unknown names are ignored. */
+                    /** @description `*` or a comma-separated list of type names: Note, Notebook, CalendarEvent, Calendar, ContactCard, AddressBook, ChatMessage, ChatChannel, FileNode, Task, TaskList, Notification, DocThread, RtcRoom. Unknown names are ignored. */
                     types: string;
                     /** @description Accepted for RFC compatibility; every response closes after one block. */
                     closeafter: "state" | "no";
@@ -9489,7 +9489,7 @@ export interface paths {
         put?: never;
         /**
          * Create a named app password for DAV and Meet Basic sign-in
-         * @description Requires the account password, which shares the sign-in rate limit. The plaintext is in this response only.
+         * @description Requires a current authenticator code when the caller has two-factor on, otherwise the account password; either path shares the matching rate limit. The plaintext is in this response only.
          */
         post: {
             parameters: {
@@ -9513,7 +9513,7 @@ export interface paths {
                         "application/json": components["schemas"]["SettingsAppPasswordCreated"];
                     };
                 };
-                /** @description Name missing, blank or longer than 60 characters, or currentPassword missing */
+                /** @description Name missing, blank or longer than 60 characters, or `currentPassword` missing when two-factor is off */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -9522,7 +9522,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Current password is incorrect (`current_password_invalid`) */
+                /** @description Current password is incorrect (`current_password_invalid`), or wrong or already used code (`mfa_code_invalid`) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -9531,7 +9531,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description The caller already has 50 active app passwords (`app_password_limit`) */
+                /** @description The caller already has 50 active app passwords (`app_password_limit`); or two-factor is on and `code` is missing (`mfa_code_required`; the account password is not accepted then) */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -9540,7 +9540,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Too many sign-in attempts (`throttled`) */
+                /** @description Too many attempts (`throttled`): the sign-in limits, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -14399,6 +14399,7 @@ export interface components {
             appPasswords: components["schemas"]["SettingsAppPassword"][];
         };
         /**
+         * @description Send `code` when the caller has two-factor on (the account password is not accepted then), otherwise `currentPassword`. `GET /me` → `mfa.enabled` says which.
          * @example {
          *       "name": "Phone calendar",
          *       "currentPassword": "correct horse battery staple"
@@ -14406,8 +14407,10 @@ export interface components {
          */
         SettingsAppPasswordCreateRequest: {
             name: string;
-            /** @description The account password. An app password is not accepted here. Failures count on the sign-in rate limit. */
-            currentPassword: string;
+            /** @description The account password, when two-factor is off. An app password is not accepted here. Failures count on the sign-in rate limit. */
+            currentPassword?: string;
+            /** @description A current authenticator code, when two-factor is on. Recovery codes are not accepted. Same checks as `POST /settings/totp/recovery-codes`: replay guard, sign-in rate limit and per-user code lock. */
+            code?: string;
         };
         SettingsAppPasswordCreated: {
             appPassword: components["schemas"]["SettingsAppPassword"];

@@ -99,7 +99,7 @@ final class MfaSignIn
     {
         $challenge = $this->open($id, $client, AuthChallenge::KIND_REPLACE, $ip);
         $username = $challenge->username;
-        $secret = (string) $challenge->pending_secret;
+        $secret = $this->mfa->readPendingSecret($challenge);
 
         $step = $this->codes->matchNewSecret($username, $secret, $code);
         if ($step === null) {
@@ -143,13 +143,15 @@ final class MfaSignIn
 
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
+        if (! $this->challenges->reserveAttempt($challenge)) {
+            throw AuthChallengeService::notFound();
+        }
 
         return $challenge;
     }
 
     private function refuse(AuthChallenge $challenge, string $ip): never
     {
-        $this->challenges->recordFailure($challenge);
         $this->limiter->hit($challenge->username, $ip);
 
         throw new ApiHttpException(401, 'That code is not right. Check the time on your phone and try again.', 'mfa_code_invalid');

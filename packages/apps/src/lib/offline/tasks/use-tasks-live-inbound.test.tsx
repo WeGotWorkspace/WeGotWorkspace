@@ -5,7 +5,7 @@ import {
   TASKS_INBOUND_PUSH_POLL_MS,
   TASKS_SHARED_PULL_WAIT_MS,
   useTasksLiveInbound,
-} from "./use-tasks-live-inbound";
+} from "@/lib/offline/tasks/use-tasks-live-inbound";
 
 const mocks = vi.hoisted(() => ({
   syncTasksInbound: vi.fn(),

@@ -212,6 +212,16 @@ final class HttpSignalingStoreTest extends TestCase
         );
     }
 
+    public function test_roster_drops_a_peer_past_the_timeout_before_it_is_pruned(): void
+    {
+        $policy = RtcSignalingPolicy::collab();
+        $store = new HttpSignalingStore($policy);
+        $store->upsertPeer('room-a', 'aaaaaaaaaaaaaaaa', 'Alice', 'u:alice', time());
+        $store->upsertPeer('room-a', 'bbbbbbbbbbbbbbbb', 'Bob', 'u:bob', time() - $policy->peerTimeoutSeconds - 5);
+
+        $this->assertSame([], $store->peerList('room-a', 'aaaaaaaaaaaaaaaa'));
+    }
+
     public function test_roster_carries_caps_access_and_net(): void
     {
         $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
