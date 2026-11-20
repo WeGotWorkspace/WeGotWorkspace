@@ -40,7 +40,10 @@ import { TasksListPanel } from "@/tasks-core/src/tasks-list-panel";
 import { TasksDetailActionBar, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
 import { CollabSessionPresence } from "@/text-editor-core/docs-collab";
 import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
-import { composerDefaultDueForView } from "@/tasks-core/src/tasks-task-utils";
+import {
+  composerDefaultDueForView,
+  isProjectOwnedTaskList,
+} from "@/tasks-core/src/tasks-task-utils";
 import {
   canWriteTaskList,
   taskListDotColor,
@@ -93,7 +96,7 @@ function TasksSidebarRows({
             visible={!hiddenTaskListIds.has(list.id)}
             onToggleVisibility={() => onToggleVisibility(list.id)}
             onSelect={() => selectView(`list:${list.id}`)}
-            onEdit={() => onEdit(list.id)}
+            onEdit={isProjectOwnedTaskList(list) ? undefined : () => onEdit(list.id)}
             editLabel={editLabel}
             badges={
               viewOnly ? (
