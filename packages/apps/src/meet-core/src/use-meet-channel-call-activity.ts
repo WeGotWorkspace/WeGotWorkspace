@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
 import type { MeetAPIOperations, MeetChannel } from "@/lib/models/meet-types";
 
@@ -78,6 +78,18 @@ export function useMeetChannelCallActivity({
   const [active, setActive] = useState<Record<string, boolean>>({});
   const omitChannelIdsRef = useRef(omitChannelIds);
   omitChannelIdsRef.current = omitChannelIds;
+  // Chat updates (unread counts, read markers) hand a new channel list on every
+  // patch; keying the poll on the list restarted it at once each time (shared
+  // hosting log: 227 room-status reads a minute). Restart only when the rooms change.
+  const channelsRef = useRef(channels);
+  channelsRef.current = channels;
+  const targetKey = useMemo(
+    () =>
+      meetCallActivityTargets(channels, selectedChannelId, joinedRoomCode)
+        .map(({ channelId, room }) => `${channelId}\u0000${room}`)
+        .join("\n"),
+    [channels, joinedRoomCode, selectedChannelId],
+  );
 
   useEffect(() => {
     setActive((prev) => {
@@ -89,6 +101,8 @@ export function useMeetChannelCallActivity({
   useEffect(() => {
     let cancelled = false;
     const poll = async () => {
+      if (document.hidden) return;
+      const channels = channelsRef.current;
       const extras: { channelId: string; room: string }[] = [];
       const selectedListed = channels.some((channel) => channel.id === selectedChannelId);
       if (selectedChannelId && resolveRoom && !selectedListed) {
@@ -124,7 +138,7 @@ export function useMeetChannelCallActivity({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [channels, joinedRoomCode, operations, pollMs, resolveRoom, selectedChannelId]);
+  }, [targetKey, joinedRoomCode, operations, pollMs, resolveRoom, selectedChannelId]);
 
   return active;
 }

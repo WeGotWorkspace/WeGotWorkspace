@@ -11,7 +11,7 @@ import {
   CONTACTS_CHANGES_POLL_MS,
   CONTACTS_CHANGES_PUSH_POLL_MS,
   useContactsLiveInbound,
-} from "./use-contacts-live-inbound";
+} from "@/lib/offline/contacts/use-contacts-live-inbound";
 
 /**
  * Only the network is faked: the real adapter, `useJmapStateChange` and the

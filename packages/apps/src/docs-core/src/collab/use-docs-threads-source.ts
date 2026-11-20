@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
+import {
+  useJmapPushConnected,
+  useJmapStateChange,
+  type JmapPushHubLike,
+} from "@/lib/api/wgw/use-jmap-state-change";
 import { splitDocsFileThreads } from "./docs-threads-assemble";
 import type { DocsCommentThread } from "@/text-editor-core/docs-collab/docs-comments-types";
 import type {
@@ -13,7 +19,11 @@ import {
   type DocsThreadsClient,
 } from "./docs-threads-types";
 
+/** Backup poll while the push stream is down (#2286). */
 export const DOCS_THREADS_POLL_MS = 4_000;
+
+const DOC_THREAD_PUSH_TYPES = ["DocThread"] as const;
+const NO_PUSH_TYPES: readonly string[] = [];
 
 export type DocsThreadsSource = {
   fileThreads: DocsFileThread[];
@@ -101,10 +111,14 @@ export function useDocsThreadsSource({
   client,
   path,
   poll = false,
+  pushHub = defaultJmapPushHub(),
 }: {
   client: DocsThreadsClient | null;
   path: string | null;
+  /** Follow other people's thread changes: on a `DocThread` push, or by polling while push is down. */
   poll?: boolean;
+  /** The browser's push hub; null (mock data) leaves only the poll. */
+  pushHub?: JmapPushHubLike | null;
 }): DocsThreadsSource {
   const [fileThreads, setFileThreads] = useState<DocsFileThread[]>(() => immediateSnapshot(client));
   const [loadedFor, setLoadedFor] = useState<{
@@ -140,34 +154,58 @@ export function useDocsThreadsSource({
   }, [loaded]);
 
   useEffect(() => {
-    // A failed list leaves `loaded` false; the poll retries it.
+    // A failed list leaves `loaded` false; the next pull retries it.
     reload().catch(() => undefined);
   }, [reload]);
 
+  const live = Boolean(poll && client && path && !isDocsThreadsSnapshotClient(client));
+  /** One pull round for the current client and path; resolves false when it failed. */
+  const pullRef = useRef<() => Promise<boolean>>(async () => true);
+
   useEffect(() => {
-    if (!poll || !client || !path || isDocsThreadsSnapshotClient(client)) return;
+    if (!live || !client || !path) {
+      pullRef.current = async () => true;
+      return;
+    }
     let cancelled = false;
-    const tick = async () => {
+    pullRef.current = async () => {
       try {
         // Until a list for this path has arrived, retry it: an empty changes
         // feed (a document without threads) would never trigger a reload.
         if (!loadedRef.current) {
           await reload();
-          return;
+          return true;
         }
         sinceRef.current = await pollDocsThreadChanges(client, path, sinceRef.current, () =>
           cancelled ? Promise.resolve() : reload(),
         );
+        return true;
       } catch {
-        // Poll errors are retried on the next interval.
+        // Retried on the next push or poll.
+        return false;
       }
     };
-    const id = window.setInterval(() => void tick(), DOCS_THREADS_POLL_MS);
     return () => {
       cancelled = true;
-      window.clearInterval(id);
     };
-  }, [client, path, poll, reload]);
+  }, [client, live, path, reload]);
+
+  // Push is the doorbell (#2286): a `DocThread` state change means a thread the
+  // user can read changed somewhere, so this document pulls its changes once.
+  // A failed pull resolves false, so the hub offers the state again.
+  const pushConnected = useJmapPushConnected(pushHub);
+  useJmapStateChange(
+    live ? DOC_THREAD_PUSH_TYPES : NO_PUSH_TYPES,
+    () => pullRef.current(),
+    pushHub,
+  );
+
+  // The interval poll is only the backup while push is down.
+  useEffect(() => {
+    if (!live || pushConnected) return;
+    const id = window.setInterval(() => void pullRef.current(), DOCS_THREADS_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [client, live, path, pushConnected]);
 
   const upsert = useCallback((thread: DocsFileThread) => {
     setFileThreads((prev) => upsertThread(prev, thread));

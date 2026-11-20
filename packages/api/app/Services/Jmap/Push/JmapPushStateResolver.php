@@ -11,6 +11,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Chat\ChatChannelRepository;
 use App\Services\Chat\ChatGroupDefaultChannelProvisioner;
 use App\Services\Contacts\AddressBookRepository;
+use App\Services\Docs\DocThreadPushState;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
@@ -20,6 +21,7 @@ use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notify\NotificationInboxMarkers;
+use App\Services\Rtc\Signaling\RtcRoomPushState;
 use App\Services\Tasks\TaskListRepository;
 use App\Support\WgwSettings;
 use Illuminate\Database\Eloquent\Collection;
@@ -35,6 +37,11 @@ use Illuminate\Database\Eloquent\Collection;
  * Notes, calendars, chat and tasks are all CalDAV collections, so their
  * instances come from one read ({@see CalendarCollectionAccess::accessibleInstancesByKind()})
  * instead of one per source: that read repeats nothing per Team or per kind (#2243).
+ *
+ * `DocThread` (#2286) composes the Docs thread pools behind the user's file roots
+ * ({@see DocThreadPushState}): a share root covers only the threads under it.
+ * `RtcRoom` (#2294) is the doorbell for signaling rooms where the user has a live peer
+ * ({@see RtcRoomPushState}); heartbeats (`seen_at`) do not move it.
  *
  * `FileNode` is the exception in what is hashed: the pushed value is the
  * global sequence `FileNode/changes` expects, but the hash covers the sorted
@@ -57,6 +64,8 @@ final class JmapPushStateResolver
         'Task',
         'TaskList',
         'Notification',
+        'DocThread',
+        'RtcRoom',
     ];
 
     /** Types that share one state source are resolved once. */
@@ -73,6 +82,8 @@ final class JmapPushStateResolver
         'Task' => 'tasks',
         'TaskList' => 'tasks',
         'Notification' => 'inbox',
+        'DocThread' => 'docthreads',
+        'RtcRoom' => 'rtcrooms',
     ];
 
     /** Sources whose state is a composite over CalDAV collections of one kind. */
@@ -90,7 +101,11 @@ final class JmapPushStateResolver
         'contacts' => JmapCapabilities::CONTACTS,
         'chat' => JmapCapabilities::CHAT,
         'files' => JmapCapabilities::FILENODE,
+        'docthreads' => JmapCapabilities::FILENODE,
     ];
+
+    /** @var array{roots: list<string>, grantPairs: string}|null `FileNode` and `DocThread` share one read per request */
+    private ?array $rootsOfRequest = null;
 
     public function __construct(
         private readonly CalendarCollectionAccess $calDavAccess,
@@ -105,6 +120,8 @@ final class JmapPushStateResolver
         private readonly FileNodeSyncState $fileSyncState,
         private readonly NotificationInboxMarkers $inbox,
         private readonly JmapCapabilitySet $capabilities,
+        private readonly DocThreadPushState $docThreads,
+        private readonly RtcRoomPushState $rtcRooms,
     ) {}
 
     /**
@@ -151,6 +168,7 @@ final class JmapPushStateResolver
         $timings = [];
         $states = [];
         $calDav = $this->calDavInstances($username, $types, $timings);
+        $this->rootsOfRequest = null;
         foreach ($types as $type) {
             $source = self::SOURCE_OF_TYPE[$type];
             if (! isset($sources[$source])) {
@@ -219,6 +237,8 @@ final class JmapPushStateResolver
             'chat' => JmapAccountStateCodec::compose(self::channelSyncTokens($instances ?? [])),
             'tasks' => (string) $this->taskLists->changesOf($instances ?? [], null)['newState'],
             'inbox' => (string) $this->inbox->markerFor($username),
+            'docthreads' => $this->docThreads->stateFor($this->rootsAndGrantPairs($username)['roots']),
+            'rtcrooms' => $this->rtcRooms->stateFor($username),
             default => throw new \LogicException('Unknown push state source '.$source),
         };
 
@@ -242,11 +262,19 @@ final class JmapPushStateResolver
     }
 
     /**
+     * @return array{roots: list<string>, grantPairs: string}
+     */
+    private function rootsAndGrantPairs(string $username): array
+    {
+        return $this->rootsOfRequest ??= $this->fileAccounts->rootsAndGrantPairs($username);
+    }
+
+    /**
      * @return array{state: string, basis: string}
      */
     private function fileNodeState(string $username): array
     {
-        ['roots' => $roots, 'grantPairs' => $grantPairs] = $this->fileAccounts->rootsAndGrantPairs($username);
+        ['roots' => $roots, 'grantPairs' => $grantPairs] = $this->rootsAndGrantPairs($username);
         $markers = $this->fileMarkers->markersFor($roots);
         ksort($markers, SORT_STRING);
         // Length-prefixed `root=marker` lines: unambiguous for any byte in a path.
