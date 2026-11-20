@@ -94,11 +94,13 @@ export function useContactsLiveInbound({
 
   useSharedInboundSync(adapter, "contacts", username, () => void latestPatch.current());
 
-  // First-download pages and photos saved outside this view, in any tab.
+  // Photos and pages saved outside this view, in any tab. Not while this tab's
+  // own first download runs: its progress keeps the whole book's count in the
+  // header, which a plain re-read of the cache would replace with a climbing one.
   useEffect(() => {
-    if (!username) return;
+    if (!username || !enabled) return;
     return subscribeContactsCacheChanged(username, () => void latestPatch.current());
-  }, [username]);
+  }, [enabled, username]);
 
   const pushConnected = useJmapPushConnected();
   useEffect(() => {
