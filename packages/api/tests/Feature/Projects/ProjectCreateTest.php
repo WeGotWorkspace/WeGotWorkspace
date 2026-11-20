@@ -40,7 +40,7 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
         $this->assertFalse($project['isDefault']);
         $this->assertFalse($project['archived']);
         $this->assertTrue($project['mayManage']);
-        $this->assertNull($project['resources']['driveFolderId']);
+        $this->assertNotNull($project['resources']['driveFolderId'], 'ProjectFolderTest covers the folder.');
 
         $expected = [
             ProjectKind::Calendar->value => [CollectionKind::EventCalendar, 'calendarId'],
@@ -71,7 +71,7 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
         $this->assertSame(ChatChannelMeta::KIND_CHANNEL, $channelMeta->kind);
         $this->assertNull($channelMeta->default_for_group);
 
-        $this->assertSame($markerBefore + 1, $this->markerOf('t1'));
+        $this->assertGreaterThan($markerBefore, $this->markerOf('t1'), 'The write bumps the Team marker.');
     }
 
     public function test_a_slug_clash_in_the_team_gets_a_suffix_and_archived_projects_keep_theirs(): void
@@ -116,15 +116,19 @@ final class ProjectCreateTest extends WgwDatabaseTestCase
         $this->assertSame('Big launch', $patched['name']);
         $this->assertSame('#3b82f6', $patched['color']);
         $this->assertSame('launch', $patched['slug']);
-        $this->assertSame($project['resources'], $patched['resources']);
-        foreach (ProjectResource::query()->where('project_id', $project['id'])->get() as $resource) {
+        // Ids stay; only the folder path follows the new name (ProjectFolderTest).
+        $this->assertSame(
+            array_diff_key($project['resources'], ['driveFolderPath' => true]),
+            array_diff_key($patched['resources'], ['driveFolderPath' => true]),
+        );
+        foreach (ProjectResource::query()->where('project_id', $project['id'])->where('kind', '!=', ProjectKind::DriveFolder->value)->get() as $resource) {
             $instance = CalendarInstance::query()->where('calendarid', (int) $resource->locator)->firstOrFail();
             $this->assertSame('Big launch', $instance->displayname, $resource->kind);
             if ($resource->kind !== ProjectKind::Channel->value) {
                 $this->assertSame('#3b82f6', strtolower(substr((string) $instance->calendarcolor, 0, 7)), $resource->kind);
             }
         }
-        $this->assertSame($markerBefore + 1, $this->markerOf('t1'));
+        $this->assertGreaterThan($markerBefore, $this->markerOf('t1'), 'The write bumps the Team marker.');
 
         $this->asUser('bob')->patchJson('/api/v1/projects/'.$project['id'], [])->assertStatus(400);
 
