@@ -11,6 +11,7 @@
  * `tools/live-e2e-webserver.test.mjs` checks the order.
  */
 export const liveTierSpecs = [
+  "background-sync-shared-pace",
   "calendar-delete-mid-round",
   "calendar-far-week-event",
   "calendar-late-first-load",

@@ -176,9 +176,9 @@ describe("waiting for a slot", () => {
       userIdleMs: 1_500,
       now: () => clock,
       sleep: async (ms) => {
-        // The user clicks halfway through the wait for the second slot.
-        if (clock - 1_000_000 < 1_500 && clock + ms > 1_001_500) {
-          clock = 1_001_500;
+        // The user clicks late in the wait for the second slot.
+        if (clock - 1_000_000 < 2_500 && clock + ms > 1_002_500) {
+          clock = 1_002_500;
           pacer.noteUserActivity();
           return;
         }
@@ -187,8 +187,8 @@ describe("waiting for a slot", () => {
     });
     await pacer.acquire();
     await pacer.acquire();
-    // Slot at +3 s would have been taken; the click at +1.5 s holds it until +3 s anyway.
-    expect(clock - 1_000_000).toBe(3_000);
+    // The slot at +3 s is reserved; the click at +2.5 s holds the request until +4 s.
+    expect(clock - 1_000_000).toBe(4_000);
   });
 });
 
@@ -237,11 +237,31 @@ describe("createBrowserSlots", () => {
     expect(storage.values.get("wgw.backgroundSync.nextSlotAt")).toBe("19000");
   });
 
-  it("ignores a stored slot more than ten intervals ahead", async () => {
+  it("ignores a stored slot more than eleven intervals ahead", async () => {
+    const storage = memoryStorage();
+    storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 34_000));
+    stubBrowser(fakeLocks(), storage);
+    expect(await createBrowserSlots().claim(10_000, 3_000)).toBe(10_000);
+  });
+
+  it("reserves nothing while the queue runs ten intervals ahead", async () => {
     const storage = memoryStorage();
     storage.setItem("wgw.backgroundSync.nextSlotAt", String(10_000 + 31_000));
     stubBrowser(fakeLocks(), storage);
-    expect(await createBrowserSlots().claim(10_000, 3_000)).toBe(10_000);
+    expect(await createBrowserSlots().claim(10_000, 3_000)).toBeNull();
+    expect(storage.values.get("wgw.backgroundSync.nextSlotAt")).toBe("41000");
+  });
+
+  it("hands twelve concurrent claims one interval apart without reusing a slot", async () => {
+    stubBrowser(fakeLocks());
+    const tabs = [createBrowserSlots(), createBrowserSlots(), createBrowserSlots()];
+    const claims = await Promise.all(
+      Array.from({ length: 12 }, (_, index) => tabs[index % 3].claim(10_000, 3_000)),
+    );
+    const granted = claims.filter((slot): slot is number => slot !== null);
+    // Ten slots fit within the horizon; the rest wait and claim again.
+    expect(granted).toEqual(Array.from({ length: 10 }, (_, index) => 10_000 + index * 3_000));
+    expect(claims.slice(10)).toEqual([null, null]);
   });
 
   it("keeps a stored slot within ten intervals", async () => {

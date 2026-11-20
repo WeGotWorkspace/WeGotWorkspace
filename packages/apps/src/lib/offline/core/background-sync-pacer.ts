@@ -74,10 +74,15 @@ export type BackgroundSyncPacer = {
 /**
  * Hands out request slots. `claim` reserves the first free slot at or after
  * `at` and returns its time; the next claim gets one `intervalMs` later.
+ * It returns `null`, reserving nothing, when the queue already runs
+ * `SLOT_HORIZON_INTERVALS` intervals ahead: the caller waits and claims again.
  */
 export type BackgroundSyncSlots = {
-  claim: (at: number, intervalMs: number) => Promise<number>;
+  claim: (at: number, intervalMs: number) => Promise<number | null>;
 };
+
+/** How many intervals ahead the shared queue may be reserved. */
+const SLOT_HORIZON_INTERVALS = 10;
 
 export function createMemorySlots(): BackgroundSyncSlots {
   let nextSlotAt = 0;
@@ -107,9 +112,14 @@ export function createBrowserSlots(): BackgroundSyncSlots {
       try {
         return await locks.request(SHARED_SLOT_LOCK, () => {
           const stored = Number(localStorage.getItem(SHARED_SLOT_KEY));
-          // A stored time far ahead is stale (clock change, old setting): ignore it.
-          const next = Number.isFinite(stored) && stored - at < 10 * intervalMs ? stored : 0;
-          const slot = Math.max(next, at);
+          const ahead = stored - at;
+          // A live queue never runs past the horizon plus one interval, because
+          // a claim past the horizon reserves nothing. Anything further ahead is
+          // stale (clock change, old setting): ignore it.
+          const live =
+            Number.isFinite(stored) && ahead <= (SLOT_HORIZON_INTERVALS + 1) * intervalMs;
+          if (live && ahead >= SLOT_HORIZON_INTERVALS * intervalMs) return null;
+          const slot = Math.max(live ? stored : 0, at);
           localStorage.setItem(SHARED_SLOT_KEY, String(slot + intervalMs));
           return slot;
         });
@@ -176,8 +186,15 @@ export function createBackgroundSyncPacer({
     async acquire(signal) {
       // Backoff and the user's own requests first, then a browser-wide slot.
       await waitUntilClear(signal);
-      const at = now();
-      const slot = await slots.claim(at, intervalMs);
+      let at = now();
+      let slot = await slots.claim(at, intervalMs);
+      while (slot === null) {
+        // The shared queue is full: wait one interval, then claim again.
+        await sleep(intervalMs, signal);
+        await waitUntilClear(signal);
+        at = now();
+        slot = await slots.claim(at, intervalMs);
+      }
       if (slot > at) await sleep(slot - at, signal);
       // The user clicked, or the server said 429, while this request waited for
       // its slot: they still go first. The slot is spent; no second claim.
