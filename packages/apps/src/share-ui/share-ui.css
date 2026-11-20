@@ -91,7 +91,7 @@
 }
 
 .team-members-card .share-dialog__permission-select {
-  @apply w-auto;
+  @apply w-auto gap-2;
 }
 
 .share-dialog__permission-item {
