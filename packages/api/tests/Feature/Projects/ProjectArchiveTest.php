@@ -22,6 +22,7 @@ use App\Services\Projects\ProjectSlugs;
 use App\Storage\StorageKeyClass;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Testing\TestResponse;
 use Sabre\DAV\Exception\NotFound;
 use Sabre\HTTP\Request as SabreRequest;
@@ -201,7 +202,7 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         ])->assertOk();
     }
 
-    private function files(): \Illuminate\Contracts\Filesystem\Filesystem
+    private function files(): Filesystem
     {
         return app(WgwStorage::class)->files();
     }
