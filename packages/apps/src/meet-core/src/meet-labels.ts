@@ -119,6 +119,7 @@ export const meetLabels = {
   hangUp: "Hang up",
   sidebarChannels: "My channels",
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
+  sidebarProjects: "Projects",
   sidebarDirectMessages: "Direct messages",
   sidebarMeetings: "Today’s meetings",
   upcomingStartsInOneMinute: "starts in 1 minute",

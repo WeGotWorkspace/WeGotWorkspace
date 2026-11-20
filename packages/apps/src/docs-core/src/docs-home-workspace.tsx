@@ -24,6 +24,7 @@ import {
   docsHomeCreateJumpsToPersonal,
   type DocsHomeView,
 } from "@/docs-core/src/docs-home-shared";
+import { useDocsProjectScope } from "@/docs-core/src/use-docs-project-scope";
 import { docsPersonalDrivePathPrefix } from "@/docs-core/src/docs-home-drives";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
@@ -353,9 +354,6 @@ export function DocsHomeWorkspace({
     discoverFromFiles(files);
   }, [discoverFromFiles, files]);
 
-  const headerTitle = docsHomeHeaderTitle(view, labels, drives);
-  useDocumentTitle(headerTitle);
-
   const actions = useDocsHomeActions({
     operations: listingOperations,
     files,
@@ -387,9 +385,13 @@ export function DocsHomeWorkspace({
     dismissSidebarOverlay(() => setSidebarOpen(false));
   }, []);
 
+  const projectDrives = useDocsProjectScope({ drives, view, selectView });
+  const headerTitle = docsHomeHeaderTitle(view, labels, projectDrives);
+  useDocumentTitle(headerTitle);
+
   const { primaryItems, driveItems } = useDocsHomeSidebarModel({
     labels,
-    drives,
+    drives: projectDrives,
     view,
     selectView,
   });

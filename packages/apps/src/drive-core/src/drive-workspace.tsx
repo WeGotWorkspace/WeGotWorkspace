@@ -1,3 +1,4 @@
+import { useDriveProjectScope } from "@/drive-core/src/use-drive-project-scope";
 import { TooltipProvider } from "@/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, Download, PanelRight } from "lucide-react";
@@ -243,11 +244,17 @@ export function DriveWorkspace({
         : null,
     [uploadModel],
   );
+  const projectScope = useDriveProjectScope({
+    view: controller.view,
+    groupRoots: controller.sidebarGroupRoots,
+    selectView: controller.selectView,
+  });
   const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({
     labels: controller.labels,
     view: controller.view,
     uploads: uploadCounts,
-    sidebarGroupRoots: controller.sidebarGroupRoots,
+    sidebarGroupRoots: projectScope.groupRoots,
+    hidePersonalDrive: projectScope.hidePersonalDrive,
     selectView: controller.selectView,
     sidebarDropZoneProps: controller.sidebarDropZoneProps,
     commitMoveToFolder: controller.commitMoveToFolder,

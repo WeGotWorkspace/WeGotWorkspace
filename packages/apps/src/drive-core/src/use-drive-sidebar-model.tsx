@@ -23,6 +23,8 @@ type UseDriveSidebarModelArgs = {
     "isDropTarget" | "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop"
   >;
   commitMoveToFolder: (ids: string[], destinationPath: string) => void;
+  /** A Project is selected: the sidebar lists only its folder (#818). */
+  hidePersonalDrive?: boolean;
 };
 
 function isMyDriveView(view: ViewKey) {
@@ -47,6 +49,7 @@ export function useDriveSidebarModel({
   selectView,
   sidebarDropZoneProps,
   commitMoveToFolder,
+  hidePersonalDrive = false,
 }: UseDriveSidebarModelArgs) {
   const primarySidebarItems = useMemo<MenuItemProps[]>(() => {
     const byId = {
@@ -112,8 +115,9 @@ export function useDriveSidebarModel({
       icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
       ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
     }));
-    return [personal, ...groups];
+    return hidePersonalDrive ? groups : [personal, ...groups];
   }, [
+    hidePersonalDrive,
     commitMoveToFolder,
     labels.sidebarMyDrive,
     selectView,

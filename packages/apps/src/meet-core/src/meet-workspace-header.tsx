@@ -5,6 +5,7 @@ import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { meetChannelLockedByProject } from "@/meet-core/src/meet-channel-partition";
 import type { MeetChannel } from "@/lib/models/meet-types";
 
 export type MeetWorkspaceHeaderProps = {
@@ -54,7 +55,8 @@ export function MeetWorkspaceHeader({
       }
       // Edit sits on the name it changes, as rename in Docs.
       titleSuffix={
-        conversationOpen && selected ? (
+        // A Project channel's name follows the Project: no pencil.
+        conversationOpen && selected && !meetChannelLockedByProject(selected) ? (
           <IconButton
             className="meet-workspace__header-edit"
             icon={<Pencil />}
