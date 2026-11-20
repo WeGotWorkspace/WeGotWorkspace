@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
+import { ProjectFilterSelect } from "@/projects-ui/src/project-filter-select";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { AppRailAccountPortal, AppRailAccountSlotContext } from "@/app-rail/src/app-rail-account";
 import { IconButton } from "@/button/src/button";
@@ -241,6 +242,7 @@ export function WorkspaceSidebarAccountFooter({
 }: WorkspaceSidebarAccountFooterProps) {
   return (
     <div className="workspace-sidebar-account-footer">
+      <ProjectFilterSelect />
       <WorkspaceUserFooter
         name={session.user.displayName}
         initials={workspaceUserInitials(session.user)}
