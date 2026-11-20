@@ -19,9 +19,12 @@ import {
   type AppPassword,
   type AppPasswordOperations,
 } from "@/lib/api/wgw/app-passwords";
+import { isCompleteTotpCode, normalizeTotpCode } from "@/lib/api/wgw/auth-sign-in";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { appPasswordLabels as labels } from "@/settings-core/src/settings-app-passwords-labels";
+import { twoFactorSettingsLabels } from "@/settings-core/src/settings-two-factor-labels";
+import { twoFactorFailure } from "@/settings-core/src/settings-two-factor-model";
 import {
   loadServerSettings,
   type ServerSettingsPhase,
@@ -42,7 +45,16 @@ export const appPasswordFormSchema = z.object({
     .trim()
     .min(1, labels.nameRequired)
     .max(APP_PASSWORD_NAME_MAX, labels.nameTooLong(APP_PASSWORD_NAME_MAX)),
+  /** Asked when two-factor is off. */
   currentPassword: z.string().min(1, labels.currentPasswordRequired),
+  /** Not asked when two-factor is off. */
+  code: z.string(),
+});
+
+/** With two-factor on (#2275): a current code instead of the account password. */
+export const appPasswordCodeFormSchema = appPasswordFormSchema.extend({
+  currentPassword: z.string(),
+  code: z.string().refine(isCompleteTotpCode, twoFactorSettingsLabels.codeRequired),
 });
 
 export type AppPasswordFormValues = z.infer<typeof appPasswordFormSchema>;
@@ -74,6 +86,10 @@ export type SettingsAppPasswordsController = {
   /** Closes the dialog and forgets the plaintext. */
   closeCreate: () => void;
   submitCreate: (event?: BaseSyntheticEvent) => Promise<void>;
+  /** Two-factor is on: the dialog asks for a code instead of the account password. */
+  asksCode: boolean;
+  /** The last code was wrong: the field adds the phone-clock hint. */
+  wrongCode: boolean;
   /** The new plaintext while the dialog shows it; null otherwise. */
   created: string | null;
   removal: AppPasswordRemoval | null;
@@ -82,7 +98,7 @@ export type SettingsAppPasswordsController = {
   removing: boolean;
 };
 
-const EMPTY_FORM: AppPasswordFormValues = { name: "", currentPassword: "" };
+const EMPTY_FORM: AppPasswordFormValues = { name: "", currentPassword: "", code: "" };
 
 /**
  * Settings → Security → App passwords: the list, read fresh when the pane opens and when the
@@ -91,19 +107,30 @@ const EMPTY_FORM: AppPasswordFormValues = { name: "", currentPassword: "" };
  */
 export function useSettingsAppPasswords(
   operations?: AppPasswordOperations,
+  /** With two-factor on, creating one asks for a current code, like replacing recovery codes. */
+  twoFactorOn = false,
 ): SettingsAppPasswordsController {
   // Fixed for the pane's life: a new list source would need a new pane.
   const [ops] = useState(() => operations ?? defaultAppPasswordOperations());
   const opsRef = useRef(ops);
+  const twoFactorRef = useRef(twoFactorOn);
+  twoFactorRef.current = twoFactorOn;
   const { showSuccess, showError } = useAppToast();
   const [phase, setPhase] = useState<ServerSettingsPhase>("loading");
   const [rows, setRows] = useState<AppPassword[]>([]);
   const requestRef = useRef(0);
   const form = useForm<AppPasswordFormValues>({
-    resolver: zodResolver(appPasswordFormSchema),
+    // Read per submit: two-factor can be turned on or off while the pane is open.
+    resolver: (values, context, options) =>
+      zodResolver(twoFactorRef.current ? appPasswordCodeFormSchema : appPasswordFormSchema)(
+        values,
+        context,
+        options,
+      ),
     defaultValues: EMPTY_FORM,
   });
   const [createOpen, setCreateOpen] = useState(false);
+  const [wrongCode, setWrongCode] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [removal, setRemoval] = useState<AppPasswordRemoval | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -132,37 +159,51 @@ export function useSettingsAppPasswords(
 
   const openCreate = () => {
     form.reset(EMPTY_FORM);
+    setWrongCode(false);
     setCreated(null);
     setCreateOpen(true);
   };
 
   const closeCreate = () => {
     setCreateOpen(false);
+    setWrongCode(false);
     setCreated(null);
     form.reset(EMPTY_FORM);
   };
 
   const submitCreate = form.handleSubmit(async (values) => {
+    const name = values.name.trim();
     try {
-      const result = await opsRef.current.create({
-        name: values.name.trim(),
-        currentPassword: values.currentPassword,
-      });
+      const result = await opsRef.current.create(
+        twoFactorOn
+          ? { name, code: normalizeTotpCode(values.code) }
+          : { name, currentPassword: values.currentPassword },
+      );
       setRows((current) => [
         result.appPassword,
         ...current.filter((row) => row.id !== result.appPassword.id),
       ]);
-      // The account password is not needed any more; only the name stays for the title.
-      form.reset({ name: values.name.trim(), currentPassword: "" });
+      // The password or code is not needed any more; only the name stays for the title.
+      form.reset({ ...EMPTY_FORM, name });
+      setWrongCode(false);
       setCreated(result.password);
     } catch (error) {
+      if (isApiError(error) && error.code === "app_password_limit") {
+        showError(labels.limitReached(APP_PASSWORD_LIMIT));
+        return;
+      }
+      if (twoFactorOn) {
+        // Same errors as replacing recovery codes: a wrong code is 403 `mfa_code_invalid`.
+        const failure = twoFactorFailure(error, "code");
+        if (failure.field) {
+          setWrongCode(failure.wrongCode);
+          form.setError("code", { message: failure.message });
+        } else showError(failure.message);
+        return;
+      }
       const fieldError = appPasswordCreateFieldError(error);
       if (fieldError) {
         form.setError("currentPassword", { message: fieldError });
-        return;
-      }
-      if (isApiError(error) && error.code === "app_password_limit") {
-        showError(labels.limitReached(APP_PASSWORD_LIMIT));
         return;
       }
       showError(isFetchNetworkError(error) ? labels.offlineAction : labels.createFailed);
@@ -199,6 +240,8 @@ export function useSettingsAppPasswords(
     openCreate,
     closeCreate,
     submitCreate,
+    asksCode: twoFactorOn,
+    wrongCode,
     created,
     removal,
     askRemove: setRemoval,

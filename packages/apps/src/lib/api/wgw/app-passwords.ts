@@ -25,9 +25,16 @@ export type AppPassword = SettingsAppPassword;
 
 export type AppPasswordCreated = SettingsAppPasswordCreated;
 
+/**
+ * With two-factor on, a current code instead of the account password (#2275); a wrong code is
+ * 403 `mfa_code_invalid`, like replacing recovery codes.
+ */
+export type AppPasswordCreateInput =
+  SettingsAppPasswordCreateRequest | { name: string; code: string };
+
 export type AppPasswordOperations = {
   list: () => Promise<AppPassword[]>;
-  create: (input: SettingsAppPasswordCreateRequest) => Promise<AppPasswordCreated>;
+  create: (input: AppPasswordCreateInput) => Promise<AppPasswordCreated>;
   revoke: (id: number) => Promise<void>;
   revokeAll: () => Promise<void>;
 };

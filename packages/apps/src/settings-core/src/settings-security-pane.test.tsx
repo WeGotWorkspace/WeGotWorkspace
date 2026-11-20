@@ -11,6 +11,10 @@ import {
   type AppPassword,
 } from "@/lib/api/wgw/app-passwords";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import { MOCK_SIGN_IN } from "@/lib/api/mock/sign-in";
+import { createMockTwoFactorOperations } from "@/lib/api/mock/two-factor-settings";
+import { twoFactorLabels } from "@/two-factor-ui/src/two-factor-labels";
+import { twoFactorSettingsLabels } from "@/settings-core/src/settings-two-factor-labels";
 import { appPasswordLabels as labels } from "@/settings-core/src/settings-app-passwords-labels";
 import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
 import { appPasswordCreateFieldError } from "@/settings-core/src/use-settings-app-passwords";
@@ -27,14 +31,22 @@ function setOnline(online: boolean): void {
   window.dispatchEvent(new Event(online ? "online" : "offline"));
 }
 
-function renderPane(rows: AppPassword[] = MOCK_APP_PASSWORDS, options = {}) {
+function renderPane(rows: AppPassword[] = MOCK_APP_PASSWORDS, options = {}, twoFactorOn = false) {
   const operations = createMockAppPasswordOperations(rows, options);
   vi.spyOn(operations, "create");
   vi.spyOn(operations, "revoke");
   vi.spyOn(operations, "revokeAll");
   render(
     <TooltipProvider>
-      <SettingsSecurityPane operations={operations} />
+      <SettingsSecurityPane
+        operations={operations}
+        twoFactor={{
+          operations: createMockTwoFactorOperations({
+            enabled: twoFactorOn,
+            recoveryCodesRemaining: twoFactorOn ? 10 : null,
+          }),
+        }}
+      />
     </TooltipProvider>,
   );
   return operations;
@@ -195,6 +207,47 @@ describe("SettingsSecurityPane", () => {
     type(labels.currentPasswordLabel, MOCK_ACCOUNT_PASSWORD);
     fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(labels.limitReached(50)));
+  });
+
+  describe("with two-factor on", () => {
+    async function openCreateWithCode(): Promise<HTMLElement> {
+      await screen.findByText(twoFactorSettingsLabels.statusOn);
+      const dialog = await openCreate();
+      expect(within(dialog).queryByLabelText(labels.currentPasswordLabel)).toBeNull();
+      type(labels.nameLabel, "Phone");
+      return dialog;
+    }
+
+    it("asks for a current code instead of the account password", async () => {
+      const operations = renderPane([], {}, true);
+      const dialog = await openCreateWithCode();
+      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
+      expect(await within(dialog).findByText(twoFactorSettingsLabels.codeRequired)).toBeTruthy();
+      expect(operations.create).not.toHaveBeenCalled();
+
+      type(twoFactorLabels.codeLabel, "123 456");
+      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
+      expect(await screen.findByLabelText(labels.createdLabel)).toBeTruthy();
+      expect(operations.create).toHaveBeenCalledWith({ name: "Phone", code: MOCK_SIGN_IN.code });
+    });
+
+    it("shows a wrong code with the phone-clock hint, like replacing recovery codes", async () => {
+      renderPane([], {}, true);
+      const dialog = await openCreateWithCode();
+      type(twoFactorLabels.codeLabel, "654321");
+      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
+      expect(await within(dialog).findByText(twoFactorSettingsLabels.wrongCode)).toBeTruthy();
+      expect(within(dialog).getByText(twoFactorLabels.clockHint)).toBeTruthy();
+      expect(screen.queryByLabelText(labels.createdLabel)).toBeNull();
+    });
+
+    it("says when to try again when codes are paused", async () => {
+      renderPane([], {}, true);
+      const dialog = await openCreateWithCode();
+      type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.throttledCode);
+      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
+      expect(await within(dialog).findByText(/^Too many tries\. Try again at /)).toBeTruthy();
+    });
   });
 
   it("removes one app password after a confirm", async () => {
