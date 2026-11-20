@@ -9,12 +9,14 @@ export const appPasswordLabels = {
   offline: "You are offline. App passwords show when the connection is back.",
   loadFailed: "Could not load your app passwords.",
   retry: "Try again",
-  newButton: "New app password",
+  newButton: "Create app password",
   removeAllButton: "Remove all",
   columns: { name: "Name", created: "Created", lastUsed: "Last used", client: "App" },
   neverUsed: "Never",
   /** The App column before the first sign-in with it. */
   noClient: "N/A",
+  /** The row's button; its accessible name is `remove(name)`. */
+  removeButton: "Remove",
   remove: (name: string) => `Remove ${name}`,
   createTitle: "New app password",
   createDescription: "Name it after the app or device that will use it.",

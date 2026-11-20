@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
+import { Copy, KeyRound } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
@@ -64,20 +64,16 @@ export function SettingsSecurityPane({
               {controller.rows.length > 0 ? (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  severity="danger"
                   onClick={() => controller.askRemove({ kind: "all" })}
                 >
                   {labels.removeAllButton}
                 </Button>
               ) : null}
-              <IconButton
-                type="button"
-                variant="outline"
-                size="md"
-                icon={<Plus aria-hidden />}
-                label={labels.newButton}
-                onClick={controller.openCreate}
-              />
+              <Button type="button" variant="outline" onClick={controller.openCreate}>
+                {labels.newButton}
+              </Button>
             </span>
           ) : null
         }
@@ -170,14 +166,15 @@ function appPasswordColumns(onRemove: (row: AppPassword) => void): DataTableColu
       align: "end",
       shrink: true,
       render: (row) => (
-        <IconButton
+        <Button
           type="button"
-          variant="ghost"
-          size="md"
-          icon={<Trash2 aria-hidden />}
-          label={labels.remove(row.name)}
+          variant="outline"
+          severity="danger"
+          aria-label={labels.remove(row.name)}
           onClick={() => onRemove(row)}
-        />
+        >
+          {labels.removeButton}
+        </Button>
       ),
     },
   ];
