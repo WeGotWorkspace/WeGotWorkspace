@@ -50,7 +50,7 @@ final class AuthTokenService
         }
 
         // Read before the password check: a sign-out everywhere that lands while
-        // this sign-in runs must still refuse the token it returns.
+        // this sign-in runs makes tokenResponse() refuse the pair it would return.
         $epoch = $this->currentEpoch($username);
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if (! $this->credentials->validate($username, $password, $realm)) {
@@ -151,11 +151,11 @@ final class AuthTokenService
     }
 
     /**
-     * users.ui_session_epoch, or null when there is no such user.
+     * users.access_token_epoch, or null when there is no such user.
      */
     private function currentEpoch(string $username): ?int
     {
-        $epoch = User::query()->where('username', $username)->value('ui_session_epoch');
+        $epoch = User::query()->where('username', $username)->value('access_token_epoch');
 
         return $epoch === null ? null : (int) $epoch;
     }
@@ -234,13 +234,15 @@ final class AuthTokenService
         $uid = 0;
         $epoch = null;
         if ($role !== 'guest') {
-            $user = User::query()->where('username', $username)->first(['id', 'ui_session_epoch']);
+            $user = User::query()->where('username', $username)->first(['id', 'access_token_epoch']);
             $uid = $user === null ? 0 : (int) $user->id;
-            $epoch = $user === null ? null : (int) $user->ui_session_epoch;
-            // Keep the lower value: an epoch read before the credential check or the
-            // rotation wins over one a concurrent sign-out everywhere has since bumped.
-            if ($epoch !== null && $epochBefore !== null) {
-                $epoch = min($epoch, $epochBefore);
+            $epoch = $user === null ? null : (int) $user->access_token_epoch;
+            // The refresh token is already stored. revokeAll() bumps the epoch before it
+            // revokes refresh tokens, so a bump seen here means this token either got
+            // revoked or was inserted after that revoke: end it and refuse the sign-in.
+            if ($epoch !== null && $epochBefore !== null && $epoch > $epochBefore) {
+                $this->refreshTokens->revoke($refreshToken);
+                throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
             }
         }
         $claims = [
@@ -249,7 +251,7 @@ final class AuthTokenService
             'exp' => time() + $ttl,
             'uid' => $uid,
         ];
-        // A sign-out everywhere bumps the epoch; bearer auth then refuses this token.
+        // A sign-out everywhere bumps access_token_epoch; bearer auth then refuses this token.
         if ($epoch !== null) {
             $claims['ep'] = $epoch;
         }

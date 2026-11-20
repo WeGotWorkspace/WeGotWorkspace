@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\ApiPasswordResetToken;
+use App\Models\ApiRefreshToken;
 use App\Models\User;
+use App\Services\Auth\AuthTokenService;
 use App\Services\Auth\JwtTokenService;
 use App\Services\Auth\PasswordRecoveryService;
 use App\Services\Auth\UserSessionRevoker;
@@ -119,18 +122,35 @@ final class AccessTokenEpochTest extends WgwDatabaseTestCase
         $this->assertAccepted($this->userBearerToken());
     }
 
-    public function test_signing_out_one_device_makes_the_others_refresh_once(): void
+    public function test_signing_out_one_device_leaves_the_others_access_tokens_accepted(): void
     {
         $here = $this->issueTokenPair('bob');
         $there = $this->issueTokenPair('bob');
 
         $this->withBearer($here['access_token'])->postJson('/api/v1/auth/revoke')->assertOk();
 
-        // The sign-out bumps the epoch, so the other device's access token is
-        // refused; its refresh token still works and the new access token does too.
-        $this->assertRefused($there['access_token']);
-        $refreshed = $this->postRefresh($there['refresh_token'])->assertOk();
-        $this->assertAccepted((string) $refreshed->json('access_token'));
+        // Only a sign-out everywhere bumps the access-token epoch: clients that send
+        // the raw token (collab, Meet) must not see a 401 here.
+        $this->assertAccepted($there['access_token']);
+        $this->postRefresh($there['refresh_token'])->assertOk();
+    }
+
+    public function test_sign_in_that_overlaps_a_revoke_all_is_refused_with_its_refresh_token(): void
+    {
+        $before = (int) User::query()->where('username', 'bob')->value('access_token_epoch');
+        app(UserSessionRevoker::class)->revokeAll('bob');
+
+        try {
+            app(AuthTokenService::class)->issueForUsername('bob', $before);
+            $this->fail('A sign-in that started before revokeAll() must be refused.');
+        } catch (ApiHttpException $e) {
+            $this->assertSame(401, $e->getStatusCode());
+        }
+
+        $this->assertSame(
+            0,
+            ApiRefreshToken::query()->where('username', 'bob')->where('revoked', 0)->count(),
+        );
     }
 
     public function test_access_token_from_a_refresh_carries_the_epoch(): void
@@ -139,7 +159,7 @@ final class AccessTokenEpochTest extends WgwDatabaseTestCase
         $refreshed = (string) $this->postRefresh($pair['refresh_token'])->assertOk()->json('access_token');
         $this->assertAccepted($refreshed);
 
-        app(UserSessionRevoker::class)->bumpEpoch('bob');
+        $this->bumpAccessEpoch();
 
         $this->assertRefused($refreshed);
     }
@@ -154,7 +174,7 @@ final class AccessTokenEpochTest extends WgwDatabaseTestCase
             'uid' => (int) $user->id,
         ]);
 
-        app(UserSessionRevoker::class)->bumpEpoch('bob');
+        $this->bumpAccessEpoch();
 
         $this->assertAccepted($legacy);
     }
@@ -162,9 +182,9 @@ final class AccessTokenEpochTest extends WgwDatabaseTestCase
     public function test_token_with_a_lower_epoch_is_refused(): void
     {
         $user = User::query()->where('username', 'bob')->firstOrFail();
-        app(UserSessionRevoker::class)->bumpEpoch('bob');
+        $this->bumpAccessEpoch();
         $user->refresh();
-        $epoch = (int) $user->ui_session_epoch;
+        $epoch = (int) $user->access_token_epoch;
         $this->assertGreaterThan(0, $epoch);
 
         $mint = fn (int $ep): string => app(JwtTokenService::class)->issue([
@@ -191,6 +211,11 @@ final class AccessTokenEpochTest extends WgwDatabaseTestCase
         $current = $this->userBearerToken();
 
         $this->assertSame($this->queriesFor($legacy), $this->queriesFor($current));
+    }
+
+    private function bumpAccessEpoch(): void
+    {
+        User::query()->where('username', 'bob')->increment('access_token_epoch');
     }
 
     private function queriesFor(string $token): int

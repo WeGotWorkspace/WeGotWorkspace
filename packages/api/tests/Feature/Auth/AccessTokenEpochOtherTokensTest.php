@@ -60,8 +60,8 @@ final class AccessTokenEpochOtherTokensTest extends WgwDatabaseTestCase
         $user = $this->mcpUser('bob');
         $jwt = $this->mcpBearerToken($user, $this->mcpClient(), [McpScopes::SETTINGS]);
 
-        // Signing out one browser bumps the epoch; the assistant stays connected.
-        app(UserSessionRevoker::class)->bumpEpoch('bob');
+        // A sign-out everywhere bumps the epoch; MCP tokens carry no ep claim and stay connected.
+        \App\Models\User::query()->where('username', 'bob')->increment('access_token_epoch');
         $this->mcpInitialize($jwt)->assertOk();
         // The test app keeps the resolved api guard user between requests.
         $this->app['auth']->forgetGuards();

@@ -56,7 +56,7 @@ final class JwtCodec
             $builder = $builder->withClaim('sid', (string) $claims['sid']);
         }
         if (array_key_exists('ep', $claims)) {
-            // users.ui_session_epoch when minted: a sign-out everywhere bumps it
+            // users.access_token_epoch when minted: a sign-out everywhere bumps it
             // and bearer auth refuses tokens with a lower value.
             $builder = $builder->withClaim('ep', (int) $claims['ep']);
         }

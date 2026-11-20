@@ -87,6 +87,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'access_token_epoch'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'dav_password_used_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('app_passwords', 'token_hash'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
