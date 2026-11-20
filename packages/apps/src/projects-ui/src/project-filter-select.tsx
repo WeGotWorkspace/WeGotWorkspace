@@ -1,5 +1,6 @@
 import { Fragment, useState, type CSSProperties } from "react";
-import { FolderKanban, Plus } from "lucide-react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { ChevronDown, FolderKanban, Plus } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { projectFilterValue, type ProjectFilterValue } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
@@ -12,7 +13,6 @@ import {
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
 import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
-import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
 import {
   Select,
   SelectContent,
@@ -21,6 +21,7 @@ import {
   SelectLabel,
   SelectSeparator,
 } from "@/ui/select";
+import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import "./project-filter-select.css";
 
 const CREATE_VALUE = "__create";
@@ -62,24 +63,28 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
           else setFilter(next as ProjectFilterValue);
         }}
       >
-        <CollectionGhostSelectTrigger
+        <SelectPrimitive.Trigger
           aria-label={labels.filterLabel}
-          className="project-filter-select"
+          className="project-filter-trigger"
           style={
             current?.color
-              ? ({ "--collection-row-color": current.color } as CSSProperties)
+              ? ({ "--project-filter-color": current.color } as CSSProperties)
               : undefined
           }
-          leading={
-            current ? (
-              <ProjectDot color={current.color} />
-            ) : (
-              <FolderKanban className="project-filter-select__icon" aria-hidden />
-            )
-          }
-          label={current ? current.name : labels.allProjects}
-        />
-        <SelectContent className="collection-ghost-select__menu">
+        >
+          <UserAvatar
+            displayName={labels.filterLabel}
+            compact
+            ariaLabel={labels.filterLabel}
+            fallback={<FolderKanban className="project-filter-trigger__icon" aria-hidden />}
+            className="project-filter-trigger__mark"
+          />
+          <span className="project-filter-trigger__label">
+            {current ? current.name : labels.allProjects}
+          </span>
+          <ChevronDown className="project-filter-trigger__chevron" aria-hidden />
+        </SelectPrimitive.Trigger>
+        <SelectContent className="project-filter-select__menu">
           <SelectItem value="all">{labels.allProjects}</SelectItem>
           {groups.map(({ team, projects }) => (
             <Fragment key={team.slug}>
