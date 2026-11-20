@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { loadTasksBootstrapHybrid } from "@/lib/offline/tasks/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks/tasks-offline-store";
 import { readOfflineTasksUsername } from "@/lib/offline/core/offline-session";
-import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
+import { useConnectivity } from "@/hooks/use-connectivity";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { subscribeTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
+import { useTasksLiveInbound } from "@/lib/offline/tasks/use-tasks-live-inbound";
 import type { Task, TaskList, TasksUIData } from "@/lib/models/tasks-types";
 import {
   buildTaskDueOverlayModel,
@@ -48,99 +51,73 @@ async function readCachedTasksData(): Promise<TasksUIData | null> {
 }
 
 export type UseCalendarTaskDueOverlayArgs = {
-  /** Story/test fixture — skips Dexie/hybrid hydrate and reconnect refresh. */
+  /** Story/test fixture — skips Dexie/hybrid hydrate and the live sync. */
   preset?: TasksUIData | null;
   hiddenListIds: ReadonlySet<string>;
 };
 
 /**
- * Thin Calendar overlay reader. Hydrates Tasks Dexie first (same cache-then-network
- * as Tasks `useHybridBootstrap`), then live hybrid. Reconnect / visibilitychange
- * re-run **tasks** bootstrap only — never Calendar JMAP.
+ * Thin Calendar overlay reader over the shared Tasks cache. It paints the
+ * cache, loads the Tasks bootstrap once only when there is no cache yet, and
+ * otherwise keeps the cache current with the Tasks inbound sync: push-driven
+ * `tasklists/changes`, in one tab per browser, the same seat the Tasks app
+ * uses. Showing the tab again or reconnecting sends no full reload: the push
+ * compares states and pulls only what changed (shared hosting traffic budget).
  */
 export function useCalendarTaskDueOverlay({
   preset,
   hiddenListIds,
 }: UseCalendarTaskDueOverlayArgs): CalendarTaskDueOverlayState {
   const [liveData, setLiveData] = useState<TasksUIData | null>(null);
-  const refreshInFlightRef = useRef(false);
+  const [username, setUsername] = useState<string | null>(() =>
+    preset != null ? null : readOfflineTasksUsername(),
+  );
   const presetMode = preset != null;
+  const { online } = useConnectivity();
 
-  const applyData = useCallback((data: TasksUIData | null) => {
-    setLiveData(data);
+  const rereadCache = useCallback(async () => {
+    const cached = await readCachedTasksData().catch(() => null);
+    if (cached) setLiveData(cached);
   }, []);
-
-  const refreshFromHybrid = useCallback(async () => {
-    if (presetMode) return;
-    if (refreshInFlightRef.current) return;
-    refreshInFlightRef.current = true;
-    try {
-      const bootstrap = await loadTasksBootstrapHybrid();
-      applyData(bootstrap.data);
-    } catch {
-      try {
-        const cached = await readCachedTasksData();
-        if (cached) applyData(cached);
-      } catch {
-        // Overlay stays on whatever already painted; Calendar itself is unchanged.
-      }
-    } finally {
-      refreshInFlightRef.current = false;
-    }
-  }, [applyData, presetMode]);
 
   useEffect(() => {
     if (presetMode) return;
     let cancelled = false;
     void (async () => {
-      let paintedFromCache = false;
-      try {
-        const cached = await readCachedTasksData();
-        if (cancelled) return;
-        if (cached) {
-          applyData(cached);
-          paintedFromCache = true;
-        }
-      } catch {
-        // Cache miss is fine; live hydrate still runs.
-      }
+      const cached = await readCachedTasksData().catch(() => null);
       if (cancelled) return;
-      if (paintedFromCache && !readBrowserOnline()) return;
+      if (cached) {
+        setLiveData(cached);
+        return;
+      }
+      // No cache yet: one full load fills it; the live sync takes over from there.
+      if (!readBrowserOnline()) return;
       try {
         const bootstrap = await loadTasksBootstrapHybrid();
-        if (!cancelled) applyData(bootstrap.data);
-      } catch {
         if (cancelled) return;
-        try {
-          const cached = await readCachedTasksData();
-          if (cached) applyData(cached);
-        } catch {
-          // Keep cache paint if any; otherwise overlay stays empty.
-        }
+        setLiveData(bootstrap.data);
+        setUsername(bootstrap.session.user.username || readOfflineTasksUsername());
+      } catch {
+        // Overlay stays empty; Calendar itself is unchanged.
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [applyData, presetMode]);
+  }, [presetMode]);
 
+  // The Tasks app or another Calendar tab pulled into the shared cache.
   useEffect(() => {
-    if (presetMode) return;
-    if (typeof document === "undefined") return;
+    if (presetMode || !username) return;
+    return subscribeTasksBootstrapUpdated(username, () => {
+      void rereadCache();
+    });
+  }, [presetMode, rereadCache, username]);
 
-    const onVisibilityChange = () => {
-      if (document.hidden) return;
-      void refreshFromHybrid();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [presetMode, refreshFromHybrid]);
-
-  useOfflineReconnectFlush({
-    enabled: !presetMode,
-    flush: refreshFromHybrid,
+  useTasksLiveInbound({
+    username: presetMode ? null : username,
+    enabled: !presetMode && online && wgwLiveApiEnabled(),
+    patchFromCache: rereadCache,
   });
 
   return useMemo(() => {

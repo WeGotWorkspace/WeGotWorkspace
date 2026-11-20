@@ -26,7 +26,7 @@ import { useOfflineConflictQueue } from "@/lib/offline/core/use-offline-conflict
 import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import type { TasksUIData } from "@/lib/models/tasks-types";
-import { useTasksLiveInbound } from "@/tasks-core/src/use-tasks-live-inbound";
+import { useTasksLiveInbound } from "@/lib/offline/tasks/use-tasks-live-inbound";
 import {
   createDefaultTasksApiSource,
   type TasksApiSource,
