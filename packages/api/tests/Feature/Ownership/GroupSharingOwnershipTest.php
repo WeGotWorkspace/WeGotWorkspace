@@ -144,10 +144,11 @@ final class GroupSharingOwnershipTest extends WgwDatabaseTestCase implements Own
             $cases[] = OwnershipCase::of(self::FEED_DELETE, $actor, Scope::OwnGroup, Outcome::Allowed)->variant('group-publish-peer');
 
             foreach (self::TRANSFER_DOMAINS as $domain) {
-                $case = $actor === Actor::Member
-                    ? OwnershipCase::of(self::SHARE_OPS[$domain], $actor, Scope::OwnGroup, Outcome::Forbidden)->withCode('group_delete_admin_only')
-                    : OwnershipCase::of(self::SHARE_OPS[$domain], $actor, Scope::OwnGroup, Outcome::Allowed);
-                $cases[] = $case->variant('group-take-personal');
+                // Taking a Team collection out is for its team admins (#2278): not a plain
+                // member, not an organization admin.
+                $cases[] = OwnershipCase::of(self::SHARE_OPS[$domain], $actor, Scope::OwnGroup, Outcome::Forbidden)
+                    ->withCode('team_admin_only')
+                    ->variant('group-take-personal');
             }
         }
 
@@ -297,8 +298,8 @@ final class GroupSharingOwnershipTest extends WgwDatabaseTestCase implements Own
     }
 
     /**
-     * member publishes a crew calendar, admin deletes it, and dave creates a
-     * new crew calendar with the same id. The old public URL serves nothing.
+     * member publishes a crew calendar, dave (team admin of crew) deletes it and
+     * creates a new crew calendar with the same id. The old public URL serves nothing.
      *
      * @param  array<string, mixed>  $target
      */
@@ -308,9 +309,9 @@ final class GroupSharingOwnershipTest extends WgwDatabaseTestCase implements Own
         $this->assertRestOutcome($response, $case);
         $token = $this->tokenFrom($response);
 
-        $admin = OwnershipPrincipals::ADMIN;
-        $this->jmapUser($admin, self::USING_CALENDARS, [
-            ['Calendar/set', ['accountId' => $admin, 'destroy' => [$target['id']], 'onDestroyRemoveEvents' => true], 'd'],
+        $teamAdmin = OwnershipPrincipals::DAVE;
+        $this->jmapUser($teamAdmin, self::USING_CALENDARS, [
+            ['Calendar/set', ['accountId' => $teamAdmin, 'destroy' => [$target['id']], 'onDestroyRemoveEvents' => true], 'd'],
         ])->assertJsonPath('methodResponses.0.1.destroyed', [$target['id']]);
         $this->assertSame(404, $this->requestAs(Actor::Anonymous, 'GET', '/calendars/feeds/'.$token)->getStatusCode(), $case->key().': the feed outlives its calendar.');
 

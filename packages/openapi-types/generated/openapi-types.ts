@@ -9640,6 +9640,253 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/teams/{team}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a Team's members
+         * @description Members with their team-admin flag, ordered by username. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamMemberListResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team}/member-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search users to add to a Team
+         * @description Users whose username, display name or email contains `q`, at most 20, ordered by username. The only place where the team-admin role shows a user outside the caller's Teams. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                };
+                header?: never;
+                path: {
+                    team: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamMemberCandidateListResponse"];
+                    };
+                };
+                /** @description `q` is shorter than two characters (`invalidProperties`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["JmapNotFound"];
+                /** @description More than 60 searches a minute by this caller; carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team}/members/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Add a member to a Team
+         * @description Idempotent. 404 for an unknown user. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        post?: never;
+        /**
+         * Remove a member from a Team
+         * @description Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team}/admins/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Appoint a team admin
+         * @description Idempotent. The user must be a member of the Team (409 `not_a_member`). For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+                /** @description The user is not a member of this Team (`not_a_member`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Dismiss a team admin
+         * @description Idempotent. A team admin may dismiss themself; a Team may be left without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9899,6 +10146,8 @@ export interface components {
             id: string;
             name: string;
             displayName: string;
+            /** @description Usernames of the Team's team admins, sorted. */
+            teamAdmins: string[];
         };
         AdminMailSettings: {
             smtpHost: string;
@@ -10066,12 +10315,14 @@ export interface components {
             displayName: string;
             /** @description How many members the Team has, the caller included. */
             memberCount: number;
+            /** @description Whether the caller is a team admin of this Team: may manage its members, its Projects and its Team collections. */
+            isTeamAdmin: boolean;
         };
         SettingsUserGroupList: components["schemas"]["SettingsUserGroup"][];
         SettingsStateResponse: {
             user: components["schemas"]["SettingsUserProfile"];
             groups: components["schemas"]["SettingsUserGroupList"];
-            /** @description Whether the caller has the admin role. Admin is a role per user, not membership of a Team. */
+            /** @description Whether the caller is an organization admin. Admin is a role per user, not membership of a Team. */
             isAdmin: boolean;
             logoutUrl: string;
             /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
@@ -12100,7 +12351,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -12134,7 +12385,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -13008,7 +13259,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
+            /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -13073,7 +13324,7 @@ export interface components {
             name?: string;
             color?: string | null;
             topic?: string | null;
-            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
+            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -13873,6 +14124,32 @@ export interface components {
             appPassword: components["schemas"]["SettingsAppPassword"];
             /** @description The new password: 16 lowercase letters. Returned once and never again. Clients show it in groups of four; spaces are ignored when it is used. */
             password: string;
+        };
+        /** @description A member of a Team, as its team admins and organization admins see them. */
+        TeamMember: {
+            username: string;
+            displayName: string;
+            /** @description Empty when the account has no address. */
+            email: string;
+            isTeamAdmin: boolean;
+        };
+        TeamMemberListResponse: {
+            list: components["schemas"]["TeamMember"][];
+        };
+        /** @description A user a team admin may add to the Team. This search is the only place where the team-admin role shows a user outside the caller's Teams. */
+        TeamMemberCandidate: {
+            username: string;
+            displayName: string;
+            /** @description Empty when the account has no address. */
+            email: string;
+            /** @description Already a member of this Team. */
+            isMember: boolean;
+        };
+        TeamMemberCandidateListResponse: {
+            list: components["schemas"]["TeamMemberCandidate"][];
+        };
+        TeamWriteResponse: {
+            ok: boolean;
         };
     };
     responses: {

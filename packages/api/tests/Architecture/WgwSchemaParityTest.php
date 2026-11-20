@@ -63,6 +63,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'jmap_file_node_departures',
             'push_subscriptions',
             'rtc_relay_events',
+            'team_admins',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),

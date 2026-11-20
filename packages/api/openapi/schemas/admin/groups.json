@@ -1,0 +1,29 @@
+{
+  "AdminGroupSummary": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "displayName": {
+        "type": "string"
+      },
+      "teamAdmins": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Usernames of the Team's team admins, sorted."
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "displayName",
+      "teamAdmins"
+    ]
+  }
+}

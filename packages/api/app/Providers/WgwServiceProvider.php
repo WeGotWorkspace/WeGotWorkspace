@@ -30,6 +30,7 @@ use App\Services\Jmap\JmapRequestContext;
 use App\Services\Tasks\Threads\TaskThreadSubject;
 use App\Services\Teams\TeamColleagues;
 use App\Services\Teams\TeamMembershipReader;
+use App\Services\Teams\TeamRoles;
 use App\Services\Threads\ThreadSubjectRegistry;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -81,12 +82,19 @@ final class WgwServiceProvider extends ServiceProvider
             $app->make(TeamMembershipReader::class),
             static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
         ));
+        $this->app->scoped(TeamRoles::class, static fn ($app): TeamRoles => new TeamRoles(
+            $app->make(TeamColleagues::class),
+            static fn (): AdminRoleResolver => $app->make(AdminRoleResolver::class),
+        ));
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(TeamColleagues::class)) {
                 $app->make(TeamColleagues::class)->forgetRequestState();
             }
             if ($app->resolved(TeamMembershipReader::class)) {
                 $app->make(TeamMembershipReader::class)->forget();
+            }
+            if ($app->resolved(TeamRoles::class)) {
+                $app->make(TeamRoles::class)->forget();
             }
             $app->forgetInstance(WgwSettings::class);
         });

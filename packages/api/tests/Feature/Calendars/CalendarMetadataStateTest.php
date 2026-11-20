@@ -29,6 +29,7 @@ final class CalendarMetadataStateTest extends WgwDatabaseTestCase
         $this->seedDefaultCalendarFor('alice');
         $this->setUpDavServer();
         $team = $this->seedWgwGroup('principals/groups/'.self::TEAM, 'Team');
+        $this->appointTeamAdmin(self::TEAM, 'bob');
         foreach (['bob', 'alice'] as $username) {
             $member = Principal::forUsername($username);
             $this->assertNotNull($member);

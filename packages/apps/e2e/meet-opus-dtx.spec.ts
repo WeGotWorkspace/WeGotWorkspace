@@ -64,6 +64,8 @@ async function setUp(group: string): Promise<string> {
     ["POST", "/admin/groups", { slug: group, displayName: group }],
     ["PUT", `/admin/groups/${group}/members/${OWNER}`, undefined],
     ["PUT", `/admin/groups/${group}/members/${TEAMMATE}`, undefined],
+    // A named Team channel is added by a team admin of that Team.
+    ["PUT", `/teams/${group}/admins/${OWNER}`, undefined],
   ] as const;
   for (const [method, path, body] of steps) {
     const res = await api(OWNER, method, path, body);

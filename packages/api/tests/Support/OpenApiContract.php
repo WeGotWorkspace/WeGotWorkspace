@@ -180,6 +180,7 @@ final class OpenApiContract
             '{messageId}' => 'INBOX:1',
             '{username}' => 'bob',
             '{group}' => 'testgroup',
+            '{team}' => 'testteam',
             '{participantId}' => 'peer-alpha',
             '{id}' => 'demo-plugin',
             '{name}' => 'backup.zip',

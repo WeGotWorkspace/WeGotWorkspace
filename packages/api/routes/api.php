@@ -70,6 +70,7 @@ use App\Http\Controllers\Api\V1\Tasks\TaskImportController;
 use App\Http\Controllers\Api\V1\Tasks\TaskListMembersController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Controllers\Api\V1\Tasks\TaskTextController;
+use App\Http\Controllers\Api\V1\Teams\TeamMembersController;
 use App\Http\Controllers\Api\V1\Threads\ThreadsController;
 use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\GuestUploadRateLimiters;
@@ -247,6 +248,17 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         ->where('resultId', '.+');
 
     Route::get('settings/state', SettingsStateController::class);
+    // Member management by a team admin of the Team or an organization admin (#2278).
+    // The controller answers a Team the caller may not manage like an unknown Team.
+    Route::prefix('teams/{team}')->where(['team' => '[a-z0-9_-]+', 'username' => '[a-z0-9_-]+'])
+        ->group(function (): void {
+            Route::get('members', [TeamMembersController::class, 'index']);
+            Route::get('member-candidates', [TeamMembersController::class, 'candidates']);
+            Route::put('members/{username}', [TeamMembersController::class, 'store']);
+            Route::delete('members/{username}', [TeamMembersController::class, 'destroy']);
+            Route::put('admins/{username}', [TeamMembersController::class, 'appoint']);
+            Route::delete('admins/{username}', [TeamMembersController::class, 'dismiss']);
+        });
     Route::put('settings/profile', SettingsProfileController::class);
     Route::get('settings/app-passwords', [SettingsAppPasswordsController::class, 'index']);
     Route::post('settings/app-passwords', [SettingsAppPasswordsController::class, 'store']);
