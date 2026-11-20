@@ -10,14 +10,14 @@ export const appPasswordLabels = {
   loadFailed: "Could not load your app passwords.",
   retry: "Try again",
   newButton: "Create app password",
-  removeAllButton: "Remove all",
+  removeAllButton: "Revoke all",
   /** A row's description: when it was made, when and by which app it was last used. */
   created: (day: string) => `Created ${day}`,
   notUsed: "Not used yet",
   lastUsed: (when: string) => `Last used ${when}`,
   /** The row's button; its accessible name is `remove(name)`. */
-  removeButton: "Remove",
-  remove: (name: string) => `Remove ${name}`,
+  removeButton: "Revoke",
+  remove: (name: string) => `Revoke ${name}`,
   createTitle: "New app password",
   createDescription: "Name it after the app or device that will use it.",
   nameLabel: "Name",
@@ -30,7 +30,7 @@ export const appPasswordLabels = {
   throttled: (time: string | null) =>
     time ? `Too many tries. Try again at ${time}.` : "Too many tries. Try again later.",
   limitReached: (max: number) =>
-    `You have ${max} app passwords. Remove one you no longer use, then try again.`,
+    `You have ${max} app passwords. Revoke one you no longer use, then try again.`,
   offlineAction: "You are offline. Try again when the connection is back.",
   createFailed: "Could not create the app password",
   create: "Save",
@@ -43,14 +43,14 @@ export const appPasswordLabels = {
   copied: "App password copied",
   copyFailed: "Could not copy. Select the password and copy it yourself.",
   done: "Done",
-  removeTitle: (name: string) => `Remove ${name}?`,
+  removeTitle: (name: string) => `Revoke ${name}?`,
   removeDescription: "Apps that use this password are signed out on their next sync.",
-  removeAllTitle: "Remove all app passwords?",
+  removeAllTitle: "Revoke all app passwords?",
   removeAllDescription:
     "Every calendar and contacts app that uses an app password is signed out on its next sync.",
-  removeConfirm: "Remove",
-  removeAllConfirm: "Remove all",
-  removed: "App password removed",
-  removedAll: "All app passwords removed",
-  removeFailed: "Could not remove the app password",
+  removeConfirm: "Revoke",
+  removeAllConfirm: "Revoke all",
+  removed: "App password revoked",
+  removedAll: "All app passwords revoked",
+  removeFailed: "Could not revoke the app password",
 } as const;

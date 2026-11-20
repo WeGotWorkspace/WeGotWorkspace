@@ -149,7 +149,7 @@ describe("SettingsSecurityPane", () => {
     expect(await screen.findByText(/^Created .* · Not used yet$/)).toBeTruthy();
   });
 
-  it("offers Remove all only from two app passwords", async () => {
+  it("offers Revoke all only from two app passwords", async () => {
     renderPane(MOCK_APP_PASSWORDS.slice(0, 1));
     expect(
       await screen.findByRole("button", { name: labels.remove(MOCK_APP_PASSWORDS[0]!.name) }),
@@ -157,7 +157,7 @@ describe("SettingsSecurityPane", () => {
     expect(screen.queryByRole("button", { name: labels.removeAllButton })).toBeNull();
   });
 
-  it("shows the empty state without a Remove all button", async () => {
+  it("shows the empty state without a Revoke all button", async () => {
     renderPane([]);
     expect(await screen.findByText(labels.empty)).toBeTruthy();
     expect(screen.queryByRole("button", { name: labels.removeAllButton })).toBeNull();
@@ -246,7 +246,7 @@ describe("SettingsSecurityPane", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(labels.limitReached(50)));
   });
 
-  it("removes one app password after a confirm", async () => {
+  it("revokes one app password after a confirm", async () => {
     const operations = renderPane();
     fireEvent.click(await screen.findByRole("button", { name: labels.remove("Old Android") }));
     const confirm = await screen.findByRole("alertdialog");
@@ -267,7 +267,7 @@ describe("SettingsSecurityPane", () => {
     expect(screen.getByText("Old Android")).toBeTruthy();
   });
 
-  it("removes all after a confirm", async () => {
+  it("revokes all after a confirm", async () => {
     const operations = renderPane();
     fireEvent.click(await screen.findByRole("button", { name: labels.removeAllButton }));
     const confirm = await screen.findByRole("alertdialog");

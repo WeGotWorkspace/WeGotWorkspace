@@ -90,7 +90,7 @@ export const Throttled: Story = {
   },
 };
 
-export const ConfirmRemoveAll: Story = {
+export const ConfirmRevokeAll: Story = {
   render: story(() => createMockAppPasswordOperations(MOCK_APP_PASSWORDS)),
   play: async ({ canvasElement }) => {
     const page = within(canvasElement.ownerDocument.body);
