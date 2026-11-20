@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/button/src/button";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
-import { TeamMembersCard } from "@/settings-core/src/team-members-card";
+import { TeamMembersCard } from "@/share-ui/team-members-card";
 import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
-import {
-  AutosaveStatusProvider,
-  AutosaveStatusTag,
-  useTrackAutosave,
-} from "@/ui/autosave-status";
+import { AutosaveStatusProvider, AutosaveStatusTag, useTrackAutosave } from "@/ui/autosave-status";
 import {
   Dialog,
   DialogContent,
@@ -189,9 +185,7 @@ function EditTeamBody({ open, team, users, onOpenChange, onSave }: EditTeamDialo
         onQueryChange={setQuery}
         candidates={candidates}
         minQueryLength={1}
-        onAdd={(userId) =>
-          update({ ...draft, memberUserIds: [...draft.memberUserIds, userId] }, 0)
-        }
+        onAdd={(userId) => update({ ...draft, memberUserIds: [...draft.memberUserIds, userId] }, 0)}
         onRoleChange={(member, role) =>
           update(
             {

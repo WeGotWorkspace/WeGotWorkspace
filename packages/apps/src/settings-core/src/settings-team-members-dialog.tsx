@@ -25,8 +25,8 @@ import {
   type TeamMembersOperations,
 } from "@/lib/api/wgw/teams";
 import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
-import { teamMembersLabels as labels } from "@/settings-core/src/settings-team-members-labels";
-import { TeamMembersCard } from "@/settings-core/src/team-members-card";
+import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
+import { TeamMembersCard } from "@/share-ui/team-members-card";
 
 export type SettingsTeamMembersDialogProps = {
   open: boolean;
