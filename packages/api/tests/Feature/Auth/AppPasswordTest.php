@@ -338,6 +338,31 @@ final class AppPasswordTest extends WgwDatabaseTestCase
         $this->dav('bob', $plain)->assertStatus(429);
     }
 
+    public function test_refused_attempts_while_throttled_do_not_fill_the_wider_limits(): void
+    {
+        $plain = $this->createAppPassword('bob');
+
+        // One address keeps retrying a wrong account password on DAV, then on Meet.
+        for ($attempt = 1; $attempt <= 60; $attempt++) {
+            $this->dav('bob', 'old-password')->assertStatus($attempt <= LoginRateLimiter::PROTOCOL_USER_IP_LIMIT ? 401 : 429);
+        }
+        for ($attempt = 1; $attempt <= 60; $attempt++) {
+            try {
+                $this->meet('bob', 'old-password');
+                $this->fail('Throttled Meet Basic accepted a wrong account password.');
+            } catch (ApiHttpException $locked) {
+                $this->assertSame(429, $locked->getStatusCode());
+            }
+        }
+
+        $this->dav('bob', $plain)->assertStatus(207);
+        $this->assertSame('bob', $this->meet('bob', $plain));
+        $this->dav('bob', 'old-password')->assertStatus(429);
+        // The refusals added no hits: other addresses and users are not locked out.
+        $this->dav('bob', 'secret', ['REMOTE_ADDR' => '192.0.2.50'])->assertStatus(207);
+        $this->dav('carol', 'secret')->assertStatus(207);
+    }
+
     public function test_a_valid_app_password_signs_in_from_any_address_while_the_user_wide_limit_is_reached(): void
     {
         $plain = $this->createAppPassword('bob');
