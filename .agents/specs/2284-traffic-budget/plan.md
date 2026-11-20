@@ -63,7 +63,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 ## Open decisions
 
 - [x] Chunk G: the Helm chart is not in this repository (no `Chart.yaml` found). Chunk G does not edit a chart; the install docs name `WGW_INSTALL_CHANNEL` / `WGW_TRAFFIC_PROFILE`, and whoever maintains the chart sets `WGW_TRAFFIC_PROFILE=standard`.
-- [ ] Idle budget (chunk C): measured after chunk I, one idle Docs tab makes 15 requests/min (push 10, two 30 s room heartbeats 4, notifications 1) against ≤ 10. Push at 6 s idle alone is 10/min. Wouter decides which gives: the idle budget, the idle push interval (slower idle join), or the heartbeats.
+- [x] Idle budget (chunk C): measured after chunk I, one idle Docs tab made 15 requests/min (push 10, two 30 s room heartbeats 4, notifications 1) against ≤ 10. Decided 2026-11-20 (Wouter): keep idle push at 6 s and the ≤ 10 budget; room heartbeats and the notifications poll ride the push request. A push read refreshes `seen_at` only for the peers this browser sends with it (never other devices' peers), and the notification inbox gets a push type. Target: one idle Docs tab ≈ 10/min, newcomer seen within ~6 s idle.
 
 ## Invariants
 

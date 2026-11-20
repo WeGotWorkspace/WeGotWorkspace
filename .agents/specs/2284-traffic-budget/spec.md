@@ -31,8 +31,8 @@ Keep one browser of one user — every tab, installed PWA window and service wor
 - Shared hosting: no long-lived connections, no extra processes (README promise; `docs/realtime-capacity.md` 5 FPM children profile).
 
 - Push cost budget: a push request with every type stays ≤ 25 ms on the reference stack (measured ~14 ms for 13 types, ~0.3 ms per type). Each new type's state is one indexed query per caller and excludes heartbeat fields (`seen_at`), or it would change on every poll.
-- Signaling peers expire after `peerTimeoutSeconds` (60–90 s) without a poll; a room behind the doorbell keeps a heartbeat poll below that.
-- Push cadence 3 s active, 6 s idle, 30 s hidden (20/10/2 per minute) is most of the per-browser budget; little else may poll. At 6 s idle, push alone fills the ≤ 10/min idle budget, so idle push, room heartbeats and the idle budget cannot all hold (see plan.md Open decisions).
+- Signaling peers expire after `peerTimeoutSeconds` (60–90 s) without a poll; a room behind the doorbell is kept alive by the push request (which refreshes only the peers its browser names), and by its own heartbeat poll only while push is down.
+- Push cadence 3 s active, 6 s idle, 30 s hidden (20/10/2 per minute) is most of the per-browser budget; little else may poll. At 6 s idle, push alone fills the ≤ 10/min idle budget, so room heartbeats and the notifications poll ride the push request instead of polling on their own (decided 2026-11-20, plan.md Open decisions).
 
 ## Edge cases
 
