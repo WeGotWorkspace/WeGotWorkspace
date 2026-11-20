@@ -21,10 +21,10 @@ import {
 } from "@/ui/dialog";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
+import { TeamMembersCard } from "@/settings-core/src/team-members-card";
+import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
 
 type UserDialogPayload = { username: string; displayName: string; email: string; isAdmin: boolean };
 
@@ -273,7 +273,13 @@ type GroupDialogProps = {
   open: boolean;
   title: string;
   initial?: { id: string; displayName: string; teamAdmins: string[] };
-  users: Array<{ id: string; displayName: string; username: string; groups: string[] }>;
+  users: Array<{
+    id: string;
+    displayName: string;
+    username: string;
+    email?: string;
+    groups: string[];
+  }>;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: {
     name: string;
@@ -315,6 +321,7 @@ export function GroupDialog({
     if (wasOpenRef.current) return;
     wasOpenRef.current = true;
     setName(initial?.displayName ?? "");
+    setQuery("");
     setTeamAdminUserIds(teamAdminUserIdsOf(initial, users));
     setMemberUserIds(
       initial
@@ -322,10 +329,25 @@ export function GroupDialog({
         : [],
     );
   }, [open, initial, users]);
-  const toggleMember = (userId: string) =>
-    setMemberUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((candidate) => candidate !== userId) : [...prev, userId],
-    );
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const candidates: ShareSearchOption[] =
+    needle === ""
+      ? []
+      : users
+          .filter(
+            (user) =>
+              !memberUserIds.includes(user.id) &&
+              [user.displayName, user.username, user.email ?? ""].some((field) =>
+                field.toLowerCase().includes(needle),
+              ),
+          )
+          .map((user) => ({
+            id: user.id,
+            displayName: user.displayName,
+            principalType: "user" as const,
+            meta: user.email ? user.email : user.username,
+          }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -345,48 +367,32 @@ export function GroupDialog({
           />
         </FormField>
         {initial ? (
-          <FormField
-            label="Members"
-            description="A team admin adds and removes members and manages the Team's Projects."
-          >
-            <ul className="admin-group-member-list">
-              {users.map((user) => (
-                <li key={user.id} className="admin-group-member-row">
-                  <UserAvatar
-                    displayName={user.displayName}
-                    subtitle={user.username}
-                    size="md"
-                    className="flex-1"
-                  />
-                  {memberUserIds.includes(user.id) ? (
-                    <Select
-                      value={teamAdminUserIds.includes(user.id) ? "teamAdmin" : "member"}
-                      onValueChange={(next) =>
-                        setTeamAdminUserIds((prev) =>
-                          next === "teamAdmin"
-                            ? [...prev.filter((id) => id !== user.id), user.id]
-                            : prev.filter((id) => id !== user.id),
-                        )
-                      }
-                    >
-                      <SelectTrigger size="sm" aria-label={`Role of ${user.displayName}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent align="end">
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="teamAdmin">Team admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : null}
-                  <Switch
-                    checked={memberUserIds.includes(user.id)}
-                    onCheckedChange={() => toggleMember(user.id)}
-                    aria-label={`${user.displayName} team member`}
-                  />
-                </li>
-              ))}
-            </ul>
-          </FormField>
+          <TeamMembersCard
+            members={users
+              .filter((user) => memberUserIds.includes(user.id))
+              .map((user) => ({
+                id: user.id,
+                displayName: user.displayName,
+                username: user.username,
+                isTeamAdmin: teamAdminUserIds.includes(user.id),
+              }))}
+            query={query}
+            onQueryChange={setQuery}
+            candidates={candidates}
+            minQueryLength={1}
+            onAdd={(userId) => setMemberUserIds((prev) => [...prev, userId])}
+            onRoleChange={(member, role) =>
+              setTeamAdminUserIds((prev) =>
+                role === "teamAdmin"
+                  ? [...prev.filter((id) => id !== member.id), member.id]
+                  : prev.filter((id) => id !== member.id),
+              )
+            }
+            onRemove={(member) => {
+              setMemberUserIds((prev) => prev.filter((id) => id !== member.id));
+              setTeamAdminUserIds((prev) => prev.filter((id) => id !== member.id));
+            }}
+          />
         ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

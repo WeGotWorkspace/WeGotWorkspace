@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/button/src/button";
 import {
   AlertDialog,
@@ -25,23 +24,9 @@ import {
   type TeamMemberCandidate,
   type TeamMembersOperations,
 } from "@/lib/api/wgw/teams";
-import { ShareAccessCard } from "@/share-ui/share-access-card";
-import { ShareAccessRow } from "@/share-ui/share-access-row";
-import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import { SharePrincipalMark } from "@/share-ui/share-principal-mark";
-import {
-  SharePrincipalSearchDropdown,
-  type ShareSearchOption,
-} from "@/share-ui/share-principal-search-dropdown";
-import { ShareRowSelect, type ShareRowSelectOption } from "@/share-ui/share-row-select";
+import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
 import { teamMembersLabels as labels } from "@/settings-core/src/settings-team-members-labels";
-
-type TeamRole = "member" | "teamAdmin";
-
-const ROLE_OPTIONS: readonly ShareRowSelectOption<TeamRole>[] = [
-  { value: "member", label: labels.roleMember },
-  { value: "teamAdmin", label: labels.roleTeamAdmin },
-];
+import { TeamMembersCard } from "@/settings-core/src/team-members-card";
 
 export type SettingsTeamMembersDialogProps = {
   open: boolean;
@@ -71,7 +56,6 @@ export function SettingsTeamMembersDialog({
   onMembersChange,
 }: SettingsTeamMembersDialogProps) {
   const slug = team?.slug ?? null;
-  const addFieldId = useId();
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -154,75 +138,36 @@ export function SettingsTeamMembersDialog({
             </DialogTitle>
             <DialogDescription>{labels.description}</DialogDescription>
           </DialogHeader>
-          <ShareAccessCard
-            htmlFor={addFieldId}
-            icon={<Users aria-hidden />}
-            title={labels.sectionTitle}
-            description={labels.sectionHint}
-            addControl={
-              <SharePrincipalSearchDropdown
-                query={query}
-                searching={searching}
-                results={searchOptions}
-                emptyLabel={labels.noCandidates}
-                listLabel={labels.sectionTitle}
-                minQueryLength={TEAM_CANDIDATE_MIN_QUERY}
-                onSelect={(option) => {
-                  setQuery("");
-                  change((teamSlug) => operations.addMember(teamSlug, option.id));
-                }}
-              >
-                <ShareDialogInput
-                  id={addFieldId}
-                  value={query}
-                  placeholder={labels.addPlaceholder}
-                  className="share-dialog__add-grant-input"
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </SharePrincipalSearchDropdown>
+          <TeamMembersCard
+            members={(members ?? []).map((member) => ({ ...member, id: member.username }))}
+            query={query}
+            onQueryChange={setQuery}
+            candidates={searchOptions}
+            searching={searching}
+            minQueryLength={TEAM_CANDIDATE_MIN_QUERY}
+            onAdd={(username) => change((teamSlug) => operations.addMember(teamSlug, username))}
+            onRoleChange={(member, role) =>
+              change((teamSlug) =>
+                role === "teamAdmin"
+                  ? operations.appointTeamAdmin(teamSlug, member.username)
+                  : operations.dismissTeamAdmin(teamSlug, member.username),
+              )
             }
-          >
-            {error !== null ? (
-              <p className="settings-team-members-dialog__error" role="alert">
-                {error}
-              </p>
-            ) : null}
-            {members === null && error === null ? (
-              <p className="settings-team-members-dialog__state" role="status">
-                {labels.loading}
-              </p>
-            ) : null}
-            {(members ?? []).map((member) => (
-              <ShareAccessRow
-                key={member.username}
-                mark={
-                  <SharePrincipalMark
-                    principalType="user"
-                    displayName={member.displayName}
-                    subtitle={member.username}
-                    size="sm"
-                    labeled
-                  />
-                }
-                trailing={
-                  <ShareRowSelect<TeamRole>
-                    value={member.isTeamAdmin ? "teamAdmin" : "member"}
-                    options={ROLE_OPTIONS}
-                    aria-label={labels.roleOf(member.displayName)}
-                    onChange={(next) =>
-                      change((teamSlug) =>
-                        next === "teamAdmin"
-                          ? operations.appointTeamAdmin(teamSlug, member.username)
-                          : operations.dismissTeamAdmin(teamSlug, member.username),
-                      )
-                    }
-                  />
-                }
-                removeLabel={labels.removeLabel(member.displayName)}
-                onRemove={() => setPendingRemoval(member)}
-              />
-            ))}
-          </ShareAccessCard>
+            onRemove={(member) =>
+              setPendingRemoval((members ?? []).find((m) => m.username === member.username) ?? null)
+            }
+            status={
+              error !== null ? (
+                <p className="settings-team-members-dialog__error" role="alert">
+                  {error}
+                </p>
+              ) : members === null ? (
+                <p className="settings-team-members-dialog__state" role="status">
+                  {labels.loading}
+                </p>
+              ) : null
+            }
+          />
           <DialogFooter>
             <Button onClick={() => onOpenChange(false)}>{labels.done}</Button>
           </DialogFooter>
