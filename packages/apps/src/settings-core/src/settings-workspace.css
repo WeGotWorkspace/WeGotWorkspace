@@ -43,38 +43,18 @@
   @apply min-w-0 flex-1;
 }
 
-/* Teams: a row per Team (icon tile, name, member count), hairlines as the settings rows. */
-.settings-workspace .settings-team-list {
-  @apply m-0 list-none p-0;
-}
-
-.settings-workspace .settings-team-row {
-  @apply flex items-center gap-3 py-3;
-}
-
-.settings-workspace .settings-team-row + .settings-team-row {
-  border-top: 1px solid var(--workspace-divider-color);
-}
-
-.settings-workspace .settings-team-row__icon {
-  @apply flex size-9 shrink-0 items-center justify-center;
-  border-radius: var(--control-radius);
-  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-  background-color: color-mix(in oklch, var(--workspace-foreground) 7%, transparent);
-}
-
-.settings-workspace .settings-team-row__icon svg {
-  @apply size-4;
-}
-
-.settings-workspace .settings-team-row__name {
-  @apply min-w-0 flex-1 truncate font-medium;
-  font-size: var(--input-font-size-md, 0.875rem);
-  color: var(--workspace-foreground);
-}
-
 .settings-workspace .settings-memberships-pane__empty {
   @apply text-sm text-muted-foreground;
+}
+
+/* Team members dialog (#2278): the Share dialog's member list, with a quiet state line. */
+.settings-team-members-dialog__state {
+  @apply m-0 py-2 text-sm text-muted-foreground;
+}
+
+.settings-team-members-dialog__error {
+  @apply m-0 py-2 text-sm;
+  color: var(--destructive);
 }
 
 .settings-workspace .settings-connected-assistants-pane,
