@@ -49,7 +49,8 @@ final class NotebookRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
-        $lists = $this->accessibleNotebookInstances($username)
+        $instances = $this->accessibleNotebookInstances($username);
+        $lists = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -168,7 +169,7 @@ final class NotebookRepository
             }
             [$instance, $groupSlug] = $resolved;
 
-            $this->collectionAccess->assertShareePatchAllowed(
+            $this->collectionAccess->assertPatchAllowed(
                 $instance,
                 $payload,
                 ['description', 'shareWith', 'groupSlug'],
@@ -559,7 +560,7 @@ final class NotebookRepository
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            ...$this->collectionAccess->projectFields($instance, $rights),
         ];
     }
 

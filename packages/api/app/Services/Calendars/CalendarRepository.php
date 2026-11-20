@@ -48,7 +48,8 @@ final class CalendarRepository
     /** @return array<string, mixed> */
     public function list(string $username): array
     {
-        $calendars = $this->accessibleVeventInstances($username)
+        $instances = $this->accessibleVeventInstances($username);
+        $calendars = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -162,7 +163,7 @@ final class CalendarRepository
             }
             [$instance, $groupSlug] = $resolved;
 
-            $this->collectionAccess->assertShareePatchAllowed(
+            $this->collectionAccess->assertPatchAllowed(
                 $instance,
                 $payload,
                 ['description', 'timeZone', 'shareWith', 'groupSlug'],
@@ -565,7 +566,7 @@ final class CalendarRepository
             'scope' => $isGroup ? 'group' : 'personal',
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
-            'myRights' => $rights,
+            ...$this->collectionAccess->projectFields($instance, $rights),
         ];
     }
 

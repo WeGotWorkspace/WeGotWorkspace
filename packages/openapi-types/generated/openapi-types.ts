@@ -12027,6 +12027,8 @@ export interface components {
             mayShare: boolean;
             /** @description On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false. */
             mayDelete: boolean;
+            /** @description Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants. */
+            mayRename?: boolean;
         };
         /**
          * @description JMAP Calendar resource.
@@ -12042,6 +12044,7 @@ export interface components {
          *       "subscriptionId": null,
          *       "scope": "personal",
          *       "groupSlug": null,
+         *       "projectId": null,
          *       "shareWith": null,
          *       "myRights": {
          *         "mayRead": true,
@@ -12068,6 +12071,8 @@ export interface components {
              * @enum {string}
              */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             /** @description Group slug when scope is group; null for personal calendars. */
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
@@ -12106,6 +12111,8 @@ export interface components {
             mayRSVP: boolean;
             mayAdmin: boolean;
             mayDelete: boolean;
+            /** @description Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants. */
+            mayRename?: boolean;
             /** @description May modify shareWith. True for personal list owners and group-collection members. */
             mayShare: boolean;
         };
@@ -12123,6 +12130,8 @@ export interface components {
              * @enum {string}
              */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             /** @description Group slug when scope is group; null for personal task lists. */
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
@@ -13199,6 +13208,8 @@ export interface components {
             isDefault: boolean;
             /** @enum {string} */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
@@ -13244,6 +13255,8 @@ export interface components {
             kind: "channel" | "meeting" | "dm";
             /** @enum {string} */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {

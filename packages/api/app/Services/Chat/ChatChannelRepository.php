@@ -254,7 +254,7 @@ final class ChatChannelRepository
 
         // Sharees may only rename/recolor their own instance; topic lives in the
         // shared meta row, so it stays owner-side like shareWith and groupSlug.
-        $this->collectionAccess->assertShareePatchAllowed(
+        $this->collectionAccess->assertPatchAllowed(
             $instance,
             $payload,
             ['topic', 'shareWith', 'groupSlug'],
@@ -436,7 +436,7 @@ final class ChatChannelRepository
             'groupSlug' => $groupSlug,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            ...$this->collectionAccess->projectFields($instance, $rights),
             'isDefault' => $isDefault,
             'topic' => $meta?->topic,
             'guestRoomCode' => $meta?->room_code,

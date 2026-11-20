@@ -5659,6 +5659,10 @@
                     "mayDelete": {
                         "type": "boolean",
                         "description": "On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false."
+                    },
+                    "mayRename": {
+                        "type": "boolean",
+                        "description": "Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants."
                     }
                 },
                 "additionalProperties": false,
@@ -5730,6 +5734,13 @@
                         ],
                         "description": "Storage scope: personal (principals/{username}) or group (principals/groups/{slug})."
                     },
+                    "projectId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead."
+                    },
                     "groupSlug": {
                         "type": [
                             "string",
@@ -5772,6 +5783,7 @@
                     "subscriptionId": null,
                     "scope": "personal",
                     "groupSlug": null,
+                    "projectId": null,
                     "shareWith": null,
                     "myRights": {
                         "mayRead": true,
@@ -5880,6 +5892,10 @@
                     "mayDelete": {
                         "type": "boolean"
                     },
+                    "mayRename": {
+                        "type": "boolean",
+                        "description": "Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants."
+                    },
                     "mayShare": {
                         "type": "boolean",
                         "description": "May modify shareWith. True for personal list owners and group-collection members."
@@ -5940,6 +5956,13 @@
                             "group"
                         ],
                         "description": "Storage scope: personal (users/{username}) or group (groups/{slug})."
+                    },
+                    "projectId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead."
                     },
                     "groupSlug": {
                         "type": [
@@ -9842,6 +9865,13 @@
                             "group"
                         ]
                     },
+                    "projectId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead."
+                    },
                     "groupSlug": {
                         "type": [
                             "string",
@@ -10031,6 +10061,13 @@
                             "personal",
                             "group"
                         ]
+                    },
+                    "projectId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead."
                     },
                     "groupSlug": {
                         "type": [
