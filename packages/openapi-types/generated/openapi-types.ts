@@ -9458,6 +9458,188 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/app-passwords": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's app passwords */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Active app passwords, newest first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsAppPasswordList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a named app password for DAV and Meet Basic sign-in
+         * @description Requires the account password, which shares the sign-in rate limit. The plaintext is in this response only.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SettingsAppPasswordCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description App password created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsAppPasswordCreated"];
+                    };
+                };
+                /** @description Name missing, blank or longer than 60 characters, or currentPassword missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Current password is incorrect (`current_password_invalid`) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The caller already has 50 active app passwords (`app_password_limit`) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many sign-in attempts (`throttled`) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/app-passwords/revocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke every app password of the caller */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All app passwords revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/app-passwords/{appPasswordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one app password of the caller */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    appPasswordId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description App password revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description No active app password with this id for the caller */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -13657,6 +13839,40 @@ export interface components {
             changed: string[];
             removed: string[];
             hasMoreChanges: boolean;
+        };
+        /** @description A named password for one calendar, contacts, files or meeting app. The secret itself is never listed. */
+        SettingsAppPassword: {
+            id: number;
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last DAV or Meet Basic sign-in with this password, written at most once per five minutes.
+             */
+            lastUsedAt: string | null;
+            /** @description User-Agent of that sign-in, cut to 120 characters. */
+            lastUsedClient: string | null;
+        };
+        SettingsAppPasswordList: {
+            /** @description Active app passwords of the caller, newest first. Revoked ones are not listed. */
+            appPasswords: components["schemas"]["SettingsAppPassword"][];
+        };
+        /**
+         * @example {
+         *       "name": "Phone calendar",
+         *       "currentPassword": "correct horse battery staple"
+         *     }
+         */
+        SettingsAppPasswordCreateRequest: {
+            name: string;
+            /** @description The account password. An app password is not accepted here. Failures count on the sign-in rate limit. */
+            currentPassword: string;
+        };
+        SettingsAppPasswordCreated: {
+            appPassword: components["schemas"]["SettingsAppPassword"];
+            /** @description The new password: 16 lowercase letters. Returned once and never again. Clients show it in groups of four; spaces are ignored when it is used. */
+            password: string;
         };
     };
     responses: {

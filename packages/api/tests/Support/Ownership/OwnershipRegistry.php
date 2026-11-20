@@ -125,6 +125,8 @@ final class OwnershipRegistry
             'GET /files/context' => 'Returns the caller drive context.',
             'GET /settings/state' => 'Returns the caller settings.',
             'PUT /settings/profile' => 'Updates the caller profile.',
+            'POST /settings/app-passwords' => 'Creates an app password for the caller only; the username comes from the token (AppPasswordTest).',
+            'POST /settings/app-passwords/revocations' => "Revokes only the caller's own app passwords (AppPasswordTest::test_revoking_another_users_app_password_is_not_found_and_leaves_it_working).",
             'GET /jmap/session' => 'Returns the caller JMAP session.',
             'GET /calendars/availability' => "Returns the caller's own Team availability settings.",
             'PUT /calendars/availability' => "Writes only the caller's own settings rows; a calendarId outside the caller's own personal or Team event calendars is 422 (CalendarAvailabilitySettingsTest).",
