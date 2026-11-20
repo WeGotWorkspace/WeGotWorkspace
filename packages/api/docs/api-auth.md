@@ -169,8 +169,8 @@ A form post (not JSON) for a user with two-factor on does not sign in; it goes b
 | Unknown, expired (10 min), used, or other-client challenge | 404 `not_found`; an `spa` challenge never completes on `/oauth/session` and the other way round |
 | Wrong code or recovery code | 401 `mfa_code_invalid` (403 on the settings routes) |
 | Same code twice, or an older one | refused: `user_mfa.last_used_step` only moves forward; one step of clock drift either way is accepted |
-| 5 wrong codes on one challenge | the challenge is gone (404) |
-| 10 wrong codes for one user within an hour, across challenges and settings | 429 `throttled` with `Retry-After`, even for the right code; open challenges are deleted |
+| 5 tries on one challenge | the challenge is gone (404); each try is counted before the code is read |
+| 10 wrong codes for one user within an hour, across challenges and settings | locked for an hour from the tenth: 429 `throttled` with `Retry-After`, even for the right code; open challenges are deleted |
 | Sign-in limits | every code also counts on the web sign-in limiter of user and address; unknown challenge ids count on the address |
 | Disabled user | 401 `unauthorized` |
 | Secret no longer decrypts (APP_KEY changed) | 503 `mfa_unavailable` and a `mfa_secret_unreadable` log line; reset the user |

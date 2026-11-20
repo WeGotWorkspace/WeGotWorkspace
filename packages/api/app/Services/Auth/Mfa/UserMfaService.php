@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Auth\Mfa;
 
 use App\Exceptions\ApiHttpException;
+use App\Models\AuthChallenge;
 use App\Models\UserMfa;
 use App\Services\Auth\UserSessionRevoker;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -196,13 +196,25 @@ final class UserMfaService
     public function readSecret(UserMfa $row): string
     {
         try {
-            // The raw column, decrypted here, so a changed APP_KEY lands in
-            // this catch and not in a 500 from the model cast.
-            return Crypt::decryptString((string) $row->getRawOriginal('totp_secret'));
+            return (string) $row->getAttribute('totp_secret');
         } catch (DecryptException) {
             Log::error('mfa_secret_unreadable', ['username' => $row->username, 'hint' => 'APP_KEY changed? Reset this user\'s two-factor (wgw:mfa:reset).']);
 
             throw new ApiHttpException(503, 'Two-factor sign-in is not available for this account. Ask an admin to reset it.', 'mfa_unavailable');
+        }
+    }
+
+    /**
+     * The new secret of a replacement challenge, failing closed the same way.
+     */
+    public function readPendingSecret(AuthChallenge $challenge): string
+    {
+        try {
+            return (string) $challenge->getAttribute('pending_secret');
+        } catch (DecryptException) {
+            Log::error('mfa_secret_unreadable', ['username' => $challenge->username, 'hint' => 'APP_KEY changed during a replacement. Sign in again.']);
+
+            throw new ApiHttpException(503, 'Two-factor sign-in is not available right now. Sign in again.', 'mfa_unavailable');
         }
     }
 

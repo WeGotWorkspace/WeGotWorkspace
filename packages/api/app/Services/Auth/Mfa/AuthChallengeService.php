@@ -75,9 +75,18 @@ final class AuthChallengeService
         }
     }
 
-    public function recordFailure(AuthChallenge $challenge): void
+    /**
+     * Counts this try before the code is read, with an atomic conditional
+     * update, so parallel requests cannot get more than MAX_ATTEMPTS tries on
+     * one challenge. False when the tries are used up.
+     */
+    public function reserveAttempt(AuthChallenge $challenge): bool
     {
-        AuthChallenge::query()->whereKey($challenge->id)->increment('attempts');
+        return AuthChallenge::query()
+            ->whereKey($challenge->id)
+            ->whereNull('consumed_at')
+            ->where('attempts', '<', self::MAX_ATTEMPTS)
+            ->increment('attempts') === 1;
     }
 
     public function forgetUser(string $username): void

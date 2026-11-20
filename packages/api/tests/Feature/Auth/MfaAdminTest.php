@@ -51,6 +51,16 @@ final class MfaAdminTest extends WgwDatabaseTestCase
         $this->signInWithPassword('bob')->assertOk()->assertJsonPath('status', 'ok');
     }
 
+    public function test_an_admin_password_change_leaves_two_factor_on(): void
+    {
+        $this->turnOnMfa('bob');
+
+        $this->asAdmin()->patchJson('/api/v1/admin/users/bob', ['password' => 'newpassword12'])->assertOk();
+
+        $this->assertSame(1, UserMfa::query()->where('username', 'bob')->whereNotNull('enabled_at')->count());
+        $this->signInWithPassword('bob', 'newpassword12')->assertJsonPath('status', 'mfa_required');
+    }
+
     public function test_reset_works_when_the_secret_cannot_be_decrypted(): void
     {
         $this->turnOnMfa('bob');

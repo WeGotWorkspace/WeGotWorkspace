@@ -136,7 +136,11 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         // A recovery code is not a current code.
         $this->settings('DELETE', 'settings/totp', ['code' => $turnedOn['recovery_codes'][0]])->assertForbidden();
 
+        $other = app(AuthTokenService::class)->issueForUsername('bob');
         $this->settings('DELETE', 'settings/totp', ['code' => $this->code($turnedOn['secret'])])->assertOk()->assertJsonPath('ok', true);
+
+        // Turning it off ends no other session.
+        $this->postRefresh($other['refresh_token'])->assertOk();
 
         $this->assertSame(0, UserMfa::query()->count());
         $this->assertSame(0, MfaRecoveryCode::query()->count());

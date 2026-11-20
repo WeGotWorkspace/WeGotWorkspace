@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Dav\Auth\VerifiedPasswordMemory;
 use App\Exceptions\ApiHttpException;
+use App\Models\ApiPasswordResetToken;
 use App\Models\AuthChallenge;
 use App\Models\MfaRecoveryCode;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Services\Auth\AppPasswordService;
 use App\Services\Auth\AuthTokenService;
 use App\Services\Auth\Mfa\AuthChallengeService;
 use App\Services\Auth\Mfa\MfaCodeLimiter;
+use App\Services\Auth\PasswordRecoveryService;
 use App\Services\Mcp\ConsentIntent;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Contracts\Cache\Repository;
@@ -273,6 +275,51 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertOk();
     }
 
+    public function test_the_lock_lasts_an_hour_from_the_tenth_failure(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $challenge = $this->challengeFor('bob');
+        $this->verifyChallenge($challenge, ['code' => $this->wrongCode($secret)])->assertStatus(401);
+
+        // Eight more just before the counter's first-hit timer runs out.
+        Carbon::setTestNow(Carbon::now()->addMinutes(59));
+        for ($round = 0; $round < 2; $round++) {
+            $challenge = $this->challengeFor('bob');
+            for ($i = 0; $i < 4; $i++) {
+                $this->verifyChallenge($challenge, ['code' => $this->wrongCode($secret)])->assertStatus(401);
+            }
+        }
+        $locked = $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->wrongCode($secret)]);
+        $locked->assertStatus(429);
+        $this->assertGreaterThan(3500, (int) $locked->headers->get('Retry-After'));
+
+        // Past the hour after the first failure: still locked.
+        Carbon::setTestNow(Carbon::now()->addMinutes(2));
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertStatus(429);
+
+        // An hour after the tenth: open again.
+        Carbon::setTestNow(Carbon::now()->addMinutes(59));
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertOk();
+    }
+
+    public function test_a_password_reset_by_email_leaves_two_factor_on(): void
+    {
+        $this->turnOnMfa('bob');
+        $token = bin2hex(random_bytes(32));
+        ApiPasswordResetToken::query()->create([
+            'token_hash' => hash('sha256', $token),
+            'username' => 'bob',
+            'expires_at' => time() + PasswordRecoveryService::TOKEN_TTL_SECONDS,
+        ]);
+
+        $this->postJson('/api/v1/auth/password-resets/'.$token, ['password' => 'newpassword12'])
+            ->assertOk()
+            ->assertJsonMissingPath('access_token');
+
+        $this->signInWithPassword('bob', 'newpassword12')->assertOk()->assertJsonPath('status', 'mfa_required');
+        $this->dav('bob', 'newpassword12')->assertStatus(401);
+    }
+
     public function test_second_request_after_limit_is_refused_before_the_code_is_read(): void
     {
         $secret = $this->turnOnMfa('bob')['secret'];
@@ -420,6 +467,18 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->verifyChallenge($challenge, ['code' => '123456'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'mfa_unavailable');
+    }
+
+    public function test_an_unreadable_replacement_secret_fails_closed(): void
+    {
+        $turnedOn = $this->turnOnMfa('bob');
+        $replace = $this->verifyChallenge($this->challengeFor('bob'), ['recovery_code' => $turnedOn['recovery_codes'][0]]);
+        DB::connection('wgw')->table('auth_challenges')->where('kind', 'replace')->update(['pending_secret' => 'not-encrypted']);
+
+        $this->replaceWithChallenge((string) $replace->json('challenge'), ['code' => $this->code((string) $replace->json('secret'))])
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'mfa_unavailable');
+        $this->assertNotNull(UserMfa::query()->where('username', 'bob')->value('enabled_at'));
     }
 
     // ---- assistant (OAuth) sign-in ----------------------------------------
