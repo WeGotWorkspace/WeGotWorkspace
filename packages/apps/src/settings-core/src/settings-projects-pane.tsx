@@ -32,7 +32,6 @@ import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { useTrackAutosave } from "@/ui/autosave-status";
 import "./settings-projects-pane.css";
 
-
 function errorDescription(error: unknown): { description?: string } {
   return { description: error instanceof Error ? error.message : undefined };
 }
