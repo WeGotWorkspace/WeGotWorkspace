@@ -317,51 +317,53 @@ export function ProjectsManagePane({
       {!loading && snapshot.status === "error" ? (
         <p className="projects-manage-hint">{labels.loadFailed}</p>
       ) : null}
-      {groups.map((group) => {
-        const slug = teamSlugOf(group);
-        const projects = activeByTeam.get(slug)?.projects ?? [];
-        return (
-          <SettingsPaneCard
-            key={group.id}
-            title={group.displayName}
-            icon={<Users className="size-3.5" aria-hidden />}
-            titleTag={<Tag label={group.isTeamAdmin ? "Admin" : "Member"} />}
-            action={
-              <span className="projects-manage-team-tags">
-                {group.isTeamAdmin ? (
-                  <Tag label={memberCountLabel(memberCounts[group.id] ?? group.memberCount)} />
-                ) : null}
-                {group.isTeamAdmin && onManageMembers ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    label="Members"
-                    aria-label={teamMembersLabels.manageOf(group.displayName)}
-                    onClick={() => onManageMembers(group)}
-                  />
-                ) : null}
-                {group.isTeamAdmin && snapshot.status === "ready" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    label={labels.newProject}
-                    icon={<Plus className="size-3.5" aria-hidden />}
-                    onClick={() =>
-                      setCreatingIn({
-                        slug,
-                        displayName: group.displayName,
-                        isTeamAdmin: true,
-                      })
-                    }
-                  />
-                ) : null}
-              </span>
-            }
-          >
-            {projects.length > 0 ? renderRows(projects) : null}
-          </SettingsPaneCard>
-        );
-      })}
+      <div className="projects-manage-teams">
+        {groups.map((group) => {
+          const slug = teamSlugOf(group);
+          const projects = activeByTeam.get(slug)?.projects ?? [];
+          return (
+            <SettingsPaneCard
+              key={group.id}
+              title={group.displayName}
+              icon={<Users className="size-3.5" aria-hidden />}
+              titleTag={<Tag label={group.isTeamAdmin ? "Admin" : "Member"} />}
+              action={
+                <span className="projects-manage-team-tags">
+                  {group.isTeamAdmin ? (
+                    <Tag label={memberCountLabel(memberCounts[group.id] ?? group.memberCount)} />
+                  ) : null}
+                  {group.isTeamAdmin && onManageMembers ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      label="Members"
+                      aria-label={teamMembersLabels.manageOf(group.displayName)}
+                      onClick={() => onManageMembers(group)}
+                    />
+                  ) : null}
+                  {group.isTeamAdmin && snapshot.status === "ready" ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      label={labels.newProject}
+                      icon={<Plus className="size-3.5" aria-hidden />}
+                      onClick={() =>
+                        setCreatingIn({
+                          slug,
+                          displayName: group.displayName,
+                          isTeamAdmin: true,
+                        })
+                      }
+                    />
+                  ) : null}
+                </span>
+              }
+            >
+              {projects.length > 0 ? renderRows(projects) : null}
+            </SettingsPaneCard>
+          );
+        })}
+      </div>
       {groups.some((g) => !g.isTeamAdmin) ? (
         <p className="projects-manage-hint">{labels.readOnlyHint}</p>
       ) : null}
