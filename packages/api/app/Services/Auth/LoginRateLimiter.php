@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Exceptions\ApiHttpException;
 use Illuminate\Cache\RateLimiter;
 
 final class LoginRateLimiter
@@ -93,6 +94,56 @@ final class LoginRateLimiter
             $this->rateLimiter->availableIn($this->protocolIpKey($ipNorm)),
             $this->rateLimiter->availableIn($this->protocolUserIpKey($user, $ipNorm)),
             $this->rateLimiter->availableIn($this->protocolUserKey($user)),
+        );
+    }
+
+    /**
+     * Seconds until the web sign-in keys of this user and address allow again.
+     */
+    public function retryAfter(string $username, string $ip): int
+    {
+        if ($this->isDisabled()) {
+            return 1;
+        }
+
+        [$user, $ipNorm] = $this->normalized($username, $ip);
+
+        return max(
+            1,
+            $this->rateLimiter->availableIn($this->ipKey($ipNorm)),
+            $this->rateLimiter->availableIn($this->userIpKey($user, $ipNorm)),
+            $this->rateLimiter->availableIn($this->userKey($user)),
+        );
+    }
+
+    /**
+     * The web sign-in limit for a request that names no user, such as an unknown
+     * two-factor challenge: only the address key.
+     */
+    public function allowIp(string $ip): bool
+    {
+        return $this->isDisabled() || ! $this->tooMany($this->ipKey($this->normalizeIp($ip)), self::IP_LIMIT);
+    }
+
+    public function hitIp(string $ip): void
+    {
+        if (! $this->isDisabled()) {
+            $this->rateLimiter->hit($this->ipKey($this->normalizeIp($ip)), self::DECAY_SECONDS);
+        }
+    }
+
+    public function ipRetryAfter(string $ip): int
+    {
+        return $this->isDisabled() ? 1 : max(1, $this->rateLimiter->availableIn($this->ipKey($this->normalizeIp($ip))));
+    }
+
+    public static function throttled(int $retryAfter): ApiHttpException
+    {
+        return new ApiHttpException(
+            429,
+            'Too many login attempts. Please try again later.',
+            'throttled',
+            headers: ['Retry-After' => max(1, $retryAfter)],
         );
     }
 
