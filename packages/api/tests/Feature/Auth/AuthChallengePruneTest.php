@@ -67,6 +67,9 @@ final class AuthChallengePruneTest extends WgwDatabaseTestCase
 
     public function test_the_prune_is_scheduled_hourly_without_overlap(): void
     {
+        // withSchedule registers events inside Artisan::starting, so boot this app's console first.
+        Artisan::call('schedule:list');
+
         $events = collect(app(Schedule::class)->events())
             ->filter(static fn (ScheduledEvent $event): bool => str_contains((string) $event->command, 'wgw:auth:prune-challenges'));
 
