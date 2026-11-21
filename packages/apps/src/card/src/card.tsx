@@ -7,6 +7,8 @@ import "./card.css";
 export type CardProps = {
   title?: string;
   titleIcon?: ReactNode;
+  /** Right after the title, such as a role tag. */
+  titleTag?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -43,6 +45,7 @@ function CardIconActionButton({ icon, label, onClick, disabled }: CardIconAction
 export function Card({
   title,
   titleIcon,
+  titleTag,
   description,
   children,
   className,
@@ -50,12 +53,17 @@ export function Card({
   iconActions,
 }: CardProps) {
   const hasHeader =
-    title || titleIcon || description || action || (iconActions && iconActions.length > 0);
+    title ||
+    titleIcon ||
+    titleTag ||
+    description ||
+    action ||
+    (iconActions && iconActions.length > 0);
 
   const titleBlock =
-    title || titleIcon || description ? (
+    title || titleIcon || titleTag || description ? (
       <div className="card__title-block">
-        {title || titleIcon ? (
+        {title || titleIcon || titleTag ? (
           <div className="card__title-group">
             {titleIcon ? (
               <span className="card__title-icon" aria-hidden>
@@ -63,6 +71,7 @@ export function Card({
               </span>
             ) : null}
             {title ? <h2 className="card__title">{title}</h2> : null}
+            {titleTag}
           </div>
         ) : null}
         {description ? <p className="card__description">{description}</p> : null}
