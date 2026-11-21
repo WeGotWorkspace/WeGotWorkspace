@@ -41,7 +41,6 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
             if ($credentials->verifyAppPasswordOnly($user, $password, is_string($userAgent) ? $userAgent : null)) {
                 return true;
             }
-            $limiter->hitProtocol($user, $clientIp);
 
             throw new TooManyAttempts($limiter->protocolRetryAfter($user, $clientIp));
         }

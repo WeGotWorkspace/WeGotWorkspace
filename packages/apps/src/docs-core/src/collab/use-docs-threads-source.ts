@@ -70,36 +70,63 @@ function hasChanges(changes: DocsFileThreadChanges): boolean {
 }
 
 /**
- * One poll round on `since`; resolves with the state to poll on next. When the
- * server no longer knows `since` (`cannotCalculateChanges`: expired, or from
- * before a reset), it starts over with a fresh state and a full reload, like
- * the other offline caches. The fresh state is taken before the reload, so a
- * change in between shows up again on the next poll. A failed reload rejects,
- * so the caller keeps the old state and the next round tries again.
+ * Most `files/threads/changes` pages one pull walks. The server pages at 200
+ * rows; a pull that hits this cap answers false, so the push hub offers the
+ * state again and the next pull goes on from where this one stopped.
  */
-async function pollDocsThreadChanges(
+export const DOCS_THREADS_MAX_CHANGE_PAGES = 20;
+
+type DocsThreadPull = {
+  /** The state to pull on next: the `newState` of the last page read. */
+  state: string;
+  /** False when the cap stopped the walk with more pages left. */
+  complete: boolean;
+};
+
+/**
+ * One pull round on `since`, following `hasMoreChanges` page by page: a
+ * shared document's `since` can fall many pages behind, because writes on
+ * the owner's other documents move the pool but do not ring this document.
+ * Reloads once when any page names a thread. When the server no longer knows
+ * a state (`cannotCalculateChanges`: expired, or from before a reset), it
+ * starts over with a fresh state and a full reload, like the other offline
+ * caches. The fresh state is taken before the reload, so a change in between
+ * shows up again on the next pull. A failed request or reload rejects, so the
+ * caller keeps the old state and the next round tries again.
+ */
+async function pullDocsThreadChanges(
   client: DocsThreadsClient,
   path: string,
   since: string | null,
   reload: () => Promise<void>,
-): Promise<string> {
-  let changes: DocsFileThreadChanges;
-  try {
-    changes = await client.changes(path, since);
-  } catch (error) {
-    if (!isDocsThreadsCannotCalculateChanges(error)) throw error;
+): Promise<DocsThreadPull> {
+  let state = since;
+  let changed = false;
+  for (let page = 0; page < DOCS_THREADS_MAX_CHANGE_PAGES; page += 1) {
+    let changes: DocsFileThreadChanges;
     try {
-      const fresh = await client.changes(path, null);
-      await reload();
-      return fresh.newState;
-    } catch (resyncError) {
-      // The second failure in a row: report it rather than retry in silence.
-      console.warn("[docs-threads] full reload after an expired sync state failed", resyncError);
-      throw resyncError;
+      changes = await client.changes(path, state);
+    } catch (error) {
+      if (!isDocsThreadsCannotCalculateChanges(error)) throw error;
+      try {
+        const fresh = await client.changes(path, null);
+        await reload();
+        return { state: fresh.newState, complete: true };
+      } catch (resyncError) {
+        // The second failure in a row: report it rather than retry in silence.
+        console.warn("[docs-threads] full reload after an expired sync state failed", resyncError);
+        throw resyncError;
+      }
+    }
+    if (hasChanges(changes)) changed = true;
+    state = changes.newState;
+    if (!changes.hasMoreChanges) {
+      if (changed) await reload();
+      return { state, complete: true };
     }
   }
-  if (hasChanges(changes)) await reload();
-  return changes.newState;
+  if (changed) await reload();
+  return { state: state ?? "", complete: false };
 }
 
 function immediateSnapshot(client: DocsThreadsClient | null): DocsFileThread[] {
@@ -176,10 +203,11 @@ export function useDocsThreadsSource({
           await reload();
           return true;
         }
-        sinceRef.current = await pollDocsThreadChanges(client, path, sinceRef.current, () =>
+        const pulled = await pullDocsThreadChanges(client, path, sinceRef.current, () =>
           cancelled ? Promise.resolve() : reload(),
         );
-        return true;
+        sinceRef.current = pulled.state;
+        return pulled.complete;
       } catch {
         // Retried on the next push or poll.
         return false;

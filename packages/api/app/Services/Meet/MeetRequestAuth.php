@@ -74,7 +74,6 @@ final class MeetRequestAuth
             if ($this->protocolCredentials->verifyAppPasswordOnly($username, $password, $request->userAgent())) {
                 return $username;
             }
-            $this->limiter->hitProtocol($username, $clientIp);
 
             throw new ApiHttpException(
                 429,

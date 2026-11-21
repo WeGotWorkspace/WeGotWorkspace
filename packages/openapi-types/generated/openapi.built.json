@@ -23799,6 +23799,15 @@
                     },
                     "429": {
                         "description": "Too many attempts (`throttled`): the sign-in limits, or 10 failed codes for the user in one hour. Carries `Retry-After`.",
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the sign-in limiter allows another attempt.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
