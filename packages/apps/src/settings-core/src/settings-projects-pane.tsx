@@ -310,26 +310,26 @@ export function ProjectsManagePane({
               title={group.displayName}
               icon={<Users className="size-3.5" aria-hidden />}
               titleTag={
-                <Tag
-                  label={group.isTeamAdmin ? "Admin" : "Member"}
-                  tone={group.isTeamAdmin ? "warning" : "pending"}
-                />
+                <span className="projects-manage-team-tags">
+                  <span title={memberCountLabel(memberCounts[group.id] ?? group.memberCount)}>
+                    <Tag label={String(memberCounts[group.id] ?? group.memberCount)} />
+                  </span>
+                  <Tag
+                    label={group.isTeamAdmin ? "Admin" : "Member"}
+                    tone={group.isTeamAdmin ? "warning" : "pending"}
+                  />
+                </span>
               }
               action={
-                <span className="projects-manage-team-tags">
-                  {group.isTeamAdmin ? (
-                    <Tag label={memberCountLabel(memberCounts[group.id] ?? group.memberCount)} />
-                  ) : null}
-                  {group.isTeamAdmin && onManageMembers ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      label="Members"
-                      aria-label={teamMembersLabels.manageOf(group.displayName)}
-                      onClick={() => onManageMembers(group)}
-                    />
-                  ) : null}
-                </span>
+                group.isTeamAdmin && onManageMembers ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    label="Members"
+                    aria-label={teamMembersLabels.manageOf(group.displayName)}
+                    onClick={() => onManageMembers(group)}
+                  />
+                ) : null
               }
             >
               {projects.length > 0 ? renderRows(projects) : null}
