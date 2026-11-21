@@ -64,7 +64,7 @@ describe("ProjectsManagePane", () => {
   it("shows no archive for the default Project", async () => {
     await renderPane();
     const row = screen.getByLabelText("Name of Design Project").closest("li")!;
-    expect(row.textContent).toContain("Whole Team");
+    expect(row.textContent).toContain("Default");
     expect(within(row).queryByRole("button", { name: /Archive|Restore|Delete/ })).toBeNull();
   });
 
