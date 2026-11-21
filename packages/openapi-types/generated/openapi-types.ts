@@ -134,7 +134,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Token issued. The JSON body has no refresh_token; the refresh token is Set-Cookie. */
+                /** @description `status: ok`: token issued; the JSON body has no refresh_token, the refresh token is Set-Cookie. `status: mfa_required` (two-factor on): a challenge for the code step, no tokens and no cookie. */
                 200: {
                     headers: {
                         /** @description HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL. */
@@ -142,7 +142,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AuthTokenResponse"];
+                        "application/json": components["schemas"]["AuthLoginResponse"];
                     };
                 };
                 /** @description Invalid request */
@@ -9489,7 +9489,7 @@ export interface paths {
         put?: never;
         /**
          * Create a named app password for DAV and Meet Basic sign-in
-         * @description Requires the account password, which shares the sign-in rate limit. The plaintext is in this response only.
+         * @description Requires a current authenticator code when the caller has two-factor on, otherwise the account password; either path shares the matching rate limit. The plaintext is in this response only.
          */
         post: {
             parameters: {
@@ -9513,7 +9513,7 @@ export interface paths {
                         "application/json": components["schemas"]["SettingsAppPasswordCreated"];
                     };
                 };
-                /** @description Name missing, blank or longer than 60 characters, or currentPassword missing */
+                /** @description Name missing, blank or longer than 60 characters, or `currentPassword` missing when two-factor is off */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -9522,7 +9522,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Current password is incorrect (`current_password_invalid`) */
+                /** @description Current password is incorrect (`current_password_invalid`), or wrong or already used code (`mfa_code_invalid`) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -9531,7 +9531,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description The caller already has 50 active app passwords (`app_password_limit`) */
+                /** @description The caller already has 50 active app passwords (`app_password_limit`); or two-factor is on and `code` is missing (`mfa_code_required`; the account password is not accepted then) */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -9540,7 +9540,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Too many sign-in attempts (`throttled`); carries `Retry-After` */
+                /** @description Too many attempts (`throttled`): the sign-in limits, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
                 429: {
                     headers: {
                         /** @description Seconds until the sign-in limiter allows another attempt. */
@@ -9642,6 +9642,537 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users/{username}/mfa-resets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a user's two-factor sign-in
+         * @description Deletes the user's authenticator, recovery codes and open challenges without reading the secret, then ends every session of the user. The password alone signs in again. Same as `php artisan wgw:mfa:reset {username}`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Reset */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description User not found (`not_found`) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa-challenges/{challenge}/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a two-factor sign-in with an authenticator code or a recovery code
+         * @description Pre-auth. Accepts only a `spa` challenge. A code answers `status: ok` with tokens and the refresh cookie and consumes the challenge. A recovery code is spent, consumes the challenge and answers `mfa_replace_required` with a new `replace` challenge and secret; no tokens.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    challenge: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MfaChallengeVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in, or a new authenticator is needed */
+                200: {
+                    headers: {
+                        /** @description HttpOnly wgw_refresh cookie, as on `POST /auth/token`. */
+                        "Set-Cookie"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaVerificationResponse"];
+                    };
+                };
+                /** @description Neither or both of `code` and `recovery_code` (`bad_request`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong or already used code (`mfa_code_invalid`), or the user was disabled or deleted (`unauthorized`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown, expired, used or `oauth` challenge (`not_found`) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The stored secret cannot be read (`mfa_unavailable`); an admin reset fixes it */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa-challenges/{challenge}/replacement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a new authenticator after a recovery code and sign in
+         * @description Pre-auth. Accepts only a `spa` challenge of kind `replace`. In one transaction: stores the new secret, replaces the recovery codes, ends every session of the user, then issues a new token pair.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    challenge: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MfaCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description New authenticator saved and signed in */
+                200: {
+                    headers: {
+                        /** @description HttpOnly wgw_refresh cookie, as on `POST /auth/token`. */
+                        "Set-Cookie"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaReplacementResponse"];
+                    };
+                };
+                /** @description Code missing (`bad_request`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong code (`mfa_code_invalid`), or the user was disabled or deleted (`unauthorized`) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown, expired, used, `oauth` or non-`replace` challenge (`not_found`) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start two-factor setup
+         * @description Account password → a new secret and `otpauth://` URI. Two-factor is not on until confirmed. 409 while it is on; the live secret is never returned.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TotpSetupStartRequest"];
+                };
+            };
+            responses: {
+                /** @description Setup started */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TotpSetupStartResponse"];
+                    };
+                };
+                /** @description currentPassword missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Current password is incorrect (`current_password_invalid`) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Two-factor is already on (`mfa_already_enabled`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many sign-in attempts (`throttled`) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * Turn two-factor off
+         * @description Needs a current code. Revokes no session; app passwords stay valid and the account password works on DAV and Meet Basic again.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MfaCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description Two-factor is off */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OkResponse"];
+                    };
+                };
+                /** @description Code missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong or already used code (`mfa_code_invalid`) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Two-factor is not on (`mfa_not_enabled`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm two-factor setup with a code
+         * @description Account password and a code from the new secret → ten recovery codes. Ends every session of the user, this one included.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TotpSetupConfirmRequest"];
+                };
+            };
+            responses: {
+                /** @description Two-factor is on */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaRecoveryCodesResponse"];
+                    };
+                };
+                /** @description Field missing, or no setup was started (`mfa_setup_missing`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Current password is incorrect (`current_password_invalid`) or wrong code (`mfa_code_invalid`) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Two-factor is already on (`mfa_already_enabled`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/totp/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace the recovery codes */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MfaCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description New recovery codes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MfaRecoveryCodesResponse"];
+                    };
+                };
+                /** @description Code missing */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Wrong or already used code (`mfa_code_invalid`) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Two-factor is not on (`mfa_not_enabled`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many attempts (`throttled`): the sign-in limits, the 5 failed codes of one challenge, or 10 failed codes for the user in one hour. Carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9651,6 +10182,11 @@ export interface components {
             code?: string;
         };
         AuthTokenResponse: {
+            /**
+             * @description Always `ok` on a token response; the sign-in answer is a `oneOf` on this field. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            status: "ok";
             access_token: string;
             token_type: string;
             expires_in: number;
@@ -9663,6 +10199,7 @@ export interface components {
             username: string;
             /** @enum {string} */
             role: "guest" | "user" | "admin";
+            mfa: components["schemas"]["MfaStatus"];
         };
         GenericObject: Record<string, never>;
         /** Format: binary */
@@ -9896,6 +10433,8 @@ export interface components {
             enabled: boolean;
             /** @description Whether the user has the admin role. */
             isAdmin: boolean;
+            /** @description Whether the user signs in with an authenticator code. */
+            mfaEnabled: boolean;
         };
         AdminGroupSummary: {
             id: string;
@@ -10078,6 +10617,7 @@ export interface components {
             logoutUrl: string;
             /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
             mcpEnabled: boolean;
+            mfa: components["schemas"]["MfaStatus"];
         };
         /**
          * @example {
@@ -13861,6 +14401,7 @@ export interface components {
             appPasswords: components["schemas"]["SettingsAppPassword"][];
         };
         /**
+         * @description Send `code` when the caller has two-factor on (the account password is not accepted then), otherwise `currentPassword`. `GET /me` → `mfa.enabled` says which.
          * @example {
          *       "name": "Phone calendar",
          *       "currentPassword": "correct horse battery staple"
@@ -13868,13 +14409,93 @@ export interface components {
          */
         SettingsAppPasswordCreateRequest: {
             name: string;
-            /** @description The account password. An app password is not accepted here. Failures count on the sign-in rate limit. */
-            currentPassword: string;
+            /** @description The account password, when two-factor is off. An app password is not accepted here. Failures count on the sign-in rate limit. */
+            currentPassword?: string;
+            /** @description A current authenticator code, when two-factor is on. Recovery codes are not accepted. Same checks as `POST /settings/totp/recovery-codes`: replay guard, sign-in rate limit and per-user code lock. */
+            code?: string;
         };
         SettingsAppPasswordCreated: {
             appPassword: components["schemas"]["SettingsAppPassword"];
             /** @description The new password: 16 lowercase letters. Returned once and never again. Clients show it in groups of four; spaces are ignored when it is used. */
             password: string;
+        };
+        /** @description Answer to a correct username and password. `ok` carries tokens and sets the refresh cookie; `mfa_required` carries a challenge for the code step and sets no cookie. */
+        AuthLoginResponse: components["schemas"]["AuthTokenResponse"] | components["schemas"]["MfaRequiredResponse"];
+        MfaRequiredResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "mfa_required";
+            /** @description Single-use challenge id, valid for 10 minutes. Only its sha256 is stored. */
+            challenge: string;
+            /**
+             * @description `spa` challenges complete on `auth/mfa-challenges/…`; `oauth` challenges only on `POST /oauth/session`.
+             * @enum {string}
+             */
+            client: "spa" | "oauth";
+        };
+        /** @description A recovery code was accepted and spent. No tokens yet: scan the new secret and send a code from it to the replacement route. */
+        MfaReplaceRequiredResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "mfa_replace_required";
+            challenge: string;
+            /** @enum {string} */
+            client: "spa" | "oauth";
+            /** @description New base32 TOTP secret, for typing in by hand. */
+            secret: string;
+            /** @description `otpauth://totp/…` URI; the client draws the QR code from it. */
+            otpauth_uri: string;
+        };
+        /**
+         * @description Exactly one of `code` (6 digits; spaces ignored) or `recovery_code` (16 hex characters; spaces and dashes ignored).
+         * @example {
+         *       "code": "123 456"
+         *     }
+         */
+        MfaChallengeVerifyRequest: {
+            code?: string;
+            recovery_code?: string;
+        };
+        MfaVerificationResponse: components["schemas"]["AuthTokenResponse"] | components["schemas"]["MfaReplaceRequiredResponse"];
+        /**
+         * @example {
+         *       "code": "123456"
+         *     }
+         */
+        MfaCodeRequest: {
+            /** @description Current 6-digit authenticator code; spaces ignored. */
+            code: string;
+        };
+        MfaReplacementResponse: components["schemas"]["AuthTokenResponse"] & components["schemas"]["MfaRecoveryCodesResponse"];
+        MfaRecoveryCodesResponse: {
+            /** @description Ten new recovery codes, 16 lowercase hex characters in groups of four. Shown once; the previous set no longer works. */
+            recovery_codes: string[];
+        };
+        MfaStatus: {
+            /** @description Whether a code is asked at sign-in. A setup that was started but not confirmed is not on. */
+            enabled: boolean;
+            recoveryCodesRemaining: number;
+        };
+        TotpSetupStartRequest: {
+            currentPassword: string;
+        };
+        TotpSetupStartResponse: {
+            /** @description New base32 secret for this setup. A new start replaces an unconfirmed one. */
+            secret: string;
+            otpauth_uri: string;
+            /**
+             * Format: date-time
+             * @description Last time a calendar, contacts, files or meeting app signed in with the account password. Those apps stop working once two-factor is on; create app passwords for them first.
+             */
+            davPasswordUsedAt: string | null;
+        };
+        TotpSetupConfirmRequest: {
+            currentPassword: string;
+            code: string;
         };
     };
     responses: {

@@ -21,12 +21,7 @@ final class CurrentPasswordCheck
     public function assert(string $username, mixed $submitted, string $ip): void
     {
         if (! $this->loginLimiter->allow($username, $ip)) {
-            throw new ApiHttpException(
-                429,
-                'Too many login attempts. Please try again later.',
-                'throttled',
-                headers: ['Retry-After' => $this->loginLimiter->retryAfter($username, $ip)],
-            );
+            throw LoginRateLimiter::throttled($this->loginLimiter->retryAfter($username, $ip));
         }
 
         $currentPassword = is_string($submitted) ? $submitted : '';

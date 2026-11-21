@@ -18,6 +18,7 @@ const settingsStateFixture = {
   isAdmin: false,
   logoutUrl: "/api/v1/auth/logout",
   mcpEnabled: true,
+  mfa: { enabled: false, recoveryCodesRemaining: 0 },
 } satisfies SettingsStateResponse;
 
 describe("settings UI ↔ OpenAPI contract", () => {

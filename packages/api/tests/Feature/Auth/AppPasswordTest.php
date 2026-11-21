@@ -306,11 +306,96 @@ final class AppPasswordTest extends WgwDatabaseTestCase
             $this->dav('bob', str_repeat('q', 16))->assertStatus(401);
         }
 
-        // Locked: even the right app password waits, and the answer says how long.
-        $locked = $this->dav('bob', $plain);
+        // Locked: the account password and wrong app passwords wait, and the
+        // answer says how long. A valid app password still gets in (#2273).
+        $locked = $this->dav('bob', 'secret');
         $locked->assertStatus(429);
         $this->assertGreaterThan(0, (int) $locked->headers->get('Retry-After'));
+        $this->dav('bob', str_repeat('q', 16))->assertStatus(429);
+        $this->dav('bob', $plain)->assertStatus(207);
         $this->dav('carol', 'secret')->assertStatus(207);
+    }
+
+    public function test_a_valid_app_password_signs_in_on_dav_while_the_account_password_is_throttled(): void
+    {
+        $plain = $this->createAppPassword('bob');
+        $revoked = $this->createAppPassword('bob', 'Old phone');
+        AppPassword::query()->where('name', 'Old phone')->update(['revoked_at' => Carbon::now()]);
+        $carols = $this->createAppPassword('carol');
+
+        // An old client keeps sending a wrong account password from this address.
+        for ($attempt = 0; $attempt < LoginRateLimiter::PROTOCOL_USER_IP_LIMIT; $attempt++) {
+            $this->dav('bob', 'old-password')->assertStatus(401);
+        }
+
+        $this->dav('bob', 'secret')->assertStatus(429);
+        $this->dav('bob', $revoked)->assertStatus(429);
+        $this->dav('bob', $carols)->assertStatus(429);
+        $this->dav('bob', $plain)->assertStatus(207);
+        $this->dav('bob', implode(' ', str_split($plain, 4)))->assertStatus(207);
+        // That success neither resets nor counts: still throttled for the rest.
+        $this->dav('bob', 'secret')->assertStatus(429);
+        // A disabled user's valid app password does not get through either.
+        User::query()->where('username', 'bob')->update(['enabled' => false]);
+        $this->dav('bob', $plain)->assertStatus(429);
+    }
+
+    public function test_refused_attempts_while_throttled_do_not_fill_the_wider_limits(): void
+    {
+        $plain = $this->createAppPassword('bob');
+
+        // One address keeps retrying a wrong account password on DAV, then on Meet.
+        for ($attempt = 1; $attempt <= 60; $attempt++) {
+            $this->dav('bob', 'old-password')->assertStatus($attempt <= LoginRateLimiter::PROTOCOL_USER_IP_LIMIT ? 401 : 429);
+        }
+        for ($attempt = 1; $attempt <= 60; $attempt++) {
+            try {
+                $this->meet('bob', 'old-password');
+                $this->fail('Throttled Meet Basic accepted a wrong account password.');
+            } catch (ApiHttpException $locked) {
+                $this->assertSame(429, $locked->getStatusCode());
+            }
+        }
+
+        $this->dav('bob', $plain)->assertStatus(207);
+        $this->assertSame('bob', $this->meet('bob', $plain));
+        $this->dav('bob', 'old-password')->assertStatus(429);
+        // The refusals added no hits: other addresses and users are not locked out.
+        $this->dav('bob', 'secret', ['REMOTE_ADDR' => '192.0.2.50'])->assertStatus(207);
+        $this->dav('carol', 'secret')->assertStatus(207);
+    }
+
+    public function test_a_valid_app_password_signs_in_from_any_address_while_the_user_wide_limit_is_reached(): void
+    {
+        $plain = $this->createAppPassword('bob');
+
+        // Failures spread over many addresses reach the per-user limit.
+        for ($attempt = 0; $attempt < LoginRateLimiter::USER_LIMIT; $attempt++) {
+            $this->dav('bob', 'old-password', ['REMOTE_ADDR' => '198.51.100.'.(1 + intdiv($attempt, 5))])->assertStatus(401);
+        }
+
+        $this->dav('bob', 'secret', ['REMOTE_ADDR' => '192.0.2.50'])->assertStatus(429);
+        $this->dav('bob', $plain, ['REMOTE_ADDR' => '192.0.2.50'])->assertStatus(207);
+        $this->assertSame('bob', $this->meet('bob', $plain));
+    }
+
+    public function test_a_valid_app_password_signs_in_on_meet_while_throttled(): void
+    {
+        $plain = $this->createAppPassword('bob');
+        for ($attempt = 0; $attempt < LoginRateLimiter::PROTOCOL_USER_IP_LIMIT; $attempt++) {
+            $this->assertNull($this->meet('bob', 'old-password'));
+        }
+
+        $this->assertSame('bob', $this->meet('bob', $plain));
+        foreach (['secret', str_repeat('q', 16)] as $refused) {
+            try {
+                $this->meet('bob', $refused);
+                $this->fail('Throttled Meet Basic accepted something other than a valid app password.');
+            } catch (ApiHttpException $locked) {
+                $this->assertSame(429, $locked->getStatusCode());
+                $this->assertGreaterThan(0, (int) ($locked->getHeaders()['Retry-After'] ?? 0));
+            }
+        }
     }
 
     public function test_failed_app_password_shaped_meet_attempts_count_on_the_protocol_limiter(): void
