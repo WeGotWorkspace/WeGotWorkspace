@@ -66,3 +66,13 @@
   @apply flex justify-end py-3;
   border-top: 1px solid var(--workspace-divider-color);
 }
+
+/* Edit and Archive sit back until the row is in use. */
+.projects-manage-row > .button--variant-ghost {
+  color: var(--color-muted-foreground, var(--workspace-muted-foreground));
+}
+
+.projects-manage-row > .button--variant-ghost:hover,
+.projects-manage-row > .button--variant-ghost:focus-visible {
+  color: var(--workspace-foreground);
+}
