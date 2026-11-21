@@ -62,6 +62,8 @@ type ConnectivityHub = {
   deferredId?: number;
   /** Failed probes in a row, from this tab or another tab of this browser. */
   failures: number;
+  /** The push stream is healthy: it is the online check, the probe stays quiet (#2296). */
+  pushHealthy?: boolean;
   channel?: BroadcastChannel | null;
 };
 
@@ -128,11 +130,11 @@ function shareProbeResult(hub: ConnectivityHub, reachable: boolean): void {
 /** Wait (shortened by jitter) after the latest failure, then probe again. */
 function armNextProbe(hub: ConnectivityHub): void {
   clearOfflinePoll(hub);
-  if (hub.online || !readBrowserOnline()) return;
+  if (hub.online || hub.pushHealthy || !readBrowserOnline()) return;
   hub.offlinePollId = window.setTimeout(
     () => {
       hub.offlinePollId = undefined;
-      if (hub.online || !readBrowserOnline()) return;
+      if (hub.online || hub.pushHealthy || !readBrowserOnline()) return;
       scheduleReachabilityProbe(hub);
     },
     shortenWithJitter(offlineProbeWaitMs(hub.failures)),
@@ -142,7 +144,7 @@ function armNextProbe(hub: ConnectivityHub): void {
 function scheduleReachabilityProbe(hub: ConnectivityHub): void {
   hub.probeController?.abort();
   clearOfflinePoll(hub);
-  if (!readBrowserOnline()) {
+  if (!readBrowserOnline() || hub.pushHealthy) {
     return;
   }
   hub.probeController = new AbortController();
@@ -161,6 +163,47 @@ function scheduleReachabilityProbe(hub: ConnectivityHub): void {
       setConnectivityOnline(hub, true);
     }
   });
+}
+
+/**
+ * The push stream got a response from the server (`true`) or failed to reach
+ * it (`false`). A response counts as a probe success, a failure feeds the
+ * probe backoff; other tabs hear it too (#2296).
+ */
+export function reportReachability(reachable: boolean): void {
+  const hub = getConnectivityHub();
+  if (!hub) return;
+  shareProbeResult(hub, reachable);
+  if (reachable) {
+    // A late probe failure must not undo a response the stream just got.
+    hub.probeController?.abort();
+    hub.failures = 0;
+    if (readBrowserOnline()) setConnectivityOnline(hub, true);
+    return;
+  }
+  hub.probeController?.abort();
+  hub.failures += 1;
+  // While push is healthy one failed round only counts; going offline here would
+  // abort the request in the transport and end push health at once.
+  if (hub.pushHealthy) return;
+  setConnectivityOnline(hub, false);
+  armNextProbe(hub);
+}
+
+/** The push stream's health: while it is healthy no separate probe runs (#2296). */
+export function setPushHealthy(healthy: boolean): void {
+  const hub = getConnectivityHub();
+  if (!hub || hub.pushHealthy === healthy) return;
+  hub.pushHealthy = healthy;
+  if (healthy) {
+    hub.probeController?.abort();
+    clearOfflinePoll(hub);
+    if (readBrowserOnline()) setConnectivityOnline(hub, true);
+    return;
+  }
+  // Push turned unhealthy after network failures: now the tab is offline and the probe runs.
+  if (hub.failures > 0) setConnectivityOnline(hub, false);
+  armNextProbe(hub);
 }
 
 /** Another tab probed: a failure counts as our attempt, a success brings us online. */

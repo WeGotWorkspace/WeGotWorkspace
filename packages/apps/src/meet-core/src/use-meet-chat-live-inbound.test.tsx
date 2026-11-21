@@ -7,11 +7,7 @@ import {
   type PushedState,
   type StateChangeListener,
 } from "@/lib/jmap-client/push/state-change-subscription";
-import {
-  CHAT_CHANGES_POLL_MS,
-  CHAT_CHANGES_PUSH_POLL_MS,
-  useMeetChatLiveInbound,
-} from "./use-meet-chat-live-inbound";
+import { CHAT_CHANGES_POLL_MS, useMeetChatLiveInbound } from "./use-meet-chat-live-inbound";
 
 /**
  * Only the network is faked: the real adapter, `useJmapStateChange` and the
@@ -226,22 +222,26 @@ describe("useMeetChatLiveInbound", () => {
     expect(mocks.messageChanges).toHaveBeenCalledTimes(2);
   });
 
-  it("polls every 4 s without push and slower while push is connected", async () => {
+  it("polls every 4 s only while push is not healthy", async () => {
     const startPolling = vi.spyOn(JmapChatAdapter.prototype, "startPolling");
+    const stopPolling = vi.spyOn(JmapChatAdapter.prototype, "stopPolling");
     renderLiveInbound();
     await waitFor(() => expect(startPolling).toHaveBeenCalledWith(CHAT_CHANGES_POLL_MS));
     expect(CHAT_CHANGES_POLL_MS).toBe(4_000);
-    expect(CHAT_CHANGES_PUSH_POLL_MS).toBeGreaterThan(CHAT_CHANGES_POLL_MS);
+    const started = startPolling.mock.calls.length;
 
     mocks.hub!.connected = true;
     act(() => mocks.hub!.status.forEach((listener) => listener()));
-    expect(startPolling).toHaveBeenLastCalledWith(CHAT_CHANGES_PUSH_POLL_MS);
+    expect(stopPolling).toHaveBeenCalled();
+    expect(startPolling).toHaveBeenCalledTimes(started);
 
     // Push drops (rate limit, offline): back to the chat cadence.
     mocks.hub!.connected = false;
     act(() => mocks.hub!.status.forEach((listener) => listener()));
+    expect(startPolling).toHaveBeenCalledTimes(started + 1);
     expect(startPolling).toHaveBeenLastCalledWith(CHAT_CHANGES_POLL_MS);
     startPolling.mockRestore();
+    stopPolling.mockRestore();
   });
 
   it("does not subscribe without the chat capability", async () => {

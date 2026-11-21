@@ -32,36 +32,26 @@ const ALLOWED = {
   // Backup polls for push-driven lists: they slow down or stop while push is up.
   "docs-core/src/collab/use-docs-threads-source.ts::DOCS_THREADS_POLL_MS":
     "Docs threads backup pull, runs only while push is down (use-push-pulled-list)",
+  "lib/live/use-push-backup-poll.ts::setInterval":
+    "the one backup poll of every inbound sync, armed only while push is not healthy (#2296)",
   "lib/live/use-push-pulled-list.ts::setInterval":
     "the shared backup pull of the doorbell pattern, armed only while push is down",
   "notes-core/src/use-notes-live-inbound.ts::NOTES_CHANGES_POLL_MS":
-    "Notes /changes backup poll while push is down",
-  "notes-core/src/use-notes-live-inbound.ts::NOTES_CHANGES_PUSH_POLL_MS":
-    "Notes safety poll while push is connected",
+    "Notes /changes backup poll, only while push is not healthy",
   "notes-core/src/use-notes-api.ts::setInterval":
     "Notes list refresh at NOTES_CHANGES_POLL_MS for the on-screen list",
   "calendar-core/src/calendar-refresh.ts::CALENDAR_BACKGROUND_POLL_MS":
     "Calendar event poll while push is down",
-  "calendar-core/src/calendar-refresh.ts::CALENDAR_PUSH_POLL_MS":
-    "Calendar safety poll while push is connected",
   "calendar-core/src/use-calendar-invitations.ts::setInterval":
     "silent invitation refresh at the Calendar background cadence",
   "calendar-core/src/use-team-availability.ts::setInterval":
     "team availability refresh while the panel is open",
   "lib/offline/contacts/use-contacts-live-inbound.ts::CONTACTS_CHANGES_POLL_MS":
     "Contacts /changes backup poll while push is down",
-  "lib/offline/contacts/use-contacts-live-inbound.ts::CONTACTS_CHANGES_PUSH_POLL_MS":
-    "Contacts safety poll while push is connected",
   "lib/offline/tasks/tasks-inbound-sync.ts::TASKS_INBOUND_POLL_MS":
     "Tasks inbound backup poll while push is down",
-  "lib/offline/tasks/use-tasks-live-inbound.ts::TASKS_INBOUND_PUSH_POLL_MS":
-    "Tasks safety poll while push is connected",
-  "lib/offline/tasks/use-tasks-live-inbound.ts::setInterval":
-    "Tasks inbound poll, 10 s down / 60 s with push",
   "meet-core/src/use-meet-chat-live-inbound.ts::CHAT_CHANGES_POLL_MS":
     "Meet chat /changes backup poll while push is down",
-  "meet-core/src/use-meet-chat-live-inbound.ts::CHAT_CHANGES_PUSH_POLL_MS":
-    "Meet chat safety poll while push is connected",
   "notifications-core/src/notifications-provider.tsx::NOTIFICATIONS_INBOX_POLL_MS":
     "inbox poll while push is down",
   "notifications-core/src/notifications-provider.tsx::NOTIFICATIONS_INBOX_PUSH_POLL_MS":
