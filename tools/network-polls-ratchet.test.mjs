@@ -75,9 +75,9 @@ const ALLOWED = {
   "admin-core/src/use-admin-update-poll.ts::UPDATE_IDLE_POLL_MS":
     "update status check on the admin page, once a minute",
   "meet-core/src/use-meet-channel-call-activity.ts::MEET_CALL_ACTIVITY_POLL_MS":
-    "who is in a channel call, for the channel list",
+    "backup poll of who is in a channel call; runs only while push is down, `MeetCall` rings it otherwise (#2295)",
   "meet-core/src/use-meet-channel-call-activity.ts::setInterval":
-    "call activity poll at MEET_CALL_ACTIVITY_POLL_MS",
+    "call activity backup poll at MEET_CALL_ACTIVITY_POLL_MS, only while push is down",
   "meet-core/src/use-meet-room-state.ts::setInterval":
     "Meet room state refresh while a room is open",
   "meet-core/src/use-meet-invite-probe.ts::setInterval":
