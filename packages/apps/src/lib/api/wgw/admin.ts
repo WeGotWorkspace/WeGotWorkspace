@@ -559,6 +559,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       if (!res.ok)
         throw new WgwRequestError(`POST /admin/users failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     updateUser: async (username, input, opts) => {

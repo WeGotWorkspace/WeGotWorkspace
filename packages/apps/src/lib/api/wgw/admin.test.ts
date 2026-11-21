@@ -115,6 +115,17 @@ describe("admin writes that can change the admin's own account", () => {
     expect(wgwInvalidateAccountReads).toHaveBeenCalledTimes(1);
   });
 
+  it("drops the shared account reads after a user is created", async () => {
+    vi.mocked(wgwReadJson).mockResolvedValue({});
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    principalMock.mockResolvedValue({
+      user: { username: "admin", displayName: "Admin", email: "" },
+    } as Awaited<ReturnType<typeof wgwFetchPrincipal>>);
+    const ops = createWgwAdminOperations();
+    await ops.createUser({ username: "new", password: "pw" } as never).catch(() => undefined);
+    expect(wgwInvalidateAccountReads).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the shared account reads when the write fails", async () => {
     fetchMock.mockResolvedValue(new Response("", { status: 500 }));
     const ops = createWgwAdminOperations();
