@@ -218,8 +218,9 @@ App passwords work with two-factor off too; then the account password keeps work
 `lastUsedAt` and `lastUsedClient` (the app's `User-Agent`) are written at most once per five minutes. An app password never signs in on `/auth/token`, `/oauth/session` or a current-password check.
 
 ```bash
-curl -X PROPFIND "${BASE_URL}/calendars/USERNAME/" -H "Depth: 0" \
-  -u "USERNAME:abcd efgh ijkl mnop"
+# APP_PASSWORD holds the 16-letter app password shown once at creation.
+curl -X PROPFIND "${BASE_URL}/calendars/${DAV_USER}/" -H "Depth: 0" \
+  --user "${DAV_USER}:${APP_PASSWORD}"
 # → 207; the account password answers 401 while two-factor is on
 ```
 
