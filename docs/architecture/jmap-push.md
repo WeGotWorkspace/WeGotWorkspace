@@ -288,7 +288,7 @@ How a live update is built in this suite (#2298). The server rings a bell; the a
 - **A short fast poll runs only while a WebRTC peer is connecting.** Signaling rooms use their own cadence in that window and fall back to the room doorbell afterwards.
 - **Cost budget:** a push request with every type stays at 25 ms or less on the reference stack (measured 14 ms for 13 types).
 
-Every client poll needs a reason: `src/lib/traffic/network-polls.test.ts` lists each `*_POLL_MS` / `*_POLL_INTERVAL_MS` constant and `setInterval`, and fails when a new one has no entry.
+Every client poll needs a reason: `tools/network-polls-ratchet.test.mjs` (run by `ci:quality:apps`) lists each `*_POLL_MS` / `*_POLL_INTERVAL_MS` constant and `setInterval`, and fails when a new one has no entry.
 
 ## Mesh "check now"
 

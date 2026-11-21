@@ -20,6 +20,10 @@ An error that leaves the transport layer carries an HTTP status. A bare `Error` 
 - A JMAP `/set` rejection has no HTTP status. `httpStatusFromFlushError` (`lib/offline/core/outbox-error-status.ts`) translates it. When a new `setError.type` is permanent, add it to that mapping. Do not add a regex at the caller.
 - A condition that locally means "does not exist" or "no access", such as a failed path resolution, is also a status (`404` or `403`). Throw a typed error.
 
+## Live updates: the doorbell pattern
+
+A list that follows other people's changes does not poll on a timer. The JMAP push stream rings when its push type changes, and the app then pulls its `/changes` feed once; a backup poll runs only while push is down, and a short fast poll only while a WebRTC peer is connecting. Use the shared pull (`lib/live/use-push-pulled-list.ts`, request helpers in `lib/live/wgw-feed-request.ts`) and declare only the client, the push type and the backup poll. See [Doorbell pattern](../../../docs/architecture/jmap-push.md#doorbell-pattern). A new `*_POLL_MS` constant or `setInterval` needs a reason in `tools/network-polls-ratchet.test.mjs`, or CI fails.
+
 ## Failures without an HTTP status
 
 Not every failure has a status. These stay out of `ApiError` on purpose, so the outbox keeps them in the transient bucket. Each sets no `name`, so `String(error)` reads as it did when it was a bare `Error`:

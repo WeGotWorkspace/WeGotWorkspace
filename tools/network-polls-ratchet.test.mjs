@@ -1,22 +1,34 @@
+import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
-import { describe, expect, it } from "vitest";
+import { dirname, join, relative } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 /**
  * Ratchet for client polls (#2298). Every `*_POLL_MS` / `*_POLL_INTERVAL_MS`
- * constant and every `setInterval` in the app sources needs an entry here with
- * a reason. A new poll without an entry fails, and so does an entry that no
+ * constant and every `setInterval` in `packages/apps/src` needs an entry here
+ * with a reason. A new poll without an entry fails, and so does an entry that no
  * longer matches anything, so the list cannot go stale. Live updates use the
  * doorbell pattern (docs/architecture/jmap-push.md#doorbell-pattern): a backup
  * poll runs only while push is down. Entries marked "no network" are timers
  * that send no request; they are listed so the scan stays simple.
+ *
+ * It reads source text, so it lives in tools/ (run by `ci:quality:apps`), not in
+ * the app's vitest suite, which must not assert on source text.
  */
-const SRC = join(__dirname, "..", "..");
+const SRC = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "packages",
+  "apps",
+  "src",
+);
 
 const POLL_CONSTANT = /\bconst\s+((?:[A-Z0-9]+_)*POLL(?:_INTERVAL)?_MS)\b/g;
 const SET_INTERVAL = /\bsetInterval\s*\(/;
 
-const ALLOWED: Record<string, string> = {
+/** `file::constant` or `file::setInterval` → why the poll exists. */
+const ALLOWED = {
   // Backup polls for push-driven lists: they slow down or stop while push is up.
   "docs-core/src/collab/use-docs-threads-source.ts::DOCS_THREADS_POLL_MS":
     "Docs threads backup pull, runs only while push is down (use-push-pulled-list)",
@@ -97,8 +109,10 @@ const ALLOWED: Record<string, string> = {
     "Yjs HTTP fallback poll in idle mode",
   "text-editor-core/docs-collab/docs-collab-http-sync.ts::setInterval":
     "Yjs HTTP resync of due documents",
-  "thread-ui/src/use-thread.ts::THREAD_POLL_MS": "open comment thread refresh in the thread UI",
-  "thread-ui/src/use-thread.ts::setInterval": "thread refresh at THREAD_POLL_MS",
+  "thread-ui/src/use-thread.ts::THREAD_POLL_MS":
+    "open comment thread refresh in the thread UI",
+  "thread-ui/src/use-thread.ts::setInterval":
+    "thread refresh at THREAD_POLL_MS",
   "drive-core/src/use-drive-offline-availability.ts::SYNC_POLL_INTERVAL_MS":
     "offline availability sync status; reads the local cache, no network",
   "drive-core/src/use-drive-offline-availability.ts::setInterval":
@@ -109,75 +123,105 @@ const ALLOWED: Record<string, string> = {
     "last-tab check for the upload leave warning; no network",
   "lib/offline/core/browser-online.ts::OFFLINE_REACHABILITY_POLL_MS":
     "reachability probe while the browser reports offline",
-  "lib/offline/core/browser-online.ts::setInterval": "reachability probe timer while offline",
+  "lib/offline/core/browser-online.ts::setInterval":
+    "reachability probe timer while offline",
   "lib/api/wgw/session-keeper.ts::setInterval": "session keep-alive ping",
   // Local timers that send no request.
-  "presence-core/src/principal-tab-sync.ts::setInterval": "no network: cross-tab election ping",
+  "presence-core/src/principal-tab-sync.ts::setInterval":
+    "no network: cross-tab election ping",
   "text-editor-core/docs-collab/docs-collab-tab-sync.ts::setInterval":
     "no network: cross-tab election ping",
-  "lib/cross-tab/cross-tab-lock.ts::CROSS_TAB_LOCK_POLL_MS": "no network: Web Lock fallback poll",
-  "lib/cross-tab/cross-tab-lock.ts::setInterval": "no network: lock fallback timer",
+  "lib/cross-tab/cross-tab-lock.ts::CROSS_TAB_LOCK_POLL_MS":
+    "no network: Web Lock fallback poll",
+  "lib/cross-tab/cross-tab-lock.ts::setInterval":
+    "no network: lock fallback timer",
   "text-editor-core/src/text-editor-print.ts::PRINT_IMAGE_POLL_MS":
     "no network: waits for images before printing (setTimeout)",
-  "hooks/use-failed-outbox-count.ts::setInterval": "no network: reads the local outbox",
-  "notes-core/src/use-notes-pending-sync.ts::setInterval": "no network: reads the local outbox",
+  "hooks/use-failed-outbox-count.ts::setInterval":
+    "no network: reads the local outbox",
+  "notes-core/src/use-notes-pending-sync.ts::setInterval":
+    "no network: reads the local outbox",
   "notes-core/src/use-notes-pending-sync.ts::POLL_INTERVAL_MS":
     "no network: reads the local outbox",
   "calendar-core/src/use-calendar-pending-sync.ts::setInterval":
     "no network: reads the local outbox",
   "contacts-core/src/use-contacts-pending-sync.ts::setInterval":
     "no network: reads the local outbox",
-  "tasks-core/src/use-tasks-pending-sync.ts::setInterval": "no network: reads the local outbox",
+  "tasks-core/src/use-tasks-pending-sync.ts::setInterval":
+    "no network: reads the local outbox",
   "calendar-core/src/use-calendar-pending-sync.ts::POLL_INTERVAL_MS":
     "no network: reads the local outbox",
   "contacts-core/src/use-contacts-pending-sync.ts::POLL_INTERVAL_MS":
     "no network: reads the local outbox",
-  "hooks/use-failed-outbox-count.ts::POLL_INTERVAL_MS": "no network: reads the local outbox",
+  "hooks/use-failed-outbox-count.ts::POLL_INTERVAL_MS":
+    "no network: reads the local outbox",
   "tasks-core/src/use-tasks-pending-sync.ts::POLL_INTERVAL_MS":
     "no network: reads the local outbox",
-  "calendar-core/src/calendar-notice-bar.tsx::setInterval": "no network: redraws a time stamp",
+  "calendar-core/src/calendar-notice-bar.tsx::setInterval":
+    "no network: redraws a time stamp",
   "lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.ts::setInterval":
     "no network: moves the now line",
   "meet-core/src/use-meet-now-clock.ts::setInterval": "no network: clock",
-  "meet-core/src/use-meet-speech-levels.ts::setInterval": "no network: audio level sampling",
-  "meet-core/src/use-peer-stream-presence.ts::setInterval": "no network: stream presence check",
-  "meet-core/src/use-meet-workspace-shell.tsx::setInterval": "no network: animation",
-  "meet-core/src/meet-call-broadcast.ts::setInterval": "no network: BroadcastChannel sweep",
+  "meet-core/src/use-meet-speech-levels.ts::setInterval":
+    "no network: audio level sampling",
+  "meet-core/src/use-peer-stream-presence.ts::setInterval":
+    "no network: stream presence check",
+  "meet-core/src/use-meet-workspace-shell.tsx::setInterval":
+    "no network: animation",
+  "meet-core/src/meet-call-broadcast.ts::setInterval":
+    "no network: BroadcastChannel sweep",
   "meet-core/src/meet-call-mini-player.tsx::setInterval": "no network: clock",
-  "meet-core/src/meet-stream-video.tsx::setInterval": "no network: video metrics",
+  "meet-core/src/meet-stream-video.tsx::setInterval":
+    "no network: video metrics",
 };
 
-function sourceFiles(dir: string): string[] {
+/** @param {string} dir @returns {string[]} */
+function sourceFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : sourceFiles(path);
-    if (!/\.tsx?$/.test(entry.name) || /\.(test|spec)\.tsx?$/.test(entry.name)) return [];
+    if (entry.isDirectory())
+      return entry.name === "node_modules" ? [] : sourceFiles(path);
+    if (!/\.tsx?$/.test(entry.name) || /\.(test|spec)\.tsx?$/.test(entry.name))
+      return [];
     return [path];
   });
 }
 
-function found(): string[] {
-  const keys = new Set<string>();
+/** @returns {string[]} */
+function found() {
+  const keys = new Set();
   for (const file of sourceFiles(SRC)) {
     const rel = relative(SRC, file).split("\\").join("/");
     const text = readFileSync(file, "utf8")
       .split("\n")
       .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
       .join("\n");
-    for (const match of text.matchAll(POLL_CONSTANT)) keys.add(`${rel}::${match[1]}`);
+    for (const match of text.matchAll(POLL_CONSTANT))
+      keys.add(`${rel}::${match[1]}`);
     if (SET_INTERVAL.test(text)) keys.add(`${rel}::setInterval`);
   }
   return [...keys].sort();
 }
 
-describe("client network polls", () => {
-  const matches = found();
+const matches = found();
 
-  it("has a justification for every poll", () => {
-    expect(matches.filter((key) => !(key in ALLOWED))).toEqual([]);
-  });
+test("every client poll has a justification", () => {
+  assert.deepEqual(
+    matches.filter((key) => !(key in ALLOWED)),
+    [],
+    "Add the new poll to ALLOWED with a reason (see the Doorbell pattern in docs/architecture/jmap-push.md).",
+  );
+});
 
-  it("has no allowlist entry without a poll", () => {
-    expect(Object.keys(ALLOWED).filter((key) => !matches.includes(key))).toEqual([]);
-  });
+test("no allowlist entry outlives its poll", () => {
+  assert.deepEqual(
+    Object.keys(ALLOWED).filter((key) => !matches.includes(key)),
+    [],
+    "Remove entries whose poll is gone.",
+  );
+});
+
+test("every entry has a reason", () => {
+  for (const [key, why] of Object.entries(ALLOWED))
+    assert.ok(why.trim() !== "", key);
 });

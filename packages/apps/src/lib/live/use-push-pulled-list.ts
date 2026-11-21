@@ -208,7 +208,8 @@ export function usePushPulledList<T>({
           () => (cancelled ? Promise.resolve() : reload()),
           { isCannotCalculate, label },
         );
-        sinceRef.current = pulled.state;
+        // A scope change during the pull must not leave this scope's state behind.
+        if (!cancelled) sinceRef.current = pulled.state;
         return pulled.complete;
       } catch {
         // Retried on the next push or poll.
