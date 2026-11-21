@@ -311,25 +311,27 @@ export function ProjectsManagePane({
               action={
                 <span className="projects-manage-team-tags">
                   {group.isTeamAdmin ? <Tag label={memberCountLabel(group.memberCount)} /> : null}
-                  {group.isTeamAdmin && snapshot.status === "ready" ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      label={labels.newProject}
-                      icon={<Plus className="size-3.5" aria-hidden />}
-                      onClick={() =>
-                        setCreatingIn({
-                          slug,
-                          displayName: group.displayName,
-                          isTeamAdmin: true,
-                        })
-                      }
-                    />
-                  ) : null}
                 </span>
               }
             >
               {projects.length > 0 ? renderRows(projects) : null}
+              {group.isTeamAdmin && snapshot.status === "ready" ? (
+                <div className="projects-manage-new">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    label={labels.newProject}
+                    icon={<Plus className="size-3.5" aria-hidden />}
+                    onClick={() =>
+                      setCreatingIn({
+                        slug,
+                        displayName: group.displayName,
+                        isTeamAdmin: true,
+                      })
+                    }
+                  />
+                </div>
+              ) : null}
             </SettingsPaneCard>
           );
         })}
