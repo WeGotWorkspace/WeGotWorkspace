@@ -24,8 +24,13 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwFetchPrincipal: vi.fn(async () => ({
     user: { username: "member", displayName: "Member" },
   })),
-  wgwFetch: vi.fn(async () => ({ ok: true, status: 200 })),
-  wgwReadJson: vi.fn(async () => ({ groups: settingsState.groups })),
+  wgwSettingsStateRead: {
+    read: vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: { groups: settingsState.groups },
+    })),
+  },
 }));
 
 const SERVER_SETTINGS = {

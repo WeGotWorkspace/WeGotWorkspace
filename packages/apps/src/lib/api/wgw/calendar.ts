@@ -1,5 +1,11 @@
 import { ApiError, UnexpectedApiResponseError } from "@/lib/api/api-error";
-import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwApiBaseUrl,
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwReadJson,
+  wgwSettingsStateRead,
+} from "@/lib/api/wgw/http";
 import {
   JmapCalendarsClient,
   JmapClient,
@@ -138,9 +144,9 @@ export async function fetchCalendarBootstrapForClient(
 /** `undefined` when the Teams could not be loaded: not the same as "no Team". */
 export async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGroup[] | undefined> {
   try {
-    const settingsRes = await wgwFetch("/settings/state");
-    if (!settingsRes.ok) return undefined;
-    const settings = (await wgwReadJson(settingsRes)) as {
+    const settingsRead = await wgwSettingsStateRead.read();
+    if (!settingsRead.ok) return undefined;
+    const settings = settingsRead.json as {
       groups?: { id: string; displayName: string }[];
     };
     return Array.isArray(settings.groups) ? mapCalendarDirectoryGroups(settings.groups) : undefined;
