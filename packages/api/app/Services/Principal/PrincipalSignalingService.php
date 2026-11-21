@@ -11,6 +11,7 @@ use App\Services\Rtc\Signaling\HttpSignalingStore;
 use App\Services\Rtc\Signaling\RtcBrowserId;
 use App\Services\Rtc\Signaling\RtcNetClass;
 use App\Services\Rtc\Signaling\RtcPeerCaps;
+use App\Services\Rtc\Signaling\RtcPushHeartbeat;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Http\Request;
@@ -192,6 +193,25 @@ final class PrincipalSignalingService
 
             return ['ok' => true];
         });
+    }
+
+    /**
+     * The push read's access check (#2287), like a poll's: a member removed
+     * from the group leaves the room (its `RtcRoom` state changes, so the tab
+     * polls and gets the 403) instead of being kept alive by the push read.
+     * Runs at most every {@see RtcPushHeartbeat::RECHECK_SECONDS} per peer.
+     *
+     * @return bool whether the caller's peers in the room may be kept alive
+     */
+    public function recheckForPushHeartbeat(string $username, string $room): bool
+    {
+        try {
+            $this->assertStillMayJoin($room, $username, $this->actors->ownerMarker($username));
+        } catch (RealtimeApiException) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

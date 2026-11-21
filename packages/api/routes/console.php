@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\RateLimiting\WgwApiRateLimiters;
+use App\Models\User;
+use App\Services\Auth\Mfa\UserMfaService;
 use App\Services\Calendars\Availability\AvailabilityCachePruner;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\Imip\ImipMailboxPoller;
@@ -95,6 +97,22 @@ Artisan::command('wgw:ensure-app-key', function (): int {
 
     return Command::SUCCESS;
 })->purpose('Generate APP_KEY when it is empty; never replaces a key Laravel loads');
+
+Artisan::command('wgw:mfa:reset {username}', function (UserMfaService $mfa): int {
+    // Lost phone, or APP_KEY changed and the secret no longer decrypts
+    // (#2273). Never reads the secret; ends every session of the user.
+    $argument = $this->argument('username');
+    $username = strtolower(trim(is_string($argument) ? $argument : ''));
+    if (! User::query()->where('username', $username)->exists()) {
+        $this->error("No user {$username}.");
+
+        return Command::FAILURE;
+    }
+    $mfa->reset($username);
+    $this->info("Two-factor is off for {$username}. They sign in with their password and can set it up again.");
+
+    return Command::SUCCESS;
+})->purpose('Turn off two-factor sign-in for one user (lost phone or unreadable secret)');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();

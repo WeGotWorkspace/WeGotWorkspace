@@ -2,6 +2,7 @@
   "AuthTokenResponse": {
     "type": "object",
     "required": [
+      "status",
       "access_token",
       "token_type",
       "expires_in",
@@ -10,6 +11,13 @@
       "username"
     ],
     "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "ok"
+        ],
+        "description": "Always `ok` on a token response; the sign-in answer is a `oneOf` on this field."
+      },
       "access_token": {
         "type": "string"
       },
