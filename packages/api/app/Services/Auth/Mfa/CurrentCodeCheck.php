@@ -12,8 +12,8 @@ use App\Services\Auth\LoginRateLimiter;
  * (#2273): turning two-factor off, new recovery codes, and creating an app
  * password while two-factor is on. Authenticator codes only, never a recovery
  * code. The sign-in limit of user and address, the per-user code lock and the
- * replay guard (`last_used_step`) all apply; a spent code is refused first and does not count; a wrong code is 403 because the
- * session itself is valid.
+ * replay guard (`last_used_step`) all apply; a spent code is refused first and
+ * does not count; a wrong code is 403 because the session itself is valid.
  */
 final class CurrentCodeCheck
 {
