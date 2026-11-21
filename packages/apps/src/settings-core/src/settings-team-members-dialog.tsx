@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/wgw/teams";
 import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
 import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
+import { AutosaveStatusProvider, AutosaveStatusTag, useTrackAutosave } from "@/ui/autosave-status";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { TeamMembersCard } from "@/share-ui/team-members-card";
@@ -49,7 +50,15 @@ function errorMessage(error: unknown): string {
  * A team admin's view of one Team: add someone, set who is team admin, remove someone.
  * Every change is sent at once; the dialog only has Done.
  */
-export function SettingsTeamMembersDialog({
+export function SettingsTeamMembersDialog(props: SettingsTeamMembersDialogProps) {
+  return (
+    <AutosaveStatusProvider>
+      <TeamMembersDialogBody {...props} />
+    </AutosaveStatusProvider>
+  );
+}
+
+function TeamMembersDialogBody({
   open,
   team,
   currentUsername,
@@ -57,6 +66,7 @@ export function SettingsTeamMembersDialog({
   onOpenChange,
   onMembersChange,
 }: SettingsTeamMembersDialogProps) {
+  const track = useTrackAutosave();
   const slug = team?.slug ?? null;
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -123,9 +133,9 @@ export function SettingsTeamMembersDialog({
   const change = (action: (teamSlug: string) => Promise<void>) => {
     if (slug === null) return;
     setError(null);
-    void action(slug)
-      .then(() => reload(slug))
-      .catch((caught: unknown) => setError(errorMessage(caught)));
+    void track(() => action(slug).then(() => reload(slug))).catch((caught: unknown) =>
+      setError(errorMessage(caught)),
+    );
   };
 
   const removingSelf = pendingRemoval?.username === currentUsername;
@@ -134,7 +144,7 @@ export function SettingsTeamMembersDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="settings-team-members-dialog">
-          <DialogHeader>
+          <DialogHeader end={<AutosaveStatusTag />}>
             <DialogTitle>
               {team ? labels.title(team.displayName) : labels.titleFallback}
             </DialogTitle>
