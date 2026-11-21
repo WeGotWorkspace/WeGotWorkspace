@@ -25,8 +25,7 @@ export const projectsLabels = {
   emptyState: "You are in no Project yet.",
   loadFailed: "Could not load the Projects",
   defaultTag: "Whole Team",
-  readOnlyHint:
-    "You are a member of the Teams above without New Project; only a team admin can change a Team's Projects.",
+  readOnlyHint: "Only a team admin can add or change Projects.",
   nameOf: (name: string) => `Name of ${name}`,
   colorOf: (name: string) => `Color of ${name}`,
   archive: "Archive",
