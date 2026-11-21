@@ -41,7 +41,7 @@ Draws from the host's per-IP request allowance (the binding limit on shared host
 
 ## Considered
 
-Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`) — reused for Calendar instead of a new Calendar-owned Tasks or Contacts sync, because a second sync doubles requests. One combined JMAP `/changes` request for all apps — rejected: push already compares states for every type in one request; the waste was full bootstraps and polls outside push, not separate `/changes` calls. "Active app polls often, others rarely" — folded into idle cadence plus hidden cadence, which already covers background tabs. A server-side 429 limiter — rejected for now: the host's firewall blocks before PHP sees the traffic. Marking bulk requests with a header deep in Docs hydration — rejected in favour of making the existing pacer browser-wide, which needs no plumbing through the collab layer. Calendar downloading contacts itself with pacing — rejected: it duplicates the Contacts app's download; reading the cache and mounting the live sync costs nothing extra. Fixed 2 s offline poll with jitter — rejected: a host that blocks needs exponential backoff, not spread. Slower lone-room polls as the end state (spike) — rejected after product review: join latency rose to 6–20 s; the push doorbell restores ~3 s for less traffic. Signaling payloads on push — rejected: push is pull-only short-burst, a WebRTC handshake needs sub-second turns; push carries only the doorbell. A push heartbeat that refreshes the caller's peers' `seen_at` — rejected: it would keep a dead tab on another device alive; rooms keep their own heartbeat poll below the peer timeout. Contacts pages of 500 — rejected for 200: 0.36 s per request and larger bodies with real photos; 200 keeps requests short on shared hosting.
+Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`) — reused for Calendar instead of a new Calendar-owned Tasks or Contacts sync, because a second sync doubles requests. One combined JMAP `/changes` request for all apps — rejected: push already compares states for every type in one request; the waste was full bootstraps and polls outside push, not separate `/changes` calls. "Active app polls often, others rarely" — folded into idle cadence plus hidden cadence, which already covers background tabs. A server-side 429 limiter — rejected for now: the host's firewall blocks before PHP sees the traffic. Marking bulk requests with a header deep in Docs hydration — rejected in favour of making the existing pacer browser-wide, which needs no plumbing through the collab layer. Calendar downloading contacts itself with pacing — rejected: it duplicates the Contacts app's download; reading the cache and mounting the live sync costs nothing extra. Fixed 2 s offline poll with jitter — rejected: a host that blocks needs exponential backoff, not spread. Slower lone-room polls as the end state (spike) — rejected after product review: join latency rose to 6–20 s; the push doorbell restores ~3 s for less traffic. Signaling payloads on push — rejected: push is pull-only short-burst, a WebRTC handshake needs sub-second turns; push carries only the doorbell. A push heartbeat that refreshes all the caller's peers' `seen_at` — rejected: it would keep a dead tab on another device alive. Chosen instead (2026-11-20): the push read refreshes only the peers its browser names, so a closed device still expires; rooms poll their own heartbeat only while push is down. Contacts pages of 500 — rejected for 200: 0.36 s per request and larger bodies with real photos; 200 keeps requests short on shared hosting.
 
 ## Affected packages
 
@@ -62,15 +62,17 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 
 ## Open decisions
 
-- [ ] Chunk G: the Helm chart is not in this repository (no `Chart.yaml` found). To verify: where it lives, and that it sets `WGW_INSTALL_CHANNEL=docker` or `WGW_TRAFFIC_PROFILE=standard`. Chunk G's env work in this repo does not wait on it.
+- [x] Chunk G: the Helm chart is not in this repository (no `Chart.yaml` found). Chunk G does not edit a chart. A Helm install that uses the Docker image already gets `WGW_INSTALL_CHANNEL=docker` from `docker/install/Dockerfile`, and chunk G maps that channel to the standard profile; `WGW_TRAFFIC_PROFILE` stays an explicit override.
+- [x] Idle budget (chunk C): measured after chunk I, one idle Docs tab made 15 requests/min (push 10, two 30 s room heartbeats 4, notifications 1) against ≤ 10. Decided 2026-11-20 (Wouter): keep idle push at 6 s and the ≤ 10 budget; room heartbeats and the notifications poll ride the push request. A push read refreshes `seen_at` only for the peers this browser sends with it (never other devices' peers), and the notifications poll is replaced by the existing `Notification` push type (pull on change). Target: one idle Docs tab ≈ 10/min, newcomer seen within ~6 s idle.
 
 ## Invariants
 
+- Shared by default (Wouter, 2026-11-20): every piece that more than one app can use lives in `src/lib` and apps only declare what they need — the push hub and its types, the room doorbell and heartbeat-on-push (`lib/rtc`, used by every mesh room: Docs, Notes, Tasks, Meet, presence, text editor), the backup-poll-while-push-is-down helper (chunk K), the paced first-download schedule (chunk F), the thread doorbell pull (today in `docs-core`, moves to `src/lib` for Tasks and Meet comments), and the notifications push type. A wrong change grows one app-local copy per app, each with its own cadence and bugs. Proof: `cmd: pnpm --dir packages/apps exec eslint src` (import boundaries forbid app-to-app imports) and `path: packages/apps/src/lib/traffic/network-polls.test.ts` (chunk M lists every remaining poll with its owner).
 - Calendar never sends a full Tasks bootstrap when a Tasks cache exists, and focus/reconnect send none. A wrong change brings back the host's named `tasks/items` burst. Proof: `path: packages/apps/src/calendar-core/src/use-calendar-task-due-overlay.test.tsx` assertions "paints the cache and sends no full load when there is one", "loads Tasks once without a cache, and showing the tab again reloads nothing".
-- Calendar never calls `listCards` while a Contacts cache exists. A wrong change re-downloads the address book per keystroke pause. Proof: `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.test.tsx` "refresh re-reads the cache the live sync keeps current, without a download".
+- Calendar never calls `listCards`, with or without a Contacts cache. A wrong change re-downloads the address book on open or per keystroke pause. Proof: `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.test.tsx` "refresh re-reads the cache the live sync keeps current, without a download", plus a search-with-no-cache case that expects no `listCards` call and a started shared cold download (chunk L, which now also owns `use-calendar-contact-invitees.ts`; chunk A landed the cache reads).
 - A thread write in a pool the user cannot reach does not change that user's `DocThread` state (no cross-tenant signal). Proof: `path: packages/api/tests/Feature/Jmap/JmapPushDocThreadStateTest.php` (added in chunk B).
 - With push down, Docs threads still arrive (poll resumes). Proof: `path: packages/apps/src/docs-core/src/collab/use-docs-threads-source.test.tsx` (chunk B).
-- Active users keep today's cadence; only idle or long-alone states slow down. Proof: `path: packages/apps/src/lib/rtc/session/poll-cadence.test.ts` (chunk C).
+- Active users keep today's cadence. With push healthy a quiet room relies on the doorbell and heartbeat-on-push and never returns to the 2 s poll; the idle and long-alone slowdowns (6 s alone after 30 s, 20 s idle) apply only while push is down. Proof: `path: packages/apps/src/lib/rtc/session/poll-cadence.test.ts` (chunk C).
 - A refusing server gets at most 5 probes in 20 s from one browser. Proof: `path: packages/apps/src/hooks/use-connectivity.test.tsx` "waits longer after each failed probe instead of probing every 2 s".
 - New channel objects with the same rooms do not restart the Meet room-status poll. Proof: `path: packages/apps/src/meet-core/src/use-meet-channel-call-activity.hook.test.tsx`.
 - Two tabs sharing the pacer go no faster than one. Proof: `path: packages/apps/src/lib/offline/core/background-sync-pacer.test.ts` "two tabs drawing from one schedule go no faster than one".
@@ -79,7 +81,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - A room activity where the caller has no peer does not change that caller's `RtcRoom` state, and `seen_at` heartbeats do not change it at all. A wrong change leaks presence across tenants, or makes push state change every poll. Proof: `path: packages/api/tests/Feature/Jmap/JmapPushRtcRoomStateTest.php` (chunk I).
 - A lone peer behind the doorbell still heartbeats below the peer timeout. A wrong change drops lone users from rosters after 60 s. Proof: `path: packages/apps/src/lib/rtc/session/poll-cadence.test.ts` (chunk I).
 - While push is unhealthy every app's backup poll resumes within one interval. A wrong change freezes live updates behind a broken proxy. Proof: `path: packages/apps/src/lib/api/wgw/push-health.test.ts` (chunk K).
-- A push request with every type stays ≤ 25 ms on the reference stack. A wrong change makes the most frequent request heavy for 5 FPM children. Proof: `cmd: WGW_TRAFFIC_MINUTES=3 pnpm --dir packages/apps exec playwright test --config playwright.traffic.config.mjs` (report field `pushMs`, chunk M).
+- A push request with every type stays ≤ 25 ms on the reference stack. A wrong change makes the most frequent request heavy for 5 FPM children. Proof: `cmd: WGW_TRAFFIC_MINUTES=3 pnpm --dir packages/apps exec playwright test --config playwright.traffic.config.mjs` (report field `pushMs`, chunk H).
 - A new network poll without a listed reason fails CI. Proof: `path: packages/apps/src/lib/traffic/network-polls.test.ts` (chunk M).
 - After each chunk, main works without the next one (every chunk is independent of the governor). Proof: `cmd: pnpm --dir packages/apps exec vitest run` and `cmd: composer --working-dir packages/api done-gate` per PR.
 
@@ -90,19 +92,19 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Inputs:** overlay and invitee behaviour above — `path: packages/apps/src/calendar-core/src/use-calendar-task-due-overlay.ts:78`, `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.ts:19`; live inbound hooks — `path: packages/apps/src/tasks-core/src/use-tasks-live-inbound.ts:103`
 - **Done when:** #2285 AC met; the two live-inbound hooks live under `src/lib` with their tests; no `wgw-boundaries/import-boundaries` warning in calendar-core.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/calendar-core src/tasks-core src/contacts-core`; `pnpm --dir packages/apps exec eslint src/calendar-core`
-- **Parallel with:** B, C, D, E
+- **Parallel with:** B, D, E
 
 ### Chunk B: docthread-push (#2286)
 - **Skill:** api, then workspace
 - **Inputs:** `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:147`, `:249`; `path: packages/apps/src/docs-core/src/collab/use-docs-threads-source.ts:165`
 - **Done when:** #2286 AC met; OpenAPI lists `DocThread`; `docs/architecture/jmap-push.md` updated.
 - **Verify with:** `composer --working-dir packages/api done-gate` (or `php scripts/done-gate.php` locally); `pnpm --dir packages/apps exec vitest run src/docs-core`
-- **Parallel with:** A, C, D, E
+- **Parallel with:** A, D, E
 
 ### Chunk C: idle-cadence (#2287)
 - **Skill:** workspace (rescoped: idle push 6 s; room slowdowns are the push-down fallback)
 - **Inputs:** `path: packages/apps/src/lib/jmap-client/push/event-source-transport.ts:28`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`
-- **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows.
+- **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows; heartbeat-on-push lands here: the push read refreshes `seen_at` only for the peers its browser names, and a feature test proves a caller cannot refresh another account's or another device's peer (that peer still expires after `peerTimeoutSeconds`); room heartbeat and notifications polls run only while push is down.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core`
 - **Parallel with:** none (after I)
 
@@ -111,21 +113,21 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Inputs:** `path: packages/apps/src/lib/offline/core/browser-online.ts:29`
 - **Done when:** #2288 AC met.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/hooks src/calendar-core src/tasks-core src/meet-core`
-- **Parallel with:** A, B, C, E
+- **Parallel with:** A, B, E
 
 ### Chunk E: request-loops (#2289)
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/meet-core/src/use-meet-channel-call-activity.ts:127`; `path: packages/apps/src/sw.ts:33`
 - **Done when:** #2289 AC met, including the production-build check (no icon request on app switch).
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/meet-core`; production preview on :4190, Network panel while switching apps
-- **Parallel with:** A, B, C, D
+- **Parallel with:** A, B, D
 
 ### Chunk F: browser-wide-pacing (#2290)
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/lib/offline/core/background-sync-pacer.ts:14`
 - **Done when:** #2290 AC met; cold start measured with the harness.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline src/contacts-core`
-- **Parallel with:** A–E
+- **Parallel with:** A, B, D, E
 
 ### Chunk G: sw-governor (#2291)
 - **Skill:** workspace, api, security (cache/limiter key derived from the request: coalesce key includes the Authorization header)
@@ -157,9 +159,9 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 
 ### Chunk L: contacts-large-pages (#2297)
 - **Skill:** workspace, api (projection test)
-- **Inputs:** `path: packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts:26`
-- **Done when:** #2297 AC met; 2000 contacts offline in under 60 s in the cold-start scenario.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/contacts-core src/lib/offline`; harness cold start
+- **Inputs:** `path: packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts:26`; `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.ts:35`
+- **Done when:** #2297 AC met; 2000 contacts offline in under 60 s in the cold-start scenario; Calendar's invitee hook starts or joins the shared cold download instead of calling `listCards`, and its test "asks the server only without any cache" now expects no `listCards` call.
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/contacts-core src/calendar-core src/lib/offline`; harness cold start
 - **Parallel with:** G (after F)
 
 ### Chunk M: doorbell-rule (#2298)
@@ -178,7 +180,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 
 ## Removed since previous revision
 
-None — every heading of the first revision is kept; the doorbell rule was added (2026-11-19).
+None — every heading of the first revision is kept; the doorbell rule was added (2026-11-19). 2026-11-20 (second review): the Calendar invariant drops its "while a Contacts cache exists" exception, the slow lone-room interval is the push-down fallback only, chunk C no longer runs in parallel with A–E, and the Helm item is closed, room push-down cadence is the slow interval, and the Calendar no-cache case is delivered by chunk L (option b).
 
 ## Test plan
 
