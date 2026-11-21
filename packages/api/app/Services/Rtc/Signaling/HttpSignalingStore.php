@@ -631,10 +631,11 @@ final class HttpSignalingStore
     /**
      * @return list<object{owner_user: mixed, name: mixed}>
      */
-    public function peersInRoom(string $room, int $limit = 32): array
+    public function peersInRoom(string $room, int $limit = 32, ?int $seenSince = null): array
     {
         return array_values($this->peerQuery()
             ->where('room', $room)
+            ->when($seenSince !== null, static fn ($query) => $query->where('seen_at', '>=', $seenSince))
             ->limit($limit)
             ->get(['owner_user', 'name'])
             ->map(static function ($row): object {

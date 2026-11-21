@@ -66,6 +66,7 @@ export const liveTierSpecs = [
   "inbound-sync-tasks-drive",
   "meet-adhoc-two-users",
   "meet-audio-only-camera",
+  "meet-call-doorbell",
   "meet-chat-push",
   "meet-chat-windowed",
   "meet-guest-chat",
