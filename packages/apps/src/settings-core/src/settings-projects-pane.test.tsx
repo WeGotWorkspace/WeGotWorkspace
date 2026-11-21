@@ -1,3 +1,4 @@
+import type { SettingsGroup } from "@/lib/models/settings-types";
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +10,13 @@ import { createProjectsStore } from "@/lib/projects/projects-store";
 import { ProjectsManagePane } from "@/settings-core/src/settings-projects-pane";
 import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
 import { TooltipProvider } from "@/ui/tooltip";
+
+const TEAM_GROUPS: SettingsGroup[] = MOCK_PROJECT_TEAMS.map((team, index) => ({
+  id: `principals/groups/${team.slug}`,
+  displayName: team.displayName,
+  memberCount: index + 3,
+  isTeamAdmin: team.isTeamAdmin,
+}));
 
 const toast = vi.hoisted(() => ({ showError: vi.fn(), showSuccess: vi.fn() }));
 vi.mock("@/hooks/use-app-toast", () => ({
@@ -33,7 +41,7 @@ async function renderPane(operations: ProjectOperations = createMockProjectOpera
     <TooltipProvider delayDuration={0}>
       <AutosaveStatusProvider>
         <AutosaveStatusTag />
-        <ProjectsManagePane store={store} />
+        <ProjectsManagePane store={store} groups={TEAM_GROUPS} />
       </AutosaveStatusProvider>
     </TooltipProvider>,
   );
@@ -194,7 +202,7 @@ describe("ProjectsManagePane", () => {
     const store = createProjectsStore(createMockProjectOperations(teams));
     render(
       <TooltipProvider delayDuration={0}>
-        <ProjectsManagePane store={store} />
+        <ProjectsManagePane store={store} groups={TEAM_GROUPS} />
       </TooltipProvider>,
     );
     await screen.findByText("Sales Project");

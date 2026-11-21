@@ -14,7 +14,8 @@ export const projectsLabels = {
   createFailed: "Could not create the Project",
   manageProjects: "Manage Projects",
   panelLabel: "Projects",
-  panelDescription: "Pick a Project in the sidebar to see only its work in every app.",
+  panelDescription:
+    "Your Teams and their Projects. Pick a Project in the sidebar to see only its work in every app.",
   edit: "Edit",
   done: "Done",
   newProject: "New Project",

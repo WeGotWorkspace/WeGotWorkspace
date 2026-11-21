@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { FolderKanban, Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
+import type { SettingsGroup } from "@/lib/models/settings-types";
+import { Tag } from "@/tag/src/tag";
 import { Button } from "@/button/src/button";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -29,6 +31,29 @@ type Track = ReturnType<typeof useTrackAutosave>;
 
 function errorDescription(error: unknown): { description?: string } {
   return { description: error instanceof Error ? error.message : undefined };
+}
+
+function teamSlugOf(group: SettingsGroup): string {
+  return group.id.split("/").pop() ?? group.id;
+}
+
+function memberCountLabel(count: number): string {
+  return count === 1 ? "1 member" : `${count} members`;
+}
+
+/** What a Project holds: the whole Team for the default one, else its own resources. */
+function projectContents(project: WorkspaceProject): string {
+  if (project.isDefault) return labels.defaultContents;
+  const r = project.resources;
+  return [
+    r.calendarId && "Calendar",
+    r.taskListId && "Tasks",
+    r.notebookId && "Notes",
+    r.channelId && "Chat",
+    r.driveFolderId && "Folder",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function ProjectDot({ color }: { color: string | null }) {
@@ -157,14 +182,13 @@ function ProjectRow({
             <span className="projects-manage-row__name">{project.name}</span>
           </span>
         )}
-        <p className="projects-manage-row__contents">
-          {project.isDefault ? labels.defaultContents : labels.projectContents}
-        </p>
+        <p className="projects-manage-row__contents">{projectContents(project)}</p>
       </div>
+      {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
       {canManage && !archived ? (
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           label={editing ? labels.done : labels.edit}
           onClick={() => setEditing((value) => !value)}
         />
@@ -172,7 +196,7 @@ function ProjectRow({
       {canManage && !project.isDefault && !archived ? (
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           label={labels.archive}
           onClick={() =>
             void onAction(
@@ -215,7 +239,14 @@ function ProjectRow({
  * delete; other members see the list. A refused action shows the server's answer and
  * reads the lists again, so a Project that changed elsewhere shows as it is.
  */
-export function ProjectsManagePane({ store = projectsStore() }: { store?: ProjectsStore }) {
+export function ProjectsManagePane({
+  store = projectsStore(),
+  groups,
+}: {
+  store?: ProjectsStore;
+  /** The Teams the user is in; a Team without Projects (yet) still shows. */
+  groups: readonly SettingsGroup[];
+}) {
   const snapshot = useProjects(store);
   const toast = useAppToast();
   const track = useTrackAutosave();
@@ -252,8 +283,8 @@ export function ProjectsManagePane({ store = projectsStore() }: { store?: Projec
     [fail, toast, track],
   );
 
-  const adminSlugs = new Set(snapshot.teams.filter((team) => team.isTeamAdmin).map((t) => t.slug));
-  const active = projectsByTeam(snapshot);
+  const adminSlugs = new Set(groups.filter((g) => g.isTeamAdmin).map(teamSlugOf));
+  const activeByTeam = new Map(projectsByTeam(snapshot).map((entry) => [entry.team.slug, entry]));
   const archived = archivedProjectsByTeam(snapshot);
   const loading = snapshot.status === "idle" || snapshot.status === "loading";
 
@@ -274,42 +305,46 @@ export function ProjectsManagePane({ store = projectsStore() }: { store?: Projec
     </ul>
   );
 
-  if (!loading && (snapshot.status === "error" || loadFailed) && active.length === 0) {
-    return (
-      <SettingsPaneCard>
-        <p className="settings-memberships-pane__empty">{labels.loadFailed}</p>
-      </SettingsPaneCard>
-    );
-  }
-
   return (
     <>
-      {!loading && active.length === 0 && archived.length === 0 ? (
-        <SettingsPaneCard>
-          <p className="settings-memberships-pane__empty">{labels.emptyState}</p>
-        </SettingsPaneCard>
+      {!loading && snapshot.status === "error" ? (
+        <p className="projects-manage-hint">{labels.loadFailed}</p>
       ) : null}
-      {active.map(({ team, projects }) => (
-        <SettingsPaneCard
-          key={team.slug}
-          title={team.displayName}
-          icon={<FolderKanban className="size-3.5" aria-hidden />}
-          action={
-            team.isTeamAdmin && snapshot.status === "ready" ? (
-              <Button
-                type="button"
-                variant="outline"
-                label={labels.newProject}
-                icon={<Plus className="size-3.5" aria-hidden />}
-                onClick={() => setCreatingIn(team)}
-              />
-            ) : null
-          }
-        >
-          {renderRows(projects)}
-        </SettingsPaneCard>
-      ))}
-      {active.some(({ team }) => !team.isTeamAdmin) ? (
+      {groups.map((group) => {
+        const slug = teamSlugOf(group);
+        const projects = activeByTeam.get(slug)?.projects ?? [];
+        return (
+          <SettingsPaneCard
+            key={group.id}
+            title={group.displayName}
+            icon={<Users className="size-3.5" aria-hidden />}
+            action={
+              <span className="projects-manage-team-tags">
+                <Tag label={group.isTeamAdmin ? "Admin" : "Member"} />
+                <Tag label={memberCountLabel(group.memberCount)} />
+                {group.isTeamAdmin && snapshot.status === "ready" ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    label={labels.newProject}
+                    icon={<Plus className="size-3.5" aria-hidden />}
+                    onClick={() =>
+                      setCreatingIn({
+                        slug,
+                        displayName: group.displayName,
+                        isTeamAdmin: true,
+                      })
+                    }
+                  />
+                ) : null}
+              </span>
+            }
+          >
+            {projects.length > 0 ? renderRows(projects) : null}
+          </SettingsPaneCard>
+        );
+      })}
+      {groups.some((g) => !g.isTeamAdmin) ? (
         <p className="projects-manage-hint">{labels.readOnlyHint}</p>
       ) : null}
       {archived.length > 0 ? (

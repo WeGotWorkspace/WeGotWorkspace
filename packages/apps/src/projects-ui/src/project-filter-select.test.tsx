@@ -99,7 +99,7 @@ describe("Manage Projects", () => {
     fireEvent.keyDown(await screen.findByRole("option", { name: "Manage Projects" }), {
       key: "Enter",
     });
-    expect(open).toHaveBeenCalledWith("projects");
+    expect(open).toHaveBeenCalledWith("memberships");
     expect(readProjectFilter()).toBe("all");
   });
 
