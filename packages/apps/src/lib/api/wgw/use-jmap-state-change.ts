@@ -50,6 +50,17 @@ export function useJmapPushConnected(hub: JmapPushHubLike | null = defaultJmapPu
 }
 
 /**
+ * True while this browser's push stream is healthy: it answered in the last
+ * two push rounds (one failed round does not count as down, the second in a
+ * row does; `429`, `501` and offline do at once). Backup polls and the
+ * reachability probe run only while it is false (#2296). Same signal as
+ * {@link useJmapPushConnected}, named for what the polls use it for.
+ */
+export function useJmapPushHealthy(hub: JmapPushHubLike | null = defaultJmapPushHub()): boolean {
+  return useJmapPushConnected(hub);
+}
+
+/**
  * Tell this tab's push hub which screen the tab shows (path plus query), so
  * news about that screen does not toast here (docs/architecture/notifications.md).
  */

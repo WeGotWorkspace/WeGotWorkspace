@@ -8,7 +8,9 @@ import {
   offlineProbeWaitMs,
   probeBrowserReachable,
   readBrowserOnline,
+  reportReachability,
   resetConnectivityHubForTests,
+  setPushHealthy,
   subscribeBrowserOnline,
 } from "@/lib/offline/core/browser-online";
 
@@ -324,5 +326,67 @@ describe("calm recovery (#2288)", () => {
     expect(flush).toHaveBeenCalledTimes(1);
     expect(result.current).toBe(false);
     unmount();
+  });
+});
+
+describe("push as the online check (#2296)", () => {
+  afterEach(() => {
+    setPushHealthy(false);
+    resetConnectivityHubForTests();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("a push response counts as a probe success", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getConnectivitySnapshot()).toBe(false);
+
+    reportReachability(true);
+    expect(getConnectivitySnapshot()).toBe(true);
+    unsubscribe();
+  });
+
+  it("a failed push feeds the probe backoff", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    reportReachability(false);
+    expect(getConnectivitySnapshot()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("sends no probe while push is healthy and resumes when it stops", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    setPushHealthy(true);
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getConnectivitySnapshot()).toBe(true);
+
+    reportReachability(false);
+    setPushHealthy(false);
+    await vi.advanceTimersByTimeAsync(4100); // third failure in a row: 4 s wait
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+    unsubscribe();
   });
 });
