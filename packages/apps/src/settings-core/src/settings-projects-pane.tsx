@@ -180,11 +180,11 @@ function ProjectRow({
           <span className="projects-manage-row__head projects-manage-row__static">
             <ProjectDot color={project.color} />
             <span className="projects-manage-row__name">{project.name}</span>
+            {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
           </span>
         )}
         <p className="projects-manage-row__contents">{projectContents(project)}</p>
       </div>
-      {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
       {canManage && !archived ? (
         <Button
           type="button"
@@ -318,9 +318,9 @@ export function ProjectsManagePane({
             key={group.id}
             title={group.displayName}
             icon={<Users className="size-3.5" aria-hidden />}
+            titleTag={<Tag label={group.isTeamAdmin ? "Admin" : "Member"} />}
             action={
               <span className="projects-manage-team-tags">
-                <Tag label={group.isTeamAdmin ? "Admin" : "Member"} />
                 <Tag label={memberCountLabel(group.memberCount)} />
                 {group.isTeamAdmin && snapshot.status === "ready" ? (
                   <Button

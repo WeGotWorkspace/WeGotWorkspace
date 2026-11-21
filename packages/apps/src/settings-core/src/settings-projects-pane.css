@@ -51,3 +51,7 @@
 .projects-manage-team-tags {
   @apply inline-flex items-center gap-2;
 }
+
+.projects-manage-row__static .projects-manage-row__name {
+  @apply flex-none;
+}
