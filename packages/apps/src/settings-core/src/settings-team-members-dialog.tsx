@@ -26,6 +26,8 @@ import {
 } from "@/lib/api/wgw/teams";
 import { type ShareSearchOption } from "@/share-ui/share-principal-search-dropdown";
 import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
+import { FieldLabelRow } from "@/ui/field-label-row";
+import { Input } from "@/ui/input";
 import { TeamMembersCard } from "@/share-ui/team-members-card";
 
 export type SettingsTeamMembersDialogProps = {
@@ -138,6 +140,15 @@ export function SettingsTeamMembersDialog({
             </DialogTitle>
             <DialogDescription>{labels.description}</DialogDescription>
           </DialogHeader>
+          <FieldLabelRow
+            layout="inline"
+            fill
+            label={labels.nameLabel}
+            htmlFor="settings-team-name"
+            description={labels.nameHint}
+          >
+            <Input id="settings-team-name" value={team?.displayName ?? ""} disabled readOnly />
+          </FieldLabelRow>
           <TeamMembersCard
             members={(members ?? []).map((member) => ({ ...member, id: member.username }))}
             query={query}

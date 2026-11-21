@@ -325,7 +325,7 @@ export function ProjectsManagePane({
                   <Button
                     type="button"
                     variant="ghost"
-                    label="Members"
+                    label="Edit"
                     aria-label={teamMembersLabels.manageOf(group.displayName)}
                     onClick={() => onManageMembers(group)}
                   />

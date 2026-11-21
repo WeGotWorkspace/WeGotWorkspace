@@ -2,9 +2,11 @@
 export const teamMembersLabels = {
   manage: "Manage members",
   manageOf: (team: string) => `Manage members of ${team}`,
-  title: (team: string) => `Members of ${team}`,
+  title: (team: string) => `Edit ${team}`,
   titleFallback: "Team members",
   description: "Changes apply right away.",
+  nameLabel: "Name",
+  nameHint: "Only an organization admin can rename a Team, in the Admin app.",
   sectionTitle: "Members",
   sectionHint:
     "Members see everything this Team owns. A team admin adds and removes members and manages the Team's Projects.",
