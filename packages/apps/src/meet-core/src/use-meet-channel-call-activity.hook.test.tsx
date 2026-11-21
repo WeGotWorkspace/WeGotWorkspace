@@ -61,7 +61,7 @@ function fakePushHub(connected: boolean) {
   return {
     hub,
     ring: async (type: string, state: string) => {
-      await Promise.all(
+      return Promise.all(
         listeners
           .filter((entry) => entry.types.includes(type))
           .map((entry) => entry.listener({ [type]: state }, "bob")),
@@ -166,5 +166,46 @@ describe("useMeetChannelCallActivity with the push doorbell (#2295)", () => {
     });
     expect(roomStatus).toHaveBeenCalledTimes(2);
     hidden.mockRestore();
+  });
+
+  it("keeps the previous flags and resolves false when a read fails", async () => {
+    const { roomStatus, push, view } = setup(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(view.result.current).toEqual({ [general.id]: true });
+
+    roomStatus.mockRejectedValueOnce(new Error("offline"));
+    let results: unknown[] = [];
+    await act(async () => {
+      results = await push.ring("MeetCall", "0");
+    });
+    expect(results).toEqual([false]);
+    expect(view.result.current).toEqual({ [general.id]: true });
+  });
+
+  it("lets an older, slower read not overwrite a newer one", async () => {
+    const { roomStatus, push, view } = setup(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    let resolveOld: (value: { reserved: boolean; active: boolean }) => void = () => undefined;
+    roomStatus.mockImplementationOnce(() => new Promise((resolve) => void (resolveOld = resolve)));
+    let oldRing: Promise<unknown[]> = Promise.resolve([]);
+    await act(async () => {
+      oldRing = push.ring("MeetCall", "2.abc");
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    roomStatus.mockResolvedValueOnce({ reserved: false, active: false });
+    await act(async () => {
+      await push.ring("MeetCall", "0");
+    });
+    expect(view.result.current).toEqual({});
+
+    await act(async () => {
+      resolveOld({ reserved: false, active: true });
+      await oldRing;
+    });
+    expect(view.result.current).toEqual({});
   });
 });

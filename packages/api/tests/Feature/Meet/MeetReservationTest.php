@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Meet;
 
+use App\Models\CalendarInstance;
+use App\Models\MeetPeer;
 use App\Models\MeetReservation;
 use App\Models\Principal;
+use App\Services\Meet\MeetCallPushState;
 use App\Services\Meet\MeetReservationService;
+use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Support\Carbon;
 use Tests\Support\MeetTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -561,6 +565,38 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ->assertExactJson([
                 'reserved' => true,
                 'active' => true,
+            ]);
+    }
+
+    public function test_timed_out_unpruned_peer_is_not_active(): void
+    {
+        $this->reserveMeetRoom(self::ROOM)->assertCreated();
+
+        $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/rooms/'.self::ROOM.'/participants', [
+                'peerId' => 'host-peer',
+                'name' => 'Bob',
+            ])
+            ->assertOk();
+
+        $instance = new CalendarInstance;
+        $instance->uri = self::ROOM;
+        $instance->calendarid = 0;
+        $live = app(MeetCallPushState::class)->stateFor([$instance]);
+        $this->assertNotSame('0', $live);
+
+        MeetPeer::query()->where('room', self::ROOM)->update([
+            'seen_at' => time() - RtcSignalingPolicy::meet()->peerTimeoutSeconds - 5,
+        ]);
+
+        $this->assertSame('0', app(MeetCallPushState::class)->stateFor([$instance]));
+        $this->assertSame(1, MeetPeer::query()->where('room', self::ROOM)->count());
+        $this->withoutBearer()
+            ->getJson($this->meetStatusPath(self::ROOM))
+            ->assertOk()
+            ->assertExactJson([
+                'reserved' => true,
+                'active' => false,
             ]);
     }
 

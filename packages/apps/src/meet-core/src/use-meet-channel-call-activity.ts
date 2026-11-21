@@ -116,18 +116,22 @@ export function useMeetChannelCallActivity({
     });
   }, [omitChannelIds]);
 
-  const pollRef = useRef<() => Promise<void>>(async () => undefined);
+  // Resolves false when a read failed, so push offers the state again.
+  const pollRef = useRef<() => Promise<boolean>>(async () => true);
+  // Numbers the reads: a slower, older read must not overwrite a newer one.
+  const pollSeq = useRef(0);
   // A read skipped while the tab was hidden is made up when it shows again.
   const missedWhileHidden = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    const poll = async () => {
+    const poll = async (): Promise<boolean> => {
       if (document.hidden) {
         missedWhileHidden.current = true;
-        return;
+        return true;
       }
       missedWhileHidden.current = false;
+      const seq = ++pollSeq.current;
       const channels = channelsRef.current;
       const extras: { channelId: string; room: string }[] = [];
       const selectedListed = channels.some((channel) => channel.id === selectedChannelId);
@@ -135,28 +139,33 @@ export function useMeetChannelCallActivity({
         const room = await resolveRoom(selectedChannelId);
         if (room) extras.push({ channelId: selectedChannelId, room });
       }
-      if (cancelled) return;
+      if (cancelled || seq !== pollSeq.current) return true;
       const targets = meetCallActivityTargets(channels, selectedChannelId, joinedRoomCode, extras);
       if (targets.length === 0) {
         setActive((prev) => (Object.keys(prev).length === 0 ? prev : {}));
-        return;
+        return true;
       }
+      let failed = false;
       const entries = await Promise.all(
         targets.map(async ({ channelId, room }) => {
           try {
             const status = await operations.roomStatus({ room });
             return [channelId, status.active === true] as const;
           } catch {
+            failed = true;
             return [channelId, false] as const;
           }
         }),
       );
-      if (cancelled) return;
+      if (cancelled || seq !== pollSeq.current) return true;
+      // A failed read keeps the previous flags; the caller retries.
+      if (failed) return false;
       const next = omitMeetCallActivityChannels(
         Object.fromEntries(entries.filter(([, isActive]) => isActive)),
         omitChannelIdsRef.current,
       );
       setActive((prev) => (sameActiveSet(prev, next) ? prev : next));
+      return true;
     };
     pollRef.current = poll;
     void poll();
@@ -168,14 +177,7 @@ export function useMeetChannelCallActivity({
   // Push is the doorbell: a `MeetCall` state change means a call started or ended in one
   // of this user's channels, so the rooms in view are read once.
   const pushConnected = useJmapPushConnected(pushHub);
-  useJmapStateChange(
-    MEET_CALL_PUSH_TYPES,
-    () => {
-      void pollRef.current();
-      return true;
-    },
-    pushHub,
-  );
+  useJmapStateChange(MEET_CALL_PUSH_TYPES, () => pollRef.current(), pushHub);
 
   // The interval is only the backup while push is down.
   useEffect(() => {

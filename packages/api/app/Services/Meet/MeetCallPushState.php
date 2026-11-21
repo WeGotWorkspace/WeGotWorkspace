@@ -46,7 +46,7 @@ final class MeetCallPushState
                 ->where('seen_at', '>=', $cutoff)
                 ->get(['room', 'owner_user', 'name']);
             foreach ($peers as $peer) {
-                if (self::isJoinable($peer->getAttribute('owner_user'), $peer->getAttribute('name'))) {
+                if (MeetSignalingService::isJoinablePeer($peer->getAttribute('owner_user'), $peer->getAttribute('name'))) {
                     $active[strtolower((string) $peer->getAttribute('room'))] = true;
                 }
             }
@@ -58,16 +58,6 @@ final class MeetCallPushState
         sort($names, SORT_STRING);
 
         return count($names).'.'.substr(hash('sha256', implode("\x1e", $names)), 0, 32);
-    }
-
-    private static function isJoinable(mixed $owner, mixed $name): bool
-    {
-        if (is_string($owner) && str_starts_with($owner, 'u:')) {
-            return true;
-        }
-        $name = is_string($name) ? trim($name) : '';
-
-        return $name !== '' && ! str_starts_with($name, MeetSignalingService::KNOCK_NAME_PREFIX);
     }
 
     /**
