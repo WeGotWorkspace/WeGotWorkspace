@@ -226,6 +226,27 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         $this->assertSame(10, MfaRecoveryCode::query()->where('username', 'bob')->whereNull('used_at')->count());
     }
 
+    public function test_a_replayed_code_is_refused_on_every_code_route_without_counting(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'One', 'code' => $code])->assertCreated();
+
+        // More than the sign-in limit (and the per-user lock) would allow if these counted.
+        for ($i = 0; $i < LoginRateLimiter::USER_IP_LIMIT + 3; $i++) {
+            $this->settings('POST', 'settings/app-passwords', ['name' => 'Two', 'code' => $code])
+                ->assertForbidden()->assertJsonPath('code', 'mfa_code_invalid');
+            $this->settings('POST', 'settings/totp/recovery-codes', ['code' => $code])
+                ->assertForbidden()->assertJsonPath('code', 'mfa_code_invalid');
+            $this->settings('DELETE', 'settings/totp', ['code' => $code])
+                ->assertForbidden()->assertJsonPath('code', 'mfa_code_invalid');
+        }
+        $this->assertSame(1, UserMfa::query()->count());
+
+        $this->nextStep();
+        $this->settings('DELETE', 'settings/totp', ['code' => $this->code($secret)])->assertOk();
+    }
+
     public function test_app_password_create_wrong_codes_count_on_the_limits(): void
     {
         $secret = $this->turnOnMfa('bob')['secret'];

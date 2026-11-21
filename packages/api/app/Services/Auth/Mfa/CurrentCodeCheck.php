@@ -12,7 +12,7 @@ use App\Services\Auth\LoginRateLimiter;
  * (#2273): turning two-factor off, new recovery codes, and creating an app
  * password while two-factor is on. Authenticator codes only, never a recovery
  * code. The sign-in limit of user and address, the per-user code lock and the
- * replay guard (`last_used_step`) all apply; a wrong code is 403 because the
+ * replay guard (`last_used_step`) all apply; a spent code is refused first and does not count; a wrong code is 403 because the
  * session itself is valid.
  */
 final class CurrentCodeCheck
@@ -26,6 +26,10 @@ final class CurrentCodeCheck
     {
         if (! $this->limiter->allow($username, $ip)) {
             throw LoginRateLimiter::throttled($this->limiter->retryAfter($username, $ip));
+        }
+        // A spent code is no guess: refuse it with the same answer, uncounted.
+        if ($this->codes->isSpentTotp($username, $code)) {
+            throw self::wrongCode();
         }
         if (! $this->codes->acceptTotp($username, $code)) {
             $this->limiter->hit($username, $ip);

@@ -19,6 +19,9 @@ final class AuthChallengeService
 
     public const int MAX_ATTEMPTS = 5;
 
+    /** Expired rows are kept this long before the scheduled prune deletes them. */
+    public const int PRUNE_GRACE_SECONDS = 3600;
+
     public function issue(string $username, string $kind, string $client, ?string $pendingSecret = null): string
     {
         $id = bin2hex(random_bytes(32));
@@ -87,6 +90,17 @@ final class AuthChallengeService
             ->whereNull('consumed_at')
             ->where('attempts', '<', self::MAX_ATTEMPTS)
             ->increment('attempts') === 1;
+    }
+
+    /**
+     * Deletes challenges that expired more than the grace period ago, used or
+     * not. Returns how many rows went.
+     */
+    public function pruneExpired(int $graceSeconds = self::PRUNE_GRACE_SECONDS): int
+    {
+        return AuthChallenge::query()
+            ->where('expires_at', '<', Carbon::now()->subSeconds($graceSeconds))
+            ->delete();
     }
 
     public function forgetUser(string $username): void
