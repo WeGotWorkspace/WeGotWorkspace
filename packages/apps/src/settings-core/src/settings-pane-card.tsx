@@ -19,9 +19,13 @@ export function SettingsPaneCard({
   children: ReactNode;
 }) {
   return (
-    <WorkspacePageSection className="settings-pane-card" title={title} icon={icon}
+    <WorkspacePageSection
+      className="settings-pane-card"
+      title={title}
+      icon={icon}
       titleTag={titleTag}
-      action={action}>
+      action={action}
+    >
       {children}
     </WorkspacePageSection>
   );

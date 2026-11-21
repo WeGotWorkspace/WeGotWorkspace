@@ -53,7 +53,12 @@ export function Card({
   iconActions,
 }: CardProps) {
   const hasHeader =
-    title || titleIcon || titleTag || description || action || (iconActions && iconActions.length > 0);
+    title ||
+    titleIcon ||
+    titleTag ||
+    description ||
+    action ||
+    (iconActions && iconActions.length > 0);
 
   const titleBlock =
     title || titleIcon || titleTag || description ? (
