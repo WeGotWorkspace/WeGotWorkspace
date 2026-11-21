@@ -1,7 +1,8 @@
 import { Fragment, useState, type CSSProperties } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown, FolderKanban, Plus } from "lucide-react";
+import { ChevronDown, FolderKanban, Plus, Settings2 } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useOpenSettingsPanel } from "@/lib/settings/open-settings-panel";
 import { projectFilterValue, type ProjectFilterValue } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
 import {
@@ -25,6 +26,7 @@ import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import "./project-filter-select.css";
 
 const CREATE_VALUE = "__create";
+const MANAGE_VALUE = "__manage";
 
 function ProjectDot({ color }: { color: string | null }) {
   return (
@@ -46,6 +48,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
   const [filter, setFilter] = useProjectFilter(store);
   const [createOpen, setCreateOpen] = useState(false);
   const toast = useAppToast();
+  const openSettingsPanel = useOpenSettingsPanel();
 
   if (snapshot.status !== "ready" && snapshot.status !== "offline") return null;
 
@@ -53,6 +56,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
   const adminTeams = snapshot.teams.filter((team) => team.isTeamAdmin);
   const current = selectedProject(filter, snapshot.projects);
   const canCreate = adminTeams.length > 0 && snapshot.status === "ready";
+  const canManage = adminTeams.length > 0 && openSettingsPanel !== null;
 
   return (
     <>
@@ -60,6 +64,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
         value={filter}
         onValueChange={(next) => {
           if (next === CREATE_VALUE) setCreateOpen(true);
+          else if (next === MANAGE_VALUE) openSettingsPanel?.("projects");
           else setFilter(next as ProjectFilterValue);
         }}
       >
@@ -102,16 +107,22 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
               </SelectGroup>
             </Fragment>
           ))}
+          {canCreate || canManage ? <SelectSeparator /> : null}
           {canCreate ? (
-            <>
-              <SelectSeparator />
-              <SelectItem value={CREATE_VALUE}>
-                <span className="project-filter-select__item">
-                  <Plus className="project-filter-select__icon" aria-hidden />
-                  {labels.createProject}
-                </span>
-              </SelectItem>
-            </>
+            <SelectItem value={CREATE_VALUE}>
+              <span className="project-filter-select__item">
+                <Plus className="project-filter-select__icon" aria-hidden />
+                {labels.createProject}
+              </span>
+            </SelectItem>
+          ) : null}
+          {canManage ? (
+            <SelectItem value={MANAGE_VALUE}>
+              <span className="project-filter-select__item">
+                <Settings2 className="project-filter-select__icon" aria-hidden />
+                {labels.manageProjects}
+              </span>
+            </SelectItem>
           ) : null}
         </SelectContent>
       </Select>

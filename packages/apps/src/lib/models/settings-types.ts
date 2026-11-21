@@ -3,6 +3,7 @@ import type { SettingsProfileRequest } from "@wgw/openapi-types/settings-types";
 export const BUILTIN_PANEL_IDS = [
   "profile",
   "memberships",
+  "projects",
   "offline",
   "assistants",
   "incoming-email",

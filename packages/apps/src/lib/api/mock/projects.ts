@@ -82,7 +82,16 @@ export function createMockProjectOperations(
       projects.push(created);
       return created;
     },
-    patch: async (id, patch) => replace({ ...manageable(id), ...patch }),
+    patch: async (id, patch) => {
+      const project = manageable(id);
+      if (project.archived) {
+        throw new WgwRequestError(
+          "An archived Project cannot be changed. Unarchive it first.",
+          409,
+        );
+      }
+      return replace({ ...project, ...patch });
+    },
     archive: async (id) => {
       const project = manageable(id);
       if (project.isDefault) throw new WgwRequestError("The default Project stays", 409);
