@@ -6,7 +6,9 @@ namespace App\Services\Auth;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\AppSetting;
+use App\Models\AuthChallenge;
 use App\Models\User;
+use App\Services\Auth\Mfa\MfaSignIn;
 
 final class AuthTokenService
 {
@@ -19,9 +21,13 @@ final class AuthTokenService
         private SabreCredentialValidator $credentials,
         private AdminRoleResolver $adminRoles,
         private UserEnabledGuard $enabled,
+        private MfaSignIn $mfa,
     ) {}
 
     /**
+     * Tokens for a user without two-factor; for a user with it on, the
+     * `mfa_required` challenge and no tokens.
+     *
      * @return array{
      *   access_token: string,
      *   refresh_token: string,
@@ -30,7 +36,7 @@ final class AuthTokenService
      *   refresh_expires_in: int,
      *   role: 'guest'|'user'|'admin',
      *   username: string
-     * }
+     * }|array{status: 'mfa_required', challenge: string, client: string}
      */
     public function issueFromCredentials(string $username, string $password, string $ip): array
     {
@@ -57,7 +63,7 @@ final class AuthTokenService
 
         $this->rateLimiter->reset($username, $ip);
 
-        return $this->issueForUsername($username);
+        return $this->mfa->challengeAfterPassword($username, AuthChallenge::CLIENT_SPA) ?? $this->issueForUsername($username);
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Services\Settings;
 
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Auth\Mfa\UserMfaService;
 use App\Services\Mcp\McpEnabled;
 use App\Support\ApiUrlBuilder;
 
@@ -16,6 +17,7 @@ final class SettingsStateService
         private ApiUrlBuilder $urls,
         private McpEnabled $mcp,
         private AdminRoleResolver $adminRoles,
+        private UserMfaService $mfa,
     ) {}
 
     /**
@@ -37,6 +39,7 @@ final class SettingsStateService
             'isAdmin' => $this->adminRoles->isAdmin($username),
             'logoutUrl' => $this->urls->logout(),
             'mcpEnabled' => $this->mcp->isOn(),
+            'mfa' => $this->mfa->status($username),
         ];
     }
 }
