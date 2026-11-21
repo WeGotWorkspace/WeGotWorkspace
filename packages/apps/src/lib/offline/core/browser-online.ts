@@ -1,3 +1,5 @@
+import { shortenWithJitter } from "@/lib/traffic/jitter";
+
 /** Read the browser's current online flag (SSR-safe). */
 export function readBrowserOnline(): boolean {
   return typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -25,8 +27,31 @@ export function isFetchNetworkError(error: unknown): boolean {
   return false;
 }
 
-/** Poll reachability while offline with a stale `navigator.onLine` (DevTools service-worker offline). */
-const OFFLINE_REACHABILITY_POLL_MS = 2000;
+/**
+ * Probe reachability while offline with a stale `navigator.onLine` (DevTools service-worker
+ * offline, a firewall block). Each failed probe doubles the wait (2 s … 60 s); jitter only
+ * shortens it. Tabs share every probe result, so one try serves the whole browser (#2288).
+ */
+const OFFLINE_PROBE_FIRST_WAIT_MS = 2000;
+const OFFLINE_PROBE_MAX_WAIT_MS = 60_000;
+const PROBE_CHANNEL_NAME = "wgw-reachability";
+
+type ProbeMessage = { type: "wgw-reachability"; reachable: boolean };
+
+function isProbeMessage(value: unknown): value is ProbeMessage {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as ProbeMessage).type === "wgw-reachability" &&
+    typeof (value as ProbeMessage).reachable === "boolean"
+  );
+}
+
+/** The wait after `failures` failed probes in a row (before jitter). */
+export function offlineProbeWaitMs(failures: number): number {
+  const exponent = Math.max(0, failures - 1);
+  return Math.min(OFFLINE_PROBE_FIRST_WAIT_MS * 2 ** exponent, OFFLINE_PROBE_MAX_WAIT_MS);
+}
 
 type ConnectivityHub = {
   online: boolean;
@@ -35,6 +60,9 @@ type ConnectivityHub = {
   probeController?: AbortController;
   offlinePollId?: number;
   deferredId?: number;
+  /** Failed probes in a row, from this tab or another tab of this browser. */
+  failures: number;
+  channel?: BroadcastChannel | null;
 };
 
 function getConnectivityHub(): ConnectivityHub | null {
@@ -45,6 +73,7 @@ function getConnectivityHub(): ConnectivityHub | null {
       online: readBrowserOnline(),
       subscribers: new Set(),
       started: false,
+      failures: 0,
     };
   }
   return w.__wgwConnectivityHub;
@@ -83,12 +112,36 @@ export function getConnectivitySnapshot(): boolean {
 
 function clearOfflinePoll(hub: ConnectivityHub): void {
   if (hub.offlinePollId === undefined) return;
-  window.clearInterval(hub.offlinePollId);
+  window.clearTimeout(hub.offlinePollId);
   hub.offlinePollId = undefined;
+}
+
+function shareProbeResult(hub: ConnectivityHub, reachable: boolean): void {
+  const message: ProbeMessage = { type: "wgw-reachability", reachable };
+  try {
+    hub.channel?.postMessage(message);
+  } catch {
+    // Channel closed (hub reset): nobody to tell.
+  }
+}
+
+/** Wait (shortened by jitter) after the latest failure, then probe again. */
+function armNextProbe(hub: ConnectivityHub): void {
+  clearOfflinePoll(hub);
+  if (hub.online || !readBrowserOnline()) return;
+  hub.offlinePollId = window.setTimeout(
+    () => {
+      hub.offlinePollId = undefined;
+      if (hub.online || !readBrowserOnline()) return;
+      scheduleReachabilityProbe(hub);
+    },
+    shortenWithJitter(offlineProbeWaitMs(hub.failures)),
+  );
 }
 
 function scheduleReachabilityProbe(hub: ConnectivityHub): void {
   hub.probeController?.abort();
+  clearOfflinePoll(hub);
   if (!readBrowserOnline()) {
     return;
   }
@@ -96,25 +149,33 @@ function scheduleReachabilityProbe(hub: ConnectivityHub): void {
   const { signal } = hub.probeController;
   void probeBrowserReachable(signal).then((reachable) => {
     if (signal.aborted) return;
+    shareProbeResult(hub, reachable);
     if (!reachable) {
+      hub.failures += 1;
       setConnectivityOnline(hub, false);
+      armNextProbe(hub);
       return;
     }
+    hub.failures = 0;
     if (readBrowserOnline()) {
       setConnectivityOnline(hub, true);
     }
   });
 }
 
-function startOfflinePoll(hub: ConnectivityHub): void {
-  if (hub.offlinePollId !== undefined || !readBrowserOnline()) return;
-  hub.offlinePollId = window.setInterval(() => {
-    if (!readBrowserOnline()) {
-      clearOfflinePoll(hub);
-      return;
-    }
-    scheduleReachabilityProbe(hub);
-  }, OFFLINE_REACHABILITY_POLL_MS);
+/** Another tab probed: a failure counts as our attempt, a success brings us online. */
+function onSharedProbeResult(hub: ConnectivityHub, reachable: boolean): void {
+  if (!readBrowserOnline()) return;
+  if (reachable) {
+    hub.probeController?.abort();
+    hub.failures = 0;
+    setConnectivityOnline(hub, true);
+    return;
+  }
+  if (hub.online) return;
+  hub.probeController?.abort();
+  hub.failures += 1;
+  armNextProbe(hub);
 }
 
 function setConnectivityOnline(hub: ConnectivityHub, online: boolean): void {
@@ -122,8 +183,6 @@ function setConnectivityOnline(hub: ConnectivityHub, online: boolean): void {
   hub.online = online;
   if (online) {
     clearOfflinePoll(hub);
-  } else if (readBrowserOnline()) {
-    startOfflinePoll(hub);
   }
   notifyConnectivitySubscribers(hub);
 }
@@ -135,6 +194,7 @@ function ensureConnectivityHubStarted(hub: ConnectivityHub): void {
   const onOnline = () => {
     hub.probeController?.abort();
     clearOfflinePoll(hub);
+    hub.failures = 0;
     scheduleReachabilityProbe(hub);
   };
   const onOffline = () => {
@@ -145,6 +205,12 @@ function ensureConnectivityHubStarted(hub: ConnectivityHub): void {
     if (hub.online) return;
     scheduleReachabilityProbe(hub);
   };
+
+  hub.channel =
+    typeof BroadcastChannel === "function" ? new BroadcastChannel(PROBE_CHANNEL_NAME) : null;
+  hub.channel?.addEventListener("message", (event: MessageEvent) => {
+    if (isProbeMessage(event.data)) onSharedProbeResult(hub, event.data.reachable);
+  });
 
   window.addEventListener("online", onOnline);
   window.addEventListener("offline", onOffline);
@@ -180,5 +246,8 @@ export function subscribeBrowserOnline(onStoreChange: () => void): () => void {
 export function resetConnectivityHubForTests(): void {
   if (typeof window === "undefined") return;
   const w = window as Window & { __wgwConnectivityHub?: ConnectivityHub };
+  w.__wgwConnectivityHub?.probeController?.abort();
+  w.__wgwConnectivityHub?.channel?.close();
+  if (w.__wgwConnectivityHub) clearOfflinePoll(w.__wgwConnectivityHub);
   delete w.__wgwConnectivityHub;
 }

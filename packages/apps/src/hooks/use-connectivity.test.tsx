@@ -1,8 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
+import { setTrafficJitterSource } from "@/lib/traffic/jitter";
 import { useConnectivity, useOnReconnect } from "@/hooks/use-connectivity";
 import {
   getConnectivitySnapshot,
+  offlineProbeWaitMs,
   probeBrowserReachable,
   readBrowserOnline,
   resetConnectivityHubForTests,
@@ -208,5 +211,118 @@ describe("useOnReconnect", () => {
       expect(getConnectivitySnapshot()).toBe(true);
       expect(onReconnect).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("calm recovery (#2288)", () => {
+  afterEach(() => {
+    resetConnectivityHubForTests();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    setTrafficJitterSource(() => 0);
+  });
+
+  it("waits 2 s, 4 s, 8 s … up to 60 s after each failed probe", () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 20].map(offlineProbeWaitMs)).toEqual([
+      2000, 4000, 8000, 16000, 32000, 60000, 60000, 60000,
+    ]);
+  });
+
+  it("a server that keeps refusing gets at most 5 probes in 20 s", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(3);
+    unsubscribe();
+  });
+
+  it("jitter only shortens the wait", async () => {
+    vi.useFakeTimers();
+    setTrafficJitterSource(() => 0.999);
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+
+  it("a probe failure from another tab counts as an attempt and re-arms the wait", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+    const other = new BroadcastChannel("wgw-reachability");
+
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1500);
+    other.postMessage({ type: "wgw-reachability", reachable: false });
+    await vi.advanceTimersByTimeAsync(10);
+    // The wait is now 4 s (second failure), counted from the message.
+    await vi.advanceTimersByTimeAsync(3500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(600);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    other.close();
+    unsubscribe();
+  });
+
+  it("a probe success from another tab brings this tab online", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const other = new BroadcastChannel("wgw-reachability");
+
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getConnectivitySnapshot()).toBe(false);
+
+    other.postMessage({ type: "wgw-reachability", reachable: true });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(getConnectivitySnapshot()).toBe(true);
+    other.close();
+    unsubscribe();
+  });
+
+  it("spreads the reconnect flush over 0–4 s", async () => {
+    vi.useFakeTimers();
+    setTrafficJitterSource(() => 0.5);
+    const flush = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValue(new Response(null, { status: 200 })),
+    );
+    resetConnectivityHubForTests();
+    const { result, unmount } = renderHook(() =>
+      useOfflineReconnectFlush({ enabled: true, flush }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1000); // probe wait (jitter 0.5 → 0.75 × 2000 = 1500)
+    await vi.advanceTimersByTimeAsync(600);
+    expect(flush).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2100);
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(result.current).toBe(false);
+    unmount();
   });
 });

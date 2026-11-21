@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { wgwAwaitSessionRefreshForReconnect } from "@/lib/api/wgw/http";
+import { randomSpreadMs } from "@/lib/traffic/jitter";
+
+/** Reconnect flushes spread over 0–4 s so tabs and browsers do not all send at once (#2288). */
+export const RECONNECT_FLUSH_SPREAD_MS = 4000;
 
 type UseOfflineReconnectFlushArgs = {
   enabled: boolean;
@@ -23,6 +27,8 @@ export function useOfflineReconnectFlush({
     useCallback(() => {
       if (!enabled) return;
       void (async () => {
+        const wait = randomSpreadMs(RECONNECT_FLUSH_SPREAD_MS);
+        if (wait > 0) await new Promise<void>((resolve) => window.setTimeout(resolve, wait));
         setSyncing(true);
         try {
           await wgwAwaitSessionRefreshForReconnect();
