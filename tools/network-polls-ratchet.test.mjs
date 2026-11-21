@@ -135,6 +135,8 @@ const ALLOWED = {
     "no network: Web Lock fallback poll",
   "lib/cross-tab/cross-tab-lock.ts::setInterval":
     "no network: lock fallback timer",
+  "lib/rtc/session/push-heartbeat-peers.ts::setInterval":
+    "no network: rewrites this tab's push-heartbeat peers in localStorage every 20 s",
   "text-editor-core/src/text-editor-print.ts::PRINT_IMAGE_POLL_MS":
     "no network: waits for images before printing (setTimeout)",
   "hooks/use-failed-outbox-count.ts::setInterval":
