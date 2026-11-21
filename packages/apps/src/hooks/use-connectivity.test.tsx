@@ -325,4 +325,35 @@ describe("calm recovery (#2288)", () => {
     expect(result.current).toBe(false);
     unmount();
   });
+
+  it("skips the reconnect flush when offline again during the wait", async () => {
+    vi.useFakeTimers();
+    setTrafficJitterSource(() => 0.5);
+    const flush = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchMock);
+    resetConnectivityHubForTests();
+    const { unmount } = renderHook(() => useOfflineReconnectFlush({ enabled: true, flush }));
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1600); // probe succeeds, flush wait (≤ 4 s) starts
+    // Go offline again inside the wait.
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(flush).not.toHaveBeenCalled();
+    // Back online: the flush runs once.
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(flush).toHaveBeenCalledTimes(1);
+    unmount();
+  });
 });

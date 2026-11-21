@@ -36,13 +36,13 @@ const OFFLINE_PROBE_FIRST_WAIT_MS = 2000;
 const OFFLINE_PROBE_MAX_WAIT_MS = 60_000;
 const PROBE_CHANNEL_NAME = "wgw-reachability";
 
-type ProbeMessage = { type: "wgw-reachability"; reachable: boolean };
+type ProbeMessage = { type: typeof PROBE_CHANNEL_NAME; reachable: boolean };
 
 function isProbeMessage(value: unknown): value is ProbeMessage {
   return (
     typeof value === "object" &&
     value !== null &&
-    (value as ProbeMessage).type === "wgw-reachability" &&
+    (value as ProbeMessage).type === PROBE_CHANNEL_NAME &&
     typeof (value as ProbeMessage).reachable === "boolean"
   );
 }
@@ -117,7 +117,7 @@ function clearOfflinePoll(hub: ConnectivityHub): void {
 }
 
 function shareProbeResult(hub: ConnectivityHub, reachable: boolean): void {
-  const message: ProbeMessage = { type: "wgw-reachability", reachable };
+  const message: ProbeMessage = { type: PROBE_CHANNEL_NAME, reachable };
   try {
     hub.channel?.postMessage(message);
   } catch {
@@ -167,6 +167,7 @@ function scheduleReachabilityProbe(hub: ConnectivityHub): void {
 function onSharedProbeResult(hub: ConnectivityHub, reachable: boolean): void {
   if (!readBrowserOnline()) return;
   if (reachable) {
+    if (hub.online) return;
     hub.probeController?.abort();
     hub.failures = 0;
     setConnectivityOnline(hub, true);
