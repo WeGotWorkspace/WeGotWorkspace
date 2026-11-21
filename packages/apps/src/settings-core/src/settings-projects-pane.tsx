@@ -17,7 +17,6 @@ import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
 import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { PurgeProjectDialog } from "@/projects-ui/src/purge-project-dialog";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
-import { Tag } from "@/tag/src/tag";
 import { useTrackAutosave } from "@/ui/autosave-status";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import { Input } from "@/ui/input";
@@ -141,10 +140,11 @@ function ProjectRow({
   onPurgeRequest: (project: WorkspaceProject) => void;
 }) {
   const archived = project.archived;
+  const [editing, setEditing] = useState(false);
   return (
     <li className="projects-manage-row">
       <div className="projects-manage-row__main">
-        {canManage && !archived ? (
+        {canManage && !archived && editing ? (
           <EditableProjectHead
             project={project}
             store={store}
@@ -161,7 +161,14 @@ function ProjectRow({
           {project.isDefault ? labels.defaultContents : labels.projectContents}
         </p>
       </div>
-      {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
+      {canManage && !archived ? (
+        <Button
+          type="button"
+          variant="outline"
+          label={editing ? labels.done : labels.edit}
+          onClick={() => setEditing((value) => !value)}
+        />
+      ) : null}
       {canManage && !project.isDefault && !archived ? (
         <Button
           type="button"
