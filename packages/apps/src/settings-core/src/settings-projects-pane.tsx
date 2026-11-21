@@ -165,7 +165,6 @@ function ProjectRow({
           <span className="projects-manage-row__head projects-manage-row__static">
             <ProjectDot color={project.color} />
             <span className="projects-manage-row__name">{project.name}</span>
-            {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
           </span>
         )}
       </div>
