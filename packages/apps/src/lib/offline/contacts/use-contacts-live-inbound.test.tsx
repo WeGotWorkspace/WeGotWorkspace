@@ -12,6 +12,7 @@ import {
   CONTACTS_CHANGES_PUSH_POLL_MS,
   useContactsLiveInbound,
 } from "@/lib/offline/contacts/use-contacts-live-inbound";
+import { notifyContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 
 /**
  * Only the network is faked: the real adapter, `useJmapStateChange` and the
@@ -227,5 +228,25 @@ describe("useContactsLiveInbound", () => {
     await settle();
     expect(mocks.getAddressBooks).not.toHaveBeenCalled();
     expect(subscribedTypes()).toEqual([]);
+  });
+
+  it("re-reads the cache when photos arrive, but not during its own first download", async () => {
+    const patchFromCache = vi.fn(async () => undefined);
+    const view = renderHook(
+      ({ enabled }) => useContactsLiveInbound({ username: "bob", enabled, patchFromCache }),
+      { initialProps: { enabled: false } },
+    );
+    await settle();
+    // The download's own progress keeps the whole book's count in the header.
+    notifyContactsCacheChanged("bob");
+    await settle();
+    expect(patchFromCache).not.toHaveBeenCalled();
+
+    view.rerender({ enabled: true });
+    await settle();
+    patchFromCache.mockClear();
+    notifyContactsCacheChanged("bob");
+    await settle();
+    expect(patchFromCache).toHaveBeenCalledTimes(1);
   });
 });

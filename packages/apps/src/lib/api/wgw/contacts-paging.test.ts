@@ -77,8 +77,8 @@ describe("contacts first download pacing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     log.length = 0;
-    acquire.mockImplementation(async () => {
-      log.push("slot");
+    acquire.mockImplementation(async (_signal?: AbortSignal, priority?: string) => {
+      log.push(`slot ${priority}`);
     });
     vi.stubGlobal("window", { location: { origin: "http://localhost" } });
     resetContactsJmapClientForTests();
@@ -89,24 +89,24 @@ describe("contacts first download pacing", () => {
     resetContactsJmapClientForTests();
   });
 
-  it("sends the first page at once and takes a browser-wide slot before every later page", async () => {
-    serveCards(cardIds(100));
+  it("sends the first page at once and takes a first-priority slot before every later page", async () => {
+    serveCards(cardIds(450));
 
     await fetchContactsLiveBootstrap();
 
-    expect(log).toEqual(["get 40", "slot", "get 40", "slot", "get 20"]);
+    expect(log).toEqual(["get 200", "slot first", "get 200", "slot first", "get 50"]);
   });
 
   it("paces every page after the first request of a resumed download", async () => {
     serveCards([]);
     const pages: number[] = [];
 
-    await fetchContactCardPages(cardIds(90), ({ cards }) => {
+    await fetchContactCardPages(cardIds(410), ({ cards }) => {
       pages.push(cards.length);
     });
 
-    expect(pages).toEqual([40, 40, 10]);
-    expect(log).toEqual(["get 40", "slot", "get 40", "slot", "get 10"]);
+    expect(pages).toEqual([200, 200, 10]);
+    expect(log).toEqual(["get 200", "slot first", "get 200", "slot first", "get 10"]);
   });
 
   it("takes no slot for an address book that fits in one page", async () => {

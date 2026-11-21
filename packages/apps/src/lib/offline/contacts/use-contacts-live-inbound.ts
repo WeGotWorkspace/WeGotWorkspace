@@ -11,6 +11,7 @@ import {
   ingestRemoteContactCardDestroyed,
   reconcileContactsSnapshot,
 } from "@/lib/offline/contacts/contacts-jmap-inbound";
+import { subscribeContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 
 /** Inbound `/changes` poll while push is down. */
@@ -92,6 +93,14 @@ export function useContactsLiveInbound({
   }, [enabled, username]);
 
   useSharedInboundSync(adapter, "contacts", username, () => void latestPatch.current());
+
+  // Photos and pages saved outside this view, in any tab. Not while this tab's
+  // own first download runs: its progress keeps the whole book's count in the
+  // header, which a plain re-read of the cache would replace with a climbing one.
+  useEffect(() => {
+    if (!username || !enabled) return;
+    return subscribeContactsCacheChanged(username, () => void latestPatch.current());
+  }, [enabled, username]);
 
   const pushConnected = useJmapPushConnected();
   useEffect(() => {

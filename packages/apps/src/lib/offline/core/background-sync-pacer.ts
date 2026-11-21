@@ -60,9 +60,16 @@ export function retryAfterMsFromError(error: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+/**
+ * `first`: work the user waits on to open an app offline (Contacts card pages).
+ * While it flows, `bulk` work (Docs bodies, Drive content, contact photos)
+ * waits for it.
+ */
+export type BackgroundSyncPriority = "first" | "bulk";
+
 export type BackgroundSyncPacer = {
   /** Resolves when the next background request may start. Rejects on abort. */
-  acquire: (signal?: AbortSignal) => Promise<void>;
+  acquire: (signal?: AbortSignal, priority?: BackgroundSyncPriority) => Promise<void>;
   /** The server answered 429: pause every background request. */
   reportRateLimited: (retryAfterMs: number | null) => void;
   /** A request went through: reset the backoff streak. */
@@ -71,31 +78,69 @@ export type BackgroundSyncPacer = {
   noteUserActivity: () => void;
 };
 
+/** A reserved slot, or how long `first` work holds `bulk` work back. */
+export type BackgroundSyncClaim = { slot: number } | { heldUntil: number };
+
 /**
- * Hands out request slots. `claim` reserves the first free slot at or after
- * `at` and returns its time; the next claim gets one `intervalMs` later.
- * It returns `null`, reserving nothing, when the queue already runs
- * `SLOT_HORIZON_INTERVALS` intervals ahead: the caller waits and claims again.
+ * Hands out request slots, one `intervalMs` apart. A `first` claim reserves
+ * the first free slot at or after `at` (several `first` claims queue) and
+ * holds `bulk` claims back until one interval after its slot, so the next
+ * `first` page gets the next slot too. A `bulk` claim only takes a slot that
+ * is free now; otherwise it is told when to ask again and reserves nothing, so
+ * bulk work never books slots ahead of a `first` page that comes later.
  */
 export type BackgroundSyncSlots = {
-  claim: (at: number, intervalMs: number) => Promise<number | null>;
+  claim: (
+    at: number,
+    intervalMs: number,
+    priority?: BackgroundSyncPriority,
+  ) => Promise<BackgroundSyncClaim>;
 };
 
-/** How many intervals ahead the shared queue may be reserved. */
+/** The schedule's shared state: next free slot and the end of a `first` hold. */
+type SlotSchedule = { nextSlotAt: number; heldUntil: number };
+
+/** How many intervals ahead a claim may reserve (its slot, or its hold). */
 const SLOT_HORIZON_INTERVALS = 10;
 
+/**
+ * One claim against `schedule` (mutated). A claim never reserves past the
+ * horizon: with a queue that full it reserves nothing and is told when to ask
+ * again. So a stored time past the horizon can only be stale (clock change,
+ * old setting) and is ignored, and a long live queue is never reset.
+ */
+function claimSlot(
+  schedule: SlotSchedule,
+  at: number,
+  intervalMs: number,
+  priority: BackgroundSyncPriority,
+): BackgroundSyncClaim {
+  const horizon = SLOT_HORIZON_INTERVALS * intervalMs;
+  const fresh = (time: number) => (Number.isFinite(time) && time - at <= horizon ? time : 0);
+  const heldUntil = fresh(schedule.heldUntil);
+  const nextSlotAt = fresh(schedule.nextSlotAt);
+  if (priority === "bulk" && Math.max(heldUntil, nextSlotAt) > at) {
+    return { heldUntil: Math.max(heldUntil, nextSlotAt) };
+  }
+  const slot = Math.max(nextSlotAt, at);
+  const end = slot + (priority === "first" ? 2 : 1) * intervalMs;
+  if (end - at > horizon) return { heldUntil: end - horizon };
+  schedule.nextSlotAt = slot + intervalMs;
+  if (priority === "first") schedule.heldUntil = end;
+  return { slot };
+}
+
 export function createMemorySlots(): BackgroundSyncSlots {
-  let nextSlotAt = 0;
+  const schedule: SlotSchedule = { nextSlotAt: 0, heldUntil: 0 };
   return {
-    async claim(at, intervalMs) {
-      const slot = Math.max(nextSlotAt, at);
-      nextSlotAt = slot + intervalMs;
-      return slot;
+    async claim(at, intervalMs, priority = "bulk") {
+      return claimSlot(schedule, at, intervalMs, priority);
     },
   };
 }
 
 const SHARED_SLOT_KEY = "wgw.backgroundSync.nextSlotAt";
+const SHARED_HOLD_KEY = "wgw.backgroundSync.heldUntil";
 const SHARED_SLOT_LOCK = "wgw.backgroundSync.slot";
 
 /**
@@ -108,23 +153,25 @@ export function createBrowserSlots(): BackgroundSyncSlots {
   const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
   if (!locks || typeof localStorage === "undefined") return local;
   return {
-    async claim(at, intervalMs) {
+    async claim(at, intervalMs, priority = "bulk") {
       try {
         return await locks.request(SHARED_SLOT_LOCK, () => {
-          const stored = Number(localStorage.getItem(SHARED_SLOT_KEY));
-          const ahead = stored - at;
-          // A live queue never runs past the horizon plus one interval, because
-          // a claim past the horizon reserves nothing. Anything further ahead is
-          // stale (clock change, old setting): ignore it.
-          const live =
-            Number.isFinite(stored) && ahead <= (SLOT_HORIZON_INTERVALS + 1) * intervalMs;
-          if (live && ahead >= SLOT_HORIZON_INTERVALS * intervalMs) return null;
-          const slot = Math.max(live ? stored : 0, at);
-          localStorage.setItem(SHARED_SLOT_KEY, String(slot + intervalMs));
-          return slot;
+          const schedule: SlotSchedule = {
+            nextSlotAt: Number(localStorage.getItem(SHARED_SLOT_KEY)),
+            heldUntil: Number(localStorage.getItem(SHARED_HOLD_KEY)),
+          };
+          const before = { ...schedule };
+          const claim = claimSlot(schedule, at, intervalMs, priority);
+          if (schedule.nextSlotAt !== before.nextSlotAt) {
+            localStorage.setItem(SHARED_SLOT_KEY, String(schedule.nextSlotAt));
+          }
+          if (schedule.heldUntil !== before.heldUntil) {
+            localStorage.setItem(SHARED_HOLD_KEY, String(schedule.heldUntil));
+          }
+          return claim;
         });
       } catch {
-        return local.claim(at, intervalMs);
+        return local.claim(at, intervalMs, priority);
       }
     },
   };
@@ -183,19 +230,19 @@ export function createBackgroundSyncPacer({
   }
 
   return {
-    async acquire(signal) {
+    async acquire(signal, priority = "bulk") {
       // Backoff and the user's own requests first, then a browser-wide slot.
-      await waitUntilClear(signal);
-      let at = now();
-      let slot = await slots.claim(at, intervalMs);
-      while (slot === null) {
-        // The shared queue is full: wait one interval, then claim again.
-        await sleep(intervalMs, signal);
+      while (true) {
         await waitUntilClear(signal);
-        at = now();
-        slot = await slots.claim(at, intervalMs);
+        const at = now();
+        const claim = await slots.claim(at, intervalMs, priority);
+        if ("heldUntil" in claim) {
+          await sleep(claim.heldUntil - at, signal);
+          continue;
+        }
+        if (claim.slot > at) await sleep(claim.slot - at, signal);
+        break;
       }
-      if (slot > at) await sleep(slot - at, signal);
       // The user clicked, or the server said 429, while this request waited for
       // its slot: they still go first. The slot is spent; no second claim.
       await waitUntilClear(signal);
