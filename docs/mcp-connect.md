@@ -25,6 +25,8 @@ Do **not** rewrite the `Host` header to `wegotworkspace.localhost`. If the tunne
 
 You will sign in on the instance when you connect. The assistant uses the same WeGotWorkspace login screen as the web app. A Passport **web session** is required for consent — a tab that is already signed in with a SPA JWT is not enough, and that JWT is never accepted on `/mcp`. If this browser already has a valid web session from a previous assistant connect, you skip the form and go to consent.
 
+With [two-factor sign-in](two-factor-authentication.md) on, connecting takes the same two steps as signing in to the web app: your password, then a 6-digit code from your authenticator app (or a recovery code). The web session for consent starts only after the code. Calendar and contacts app passwords do not work here.
+
 Content the assistant reads may leave this instance for the vendor’s model. Uncheck any permission you do not want on the consent page. You can revoke a single assistant later in **Settings → Connected assistants**.
 
 ## Permissions (read vs write)

@@ -111,6 +111,7 @@ export const liveTierSpecs = [
   "tasks-live-text",
   "tasks-push",
   "tasks-thread-live",
+  "two-factor",
   "undo-offline",
 ];
 
