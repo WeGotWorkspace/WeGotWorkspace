@@ -114,6 +114,7 @@ function ProjectRow({
           <Button
             type="button"
             variant="ghost"
+            severity="danger"
             label={labels.purge}
             onClick={() => onPurgeRequest(project)}
           />

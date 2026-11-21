@@ -68,11 +68,11 @@
 }
 
 /* Edit and Archive sit back until the row is in use. */
-.projects-manage-row > .button--variant-ghost {
+.projects-manage-row > .button--variant-ghost:not(.button--severity-danger) {
   color: var(--color-muted-foreground, var(--workspace-muted-foreground));
 }
 
-.projects-manage-row > .button--variant-ghost:hover,
-.projects-manage-row > .button--variant-ghost:focus-visible {
+.projects-manage-row > .button--variant-ghost:not(.button--severity-danger):hover,
+.projects-manage-row > .button--variant-ghost:not(.button--severity-danger):focus-visible {
   color: var(--workspace-foreground);
 }
