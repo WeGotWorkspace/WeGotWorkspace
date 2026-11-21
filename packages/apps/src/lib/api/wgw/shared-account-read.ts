@@ -216,3 +216,47 @@ export function createSharedAccountRead(options: SharedAccountReadOptions): Shar
     },
   };
 }
+
+export type AccountReads = {
+  settings: SharedAccountRead;
+  me: SharedAccountRead;
+  /** Both reads ask the server again (sign-out, or a change the client cannot see). */
+  invalidateAll: () => void;
+  resetForTests: () => void;
+};
+
+/** The two account-level reads every app needs, each shared per browser. */
+export function createAccountReads(deps: {
+  fetch: (path: string) => Promise<Response>;
+  readJson: (res: Response) => Promise<unknown>;
+  identity: () => string | null;
+}): AccountReads {
+  const load = (path: string) => async (): Promise<AccountRead> => {
+    const res = await deps.fetch(path);
+    if (!res.ok) return { ok: false, status: res.status };
+    const json = await deps.readJson(res);
+    return {
+      ok: true,
+      status: res.status,
+      json: json && typeof json === "object" ? (json as Record<string, unknown>) : {},
+    };
+  };
+  const settings = createSharedAccountRead({
+    name: "settings-state",
+    load: load("/settings/state"),
+    identity: deps.identity,
+  });
+  const me = createSharedAccountRead({ name: "me", load: load("/me"), identity: deps.identity });
+  return {
+    settings,
+    me,
+    invalidateAll: () => {
+      settings.invalidate();
+      me.invalidate();
+    },
+    resetForTests: () => {
+      settings.resetForTests();
+      me.resetForTests();
+    },
+  };
+}
