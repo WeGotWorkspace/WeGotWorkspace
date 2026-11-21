@@ -35,3 +35,15 @@
 .projects-manage-archived-team__name {
   @apply m-0 pt-2 text-xs font-medium text-muted-foreground;
 }
+
+.projects-manage-row__main {
+  @apply flex min-w-0 flex-1 flex-col gap-1;
+}
+
+.projects-manage-row__contents {
+  @apply m-0 text-xs text-muted-foreground;
+}
+
+.projects-manage-hint {
+  @apply m-0 px-1 text-xs text-muted-foreground;
+}

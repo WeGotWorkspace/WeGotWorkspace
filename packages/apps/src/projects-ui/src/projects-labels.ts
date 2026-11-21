@@ -14,12 +14,18 @@ export const projectsLabels = {
   createFailed: "Could not create the Project",
   manageProjects: "Manage Projects",
   panelLabel: "Projects",
-  panelDescription: "Rename, recolor, archive and delete the Projects of your Teams",
+  panelDescription:
+    "A Project is a part of a Team's work with its own calendar, tasks, notes, chat and folder. Every Team also has one Project for the whole Team.",
+  newProject: "New Project",
+  defaultContents:
+    "Everything of the Team: its calendar, tasks, notes, chat and the whole Team Drive",
+  projectContents: "Calendar · Tasks · Notes · Chat · Folder",
   archivedGroup: "Archived",
   emptyState: "You are in no Project yet.",
   loadFailed: "Could not load the Projects",
-  defaultTag: "Default",
-  readOnlyHint: "Only a team admin of this Team can change its Projects.",
+  defaultTag: "Whole Team",
+  readOnlyHint:
+    "You are a member of the Teams above without New Project; only a team admin can change a Team's Projects.",
   nameOf: (name: string) => `Name of ${name}`,
   colorOf: (name: string) => `Color of ${name}`,
   archive: "Archive",

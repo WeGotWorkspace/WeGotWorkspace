@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { FolderKanban } from "lucide-react";
+import { FolderKanban, Plus } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -12,7 +12,9 @@ import {
   type ProjectsStore,
   type WorkspaceProject,
 } from "@/lib/projects/projects-store";
+import type { ProjectTeam } from "@/lib/api/wgw/projects";
 import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
+import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { PurgeProjectDialog } from "@/projects-ui/src/purge-project-dialog";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { Tag } from "@/tag/src/tag";
@@ -141,14 +143,24 @@ function ProjectRow({
   const archived = project.archived;
   return (
     <li className="projects-manage-row">
-      {canManage && !archived ? (
-        <EditableProjectHead project={project} store={store} track={track} onFailure={onFailure} />
-      ) : (
-        <span className="projects-manage-row__head projects-manage-row__static">
-          <ProjectDot color={project.color} />
-          <span className="projects-manage-row__name">{project.name}</span>
-        </span>
-      )}
+      <div className="projects-manage-row__main">
+        {canManage && !archived ? (
+          <EditableProjectHead
+            project={project}
+            store={store}
+            track={track}
+            onFailure={onFailure}
+          />
+        ) : (
+          <span className="projects-manage-row__head projects-manage-row__static">
+            <ProjectDot color={project.color} />
+            <span className="projects-manage-row__name">{project.name}</span>
+          </span>
+        )}
+        <p className="projects-manage-row__contents">
+          {project.isDefault ? labels.defaultContents : labels.projectContents}
+        </p>
+      </div>
       {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
       {canManage && !project.isDefault && !archived ? (
         <Button
@@ -202,6 +214,7 @@ export function ProjectsManagePane({ store = projectsStore() }: { store?: Projec
   const track = useTrackAutosave();
   const [purging, setPurging] = useState<WorkspaceProject | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [creatingIn, setCreatingIn] = useState<ProjectTeam | null>(null);
 
   const reload = useCallback(async () => {
     const [active, archived] = await Promise.all([store.load(), store.loadArchived()]);
@@ -274,13 +287,24 @@ export function ProjectsManagePane({ store = projectsStore() }: { store?: Projec
           key={team.slug}
           title={team.displayName}
           icon={<FolderKanban className="size-3.5" aria-hidden />}
+          action={
+            team.isTeamAdmin && snapshot.status === "ready" ? (
+              <Button
+                type="button"
+                variant="outline"
+                label={labels.newProject}
+                icon={<Plus className="size-3.5" aria-hidden />}
+                onClick={() => setCreatingIn(team)}
+              />
+            ) : null
+          }
         >
           {renderRows(projects)}
-          {team.isTeamAdmin ? null : (
-            <p className="settings-memberships-pane__empty">{labels.readOnlyHint}</p>
-          )}
         </SettingsPaneCard>
       ))}
+      {active.some(({ team }) => !team.isTeamAdmin) ? (
+        <p className="projects-manage-hint">{labels.readOnlyHint}</p>
+      ) : null}
       {archived.length > 0 ? (
         <SettingsPaneCard title={labels.archivedGroup}>
           {archived.map(({ team, projects }) => (
@@ -291,6 +315,23 @@ export function ProjectsManagePane({ store = projectsStore() }: { store?: Projec
           ))}
         </SettingsPaneCard>
       ) : null}
+      <CreateProjectDialog
+        open={creatingIn !== null}
+        teams={creatingIn ? [creatingIn] : []}
+        onOpenChange={(open) => {
+          if (!open) setCreatingIn(null);
+        }}
+        onCreate={async (input) => {
+          try {
+            const created = await track(() => store.create(input));
+            toast.showSuccess(labels.created(created.name));
+            return true;
+          } catch (error) {
+            fail(labels.createFailed, error);
+            return false;
+          }
+        }}
+      />
       <PurgeProjectDialog
         projectName={purging?.name ?? null}
         onOpenChange={(open) => {
