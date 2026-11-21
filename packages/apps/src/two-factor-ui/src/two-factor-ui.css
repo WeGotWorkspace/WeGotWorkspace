@@ -15,6 +15,15 @@
   @apply min-w-0 flex-1 font-mono tracking-wide;
 }
 
+/* The copy button sits beside the field, inside the row: it keeps its own edge instead of the
+ * inline row's end pull (`ui/field-label-row.css`), which would push it past a dialog body. */
+.field-label-row--inline
+  .field-label-row__control
+  .two-factor-secret
+  > .icon-button--size-md:last-child {
+  margin-inline-end: 0;
+}
+
 .two-factor-code-input {
   @apply font-mono tracking-[0.2em];
 }
@@ -29,4 +38,17 @@
 
 .two-factor-recovery-codes__saved {
   @apply flex items-center gap-2 text-sm;
+}
+
+.two-factor-code-control {
+  @apply flex w-full min-w-0 flex-col;
+}
+
+/* Same look as a form message (`FormTextField`). */
+.two-factor-field-error {
+  @apply m-0 mt-1.5 text-[0.8rem] font-medium text-destructive;
+}
+
+.two-factor-field-hint {
+  @apply mt-1 block font-normal text-muted-foreground;
 }

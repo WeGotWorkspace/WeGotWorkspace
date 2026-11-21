@@ -47,6 +47,8 @@ export function LoginScreen({
   const resolvedReturnPath = sanitizeWgwReturnPath(returnPath ?? search.get("return"));
   const resolvedError = (error || search.get("error")?.trim() || "") as LoginScreenError;
   const oauthConnect = isWgwOAuthAuthorizeReturnPath(resolvedReturnPath);
+  // Settings sends the user here after turning two-factor on (#2275).
+  const twoFactorOn = search.get("notice") === "two-factor-on";
   const [signInOperations] = useState(
     () =>
       operations ??
@@ -124,6 +126,11 @@ export function LoginScreen({
         <LoginRecoveryCodesStep signIn={signIn} codes={signIn.step.codes} />
       ) : (
         <form className="login-screen__form" onSubmit={submitPassword}>
+          {twoFactorOn && !errorMessage ? (
+            <p className="login-screen__lead" role="status">
+              {labels.twoFactorOn}
+            </p>
+          ) : null}
           <input type="hidden" name="return" value={resolvedReturnPath} />
           <FieldLabelRow htmlFor="username" label="Username">
             <Input

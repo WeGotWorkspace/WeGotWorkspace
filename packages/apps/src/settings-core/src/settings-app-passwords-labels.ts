@@ -1,7 +1,7 @@
 /** Copy for Settings → Security → App passwords (#2272). */
 export const appPasswordLabels = {
   panel: "Security",
-  panelDescription: "App passwords for calendar and contacts apps",
+  panelDescription: "Two-factor sign-in, and app passwords for calendar and contacts apps",
   title: "App passwords",
   lead: "For calendar and contacts apps that can't ask for a two-factor code.",
   empty: "No app passwords yet.",

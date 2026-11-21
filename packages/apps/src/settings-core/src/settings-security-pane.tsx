@@ -12,6 +12,11 @@ import {
 import { copyShareText } from "@/share-ui/share-path-utils";
 import { appPasswordLabels as labels } from "@/settings-core/src/settings-app-passwords-labels";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
+import { SettingsTwoFactorSection } from "@/settings-core/src/settings-two-factor-section";
+import {
+  useSettingsTwoFactor,
+  type SettingsTwoFactorOptions,
+} from "@/settings-core/src/use-settings-two-factor";
 import {
   useSettingsAppPasswords,
   type SettingsAppPasswordsController,
@@ -34,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
+import { TwoFactorCodeField } from "@/two-factor-ui/src/two-factor-fields";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Form } from "@/ui/form";
 import { FormTextField } from "@/ui/form-text-field";
@@ -41,19 +47,27 @@ import { Input } from "@/ui/input";
 import "./settings-security-pane.css";
 
 /**
- * Settings → Security (#2272): app passwords for calendar and contacts apps. Each is
- * made for one app, shown once, and can be removed on its own or all at once.
+ * Settings → Security: two-factor sign-in (#2275), then app passwords for calendar and
+ * contacts apps (#2272). Each app password is made for one app, shown once, and can be
+ * removed on its own or all at once.
  */
 export function SettingsSecurityPane({
   operations,
+  twoFactor,
 }: {
   /** Stories and tests; the app uses the live REST resource (mock without an API). */
   operations?: AppPasswordOperations;
+  twoFactor?: SettingsTwoFactorOptions;
 }) {
-  const controller = useSettingsAppPasswords(operations);
+  const twoFactorController = useSettingsTwoFactor(twoFactor);
+  const controller = useSettingsAppPasswords(operations, twoFactorController.state.enabled);
   const ready = controller.phase === "ready";
   return (
     <div className="settings-security-pane">
+      <SettingsTwoFactorSection
+        controller={twoFactorController}
+        onMakeAppPassword={controller.openCreate}
+      />
       <SettingsPaneCard
         title={labels.title}
         action={
@@ -157,8 +171,10 @@ function formatDay(raw: string, now: Date): string {
 }
 
 function CreateAppPasswordDialog({ controller }: { controller: SettingsAppPasswordsController }) {
-  const { form, createOpen, closeCreate, submitCreate, created } = controller;
+  const { form, createOpen, closeCreate, submitCreate, created, asksCode } = controller;
   const busy = form.formState.isSubmitting;
+  const code = form.watch("code");
+  const codeError = form.formState.errors.code?.message;
   return (
     <Dialog open={createOpen} onOpenChange={(open) => !open && !busy && closeCreate()}>
       <DialogContent>
@@ -180,13 +196,27 @@ function CreateAppPasswordDialog({ controller }: { controller: SettingsAppPasswo
                   autoComplete="off"
                   autoFocus
                 />
-                <FormTextField
-                  layout="inline"
-                  name="currentPassword"
-                  label={labels.currentPasswordLabel}
-                  variant="password"
-                  autoComplete="current-password"
-                />
+                {asksCode ? (
+                  <TwoFactorCodeField
+                    layout="inline"
+                    value={code}
+                    onChange={(value) => {
+                      form.setValue("code", value);
+                      form.clearErrors("code");
+                    }}
+                    disabled={busy}
+                    error={codeError}
+                    clockHint={controller.wrongCode}
+                  />
+                ) : (
+                  <FormTextField
+                    layout="inline"
+                    name="currentPassword"
+                    label={labels.currentPasswordLabel}
+                    variant="password"
+                    autoComplete="current-password"
+                  />
+                )}
                 <DialogFooter>
                   <Button type="button" variant="outline" disabled={busy} onClick={closeCreate}>
                     {labels.cancel}

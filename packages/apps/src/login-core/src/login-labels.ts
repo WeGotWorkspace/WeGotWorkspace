@@ -2,6 +2,8 @@
 export const loginLabels = {
   welcome: "Welcome back.",
   connect: "Connect Assistant",
+  twoFactorOn:
+    "Two-factor sign-in is on. Sign in again with your password and a code from your app.",
   codeTitle: "One more step.",
   replaceTitle: "Set up your app again.",
   codesTitle: "Save your new recovery codes.",

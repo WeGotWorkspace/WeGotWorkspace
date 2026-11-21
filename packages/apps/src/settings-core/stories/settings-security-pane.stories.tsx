@@ -6,9 +6,12 @@ import {
   MOCK_ACCOUNT_PASSWORD,
   MOCK_APP_PASSWORDS,
 } from "@/lib/api/mock/app-passwords";
+import { createMockTwoFactorOperations } from "@/lib/api/mock/two-factor-settings";
 import type { AppPasswordOperations } from "@/lib/api/wgw/app-passwords";
 import { appPasswordLabels as labels } from "@/settings-core/src/settings-app-passwords-labels";
 import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
+import { twoFactorSettingsLabels } from "@/settings-core/src/settings-two-factor-labels";
+import { twoFactorLabels } from "@/two-factor-ui/src/two-factor-labels";
 import { SettingsStoryScope } from "./settings-story-scope";
 
 const meta = {
@@ -22,12 +25,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof SettingsSecurityPane>;
 
-function story(operations: () => AppPasswordOperations): Story["render"] {
+function story(operations: () => AppPasswordOperations, twoFactorOn = false): Story["render"] {
   return function SecurityStory() {
     const [ops] = useState(operations);
+    const [twoFactor] = useState(() =>
+      twoFactorOn
+        ? {
+            operations: createMockTwoFactorOperations({
+              enabled: true,
+              recoveryCodesRemaining: 10,
+            }),
+          }
+        : undefined,
+    );
     return (
       <SettingsStoryScope>
-        <SettingsSecurityPane operations={ops} />
+        <SettingsSecurityPane operations={ops} twoFactor={twoFactor} />
       </SettingsStoryScope>
     );
   };
@@ -87,6 +100,28 @@ export const Throttled: Story = {
     await fillCreateDialog(canvasElement, "throttled");
     await userEvent.click(page.getByRole("button", { name: labels.create }));
     await expect(await page.findByText(/^Too many tries\. Try again at .+\.$/)).toBeInTheDocument();
+  },
+};
+
+/**
+ * With two-factor on, a new app password asks for a current code instead of the account
+ * password, like Replace recovery codes (decided by Wouter 2026-11-20). The code is `123456`.
+ */
+export const CreateWithTwoFactorOn: Story = {
+  name: "Create with two-factor on",
+  render: story(() => createMockAppPasswordOperations(MOCK_APP_PASSWORDS), true),
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    await page.findByText(twoFactorSettingsLabels.statusOn);
+    await userEvent.click(await page.findByRole("button", { name: labels.newButton }));
+    const name = await page.findByLabelText(labels.nameLabel);
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.type(name, "Work laptop");
+    await expect(page.queryByLabelText(labels.currentPasswordLabel)).toBeNull();
+    await userEvent.type(page.getByLabelText(twoFactorLabels.codeLabel), "654321");
+    await userEvent.click(page.getByRole("button", { name: labels.create }));
+    await expect(await page.findByText(twoFactorSettingsLabels.wrongCode)).toBeInTheDocument();
+    await expect(page.getByText(twoFactorLabels.clockHint)).toBeInTheDocument();
   },
 };
 

@@ -142,6 +142,7 @@ export function mapWgwAdminStateToUI(
       createdAt: user.createdAt,
       enabled: user.enabled !== false,
       isAdmin: user.isAdmin === true,
+      mfaEnabled: (user as { mfaEnabled?: unknown }).mfaEnabled === true,
     })),
     groups: state.groups.map((group) => ({
       id: group.id,
@@ -579,6 +580,12 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      return fetchAdminUiData(opts);
+    },
+    resetUserMfa: async (username, opts) => {
+      const path = `/admin/users/${encodeURIComponent(username)}/mfa-resets`;
+      const res = await wgwFetch(path, { method: "POST", signal: opts?.signal });
+      if (!res.ok) throw new WgwRequestError(`POST ${path} failed (${res.status})`, res.status);
       return fetchAdminUiData(opts);
     },
     createGroup: async (input, opts) => {

@@ -1,3 +1,4 @@
+import { MOCK_SIGN_IN } from "@/lib/api/mock/sign-in";
 import {
   AppPasswordThrottledError,
   type AppPassword,
@@ -40,7 +41,8 @@ function mockPlaintext(): string {
 
 /**
  * In-memory stand-in for `/api/v1/settings/app-passwords` with the server's rules: create
- * needs the account password (403 `current_password_invalid` otherwise, 429 for `throttled`),
+ * needs the account password (403 `current_password_invalid` otherwise, 429 for `throttled`), or
+ * with two-factor on the mock code (403 `mfa_code_invalid` otherwise),
  * the plaintext comes back once, the newest is listed first. `failList` makes the list fail.
  */
 export function createMockAppPasswordOperations(
@@ -51,14 +53,36 @@ export function createMockAppPasswordOperations(
   let nextId = rows.reduce((max, row) => Math.max(max, row.id), 0) + 1;
   const wait = () =>
     options.latencyMs ? new Promise((resolve) => setTimeout(resolve, options.latencyMs)) : null;
+  const add = (name: string) => {
+    const appPassword: AppPassword = {
+      id: nextId++,
+      name: name.trim(),
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+      lastUsedClient: null,
+    };
+    rows = [appPassword, ...rows];
+    return { password: mockPlaintext(), appPassword };
+  };
   return {
     list: async () => {
       await wait();
       if (options.failList) throw new WgwRequestError("GET failed (500)", 500);
       return [...rows];
     },
-    create: async ({ name, currentPassword }) => {
+    create: async (input) => {
       await wait();
+      const { name } = input;
+      if ("code" in input) {
+        if (input.code === MOCK_SIGN_IN.throttledCode) {
+          throw new AppPasswordThrottledError("Too many attempts", 900, "throttled");
+        }
+        if (input.code !== MOCK_SIGN_IN.code) {
+          throw new WgwRequestError("Code is incorrect.", 403, "mfa_code_invalid");
+        }
+        return add(name);
+      }
+      const { currentPassword } = input;
       if (currentPassword === "throttled") {
         throw new AppPasswordThrottledError("Too many attempts", 600, "throttled");
       }
@@ -69,15 +93,7 @@ export function createMockAppPasswordOperations(
           "current_password_invalid",
         );
       }
-      const appPassword: AppPassword = {
-        id: nextId++,
-        name: name.trim(),
-        createdAt: new Date().toISOString(),
-        lastUsedAt: null,
-        lastUsedClient: null,
-      };
-      rows = [appPassword, ...rows];
-      return { password: mockPlaintext(), appPassword };
+      return add(name);
     },
     revoke: async (id) => {
       await wait();
