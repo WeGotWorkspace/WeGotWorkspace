@@ -9,17 +9,21 @@ namespace App\Services\Rtc\Signaling;
  *
  * Behind the push doorbell a quiet room does not poll, so nothing else moves its
  * peers' `seen_at`. The browser names its own live peers on every push read
- * (`X-WGW-Rtc-Peers: collab:<peerId>,meet:<peerId>,…`) and this refreshes
- * exactly those: one UPDATE per channel, scoped to the named ids and to the
+ * (`X-WGW-Rtc-Peers: meet:<peerId>,…`) and this refreshes
+ * exactly those: one UPDATE, scoped to the named ids and to the
  * caller's owner marker. Another device's peers are never named by this browser,
  * so a closed laptop still expires after `peerTimeoutSeconds`; another user's
  * peer id refreshes nothing.
+ *
+ * Only Meet is named. Docs (collab) and Presence (principal) keep their 30 s poll:
+ * that poll re-reads the share or Team grant and ends a revoked member's session,
+ * so a header must never keep those peers alive.
  */
 final class RtcPushHeartbeat
 {
     public const HEADER = 'X-WGW-Rtc-Peers';
 
-    /** More than any browser holds at once (a few tabs × collab, presence and Meet). */
+    /** More than any browser holds at once (a few tabs × Meet rooms). */
     public const MAX_PEERS = 32;
 
     private const MAX_HEADER_LENGTH = 4096;
@@ -84,8 +88,6 @@ final class RtcPushHeartbeat
     private static function policy(string $channel): ?RtcSignalingPolicy
     {
         return match ($channel) {
-            'collab' => RtcSignalingPolicy::collab(),
-            'principal' => RtcSignalingPolicy::principal(),
             'meet' => RtcSignalingPolicy::meet(),
             default => null,
         };

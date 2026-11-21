@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Models\CollabPeer;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
+use App\Models\MeetPeer;
 use App\Services\Rtc\Signaling\RtcPushHeartbeat;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Support\Facades\Cache;
@@ -40,63 +41,70 @@ final class JmapPushRtcHeartbeatTest extends WgwDatabaseTestCase
 
     public function test_a_push_read_keeps_the_named_own_peer_alive(): void
     {
-        $alicePeer = $this->join('alice');
-        $stale = time() - 60;
-        CollabPeer::query()->update(['seen_at' => $stale]);
+        $stale = time() - 40;
+        $this->seedMeetPeer('meet_alice_1', 'alice', $stale);
 
-        $this->pushRead('alice', 'collab:'.$alicePeer)->assertOk();
+        $this->pushRead('alice', 'meet:meet_alice_1')->assertOk();
 
-        $this->assertGreaterThan($stale, $this->seenAt($alicePeer));
+        $this->assertGreaterThan($stale, $this->meetSeenAt('meet_alice_1'));
     }
 
     public function test_a_push_read_never_refreshes_another_users_peer(): void
     {
-        $alicePeer = $this->join('alice');
-        $stale = time() - 60;
-        CollabPeer::query()->update(['seen_at' => $stale]);
+        $stale = time() - 40;
+        $this->seedMeetPeer('meet_alice_1', 'alice', $stale);
 
         // bob knows alice's peer id from the roster; naming it moves nothing.
-        $this->pushRead('bob', 'collab:'.$alicePeer)->assertOk();
+        $this->pushRead('bob', 'meet:meet_alice_1')->assertOk();
 
-        $this->assertSame($stale, $this->seenAt($alicePeer));
+        $this->assertSame($stale, $this->meetSeenAt('meet_alice_1'));
     }
 
     public function test_a_peer_nobody_names_still_expires(): void
     {
-        $laptopPeer = $this->join('alice');
-        $phonePeer = $this->join('alice');
-        $stale = time() - RtcSignalingPolicy::collab()->peerTimeoutSeconds + 5;
-        CollabPeer::query()->update(['seen_at' => $stale]);
+        $stale = time() - RtcSignalingPolicy::meet()->peerTimeoutSeconds + 5;
+        $this->seedMeetPeer('meet_laptop_1', 'alice', $stale);
+        $this->seedMeetPeer('meet_phone_1', 'alice', $stale);
 
         // The phone's browser keeps reading push; the closed laptop does not.
-        $this->pushRead('alice', 'collab:'.$phonePeer)->assertOk();
+        $this->pushRead('alice', 'meet:meet_phone_1')->assertOk();
 
-        $this->assertSame($stale, $this->seenAt($laptopPeer));
-        $this->assertGreaterThan($stale, $this->seenAt($phonePeer));
+        $this->assertSame($stale, $this->meetSeenAt('meet_laptop_1'));
+        $this->assertGreaterThan($stale, $this->meetSeenAt('meet_phone_1'));
+    }
+
+    public function test_a_push_read_never_refreshes_collab_or_principal_peers(): void
+    {
+        $collabPeer = $this->join('alice');
+        $stale = time() - 60;
+        CollabPeer::query()->update(['seen_at' => $stale]);
+
+        $this->pushRead('alice', 'collab:'.$collabPeer.',principal:alice-a1b2c3')->assertOk();
+
+        $this->assertSame($stale, $this->seenAt($collabPeer));
     }
 
     public function test_a_malformed_header_is_ignored_and_the_read_still_answers(): void
     {
-        $alicePeer = $this->join('alice');
-        $stale = time() - 60;
-        CollabPeer::query()->update(['seen_at' => $stale]);
+        $stale = time() - 40;
+        $this->seedMeetPeer('meet_alice_1', 'alice', $stale);
 
-        $this->pushRead('alice', 'nope,collab:,collab:%%%,meet:'.$alicePeer.','.str_repeat('x', 5000))->assertOk();
+        $this->pushRead('alice', 'nope,meet:,meet:%%%,collab:x,'.str_repeat('x', 5000))->assertOk();
 
-        $this->assertSame($stale, $this->seenAt($alicePeer));
+        $this->assertSame($stale, $this->meetSeenAt('meet_alice_1'));
     }
 
-    public function test_the_header_parser_validates_each_channel_and_caps_the_count(): void
+    public function test_the_header_parser_validates_meet_ids_and_caps_the_count(): void
     {
         $this->assertSame(
-            ['collab' => ['0123456789abcdef'], 'principal' => ['alice-a1b2c3'], 'meet' => ['meet_peer_01']],
-            RtcPushHeartbeat::parse(' collab:0123456789abcdef , principal:alice-a1b2c3,meet:meet_peer_01,collab:0123456789abcdef,chat:x1234567'),
+            ['meet' => ['meet_peer_01']],
+            RtcPushHeartbeat::parse(' collab:0123456789abcdef , principal:alice-a1b2c3,meet:meet_peer_01,meet:meet_peer_01,chat:x1234567'),
         );
-        // Collab peer ids are 16 hex characters; anything else is dropped.
-        $this->assertSame([], RtcPushHeartbeat::parse('collab:ALICE-not-hex'));
+        // Meet peer ids are 4-64 characters of [A-Za-z0-9_-]; anything else is dropped.
+        $this->assertSame([], RtcPushHeartbeat::parse('meet:no spaces!'));
 
-        $many = implode(',', array_map(static fn (int $index): string => sprintf('collab:%016x', $index), range(1, 50)));
-        $this->assertCount(RtcPushHeartbeat::MAX_PEERS, RtcPushHeartbeat::parse($many)['collab']);
+        $many = implode(',', array_map(static fn (int $index): string => sprintf('meet:meet_peer_%02d', $index), range(1, 50)));
+        $this->assertCount(RtcPushHeartbeat::MAX_PEERS, RtcPushHeartbeat::parse($many)['meet']);
     }
 
     /** @return TestResponse<Response> */
@@ -107,6 +115,22 @@ final class JmapPushRtcHeartbeatTest extends WgwDatabaseTestCase
             'Accept' => 'text/event-stream',
             RtcPushHeartbeat::HEADER => $peers,
         ]));
+    }
+
+    private function seedMeetPeer(string $peerId, string $username, int $seenAt): void
+    {
+        MeetPeer::query()->insert([
+            'room' => 'room-a',
+            'peer_id' => $peerId,
+            'name' => 'Peer',
+            'owner_user' => 'u:'.$username,
+            'seen_at' => $seenAt,
+        ]);
+    }
+
+    private function meetSeenAt(string $peerId): int
+    {
+        return (int) MeetPeer::query()->where('peer_id', $peerId)->value('seen_at');
     }
 
     private function seenAt(string $peerId): int
