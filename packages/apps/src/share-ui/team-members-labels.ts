@@ -6,10 +6,9 @@ export const teamMembersLabels = {
   titleFallback: "Team members",
   description: "Changes apply right away.",
   nameLabel: "Name",
-  nameHint: "Only an organization admin can rename a Team, in the Admin app.",
+  nameHint: "Renaming is done in Admin.",
   sectionTitle: "Members",
-  sectionHint:
-    "Members see everything this Team owns. A team admin adds and removes members and manages the Team's Projects.",
+  sectionHint: "Members see everything this Team owns.",
   addPlaceholder: "Add by name or email",
   noCandidates: "No one found",
   loading: "Loading members",
