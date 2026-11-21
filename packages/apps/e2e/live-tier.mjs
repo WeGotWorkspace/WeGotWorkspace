@@ -92,6 +92,7 @@ export const liveTierSpecs = [
   "notifications-toast",
   "presence-offline-start",
   "presence-team-rooms",
+  "projects-filter-two-apps",
   "push-mesh-interval",
   "queued-write-reload",
   "rtc-idle-poll",
