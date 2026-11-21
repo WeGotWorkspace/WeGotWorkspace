@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MeshPollLoop, type MeshPollLoopContext } from "@/lib/rtc/session/mesh-poll-loop";
 import {
   DOORBELL_HEARTBEAT_POLL_INTERVAL_MS,
   type MeshPollCadenceSnapshot,
 } from "@/lib/rtc/session/poll-cadence";
+import {
+  pushHeartbeatHeaderValue,
+  resetPushHeartbeatPeersForTests,
+} from "@/lib/rtc/session/push-heartbeat-peers";
 import type { RoomDoorbell } from "@/lib/rtc/session/room-doorbell";
 import { MEET_RTC_POLL_INTERVALS } from "@/lib/rtc/types";
 
@@ -135,32 +139,98 @@ function fakeDoorbell(connected: boolean) {
 }
 
 describe("MeshPollLoop behind the push doorbell (#2294)", () => {
-  it("heartbeats while push is connected and polls at once when the doorbell rings", async () => {
+  beforeEach(() => {
+    resetPushHeartbeatPeersForTests(() => null);
+  });
+
+  it("arms no steady poll while push carries the peer and polls at once on a ring (#2287)", async () => {
     const bell = fakeDoorbell(true);
     const { loop, scheduled, context } = createLoop({ doorbell: bell.doorbell });
 
     loop.schedule(true);
-    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+    expect(scheduled).toHaveLength(0);
+    expect(pushHeartbeatHeaderValue()).toBe("meet:peer-1");
 
     bell.ring();
     expect(scheduled.at(-1)?.delay).toBe(MEET_RTC_POLL_INTERVALS.connectingMs);
     scheduled.at(-1)?.fn();
     await flushMicrotasks();
     expect(context.poll).toHaveBeenCalledTimes(1);
-    // Nobody is connecting after that poll: back to the heartbeat.
-    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+    // Nobody is connecting after that poll: no timer until the next ring.
+    expect(scheduled).toHaveLength(1);
   });
 
   it("goes back to the room's own cadence as soon as push drops", () => {
     const bell = fakeDoorbell(true);
-    const { loop, scheduled } = createLoop({ doorbell: bell.doorbell });
+    const { loop, scheduled, context } = createLoop({ doorbell: bell.doorbell });
     loop.schedule(true);
 
     bell.setConnected(false);
     expect(scheduled.at(-1)?.delay).toBe(4000);
 
+    // Back on push: the 4 s timer is cancelled and none replaces it.
+    const armed = scheduled.length;
     bell.setConnected(true);
+    expect(context.cancelTimeout).toHaveBeenCalled();
+    expect(scheduled).toHaveLength(armed);
+  });
+
+  it("heartbeats every 30 s on a channel the push read does not keep alive", () => {
+    const bell = fakeDoorbell(true);
+    const { loop, scheduled } = createLoop({
+      doorbell: bell.doorbell,
+      cadence: () => ({ ...stableMeetCadence(), channel: "chat" }),
+    });
+
+    loop.schedule(true);
     expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+    expect(pushHeartbeatHeaderValue()).toBeNull();
+  });
+
+  it("keeps the 30 s heartbeat when the capped push header leaves its peer out", () => {
+    const data = new Map<string, string>([
+      [
+        "wgw.rtc.pushPeers.other",
+        JSON.stringify({
+          at: Date.now(),
+          peers: Array.from(
+            { length: 32 },
+            (_, index) => `collab:${index.toString(16).padStart(16, "0")}`,
+          ),
+        }),
+      ],
+    ]);
+    resetPushHeartbeatPeersForTests(() => ({
+      get length() {
+        return data.size;
+      },
+      key: (index) => [...data.keys()][index] ?? null,
+      getItem: (key) => data.get(key) ?? null,
+      setItem: (key, value) => void data.set(key, value),
+      removeItem: (key) => void data.delete(key),
+    }));
+    const bell = fakeDoorbell(true);
+    const { loop, scheduled } = createLoop({ doorbell: bell.doorbell });
+
+    loop.schedule(true);
+    expect(pushHeartbeatHeaderValue()).not.toContain("meet:peer-1");
+    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+  });
+
+  it("names its current peer on push reads and drops it when it stops", () => {
+    let myId = "peer-1";
+    const bell = fakeDoorbell(true);
+    const { loop } = createLoop({ doorbell: bell.doorbell, myId: () => myId });
+
+    loop.schedule(true);
+    expect(pushHeartbeatHeaderValue()).toBe("meet:peer-1");
+
+    myId = "peer-9";
+    loop.schedule(true);
+    expect(pushHeartbeatHeaderValue()).toBe("meet:peer-9");
+
+    loop.stop();
+    expect(pushHeartbeatHeaderValue()).toBeNull();
   });
 
   it("keeps a kicked poll when push connects right after the ring", async () => {

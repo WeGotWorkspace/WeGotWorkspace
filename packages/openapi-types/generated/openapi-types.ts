@@ -5128,6 +5128,8 @@ export interface paths {
                     "Last-Event-ID"?: string;
                     /** @description The browser id the client sends for presence (32 lower-case hex). Keys the per-browser rate limit; a missing or malformed id shares one bucket. */
                     "X-WGW-Browser-Id"?: string;
+                    /** @description This browser's live signaling peers as `channel:peerId`, comma-separated (channels `collab`, `principal`, `meet`; at most 32; at most 4096 characters). The read is their room heartbeat (#2287): a named peer the caller owns gets `seen_at` refreshed at most every 20 s, and for collab and presence rooms only after the same access check a room poll runs. Without access the caller's peers leave that room; a changed right is written to the roster. Unknown, foreign or malformed entries are ignored and never fail the read. */
+                    "X-WGW-Rtc-Peers"?: string;
                 };
                 path: {
                     /** @description `*` or a comma-separated list of type names: Note, Notebook, CalendarEvent, Calendar, ContactCard, AddressBook, ChatMessage, ChatChannel, FileNode, Task, TaskList, Notification, DocThread, RtcRoom. Unknown names are ignored. */

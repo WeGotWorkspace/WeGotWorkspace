@@ -2,13 +2,13 @@
 
 Reference profile: PHP-FPM with `pm.max_children = 5`. One child serves one request. The instance does not call a third party for real-time traffic.
 
-Clients poll their own signaling route only while a peer connects. Otherwise the JMAP push stream is the doorbell (#2294): its `RtcRoom` state changes when a peer joins or leaves a room the user is in, or a message reaches one of their peers, and each of the user's rooms then polls once. A room behind the doorbell only heartbeats, below the shortest peer timeout (Meet 60 s, Docs and presence 90 s), so a lone peer stays on the roster (`packages/apps/src/lib/rtc/session/poll-cadence.ts`, `room-doorbell.ts`):
+Clients poll their own signaling route only while a peer connects. Otherwise the JMAP push stream is the doorbell (#2294): its `RtcRoom` state changes when a peer joins or leaves a room the user is in, or a message reaches one of their peers, and each of the user's rooms then polls once. A room behind the doorbell does not poll at all: every push read names the browser's own live peers (`X-WGW-Rtc-Peers`) and refreshes their `seen_at`, so a lone peer stays on the roster (#2287; `packages/apps/src/lib/rtc/session/poll-cadence.ts`, `push-heartbeat-peers.ts`, `room-doorbell.ts`). Only peers the browser names are refreshed, so a closed laptop's peers still expire after the peer timeout (Meet 60 s, Docs and presence 90 s). The server refreshes a named peer at most every 20 s, and a Docs or presence peer only after the access check a room poll runs (share grant or Team membership), so a revoked member leaves a quiet room within about 30 s. A room on a channel the push read does not cover heartbeats every 30 s:
 
 | Channel | While connecting | Push connected, nobody connecting | Push down: nobody reachable | Push down: every reachable peer linked |
 | --- | --- | --- | --- | --- |
-| Meet | 400 ms, then 1.2 s | 30 s heartbeat | 4 s when alone | 4 s |
-| Docs | 400 ms, then 1.2 s | 30 s heartbeat | 2 s | 5 s |
-| Presence | 400 ms, then 1.2 s | 30 s heartbeat (slower with the Team scale below) | 4 s | 20 s |
+| Meet | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 4 s when alone | 4 s |
+| Docs | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 2 s | 5 s |
+| Presence | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 4 s | 20 s |
 
 The push stream itself reconnects every 3 s while someone works, every 6 s while a tab is visible but nobody touched any tab of the browser for 2 minutes (`lib/activity/user-activity.ts`; the first input wakes it at once), and every 30 s while every tab is hidden. A newcomer is therefore seen within one push round plus one poll: about 3.5 s active, about 7 s idle.
 

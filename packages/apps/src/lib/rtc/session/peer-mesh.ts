@@ -571,6 +571,9 @@ export class RtcPeerMesh {
       this.lastRosterSig = null;
       const joined = await this.signalingJoin(previousPeerId ?? undefined);
       this.myId = joined.peerId ?? previousPeerId ?? null;
+      // The poll that hit the unknown peer found no id to schedule with; the
+      // new id must reach the push heartbeat header (#2287) and the poll timer.
+      this.schedulePoll();
       await this.adoptSessionKey(joined.sessionKey);
       await this.prepareRelay();
       await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });

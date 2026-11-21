@@ -2,7 +2,7 @@
 
 ## Goal
 
-One browser of one user stays inside the per-browser budget in [spec.md](./spec.md) on a shared host: duplicate fetching goes (Calendar reads the Tasks and Contacts caches, Docs threads ride push), polls slow down when nobody works, recovery backs off once per browser, first downloads share one browser-wide pace, and a service-worker governor holds the total to a budget the server announces per install channel. The organising rule is the push doorbell: one push stream per browser says *that* something changed and the app pulls; polls only as a backup while push is unhealthy or briefly while a WebRTC peer connects. A spike branch (`perf/traffic-governor-spike`) built and measured all of it; each chunk lands that work as its own PR with tests.
+One browser of one user stays inside the per-browser budget in [spec.md](./spec.md) on a shared host: duplicate fetching goes (Calendar reads the Tasks and Contacts caches, Docs threads ride push), polls slow down when nobody works, recovery backs off once per browser, first downloads share one browser-wide pace, and a service-worker governor holds the total to a budget the server announces per install channel. The organising rule is the push doorbell: one push stream per browser says _that_ something changed and the app pulls; polls only as a backup while push is unhealthy or briefly while a WebRTC peer connects. A spike branch (`perf/traffic-governor-spike`) built and measured all of it; each chunk lands that work as its own PR with tests.
 
 ## Budget
 
@@ -88,6 +88,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 ## Chunks
 
 ### Chunk A: calendar-shared-caches (#2285)
+
 - **Skill:** workspace
 - **Inputs:** overlay and invitee behaviour above — `path: packages/apps/src/calendar-core/src/use-calendar-task-due-overlay.ts:78`, `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.ts:19`; live inbound hooks — `path: packages/apps/src/tasks-core/src/use-tasks-live-inbound.ts:103`
 - **Done when:** #2285 AC met; the two live-inbound hooks live under `src/lib` with their tests; no `wgw-boundaries/import-boundaries` warning in calendar-core.
@@ -95,6 +96,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** B, D, E
 
 ### Chunk B: docthread-push (#2286)
+
 - **Skill:** api, then workspace
 - **Inputs:** `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:147`, `:249`; `path: packages/apps/src/docs-core/src/collab/use-docs-threads-source.ts:165`
 - **Done when:** #2286 AC met; OpenAPI lists `DocThread`; `docs/architecture/jmap-push.md` updated.
@@ -102,13 +104,15 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** A, D, E
 
 ### Chunk C: idle-cadence (#2287)
-- **Skill:** workspace (rescoped: idle push 6 s; room slowdowns are the push-down fallback)
-- **Inputs:** `path: packages/apps/src/lib/jmap-client/push/event-source-transport.ts:28`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`
-- **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows; heartbeat-on-push lands here: the push read refreshes `seen_at` only for the peers its browser names, and a feature test proves a caller cannot refresh another account's or another device's peer (that peer still expires after `peerTimeoutSeconds`); room heartbeat and notifications polls run only while push is down.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core`
+
+- **Skill:** workspace, api, security (rescoped: idle push 6 s; room slowdowns are the push-down fallback; heartbeat-on-push adds the server side)
+- **Inputs:** `path: packages/apps/src/lib/jmap-client/push/event-source-transport.ts:28`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`; `path: packages/apps/src/lib/rtc/session/mesh-poll-loop.ts`; `path: packages/apps/src/lib/api/wgw/jmap-push.ts`; `path: packages/api/app/Http/Controllers/Api/V1/Jmap/JmapEventSourceController.php`; `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php`; `path: packages/api/app/Services/Rtc/Signaling/HttpSignalingMailbox.php`
+- **Done when:** #2287 AC met; cadence table in `docs/realtime-capacity.md` has idle and long-alone rows; heartbeat-on-push lands here: the push read refreshes `seen_at` only for the peers its browser names, and a feature test proves a caller cannot refresh another account's or another device's peer (that peer still expires after `peerTimeoutSeconds`); before it refreshes a collab or presence peer the push read runs the room poll's access check, at most every 30 s, so a revoke, a downgrade or a Team removal still reaches a quiet room (feature tests); room heartbeat and notifications polls run only while push is down.
+- **Verify with:** `php scripts/done-gate.php` (or `vendor/bin/phpunit --filter 'JmapPush|Signaling'`); `pnpm --dir packages/apps exec vitest run src/lib/rtc src/lib/jmap-client src/presence-core src/calendar-core src/notifications-core`
 - **Parallel with:** none (after I)
 
 ### Chunk D: calm-recovery (#2288)
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/lib/offline/core/browser-online.ts:29`
 - **Done when:** #2288 AC met.
@@ -116,6 +120,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** A, B, E
 
 ### Chunk E: request-loops (#2289)
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/meet-core/src/use-meet-channel-call-activity.ts:127`; `path: packages/apps/src/sw.ts:33`
 - **Done when:** #2289 AC met, including the production-build check (no icon request on app switch).
@@ -123,6 +128,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** A, B, D
 
 ### Chunk F: browser-wide-pacing (#2290)
+
 - **Skill:** workspace
 - **Inputs:** `path: packages/apps/src/lib/offline/core/background-sync-pacer.ts:14`
 - **Done when:** #2290 AC met; cold start measured with the harness.
@@ -130,6 +136,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** A, B, D, E
 
 ### Chunk G: sw-governor (#2291)
+
 - **Skill:** workspace, api, security (cache/limiter key derived from the request: coalesce key includes the Authorization header)
 - **Inputs:** `path: packages/apps/src/sw.ts:33`; `path: docker/install/Dockerfile:85`
 - **Done when:** #2291 AC met; env vars in the install docs.
@@ -137,6 +144,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** none (after F)
 
 ### Chunk I: rtc-room-doorbell (#2294)
+
 - **Skill:** api, then workspace, security (a state derived from other users' presence)
 - **Inputs:** `path: packages/api/app/Services/Rtc/Signaling/HttpSignalingMailbox.php:188`; `path: packages/api/app/Services/Rtc/Signaling/RtcSignalingPolicy.php:67`; `path: packages/apps/src/lib/rtc/session/poll-cadence.ts:14`
 - **Done when:** #2294 AC met; join latency and one-tab idle numbers from the harness in the PR.
@@ -144,6 +152,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** J (after B's resolver change), K
 
 ### Chunk J: meet-call-push (#2295)
+
 - **Skill:** api, then workspace
 - **Inputs:** `path: packages/apps/src/meet-core/src/use-meet-channel-call-activity.ts:7`; `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:59`
 - **Done when:** #2295 AC met.
@@ -151,6 +160,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** I, K
 
 ### Chunk K: push-health (#2296)
+
 - **Skill:** workspace
 - **Inputs:** backup polls — `path: packages/apps/src/notes-core/src/use-notes-live-inbound.ts:26`, `path: packages/apps/src/meet-core/src/use-meet-chat-live-inbound.ts:30`
 - **Done when:** #2296 AC met; one shared helper replaces the per-app backup interval logic.
@@ -158,6 +168,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** I, J (after D)
 
 ### Chunk L: contacts-large-pages (#2297)
+
 - **Skill:** workspace, api (projection test)
 - **Inputs:** `path: packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts:26`; `path: packages/apps/src/calendar-core/src/use-calendar-contact-invitees.ts:35`
 - **Done when:** #2297 AC met; 2000 contacts offline in under 60 s in the cold-start scenario; Calendar's invitee hook starts or joins the shared cold download instead of calling `listCards`, and its test "asks the server only without any cache" now expects no `listCards` call.
@@ -165,6 +176,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** G (after F)
 
 ### Chunk M: doorbell-rule (#2298)
+
 - **Skill:** document, testing
 - **Inputs:** `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:147`
 - **Done when:** #2298 AC met.
@@ -172,6 +184,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Parallel with:** none (after I, J, K)
 
 ### Chunk H: harness-and-docs (#2292)
+
 - **Skill:** testing, document
 - **Inputs:** the spike's `packages/apps/e2e/traffic-budget.spec.ts` and `e2e/helpers/traffic-meter.ts` on `perf/traffic-governor-spike`
 - **Done when:** #2292 AC met; Epic #2284 table refreshed from a run on main.
