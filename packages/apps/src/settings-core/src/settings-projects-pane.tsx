@@ -303,14 +303,14 @@ export function ProjectsManagePane({
               title={group.displayName}
               icon={<Users className="size-3.5" aria-hidden />}
               titleTag={
-                <Tag
-                  label={group.isTeamAdmin ? "Admin" : "Member"}
-                  tone={group.isTeamAdmin ? "warning" : "pending"}
-                />
-              }
-              action={
                 <span className="projects-manage-team-tags">
-                  {group.isTeamAdmin ? <Tag label={memberCountLabel(group.memberCount)} /> : null}
+                  <span title={memberCountLabel(group.memberCount)}>
+                    <Tag label={String(group.memberCount)} />
+                  </span>
+                  <Tag
+                    label={group.isTeamAdmin ? "Admin" : "Member"}
+                    tone={group.isTeamAdmin ? "warning" : "pending"}
+                  />
                 </span>
               }
             >
