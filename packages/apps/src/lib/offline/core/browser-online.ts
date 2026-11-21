@@ -36,7 +36,13 @@ const OFFLINE_PROBE_FIRST_WAIT_MS = 2000;
 const OFFLINE_PROBE_MAX_WAIT_MS = 60_000;
 const PROBE_CHANNEL_NAME = "wgw-reachability";
 
-type ProbeMessage = { type: "wgw-reachability"; reachable: boolean };
+type ProbeMessage = {
+  type: "wgw-reachability";
+  reachable: boolean;
+  /** The sender went offline after `failures` failed rounds: receivers follow (#2296). */
+  offline?: boolean;
+  failures?: number;
+};
 
 function isProbeMessage(value: unknown): value is ProbeMessage {
   return (
@@ -118,8 +124,15 @@ function clearOfflinePoll(hub: ConnectivityHub): void {
   hub.offlinePollId = undefined;
 }
 
-function shareProbeResult(hub: ConnectivityHub, reachable: boolean): void {
-  const message: ProbeMessage = { type: "wgw-reachability", reachable };
+function shareProbeResult(
+  hub: ConnectivityHub,
+  reachable: boolean,
+  offlineFailures?: number,
+): void {
+  const message: ProbeMessage =
+    offlineFailures === undefined
+      ? { type: "wgw-reachability", reachable }
+      : { type: "wgw-reachability", reachable, offline: true, failures: offlineFailures };
   try {
     hub.channel?.postMessage(message);
   } catch {
@@ -202,7 +215,19 @@ export function setPushHealthy(healthy: boolean): void {
     return;
   }
   // Push turned unhealthy after network failures: now the tab is offline and the probe runs.
-  if (hub.failures > 0) setConnectivityOnline(hub, false);
+  if (hub.failures > 0) {
+    setConnectivityOnline(hub, false);
+    shareProbeResult(hub, false, hub.failures);
+  }
+  armNextProbe(hub);
+}
+
+/** Another tab went offline after failed push rounds: follow it and start our own backoff. */
+function onSharedOffline(hub: ConnectivityHub, failures: number): void {
+  if (!readBrowserOnline()) return;
+  hub.probeController?.abort();
+  hub.failures = Math.max(hub.failures, failures);
+  setConnectivityOnline(hub, false);
   armNextProbe(hub);
 }
 
@@ -253,7 +278,9 @@ function ensureConnectivityHubStarted(hub: ConnectivityHub): void {
     typeof BroadcastChannel === "function" ? new BroadcastChannel(PROBE_CHANNEL_NAME) : null;
   if (hub.channel) {
     hub.channel.onmessage = (event: MessageEvent) => {
-      if (isProbeMessage(event.data)) onSharedProbeResult(hub, event.data.reachable);
+      if (!isProbeMessage(event.data)) return;
+      if (event.data.offline) onSharedOffline(hub, event.data.failures ?? 1);
+      else onSharedProbeResult(hub, event.data.reachable);
     };
   }
 
