@@ -366,10 +366,10 @@ function oneDownloadPerBrowser<T>(work: () => Promise<T>): Promise<T> {
  * arrives, behind a marker this download owns; once the last page is in, only
  * the query-time tokens are stored (no rewrite of the saved pages). That first
  * download runs in one tab per browser: a tab that waited for another tab's
- * download returns (or resumes) that copy instead. With a stored copy
- * (complete, or an unfinished one reached outside
- * {@link loadContactsBootstrapHybrid}) nothing changes until the full snapshot
- * is in; then it replaces the copy in one transaction.
+ * download returns (or resumes) that copy instead. An unfinished copy (its
+ * marker still set) is resumed the same way, never replaced. With a complete
+ * copy nothing changes until the full snapshot is in; then it replaces the
+ * copy in one transaction.
  */
 export async function fetchContactsHybridBootstrap(
   onProgress?: (bootstrap: ContactsBootstrap) => void,
