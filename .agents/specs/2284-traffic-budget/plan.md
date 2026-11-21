@@ -180,7 +180,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Skill:** document, testing
 - **Inputs:** `path: packages/api/app/Services/Jmap/Push/JmapPushStateResolver.php:147`
 - **Done when:** #2298 AC met.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/traffic`; `pnpm run check:agent-docs`
+- **Verify with:** `tools/node-test.sh tools/network-polls-ratchet.test.mjs`; `pnpm run check:agent-docs`
 - **Parallel with:** none (after I, J, K)
 
 ### Chunk H: harness-and-docs (#2292)
