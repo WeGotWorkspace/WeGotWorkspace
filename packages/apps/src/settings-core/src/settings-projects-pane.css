@@ -76,3 +76,8 @@
 .projects-manage-row > .button--variant-ghost:not(.button--severity-danger):focus-visible {
   color: var(--workspace-foreground);
 }
+
+/* Delete permanently keeps its danger color over the ghost variant's own. */
+.projects-manage-row > .button--variant-ghost.button--severity-danger {
+  color: var(--button-severity-color);
+}
