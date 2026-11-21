@@ -71,7 +71,9 @@ final class WebRootKernelServeTest extends TestCase
         $plugin->assertDontSee('pluginUiAsset', false);
 
         $direct = $this->get('/wgw-plugins/demo-plugin/assets/plugin-ui.js');
-        $direct->assertNotFound();
+        // Not served either way. Anonymous requests that reach the DAV front now get its
+        // Basic challenge instead of a 404 (#2331); the body still holds nothing.
+        $direct->assertUnauthorized();
         $direct->assertDontSee('pluginUiAsset', false);
     }
 
