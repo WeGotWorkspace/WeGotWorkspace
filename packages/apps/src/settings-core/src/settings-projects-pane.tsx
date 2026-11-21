@@ -42,21 +42,6 @@ function memberCountLabel(count: number): string {
   return count === 1 ? "1 member" : `${count} members`;
 }
 
-/** What a Project holds: the whole Team for the default one, else its own resources. */
-function projectContents(project: WorkspaceProject): string {
-  if (project.isDefault) return labels.defaultContents;
-  const r = project.resources;
-  return [
-    r.calendarId && "Calendar",
-    r.taskListId && "Tasks",
-    r.notebookId && "Notes",
-    r.channelId && "Chat",
-    r.driveFolderId && "Folder",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
-
 function ProjectDot({ color }: { color: string | null }) {
   return (
     <span
@@ -184,7 +169,6 @@ function ProjectRow({
             {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
           </span>
         )}
-        <p className="projects-manage-row__contents">{projectContents(project)}</p>
       </div>
       {canManage && !archived ? (
         <Button
