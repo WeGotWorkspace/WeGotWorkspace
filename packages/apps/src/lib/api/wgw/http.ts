@@ -14,11 +14,8 @@ import { sendWgwRequest, type WgwRequestInit } from "@/lib/api/wgw/send-with-upl
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
-import {
-  createSharedAccountRead,
-  type AccountRead,
-  type SharedAccountRead,
-} from "@/lib/api/wgw/shared-account-read";
+import { workspaceSessionFromAccountReads } from "@/lib/api/wgw/principal-from-account";
+import { createAccountReads } from "@/lib/api/wgw/shared-account-read";
 
 export { WgwSessionRenewalError, WgwSignInRequiredError };
 
@@ -828,47 +825,22 @@ function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
   };
 }
 
-/** Username of the signed-in member, from the access token. `null` for guests or no session. */
+/** Username of the signed-in member, from the access token; `null` for guests or no session. */
 function signedInUsername(): string | null {
-  if (!accessToken || sessionKind === "guest") return null;
-  const sub = decodeJwtPayload(accessToken)?.sub;
+  readTokensFromStorage();
+  const sub = accessToken && sessionKind !== "guest" ? decodeJwtPayload(accessToken)?.sub : null;
   return typeof sub === "string" && sub.trim() ? sub : null;
 }
 
-async function loadAccountJson(path: string): Promise<AccountRead> {
-  const res = await wgwFetch(path);
-  if (!res.ok) return { ok: false, status: res.status };
-  const json = await wgwReadJson(res);
-  return {
-    ok: true,
-    status: res.status,
-    json: json && typeof json === "object" ? (json as Record<string, unknown>) : {},
-  };
-}
-
-/**
- * `GET /settings/state` once per browser, shared by every app and tab. Apps
- * declare they need it with `.read()`; none fetches it itself. A settings
- * write calls `.set()` / `.invalidate()` so every open tab sees it at once.
- */
-export const wgwSettingsStateRead: SharedAccountRead = createSharedAccountRead({
-  name: "settings-state",
-  load: () => loadAccountJson("/settings/state"),
-  identity: () => (readTokensFromStorage(), signedInUsername()),
+/** `GET /settings/state` and `GET /me`, once per browser; see `shared-account-read.ts`. */
+const accountReads = createAccountReads({
+  fetch: wgwFetch,
+  readJson: wgwReadJson,
+  identity: signedInUsername,
 });
-
-/** `GET /me` once per browser, shared by every app and tab (see `wgwSettingsStateRead`). */
-export const wgwMeRead: SharedAccountRead = createSharedAccountRead({
-  name: "me",
-  load: () => loadAccountJson("/me"),
-  identity: () => (readTokensFromStorage(), signedInUsername()),
-});
-
-/** The account changed in a way the client cannot see: both reads ask the server again. */
-export function wgwInvalidateAccountReads(): void {
-  wgwSettingsStateRead.invalidate();
-  wgwMeRead.invalidate();
-}
+export const wgwSettingsStateRead = accountReads.settings;
+export const wgwMeRead = accountReads.me;
+export const wgwInvalidateAccountReads = accountReads.invalidateAll;
 
 export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   readTokensFromStorage();
@@ -881,69 +853,18 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
 
   const meRead = await wgwMeRead.read();
   if (!meRead.ok) throw new WgwRequestError(`GET /me failed (${meRead.status})`, meRead.status);
-  const j = meRead.json;
-  const meUsername = typeof j.username === "string" ? j.username : "User";
-
-  // Keep identity consistent with Settings when available.
-  let settingsUser:
-    | {
-        username?: string;
-        displayName?: string;
-        email?: string;
-      }
-    | undefined;
-  try {
-    const settingsRead = await wgwSettingsStateRead.read();
-    if (settingsRead.ok) {
-      const user = settingsRead.json.user;
-      if (user && typeof user === "object") {
-        const candidate = user as Record<string, unknown>;
-        settingsUser = {
-          username: typeof candidate.username === "string" ? candidate.username : undefined,
-          displayName:
-            typeof candidate.displayName === "string" ? candidate.displayName : undefined,
-          email: typeof candidate.email === "string" ? candidate.email : undefined,
-        };
-      }
-    }
-  } catch {
-    // Optional enrichment only; /me remains the fallback source.
-  }
-
-  const username = settingsUser?.username?.trim() || meUsername;
-  const explicitDisplayName =
-    typeof settingsUser?.displayName === "string"
-      ? settingsUser.displayName
-      : typeof j.displayName === "string"
-        ? j.displayName
-        : typeof j.displayname === "string"
-          ? j.displayname
-          : typeof j.name === "string"
-            ? j.name
-            : null;
-  const normalizedDisplayName =
-    explicitDisplayName?.trim() ||
-    username
-      .trim()
-      .split(/[._-]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ") ||
-    "User";
-  const user = {
-    displayName: normalizedDisplayName,
-    initials: workspaceUserInitials({ displayName: normalizedDisplayName }),
-    username,
-    email: settingsUser?.email ?? (typeof j.email === "string" ? j.email : undefined),
-  };
-  return { user, viewerInboxLabel: "me" };
+  // Keep identity consistent with Settings when available; /me is the fallback.
+  const settingsRead = await wgwSettingsStateRead.read().catch(() => undefined);
+  return workspaceSessionFromAccountReads(
+    meRead.json,
+    settingsRead?.ok ? settingsRead.json : undefined,
+  );
 }
 
 export function resetWgwSessionStateForTests(keepTokens = false): void {
   refreshPromise = null;
   legacySwept = false;
-  wgwSettingsStateRead.resetForTests();
-  wgwMeRead.resetForTests();
+  accountReads.resetForTests();
   if (keepTokens) return;
   accessToken = null;
   sessionKind = null;
