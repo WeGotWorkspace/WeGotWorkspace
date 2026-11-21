@@ -405,26 +405,19 @@ describe("contacts first download, saved page by page", () => {
     expect(await readAddressBooksSyncToken(username)).toBeNull();
   });
 
-  it("a full download over an unfinished copy keeps its cards, ids and anchor until it is done", async () => {
+  it("a full download over an unfinished copy resumes it instead of replacing it", async () => {
     stopAfterFirstPage(["a", "b", "c"]);
     await fetchContactsHybridBootstrap().catch(() => undefined);
-    const before = await readContactsColdDownload(username);
-    vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
-      await options?.onStart?.({
-        session,
-        addressBooks: [book],
-        cardIds: ["a", "b", "c", "d"],
-        groupIds: [],
-        syncAnchor: { addressBookState: "books-later", contactCardState: "cards-later" },
-      });
-      await options?.onCardPage?.({ cards: [card("d")], remainingCardIds: ["a", "b", "c"] });
-      throw new Error("Bad Gateway");
+    vi.mocked(fetchContactsLiveBootstrap).mockClear();
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b"), card("c")], remainingCardIds: [] });
     });
 
-    await expect(fetchContactsHybridBootstrap()).rejects.toThrow("Bad Gateway");
+    await fetchContactsHybridBootstrap();
 
-    expect(await cachedIds()).toEqual(["a"]);
-    expect(await readContactsColdDownload(username)).toEqual(before);
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(fetchContactCardPages).toHaveBeenCalledWith(["b", "c"], expect.any(Function));
+    expect(await cachedIds()).toEqual(["a", "b", "c"]);
   });
 
   it("a finished first download does not clear and rewrite the pages it saved", async () => {
@@ -807,6 +800,43 @@ describe("one first download per browser", () => {
     expect(fromSearch.data.cards.map((row) => row.id).sort()).toEqual(["a", "b"]);
     expect(fromBoot.data.cards.map((row) => row.id).sort()).toEqual(["a", "b"]);
     expect(await readContactsColdDownload(username)).toBeNull();
+  });
+
+  it("a copy with another tab's marker is never refreshed while that tab holds the lock", async () => {
+    const aCloses = gate();
+    let aHolds: () => void = () => undefined;
+    const aHolding = new Promise<void>((resolve) => {
+      aHolds = resolve;
+    });
+    const tabA = navigator.locks.request("wgw.contacts.firstDownload", async () => {
+      aHolds();
+      await aCloses.opened;
+    });
+    await aHolding;
+    await startContactsColdDownload(username, session, [book], {
+      id: "download-a",
+      ...syncAnchor,
+      remainingCardIds: ["a"],
+      groupIds: [],
+    });
+    await saveContactsColdDownloadPage(username, "download-a", [card("a")], []);
+
+    const waiter = fetchContactsHybridBootstrap();
+    await vi.waitFor(async () => {
+      const queued = (await navigator.locks.query()).pending ?? [];
+      expect(queued.filter((lock) => lock.name === "wgw.contacts.firstDownload")).toHaveLength(1);
+    });
+
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect((await readContactsColdDownload(username))?.id).toBe("download-a");
+
+    aCloses.open();
+    await tabA;
+    // A closed with the marker still set: the waiter resumes that download.
+    const result = await waiter;
+
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(result.data.cards.map((row) => row.id)).toEqual(["a"]);
   });
 
   it("every saved page tells the open views to re-read the cache", async () => {

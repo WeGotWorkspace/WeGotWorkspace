@@ -375,7 +375,11 @@ export async function fetchContactsHybridBootstrap(
   onProgress?: (bootstrap: ContactsBootstrap) => void,
 ): Promise<ContactsBootstrap> {
   const known = readOfflineContactsUsername();
-  if (known && (await hasContactsCopy(known))) return downloadAllContacts(onProgress);
+  // A marker means another tab's first download may still be saving into this
+  // copy; refreshing it here would replace the book and discard that marker.
+  if (known && (await hasContactsCopy(known)) && !(await readContactsColdDownload(known))) {
+    return downloadAllContacts(onProgress);
+  }
   return oneDownloadPerBrowser(async () => {
     const name = readOfflineContactsUsername();
     const saved = name ? await readContactsBootstrapFromCache(name) : null;
