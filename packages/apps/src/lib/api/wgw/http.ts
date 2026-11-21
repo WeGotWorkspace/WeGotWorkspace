@@ -239,7 +239,11 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
       j && typeof j === "object" && "error" in j ? String((j as { error: unknown }).error) : text;
     throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
   }
-  const o = j as Record<string, unknown>;
+  return tokenResponseFromBody(j);
+}
+
+function tokenResponseFromBody(j: unknown): TokenResponse {
+  const o = (j && typeof j === "object" ? j : {}) as Record<string, unknown>;
   const at = o.access_token;
   if (typeof at !== "string") {
     throw new UnexpectedApiResponseError("Auth response missing access_token");
@@ -454,6 +458,7 @@ export function wgwEstablishMockSession(): void {
   applyTokens({ access_token: "mock" }, "member");
 }
 
+/** Installer and dev auto-login: a user who has no second step (`auth-sign-in.ts` for the login screen). */
 export async function wgwLoginWithCredentials(username: string, password: string): Promise<void> {
   const normalized = username.trim();
   if (!normalized || !password) {
@@ -468,6 +473,11 @@ export async function wgwLoginWithCredentials(username: string, password: string
   applyTokens(tokens, "member");
 }
 
+/** A member session from a token body the server sent (`auth/token`, a code verification). */
+export function wgwApplyMemberTokens(body: unknown): void {
+  applyTokens(tokenResponseFromBody(body), "member");
+}
+
 /** Origin-root Passport login. Relative `/api/v1` stays same-origin (Vite proxy). */
 export function wgwOAuthSessionUrl(): string {
   const base = wgwApiBaseUrl();
@@ -479,52 +489,6 @@ export function wgwOAuthSessionUrl(): string {
     }
   }
   return "/oauth/session";
-}
-
-/** Laravel web session for Passport `/oauth/authorize`. The SPA JWT is not that session. */
-export async function wgwEstablishMcpWebSession(
-  username: string,
-  password: string,
-  intent?: string | null,
-): Promise<string | null> {
-  const normalized = username.trim();
-  if (!normalized || !password) {
-    throw new Error("Username and password are required.");
-  }
-  if (!wgwLiveApiEnabled()) {
-    return null;
-  }
-  const body: Record<string, string> = { username: normalized, password };
-  const token = intent?.trim();
-  if (token) body.intent = token;
-  const res = await fetch(wgwOAuthSessionUrl(), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  let payload: unknown;
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    throw new AuthHttpError(res.status, `Auth response was not JSON (${res.status})`);
-  }
-  if (!res.ok) {
-    const err =
-      payload && typeof payload === "object" && "error" in payload
-        ? String((payload as { error: unknown }).error)
-        : text;
-    throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
-  }
-  if (payload && typeof payload === "object" && "redirect" in payload) {
-    const redirect = (payload as { redirect: unknown }).redirect;
-    return typeof redirect === "string" && redirect.startsWith("/") ? redirect : null;
-  }
-  return null;
 }
 
 export async function wgwFetchPasswordRecoveryEnabled(): Promise<boolean> {
