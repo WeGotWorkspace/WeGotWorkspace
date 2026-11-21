@@ -208,9 +208,11 @@ function ensureConnectivityHubStarted(hub: ConnectivityHub): void {
 
   hub.channel =
     typeof BroadcastChannel === "function" ? new BroadcastChannel(PROBE_CHANNEL_NAME) : null;
-  hub.channel?.addEventListener("message", (event: MessageEvent) => {
-    if (isProbeMessage(event.data)) onSharedProbeResult(hub, event.data.reachable);
-  });
+  if (hub.channel) {
+    hub.channel.onmessage = (event: MessageEvent) => {
+      if (isProbeMessage(event.data)) onSharedProbeResult(hub, event.data.reachable);
+    };
+  }
 
   window.addEventListener("online", onOnline);
   window.addEventListener("offline", onOffline);
