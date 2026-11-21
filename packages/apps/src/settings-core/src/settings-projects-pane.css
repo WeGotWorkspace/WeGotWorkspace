@@ -63,6 +63,6 @@
 }
 
 .projects-manage-new {
-  @apply flex py-3;
+  @apply flex justify-end py-3;
   border-top: 1px solid var(--workspace-divider-color);
 }
