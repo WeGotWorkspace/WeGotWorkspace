@@ -303,7 +303,12 @@ export function ProjectsManagePane({
               key={group.id}
               title={group.displayName}
               icon={<Users className="size-3.5" aria-hidden />}
-              titleTag={<Tag label={group.isTeamAdmin ? "Admin" : "Member"} />}
+              titleTag={
+                <Tag
+                  label={group.isTeamAdmin ? "Admin" : "Member"}
+                  tone={group.isTeamAdmin ? "warning" : "pending"}
+                />
+              }
               action={
                 <span className="projects-manage-team-tags">
                   {group.isTeamAdmin ? <Tag label={memberCountLabel(group.memberCount)} /> : null}
@@ -330,9 +335,6 @@ export function ProjectsManagePane({
           );
         })}
       </div>
-      {groups.some((g) => !g.isTeamAdmin) ? (
-        <p className="projects-manage-hint">{labels.readOnlyHint}</p>
-      ) : null}
       {archived.length > 0 ? (
         <SettingsPaneCard title={labels.archivedGroup}>
           {archived.map(({ team, projects }) => (
