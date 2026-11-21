@@ -310,6 +310,7 @@ export function ProjectsManagePane({
       {!loading && snapshot.status === "error" ? (
         <p className="projects-manage-hint">{labels.loadFailed}</p>
       ) : null}
+      <div className="projects-manage-teams">
       {groups.map((group) => {
         const slug = teamSlugOf(group);
         const projects = activeByTeam.get(slug)?.projects ?? [];
@@ -344,6 +345,7 @@ export function ProjectsManagePane({
           </SettingsPaneCard>
         );
       })}
+      </div>
       {groups.some((g) => !g.isTeamAdmin) ? (
         <p className="projects-manage-hint">{labels.readOnlyHint}</p>
       ) : null}
