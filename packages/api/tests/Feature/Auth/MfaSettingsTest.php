@@ -275,9 +275,6 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
     }
 
     /**
-     * @param  array<string, mixed>  $body
-     */
-    /**
      * Turning two-factor on signs out everywhere, which refuses access tokens
      * issued before it (#2315). Sign bob in again, as the app does.
      *
@@ -293,6 +290,9 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         return $result;
     }
 
+    /**
+     * @param  array<string, mixed>  $body
+     */
     private function settings(string $method, string $path, array $body = []): TestResponse
     {
         return $this->withBearer($this->token)

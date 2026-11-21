@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Models\AuthChallenge;
 use App\Models\PushSubscription;
 use App\Models\User;
 use Laravel\Passport\Passport;
@@ -26,9 +27,12 @@ final class UserSessionRevoker
 
         // One transaction, so a crash cannot commit the bump alone. A refresh token minted
         // under the old epoch is refused by AuthTokenService::tokenResponse either way.
+        // Open two-factor challenges go too: a password step taken before this must not
+        // finish into a session after it.
         User::query()->getConnection()->transaction(function () use ($username): void {
             User::query()->where('username', $username)->increment('access_token_epoch');
             $this->refreshTokens->revokeAllForUsername($username);
+            AuthChallenge::query()->where('username', $username)->delete();
         });
 
         $user = User::query()->where('username', $username)->first();

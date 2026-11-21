@@ -17,6 +17,7 @@ use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\Mfa\AuthChallengeService;
 use App\Services\Auth\Mfa\MfaCodeLimiter;
 use App\Services\Auth\PasswordRecoveryService;
+use App\Services\Auth\UserSessionRevoker;
 use App\Services\Mcp\ConsentIntent;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Contracts\Cache\Repository;
@@ -427,11 +428,29 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($turnedOn['secret'])])->assertStatus(401);
         // The new session works; the one from before does not.
         $this->withBearer((string) $done->json('access_token'))->getJson('/api/v1/me')->assertOk();
-        // revokeAll(): refresh tokens die now; an access token already out runs
-        // out within its short lifetime, as on every other revokeAll().
+        // revokeAll(): refresh tokens die now, and the access token already out is refused
+        // at once (#2315).
+        $this->withBearer($oldSession['access_token'])->getJson('/api/v1/me')->assertUnauthorized();
         $this->postRefresh($oldSession['refresh_token'])->assertUnauthorized();
         // The replace challenge is single use.
         $this->replaceWithChallenge($challenge, ['code' => $this->code($newSecret)])->assertNotFound();
+    }
+
+    public function test_a_sign_out_everywhere_ends_a_password_step_taken_before_it(): void
+    {
+        $turnedOn = $this->turnOnMfa('bob');
+        $challenge = $this->challengeFor('bob');
+
+        app(UserSessionRevoker::class)->revokeAll('bob');
+
+        $late = $this->verifyChallenge($challenge, ['code' => $this->code($turnedOn['secret'])]);
+        $this->assertNotSame(200, $late->getStatusCode());
+        $this->assertNull($late->json('access_token'));
+        $this->assertSame(0, DB::connection('wgw')->table('api_refresh_tokens')->where('username', 'bob')->where('revoked', 0)->count());
+
+        $this->nextStep();
+        $done = $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($turnedOn['secret'])])->assertOk();
+        $this->withBearer((string) $done->json('access_token'))->getJson('/api/v1/me')->assertOk();
     }
 
     public function test_abandoned_replacement_leaves_recovery_code_spent(): void
