@@ -58,6 +58,8 @@ export function TeamMembersCard({
   status,
 }: TeamMembersCardProps) {
   const addFieldId = useId();
+  // The only team admin stays: the server refuses to dismiss them, so the role is locked here.
+  const soleTeamAdmin = members.filter((member) => member.isTeamAdmin).length === 1;
   return (
     <ShareAccessCard
       className="team-members-card"
@@ -109,6 +111,7 @@ export function TeamMembersCard({
               value={member.isTeamAdmin ? "teamAdmin" : "member"}
               options={ROLE_OPTIONS}
               aria-label={labels.roleOf(member.displayName)}
+              disabled={soleTeamAdmin && member.isTeamAdmin}
               onChange={(next) => onRoleChange(member, next)}
             />
           }

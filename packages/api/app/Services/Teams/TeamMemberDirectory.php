@@ -64,6 +64,11 @@ final class TeamMemberDirectory
         $groupUri = $this->manageableTeamUri($viewer, $groupSlug);
         $username = $this->existingUsername($username);
         if (! $teamAdmin) {
+            // A Team never ends up without a team admin through a dismissal.
+            $admins = $this->roles->teamAdminsOf($groupSlug);
+            if ($admins === [$username]) {
+                throw new ApiHttpException(409, 'A Team needs at least one team admin.', 'last_team_admin');
+            }
             $this->roles->dismiss($groupSlug, $username);
 
             return;
