@@ -16,6 +16,7 @@ import {
   wgwFetchPrincipal,
   wgwLooksLikeHtml,
   wgwReadJson,
+  wgwSettingsStateRead,
   wgwReadJsonFailureMessage,
 } from "@/lib/api/wgw/http";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
@@ -366,9 +367,9 @@ export async function fetchContactsLiveBootstrap(options?: {
 }): Promise<ContactsLiveBootstrap> {
   const session = await wgwFetchPrincipal();
 
-  const settingsRes = await wgwFetch("/settings/state");
-  if (settingsRes.ok) {
-    const settings = (await wgwReadJson(settingsRes)) as {
+  const settingsRead = await wgwSettingsStateRead.read();
+  if (settingsRead.ok) {
+    const settings = settingsRead.json as {
       apps?: { contacts?: boolean };
     };
     if (settings.apps?.contacts === false) {

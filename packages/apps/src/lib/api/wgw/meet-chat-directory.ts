@@ -5,7 +5,7 @@
  * live share *search* stays on `searchCollectionSharePrincipals`.
  */
 import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
-import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import {
   sharePrincipalsFromDirectory,
   type CollectionSharePrincipal,
@@ -33,9 +33,9 @@ function meetDirectoryGroupsFromSettings(
 
 async function fetchMeetDirectoryGroups(): Promise<MeetDirectoryGroup[] | undefined> {
   try {
-    const res = await wgwFetch("/settings/state");
-    if (!res.ok) return undefined;
-    const settings = (await wgwReadJson(res)) as {
+    const read = await wgwSettingsStateRead.read();
+    if (!read.ok) return undefined;
+    const settings = read.json as {
       groups?: { id: string; displayName: string }[];
     };
     return Array.isArray(settings.groups)

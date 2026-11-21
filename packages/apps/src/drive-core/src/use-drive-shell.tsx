@@ -34,7 +34,7 @@ import type {
   DriveUIData,
 } from "@/lib/files/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwLiveApiEnabled, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export type UseDriveShellArgs = {
@@ -126,12 +126,11 @@ export function useDriveShell({
   useEffect(() => {
     if (!wgwLiveApiEnabled()) return;
     const controller = new AbortController();
-    void wgwFetch("/settings/state", { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const json = (await wgwReadJson(res)) as {
-          groups?: { id: string; displayName: string }[];
-        };
+    void wgwSettingsStateRead
+      .read()
+      .then((read) => {
+        if (!read.ok || controller.signal.aborted) return;
+        const json = read.json as { groups?: { id: string; displayName: string }[] };
         if (Array.isArray(json.groups)) setGroupDirectory(json.groups);
       })
       .catch(() => {

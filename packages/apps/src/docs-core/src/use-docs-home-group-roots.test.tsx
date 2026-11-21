@@ -10,12 +10,11 @@ vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
   return {
     ...actual,
     wgwLiveApiEnabled: vi.fn(() => false),
-    wgwFetch: vi.fn(),
-    wgwReadJson: vi.fn(),
+    wgwSettingsStateRead: { read: vi.fn() },
   };
 });
 
-import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwLiveApiEnabled, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 
 function doc(id: string, apiPath: string): DriveFile {
   return {
@@ -59,8 +58,7 @@ describe("useDocsHomeGroupRoots", () => {
   beforeEach(() => {
     cleanup();
     vi.mocked(wgwLiveApiEnabled).mockReturnValue(false);
-    vi.mocked(wgwFetch).mockReset();
-    vi.mocked(wgwReadJson).mockReset();
+    vi.mocked(wgwSettingsStateRead.read).mockReset();
   });
 
   afterEach(() => {
@@ -94,7 +92,7 @@ describe("useDocsHomeGroupRoots", () => {
       }),
     );
     expect(listDirectory).not.toHaveBeenCalled();
-    expect(wgwFetch).not.toHaveBeenCalled();
+    expect(wgwSettingsStateRead.read).not.toHaveBeenCalled();
   });
 
   it("discovers group drives from the live /groups listing", async () => {
@@ -124,9 +122,10 @@ describe("useDocsHomeGroupRoots", () => {
 
   it("overlays settings display names onto path-discovered roots", async () => {
     vi.mocked(wgwLiveApiEnabled).mockReturnValue(true);
-    vi.mocked(wgwFetch).mockResolvedValue({ ok: true } as Response);
-    vi.mocked(wgwReadJson).mockResolvedValue({
-      groups: [{ id: "principals/groups/eng", displayName: "Engineering" }],
+    vi.mocked(wgwSettingsStateRead.read).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: { groups: [{ id: "principals/groups/eng", displayName: "Engineering" }] },
     });
 
     const { result } = renderHook(() =>
@@ -138,26 +137,22 @@ describe("useDocsHomeGroupRoots", () => {
         "Engineering",
       );
     });
-    expect(wgwFetch).toHaveBeenCalledWith(
-      "/settings/state",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    expect(wgwSettingsStateRead.read).toHaveBeenCalled();
   });
 
   it("keeps the slug label when settings state is not ok", async () => {
     vi.mocked(wgwLiveApiEnabled).mockReturnValue(true);
-    vi.mocked(wgwFetch).mockResolvedValue({ ok: false } as Response);
+    vi.mocked(wgwSettingsStateRead.read).mockResolvedValue({ ok: false, status: 500 });
 
     const { result } = renderHook(() =>
       useHarness({ files: [doc("1", "/groups/eng/a.md")], online: true }),
     );
 
     await waitFor(() => {
-      expect(wgwFetch).toHaveBeenCalled();
+      expect(wgwSettingsStateRead.read).toHaveBeenCalled();
     });
     expect(result.current.drives.find((drive) => drive.pathPrefix === "groups/eng")?.label).toBe(
       "eng",
     );
-    expect(wgwReadJson).not.toHaveBeenCalled();
   });
 });
