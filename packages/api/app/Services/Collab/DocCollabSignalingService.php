@@ -11,6 +11,7 @@ use App\Services\Rtc\Signaling\HttpSignalingStore;
 use App\Services\Rtc\Signaling\RtcBrowserId;
 use App\Services\Rtc\Signaling\RtcNetClass;
 use App\Services\Rtc\Signaling\RtcPeerCaps;
+use App\Services\Rtc\Signaling\RtcPushHeartbeat;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Http\Request;
@@ -116,6 +117,7 @@ final class DocCollabSignalingService
                 'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
                 'net' => RtcNetClass::normalize($body['net'] ?? null),
                 'access' => $access,
+                'room_path' => $room,
             ]);
             // Evict this browser's leftover peer (reload), not the owner's other
             // device. A laptop and a tablet keep distinct browser ids.
@@ -248,6 +250,33 @@ final class DocCollabSignalingService
         $room = $this->rooms->cleanRoom($body['room'] ?? null);
 
         return [$principal, $this->actors->ownerMarker($principal['username']), $room, $this->rooms->roomKey($room)];
+    }
+
+    /**
+     * The push read's access check (#2287): behind the push doorbell a quiet
+     * room does not poll, so the push heartbeat re-checks a peer here before it
+     * keeps the peer alive, at most every {@see RtcPushHeartbeat::RECHECK_SECONDS}.
+     * Same outcome as a poll: without read access the caller's peers leave the
+     * room (its `RtcRoom` state changes, so the tab polls and gets the 403), and
+     * a changed right is written back to the roster. `$roomPath` is the
+     * canonical room stored at join; it must still hash to the peer's room.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return bool whether the peer may be kept alive
+     */
+    public function recheckForPushHeartbeat(array $principal, string $roomKey, string $roomPath, string $peerId): bool
+    {
+        if ($this->rooms->roomKey($roomPath) !== $roomKey) {
+            return false;
+        }
+        try {
+            $access = $this->assertStillMayJoin($roomPath, $roomKey, $principal, $this->actors->ownerMarker($principal['username']));
+        } catch (RealtimeApiException) {
+            return false;
+        }
+        $this->store->rewriteAccess($roomKey, $peerId, $access);
+
+        return true;
     }
 
     /**

@@ -48,7 +48,10 @@ final class JmapEventSourceController
         $username = (string) $principal['username'];
 
         // The push read is the heartbeat of this browser's rooms (#2287).
-        $this->heartbeat->refresh($username, $request->headers->get(RtcPushHeartbeat::HEADER));
+        $this->heartbeat->refresh(
+            ['username' => $username, 'role' => (string) ($principal['role'] ?? '')],
+            $request->headers->get(RtcPushHeartbeat::HEADER),
+        );
 
         $served = $this->states->enabledTypes($requested);
         $resolved = $this->states->resolve($username, $served);

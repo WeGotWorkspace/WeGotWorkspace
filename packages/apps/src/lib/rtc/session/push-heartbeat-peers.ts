@@ -6,8 +6,9 @@ import type { SignalingChannel } from "@/lib/rtc/types";
  * room does not poll; only the tab that holds the push stream sends, so every tab
  * publishes its peers under its own `localStorage` key and the stream tab reads
  * them all. A tab rewrites its entry every `WRITE_EVERY_MS` while it has peers;
- * an entry older than `ENTRY_TTL_MS` (a crashed tab) is ignored, so a peer
- * nobody holds any more expires on the server as before.
+ * an entry older than `ENTRY_TTL_MS` (a crashed tab) is dropped, so a peer
+ * nobody holds any more expires on the server as before. The server refreshes a
+ * named peer at most every 30 s, after re-checking the room's access.
  */
 export const RTC_PUSH_PEERS_HEADER = "X-WGW-Rtc-Peers";
 
@@ -52,12 +53,8 @@ function createRegistry(
   return { tabKey: KEY_PREFIX + randomKey(), peers: new Map(), timer: null, storage, now };
 }
 
-/**
- * Channels whose peers a push read keeps alive. Meet only: the collab and presence polls
- * re-read the share or Team grant, so those rooms keep their 30 s heartbeat poll and a
- * revoked member still leaves the roster within that bound.
- */
-const HEARTBEAT_CHANNELS: ReadonlySet<SignalingChannel> = new Set(["meet"]);
+/** Channels whose peer tables the server refreshes on a push read. */
+const HEARTBEAT_CHANNELS: ReadonlySet<SignalingChannel> = new Set(["collab", "principal", "meet"]);
 
 /** Whether a push read can keep this channel's peers alive. */
 export function pushHeartbeatCovers(channel: SignalingChannel): boolean {
@@ -125,20 +122,26 @@ export function registerPushHeartbeatPeer(channel: SignalingChannel, peerId: str
   };
 }
 
-/** The header value for a push read: every tab's live peers, or null when there are none. */
-export function pushHeartbeatHeaderValue(): string | null {
+/**
+ * Every tab's live peers in one order, capped at what the server reads. Sorted,
+ * so each tab cuts the same set and agrees on which peers a push read covers.
+ * An entry past its TTL (a crashed tab that never fired pagehide) is removed.
+ */
+function namedPeers(): string[] {
   const all = new Set(registry.peers.keys());
   const storage = registry.storage();
   if (storage) {
     try {
       const cutoff = registry.now() - ENTRY_TTL_MS;
+      const keys: string[] = [];
       for (let index = 0; index < storage.length; index += 1) {
         const key = storage.key(index);
-        if (!key?.startsWith(KEY_PREFIX) || key === registry.tabKey) continue;
+        if (key?.startsWith(KEY_PREFIX) && key !== registry.tabKey) keys.push(key);
+      }
+      for (const key of keys) {
         const entry = parseEntry(storage.getItem(key));
         if (!entry || entry.at < cutoff) {
           storage.removeItem(key);
-          index -= 1;
           continue;
         }
         for (const peer of entry.peers) all.add(peer);
@@ -147,8 +150,21 @@ export function pushHeartbeatHeaderValue(): string | null {
       // Only this tab's peers.
     }
   }
-  if (all.size === 0) return null;
-  return [...all].slice(0, MAX_PEERS).join(",");
+  return [...all].sort().slice(0, MAX_PEERS);
+}
+
+/** The header value for a push read: every tab's live peers, or null when there are none. */
+export function pushHeartbeatHeaderValue(): string | null {
+  const peers = namedPeers();
+  return peers.length === 0 ? null : peers.join(",");
+}
+
+/**
+ * Whether push reads name this peer. Past the server's cap a peer is left out,
+ * and its room must keep its own heartbeat poll.
+ */
+export function pushHeartbeatIncludes(channel: SignalingChannel, peerId: string): boolean {
+  return namedPeers().includes(entryOf(channel, peerId));
 }
 
 function parseEntry(raw: string | null): Entry | null {

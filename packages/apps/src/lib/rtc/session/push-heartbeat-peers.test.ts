@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   pushHeartbeatHeaderValue,
+  pushHeartbeatIncludes,
   registerPushHeartbeatPeer,
   resetPushHeartbeatPeersForTests,
   type PushHeartbeatStorage,
@@ -45,6 +46,10 @@ describe("push heartbeat peers (#2287)", () => {
     const release = registerPushHeartbeatPeer("meet", "me-1");
     expect(pushHeartbeatHeaderValue()?.split(",").sort()).toEqual(["meet:aa", "meet:me-1"]);
 
+    // A crashed tab's entry is dropped, not kept for good.
+    expect(storage.data.has("wgw.rtc.pushPeers.crashed")).toBe(false);
+    expect(storage.data.has("unrelated")).toBe(true);
+
     release();
     expect(pushHeartbeatHeaderValue()).toBe("meet:aa");
     now += 40_000;
@@ -76,5 +81,27 @@ describe("push heartbeat peers (#2287)", () => {
     registerPushHeartbeatPeer("collab", "peer-2");
     registerPushHeartbeatPeer("principal", "peer-3");
     expect(pushHeartbeatHeaderValue()).toBeNull();
+  });
+
+  it("covers a peer only when the capped header names it", () => {
+    const storage = memoryStorage();
+    const now = 100_000;
+    resetPushHeartbeatPeersForTests(
+      () => storage,
+      () => now,
+    );
+    const others = Array.from(
+      { length: 32 },
+      (_, index) => `collab:${index.toString(16).padStart(16, "0")}`,
+    );
+    storage.setItem("wgw.rtc.pushPeers.other", JSON.stringify({ at: now, peers: others }));
+
+    registerPushHeartbeatPeer("principal", "me-1");
+    registerPushHeartbeatPeer("collab", "0000000000000001");
+
+    expect(pushHeartbeatHeaderValue()?.split(",")).toHaveLength(32);
+    // Sorted: "collab:…" ids fill the 32 slots before "principal:…".
+    expect(pushHeartbeatIncludes("collab", "0000000000000001")).toBe(true);
+    expect(pushHeartbeatIncludes("principal", "me-1")).toBe(false);
   });
 });

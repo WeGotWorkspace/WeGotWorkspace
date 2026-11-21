@@ -11,6 +11,7 @@ import {
 } from "@/lib/rtc/session/poll-cadence";
 import {
   pushHeartbeatCovers,
+  pushHeartbeatIncludes,
   registerPushHeartbeatPeer,
 } from "@/lib/rtc/session/push-heartbeat-peers";
 import { pushRoomDoorbell, type RoomDoorbell } from "@/lib/rtc/session/room-doorbell";
@@ -134,7 +135,8 @@ export class MeshPollLoop {
       this.dropHeartbeat();
       this.heartbeat = { peer, release: registerPushHeartbeatPeer(channel, peerId) };
     }
-    return true;
+    // Past the header's cap the push read does not name this peer: keep polling.
+    return pushHeartbeatIncludes(channel, peerId);
   }
 
   private dropHeartbeat(): void {

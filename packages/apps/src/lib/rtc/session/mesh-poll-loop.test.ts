@@ -187,6 +187,36 @@ describe("MeshPollLoop behind the push doorbell (#2294)", () => {
     expect(pushHeartbeatHeaderValue()).toBeNull();
   });
 
+  it("keeps the 30 s heartbeat when the capped push header leaves its peer out", () => {
+    const data = new Map<string, string>([
+      [
+        "wgw.rtc.pushPeers.other",
+        JSON.stringify({
+          at: Date.now(),
+          peers: Array.from(
+            { length: 32 },
+            (_, index) => `collab:${index.toString(16).padStart(16, "0")}`,
+          ),
+        }),
+      ],
+    ]);
+    resetPushHeartbeatPeersForTests(() => ({
+      get length() {
+        return data.size;
+      },
+      key: (index) => [...data.keys()][index] ?? null,
+      getItem: (key) => data.get(key) ?? null,
+      setItem: (key, value) => void data.set(key, value),
+      removeItem: (key) => void data.delete(key),
+    }));
+    const bell = fakeDoorbell(true);
+    const { loop, scheduled } = createLoop({ doorbell: bell.doorbell });
+
+    loop.schedule(true);
+    expect(pushHeartbeatHeaderValue()).not.toContain("meet:peer-1");
+    expect(scheduled.at(-1)?.delay).toBe(DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+  });
+
   it("names its current peer on push reads and drops it when it stops", () => {
     let myId = "peer-1";
     const bell = fakeDoorbell(true);
