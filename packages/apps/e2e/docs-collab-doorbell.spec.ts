@@ -1,7 +1,8 @@
 // A lone peer sees a newcomer through the push doorbell, not the 30 s heartbeat (#2294).
 //
-// A quiet room polls every 30 s while push is connected. The existing specs wait 20 to
-// 90 s, so they would pass on the heartbeat alone. Here the owner must see each line
+// A quiet room does not poll while push is connected (the push read keeps its peer
+// alive, #2287); before that it polled every 30 s. The existing specs wait 20 to 90 s,
+// so they would pass on a heartbeat alone. Here the owner must see each line
 // within 10 s: when the teammate first opens the Doc, after the teammate reloads, and
 // right after the owner comes back online (the ring that arrives with the response
 // that reconnects push must not be pushed back to the heartbeat).
@@ -42,7 +43,7 @@ async function editorText(page: Page): Promise<string> {
         })
       | null;
     const doc = root?.editor?.state.doc;
-    return doc ? doc.textBetween(0, doc.content.size, "\n").replace(/ /g, " ") : "";
+    return doc ? doc.textBetween(0, doc.content.size, "\n").replace(/\u00a0/g, " ") : "";
   });
 }
 
@@ -65,7 +66,7 @@ test.describe("Docs: a lone peer sees a newcomer through the doorbell", () => {
           .poll(() => editorText(a), { timeout: SEEN_WITHIN_MS, message: `owner sees ${line}` })
           .toContain(line);
 
-      let b = await teammate.newPage();
+      const b = await teammate.newPage();
       await b.goto(docsUrlForFile(apiPath));
       const first = `Teammate first ${stamp}`;
       await typeAtEnd(b, first);

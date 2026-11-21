@@ -18,6 +18,10 @@ import { meetCallAwake } from "@/lib/jmap-client/push/meet-call-awake";
 import { browserWebLocks } from "@/lib/jmap-client/push/web-locks-leader";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
+import {
+  pushHeartbeatHeaderValue,
+  RTC_PUSH_PEERS_HEADER,
+} from "@/lib/rtc/session/push-heartbeat-peers";
 import { readRtcBrowserId } from "@/lib/rtc/signaling/browser-id";
 
 const CHANNEL = "wgw-jmap-push";
@@ -133,8 +137,13 @@ function createHub(): JmapPushHub {
         // A linked presence mesh carries colleagues' check-now; wait 5 s, not 3 s (#1943).
         mesh: { linked: meshLinked, subscribe: subscribeMeshLinked },
         headers: (): Record<string, string> => {
+          const headers: Record<string, string> = {};
           const browserId = readRtcBrowserId();
-          return browserId ? { [BROWSER_ID_HEADER]: browserId } : {};
+          if (browserId) headers[BROWSER_ID_HEADER] = browserId;
+          // Each read keeps this browser's signaling peers alive, so quiet rooms need no poll (#2287).
+          const peers = pushHeartbeatHeaderValue();
+          if (peers) headers[RTC_PUSH_PEERS_HEADER] = peers;
+          return headers;
         },
       }),
     // A peer's `check-now` reconnects the stream early (#1662).

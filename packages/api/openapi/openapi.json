@@ -11363,6 +11363,16 @@
               "type": "string",
               "pattern": "^[a-f0-9]{32}$"
             }
+          },
+          {
+            "name": "X-WGW-Rtc-Peers",
+            "in": "header",
+            "required": false,
+            "description": "This browser's live signaling peers as `channel:peerId`, comma-separated (channels `collab`, `principal`, `meet`; at most 32; at most 4096 characters). The read is their room heartbeat (#2287): a named peer the caller owns gets `seen_at` refreshed at most every 20 s, and for collab and presence rooms only after the same access check a room poll runs. Without access the caller's peers leave that room; a changed right is written to the roster. Unknown, foreign or malformed entries are ignored and never fail the read.",
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            }
           }
         ],
         "responses": {
