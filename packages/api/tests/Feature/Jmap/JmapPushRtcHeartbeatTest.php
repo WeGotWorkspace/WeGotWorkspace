@@ -8,6 +8,7 @@ use App\Models\CollabPeer;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\GroupMember;
+use App\Models\MeetPeer;
 use App\Models\Principal;
 use App\Models\PrincipalPeer;
 use App\Services\Rtc\Signaling\RtcPushHeartbeat;
@@ -102,6 +103,22 @@ final class JmapPushRtcHeartbeatTest extends WgwDatabaseTestCase
         $this->pushRead('alice', 'collab:'.$alicePeer)->assertOk();
 
         $this->assertSame($fresh, $this->seenAt($alicePeer));
+    }
+
+    public function test_a_meet_peer_a_hidden_push_interval_old_is_refreshed(): void
+    {
+        $seen = time() - 25;
+        MeetPeer::query()->insert([
+            'room' => 'room-a',
+            'peer_id' => 'meet-peer-1',
+            'name' => 'Alice',
+            'owner_user' => 'u:alice',
+            'seen_at' => $seen,
+        ]);
+
+        $this->pushRead('alice', 'meet:meet-peer-1')->assertOk();
+
+        $this->assertGreaterThan($seen, (int) MeetPeer::query()->where('peer_id', 'meet-peer-1')->value('seen_at'));
     }
 
     public function test_a_revoked_share_drops_the_peer_instead_of_keeping_it_alive(): void

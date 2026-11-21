@@ -34,10 +34,12 @@ final class RtcPushHeartbeat
 
     /**
      * How often a named peer is refreshed and its access re-checked. Well inside
-     * every channel's peer timeout (Meet 60 s, collab and presence 90 s), and the
-     * bound the 30 s heartbeat poll gave a revoked share before.
+     * every channel's peer timeout (Meet 60 s, collab and presence 90 s) and below
+     * the 30 s hidden-tab push interval, so every hidden read still refreshes.
+     * A revoked share is dropped within about one hidden interval, the bound the
+     * 30 s heartbeat poll gave it before.
      */
-    public const RECHECK_SECONDS = 30;
+    public const RECHECK_SECONDS = 20;
 
     private const MAX_HEADER_LENGTH = 4096;
 

@@ -8,7 +8,7 @@ import type { SignalingChannel } from "@/lib/rtc/types";
  * them all. A tab rewrites its entry every `WRITE_EVERY_MS` while it has peers;
  * an entry older than `ENTRY_TTL_MS` (a crashed tab) is dropped, so a peer
  * nobody holds any more expires on the server as before. The server refreshes a
- * named peer at most every 30 s, after re-checking the room's access.
+ * named peer at most every 20 s, after re-checking the room's access.
  */
 export const RTC_PUSH_PEERS_HEADER = "X-WGW-Rtc-Peers";
 
