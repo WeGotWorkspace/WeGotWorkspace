@@ -17,6 +17,8 @@ export const projectsLabels = {
   panelDescription:
     "Your Teams and their Projects. Pick a Project in the sidebar to see only its work in every app.",
   edit: "Edit",
+  editTitle: "Edit Project",
+  save: "Save",
   done: "Done",
   newProject: "New Project",
   defaultContents: "All apps · Shared drive",

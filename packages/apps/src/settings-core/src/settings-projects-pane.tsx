@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { Plus, Users } from "lucide-react";
 import type { SettingsGroup } from "@/lib/models/settings-types";
 import { teamMembersLabels } from "@/share-ui/team-members-labels";
@@ -14,9 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { Button } from "@/button/src/button";
-import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { TASK_LIST_DOT_COLORS } from "@/lib/models/task-lists";
 import {
   archivedProjectsByTeam,
   projectsByTeam,
@@ -27,18 +25,13 @@ import {
 } from "@/lib/projects/projects-store";
 import type { ProjectTeam } from "@/lib/api/wgw/projects";
 import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
+import { EditProjectDialog } from "@/projects-ui/src/edit-project-dialog";
 import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { PurgeProjectDialog } from "@/projects-ui/src/purge-project-dialog";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { useTrackAutosave } from "@/ui/autosave-status";
-import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
-import { Input } from "@/ui/input";
-import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
-import { NO_AUTOFILL } from "@/ui/no-autofill";
-import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import "./settings-projects-pane.css";
 
-type Track = ReturnType<typeof useTrackAutosave>;
 
 function errorDescription(error: unknown): { description?: string } {
   return { description: error instanceof Error ? error.message : undefined };
@@ -62,132 +55,39 @@ function ProjectDot({ color }: { color: string | null }) {
   );
 }
 
-/** Name and color of one Project, saved as they change: color at once, name after a pause. */
-function EditableProjectHead({
-  project,
-  store,
-  track,
-  onFailure,
-}: {
-  project: WorkspaceProject;
-  store: ProjectsStore;
-  track: Track;
-  onFailure: (error: unknown) => void;
-}) {
-  const [name, setName] = useState(project.name);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef({ name, project });
-  latest.current = { name, project };
-
-  // A change from elsewhere (a reload, another tab) replaces the field.
-  useEffect(() => setName(project.name), [project.name]);
-
-  const save = useCallback(
-    (patch: { name?: string; color?: string }) =>
-      track(() => store.patch(project.id, patch)).catch((error) => {
-        if (patch.name !== undefined) setName(latest.current.project.name);
-        onFailure(error);
-      }),
-    [onFailure, project.id, store, track],
-  );
-
-  const saveName = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    const next = latest.current.name.trim();
-    if (next === "") {
-      setName(latest.current.project.name);
-      return;
-    }
-    if (next !== latest.current.project.name) void save({ name: next });
-  }, [save]);
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  const color = project.color ?? TASK_LIST_DOT_COLORS[0] ?? "#3b82f6";
-  return (
-    <NameColorRow className="projects-manage-row__head">
-      <Input
-        {...NO_AUTOFILL}
-        className={NAME_COLOR_ROW_INPUT_CLASS}
-        aria-label={labels.nameOf(project.name)}
-        value={name}
-        onChange={(event) => {
-          setName(event.target.value);
-          if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(saveName, FORM_AUTOSAVE_DELAY_MS);
-        }}
-        onBlur={saveName}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") saveName();
-        }}
-      />
-      <SwatchColorPicker
-        value={color}
-        onChange={(next) => void save({ color: next })}
-        colorLabel={labels.colorOf(project.name)}
-        swatches={TASK_LIST_DOT_COLORS}
-      >
-        <ColorSwatchTrigger
-          color={color}
-          label={labels.colorOf(project.name)}
-          aria-haspopup="dialog"
-        />
-      </SwatchColorPicker>
-    </NameColorRow>
-  );
-}
-
 function ProjectRow({
   project,
   canManage,
   store,
-  track,
-  onFailure,
   onAction,
   onPurgeRequest,
   onArchiveRequest,
+  onEditRequest,
 }: {
   project: WorkspaceProject;
   canManage: boolean;
   store: ProjectsStore;
-  track: Track;
-  onFailure: (error: unknown) => void;
   onAction: (work: () => Promise<unknown>, success: string, failure: string) => Promise<void>;
   onPurgeRequest: (project: WorkspaceProject) => void;
   onArchiveRequest: (project: WorkspaceProject) => void;
+  onEditRequest: (project: WorkspaceProject) => void;
 }) {
   const archived = project.archived;
-  const [editing, setEditing] = useState(false);
   return (
     <li className="projects-manage-row">
       <div className="projects-manage-row__main">
-        {canManage && !archived && editing ? (
-          <EditableProjectHead
-            project={project}
-            store={store}
-            track={track}
-            onFailure={onFailure}
-          />
-        ) : (
-          <span className="projects-manage-row__head projects-manage-row__static">
-            <ProjectDot color={project.color} />
-            <span className="projects-manage-row__name">{project.name}</span>
-            {archived ? <Tag label={labels.archivedTag} tone="warning" /> : null}
-          </span>
-        )}
+        <span className="projects-manage-row__head projects-manage-row__static">
+          <ProjectDot color={project.color} />
+          <span className="projects-manage-row__name">{project.name}</span>
+          {archived ? <Tag label={labels.archivedTag} tone="warning" /> : null}
+        </span>
       </div>
       {canManage && !archived ? (
         <Button
           type="button"
           variant="ghost"
-          label={editing ? labels.done : labels.edit}
-          onClick={() => setEditing((value) => !value)}
+          label={labels.edit}
+          onClick={() => onEditRequest(project)}
         />
       ) : null}
       {canManage && !project.isDefault && !archived ? (
@@ -249,6 +149,7 @@ export function ProjectsManagePane({
   const track = useTrackAutosave();
   const [purging, setPurging] = useState<WorkspaceProject | null>(null);
   const [archiving, setArchiving] = useState<WorkspaceProject | null>(null);
+  const [editing, setEditing] = useState<WorkspaceProject | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [creatingIn, setCreatingIn] = useState<ProjectTeam | null>(null);
 
@@ -296,11 +197,10 @@ export function ProjectsManagePane({
           project={project}
           canManage={project.mayManage && adminSlugs.has(project.teamSlug)}
           store={store}
-          track={track}
-          onFailure={(error) => fail(labels.saveFailed, error)}
           onAction={onAction}
           onPurgeRequest={setPurging}
           onArchiveRequest={setArchiving}
+          onEditRequest={setEditing}
         />
       ))}
     </ul>
@@ -308,7 +208,7 @@ export function ProjectsManagePane({
 
   return (
     <>
-      {!loading && snapshot.status === "error" ? (
+      {!loading && (snapshot.status === "error" || loadFailed) ? (
         <p className="projects-manage-hint">{labels.loadFailed}</p>
       ) : null}
       <div className="projects-manage-teams">
@@ -330,7 +230,7 @@ export function ProjectsManagePane({
                   </span>
                   <Tag
                     label={group.isTeamAdmin ? "Admin" : "Member"}
-                    tone={group.isTeamAdmin ? "warning" : "pending"}
+                    tone={group.isTeamAdmin ? "success" : "pending"}
                   />
                 </span>
               }
@@ -368,6 +268,21 @@ export function ProjectsManagePane({
           );
         })}
       </div>
+      <EditProjectDialog
+        project={editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+        onSave={async (project, input) => {
+          try {
+            await track(() => store.patch(project.id, input));
+            return true;
+          } catch (error) {
+            fail(labels.saveFailed, error);
+            return false;
+          }
+        }}
+      />
       <AlertDialog
         open={archiving !== null}
         onOpenChange={(open) => {
