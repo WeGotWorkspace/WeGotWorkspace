@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 
 final class MeetSignalingService
 {
-    public const KNOCK_NAME_PREFIX = '__wgw_knock__:';
+    private const KNOCK_NAME_PREFIX = '__wgw_knock__:';
 
     /** Mirrors MeetChannelJoinPolicy::CONTROL_MESSAGE_PREFIX (knock / admit / deny). */
     private const CONTROL_TEXT_PREFIX = '__wgw_meet_control__:';
