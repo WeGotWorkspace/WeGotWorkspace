@@ -321,7 +321,7 @@ export function ProjectsManagePane({
             titleTag={<Tag label={group.isTeamAdmin ? "Admin" : "Member"} />}
             action={
               <span className="projects-manage-team-tags">
-                <Tag label={memberCountLabel(group.memberCount)} />
+                {group.isTeamAdmin ? <Tag label={memberCountLabel(group.memberCount)} /> : null}
                 {group.isTeamAdmin && snapshot.status === "ready" ? (
                   <Button
                     type="button"
