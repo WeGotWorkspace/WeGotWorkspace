@@ -64,7 +64,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
         value={filter}
         onValueChange={(next) => {
           if (next === CREATE_VALUE) setCreateOpen(true);
-          else if (next === MANAGE_VALUE) openSettingsPanel?.("projects");
+          else if (next === MANAGE_VALUE) openSettingsPanel?.("memberships");
           else setFilter(next as ProjectFilterValue);
         }}
       >

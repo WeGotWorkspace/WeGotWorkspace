@@ -47,3 +47,7 @@
 .projects-manage-hint {
   @apply m-0 px-1 text-xs text-muted-foreground;
 }
+
+.projects-manage-team-tags {
+  @apply inline-flex items-center gap-2;
+}

@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Pencil } from "lucide-react";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { SettingsTeamMembersDialog } from "@/settings-core/src/settings-team-members-dialog";
 import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
 import { defaultTeamMembersOperations } from "@/settings-core/src/settings-team-members-source";
-import { AvatarList, AvatarListAction, AvatarListRow } from "@/ui/avatar-list";
 import type { TeamMembersOperations } from "@/lib/api/wgw/teams";
+import { ProjectsManagePane } from "@/settings-core/src/settings-projects-pane";
 import type { SettingsGroup } from "@/lib/models/settings-types";
+import type { ProjectsStore } from "@/lib/projects/projects-store";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
 
 export type SettingsMembershipsPaneProps = {
@@ -15,26 +15,24 @@ export type SettingsMembershipsPaneProps = {
   currentUsername: string;
   /** Member management for the Teams the user is team admin of. Defaults to the live or mock source. */
   operations?: TeamMembersOperations;
+  store?: ProjectsStore;
 };
 
 const GROUP_PREFIX = "principals/groups/";
-
-function memberCountLabel(count: number): string {
-  return count === 1 ? "1 member" : `${count} members`;
-}
 
 function teamSlug(group: SettingsGroup): string {
   return group.id.startsWith(GROUP_PREFIX) ? group.id.slice(GROUP_PREFIX.length) : group.id;
 }
 
 /**
- * The Teams the user is in, as the Teams list in Admin shows them: one row each, the name
- * with the member count under it. A team admin gets the edit button on the Teams they run (#2278).
+ * The Teams the user is in, each with its Projects (#818), its role and member count. A team
+ * admin can manage the members of the Teams they run (#2278) and the Projects of those Teams.
  */
 export function SettingsMembershipsPane({
   groups,
   currentUsername,
   operations,
+  store,
 }: SettingsMembershipsPaneProps) {
   const [source] = useState(() => operations ?? defaultTeamMembersOperations());
   const [managing, setManaging] = useState<SettingsGroup | null>(null);
@@ -43,29 +41,22 @@ export function SettingsMembershipsPane({
   const [left, setLeft] = useState<Record<string, true>>({});
   const visible = groups.filter((group) => !left[group.id]);
 
-  return (
-    <SettingsPaneCard>
-      {visible.length === 0 ? (
+  if (visible.length === 0) {
+    return (
+      <SettingsPaneCard>
         <p className="settings-memberships-pane__empty">{noTeamYetCopy}</p>
-      ) : (
-        <AvatarList>
-          {visible.map((group) => (
-            <AvatarListRow
-              key={group.id}
-              displayName={group.displayName}
-              subtitle={memberCountLabel(memberCounts[group.id] ?? group.memberCount)}
-            >
-              {group.isTeamAdmin ? (
-                <AvatarListAction
-                  label={labels.manageOf(group.displayName)}
-                  icon={<Pencil className="size-4" />}
-                  onClick={() => setManaging(group)}
-                />
-              ) : null}
-            </AvatarListRow>
-          ))}
-        </AvatarList>
-      )}
+      </SettingsPaneCard>
+    );
+  }
+
+  return (
+    <>
+      <ProjectsManagePane
+        groups={visible}
+        store={store}
+        memberCounts={memberCounts}
+        onManageMembers={setManaging}
+      />
       <SettingsTeamMembersDialog
         open={managing !== null}
         team={managing ? { slug: teamSlug(managing), displayName: managing.displayName } : null}
@@ -82,6 +73,6 @@ export function SettingsMembershipsPane({
           setMemberCounts((prev) => ({ ...prev, [group.id]: members.length }));
         }}
       />
-    </SettingsPaneCard>
+    </>
   );
 }

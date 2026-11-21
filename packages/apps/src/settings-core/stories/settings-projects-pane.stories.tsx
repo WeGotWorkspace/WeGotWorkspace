@@ -1,3 +1,4 @@
+import type { SettingsGroup } from "@/lib/models/settings-types";
 import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
@@ -8,6 +9,13 @@ import { createProjectsStore, type ProjectsStore } from "@/lib/projects/projects
 import { ProjectsManagePane } from "@/settings-core/src/settings-projects-pane";
 import { SettingsStoryScope } from "./settings-story-scope";
 import { AutosaveStatusProvider, AutosaveStatusTag } from "@/ui/autosave-status";
+
+const TEAM_GROUPS: SettingsGroup[] = MOCK_PROJECT_TEAMS.map((team, index) => ({
+  id: `principals/groups/${team.slug}`,
+  displayName: team.displayName,
+  memberCount: index + 3,
+  isTeamAdmin: team.isTeamAdmin,
+}));
 
 type HarnessProps = {
   teams: ProjectTeam[];
@@ -43,7 +51,7 @@ function Harness({ teams, startArchived, purgeConflict }: HarnessProps) {
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <AutosaveStatusTag />
         </div>
-        <ProjectsManagePane store={store} />
+        <ProjectsManagePane store={store} groups={TEAM_GROUPS} />
       </AutosaveStatusProvider>
     </SettingsStoryScope>
   );

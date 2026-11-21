@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Contact,
-  FolderKanban,
   FileText,
   HardDrive,
   Info,
@@ -37,7 +36,6 @@ import { incomingEmailLabels } from "@/settings-core/src/settings-incoming-email
 import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
-import { ProjectsManagePane } from "@/settings-core/src/settings-projects-pane";
 import { projectsLabels } from "@/projects-ui/src/projects-labels";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
 import { DEFAULT_COLLECTION_APP_META } from "@/lib/default-collection-prefs";
@@ -62,17 +60,10 @@ export function registerBuiltinSettings(): void {
   registerPanel({
     id: "memberships",
     label: "Teams",
-    description: "Teams you belong to",
+    description: projectsLabels.panelDescription,
     icon: <Users className="size-3.5" />,
     group: "account",
     needsSettingsApi: true,
-  });
-  registerPanel({
-    id: "projects",
-    label: projectsLabels.panelLabel,
-    description: projectsLabels.panelDescription,
-    icon: <FolderKanban className="size-3.5" />,
-    group: "account",
   });
   registerPanel({
     id: "offline",
@@ -182,11 +173,6 @@ export function registerBuiltinSettings(): void {
         currentUsername={props.profile.username}
       />
     ),
-  });
-  registerSlice({
-    id: "projects",
-    panelIds: ["projects"],
-    render: () => <ProjectsManagePane />,
   });
   registerSlice({
     id: "offline",
