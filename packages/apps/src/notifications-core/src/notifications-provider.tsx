@@ -7,7 +7,6 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
 import { listNotifications } from "@/lib/api/wgw/notifications";
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensure-push-subscription";
@@ -31,7 +30,6 @@ import type {
   NotificationInboxItem,
   NotificationInboxList,
 } from "@/lib/models/notifications-types";
-import { defaultInboxFanOut } from "@/notifications-core/src/inbox-fan-out";
 import { pushedItemFromMessage } from "@/notifications-core/src/push-delivery";
 import {
   dropPushedItems,
@@ -58,9 +56,10 @@ export {
 export const NOTIFICATIONS_INBOX_POLL_MS = 15_000;
 
 /**
- * Fallback poll while the JMAP push stream is connected: a `Notification`
- * push fetches the inbox at once, so the poll only catches a lost push. Only
- * the tab that holds the stream runs it and shares the rows (#2252).
+ * Tick while the JMAP push stream is connected. A `Notification` push fetches
+ * the inbox, and a failed fetch leaves that state unconfirmed so the hub offers
+ * it again, so this tick sends no inbox GET (#2287): it only resends a read ack
+ * that failed.
  */
 export const NOTIFICATIONS_INBOX_PUSH_POLL_MS = 60_000;
 
@@ -267,26 +266,17 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      // While push is connected, one tab polls for the browser: the tab that
-      // holds the stream, which is visible whenever any tab is. It shares the
-      // rows it shows. With push down every tab polls, as the safety net.
+      // With push down every tab polls, as the safety net. While push is
+      // connected the `Notification` state is the doorbell for the inbox, so
+      // no tab polls (#2287); a read ack that failed is still sent again.
       if (!pushConnected) {
         void refresh();
         return;
       }
-      if (!defaultJmapPushHub()?.leading) {
-        // No inbox GET here, but a read ack that failed is still sent again.
-        readAck.retryUnconfirmed();
-        return;
-      }
-      void refresh().then((shown) => {
-        if (shown) defaultInboxFanOut().sharePoll(shown);
-      });
+      readAck.retryUnconfirmed();
     }, pollMs);
     return () => window.clearInterval(timer);
   }, [refresh, pollMs, pushConnected, readAck]);
-
-  useEffect(() => defaultInboxFanOut().onPollShared(applyShared), [applyShared]);
 
   useEffect(() => {
     void refresh();

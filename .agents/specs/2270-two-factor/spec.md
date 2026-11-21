@@ -56,7 +56,7 @@ All five must be handled in the chunk that turns two-factor on; a missed one is 
 - An app password is never accepted on `auth/token`, `oauth/session`, or the current-password check.
 - The DAV verified-password memory (APCu only, never disk or database) stays as it is for account passwords. App passwords are a single indexed sha256 lookup and are not put in that memory. For a user with two-factor on, the account password is refused before that memory is read, so an entry warmed before two-factor was turned on does not let the password through.
 - `users.dav_password_used_at` is written by a successful account-password Basic sign-in on DAV or Meet (at most once per five minutes). An app-password success does not write it.
-- A valid app password signs in even while the protocol sign-in limit for that user or address is reached; the limit only blocks account-password attempts. Failed attempts, app-password-shaped or not, still count.
+- A valid app password signs in even while the protocol sign-in limit for that user or address is reached; the limit only blocks account-password attempts. Failed attempts, app-password-shaped or not, count until the limit is reached; attempts refused while it is reached add no further hits.
 - Creating an app password requires a current authenticator code when two-factor is on, otherwise the account password; either path shares the matching rate limit. `last_used_at` is written at most once per five minutes per row.
 - Failed Basic attempts with an app-password-shaped string count on the existing protocol limiter keys.
 
