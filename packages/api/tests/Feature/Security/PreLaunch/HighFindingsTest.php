@@ -162,7 +162,11 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->assertForbidden();
     }
 
-    /** H3b: a demoted admin's existing access token loses admin rights immediately. */
+    /**
+     * H3b: a demoted admin's existing access token loses admin rights immediately.
+     * The role change signs the user out everywhere, so since #2315 that token is
+     * refused outright (401). A new sign-in is a plain user without admin access.
+     */
     public function test_h3_demoted_admin_loses_admin_immediately(): void
     {
         $alice = $this->login('alice');
@@ -177,8 +181,16 @@ final class HighFindingsTest extends WgwDatabaseTestCase
 
         $this->withBearer($alice['access_token'])
             ->getJson('/api/v1/admin/state')
-            ->assertForbidden();
+            ->assertUnauthorized();
         $this->withBearer($alice['access_token'])
+            ->getJson('/api/v1/me')
+            ->assertUnauthorized();
+
+        $fresh = $this->login('alice');
+        $this->withBearer($fresh['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertForbidden();
+        $this->withBearer($fresh['access_token'])
             ->getJson('/api/v1/me')
             ->assertOk();
     }

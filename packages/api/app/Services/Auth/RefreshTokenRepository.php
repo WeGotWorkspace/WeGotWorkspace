@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Models\ApiRefreshToken;
+use App\Models\User;
 use Closure;
 use Illuminate\Support\Str;
 
@@ -28,20 +29,30 @@ final class RefreshTokenRepository
     /**
      * @param  'guest'|'user'|'admin'  $role
      */
-    public function issue(string $username, string $role, ?string $familyId = null): string
+    public function issue(string $username, string $role, ?string $familyId = null, ?int $epoch = null): string
     {
         $this->cleanupExpired();
 
-        return $this->store($username, $role, $familyId);
+        return $this->store($username, $role, $familyId, $epoch ?? $this->userEpoch($username));
     }
 
     /**
      * Insert the successor for a rotation. consume() already swept, and this
      * runs inside that transaction, so it must not sweep again.
      */
-    public function issueRotated(string $username, string $role, string $familyId): string
+    public function issueRotated(string $username, string $role, string $familyId, int $epoch): string
     {
-        return $this->store($username, $role, $familyId);
+        return $this->store($username, $role, $familyId, $epoch);
+    }
+
+    /**
+     * users.access_token_epoch the refresh token was minted under, or null when unknown.
+     */
+    public function epochFor(string $token): ?int
+    {
+        $epoch = ApiRefreshToken::query()->where('token_hash', self::hashToken($token))->value('access_token_epoch');
+
+        return $epoch === null ? null : (int) $epoch;
     }
 
     /**
@@ -51,7 +62,7 @@ final class RefreshTokenRepository
      * holders can stay in step until the successor is rotated or revoked.
      * After that, a later presentation revokes the family.
      *
-     * @param  Closure(string, string): string  $issueSuccessor  (username, familyId): plaintext token
+     * @param  Closure(string, string, int): string  $issueSuccessor  (username, familyId, parent epoch): plaintext token
      * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
      */
     public function consume(string $token, Closure $issueSuccessor): ?array
@@ -155,13 +166,13 @@ final class RefreshTokenRepository
     }
 
     /**
-     * @param  Closure(string, string): string  $issueSuccessor
+     * @param  Closure(string, string, int): string  $issueSuccessor
      * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
      */
     private function rotate(ApiRefreshToken $row, Closure $issueSuccessor): ?array
     {
         $familyId = $this->familyIdOf($row);
-        $plain = $issueSuccessor((string) $row->username, $familyId);
+        $plain = $issueSuccessor((string) $row->username, $familyId, (int) $row->access_token_epoch);
         $successorHash = self::hashToken($plain);
         $claimed = ApiRefreshToken::query()
             ->where('token_hash', $row->token_hash)
@@ -302,7 +313,7 @@ final class RefreshTokenRepository
         ApiRefreshToken::query()->whereIn('token_hash', $hashes)->update(['revoked' => 1]);
     }
 
-    private function store(string $username, string $role, ?string $familyId): string
+    private function store(string $username, string $role, ?string $familyId, int $epoch): string
     {
         $token = bin2hex(random_bytes(32));
         $familyId = $familyId !== null && $familyId !== '' ? $familyId : (string) Str::ulid();
@@ -319,10 +330,16 @@ final class RefreshTokenRepository
                 'rotated_at' => null,
                 'successor_hash' => null,
                 'successor_token' => null,
+                'access_token_epoch' => $epoch,
             ],
         );
 
         return $token;
+    }
+
+    private function userEpoch(string $username): int
+    {
+        return (int) User::query()->where('username', $username)->value('access_token_epoch');
     }
 
     private function cleanupExpired(): void

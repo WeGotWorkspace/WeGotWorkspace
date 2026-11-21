@@ -20,9 +20,9 @@ final class UserEnabledGuard
     }
 
     /**
-     * Enabled flag, user id, and UI-cookie epoch from one users query.
+     * Enabled flag, user id, UI-cookie epoch, and bearer access-token epoch from one users query.
      *
-     * @return array{enabled: true, epoch: int, id: int}|null
+     * @return array{enabled: true, epoch: int, access_epoch: int, id: int}|null
      */
     public function enabledSession(string $username): ?array
     {
@@ -31,7 +31,7 @@ final class UserEnabledGuard
             return null;
         }
         if (str_starts_with($username, 'share:')) {
-            return ['enabled' => true, 'epoch' => 0, 'id' => 0];
+            return ['enabled' => true, 'epoch' => 0, 'access_epoch' => 0, 'id' => 0];
         }
 
         $user = User::query()->where('username', $username)->first();
@@ -39,6 +39,6 @@ final class UserEnabledGuard
             return null;
         }
 
-        return ['enabled' => true, 'epoch' => (int) $user->ui_session_epoch, 'id' => (int) $user->id];
+        return ['enabled' => true, 'epoch' => (int) $user->ui_session_epoch, 'access_epoch' => (int) $user->access_token_epoch, 'id' => (int) $user->id];
     }
 }

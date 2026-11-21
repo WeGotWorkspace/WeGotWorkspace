@@ -22,7 +22,9 @@ use Tests\Support\WgwDatabaseTestCase;
  */
 final class MfaSettingsTest extends WgwDatabaseTestCase
 {
-    use TwoFactorTestHelpers;
+    use TwoFactorTestHelpers {
+        turnOnMfa as private turnOnMfaForUser;
+    }
 
     private string $token = '';
 
@@ -103,11 +105,14 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         $this->assertCount(10, $codes);
         $this->assertSame(10, MfaRecoveryCode::query()->where('username', 'bob')->whereNull('used_at')->count());
         $this->postRefresh($other['refresh_token'])->assertUnauthorized();
+        // #2315: the other session's access token is refused at once, not at expiry.
+        $this->withBearer($other['access_token'])->getJson('/api/v1/me')->assertUnauthorized();
         $this->signInWithPassword('bob')->assertJsonPath('status', 'mfa_required');
         // The confirming code's step is used: it cannot sign in.
         $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertStatus(401);
         $this->nextStep();
-        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertOk();
+        $signedIn = $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertOk();
+        $this->withBearer((string) $signedIn->json('access_token'))->getJson('/api/v1/me')->assertOk();
     }
 
     public function test_confirm_needs_password_code_and_a_started_setup(): void
@@ -267,6 +272,22 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         $this->postJson('/api/v1/settings/totp/confirmation', ['currentPassword' => 'secret', 'code' => '123456'])->assertUnauthorized();
         $this->deleteJson('/api/v1/settings/totp', ['code' => '123456'])->assertUnauthorized();
         $this->postJson('/api/v1/settings/totp/recovery-codes', ['code' => '123456'])->assertUnauthorized();
+    }
+
+    /**
+     * Turning two-factor on signs out everywhere, which refuses access tokens
+     * issued before it (#2315). Sign bob in again, as the app does.
+     *
+     * @return array{secret: string, recovery_codes: list<string>}
+     */
+    protected function turnOnMfa(string $username): array
+    {
+        $result = $this->turnOnMfaForUser($username);
+        if ($username === 'bob') {
+            $this->token = app(AuthTokenService::class)->issueForUsername('bob')['access_token'];
+        }
+
+        return $result;
     }
 
     /**

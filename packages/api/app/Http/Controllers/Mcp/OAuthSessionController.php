@@ -112,6 +112,11 @@ final class OAuthSessionController
             return response()->json($result);
         }
 
+        // A sign-out everywhere that committed after the code step began ends this sign-in too.
+        if ($this->mfa->accessTokenEpoch($result['username']) !== $result['epoch']) {
+            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
+        }
+
         return $this->signIn($request, $this->user($result['username']));
     }
 

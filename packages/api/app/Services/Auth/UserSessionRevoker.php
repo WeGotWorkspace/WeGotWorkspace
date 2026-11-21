@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Models\AuthChallenge;
 use App\Models\PushSubscription;
 use App\Models\User;
 use Laravel\Passport\Passport;
@@ -11,7 +12,7 @@ use Laravel\Passport\Passport;
 /**
  * Drops bearer refresh tokens, Passport grants, and push subscriptions for one user.
  *
- * Each call bumps ui_session_epoch.
+ * revokeAll() bumps ui_session_epoch and access_token_epoch; bumpEpoch() bumps only ui_session_epoch.
  */
 final class UserSessionRevoker
 {
@@ -24,7 +25,15 @@ final class UserSessionRevoker
             return;
         }
 
-        $this->refreshTokens->revokeAllForUsername($username);
+        // One transaction, so a crash cannot commit the bump alone. A refresh token minted
+        // under the old epoch is refused by AuthTokenService::tokenResponse either way.
+        // Open two-factor challenges go too: a password step taken before this must not
+        // finish into a session after it.
+        User::query()->getConnection()->transaction(function () use ($username): void {
+            User::query()->where('username', $username)->increment('access_token_epoch');
+            $this->refreshTokens->revokeAllForUsername($username);
+            AuthChallenge::query()->where('username', $username)->delete();
+        });
 
         $user = User::query()->where('username', $username)->first();
         if ($user !== null) {

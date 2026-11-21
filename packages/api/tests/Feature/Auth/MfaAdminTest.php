@@ -48,7 +48,9 @@ final class MfaAdminTest extends WgwDatabaseTestCase
         $this->assertSame(0, MfaRecoveryCode::query()->count());
         $this->assertSame(0, AuthChallenge::query()->count());
         $this->postRefresh($session['refresh_token'])->assertUnauthorized();
-        $this->signInWithPassword('bob')->assertOk()->assertJsonPath('status', 'ok');
+        $this->withBearer($session['access_token'])->getJson('/api/v1/me')->assertUnauthorized();
+        $signedIn = $this->signInWithPassword('bob')->assertOk()->assertJsonPath('status', 'ok');
+        $this->withBearer((string) $signedIn->json('access_token'))->getJson('/api/v1/me')->assertOk();
     }
 
     public function test_an_admin_password_change_leaves_two_factor_on(): void

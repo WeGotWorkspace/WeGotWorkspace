@@ -6,6 +6,7 @@ namespace App\Services\Auth\Mfa;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\AuthChallenge;
+use App\Models\User;
 use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\UserEnabledGuard;
 
@@ -51,7 +52,7 @@ final class MfaSignIn
     /**
      * A code or a recovery code on a `login` challenge.
      *
-     * @return array{status: 'ok', username: string}|array{status: 'mfa_replace_required', challenge: string, client: string, secret: string, otpauth_uri: string}
+     * @return array{status: 'ok', username: string, epoch: int|null}|array{status: 'mfa_replace_required', challenge: string, client: string, secret: string, otpauth_uri: string}
      */
     public function verify(string $id, string $client, ?string $code, ?string $recoveryCode, string $ip, string $host): array
     {
@@ -63,6 +64,9 @@ final class MfaSignIn
 
         $challenge = $this->open($id, $client, AuthChallenge::KIND_LOGIN, $ip);
         $username = $challenge->username;
+        // Read before the code is checked: a revokeAll() that commits after this makes the
+        // caller's refresh row older than the user row, and tokenResponse refuses it.
+        $epoch = $this->accessTokenEpoch($username);
 
         if ($code !== null) {
             if (! $this->codes->acceptTotp($username, $code)) {
@@ -71,7 +75,7 @@ final class MfaSignIn
             $this->challenges->consume($challenge);
             $this->limiter->reset($username, $ip);
 
-            return ['status' => 'ok', 'username' => $username];
+            return ['status' => 'ok', 'username' => $username, 'epoch' => $epoch];
         }
 
         if (! $this->codes->acceptRecoveryCode($username, (string) $recoveryCode)) {
@@ -148,6 +152,16 @@ final class MfaSignIn
         }
 
         return $challenge;
+    }
+
+    /**
+     * users.access_token_epoch, or null when there is no such user.
+     */
+    public function accessTokenEpoch(string $username): ?int
+    {
+        $epoch = User::query()->where('username', $username)->value('access_token_epoch');
+
+        return $epoch === null ? null : (int) $epoch;
     }
 
     private function refuse(AuthChallenge $challenge, string $ip): never
