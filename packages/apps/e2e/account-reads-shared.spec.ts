@@ -83,8 +83,15 @@ test.describe("Shared account reads (live app)", () => {
       expect(reads).toBe(0);
     } finally {
       if (original !== "") {
+        const restored = first.waitForResponse(
+          (res) =>
+            res.request().method() === "PUT" &&
+            new URL(res.url()).pathname === "/api/v1/settings/profile" &&
+            res.ok(),
+          { timeout: 30_000 },
+        );
         await nameField.fill(original).catch(() => undefined);
-        await first.waitForTimeout(2_000);
+        await restored.catch(() => undefined);
       }
       await context.close();
     }

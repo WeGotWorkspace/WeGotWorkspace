@@ -178,7 +178,6 @@ export function createSharedAccountRead(options: SharedAccountReadOptions): Shar
   const invalidate = () => {
     ensureSubscribed();
     adopt({ type: "clear" });
-    writeStored(null);
     topic.publish({ type: "clear" }, { otherTabsOnly: true });
   };
 
