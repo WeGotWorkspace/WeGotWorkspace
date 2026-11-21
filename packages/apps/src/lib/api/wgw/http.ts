@@ -14,6 +14,11 @@ import { sendWgwRequest, type WgwRequestInit } from "@/lib/api/wgw/send-with-upl
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import {
+  createSharedAccountRead,
+  type AccountRead,
+  type SharedAccountRead,
+} from "@/lib/api/wgw/shared-account-read";
 
 export { WgwSessionRenewalError, WgwSignInRequiredError };
 
@@ -211,6 +216,7 @@ export function clearWgwSession(reason: WgwSessionClearReason): void {
   resetRefreshFailures();
   refreshRejectedByAuth = false;
   persistTokens();
+  wgwInvalidateAccountReads();
 }
 
 async function postJson(path: string, body: unknown, auth?: string): Promise<Response> {
@@ -822,6 +828,48 @@ function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
   };
 }
 
+/** Username of the signed-in member, from the access token. `null` for guests or no session. */
+function signedInUsername(): string | null {
+  if (!accessToken || sessionKind === "guest") return null;
+  const sub = decodeJwtPayload(accessToken)?.sub;
+  return typeof sub === "string" && sub.trim() ? sub : null;
+}
+
+async function loadAccountJson(path: string): Promise<AccountRead> {
+  const res = await wgwFetch(path);
+  if (!res.ok) return { ok: false, status: res.status };
+  const json = await wgwReadJson(res);
+  return {
+    ok: true,
+    status: res.status,
+    json: json && typeof json === "object" ? (json as Record<string, unknown>) : {},
+  };
+}
+
+/**
+ * `GET /settings/state` once per browser, shared by every app and tab. Apps
+ * declare they need it with `.read()`; none fetches it itself. A settings
+ * write calls `.set()` / `.invalidate()` so every open tab sees it at once.
+ */
+export const wgwSettingsStateRead: SharedAccountRead = createSharedAccountRead({
+  name: "settings-state",
+  load: () => loadAccountJson("/settings/state"),
+  identity: () => (readTokensFromStorage(), signedInUsername()),
+});
+
+/** `GET /me` once per browser, shared by every app and tab (see `wgwSettingsStateRead`). */
+export const wgwMeRead: SharedAccountRead = createSharedAccountRead({
+  name: "me",
+  load: () => loadAccountJson("/me"),
+  identity: () => (readTokensFromStorage(), signedInUsername()),
+});
+
+/** The account changed in a way the client cannot see: both reads ask the server again. */
+export function wgwInvalidateAccountReads(): void {
+  wgwSettingsStateRead.invalidate();
+  wgwMeRead.invalidate();
+}
+
 export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   readTokensFromStorage();
   if (wgwIsGuestSession()) {
@@ -831,9 +879,9 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
     return wgwGuestPrincipalFromAccessToken(accessToken);
   }
 
-  const res = await wgwFetch("/me");
-  if (!res.ok) throw new WgwRequestError(`GET /me failed (${res.status})`, res.status);
-  const j = (await wgwReadJson(res)) as Record<string, unknown>;
+  const meRead = await wgwMeRead.read();
+  if (!meRead.ok) throw new WgwRequestError(`GET /me failed (${meRead.status})`, meRead.status);
+  const j = meRead.json;
   const meUsername = typeof j.username === "string" ? j.username : "User";
 
   // Keep identity consistent with Settings when available.
@@ -845,10 +893,9 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
       }
     | undefined;
   try {
-    const settingsRes = await wgwFetch("/settings/state");
-    if (settingsRes.ok) {
-      const settingsJson = (await wgwReadJson(settingsRes)) as Record<string, unknown>;
-      const user = settingsJson.user;
+    const settingsRead = await wgwSettingsStateRead.read();
+    if (settingsRead.ok) {
+      const user = settingsRead.json.user;
       if (user && typeof user === "object") {
         const candidate = user as Record<string, unknown>;
         settingsUser = {
@@ -895,6 +942,8 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
 export function resetWgwSessionStateForTests(keepTokens = false): void {
   refreshPromise = null;
   legacySwept = false;
+  wgwSettingsStateRead.resetForTests();
+  wgwMeRead.resetForTests();
   if (keepTokens) return;
   accessToken = null;
   sessionKind = null;

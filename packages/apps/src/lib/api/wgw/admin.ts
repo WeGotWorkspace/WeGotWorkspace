@@ -1,6 +1,6 @@
 import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
 import type { AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwFetch, wgwFetchPrincipal, wgwReadJson, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type {
   WgwAdminStateResponse,
@@ -353,6 +353,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       });
       if (!res.ok)
         throw new WgwRequestError(`PUT /admin/settings failed (${res.status})`, res.status);
+      wgwSettingsStateRead.invalidate();
       return fetchAdminUiData(opts);
     },
     setAppUrl: async (url, opts) => {
