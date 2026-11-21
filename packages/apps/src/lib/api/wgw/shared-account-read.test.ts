@@ -76,7 +76,7 @@ describe("createSharedAccountRead", () => {
     const load = vi.fn(async () => ok({}));
     const shared = make({ load, now: () => t, name: "aged" });
     await shared.read();
-    t += 5 * 60_000 + 1;
+    t += 60_000 + 1;
     await shared.read();
     expect(load).toHaveBeenCalledTimes(2);
   });

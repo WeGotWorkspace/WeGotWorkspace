@@ -11,7 +11,7 @@ export type AccountRead =
  * change made elsewhere (an admin turning an app off for this account) can go
  * unseen by a browser that never wrote anything itself.
  */
-export const ACCOUNT_READ_MAX_AGE_MS = 5 * 60_000;
+export const ACCOUNT_READ_MAX_AGE_MS = 60_000;
 
 const STORAGE_PREFIX = "wgw.account-read.v1.";
 const CHANNEL_PREFIX = "wgw.account-read.";
