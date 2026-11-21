@@ -78,8 +78,7 @@ describe("push heartbeat peers (#2287)", () => {
   it("registers nothing for a channel the server does not refresh", () => {
     resetPushHeartbeatPeersForTests(() => null);
     registerPushHeartbeatPeer("chat", "peer-1");
-    registerPushHeartbeatPeer("collab", "peer-2");
-    registerPushHeartbeatPeer("principal", "peer-3");
+    registerPushHeartbeatPeer("sheet", "peer-2");
     expect(pushHeartbeatHeaderValue()).toBeNull();
   });
 
