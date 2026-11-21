@@ -123,4 +123,28 @@ describe("createSharedAccountRead", () => {
     });
     channel.close();
   });
+
+  it("a clear from another page also empties storage after an older read wrote it", async () => {
+    const load = vi.fn(async () => ok({ v: 1 }));
+    const page = make({ load, name: "bus-clear" });
+    await page.read(); // store() wrote { v: 1 }
+    const channel = new BroadcastChannel("wgw.account-read.bus-clear");
+    channel.postMessage({ type: "clear" });
+    await vi.waitFor(() =>
+      expect(window.localStorage.getItem("wgw.account-read.v1.bus-clear")).toBeNull(),
+    );
+    channel.close();
+  });
+
+  it("a set from another page is what a new page reads back, not an older read's body", async () => {
+    const load = vi.fn(async () => ok({ v: "old" }));
+    const page = make({ load, name: "bus-set" });
+    await page.read();
+    const channel = new BroadcastChannel("wgw.account-read.bus-set");
+    channel.postMessage({ type: "set", identity: "alice", at: Date.now(), json: { v: "new" } });
+    await vi.waitFor(async () => expect(await page.read()).toEqual(ok({ v: "new" })));
+    expect(await make({ load, name: "bus-set" }).read()).toEqual(ok({ v: "new" }));
+    expect(load).toHaveBeenCalledTimes(1);
+    channel.close();
+  });
 });

@@ -117,11 +117,15 @@ export function createSharedAccountRead(options: SharedAccountReadOptions): Shar
 
   const adopt = (message: Message) => {
     generation += 1;
+    // Persist first: a read that finished here a moment ago has already written
+    // its older body to storage, and a reload must not serve that.
     if (message.type === "clear") {
       memory = null;
+      writeStored(null);
       return;
     }
     memory = { identity: message.identity, at: message.at, json: message.json };
+    writeStored(memory);
     for (const listener of listeners) listener(message.json);
   };
 

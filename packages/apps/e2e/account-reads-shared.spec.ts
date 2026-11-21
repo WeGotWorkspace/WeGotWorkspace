@@ -22,8 +22,8 @@ test.describe("Shared account reads (live app)", () => {
         if (!url.pathname.startsWith("/api/v1/")) return;
         counts.total += 1;
         if (request.method() !== "GET") return;
-        if (url.pathname.endsWith("/settings/state")) counts.settings += 1;
-        if (url.pathname.endsWith("/me")) counts.me += 1;
+        if (url.pathname === "/api/v1/settings/state") counts.settings += 1;
+        if (url.pathname === "/api/v1/me") counts.me += 1;
       };
       context.on("request", onRequest);
 
@@ -43,44 +43,49 @@ test.describe("Shared account reads (live app)", () => {
     }
   });
 
-  test("a settings write in one tab is what another open tab reads next, with no new request", async ({
+  test("a profile save in one tab shows in another tab with no new /settings/state read", async ({
     browser,
   }) => {
     test.setTimeout(120_000);
     const context = await openUser(browser, OWNER);
+    const first = await context.newPage();
+    const second = await context.newPage();
+    const nameField = first.getByRole("textbox", { name: "Display name" });
+    let original = "";
     try {
-      const first = await context.newPage();
-      const second = await context.newPage();
-      await first.goto("/tasks");
+      await first.goto("/settings/profile");
+      await expect(nameField).toBeVisible({ timeout: 30_000 });
+      original = await nameField.inputValue();
       await second.goto("/calendar");
       await Promise.all([first, second].map((p) => p.waitForLoadState("networkidle")));
 
       let reads = 0;
       second.on("request", (request) => {
-        if (
-          request.method() === "GET" &&
-          new URL(request.url()).pathname.endsWith("/settings/state")
-        )
-          reads += 1;
+        const url = new URL(request.url());
+        if (request.method() === "GET" && url.pathname === "/api/v1/settings/state") reads += 1;
       });
-      // What `saveSettingsProfile` does with the server's answer.
-      await first.evaluate(async () => {
-        const http = await import(/* @vite-ignore */ "/src/lib/api/wgw/http.ts");
-        http.wgwSettingsStateRead.set({ marker: "written-in-first-tab", groups: [] });
+
+      const unique = `E2E Name ${Date.now()}`;
+      const saved = first.waitForResponse(
+        (res) =>
+          res.request().method() === "PUT" &&
+          new URL(res.url()).pathname === "/api/v1/settings/profile" &&
+          res.ok(),
+        { timeout: 30_000 },
+      );
+      await nameField.fill(unique);
+      await saved;
+
+      await second.goto("/");
+      await expect(second.getByRole("img", { name: `User menu, ${unique}` })).toBeVisible({
+        timeout: 30_000,
       });
-      await expect
-        .poll(
-          () =>
-            second.evaluate(async () => {
-              const http = await import(/* @vite-ignore */ "/src/lib/api/wgw/http.ts");
-              const read = await http.wgwSettingsStateRead.read();
-              return read.ok ? read.json.marker : "not-ok";
-            }),
-          { timeout: 10_000 },
-        )
-        .toBe("written-in-first-tab");
       expect(reads).toBe(0);
     } finally {
+      if (original !== "") {
+        await nameField.fill(original).catch(() => undefined);
+        await first.waitForTimeout(2_000);
+      }
       await context.close();
     }
   });
