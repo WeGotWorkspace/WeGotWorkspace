@@ -6,6 +6,7 @@ import { readProjectFilter } from "@/lib/projects/project-filter";
 import { createProjectsStore } from "@/lib/projects/projects-store";
 import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { ProjectFilterSelect } from "@/projects-ui/src/project-filter-select";
+import { OpenSettingsPanelContext } from "@/lib/settings/open-settings-panel";
 import { TooltipProvider } from "@/ui/tooltip";
 
 beforeEach(() => {
@@ -51,6 +52,7 @@ describe("ProjectFilterSelect", () => {
       "Sales Project",
       "Create Project",
     ]);
+    // No Settings around the filter here, so no Manage Projects.
   });
 
   it("offers no Create Project without a team-admin role", async () => {
@@ -73,6 +75,46 @@ describe("ProjectFilterSelect", () => {
         "Website relaunch",
       ),
     );
+  });
+});
+
+describe("Manage Projects", () => {
+  function renderWithSettings(
+    store: Awaited<ReturnType<typeof loadedStore>>,
+    open: ((id: string) => void) | null,
+  ) {
+    return render(
+      <TooltipProvider delayDuration={0}>
+        <OpenSettingsPanelContext.Provider value={open}>
+          <ProjectFilterSelect store={store} />
+        </OpenSettingsPanelContext.Provider>
+      </TooltipProvider>,
+    );
+  }
+
+  it("opens the Projects panel for a team admin", async () => {
+    const open = vi.fn();
+    renderWithSettings(await loadedStore(), open);
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
+    fireEvent.keyDown(await screen.findByRole("option", { name: "Manage Projects" }), {
+      key: "Enter",
+    });
+    expect(open).toHaveBeenCalledWith("projects");
+    expect(readProjectFilter()).toBe("all");
+  });
+
+  it("is hidden without the role, and without Settings around it", async () => {
+    renderWithSettings(
+      await loadedStore([{ slug: "sales", displayName: "Sales", isTeamAdmin: false }]),
+      vi.fn(),
+    );
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
+    expect(screen.queryByRole("option", { name: "Manage Projects" })).toBeNull();
+    cleanup();
+    renderWithSettings(await loadedStore(), null);
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
+    await screen.findAllByRole("option");
+    expect(screen.queryByRole("option", { name: "Manage Projects" })).toBeNull();
   });
 });
 

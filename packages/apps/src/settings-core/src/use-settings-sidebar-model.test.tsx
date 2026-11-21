@@ -16,7 +16,11 @@ describe("useSettingsSidebarModel", () => {
 
   it("groups Account, Connections, Device, Apps and About, with Connected assistants when MCP is on", () => {
     const { result } = renderHook(() => useSettingsSidebarModel(true));
-    expect(result.current.account.map((section) => section.id)).toEqual(["profile", "memberships"]);
+    expect(result.current.account.map((section) => section.id)).toEqual([
+      "profile",
+      "memberships",
+      "projects",
+    ]);
     expect(result.current.connections.map((section) => section.id)).toEqual([
       "assistants",
       "incoming-email",
@@ -42,7 +46,11 @@ describe("useSettingsSidebarModel", () => {
 
   it("omits Connected assistants when the admin kill-switch is off", () => {
     const { result } = renderHook(() => useSettingsSidebarModel(false));
-    expect(result.current.account.map((section) => section.id)).toEqual(["profile", "memberships"]);
+    expect(result.current.account.map((section) => section.id)).toEqual([
+      "profile",
+      "memberships",
+      "projects",
+    ]);
     expect(result.current.connections.map((section) => section.id)).toEqual(["incoming-email"]);
     expect(result.current.apps.map((section) => section.id)).toEqual([
       "calendar",

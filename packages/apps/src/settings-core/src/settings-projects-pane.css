@@ -1,0 +1,37 @@
+@import "../../styles.css" reference;
+
+/* One list look with the Teams pane: rows separated by a hairline, no cards. */
+.projects-manage-list {
+  @apply m-0 list-none p-0;
+}
+
+.projects-manage-row {
+  @apply flex items-center gap-3 py-3;
+}
+
+.projects-manage-row + .projects-manage-row {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.projects-manage-row__head {
+  @apply min-w-0 flex-1;
+}
+
+.projects-manage-row__static {
+  @apply flex items-center gap-3;
+}
+
+.projects-manage-row__name {
+  @apply min-w-0 flex-1 truncate font-medium;
+  font-size: var(--input-font-size-md, 0.875rem);
+  color: var(--workspace-foreground);
+}
+
+.projects-manage-row__dot {
+  @apply size-2.5 shrink-0 rounded-full;
+  background-color: var(--projects-manage-color, var(--color-ink));
+}
+
+.projects-manage-archived-team__name {
+  @apply m-0 pt-2 text-xs font-medium text-muted-foreground;
+}
