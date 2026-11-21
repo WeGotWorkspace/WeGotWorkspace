@@ -439,6 +439,72 @@ describe("push as the online check (#2296)", () => {
     unsubscribe();
   });
 
+  it("a follower tab goes offline on the offline notice, not on plain failures", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const other = new BroadcastChannel("wgw-reachability");
+    const received: unknown[] = [];
+    other.onmessage = (event: MessageEvent) => received.push(event.data);
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    setPushHealthy(true);
+    fetchMock.mockClear();
+
+    other.postMessage({ type: "wgw-reachability", reachable: false });
+    other.postMessage({ type: "wgw-reachability", reachable: false });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(getConnectivitySnapshot()).toBe(true);
+
+    setPushHealthy(false);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(getConnectivitySnapshot()).toBe(true);
+    expect(received.some((m) => (m as { offline?: boolean }).offline)).toBe(false);
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    other.postMessage({
+      type: "wgw-reachability",
+      reachable: false,
+      offline: true,
+      failures: 2,
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(getConnectivitySnapshot()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(3100);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    other.close();
+    unsubscribe();
+  });
+
+  it("posts an offline notice when push turns unhealthy after failures", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+    const other = new BroadcastChannel("wgw-reachability");
+    const received: unknown[] = [];
+    other.onmessage = (event: MessageEvent) => received.push(event.data);
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    setPushHealthy(true);
+
+    reportReachability(false);
+    reportReachability(false);
+    setPushHealthy(false);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(received).toContainEqual({
+      type: "wgw-reachability",
+      reachable: false,
+      offline: true,
+      failures: 2,
+    });
+    other.close();
+    unsubscribe();
+  });
+
   it("a push response cancels a probe in flight", async () => {
     vi.useFakeTimers();
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
