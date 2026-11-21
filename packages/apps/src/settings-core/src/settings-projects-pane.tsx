@@ -3,6 +3,16 @@ import { Plus, Users } from "lucide-react";
 import type { SettingsGroup } from "@/lib/models/settings-types";
 import { teamMembersLabels } from "@/share-ui/team-members-labels";
 import { Tag } from "@/tag/src/tag";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
 import { Button } from "@/button/src/button";
 import { FORM_AUTOSAVE_DELAY_MS } from "@/hooks/use-form-autosave";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -141,6 +151,7 @@ function ProjectRow({
   onFailure,
   onAction,
   onPurgeRequest,
+  onArchiveRequest,
 }: {
   project: WorkspaceProject;
   canManage: boolean;
@@ -149,6 +160,7 @@ function ProjectRow({
   onFailure: (error: unknown) => void;
   onAction: (work: () => Promise<unknown>, success: string, failure: string) => Promise<void>;
   onPurgeRequest: (project: WorkspaceProject) => void;
+  onArchiveRequest: (project: WorkspaceProject) => void;
 }) {
   const archived = project.archived;
   const [editing, setEditing] = useState(false);
@@ -166,6 +178,7 @@ function ProjectRow({
           <span className="projects-manage-row__head projects-manage-row__static">
             <ProjectDot color={project.color} />
             <span className="projects-manage-row__name">{project.name}</span>
+            {archived ? <Tag label={labels.archivedTag} tone="warning" /> : null}
           </span>
         )}
       </div>
@@ -182,20 +195,14 @@ function ProjectRow({
           type="button"
           variant="ghost"
           label={labels.archive}
-          onClick={() =>
-            void onAction(
-              () => store.archive(project.id),
-              labels.archived(project.name),
-              labels.archiveFailed,
-            )
-          }
+          onClick={() => onArchiveRequest(project)}
         />
       ) : null}
       {canManage && archived ? (
         <>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             label={labels.restore}
             onClick={() =>
               void onAction(
@@ -207,7 +214,7 @@ function ProjectRow({
           />
           <Button
             type="button"
-            variant="destructive-outline"
+            variant="ghost"
             label={labels.purge}
             onClick={() => onPurgeRequest(project)}
           />
@@ -241,6 +248,7 @@ export function ProjectsManagePane({
   const toast = useAppToast();
   const track = useTrackAutosave();
   const [purging, setPurging] = useState<WorkspaceProject | null>(null);
+  const [archiving, setArchiving] = useState<WorkspaceProject | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [creatingIn, setCreatingIn] = useState<ProjectTeam | null>(null);
 
@@ -275,7 +283,9 @@ export function ProjectsManagePane({
 
   const adminSlugs = new Set(groups.filter((g) => g.isTeamAdmin).map(teamSlugOf));
   const activeByTeam = new Map(projectsByTeam(snapshot).map((entry) => [entry.team.slug, entry]));
-  const archived = archivedProjectsByTeam(snapshot);
+  const archivedByTeam = new Map(
+    archivedProjectsByTeam(snapshot).map((entry) => [entry.team.slug, entry.projects]),
+  );
   const loading = snapshot.status === "idle" || snapshot.status === "loading";
 
   const renderRows = (projects: readonly WorkspaceProject[]) => (
@@ -290,6 +300,7 @@ export function ProjectsManagePane({
           onFailure={(error) => fail(labels.saveFailed, error)}
           onAction={onAction}
           onPurgeRequest={setPurging}
+          onArchiveRequest={setArchiving}
         />
       ))}
     </ul>
@@ -303,7 +314,10 @@ export function ProjectsManagePane({
       <div className="projects-manage-teams">
         {groups.map((group) => {
           const slug = teamSlugOf(group);
-          const projects = activeByTeam.get(slug)?.projects ?? [];
+          const projects = [
+            ...(activeByTeam.get(slug)?.projects ?? []),
+            ...(archivedByTeam.get(slug) ?? []),
+          ];
           return (
             <SettingsPaneCard
               key={group.id}
@@ -354,16 +368,37 @@ export function ProjectsManagePane({
           );
         })}
       </div>
-      {archived.length > 0 ? (
-        <SettingsPaneCard title={labels.archivedGroup}>
-          {archived.map(({ team, projects }) => (
-            <div key={team.slug} className="projects-manage-archived-team">
-              <p className="projects-manage-archived-team__name">{team.displayName}</p>
-              {renderRows(projects)}
-            </div>
-          ))}
-        </SettingsPaneCard>
-      ) : null}
+      <AlertDialog
+        open={archiving !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiving(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{labels.archiveTitle(archiving?.name ?? "")}</AlertDialogTitle>
+            <AlertDialogDescription>{labels.archiveDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const target = archiving;
+                setArchiving(null);
+                if (target) {
+                  void onAction(
+                    () => store.archive(target.id),
+                    labels.archived(target.name),
+                    labels.archiveFailed,
+                  );
+                }
+              }}
+            >
+              {labels.archive}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CreateProjectDialog
         open={creatingIn !== null}
         teams={creatingIn ? [creatingIn] : []}

@@ -22,6 +22,7 @@ export const projectsLabels = {
   defaultContents: "All apps · Shared drive",
   projectContents: "Calendar · Tasks · Notes · Chat · Folder",
   archivedGroup: "Archived",
+  archivedTag: "Archived",
   emptyState: "You are in no Project yet.",
   loadFailed: "Could not load the Projects",
   defaultTag: "Default",
