@@ -278,6 +278,18 @@ The sync cursor stays in memory. After a round, once its cache writes have finis
 
 The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. Most go from 10 s to 60 s. Meet chat (`use-meet-chat-live-inbound.ts`) goes from 4 s to 30 s: an idle chat round is two `/changes` requests, so 4 s costs 30 requests a minute per open tab, and 30 s costs 4. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`. Work that one tab should do per push, such as fetching the inbox once and sharing it, checks `hub.leading`: the tab that holds the stream is visible whenever any subscribed tab is.
 
+### Doorbell pattern
+
+How a live update is built in this suite (#2298). The server rings a bell; the app pulls.
+
+- **Live means a push type whose state is cheap per caller.** The state is one indexed query, with no `seen_at`-style heartbeat fields that change on their own and ring for every caller.
+- **The app pulls when the state changes.** A type changing is the doorbell; the data comes from the type's `/changes` feed, not from the push message. `usePushPulledList` (`src/lib/live/use-push-pulled-list.ts`) is the client half for a list: one fetch, then a pull per ring.
+- **A backup poll runs only while push is unhealthy.** Use `useJmapPushConnected()`; with push connected the poll is off or slow (see "The existing polls stay as the fallback").
+- **A short fast poll runs only while a WebRTC peer is connecting.** Signaling rooms use their own cadence in that window and fall back to the room doorbell afterwards.
+- **Cost budget:** a push request with every type stays at 25 ms or less on the reference stack (measured 14 ms for 13 types).
+
+Every client poll needs a reason: `src/lib/traffic/network-polls.test.ts` lists each `*_POLL_MS` / `*_POLL_INTERVAL_MS` constant and `setInterval`, and fails when a new one has no entry.
+
 ## Mesh "check now"
 
 After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` over the presence data channel, the same mesh that carries chat acceleration (`meet-core/src/meet-mesh-sot.ts`). A peer's `MeshCheckNowTransport` calls `sink.wake()`, and the hub reconnects at once instead of waiting for `retry`. That brings in-suite changes to well under a second (0.2–0.4 s locally, [notifications.md](notifications.md#measured-1668)). It replaced `channel-changed` and `notify-hint`. Targets, throttles and the preview rule are in [notifications.md](notifications.md#the-mesh-as-messenger).

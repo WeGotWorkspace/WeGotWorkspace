@@ -19,7 +19,7 @@ import {
  * scope (a document path, a task, a channel) is fetched once, then pulled
  * through a `/changes` feed whenever the push type rings, and polled only while
  * push is down. Apps declare the client, the push type and the backup poll;
- * everything else lives here, so Docs, Tasks and Meet comments share it.
+ * everything else lives here. Docs threads use it today.
  */
 
 /** One page of a `/changes` feed, as every WGW list feed returns it. */
