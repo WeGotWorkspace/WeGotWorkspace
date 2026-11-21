@@ -14,8 +14,9 @@ export const projectsLabels = {
   createFailed: "Could not create the Project",
   manageProjects: "Manage Projects",
   panelLabel: "Projects",
-  panelDescription:
-    "A Project is a part of a Team's work with its own calendar, tasks, notes, chat and folder. Every Team also has one Project for the whole Team.",
+  panelDescription: "Pick a Project in the sidebar to see only its work in every app.",
+  edit: "Edit",
+  done: "Done",
   newProject: "New Project",
   defaultContents:
     "Everything of the Team: its calendar, tasks, notes, chat and the whole Team Drive",
