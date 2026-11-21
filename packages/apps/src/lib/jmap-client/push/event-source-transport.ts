@@ -76,7 +76,7 @@ export type EventSourceTransportOptions = {
   connectivity: PushConnectivity;
   /** The server answered a stream request (any status): it is reachable. */
   onResponse?: () => void;
-  /** A stream request threw before any response (the caller decides if it is a network error). */
+  /** A stream request threw, before a response or while reading its body (the caller decides if it is a network error). */
   onRequestError?: (error: unknown) => void;
   /** Called after a `401` the fetch could not fix, before the next attempt. */
   refreshAuth?: () => Promise<void>;
@@ -248,9 +248,11 @@ export class EventSourceTransport implements PushTransport {
       this.#options.onResponse?.();
       return await this.#read(response, sink);
     } catch (error) {
-      if (!request.signal.aborted) this.#options.onRequestError?.(error);
+      // Decided before `onRequestError`: its connectivity change may abort this request.
+      const aborted = request.signal.aborted;
+      if (!aborted) this.#options.onRequestError?.(error);
       // Network error, session renewal failure or a body cut off: all retry with backoff.
-      return request.signal.aborted ? { kind: "aborted" } : { kind: "failed" };
+      return aborted ? { kind: "aborted" } : { kind: "failed" };
     } finally {
       if (this.#request === request) this.#request = null;
     }

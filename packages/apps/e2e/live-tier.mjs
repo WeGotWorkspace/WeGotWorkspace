@@ -90,6 +90,7 @@ export const liveTierSpecs = [
   "notes-new-before-notebooks-load",
   "notes-new-tab-unsaved-text",
   "notes-offline-sync",
+  "notes-push-network-loss",
   "notes-push-open-note",
   "notes-relist-many-notes",
   "notes-save-in-flight",

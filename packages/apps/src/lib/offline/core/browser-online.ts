@@ -175,12 +175,17 @@ export function reportReachability(reachable: boolean): void {
   if (!hub) return;
   shareProbeResult(hub, reachable);
   if (reachable) {
+    // A late probe failure must not undo a response the stream just got.
+    hub.probeController?.abort();
     hub.failures = 0;
     if (readBrowserOnline()) setConnectivityOnline(hub, true);
     return;
   }
   hub.probeController?.abort();
   hub.failures += 1;
+  // While push is healthy one failed round only counts; going offline here would
+  // abort the request in the transport and end push health at once.
+  if (hub.pushHealthy) return;
   setConnectivityOnline(hub, false);
   armNextProbe(hub);
 }
@@ -196,6 +201,8 @@ export function setPushHealthy(healthy: boolean): void {
     if (readBrowserOnline()) setConnectivityOnline(hub, true);
     return;
   }
+  // Push turned unhealthy after network failures: now the tab is offline and the probe runs.
+  if (hub.failures > 0) setConnectivityOnline(hub, false);
   armNextProbe(hub);
 }
 
