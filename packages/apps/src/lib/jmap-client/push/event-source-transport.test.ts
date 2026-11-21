@@ -491,6 +491,64 @@ describe("EventSourceTransport", () => {
     });
   });
 
+  describe("reachability callbacks (#2296)", () => {
+    it("onResponse fires for a response of any status", async () => {
+      const onResponse = vi.fn();
+      const { transport, fetch, sink } = setup({ onResponse });
+      fetch.mockResolvedValueOnce(new Response("", { status: 503 }));
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onResponse).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
+    it("onRequestError fires for a thrown fetch", async () => {
+      const onRequestError = vi.fn();
+      const onResponse = vi.fn();
+      const { transport, fetch, sink } = setup({ onRequestError, onResponse });
+      const error = new TypeError("Failed to fetch");
+      fetch.mockRejectedValueOnce(error);
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onRequestError).toHaveBeenCalledWith(error);
+      expect(onResponse).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("neither fires for an aborted request", async () => {
+      const onRequestError = vi.fn();
+      const onResponse = vi.fn();
+      const { transport, fetch, sink, net } = setup({ onRequestError, onResponse });
+      fetch.mockImplementationOnce(
+        (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            );
+          }),
+      );
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(0);
+      net.set(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onRequestError).not.toHaveBeenCalled();
+      expect(onResponse).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("a failure that takes connectivity offline from onRequestError still counts as failed", async () => {
+      const { transport, fetch, sink, net, onStatus } = setup({
+        onRequestError: () => net.set(false),
+      });
+      fetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(0);
+      // The subscriber reports down itself; the outcome was `failed`, not `aborted`.
+      expect(onStatus.mock.calls).toEqual([[false]]);
+      stop();
+    });
+  });
+
   describe("connectivity", () => {
     it("stops while offline and reconnects at once when back online", async () => {
       const { transport, fetch, sink, onStatus, net } = setup();
