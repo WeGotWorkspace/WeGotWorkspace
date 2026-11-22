@@ -2,7 +2,12 @@ import { Fragment, type CSSProperties } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { ChevronDown, FolderKanban, Settings2 } from "lucide-react";
 import { useOpenSettingsPanel } from "@/lib/settings/open-settings-panel";
-import { projectFilterValue, type ProjectFilterValue } from "@/lib/projects/project-filter";
+import {
+  projectFilterValue,
+  teamFilterValue,
+  teamSlugOfFilter,
+  type ProjectFilterValue,
+} from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
 import {
   projectsByTeam,
@@ -37,7 +42,7 @@ function ProjectDot({ color }: { color: string | null }) {
 
 /**
  * The suite's Project filter (#818), at the foot of every app sidebar: "All Projects",
- * then each Team with "All" (its default Project) and its other Projects, then "Manage Projects" for a
+ * then each Team with "All" (everything of the Team), its default Project by name when it has other Projects too, and those Projects, then "Manage Projects" for a
  * team admin. Renders nothing until the Projects have loaded (mock data, Storybook).
  */
 export function ProjectFilterSelect({ store = projectsStore() }: { store?: ProjectsStore }) {
@@ -50,6 +55,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
   const groups = projectsByTeam(snapshot);
   const adminTeams = snapshot.teams.filter((team) => team.isTeamAdmin);
   const current = selectedProject(filter, snapshot.projects);
+  const currentTeam = snapshot.teams.find((team) => team.slug === teamSlugOfFilter(filter));
   const canManage = adminTeams.length > 0 && openSettingsPanel !== null;
 
   return (
@@ -79,10 +85,10 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
           />
           <span className="project-filter-trigger__label">
             {current
-              ? current.isDefault
-                ? labels.teamAll(current.teamName)
-                : current.name
-              : labels.allProjects}
+              ? current.name
+              : currentTeam
+                ? labels.teamAll(currentTeam.displayName)
+                : labels.allProjects}
           </span>
           <ChevronDown className="project-filter-trigger__chevron" aria-hidden />
         </SelectPrimitive.Trigger>
@@ -95,14 +101,23 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
                 <SelectLabel className="project-filter-select__team">
                   {team.displayName}
                 </SelectLabel>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={projectFilterValue(project.id)}>
-                    <span className="project-filter-select__item">
-                      <ProjectDot color={project.color} />
-                      {project.isDefault ? labels.allOfTeam : project.name}
-                    </span>
-                  </SelectItem>
-                ))}
+                <SelectItem value={teamFilterValue(team.slug)}>
+                  <span className="project-filter-select__item">
+                    <ProjectDot color={null} />
+                    {labels.allOfTeam}
+                  </span>
+                </SelectItem>
+                {/* A Team with only its default Project: "All" is that Project already. */}
+                {projects
+                  .filter((project) => projects.length > 1 || !project.isDefault)
+                  .map((project) => (
+                    <SelectItem key={project.id} value={projectFilterValue(project.id)}>
+                      <span className="project-filter-select__item">
+                        <ProjectDot color={project.color} />
+                        {project.name}
+                      </span>
+                    </SelectItem>
+                  ))}
               </SelectGroup>
             </Fragment>
           ))}

@@ -44,7 +44,7 @@ describe("ProjectFilterSelect", () => {
     expect(trigger.textContent).toContain("All Projects");
     fireEvent.keyDown(trigger, { key: "Enter" });
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
-    expect(options).toEqual(["All Projects", "All", "Website relaunch", "All"]);
+    expect(options).toEqual(["All Projects", "All", "Design Project", "Website relaunch", "All"]);
     // No Settings around the filter here, so no Manage Projects.
   });
 
@@ -52,7 +52,7 @@ describe("ProjectFilterSelect", () => {
     renderSelect(await loadedStore([{ slug: "sales", displayName: "Sales", isTeamAdmin: false }]));
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
-    expect(options).toEqual(["All Projects", "All", "Website relaunch"]);
+    expect(options).toEqual(["All Projects", "All", "Sales Project", "Website relaunch"]);
   });
 
   it("stores the chosen Project", async () => {

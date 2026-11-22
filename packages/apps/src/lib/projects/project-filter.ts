@@ -1,15 +1,16 @@
 /**
  * The Project filter (#818): one choice for the whole suite, kept on this browser.
- * `all` shows everything; `p:<id>` narrows each app to that Project's collection.
+ * `all` shows everything; `p:<id>` narrows each app to that Project's collection;
+ * `t:<teamSlug>` narrows to everything of one Team: its default Project and all others.
  * Other tabs follow through the `storage` event; this tab through a custom event.
  */
-export type ProjectFilterValue = "all" | `p:${string}`;
+export type ProjectFilterValue = "all" | `p:${string}` | `t:${string}`;
 
 export const PROJECT_FILTER_STORAGE_KEY = "wgw.ui.projectFilter";
 const CHANGE_EVENT = "wgw-project-filter";
 
 export function parseProjectFilter(raw: string | null | undefined): ProjectFilterValue {
-  if (typeof raw === "string" && raw.startsWith("p:") && raw.length > 2) {
+  if (typeof raw === "string" && (raw.startsWith("p:") || raw.startsWith("t:")) && raw.length > 2) {
     return raw as ProjectFilterValue;
   }
   return "all";
@@ -19,9 +20,18 @@ export function projectFilterValue(projectId: string | null): ProjectFilterValue
   return projectId ? `p:${projectId}` : "all";
 }
 
-/** The Project id the filter narrows to, or null for "All Projects". */
+export function teamFilterValue(teamSlug: string): ProjectFilterValue {
+  return `t:${teamSlug}`;
+}
+
+/** The Project id a single-Project filter narrows to; null for "All Projects" and for a Team. */
 export function projectIdOfFilter(value: ProjectFilterValue): string | null {
-  return value === "all" ? null : value.slice(2);
+  return value.startsWith("p:") ? value.slice(2) : null;
+}
+
+/** The Team slug a Team filter narrows to; null for "All Projects" and for a single Project. */
+export function teamSlugOfFilter(value: ProjectFilterValue): string | null {
+  return value.startsWith("t:") ? value.slice(2) : null;
 }
 
 export function readProjectFilter(): ProjectFilterValue {
@@ -61,12 +71,17 @@ export function subscribeProjectFilter(listener: () => void): () => void {
 /**
  * The stored choice, checked against the Projects the user can see now: a Project that
  * was archived, purged or left (Team removed) falls back to "All Projects".
- * `knownIds` null means the list has not loaded yet; the choice stays until it has.
+ * `knownIds` null means the list has not loaded yet; the choice stays until it has. A Team
+ * filter holds while the Team still has a Project (`knownTeamSlugs`).
  */
 export function effectiveProjectFilter(
   value: ProjectFilterValue,
   knownIds: ReadonlySet<string> | null,
+  knownTeamSlugs: ReadonlySet<string> | null = null,
 ): ProjectFilterValue {
   if (value === "all" || knownIds === null) return value;
+  if (value.startsWith("t:")) {
+    return knownTeamSlugs === null || knownTeamSlugs.has(value.slice(2)) ? value : "all";
+  }
   return knownIds.has(value.slice(2)) ? value : "all";
 }

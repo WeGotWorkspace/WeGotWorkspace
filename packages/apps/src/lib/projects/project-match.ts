@@ -1,4 +1,8 @@
-import { projectIdOfFilter, type ProjectFilterValue } from "@/lib/projects/project-filter";
+import {
+  projectIdOfFilter,
+  teamSlugOfFilter,
+  type ProjectFilterValue,
+} from "@/lib/projects/project-filter";
 import type { WorkspaceProject } from "@/lib/projects/projects-store";
 
 /** The resource of a Project each app narrows to (#818 C3). */
@@ -12,6 +16,29 @@ export function selectedProject(
 ): WorkspaceProject | null {
   const id = projectIdOfFilter(filter);
   return id === null ? null : (projects.find((project) => project.id === id) ?? null);
+}
+
+/** The Team the filter narrows to: a Team filter's own, or the selected Project's. Null for "All Projects". */
+export function selectedTeamSlug(
+  filter: ProjectFilterValue,
+  projects: readonly WorkspaceProject[],
+): string | null {
+  return teamSlugOfFilter(filter) ?? selectedProject(filter, projects)?.teamSlug ?? null;
+}
+
+/**
+ * The ids of the Projects the filter keeps: one for a Project, every Project of the Team
+ * for a Team filter, null for "All Projects" (no narrowing).
+ */
+export function projectIdsInScope(
+  filter: ProjectFilterValue,
+  projects: readonly WorkspaceProject[],
+): string[] | null {
+  const projectId = projectIdOfFilter(filter);
+  if (projectId !== null) return [projectId];
+  const teamSlug = teamSlugOfFilter(filter);
+  if (teamSlug === null) return null;
+  return projects.filter((project) => project.teamSlug === teamSlug).map((project) => project.id);
 }
 
 /** True when a collection shows under the filter: always for "All Projects". */
@@ -41,10 +68,13 @@ export function projectOfCollection(
  */
 export function collectionsInProject<T extends { projectId?: string | null }>(
   collections: readonly T[],
-  projectId: string | null,
+  scope: string | readonly string[] | null,
 ): T[] {
-  if (projectId === null) return [...collections];
-  return collections.filter((collection) => collection.projectId === projectId);
+  if (scope === null) return [...collections];
+  const ids = typeof scope === "string" ? [scope] : scope;
+  return collections.filter(
+    (collection) => typeof collection.projectId === "string" && ids.includes(collection.projectId),
+  );
 }
 
 /** A Project collection: its name, color and lifetime follow the Project. */
