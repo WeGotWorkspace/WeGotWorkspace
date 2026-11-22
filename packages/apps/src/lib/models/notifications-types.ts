@@ -11,6 +11,11 @@ export type NotificationInboxItem = {
   body: string | null;
   navigate: string;
   tag: string | null;
+  /**
+   * The Project of the row's subject; null or absent when it is in none (a DM, a personal
+   * invite) and on rows from before Projects. The Project filter narrows by it.
+   */
+  projectId?: string | null;
   readAt: string | null;
   createdAt: string | null;
 };

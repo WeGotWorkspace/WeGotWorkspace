@@ -17,16 +17,19 @@ import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import {
   formatNotificationRelativeTime,
   notificationInboxAppId,
+  notificationHiddenByProjectLabel,
   notificationInboxDomainLabel,
 } from "@/notifications-core/src/notification-inbox-row-meta";
 import { NotificationItemContent } from "@/notifications-core/src/notification-item";
 import {
   NOTIFICATION_SCOPE_STORAGE_KEY,
+  notificationInProjectScope,
   readNotificationScope,
   storeNotificationScope,
   type NotificationScope,
 } from "@/notifications-core/src/notification-scope";
 import type { NotificationInboxItem } from "@/lib/models/notifications-types";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import { useInboxBadgePulseAttr } from "@/lib/notifications/use-inbox-badge-pulse";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import "@/notifications-core/src/notification-inbox-tray.css";
@@ -51,6 +54,11 @@ export type NotificationInboxTrayProps = {
   onMarkReadWhere?: (match: (item: NotificationInboxItem) => boolean) => void;
   /** Where the tray opens from the bell: below it (sidebar header) or beside it (app rail). */
   popoverSide?: "bottom" | "right";
+  /**
+   * The Projects the suite's Project filter keeps (null: all). Defaults to the filter itself;
+   * a row of another Project is left out of the list and the count, never marked read.
+   */
+  projectIds?: readonly string[] | null;
 };
 
 type InboxScope = NotificationScope;
@@ -68,7 +76,10 @@ export function NotificationInboxTray({
   currentAppId,
   onMarkReadWhere,
   popoverSide = "bottom",
+  projectIds: projectIdsProp,
 }: NotificationInboxTrayProps) {
+  const filterProjectIds = useSelectedProjectIds();
+  const projectIds = projectIdsProp === undefined ? filterProjectIds : projectIdsProp;
   const [storedScope, setStoredScope] = useState<InboxScope>(readNotificationScope);
   // One setting per browser: another tab's pick shows here too, as it already
   // decides this tab's toasts and chime.
@@ -82,17 +93,28 @@ export function NotificationInboxTray({
     return () => window.removeEventListener("storage", onStorage);
   }, []);
   const scope: InboxScope = currentAppId ? storedScope : "all";
+  const projectItems = useMemo(
+    () => items.filter((item) => notificationInProjectScope(item, projectIds)),
+    [items, projectIds],
+  );
+  const hiddenByProject = items.length - projectItems.length;
+  const hiddenUnreadByProject =
+    items.filter((item) => item.readAt == null).length -
+    projectItems.filter((item) => item.readAt == null).length;
   const appItems = useMemo(
     () =>
-      currentAppId ? items.filter((item) => notificationInboxAppId(item) === currentAppId) : items,
-    [items, currentAppId],
+      currentAppId
+        ? projectItems.filter((item) => notificationInboxAppId(item) === currentAppId)
+        : projectItems,
+    [projectItems, currentAppId],
   );
   const appUnreadCount = useMemo(
     () => appItems.filter((item) => item.readAt == null).length,
     [appItems],
   );
-  const shownItems = scope === "app" ? appItems : items;
-  const shownUnreadCount = scope === "app" ? appUnreadCount : unreadCount;
+  const shownItems = scope === "app" ? appItems : projectItems;
+  const shownUnreadCount =
+    scope === "app" ? appUnreadCount : Math.max(0, unreadCount - hiddenUnreadByProject);
   const currentAppName = currentAppId ? notificationInboxDomainLabel(currentAppId) : "";
   // The bell counts what the tray lists: every app, or only this one.
   const unreadScopeLabel =
@@ -102,14 +124,25 @@ export function NotificationInboxTray({
   const unreadLabel =
     shownUnreadCount > 0 ? `Notifications (${unreadScopeLabel})` : "Notifications";
   const label = soundMuted ? `${unreadLabel}, sound muted` : unreadLabel;
-  const canMarkShownRead = scope === "app" ? Boolean(onMarkReadWhere) : Boolean(onMarkAllRead);
+  // Rows the Project filter hides stay unread, so "all" can no longer mean every row.
+  const markAllIsSafe = hiddenByProject === 0;
+  const canMarkShownRead =
+    scope === "app" || !markAllIsSafe ? Boolean(onMarkReadWhere) : Boolean(onMarkAllRead);
   const pickScope = (next: InboxScope) => {
     setStoredScope(next);
     storeNotificationScope(next);
   };
   const markShownRead = () => {
     if (scope === "app" && currentAppId) {
-      onMarkReadWhere?.((item) => notificationInboxAppId(item) === currentAppId);
+      onMarkReadWhere?.(
+        (item) =>
+          notificationInboxAppId(item) === currentAppId &&
+          notificationInProjectScope(item, projectIds),
+      );
+      return;
+    }
+    if (!markAllIsSafe) {
+      onMarkReadWhere?.((item) => notificationInProjectScope(item, projectIds));
       return;
     }
     onMarkAllRead?.();
@@ -237,6 +270,11 @@ export function NotificationInboxTray({
             ))}
           </ul>
         )}
+        {hiddenByProject > 0 ? (
+          <p className="notification-inbox-tray__hidden">
+            {notificationHiddenByProjectLabel(hiddenByProject)}
+          </p>
+        ) : null}
         <div className="notification-inbox-tray__footer">
           <span className="notification-inbox-tray__hint" aria-hidden>
             Esc to dismiss
