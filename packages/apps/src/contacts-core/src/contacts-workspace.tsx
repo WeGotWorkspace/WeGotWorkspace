@@ -1,7 +1,5 @@
-import {
-  teamAddressBookId,
-  useSelectedProjectTeamSlug,
-} from "@/contacts-core/src/use-contacts-hidden-ids";
+import { teamAddressBookId } from "@/contacts-core/src/use-contacts-hidden-ids";
+import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";

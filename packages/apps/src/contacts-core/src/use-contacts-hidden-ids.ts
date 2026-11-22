@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { useHiddenCollectionIds } from "@/collection-sidebar/src/use-hidden-collection-ids";
 import { contactsHiddenAddressBooks } from "@/contacts-core/src/contacts-view-prefs";
-import { selectedProject } from "@/lib/projects/project-match";
-import { useProjects } from "@/lib/projects/projects-store";
-import { useProjectFilter } from "@/lib/projects/use-project-filter";
+import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 
 /** The Team address book of a Team: `group-{slug}` (server-set id). */
 export function teamAddressBookId(teamSlug: string): string {
@@ -21,13 +19,6 @@ export function addressBooksHiddenByProject(
   if (teamSlug === null) return new Set();
   const keep = teamAddressBookId(teamSlug);
   return new Set(books.map((book) => book.id).filter((id) => id !== keep));
-}
-
-/** The owning Team of the selected Project, or null for "All Projects". */
-export function useSelectedProjectTeamSlug(): string | null {
-  const [filter] = useProjectFilter();
-  const { projects } = useProjects();
-  return selectedProject(filter, projects)?.teamSlug ?? null;
 }
 
 /**

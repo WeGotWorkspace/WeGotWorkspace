@@ -14222,6 +14222,8 @@ export interface components {
             id: string;
             name: string;
             isSelf: boolean;
+            /** @description The Teams (slugs) this person is in that the caller is in too; absent from servers and caches that predate it. Lets a client narrow the list to one Team, for example the Team of the selected Project. Never names a Team the caller is not in. */
+            teamSlugs?: string[];
             /** @description Changes when the person renames or changes their switch, which calendars count, or how much detail they share. A client drops every cached week of this person when it changes. */
             version: string;
         };

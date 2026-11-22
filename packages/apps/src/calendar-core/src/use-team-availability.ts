@@ -90,6 +90,8 @@ export type UseTeamAvailabilityArgs = {
   tickMs?: number;
   /** Title of untitled busy blocks. */
   busyLabel?: string;
+  /** Only this Team's people: the Team of the selected Project (#818). Null lists everyone. */
+  teamSlug?: string | null;
 };
 
 export type TeamAvailabilityState = {
@@ -124,6 +126,21 @@ export function visibleAvailabilityWeeks(
   } catch {
     return [];
   }
+}
+
+/**
+ * Narrows the people to one Team (the selected Project's Team): you, and everyone whose
+ * shared Teams include it. A cached list from before the server sent `teamSlugs` stays whole.
+ */
+export function membersOfTeam(
+  list: readonly JmapTeamMember[],
+  teamSlug: string | null | undefined,
+): JmapTeamMember[] {
+  if (!teamSlug) return [...list];
+  return list.filter(
+    (member) =>
+      member.isSelf || member.teamSlugs === undefined || member.teamSlugs.includes(teamSlug),
+  );
 }
 
 export function orderTeamMembers(list: readonly JmapTeamMember[]): JmapTeamMember[] {
@@ -206,6 +223,7 @@ export function useTeamAvailability({
   now = Date.now,
   tickMs = TEAM_AVAILABILITY_TICK_MS,
   busyLabel = defaultCalendarLabels.teamAvailabilityBusy,
+  teamSlug = null,
 }: UseTeamAvailabilityArgs): TeamAvailabilityState {
   const presetMode = preset != null;
   const live = !presetMode && Boolean(source) && Boolean(viewer);
@@ -224,7 +242,11 @@ export function useTeamAvailability({
     [view, anchor, weekStart],
   );
   const visibleKey = visibleWeeks.join(",");
-  const memberList = presetMode ? preset.members : (members?.list ?? null);
+  const allMembers = presetMode ? preset.members : (members?.list ?? null);
+  const memberList = useMemo(
+    () => (allMembers ? membersOfTeam(allMembers, teamSlug) : null),
+    [allMembers, teamSlug],
+  );
   const shownList = useMemo(
     () => (memberList ?? []).filter((member) => shownIds.has(member.id)).map((m) => m.id),
     [memberList, shownIds],
