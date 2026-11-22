@@ -97,10 +97,10 @@ test.describe("Project filter across two apps", () => {
     expect(await storedFilter(page)).toMatch(/^p:/);
 
     // Calendar: only the Project's calendar. Tasks: only its task list.
-    await expectSection(page, "My calendars", [name]);
+    await expectSection(page, "Calendars", [name]);
     await openTasks(page);
     await expect(filterTrigger(page)).toContainText(name);
-    await expectSection(page, "My lists", [name]);
+    await expectSection(page, "Lists", [name]);
 
     // A reload keeps the choice.
     const stored = await storedFilter(page);
@@ -108,21 +108,21 @@ test.describe("Project filter across two apps", () => {
     await expect(page.getByRole("button", { name: "New task" })).toBeVisible({ timeout: 30_000 });
     await expect(filterTrigger(page)).toContainText(name);
     expect(await storedFilter(page)).toBe(stored);
-    await expectSection(page, "My lists", [name]);
+    await expectSection(page, "Lists", [name]);
 
     // A second tab opens on the same choice, in another app.
     const second = await context.newPage();
     await openCalendarWeek(second);
     await expect(filterTrigger(second)).toContainText(name);
-    await expectSection(second, "My calendars", [name]);
+    await expectSection(second, "Calendars", [name]);
     await second.close();
 
     // "All Teams" brings the other collections back.
     await pickFilter(page, "All Teams");
     await expect(filterTrigger(page)).toContainText("All Teams");
     expect([null, "all"]).toContain(await storedFilter(page));
-    await expectSectionBeyond(page, "My lists", name);
+    await expectSectionBeyond(page, "Lists", name);
     await openCalendarWeek(page);
-    await expectSectionBeyond(page, "My calendars", name);
+    await expectSectionBeyond(page, "Calendars", name);
   });
 });

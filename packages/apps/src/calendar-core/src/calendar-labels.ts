@@ -373,7 +373,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
       ? "1 task was skipped. Import it in Tasks."
       : `${count} tasks were skipped. Import them in Tasks.`,
   importFileHasOnlyTasks: "This file has tasks, not events. Import it in Tasks.",
-  myCalendarsSection: "My calendars",
+  myCalendarsSection: "Calendars",
   myCalendarsShowAll: "Show all my calendars",
   myCalendarsHideAll: "Hide all my calendars",
   sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,

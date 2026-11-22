@@ -80,7 +80,7 @@ export const Default: Story = {
     await expect(await canvas.findByRole("button", { name: "New document" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "All Docs" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Shared with me" })).toBeInTheDocument();
-    await expect(canvas.getByText("Team Drives")).toBeInTheDocument();
+    await expect(canvas.getByText("Drives")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Personal" })).toBeInTheDocument();
 
     // Docs home hides the redundant "Kind" column (everything is a document).

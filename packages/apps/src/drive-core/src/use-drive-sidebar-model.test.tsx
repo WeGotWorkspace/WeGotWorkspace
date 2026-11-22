@@ -8,7 +8,7 @@ describe("useDriveSidebarModel", () => {
   const sidebarDropZoneProps = () => ({});
   const commitMoveToFolder = vi.fn();
 
-  it("mirrors Docs primary order with All Files home and Team Drives + Personal", () => {
+  it("mirrors Docs primary order with All Files home and Drives + Personal", () => {
     const selectView = vi.fn();
     const { result, rerender } = renderHook(
       ({ view }: { view: ViewKey }) =>

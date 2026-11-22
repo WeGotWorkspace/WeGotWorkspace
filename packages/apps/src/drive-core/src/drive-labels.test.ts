@@ -11,7 +11,7 @@ describe("driveLabels", () => {
     expect(driveLabels.sidebarHome).toBe("All Files");
     expect(driveLabels.sidebarMyDrive).toBe("Personal");
     expect(driveLabels.sidebarSharedWithMe).toBe("Shared with me");
-    expect(driveLabels.sidebarSharedDrives).toBe("Team Drives");
+    expect(driveLabels.sidebarSharedDrives).toBe("Drives");
     expect(driveLabels.sharedBy("hana")).toBe("Shared by hana");
   });
 });

@@ -179,7 +179,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   sidebarAllContacts: "All contacts",
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   personalAddressBook: "Personal",
-  sectionAddressBooks: "My address books",
+  sectionAddressBooks: "Address books",
   sectionGroups: "Groups",
   viewOnly: workspaceLabels.sharing.viewOnly,
   editAddressBook: "Address book settings",

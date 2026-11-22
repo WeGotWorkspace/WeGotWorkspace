@@ -117,7 +117,7 @@ export const meetLabels = {
   miniPlayerWaiting: "Waiting to be let in",
   returnToCall: "Return to call",
   hangUp: "Hang up",
-  sidebarChannels: "My channels",
+  sidebarChannels: "Channels",
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   sidebarProjects: "Projects",
   sidebarTeamChats: "Team Chats",

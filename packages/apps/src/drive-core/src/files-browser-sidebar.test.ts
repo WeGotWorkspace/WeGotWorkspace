@@ -18,7 +18,7 @@ describe("filesBrowserSidebar", () => {
     expect(filesBrowserSidebarLabels.uploads).toBe("Uploads");
     expect(filesBrowserHomeLabel("docs")).toBe("All Docs");
     expect(filesBrowserHomeLabel("drive")).toBe("All Files");
-    expect(filesBrowserSidebarLabels.drivesSection).toBe("My Drives");
+    expect(filesBrowserSidebarLabels.drivesSection).toBe("Drives");
     expect(filesBrowserSidebarLabels.personalDrive).toBe("Personal");
   });
 });

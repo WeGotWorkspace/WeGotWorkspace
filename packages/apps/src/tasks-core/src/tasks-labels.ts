@@ -232,7 +232,7 @@ export const defaultTasksLabels: TasksUILabels = {
   sidebarStatus: "Status",
   sidebarPriority: "Priority",
   sidebarInbox: "Inbox",
-  sidebarProjects: "My lists",
+  sidebarProjects: "Lists",
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   stateAll: "All Tasks",
   newTaskMenu: workspaceLabels.list.moreCreateOptions,

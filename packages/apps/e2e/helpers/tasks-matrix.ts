@@ -464,7 +464,7 @@ export async function revealTask(tab: Page, text: string, exact = true): Promise
 }
 
 /** The sidebar sections that hold lists: the user's own and those shared with them. */
-export const LIST_SECTIONS = ["My lists", "Shared with me"] as const;
+export const LIST_SECTIONS = ["Lists", "Shared with me"] as const;
 
 /** List names the tab's sidebar shows, in either section. */
 export async function shownLists(tab: Tab, caseId: string): Promise<string[]> {

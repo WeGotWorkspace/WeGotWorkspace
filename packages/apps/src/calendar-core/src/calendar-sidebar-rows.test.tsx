@@ -63,17 +63,17 @@ describe("MyCalendarsSidebarSection", () => {
 
   it("folds from the title and remembers the fold", () => {
     renderSection([]);
-    const fold = screen.getByRole("button", { name: "My calendars" });
+    const fold = screen.getByRole("button", { name: "Calendars" });
     expect(fold.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(fold);
     expect(fold.getAttribute("aria-expanded")).toBe("false");
-    const section = screen.getByRole("region", { name: "My calendars" });
+    const section = screen.getByRole("region", { name: "Calendars" });
     expect(within(section).queryByText("Personal")).toBeNull();
     // The All row folds away with the rows.
     expect(screen.queryByRole("checkbox", { name: "Hide all my calendars" })).toBeNull();
     cleanup();
     renderSection([]);
-    expect(screen.getByRole("button", { name: "My calendars" }).getAttribute("aria-expanded")).toBe(
+    expect(screen.getByRole("button", { name: "Calendars" }).getAttribute("aria-expanded")).toBe(
       "false",
     );
     expect(screen.queryByText("Personal")).toBeNull();
