@@ -68,7 +68,7 @@ test.describe("Shared account reads (live app)", () => {
       const unique = `E2E Name ${Date.now()}`;
       const saved = first.waitForResponse(
         (res) =>
-          res.request().method() === "PUT" &&
+          res.request().method() !== "GET" && // the client tunnels PUT as POST
           new URL(res.url()).pathname === "/api/v1/settings/profile" &&
           res.ok(),
         { timeout: 30_000 },
@@ -85,7 +85,7 @@ test.describe("Shared account reads (live app)", () => {
       if (original !== "") {
         const restored = first.waitForResponse(
           (res) =>
-            res.request().method() === "PUT" &&
+            res.request().method() !== "GET" && // the client tunnels PUT as POST
             new URL(res.url()).pathname === "/api/v1/settings/profile" &&
             res.ok(),
           { timeout: 30_000 },
