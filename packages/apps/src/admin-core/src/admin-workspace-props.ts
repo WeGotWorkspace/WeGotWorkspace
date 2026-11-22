@@ -1,10 +1,13 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
+import type { AdminProjectOperations } from "@/admin-core/src/admin-projects-operations";
 import type { AdminAPIOperations, AdminSection, AdminUIData } from "@/lib/models/admin-types";
 
 export type AdminWorkspaceProps = {
   data: AdminUIData;
   session: WorkspaceSession;
   operations?: AdminAPIOperations;
+  /** Archived Projects of every Team (Users & Teams); the section is hidden without it. */
+  projectOperations?: AdminProjectOperations;
   listLoading?: boolean;
   /** Route-owned section (`/admin` or `/admin/:section`). Uncontrolled when omitted. */
   section?: AdminSection;

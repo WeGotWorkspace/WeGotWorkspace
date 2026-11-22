@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { createDefaultAdminProjectOperations } from "@/admin-core/src/admin-projects-operations";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { resolveWgwSameOriginHref } from "@/lib/api/wgw/route-guard";
 import { useAdminAPI } from "@/admin-core/src/use-admin-api";
@@ -8,6 +10,7 @@ export function AdminApp() {
   const { phase, error, retry, successVersion, listLoading, session, data, operations } =
     useAdminAPI();
   const { section, onSectionChange } = useAdminRouteSync();
+  const projectOperations = useMemo(() => createDefaultAdminProjectOperations(), []);
 
   return (
     <WorkspaceLiveAppShell
@@ -22,6 +25,7 @@ export function AdminApp() {
           data={data}
           session={session}
           operations={operations}
+          projectOperations={projectOperations}
           listLoading={listLoading}
           section={section}
           onSectionChange={onSectionChange}
