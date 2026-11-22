@@ -691,7 +691,8 @@ export function useContactsController({
 
   const downloadActive = useCallback(async () => {
     if (!active) return;
-    if (mutationsLocked || partialCardIds?.includes(active.id)) {
+    // A partial card is completed by downloadCardVcf; only a lean copy is refused.
+    if (mutationsLocked || (!operations?.downloadCardVcf && partialCardIds?.includes(active.id))) {
       showError(L.detailsOffline);
       return;
     }
@@ -726,7 +727,10 @@ export function useContactsController({
 
   const downloadSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
-    if (mutationsLocked || selectedIds.some((id) => partialCardIds?.includes(id))) {
+    if (
+      mutationsLocked ||
+      (!operations?.downloadCardVcf && selectedIds.some((id) => partialCardIds?.includes(id)))
+    ) {
       showError(L.detailsOffline);
       return;
     }
