@@ -152,6 +152,25 @@ describe("useDriveSidebarModel", () => {
       expect(result.current.projectSidebarItems[0]?.selected).toBe(true);
     });
 
+    it("selects the Project, not also its Team drive, when a Project folder is open", () => {
+      const { result } = renderHook(() =>
+        useDriveSidebarModel({
+          labels: driveLabels,
+          view: { type: "folder", path: "Groups/eng/Launch" },
+          sidebarGroupRoots: [{ path: "Groups/eng", label: "Engineering" }],
+          selectView: vi.fn(),
+          sidebarDropZoneProps,
+          commitMoveToFolder,
+          projects,
+          selectedProjectIds: null,
+        }),
+      );
+      expect(result.current.projectSidebarItems[0]?.selected).toBe(true);
+      expect(
+        result.current.groupSidebarItems.find((i) => i.label === "Engineering")?.selected,
+      ).toBe(false);
+    });
+
     it("narrows to the Projects in scope and drops the Team label", () => {
       const { result } = render(["p3"]);
       expect(result.current.projectSidebarItems.map((i) => [i.label, i.description])).toEqual([

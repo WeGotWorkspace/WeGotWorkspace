@@ -117,9 +117,15 @@ export function useDriveSidebarModel({
       icon: <HardDrive className="size-3.5" />,
       ...sidebarDropZoneProps("My Drive", (ids) => commitMoveToFolder(ids, "My Drive")),
     };
+    // A folder inside a Project folder selects that Project, not also its Team drive.
+    const projectPaths = projectsWithFolder(projects).flatMap((project) => {
+      const path = driveProjectFolderUiPath(project);
+      return path ? [path] : [];
+    });
+    const inProjectFolder = projectPaths.some((path) => isGroupView(view, path));
     const groups = sidebarGroupRoots.map((root) => ({
       label: root.label,
-      selected: isGroupView(view, root.path),
+      selected: isGroupView(view, root.path) && !inProjectFolder,
       onClick: () => selectView({ type: "folder", path: root.path }),
       icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
       ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
@@ -129,6 +135,7 @@ export function useDriveSidebarModel({
     hidePersonalDrive,
     commitMoveToFolder,
     labels.sidebarMyDrive,
+    projects,
     selectView,
     sidebarDropZoneProps,
     sidebarGroupRoots,
