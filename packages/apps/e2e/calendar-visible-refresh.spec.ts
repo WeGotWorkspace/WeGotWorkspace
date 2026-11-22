@@ -27,6 +27,7 @@ test("a hidden Calendar tab shows changes made meanwhile when it is shown again"
     const [rename] = await createEvents(calendarId, date, [{ title: `rename ${id}`, hour: 9 }]);
 
     context = await openUser(browser, TEAMMATE);
+    await allowHiding(context);
     const connected = context.waitForEvent("response", {
       predicate: (response) => /\/jmap\/events\//.test(response.url()) && response.status() === 200,
       timeout: 30_000,
@@ -40,10 +41,12 @@ test("a hidden Calendar tab shows changes made meanwhile when it is shown again"
       if (frame === tab.mainFrame()) navigations += 1;
     });
 
-    // A second tab on the same account takes the front: the Calendar tab is hidden.
+    // A second tab on the same account stays visible and keeps push connected;
+    // the Calendar tab goes to the background.
     const other = await context.newPage();
-    await other.goto("about:blank");
-    await other.bringToFront();
+    await other.goto("/notes");
+    await other.waitForTimeout(1_000);
+    await tab.evaluate(() => (window as unknown as HideableWindow).__setHidden(true));
 
     const created = `created ${id}`;
     const renamed = `renamed ${id}`;
@@ -57,8 +60,8 @@ test("a hidden Calendar tab shows changes made meanwhile when it is shown again"
       if (body.includes('"CalendarEvent/query"')) bootstraps.push(body.slice(0, 200));
     };
     tab.on("request", onRequest);
-    await tab.bringToFront();
-    await tab.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await tab.waitForTimeout(1_000);
+    await tab.evaluate(() => (window as unknown as HideableWindow).__setHidden(false));
     const shownAt = Date.now();
     const left = () => Math.max(1, SHOW_BOUND_MS - (Date.now() - shownAt));
     await expect.poll(() => countEventCardsByTitle(tab, created), { timeout: left() }).toBe(1);
@@ -75,6 +78,27 @@ test("a hidden Calendar tab shows changes made meanwhile when it is shown again"
     );
   }
 });
+
+type HideableWindow = { __setHidden: (hidden: boolean) => void };
+
+/** Every Playwright page counts as visible; this lets a test put one in the background. */
+async function allowHiding(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    let hidden = false;
+    Object.defineProperty(Document.prototype, "hidden", {
+      configurable: true,
+      get: () => hidden,
+    });
+    Object.defineProperty(Document.prototype, "visibilityState", {
+      configurable: true,
+      get: () => (hidden ? "hidden" : "visible"),
+    });
+    (window as unknown as HideableWindow).__setHidden = (value) => {
+      hidden = value;
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+  });
+}
 
 /** A Wednesday inside the calendar's loaded window. */
 function wednesdayWeeksAhead(weeks: number): string {

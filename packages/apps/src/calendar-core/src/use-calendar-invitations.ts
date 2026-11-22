@@ -45,7 +45,8 @@ export function useCalendarInvitations(
   const pushConnected = useJmapPushConnected();
   const username = cacheUsername(options?.username);
 
-  const refresh = useCallback(async () => {
+  /** Resolves false only when the server list failed (the cache is shown instead). */
+  const refresh = useCallback(async (): Promise<boolean> => {
     if (!operations?.listSchedulingNotifications) {
       if (username) {
         const cached = await readCalendarSchedulingInbox(username);
@@ -53,7 +54,7 @@ export function useCalendarInvitations(
       } else {
         setNotifications([]);
       }
-      return;
+      return true;
     }
     refreshInFlightRef.current = true;
     try {
@@ -61,25 +62,28 @@ export function useCalendarInvitations(
         if (username) {
           setNotifications(await readCalendarSchedulingInbox(username));
         }
-        return;
+        return true;
       }
       try {
         const next = await operations.listSchedulingNotifications();
         setNotifications(next);
         if (username) await writeCalendarSchedulingInbox(username, next);
+        return true;
       } catch {
         if (username) {
           setNotifications(await readCalendarSchedulingInbox(username));
         }
+        return false;
       }
     } finally {
       refreshInFlightRef.current = false;
     }
   }, [operations, username]);
 
-  const refreshIfIdle = useCallback(async () => {
-    if (refreshInFlightRef.current) return;
-    await refresh();
+  /** Resolves false when a fetch already in flight (sent earlier) was skipped. */
+  const refreshIfIdle = useCallback(async (): Promise<boolean> => {
+    if (refreshInFlightRef.current) return false;
+    return refresh();
   }, [refresh]);
 
   useEffect(() => {
@@ -156,10 +160,9 @@ export function useCalendarInvitations(
   useJmapStateChange(["CalendarEvent"], () => {
     if (!operations?.listSchedulingNotifications || busy) return;
     if (typeof document !== "undefined" && document.hidden) return;
-    return refreshIfIdle().then(
-      () => true,
-      () => false,
-    );
+    // Hidden, busy and missing-list exits stay void: the visibility handler and
+    // `respond` refresh later, and `false` would pin `CalendarEvent` unconfirmed.
+    return refreshIfIdle().catch(() => false);
   });
 
   const dropNotifications = useCallback((ids: string[]) => {

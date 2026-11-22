@@ -34,13 +34,25 @@ test("an invitation reaches the invitee's open Calendar tab on push", async ({ b
       if (frame === tab.mainFrame()) navigations += 1;
     });
 
+    const badge = tab.locator(".calendar-invitations-trigger[data-count]");
+    const countNow = async () =>
+      Number(
+        (await badge
+          .first()
+          .getAttribute("data-count", { timeout: 500 })
+          .catch(() => null)) ?? 0,
+      );
+    const before = await countNow();
+
     const sentAt = Date.now();
     calendarId = await createCalendar(title);
     await inviteTeammate(calendarId, title);
-    await expect(
-      tab.locator(".calendar-invitations-trigger[data-count]"),
-      "the invitations badge shows the invitation on push",
-    ).toBeVisible({ timeout: Math.max(1, PUSH_BOUND_MS - (Date.now() - sentAt)) });
+    await expect
+      .poll(countNow, {
+        message: "the invitations badge count rises on push",
+        timeout: Math.max(1, PUSH_BOUND_MS - (Date.now() - sentAt)),
+      })
+      .toBeGreaterThan(before);
     expect(navigations, "the tab never reloaded").toBe(0);
   } finally {
     await context?.close();

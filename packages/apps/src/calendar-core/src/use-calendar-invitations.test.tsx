@@ -103,6 +103,45 @@ describe("useCalendarInvitations", () => {
     expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
   });
 
+  it("leaves a pushed state unconfirmed while the mount fetch is in flight", async () => {
+    let releaseMount: (() => void) | undefined;
+    const listSchedulingNotifications = vi.fn().mockImplementation(
+      () =>
+        new Promise<[]>((resolve) => {
+          releaseMount = () => resolve([]);
+        }),
+    );
+    renderHook(() => useCalendarInvitations(operationsWithList(listSchedulingNotifications)));
+    const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(confirmed).toBe(false);
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      releaseMount?.();
+    });
+  });
+
+  it("leaves a pushed state unconfirmed when the list fails", async () => {
+    const listSchedulingNotifications = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("down"));
+    renderHook(() => useCalendarInvitations(operationsWithList(listSchedulingNotifications)));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(confirmed).toBe(false);
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
   it("ignores a pushed state while the document is hidden", async () => {
     const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
     const operations = operationsWithList(listSchedulingNotifications);
@@ -112,9 +151,11 @@ describe("useCalendarInvitations", () => {
     });
     Object.defineProperty(document, "hidden", { configurable: true, value: true });
     const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    let confirmed: unknown = "unset";
     await act(async () => {
-      await onChange({ CalendarEvent: "s2" }, "acc");
+      confirmed = await onChange({ CalendarEvent: "s2" }, "acc");
     });
+    expect(confirmed).toBeUndefined();
     expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
   });
 
