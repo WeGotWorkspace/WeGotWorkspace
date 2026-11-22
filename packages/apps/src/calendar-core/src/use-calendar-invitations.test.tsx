@@ -111,7 +111,8 @@ describe("useCalendarInvitations", () => {
           releaseMount = () => resolve([]);
         }),
     );
-    renderHook(() => useCalendarInvitations(operationsWithList(listSchedulingNotifications)));
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
     const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
     let confirmed: unknown;
     await act(async () => {
@@ -129,7 +130,8 @@ describe("useCalendarInvitations", () => {
       .fn()
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new Error("down"));
-    renderHook(() => useCalendarInvitations(operationsWithList(listSchedulingNotifications)));
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
