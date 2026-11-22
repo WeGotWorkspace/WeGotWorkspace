@@ -9,7 +9,7 @@ import { useCalendarController } from "@/calendar-core/src/use-calendar-controll
 const filter = vi.hoisted(() => ({ projectId: null as string | null }));
 
 vi.mock("@/lib/projects/use-project-filter", () => ({
-  useSelectedProjectId: () => filter.projectId,
+  useSelectedProjectIds: () => (filter.projectId === null ? null : [filter.projectId]),
 }));
 
 vi.mock("@/hooks/use-app-toast", () => ({

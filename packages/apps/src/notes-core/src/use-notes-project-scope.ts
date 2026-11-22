@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import type { Note } from "@/lib/models/note";
 import { collectionsInProject } from "@/lib/projects/project-match";
-import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import {
   notesInProjectNotebooks,
   notesViewOutsideProject,
@@ -15,15 +15,15 @@ import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
  * through the hidden-notebook set it already honors, so both always agree.
  */
 export function useNotesProjectScope(shell: NotesShellState) {
-  const selectedProjectId = useSelectedProjectId();
+  const selectedProjectIds = useSelectedProjectIds();
   const { notebookCollections, hiddenNotebookIds, view, setView } = shell;
 
   const projectNotebooks = useMemo(
     () =>
-      selectedProjectId === null
+      selectedProjectIds === null
         ? null
-        : collectionsInProject(notebookCollections, selectedProjectId),
-    [notebookCollections, selectedProjectId],
+        : collectionsInProject(notebookCollections, selectedProjectIds),
+    [notebookCollections, selectedProjectIds],
   );
 
   const listHiddenNotebookIds = useMemo(() => {

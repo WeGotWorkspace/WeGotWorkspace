@@ -809,8 +809,8 @@ export function useCalendarController({
     });
   }, [deleteCalendarEvent, editor]);
 
-  const canCreateCalendar = Boolean(operations?.createCalendar) && scope.projectId === null;
-  const canSubscribeCalendar = Boolean(operations?.subscribeCalendar) && scope.projectId === null;
+  const canCreateCalendar = Boolean(operations?.createCalendar) && scope.projectIds === null;
+  const canSubscribeCalendar = Boolean(operations?.subscribeCalendar) && scope.projectIds === null;
   const handleImportCalendarCreated = useCallback(
     (calendar: CalendarInfo) => {
       setCalendars((prev) => sortCalendarsForSidebar([...prev, calendar]));

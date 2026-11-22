@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import { collectionsInProject } from "@/lib/projects/project-match";
-import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 
 /**
  * The calendars the suite Project filter keeps (#818), and which of them show events.
@@ -12,11 +12,11 @@ export function useCalendarProjectScope(
   calendars: readonly CalendarInfo[],
   hiddenCalendarIds: ReadonlySet<string>,
 ) {
-  const projectId = useSelectedProjectId();
-  const shown = useMemo(() => collectionsInProject(calendars, projectId), [calendars, projectId]);
+  const projectIds = useSelectedProjectIds();
+  const shown = useMemo(() => collectionsInProject(calendars, projectIds), [calendars, projectIds]);
   const visibleCalendarIds = useMemo(
     () => new Set(shown.filter((c) => !hiddenCalendarIds.has(c.id)).map((c) => c.id)),
     [shown, hiddenCalendarIds],
   );
-  return { projectId, shown, visibleCalendarIds };
+  return { projectIds, shown, visibleCalendarIds };
 }

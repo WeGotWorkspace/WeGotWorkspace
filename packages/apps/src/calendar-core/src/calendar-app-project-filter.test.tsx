@@ -26,7 +26,7 @@ const bootstrap = (() => {
 
 vi.mock("@/lib/projects/use-project-filter", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/projects/use-project-filter")>()),
-  useSelectedProjectId: () => filter.projectId,
+  useSelectedProjectIds: () => (filter.projectId === null ? null : [filter.projectId]),
 }));
 
 vi.mock("@/hooks/use-app-toast", () => ({

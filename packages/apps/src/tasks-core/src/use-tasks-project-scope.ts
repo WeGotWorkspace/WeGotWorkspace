@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { canWriteTaskList } from "@/lib/models/task-lists";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import { collectionsInProject } from "@/lib/projects/project-match";
-import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import { DEFAULT_TASKS_VIEW } from "@/tasks-core/src/tasks-route-search";
 
 type ListRef = Pick<TaskList, "id">;
@@ -48,10 +48,11 @@ export function tasksViewOutsideProject(
  * `projectLists` is null for "All Projects"; `visibleLists` is what the sidebar shows.
  */
 export function useTasksProjectScope(taskLists: TaskList[]) {
-  const selectedProjectId = useSelectedProjectId();
+  const selectedProjectIds = useSelectedProjectIds();
   const projectLists = useMemo(
-    () => (selectedProjectId === null ? null : collectionsInProject(taskLists, selectedProjectId)),
-    [selectedProjectId, taskLists],
+    () =>
+      selectedProjectIds === null ? null : collectionsInProject(taskLists, selectedProjectIds),
+    [selectedProjectIds, taskLists],
   );
   return { projectLists, visibleLists: projectLists ?? taskLists };
 }

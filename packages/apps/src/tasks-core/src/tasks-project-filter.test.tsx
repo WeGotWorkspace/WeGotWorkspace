@@ -19,7 +19,7 @@ import {
 let selectedProjectId: string | null = null;
 vi.mock("@/lib/projects/use-project-filter", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/projects/use-project-filter")>()),
-  useSelectedProjectId: () => selectedProjectId,
+  useSelectedProjectIds: () => (selectedProjectId === null ? null : [selectedProjectId]),
 }));
 
 vi.mock("@/hooks/use-app-toast", () => ({

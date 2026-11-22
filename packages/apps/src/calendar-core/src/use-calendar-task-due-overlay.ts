@@ -1,5 +1,5 @@
 import { collectionsInProject } from "@/lib/projects/project-match";
-import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
@@ -32,16 +32,16 @@ function emptyOverlayState(): CalendarTaskDueOverlayState {
   };
 }
 
-/** With a Project selected, Reminders shows only its task list (#818 C3). */
+/** With a Project or Team selected, Reminders shows only their Projects' task lists (#818 C3). */
 export function overlayStateFromData(
   data: TasksUIData,
   hiddenListIds: ReadonlySet<string>,
-  projectId: string | null = null,
+  projectIds: readonly string[] | null = null,
 ): CalendarTaskDueOverlayState {
-  const taskLists = collectionsInProject(data.taskLists, projectId);
+  const taskLists = collectionsInProject(data.taskLists, projectIds);
   const shownIds = new Set(taskLists.map((list) => list.id));
   const tasks =
-    projectId === null ? data.tasks : data.tasks.filter((task) => shownIds.has(task.taskListId));
+    projectIds === null ? data.tasks : data.tasks.filter((task) => shownIds.has(task.taskListId));
   const model = buildTaskDueOverlayModel(tasks, taskLists, { hiddenListIds });
   return {
     taskLists,
@@ -77,7 +77,7 @@ export function useCalendarTaskDueOverlay({
   hiddenListIds,
 }: UseCalendarTaskDueOverlayArgs): CalendarTaskDueOverlayState {
   const [liveData, setLiveData] = useState<TasksUIData | null>(null);
-  const projectId = useSelectedProjectId();
+  const projectIds = useSelectedProjectIds();
   const [username, setUsername] = useState<string | null>(() =>
     preset != null ? null : readOfflineTasksUsername(),
   );
@@ -132,6 +132,6 @@ export function useCalendarTaskDueOverlay({
   return useMemo(() => {
     const data = preset ?? liveData;
     if (!data) return emptyOverlayState();
-    return overlayStateFromData(data, hiddenListIds, projectId);
-  }, [hiddenListIds, liveData, preset, projectId]);
+    return overlayStateFromData(data, hiddenListIds, projectIds);
+  }, [hiddenListIds, liveData, preset, projectIds]);
 }
