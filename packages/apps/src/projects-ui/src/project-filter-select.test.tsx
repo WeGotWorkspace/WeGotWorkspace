@@ -46,10 +46,10 @@ describe("ProjectFilterSelect", () => {
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(options).toEqual([
       "All Projects",
-      "All in Team",
+      "All in Design",
       "Design ProjectDefault",
       "Website relaunch",
-      "All in Team",
+      "All in Sales",
     ]);
     // No Settings around the filter here, so no Manage Projects.
   });
@@ -60,7 +60,7 @@ describe("ProjectFilterSelect", () => {
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(options).toEqual([
       "All Projects",
-      "All in Team",
+      "All in Sales",
       "Sales ProjectDefault",
       "Website relaunch",
     ]);

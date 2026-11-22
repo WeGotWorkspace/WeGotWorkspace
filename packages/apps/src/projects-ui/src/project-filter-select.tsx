@@ -105,7 +105,9 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
                 <SelectItem value={teamFilterValue(team.slug)}>
                   <span className="project-filter-select__item">
                     <LayoutGrid className="project-filter-select__icon" aria-hidden />
-                    <span className="project-filter-select__all">{labels.allOfTeam}</span>
+                    <span className="project-filter-select__all">
+                      {labels.allOfTeam(team.displayName)}
+                    </span>
                   </span>
                 </SelectItem>
                 {/* A Team with only its default Project: "All" is that Project already. */}

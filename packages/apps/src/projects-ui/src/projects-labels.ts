@@ -2,7 +2,7 @@
 export const projectsLabels = {
   filterLabel: "Project",
   allProjects: "All Projects",
-  allOfTeam: "All in Team",
+  allOfTeam: (team: string) => `All in ${team}`,
   teamAll: (team: string) => `${team} · All`,
   createProject: "Create Project",
   createTitle: "Create Project",
