@@ -100,10 +100,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
               <SelectSeparator className="project-filter-select__separator" />
               <SelectGroup className="project-filter-select__group">
                 <SelectLabel className="project-filter-select__team">
-                  <span>{team.displayName}</span>
-                  <span className="project-filter-select__count">
-                    {labels.projectCount(projects.length)}
-                  </span>
+                  {team.displayName}
                 </SelectLabel>
                 <SelectItem value={teamFilterValue(team.slug)}>
                   <span className="project-filter-select__item">

@@ -94,13 +94,7 @@
 }
 
 .project-filter-select__team {
-  color: var(--workspace-muted-foreground, currentColor);
-}
-
-.project-filter-select__count {
-  @apply text-xs font-normal;
-  color: var(--workspace-muted-foreground, currentColor);
-  opacity: 0.8;
+  color: color-mix(in oklab, currentColor 55%, transparent);
 }
 
 .project-filter-select__group {

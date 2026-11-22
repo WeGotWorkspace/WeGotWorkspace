@@ -3,7 +3,6 @@ export const projectsLabels = {
   filterLabel: "Project",
   allProjects: "All Projects",
   allOfTeam: "All in Team",
-  projectCount: (count: number) => (count === 1 ? "1 project" : `${count} projects`),
   teamAll: (team: string) => `${team} · All`,
   createProject: "Create Project",
   createTitle: "Create Project",
