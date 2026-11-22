@@ -114,13 +114,56 @@ describe("Project channels (#818)", () => {
     });
   });
 
-  it("lists only the selected Project's channel", () => {
+  it("lists only the selected Project's channel when the Team is unknown", () => {
     expect(partitionMeetChannels(items, "p-web")).toEqual({
       channels: [],
       shared: [],
       meetings: [],
       projects: [web],
     });
+  });
+
+  it("lists the Project channel and its Team's chats, hiding the rest", () => {
+    const named2 = channel({
+      id: "c-named-team",
+      name: "Critique",
+      kind: "channel",
+      scope: "group",
+      groupSlug: "design",
+    });
+    const other = channel({
+      id: "c-other",
+      name: "Sales",
+      kind: "channel",
+      scope: "group",
+      groupSlug: "sales",
+    });
+    const otherProject = channel({
+      id: "c-op",
+      name: "Pitch",
+      kind: "channel",
+      scope: "group",
+      groupSlug: "sales",
+      projectId: "p-pitch",
+    });
+    expect(
+      partitionMeetChannels(
+        [web, brand, team, named2, named, other, otherProject, meeting],
+        "p-web",
+        "design",
+      ),
+    ).toEqual({
+      channels: [named2, team],
+      shared: [],
+      meetings: [],
+      projects: [web],
+    });
+  });
+
+  it("keeps a Team chat open under the Project filter", () => {
+    expect(meetSelectionUnderProject("c-team", items, "p-web", "design")).toBe("c-team");
+    expect(meetSelectionUnderProject("c-team", items, "p-web", "sales")).toBe("c-web");
+    expect(meetSelectionUnderProject("c-brand", items, "p-web", "design")).toBe("c-web");
   });
 
   it("falls back to the Project channel when the open channel is hidden", () => {

@@ -21,6 +21,7 @@ import {
   partitionMeetChannels,
 } from "@/meet-core/src/meet-channel-partition";
 import { useSelectedProjectId } from "@/lib/projects/use-project-filter";
+import { useProjects } from "@/lib/projects/projects-store";
 import {
   calendarEventsForMeetingChannel,
   clockLabelForMeetingChannel,
@@ -211,11 +212,21 @@ export function MeetWorkspace({
   }, [liveCallChannelId, routeChannelId, unmatchedAdHocRoom]);
 
   const projectId = useSelectedProjectId();
-  const sections = useMemo(() => partitionMeetChannels(channels, projectId), [channels, projectId]);
+  const { projects: workspaceProjects } = useProjects();
+  const projectTeamSlug = useMemo(
+    () => workspaceProjects.find((project) => project.id === projectId)?.teamSlug ?? null,
+    [projectId, workspaceProjects],
+  );
+  const sections = useMemo(
+    () => partitionMeetChannels(channels, projectId, projectTeamSlug),
+    [channels, projectId, projectTeamSlug],
+  );
   // A Project selected: a hidden open channel falls back to the Project's channel.
   useEffect(() => {
-    setSelectedId((current) => meetSelectionUnderProject(current, channels, projectId));
-  }, [channels, projectId]);
+    setSelectedId((current) =>
+      meetSelectionUnderProject(current, channels, projectId, projectTeamSlug),
+    );
+  }, [channels, projectId, projectTeamSlug]);
   const leftoverUpcoming = useMemo(
     () =>
       projectId !== null
