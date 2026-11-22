@@ -6,7 +6,7 @@ import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sideba
 import { ViewHeader } from "@/view-header/src/view-header";
 import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
 import type { ChatAuthorPresence } from "@/lib/models/chat-types";
-import { meetChannelIcon } from "@/meet-core/src/meet-channel-icon";
+import { MeetChannelKindIcon } from "@/meet-core/src/meet-channel-kind-icon";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { meetChannelLockedByProject } from "@/meet-core/src/meet-channel-partition";
 import type { MeetChannel } from "@/lib/models/meet-types";
@@ -33,8 +33,7 @@ export type MeetWorkspaceHeaderProps = {
 };
 
 function HeaderKindIcon({ channel }: { channel: MeetChannel }) {
-  const Icon = meetChannelIcon(channel);
-  return <Icon className="meet-workspace__header-kind-icon" aria-hidden />;
+  return <MeetChannelKindIcon channel={channel} className="meet-workspace__header-kind-icon" />;
 }
 
 /** Main header: conversation title with its edit button, plus Meet (or Join while live). */

@@ -10,7 +10,7 @@ import {
 } from "@/meet-core/src/meet-calendar-meeting";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetDirectMessagePerson } from "@/lib/meetings/meet-direct-messages";
-import { meetChannelIcon } from "@/meet-core/src/meet-channel-icon";
+import { MeetChannelKindIcon } from "@/meet-core/src/meet-channel-kind-icon";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannel } from "@/lib/models/meet-types";
 
@@ -155,14 +155,18 @@ export function MeetSidebarRows({
     <>
       {channels.map((channel) => {
         const startLabel = startLabelForChannel?.(channel) ?? null;
-        const ChannelIcon = meetChannelIcon(channel);
         return (
           <CollectionSidebarRow
             key={channel.id}
             name={sidebarChannelLabel(channel) + teamSuffix(teamNameOf?.(channel))}
             color={channelDotColor(channel)}
             selected={selectedId === channel.id}
-            leading={<ChannelIcon className="meet-workspace__sidebar-kind-icon" aria-hidden />}
+            leading={
+              <MeetChannelKindIcon
+                channel={channel}
+                className="meet-workspace__sidebar-kind-icon"
+              />
+            }
             onSelect={() => onSelect(channel.id)}
             trailing={
               <>
