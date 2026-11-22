@@ -26,7 +26,11 @@ import {
   shouldPlayInboxNotificationSound,
   writeNotificationSoundMuted,
 } from "@/notifications-core/src/notification-inbox-sound";
-import { notificationInScope } from "@/notifications-core/src/notification-scope";
+import {
+  notificationInProjectScope,
+  notificationInScope,
+} from "@/notifications-core/src/notification-scope";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import type {
   NotificationInboxItem,
   NotificationInboxList,
@@ -135,6 +139,11 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   );
 
   const offerToasts = useNotificationToasts(onOpenItem);
+  const projectIds = useSelectedProjectIds();
+  const projectIdsRef = useRef(projectIds);
+  useEffect(() => {
+    projectIdsRef.current = projectIds;
+  }, [projectIds]);
 
   const applyPayload = useCallback(
     (fromServer: NotificationInboxList) => {
@@ -157,7 +166,13 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
         // The chime and the badge pulse follow the tray's scope, like the toasts and
         // the bell count: with "Current app" picked, another app's news stays quiet.
         const route = typeof window === "undefined" ? "/" : window.location.pathname;
-        if (fresh.some((item) => notificationInScope(item, route))) {
+        const projectIds = projectIdsRef.current;
+        if (
+          fresh.some(
+            (item) =>
+              notificationInScope(item, route) && notificationInProjectScope(item, projectIds),
+          )
+        ) {
           setUnreadArrivalNonce((n) => n + 1);
           const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
           // Read the stored setting too: it is current even before the storage event lands.

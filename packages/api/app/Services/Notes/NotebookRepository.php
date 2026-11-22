@@ -19,6 +19,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use App\Services\Notify\NotificationProjects;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -485,14 +486,17 @@ final class NotebookRepository
                 'notes',
                 CollectionSharedNotify::NOTES_ACTION,
                 'notes/'.$id,
-                CollectionSharedNotify::eventData(
-                    'notes',
-                    CollectionSharedNotify::actorLabel($username),
-                    $name,
-                    $id,
-                    $access,
-                    [$sharee],
-                ),
+                [
+                    ...CollectionSharedNotify::eventData(
+                        'notes',
+                        CollectionSharedNotify::actorLabel($username),
+                        $name,
+                        $id,
+                        $access,
+                        [$sharee],
+                    ),
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
+                ],
             );
         }
     }

@@ -166,6 +166,7 @@ final class NotificationInboxService
             'body' => $copy['body'],
             'navigate' => (string) $row->navigate,
             'tag' => $row->tag !== null ? (string) $row->tag : null,
+            'projectId' => $row->project_id !== null ? (string) $row->project_id : null,
             'readAt' => $row->read_at?->toIso8601String(),
             'createdAt' => $row->created_at->toIso8601String(),
         ];

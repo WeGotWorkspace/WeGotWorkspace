@@ -220,3 +220,10 @@ img.notification-inbox-tray__scope-icon {
   @apply text-xs;
   color: var(--notification-inbox-muted);
 }
+
+.notification-inbox-tray__hidden {
+  /* Same inset as the footer hint, so the quiet line sits on the heading's edge. */
+  @apply m-0 pb-2 pr-4 text-xs;
+  padding-left: var(--notification-inbox-inset);
+  color: var(--notification-inbox-muted);
+}

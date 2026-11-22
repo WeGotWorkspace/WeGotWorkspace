@@ -9,7 +9,11 @@ import {
   type ToastDecisionDeps,
 } from "@/notifications-core/src/notification-toast-decision";
 import { NotificationToast } from "@/notifications-core/src/notification-toast";
-import { notificationInScope } from "@/notifications-core/src/notification-scope";
+import {
+  notificationInProjectScope,
+  notificationInScope,
+} from "@/notifications-core/src/notification-scope";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import type { NotificationInboxItem } from "@/lib/models/notifications-types";
 
 /** Long enough to read a title and a line of body; hovering or focusing the toasts pauses it. */
@@ -34,7 +38,9 @@ export type NotificationToastDeps = ToastDecisionDeps & {
   show: (item: NotificationInboxItem, onOpen: (item: NotificationInboxItem) => void) => void;
 };
 
-export function defaultNotificationToastDeps(): NotificationToastDeps {
+export function defaultNotificationToastDeps(
+  projectIds: () => readonly string[] | null = () => null,
+): NotificationToastDeps {
   return {
     frontTab: async () => {
       const hub = defaultJmapPushHub();
@@ -45,8 +51,10 @@ export function defaultNotificationToastDeps(): NotificationToastDeps {
     decided: browserToastDecidedStore(),
     currentRoute: () => window.location.pathname + window.location.search,
     visibleSince: trackVisibleSince(),
-    // Read at decision time, so a scope picked in the tray applies to the next toast.
-    inScope: (row, route) => notificationInScope(row, route),
+    // Read at decision time, so a scope picked in the tray or a Project picked in the
+    // sidebar applies to the next toast. Both must pass; the row still reaches the tray.
+    inScope: (row, route) =>
+      notificationInScope(row, route) && notificationInProjectScope(row, projectIds()),
     show: showNotificationToast,
   };
 }
@@ -59,10 +67,17 @@ export function defaultNotificationToastDeps(): NotificationToastDeps {
  */
 export function useNotificationToasts(
   onOpen: (item: NotificationInboxItem) => void,
-  createDeps: () => NotificationToastDeps = defaultNotificationToastDeps,
+  createDeps?: () => NotificationToastDeps,
 ): (fresh: readonly NotificationInboxItem[]) => void {
+  const projectIds = useSelectedProjectIds();
+  const projectIdsRef = useRef(projectIds);
+  useEffect(() => {
+    projectIdsRef.current = projectIds;
+  }, [projectIds]);
   const depsRef = useRef<NotificationToastDeps | null>(null);
-  depsRef.current ??= createDeps();
+  depsRef.current ??= createDeps
+    ? createDeps()
+    : defaultNotificationToastDeps(() => projectIdsRef.current);
   const onOpenRef = useRef(onOpen);
   useEffect(() => {
     onOpenRef.current = onOpen;

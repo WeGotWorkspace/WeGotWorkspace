@@ -19,6 +19,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use App\Services\Notify\NotificationProjects;
 use App\Services\Tasks\Threads\TaskThreadHooks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -407,14 +408,17 @@ final class TaskListRepository
                 'tasks',
                 CollectionSharedNotify::TASKS_ACTION,
                 'tasks/'.$id,
-                CollectionSharedNotify::eventData(
-                    'tasks',
-                    CollectionSharedNotify::actorLabel($username),
-                    $name,
-                    $id,
-                    $access,
-                    [$sharee],
-                ),
+                [
+                    ...CollectionSharedNotify::eventData(
+                        'tasks',
+                        CollectionSharedNotify::actorLabel($username),
+                        $name,
+                        $id,
+                        $access,
+                        [$sharee],
+                    ),
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
+                ],
             );
         }
     }

@@ -14,6 +14,7 @@ use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use App\Services\Notify\NotificationProjects;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -508,14 +509,17 @@ final class CalendarRepository
                 'calendar',
                 CollectionSharedNotify::CALENDAR_ACTION,
                 'calendars/'.$id,
-                CollectionSharedNotify::eventData(
-                    'calendar',
-                    CollectionSharedNotify::actorLabel($username),
-                    $name,
-                    $id,
-                    $access,
-                    [$sharee],
-                ),
+                [
+                    ...CollectionSharedNotify::eventData(
+                        'calendar',
+                        CollectionSharedNotify::actorLabel($username),
+                        $name,
+                        $id,
+                        $access,
+                        [$sharee],
+                    ),
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
+                ],
             );
         }
     }

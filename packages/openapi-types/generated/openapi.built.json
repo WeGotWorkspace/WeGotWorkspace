@@ -11035,6 +11035,13 @@
                             "null"
                         ]
                     },
+                    "projectId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Id of the Project the notification's subject belongs to; null for a subject in no Project (a direct message, a personal item) and for rows from before Projects."
+                    },
                     "readAt": {
                         "type": [
                             "string",

@@ -13909,6 +13909,8 @@ export interface components {
             /** @description In-app path (allowlisted SPA prefix). */
             navigate: string;
             tag?: string | null;
+            /** @description Id of the Project the notification's subject belongs to; null for a subject in no Project (a direct message, a personal item) and for rows from before Projects. */
+            projectId?: string | null;
             /** Format: date-time */
             readAt?: string | null;
             /** Format: date-time */

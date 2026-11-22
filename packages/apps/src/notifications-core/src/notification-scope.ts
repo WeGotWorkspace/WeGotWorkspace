@@ -52,3 +52,16 @@ export function notificationInScope(
   const app = notificationScopeAppAt(route);
   return app == null || notificationInboxAppId(item) === app;
 }
+
+/**
+ * Whether `item` is in the Project filter's scope: `projectIds` are the Projects the filter
+ * keeps (one Project, every Project of a Team), null for "All Projects". A row with no
+ * Project (a DM, a personal invite) is always in scope, so it never disappears.
+ */
+export function notificationInProjectScope(
+  item: Pick<NotificationInboxItem, "projectId">,
+  projectIds: readonly string[] | null,
+): boolean {
+  if (projectIds == null || item.projectId == null) return true;
+  return projectIds.includes(item.projectId);
+}
