@@ -88,7 +88,7 @@
   @apply inline-flex min-w-0 items-center gap-2;
 }
 
-/* A Team: its name with the Project count at the end, its entries indented under a rule. */
+/* A Team: its name, dimmed, above its entries. */
 .project-filter-select__team {
   @apply flex items-center justify-between gap-3 px-2 pb-0.5 pt-2 text-sm font-medium;
 }
@@ -97,14 +97,6 @@
   color: color-mix(in oklab, currentColor 55%, transparent);
 }
 
-.project-filter-select__group {
-  @apply ml-2 border-l pl-1;
-  border-color: var(--workspace-divider-color, color-mix(in oklab, currentColor 18%, transparent));
-}
-
-.project-filter-select__team {
-  margin-left: calc(-0.5rem - 1px);
-}
 
 .project-filter-select__all {
   color: var(--workspace-muted-foreground, currentColor);
