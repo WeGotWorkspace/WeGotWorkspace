@@ -1,6 +1,6 @@
 import { Fragment, type CSSProperties } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown, FolderKanban, LayoutGrid, Settings2 } from "lucide-react";
+import { ChevronDown, FolderKanban, Settings2 } from "lucide-react";
 import { useOpenSettingsPanel } from "@/lib/settings/open-settings-panel";
 import {
   projectFilterValue,
@@ -104,7 +104,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
                 </SelectLabel>
                 <SelectItem value={teamFilterValue(team.slug)}>
                   <span className="project-filter-select__item">
-                    <LayoutGrid className="project-filter-select__icon" aria-hidden />
+                    <FolderKanban className="project-filter-select__icon" aria-hidden />
                     <span className="project-filter-select__all">
                       {labels.allOfTeam(team.displayName)}
                     </span>
