@@ -23,7 +23,7 @@
 
 .projects-manage-row__name {
   @apply min-w-0 flex-1 truncate font-medium;
-  font-size: 1.125rem;
+  font-size: 1rem;
   color: var(--workspace-foreground);
 }
 
