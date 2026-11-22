@@ -42,6 +42,7 @@ import {
   hasQueuedContactEdits,
   readCachedAddressBooks,
   readContactsBootstrapFromCache,
+  readContactsPartialCardIds,
   readContactsColdDownload,
   removeContactCardFromCache,
   saveContactsColdDownloadPage,
@@ -488,7 +489,7 @@ async function downloadAllContacts(
       await sendQueuedEditsAfterDownload(username);
       void runContactsBackgroundPasses(username);
     }
-    return bootstrap;
+    return withPartialIds(username, bootstrap);
   }
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
@@ -511,7 +512,16 @@ async function downloadAllContacts(
     await sendQueuedEditsAfterDownload(username);
   }
   void runContactsBackgroundPasses(username);
-  return withPhotos;
+  return withPartialIds(username, withPhotos);
+}
+
+/** The returned copy lists the lean cards as partial, as the stored one does. */
+async function withPartialIds<T extends ContactsBootstrap>(
+  username: string,
+  bootstrap: T,
+): Promise<T> {
+  const partialCardIds = await readContactsPartialCardIds(username);
+  return partialCardIds.length ? { ...bootstrap, partialCardIds } : bootstrap;
 }
 
 /** Ends a resume early: another download owns the marker now. */

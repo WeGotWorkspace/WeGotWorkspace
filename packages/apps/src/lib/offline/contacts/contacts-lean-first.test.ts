@@ -226,6 +226,25 @@ describe("partial cards of a lean first download", () => {
   });
 
   describe("the first download", () => {
+    it("returns a bootstrap that lists the lean cards as partial", async () => {
+      vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
+        await options?.onStart?.({
+          session,
+          addressBooks: [book],
+          cardIds: ["a"],
+          groupIds: [],
+          syncAnchor,
+        });
+        await options?.onCardPage?.({ cards: [lean("a")], remainingCardIds: [] });
+        return { data: { addressBooks: [book], cards: [lean("a")] }, session, syncAnchor };
+      });
+      vi.mocked(fetchContactCardDetails).mockImplementation(async () => {});
+
+      const bootstrap = await fetchContactsHybridBootstrap();
+
+      expect(bootstrap.partialCardIds).toEqual(["a"]);
+    });
+
     it("asks for lean cards on a device with no copy", async () => {
       vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
         await options?.onStart?.({

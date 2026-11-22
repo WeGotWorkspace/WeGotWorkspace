@@ -478,11 +478,17 @@ export async function upsertContactCardInCache(
   options?: { keepPartial?: boolean },
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await contactsCardsTable(db).put(contactCardRow(card, pendingSync));
-  // A crash between the two leaves a whole card listed as partial: read-only
-  // until the detail pass overwrites it with the same card. Never the reverse.
-  if (!options?.keepPartial)
-    await db.transaction("rw", db.meta, () => markCardsComplete(db, [card.id]));
+  const table = contactsCardsTable(db);
+  if (options?.keepPartial) {
+    await table.put(contactCardRow(card, pendingSync));
+    return;
+  }
+  // One transaction: a detail page must not commit between the put and the
+  // list update, or it would overwrite this card with an older copy.
+  await db.transaction("rw", table, db.meta, async () => {
+    await table.put(contactCardRow(card, pendingSync));
+    await markCardsComplete(db, [card.id]);
+  });
 }
 
 /** One cached card, or null when the cache does not have it. */

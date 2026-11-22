@@ -691,64 +691,86 @@ export function useContactsController({
 
   const downloadActive = useCallback(async () => {
     if (!active) return;
+    if (mutationsLocked || partialCardIds?.includes(active.id)) {
+      showError(L.detailsOffline);
+      return;
+    }
     // An edit still waiting for its typing pause is saved first, so the file has it.
     await autosave.flushContact(active.id);
     const card = cardsRef.current.find((row) => row.id === active.id) ?? active;
     if (operations?.downloadCardVcf) {
       const cardId = card.id;
       const filename = vcardFilename(contactDisplayName(card));
-      operations.downloadCardVcf(cardId).then((vcfText) => {
-        const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = url;
-          anchor.download = filename;
-          anchor.style.display = "none";
-          document.body.appendChild(anchor);
-          anchor.click();
-          anchor.remove();
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      });
+      operations.downloadCardVcf(cardId).then(
+        (vcfText) => {
+          const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          try {
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename;
+            anchor.style.display = "none";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        },
+        () => showError(L.detailsOffline),
+      );
     } else {
       downloadContactVCard(card);
     }
-  }, [active, autosave, operations]);
+  }, [L.detailsOffline, active, autosave, mutationsLocked, operations, partialCardIds, showError]);
 
   const downloadSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
+    if (mutationsLocked || selectedIds.some((id) => partialCardIds?.includes(id))) {
+      showError(L.detailsOffline);
+      return;
+    }
     const cardsToDownload = selectedIds
       .map((id) => cards.find((card) => card.id === id))
       .filter((card): card is ContactCard => card !== undefined);
 
     if (operations?.downloadCardVcf && cardsToDownload.length > 0) {
       const downloadVcf = operations.downloadCardVcf;
-      Promise.all(cardsToDownload.map((card) => downloadVcf(card.id))).then((vcfParts) => {
-        const vcfText = vcfParts.join("\r\n");
-        const filename =
-          cardsToDownload.length === 1
-            ? vcardFilename(contactDisplayName(cardsToDownload[0]))
-            : `${cardsToDownload.length}-contacts.vcf`;
-        const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = url;
-          anchor.download = filename;
-          anchor.style.display = "none";
-          document.body.appendChild(anchor);
-          anchor.click();
-          anchor.remove();
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      });
+      Promise.all(cardsToDownload.map((card) => downloadVcf(card.id))).then(
+        (vcfParts) => {
+          const vcfText = vcfParts.join("\r\n");
+          const filename =
+            cardsToDownload.length === 1
+              ? vcardFilename(contactDisplayName(cardsToDownload[0]))
+              : `${cardsToDownload.length}-contacts.vcf`;
+          const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          try {
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename;
+            anchor.style.display = "none";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        },
+        () => showError(L.detailsOffline),
+      );
     } else {
       downloadMultipleContactsVCard(cardsToDownload);
     }
-  }, [cards, operations, selectedIds]);
+  }, [
+    L.detailsOffline,
+    cards,
+    mutationsLocked,
+    operations,
+    partialCardIds,
+    selectedIds,
+    showError,
+  ]);
 
   const requestDeleteSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
