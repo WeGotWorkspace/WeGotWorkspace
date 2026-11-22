@@ -65,7 +65,7 @@ import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/hooks/use-offline-sync-toast";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { isTopLevelDriveApiPath } from "@/lib/files/drive-path-utils";
-import { useProjectFolders } from "@/drive-core/src/drive-project-folder";
+import { isProjectFolderUiPath, useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { resolveDetailFilePreview } from "@/lib/file-preview/file-preview-utils";
 import "@/drive-core/src/drive-workspace.css";
@@ -254,6 +254,10 @@ export function DriveWorkspace({
     selectView: controller.selectView,
   });
   const { projects } = useProjects();
+  const teamDriveRoots = useMemo(
+    () => projectScope.groupRoots.filter((root) => !isProjectFolderUiPath(root.path, projects)),
+    [projectScope.groupRoots, projects],
+  );
   const selectedProjectIds = useSelectedProjectIds();
   const { primarySidebarItems, groupSidebarItems, projectSidebarItems } = useDriveSidebarModel({
     projects,
@@ -261,7 +265,8 @@ export function DriveWorkspace({
     labels: controller.labels,
     view: controller.view,
     uploads: uploadCounts,
-    sidebarGroupRoots: projectScope.groupRoots,
+    // Project folders are listed under Projects only, never as Team Drives rows.
+    sidebarGroupRoots: teamDriveRoots,
     hidePersonalDrive: projectScope.hidePersonalDrive,
     selectView: controller.selectView,
     sidebarDropZoneProps: controller.sidebarDropZoneProps,
