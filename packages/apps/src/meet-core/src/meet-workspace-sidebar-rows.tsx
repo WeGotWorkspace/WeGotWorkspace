@@ -23,6 +23,10 @@ function sidebarChannelLabel(channel: MeetChannel): string {
   return channel.name.toLowerCase();
 }
 
+function teamSuffix(teamName: string | null | undefined): string {
+  return teamName ? ` · ${teamName}` : "";
+}
+
 export function MeetSidebarRowMeta({
   live,
   audioOnly,
@@ -136,7 +140,10 @@ export function MeetSidebarRows({
   channelCallAudioOnly,
   startLabelForChannel,
   teamChats = false,
+  teamNameOf,
 }: {
+  /** Team chats: the Team's name to show next to a chat, or null. */
+  teamNameOf?: (channel: MeetChannel) => string | null;
   /** Rows of the Team's chats: a Users mark instead of the hash. */
   teamChats?: boolean;
   channels: MeetChannel[];
@@ -153,7 +160,7 @@ export function MeetSidebarRows({
         return (
           <CollectionSidebarRow
             key={channel.id}
-            name={sidebarChannelLabel(channel)}
+            name={sidebarChannelLabel(channel) + teamSuffix(teamNameOf?.(channel))}
             color={channelDotColor(channel)}
             selected={selectedId === channel.id}
             leading={

@@ -23,6 +23,8 @@ export type MeetWorkspaceSidebarProps = {
   session: WorkspaceSession;
   onLogout?: () => void;
   sections: MeetChannelSections;
+  /** Team display names by slug, to tell same-named Team chats apart. */
+  teamNames?: Readonly<Record<string, string>>;
   /** Owned meeting channels that belong in today's sidebar, already filtered. */
   todayMeetings: MeetChannel[];
   /** Calendar meetings without a channel of their own. */
@@ -45,6 +47,18 @@ export type MeetWorkspaceSidebarProps = {
   onEditUpcomingMeeting?: (meeting: MeetUpcomingMeeting) => void;
 };
 
+/** The Team's name for a Team chat whose name another row in the section shares. */
+function teamChatLabel(
+  chats: readonly MeetChannel[],
+  channel: MeetChannel,
+  teamNames: Readonly<Record<string, string>> | undefined,
+): string | null {
+  const name = channel.name.toLowerCase();
+  const clash = chats.some((other) => other.id !== channel.id && other.name.toLowerCase() === name);
+  if (!clash || !channel.groupSlug) return null;
+  return teamNames?.[channel.groupSlug] ?? channel.groupSlug;
+}
+
 /** Left sidebar: new-meeting menu, channel/meeting/DM sections, settings footer. */
 export function MeetWorkspaceSidebar({
   open,
@@ -52,6 +66,7 @@ export function MeetWorkspaceSidebar({
   session,
   onLogout,
   sections,
+  teamNames,
   todayMeetings,
   leftoverUpcoming,
   directMessagePeople,
@@ -134,6 +149,7 @@ export function MeetWorkspaceSidebar({
         <SidebarSection title={meetLabels.sidebarTeamChats}>
           <MeetSidebarRows
             teamChats
+            teamNameOf={(channel) => teamChatLabel(sections.teamChats, channel, teamNames)}
             channels={sections.teamChats}
             selectedId={selectedId}
             onSelect={onSelect}
