@@ -11,6 +11,7 @@
  * `tools/live-e2e-webserver.test.mjs` checks the order.
  */
 export const liveTierSpecs = [
+  "auth-password-change-signs-out",
   "background-sync-shared-pace",
   "calendar-delete-mid-round",
   "calendar-far-week-event",
@@ -30,6 +31,7 @@ export const liveTierSpecs = [
   "docs-collab-access-revoked",
   "docs-collab-doorbell",
   "docs-collab-external-write",
+  "docs-collab-push-heartbeat",
   "docs-collab-racing-open",
   "docs-collab-solo-read",
   "docs-collab-suggest-save",
@@ -66,12 +68,14 @@ export const liveTierSpecs = [
   "inbound-sync-tasks-drive",
   "meet-adhoc-two-users",
   "meet-audio-only-camera",
+  "meet-call-doorbell",
   "meet-chat-push",
   "meet-chat-windowed",
   "meet-guest-chat",
   "meet-guest-video-mirror",
   "meet-mesh-channel-roster",
   "meet-opus-dtx",
+  "meet-push-heartbeat",
   "meet-video-mirror",
   "mesh-check-now",
   "notes-collab-access-lost",
@@ -111,6 +115,7 @@ export const liveTierSpecs = [
   "tasks-live-text",
   "tasks-push",
   "tasks-thread-live",
+  "two-factor",
   "undo-offline",
 ];
 

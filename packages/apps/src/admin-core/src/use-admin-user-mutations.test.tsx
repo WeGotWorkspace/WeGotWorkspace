@@ -169,4 +169,23 @@ describe("useAdminUserMutations", () => {
     });
     expect(showSuccess).toHaveBeenCalledWith("Password updated");
   });
+
+  it("resets two-factor sign-in through the API by username", async () => {
+    const data = createAdminAppBootstrap().data;
+    const resetUserMfa = vi.fn().mockResolvedValue(data);
+    const { result, showSuccess, showError, applyAdminData } = renderUsers({ resetUserMfa });
+    const user = data.users[0];
+    await act(async () => {
+      expect(await result.current.resetUserMfa(user.id)).toBe(true);
+    });
+    expect(resetUserMfa).toHaveBeenCalledWith(user.username);
+    expect(applyAdminData).toHaveBeenCalledWith(data);
+    expect(showSuccess).toHaveBeenCalledWith("Two-factor sign-in reset");
+
+    resetUserMfa.mockRejectedValueOnce(new Error("boom"));
+    await act(async () => {
+      expect(await result.current.resetUserMfa(user.id)).toBe(false);
+    });
+    expect(showError).toHaveBeenCalled();
+  });
 });

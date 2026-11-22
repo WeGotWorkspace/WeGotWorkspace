@@ -414,6 +414,13 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
       current.users = current.users.filter((u) => u.username !== username);
       return snapshot();
     },
+    resetUserMfa: async (username, opts) => {
+      await sleep(120, opts?.signal);
+      current.users = current.users.map((u) =>
+        u.username === username ? { ...u, mfaEnabled: false } : u,
+      );
+      return snapshot();
+    },
     createGroup: async (input, opts) => {
       await sleep(120, opts?.signal);
       const slug = input.name

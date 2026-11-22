@@ -5,6 +5,7 @@ import { driveLabels as L } from "@/drive-core/src/drive-labels";
 import type { DriveUIData } from "@/lib/files/drive-types";
 import { DriveWorkspace } from "@/drive-core/src/drive-workspace";
 import { STORY_NOOP } from "@/drive-core/stories/drive-story-shared";
+import { DRIVE_VIEW_MODE_STORAGE_KEY } from "@/hooks/persisted-view-mode";
 
 /**
  * Guests have no write path for folders and files yet (#1712). Until they do,
@@ -17,6 +18,19 @@ const meta: Meta<typeof DriveWorkspace> = {
   component: DriveWorkspace,
   parameters: {
     layout: "fullscreen",
+  },
+  /**
+   * The plays find the file by its grid tile. Story files share one origin, so a
+   * story that left Drive in list view (`drive-main-pane`, `drive-upload-folders`)
+   * would hide the tiles here: pin the grid, then put the old value back.
+   */
+  beforeEach: () => {
+    const previous = window.localStorage.getItem(DRIVE_VIEW_MODE_STORAGE_KEY);
+    window.localStorage.setItem(DRIVE_VIEW_MODE_STORAGE_KEY, "grid");
+    return () => {
+      if (previous === null) window.localStorage.removeItem(DRIVE_VIEW_MODE_STORAGE_KEY);
+      else window.localStorage.setItem(DRIVE_VIEW_MODE_STORAGE_KEY, previous);
+    };
   },
 };
 

@@ -128,27 +128,7 @@ describe("isInboxMessage", () => {
     expect(isInboxMessage(null)).toBe(false);
   });
 
-  it("shares backup-poll rows with the other tabs, apart from the pushed rows (#2252)", async () => {
-    const { a, c } = twoTabs();
-    const pollInA = vi.fn();
-    const pollInC = vi.fn();
-    const pushInC = vi.fn();
-    const stops = [a.onPollShared(pollInA), c.onPollShared(pollInC), c.onShared(pushInC)];
-    const waiting = c.waitFor("7", 50);
-
-    a.sharePoll(payload);
-    await tick();
-
-    expect(pollInC).toHaveBeenCalledWith(payload);
-    expect(pollInA).not.toHaveBeenCalled();
-    expect(pushInC).not.toHaveBeenCalled();
-    // Poll rows answer no pushed state: a tab waiting for one keeps waiting.
-    await expect(waiting).resolves.toBeNull();
-    for (const stop of stops) stop();
-  });
-
-  it("accepts poll messages with rows only", () => {
-    expect(isInboxMessage({ v: 1, kind: "inbox-poll", ...payload })).toBe(true);
-    expect(isInboxMessage({ v: 1, kind: "inbox-poll" })).toBe(false);
+  it("drops the poll rows an older build shared (#2252, polls gone since #2287)", () => {
+    expect(isInboxMessage({ v: 1, kind: "inbox-poll", ...payload })).toBe(false);
   });
 });

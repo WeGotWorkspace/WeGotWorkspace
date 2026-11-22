@@ -50,6 +50,47 @@ final class DavUnauthenticatedChallengeTest extends WgwDatabaseTestCase
         yield 'calendar home propfind' => ['PROPFIND', '/calendars/alice/'];
         yield 'address book home propfind' => ['PROPFIND', '/addressbooks/alice/'];
         yield 'address book propfind' => ['PROPFIND', '/addressbooks/alice/default/'];
+        yield 'principal propfind' => ['PROPFIND', '/principals/alice/'];
+        yield 'principals root propfind' => ['PROPFIND', '/principals/'];
+        yield 'files home propfind' => ['PROPFIND', '/files/users/alice/'];
+        yield 'files root propfind' => ['PROPFIND', '/files/'];
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function protectedHomes(): iterable
+    {
+        yield 'calendar home' => ['/calendars/alice/'];
+        yield 'address book home' => ['/addressbooks/alice/'];
+        yield 'principal' => ['/principals/alice/'];
+        yield 'files home' => ['/files/users/alice/'];
+    }
+
+    #[DataProvider('protectedHomes')]
+    public function test_wrong_password_gets_basic_challenge(string $path): void
+    {
+        $response = $this->dav('PROPFIND', $path, username: 'alice', password: 'wrong');
+
+        $response->assertStatus(401);
+        $this->assertStringStartsWith('Basic', (string) $response->headers->get('WWW-Authenticate'));
+    }
+
+    /** A wrong password for an account that does not exist answers like one for an account that does. */
+    #[DataProvider('protectedHomes')]
+    public function test_unknown_user_gets_the_same_challenge(string $path): void
+    {
+        $path = str_replace('/alice/', '/nobody/', $path);
+        $response = $this->dav('PROPFIND', $path, username: 'nobody', password: 'wrong');
+
+        $response->assertStatus(401);
+        $this->assertStringStartsWith('Basic', (string) $response->headers->get('WWW-Authenticate'));
+    }
+
+    #[DataProvider('protectedHomes')]
+    public function test_correct_credentials_read_own_home(string $path): void
+    {
+        $this->dav('PROPFIND', $path, username: 'alice')->assertStatus(207);
     }
 
     #[DataProvider('unauthenticatedRequests')]
@@ -73,11 +114,11 @@ final class DavUnauthenticatedChallengeTest extends WgwDatabaseTestCase
         $this->dav('PROPFIND', '/addressbooks/alice/', username: 'alice')->assertStatus(207);
     }
 
-    private function dav(string $method, string $path, ?string $username = null): TestResponse
+    private function dav(string $method, string $path, ?string $username = null, string $password = 'secret'): TestResponse
     {
         $server = ['HTTP_DEPTH' => '1'];
         if ($username !== null) {
-            $server['HTTP_AUTHORIZATION'] = 'Basic '.base64_encode($username.':secret');
+            $server['HTTP_AUTHORIZATION'] = 'Basic '.base64_encode($username.':'.$password);
         }
 
         return $this->call($method, $path, [], [], [], $server);

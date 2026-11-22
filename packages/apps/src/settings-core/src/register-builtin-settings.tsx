@@ -7,6 +7,7 @@ import {
   FileText,
   HardDrive,
   Info,
+  KeyRound,
   Mail,
   Palette,
   StickyNote,
@@ -37,6 +38,8 @@ import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
+import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
+import { appPasswordLabels } from "@/settings-core/src/settings-app-passwords-labels";
 import { DEFAULT_COLLECTION_APP_META } from "@/lib/default-collection-prefs";
 import {
   markBuiltinSettingsRegistered,
@@ -63,6 +66,13 @@ export function registerBuiltinSettings(): void {
     icon: <Users className="size-3.5" />,
     group: "account",
     needsSettingsApi: true,
+  });
+  registerPanel({
+    id: "security",
+    label: appPasswordLabels.panel,
+    description: appPasswordLabels.panelDescription,
+    icon: <KeyRound className="size-3.5" />,
+    group: "account",
   });
   registerPanel({
     id: "offline",
@@ -167,6 +177,11 @@ export function registerBuiltinSettings(): void {
     id: "memberships",
     panelIds: ["memberships"],
     render: (props) => <SettingsMembershipsPane groups={props.memberships} />,
+  });
+  registerSlice({
+    id: "security-app-passwords",
+    panelIds: ["security"],
+    render: () => <SettingsSecurityPane />,
   });
   registerSlice({
     id: "offline",

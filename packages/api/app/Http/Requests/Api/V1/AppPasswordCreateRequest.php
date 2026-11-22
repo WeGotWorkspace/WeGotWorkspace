@@ -28,7 +28,10 @@ final class AppPasswordCreateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:60'],
-            'currentPassword' => ['required', 'string', 'max:4096'],
+            // One of the two, decided by the controller: `code` when the
+            // caller has two-factor on, `currentPassword` otherwise.
+            'currentPassword' => ['sometimes', 'nullable', 'string', 'max:4096'],
+            'code' => ['sometimes', 'nullable', 'string', 'max:32'],
         ];
     }
 }
