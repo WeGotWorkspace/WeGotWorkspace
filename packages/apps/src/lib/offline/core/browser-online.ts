@@ -216,8 +216,11 @@ export function setPushHealthy(healthy: boolean): void {
   }
   // Push turned unhealthy after network failures: now the tab is offline and the probe runs.
   if (hub.failures > 0) {
+    // Only the tab that was still online (the leader) announces; a follower already
+    // applied the notice, and a repeat would restart every tab's backoff.
+    const wasOnline = hub.online;
     setConnectivityOnline(hub, false);
-    shareProbeResult(hub, false, hub.failures);
+    if (wasOnline) shareProbeResult(hub, false, hub.failures);
   }
   armNextProbe(hub);
 }

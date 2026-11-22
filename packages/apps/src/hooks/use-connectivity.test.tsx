@@ -480,6 +480,39 @@ describe("push as the online check (#2296)", () => {
     unsubscribe();
   });
 
+  it("a follower that applied the offline notice does not re-post it when push turns unhealthy", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const other = new BroadcastChannel("wgw-reachability");
+    const received: unknown[] = [];
+    other.onmessage = (event: MessageEvent) => received.push(event.data);
+    const unsubscribe = subscribeBrowserOnline(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    setPushHealthy(true);
+    fetchMock.mockClear();
+    expect(getConnectivitySnapshot()).toBe(true);
+
+    other.postMessage({
+      type: "wgw-reachability",
+      reachable: false,
+      offline: true,
+      failures: 2,
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    setPushHealthy(false);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(getConnectivitySnapshot()).toBe(false);
+    expect(received.some((m) => (m as { offline?: boolean }).offline)).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(3100);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    other.close();
+    unsubscribe();
+  });
+
   it("posts an offline notice when push turns unhealthy after failures", async () => {
     vi.useFakeTimers();
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
