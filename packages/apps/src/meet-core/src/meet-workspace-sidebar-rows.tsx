@@ -13,15 +13,15 @@ import type { MeetDirectMessagePerson } from "@/lib/meetings/meet-direct-message
 import { MeetChannelKindIcon } from "@/meet-core/src/meet-channel-kind-icon";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannel } from "@/lib/models/meet-types";
+import { meetChannelText } from "@/meet-core/src/meet-channel-label";
 
 function channelDotColor(channel: MeetChannel): string {
   return channel.color?.trim() || DEFAULT_MEET_CHANNEL_COLOR;
 }
 
-/** Sidebar label. The hash mark is an icon, so the name stays the lowercased channel text. */
+/** Sidebar label. The hash mark is an icon; Project and Team channels keep their casing. */
 function sidebarChannelLabel(channel: MeetChannel): string {
-  if (channel.kind === "meeting") return channel.name;
-  return channel.name.toLowerCase();
+  return meetChannelText(channel);
 }
 
 function teamSuffix(teamName: string | null | undefined): string {
