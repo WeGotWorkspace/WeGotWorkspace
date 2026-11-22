@@ -28,7 +28,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Team admin of Design, member of Sales: Create Project is offered. */
+/** Team admin of Design, member of Sales: each Team has "All", then its other Projects. */
 export const TeamAdmin: Story = { args: { teams: MOCK_PROJECT_TEAMS } };
 
 /** Inside Settings' provider a team admin also gets Manage Projects. */
@@ -36,7 +36,7 @@ export const WithManageProjects: Story = {
   args: { teams: MOCK_PROJECT_TEAMS, withSettings: true },
 };
 
-/** Member only: the list has no Create Project. */
+/** Member only: no Manage Projects. */
 export const MemberOnly: Story = {
   args: { teams: MOCK_PROJECT_TEAMS.map((team) => ({ ...team, isTeamAdmin: false })) },
 };

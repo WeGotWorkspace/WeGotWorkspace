@@ -1,7 +1,6 @@
-import { Fragment, useState, type CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown, FolderKanban, Plus, Settings2 } from "lucide-react";
-import { useAppToast } from "@/hooks/use-app-toast";
+import { ChevronDown, FolderKanban, Settings2 } from "lucide-react";
 import { useOpenSettingsPanel } from "@/lib/settings/open-settings-panel";
 import { projectFilterValue, type ProjectFilterValue } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
@@ -12,7 +11,6 @@ import {
   type ProjectsStore,
 } from "@/lib/projects/projects-store";
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
-import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
 import {
   Select,
@@ -25,7 +23,6 @@ import {
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import "./project-filter-select.css";
 
-const CREATE_VALUE = "__create";
 const MANAGE_VALUE = "__manage";
 
 function ProjectDot({ color }: { color: string | null }) {
@@ -46,8 +43,6 @@ function ProjectDot({ color }: { color: string | null }) {
 export function ProjectFilterSelect({ store = projectsStore() }: { store?: ProjectsStore }) {
   const snapshot = useProjects(store);
   const [filter, setFilter] = useProjectFilter(store);
-  const [createOpen, setCreateOpen] = useState(false);
-  const toast = useAppToast();
   const openSettingsPanel = useOpenSettingsPanel();
 
   if (snapshot.status !== "ready" && snapshot.status !== "offline") return null;
@@ -55,7 +50,6 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
   const groups = projectsByTeam(snapshot);
   const adminTeams = snapshot.teams.filter((team) => team.isTeamAdmin);
   const current = selectedProject(filter, snapshot.projects);
-  const canCreate = adminTeams.length > 0 && snapshot.status === "ready";
   const canManage = adminTeams.length > 0 && openSettingsPanel !== null;
 
   return (
@@ -63,8 +57,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
       <Select
         value={filter}
         onValueChange={(next) => {
-          if (next === CREATE_VALUE) setCreateOpen(true);
-          else if (next === MANAGE_VALUE) openSettingsPanel?.("memberships");
+          if (next === MANAGE_VALUE) openSettingsPanel?.("memberships");
           else setFilter(next as ProjectFilterValue);
         }}
       >
@@ -85,7 +78,11 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
             className="project-filter-trigger__mark"
           />
           <span className="project-filter-trigger__label">
-            {current ? current.name : labels.allProjects}
+            {current
+              ? current.isDefault
+                ? labels.teamAll(current.teamName)
+                : current.name
+              : labels.allProjects}
           </span>
           <ChevronDown className="project-filter-trigger__chevron" aria-hidden />
         </SelectPrimitive.Trigger>
@@ -95,27 +92,21 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
             <Fragment key={team.slug}>
               <SelectSeparator />
               <SelectGroup>
-                <SelectLabel>{team.displayName}</SelectLabel>
+                <SelectLabel className="project-filter-select__team">
+                  {team.displayName}
+                </SelectLabel>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={projectFilterValue(project.id)}>
                     <span className="project-filter-select__item">
                       <ProjectDot color={project.color} />
-                      {project.name}
+                      {project.isDefault ? labels.allOfTeam : project.name}
                     </span>
                   </SelectItem>
                 ))}
               </SelectGroup>
             </Fragment>
           ))}
-          {canCreate || canManage ? <SelectSeparator /> : null}
-          {canCreate ? (
-            <SelectItem value={CREATE_VALUE}>
-              <span className="project-filter-select__item">
-                <Plus className="project-filter-select__icon" aria-hidden />
-                {labels.createProject}
-              </span>
-            </SelectItem>
-          ) : null}
+          {canManage ? <SelectSeparator /> : null}
           {canManage ? (
             <SelectItem value={MANAGE_VALUE}>
               <span className="project-filter-select__item">
@@ -126,24 +117,6 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
           ) : null}
         </SelectContent>
       </Select>
-      <CreateProjectDialog
-        open={createOpen}
-        teams={adminTeams}
-        onOpenChange={setCreateOpen}
-        onCreate={async (input) => {
-          try {
-            const created = await store.create(input);
-            setFilter(projectFilterValue(created.id));
-            toast.showSuccess(labels.created(created.name));
-            return true;
-          } catch (error) {
-            toast.showError(labels.createFailed, {
-              description: error instanceof Error ? error.message : undefined,
-            });
-            return false;
-          }
-        }}
-      />
     </>
   );
 }

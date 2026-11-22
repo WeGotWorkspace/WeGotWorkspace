@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockProjectOperations, MOCK_PROJECT_TEAMS } from "@/lib/api/mock/projects";
 import { readProjectFilter } from "@/lib/projects/project-filter";
 import { createProjectsStore } from "@/lib/projects/projects-store";
-import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { ProjectFilterSelect } from "@/projects-ui/src/project-filter-select";
 import { OpenSettingsPanelContext } from "@/lib/settings/open-settings-panel";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -39,27 +38,21 @@ describe("ProjectFilterSelect", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("shows All Projects, then the Projects per Team, and Create Project for a team admin", async () => {
+  it("shows All Projects, then per Team its All and the other Projects", async () => {
     renderSelect(await loadedStore());
     const trigger = screen.getByRole("combobox", { name: "Project" });
     expect(trigger.textContent).toContain("All Projects");
     fireEvent.keyDown(trigger, { key: "Enter" });
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
-    expect(options).toEqual([
-      "All Projects",
-      "Design Project",
-      "Website relaunch",
-      "Sales Project",
-      "Create Project",
-    ]);
+    expect(options).toEqual(["All Projects", "All", "Website relaunch", "All"]);
     // No Settings around the filter here, so no Manage Projects.
   });
 
-  it("offers no Create Project without a team-admin role", async () => {
+  it("lists the Teams' Projects for a member too", async () => {
     renderSelect(await loadedStore([{ slug: "sales", displayName: "Sales", isTeamAdmin: false }]));
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
-    expect(options).toEqual(["All Projects", "Sales Project", "Website relaunch"]);
+    expect(options).toEqual(["All Projects", "All", "Website relaunch"]);
   });
 
   it("stores the chosen Project", async () => {
@@ -115,37 +108,5 @@ describe("Manage Projects", () => {
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
     await screen.findAllByRole("option");
     expect(screen.queryByRole("option", { name: "Manage Projects" })).toBeNull();
-  });
-});
-
-describe("CreateProjectDialog", () => {
-  it("creates with the name, color and the only Team, then closes", async () => {
-    const created: unknown[] = [];
-    let open = true;
-    render(
-      <TooltipProvider delayDuration={0}>
-        <CreateProjectDialog
-          open
-          teams={[MOCK_PROJECT_TEAMS[0]!]}
-          onOpenChange={(next) => {
-            open = next;
-          }}
-          onCreate={async (input) => {
-            created.push(input);
-            return true;
-          }}
-        />
-      </TooltipProvider>,
-    );
-    const create = screen.getByRole("button", { name: "Create" }) as HTMLButtonElement;
-    expect(create.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  Brand book " } });
-    await act(async () => {
-      fireEvent.click(create);
-    });
-    expect(created).toEqual([
-      { teamSlug: "design", name: "Brand book", color: expect.any(String) },
-    ]);
-    expect(open).toBe(false);
   });
 });

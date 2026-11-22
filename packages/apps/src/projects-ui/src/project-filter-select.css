@@ -86,3 +86,10 @@
 .project-filter-select__item {
   @apply inline-flex min-w-0 items-center gap-2;
 }
+
+/* Team names above their Projects: small, regular weight, dimmed. */
+.project-filter-select__team {
+  @apply px-2 pb-0.5 pt-2 text-xs font-normal;
+  color: var(--workspace-muted-foreground, currentColor);
+  opacity: 0.8;
+}

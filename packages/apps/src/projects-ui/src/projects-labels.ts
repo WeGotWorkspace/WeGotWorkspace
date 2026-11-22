@@ -2,6 +2,8 @@
 export const projectsLabels = {
   filterLabel: "Project",
   allProjects: "All Projects",
+  allOfTeam: "All",
+  teamAll: (team: string) => `${team} · All`,
   createProject: "Create Project",
   createTitle: "Create Project",
   createDescription: "A Project gets its own calendar, task list, notebook, channel and folder.",
