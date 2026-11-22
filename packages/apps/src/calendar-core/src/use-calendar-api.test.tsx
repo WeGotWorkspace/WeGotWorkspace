@@ -39,6 +39,7 @@ vi.mock("@/lib/offline/calendars/calendars-offline-store", () => ({
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: () => mockReadBrowserOnline(),
+  getConnectivitySnapshot: () => mockReadBrowserOnline(),
   isFetchNetworkError: vi.fn(() => false),
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));

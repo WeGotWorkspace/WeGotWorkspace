@@ -1,5 +1,9 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+import { setTrafficJitterSource } from "@/lib/traffic/jitter";
+
+/** Tests run without traffic jitter; a test that checks the window sets its own source. */
+setTrafficJitterSource(() => 0);
 
 /** TipTap/ProseMirror calls this on Text/Range; jsdom does not implement it. */
 function emptyClientRect(): DOMRect {
