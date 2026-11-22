@@ -24429,59 +24429,6 @@
                         "$ref": "#/components/responses/JmapConflict"
                     }
                 }
-            },
-            "delete": {
-                "tags": [
-                    "Projects"
-                ],
-                "summary": "Purge an archived Project",
-                "description": "Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. A purge that stopped half-way completes on retry. 403 `team_admin_only` for a member who is not a team admin.",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "x-wgw-access": "user",
-                "parameters": [
-                    {
-                        "name": "project",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "pattern": "^[0-9a-z]{26}$"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Purged",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": [
-                                        "ok"
-                                    ],
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/JmapForbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/JmapNotFound"
-                    },
-                    "409": {
-                        "$ref": "#/components/responses/JmapConflict"
-                    }
-                }
             }
         },
         "/projects/{project}/archive": {
@@ -24574,6 +24521,137 @@
                     },
                     "409": {
                         "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            }
+        },
+        "/admin/projects/{project}": {
+            "delete": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Purge an archived Project",
+                "description": "Organization admins only. Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. A purge that stopped half-way completes on retry. A team admin archives; this is the only way to delete for good.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "admin",
+                "parameters": [
+                    {
+                        "name": "project",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9a-z]{26}$"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Purged",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ok"
+                                    ],
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Project not found"
+                    },
+                    "409": {
+                        "description": "Not archived, or the default Project"
+                    }
+                }
+            }
+        },
+        "/admin/projects": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List the archived Projects of every Team",
+                "description": "Organization admins only. Every archived Project that is not a default Project, by Team then name. Deleting one for good is `DELETE /admin/projects/{project}`.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "list"
+                                    ],
+                                    "properties": {
+                                        "list": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "teamSlug",
+                                                    "teamName",
+                                                    "name",
+                                                    "color",
+                                                    "archivedAt"
+                                                ],
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "teamSlug": {
+                                                        "type": "string"
+                                                    },
+                                                    "teamName": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "color": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "archivedAt": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "format": "date-time"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
                     }
                 }
             }

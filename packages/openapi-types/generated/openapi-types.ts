@@ -10000,37 +10000,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /**
-         * Purge an archived Project
-         * @description Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. A purge that stopped half-way completes on retry. 403 `team_admin_only` for a member who is not a team admin.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    project: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Purged */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            ok: boolean;
-                        };
-                    };
-                };
-                403: components["responses"]["JmapForbidden"];
-                404: components["responses"]["JmapNotFound"];
-                409: components["responses"]["JmapConflict"];
-            };
-        };
+        delete?: never;
         options?: never;
         head?: never;
         /**
@@ -10151,6 +10121,126 @@ export interface paths {
                 409: components["responses"]["JmapConflict"];
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Purge an archived Project
+         * @description Organization admins only. Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. A purge that stopped half-way completes on retry. A team admin archives; this is the only way to delete for good.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not archived, or the default Project */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the archived Projects of every Team
+         * @description Organization admins only. Every archived Project that is not a default Project, by Team then name. Deleting one for good is `DELETE /admin/projects/{project}`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            list: {
+                                id: string;
+                                teamSlug: string;
+                                teamName: string;
+                                name: string;
+                                color: string | null;
+                                /** Format: date-time */
+                                archivedAt: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
