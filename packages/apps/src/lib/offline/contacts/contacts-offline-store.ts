@@ -217,9 +217,7 @@ export async function finishContactsColdDownload(
     // The pages were photo-less: every saved card still needs its photo.
     const savedIds = (await cards.toCollection().primaryKeys()).map(String);
     await writePhotoPass(db, savedIds);
-    // The pages were lean (a download that saved whole cards leaves an empty
-    // pass behind: the detail pass then only re-reads them): every saved card
-    // is partial until its detail page is in.
+    // The pages were lean: every saved card is partial until its detail page is in.
     await writeDetailPass(db, savedIds);
     return true;
   });
