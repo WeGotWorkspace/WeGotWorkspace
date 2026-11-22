@@ -136,6 +136,7 @@ final class NotifyListener implements WorkspaceEventListener
         $navigate = $this->stringData($event, 'navigate', '/');
         $tag = $this->stringData($event, 'tag', $event->domain.'.'.$event->action);
         $copy = $this->copyForWrite($event, $facts);
+        $projectId = $this->stringData($event, 'projectId', null);
 
         if ($existing !== null) {
             if (($event->data['supersede'] ?? false) !== true) {
@@ -150,6 +151,7 @@ final class NotifyListener implements WorkspaceEventListener
                 'body' => $copy['body'],
                 'navigate' => $navigate ?? '/',
                 'tag' => $tag,
+                'project_id' => $projectId,
                 'read_at' => null,
             ])->save();
 
@@ -169,6 +171,7 @@ final class NotifyListener implements WorkspaceEventListener
             'body' => $copy['body'],
             'navigate' => $navigate ?? '/',
             'tag' => $tag,
+            'project_id' => $projectId,
             'dedupe_key' => $dedupe,
             'read_at' => null,
             'created_at' => $now,

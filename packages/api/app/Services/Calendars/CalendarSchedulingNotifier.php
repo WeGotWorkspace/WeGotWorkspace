@@ -7,6 +7,7 @@ namespace App\Services\Calendars;
 use App\Events\EventDispatch;
 use App\Services\Notify\CalendarInviteNotify;
 use App\Services\Notify\CalendarRsvpNotify;
+use App\Services\Notify\NotificationProjects;
 use Sabre\VObject\ITip\Message;
 
 /**
@@ -53,6 +54,7 @@ final class CalendarSchedulingNotifier
             [
                 'recipients' => [$invitee],
                 ...$copy,
+                'projectId' => app(NotificationProjects::class)->forObjectUid($uid),
             ],
         );
     }
@@ -96,6 +98,7 @@ final class CalendarSchedulingNotifier
             [
                 'recipients' => [$organizer],
                 ...$copy,
+                'projectId' => app(NotificationProjects::class)->forObjectUid($uid),
             ],
         );
     }
