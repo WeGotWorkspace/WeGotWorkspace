@@ -1,6 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
+import {
+  CALENDAR_BACKGROUND_POLL_MS,
+  CALENDAR_PUSH_POLL_MS,
+} from "@/calendar-core/src/calendar-refresh";
+import { useJmapPushConnected } from "@/lib/api/wgw/use-jmap-state-change";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
@@ -10,6 +14,10 @@ import {
   writeCalendarSchedulingInbox,
 } from "@/lib/offline/calendars/calendars-scheduling-offline-store";
 import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars/calendars-sync-conflicts";
+
+vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
+  useJmapPushConnected: vi.fn(() => false),
+}));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
@@ -37,6 +45,7 @@ describe("useCalendarInvitations", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(useJmapPushConnected).mockReturnValue(false);
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
   });
 
@@ -55,6 +64,23 @@ describe("useCalendarInvitations", () => {
       await vi.advanceTimersByTimeAsync(CALENDAR_BACKGROUND_POLL_MS);
     });
 
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("polls on the slow interval while push is connected (#2287)", async () => {
+    vi.mocked(useJmapPushConnected).mockReturnValue(true);
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CALENDAR_PUSH_POLL_MS - 1);
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
     expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
   });
 

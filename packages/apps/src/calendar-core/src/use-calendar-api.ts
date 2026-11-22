@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { useJmapPushConnected } from "@/lib/api/wgw/use-jmap-state-change";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
@@ -71,6 +72,8 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     onConflicts: options?.onSyncConflict,
   });
 
+  const pushConnected = useJmapPushConnected();
+
   const applyBootstrapRefresh = useCallback(async () => {
     if (offlineUsername && readBrowserOnline()) {
       await getCalendarsSyncRunner(offlineUsername).flush();
@@ -107,7 +110,17 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     const onVisibilityChange = () => {
       if (document.hidden || reconnectSyncing || refreshInFlightRef.current) return;
       refreshInFlightRef.current = true;
-      void applyBootstrapRefresh()
+      // Push connected: live inbound sync keeps the cache current, so a tab that
+      // becomes visible re-reads it instead of a full bootstrap (#2287).
+      const refresh = pushConnected
+        ? readCalendarBootstrapFromCache(offlineUsername).then((cached) => {
+            if (!cached) return applyBootstrapRefresh();
+            patchBootstrap(() => cached);
+            setBootstrapRevision((revision) => revision + 1);
+            return cached;
+          })
+        : applyBootstrapRefresh();
+      void refresh
         .catch(() => undefined)
         .finally(() => {
           refreshInFlightRef.current = false;
@@ -118,7 +131,15 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [applyBootstrapRefresh, offlineUsername, online, phase, reconnectSyncing]);
+  }, [
+    applyBootstrapRefresh,
+    offlineUsername,
+    online,
+    patchBootstrap,
+    phase,
+    pushConnected,
+    reconnectSyncing,
+  ]);
 
   return {
     phase,

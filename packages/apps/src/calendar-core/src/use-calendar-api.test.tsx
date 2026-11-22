@@ -16,6 +16,7 @@ const mockLoadBootstrap = vi.fn();
 const mockFlush = vi.fn();
 const mockOnReconnect = vi.fn();
 const mockReadBrowserOnline = vi.fn(() => true);
+const mockPushConnected = vi.fn(() => false);
 
 vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   useHybridBootstrap: () => ({
@@ -51,6 +52,10 @@ vi.mock("@/hooks/use-connectivity", () => ({
   },
 }));
 
+vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
+  useJmapPushConnected: () => mockPushConnected(),
+}));
+
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwAwaitSessionRefreshForReconnect: vi.fn(async () => undefined),
   wgwLiveApiEnabled: vi.fn(() => false),
@@ -59,6 +64,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
 describe("useCalendarAPI applyBootstrapRefresh", () => {
   beforeEach(async () => {
     mockReadBrowserOnline.mockReturnValue(true);
+    mockPushConnected.mockReturnValue(false);
     mockPatchBootstrap.mockReset();
     mockLoadBootstrap.mockReset();
     mockFlush.mockReset();
@@ -119,6 +125,37 @@ describe("useCalendarAPI applyBootstrapRefresh", () => {
       setIntervalSpy.mock.calls.some((call) => typeof call[1] === "number" && call[1] >= 10_000),
     ).toBe(false);
     setIntervalSpy.mockRestore();
+  });
+
+  it("a tab that turns visible re-reads the cache while push is connected (#2287)", async () => {
+    mockPushConnected.mockReturnValue(true);
+    const source: CalendarApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    renderHook(() => useCalendarAPI(source));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(mockPatchBootstrap).toHaveBeenCalledTimes(1));
+    expect(mockLoadBootstrap).not.toHaveBeenCalled();
+    expect(mockFlush).not.toHaveBeenCalled();
+  });
+
+  it("a tab that turns visible runs a full bootstrap while push is down", async () => {
+    const source: CalendarApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    renderHook(() => useCalendarAPI(source));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(mockLoadBootstrap).toHaveBeenCalledTimes(1));
   });
 
   it("flushes pending outbox rows on reconnect", async () => {

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
+import { useJmapPushConnected } from "@/lib/api/wgw/use-jmap-state-change";
+import {
+  CALENDAR_BACKGROUND_POLL_MS,
+  CALENDAR_PUSH_POLL_MS,
+} from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import {
@@ -38,6 +42,7 @@ export function useCalendarInvitations(
   const [canSubmitEmail, setCanSubmitEmail] = useState(false);
   const [busy, setBusy] = useState(false);
   const refreshInFlightRef = useRef(false);
+  const pushConnected = useJmapPushConnected();
   const username = cacheUsername(options?.username);
 
   const refresh = useCallback(async () => {
@@ -129,8 +134,12 @@ export function useCalendarInvitations(
       void refreshIfIdle().catch(() => undefined);
     };
 
-    // Invitations keep their own interval; event `/changes` is inbound-only.
-    const intervalId = window.setInterval(runSilentRefresh, CALENDAR_BACKGROUND_POLL_MS);
+    // Invitations keep their own interval, slower while push is connected (#2287);
+    // event `/changes` is inbound-only.
+    const intervalId = window.setInterval(
+      runSilentRefresh,
+      pushConnected ? CALENDAR_PUSH_POLL_MS : CALENDAR_BACKGROUND_POLL_MS,
+    );
     const onVisibilityChange = () => {
       if (!document.hidden) runSilentRefresh();
     };
@@ -141,7 +150,7 @@ export function useCalendarInvitations(
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [busy, operations?.listSchedulingNotifications, refreshIfIdle]);
+  }, [busy, operations?.listSchedulingNotifications, pushConnected, refreshIfIdle]);
 
   const dropNotifications = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
