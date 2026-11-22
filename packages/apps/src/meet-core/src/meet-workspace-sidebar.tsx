@@ -130,6 +130,18 @@ export function MeetWorkspaceSidebar({
           />
         </SidebarSection>
       ) : null}
+      {sections.teamChats.length > 0 ? (
+        <SidebarSection title={meetLabels.sidebarTeamChats}>
+          <MeetSidebarRows
+            teamChats
+            channels={sections.teamChats}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            channelHasLiveCall={channelHasLiveCall}
+            channelCallAudioOnly={channelCallAudioOnly}
+          />
+        </SidebarSection>
+      ) : null}
       {todayMeetings.length > 0 || leftoverUpcoming.length > 0 ? (
         <SidebarSection title={meetLabels.sidebarMeetings}>
           {todayMeetings.length > 0 ? (
