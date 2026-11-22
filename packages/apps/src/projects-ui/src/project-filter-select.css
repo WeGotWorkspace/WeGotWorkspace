@@ -87,11 +87,32 @@
   @apply inline-flex min-w-0 items-center gap-2;
 }
 
-/* Team names above their Projects: small, regular weight, dimmed. */
+/* A Team: its name with the Project count at the end, its entries indented under a rule. */
 .project-filter-select__team {
-  @apply px-2 pb-0.5 pt-2 text-xs font-normal;
+  @apply flex items-center justify-between gap-3 px-2 pb-0.5 pt-2 text-sm font-medium;
+}
+
+.project-filter-select__count {
+  @apply text-xs font-normal;
   color: var(--workspace-muted-foreground, currentColor);
   opacity: 0.8;
+}
+
+.project-filter-select__group {
+  @apply ml-2 border-l pl-1;
+  border-color: var(--workspace-divider-color, color-mix(in oklab, currentColor 18%, transparent));
+}
+
+.project-filter-select__team {
+  margin-left: calc(-0.5rem - 1px);
+}
+
+.project-filter-select__all {
+  color: var(--workspace-muted-foreground, currentColor);
+}
+
+.project-filter-select__name {
+  @apply min-w-0 flex-1 truncate;
 }
 
 /* The suite hairline: the default separator is nearly invisible on the dark menu. */

@@ -1,6 +1,6 @@
 import { Fragment, type CSSProperties } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown, FolderKanban, Settings2 } from "lucide-react";
+import { ChevronDown, FolderKanban, LayoutGrid, Settings2 } from "lucide-react";
 import { useOpenSettingsPanel } from "@/lib/settings/open-settings-panel";
 import {
   projectFilterValue,
@@ -25,6 +25,7 @@ import {
   SelectLabel,
   SelectSeparator,
 } from "@/ui/select";
+import { Tag } from "@/tag/src/tag";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import "./project-filter-select.css";
 
@@ -97,14 +98,17 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
           {groups.map(({ team, projects }) => (
             <Fragment key={team.slug}>
               <SelectSeparator className="project-filter-select__separator" />
-              <SelectGroup>
+              <SelectGroup className="project-filter-select__group">
                 <SelectLabel className="project-filter-select__team">
-                  {team.displayName}
+                  <span>{team.displayName}</span>
+                  <span className="project-filter-select__count">
+                    {labels.projectCount(projects.length)}
+                  </span>
                 </SelectLabel>
                 <SelectItem value={teamFilterValue(team.slug)}>
                   <span className="project-filter-select__item">
-                    <ProjectDot color={null} />
-                    {labels.allOfTeam}
+                    <LayoutGrid className="project-filter-select__icon" aria-hidden />
+                    <span className="project-filter-select__all">{labels.allOfTeam}</span>
                   </span>
                 </SelectItem>
                 {/* A Team with only its default Project: "All" is that Project already. */}
@@ -114,7 +118,8 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
                     <SelectItem key={project.id} value={projectFilterValue(project.id)}>
                       <span className="project-filter-select__item">
                         <ProjectDot color={project.color} />
-                        {project.name}
+                        <span className="project-filter-select__name">{project.name}</span>
+                        {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
                       </span>
                     </SelectItem>
                   ))}
