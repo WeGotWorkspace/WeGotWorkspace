@@ -20,13 +20,15 @@ use Illuminate\Support\Facades\Log;
  *   included ({@see ProjectRegistry::isArchived()} on every read path). The folder moves
  *   to the server-owned `.project-archive` tree with its node ids.
  * - Unarchive clears it and moves the folder back, with a suffix when the name is taken.
- * - Purge works on an archived Project only. It deletes the four collections, moves the
+ * - Purge (organization admins, Admin routes) works on an archived Project only. It deletes the four collections, moves the
  *   folder to the purging member's Drive trash and deletes the rows. Each step is skipped
  *   when already done, so a purge that failed half-way completes on retry. The slug is
  *   free afterwards; while archived it stays reserved.
  *
  * The default Project cannot be archived or purged (409): it goes when the Team goes.
- * All three need the team-admin role for the Project's Team.
+ * Archive and unarchive need the team-admin role for the Project's Team. Purge is for
+ * organization admins only ({@see purgeAsOrganizationAdmin()}); a team admin archives, an
+ * organization admin deletes for good.
  */
 final class ProjectLifecycle
 {
@@ -77,9 +79,20 @@ final class ProjectLifecycle
         return $this->presenter->presentOne($viewer, $project);
     }
 
-    public function purge(string $viewer, string $id): void
+    /**
+     * Delete an archived Project for good: organization admins only, through the Admin
+     * routes. The Project need not be in one of the caller's Teams. `$viewer` is the admin
+     * whose Drive trash receives the folder.
+     */
+    public function purgeAsOrganizationAdmin(string $viewer, string $id): void
     {
-        $project = $this->manageable($viewer, $id, 'purged');
+        $project = Project::query()->find(strtolower($id));
+        if ($project === null) {
+            throw new ApiHttpException(404, 'Project not found.', 'not_found');
+        }
+        if ($project->default_for_group !== null) {
+            throw new ApiHttpException(409, 'The default Project cannot be purged. It goes when the Team goes.', 'default_project');
+        }
         if ($project->archived_at === null) {
             throw new ApiHttpException(409, 'Archive the Project before you purge it.', 'not_archived');
         }

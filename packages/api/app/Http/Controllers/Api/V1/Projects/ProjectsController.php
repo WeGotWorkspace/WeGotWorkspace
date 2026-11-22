@@ -55,13 +55,6 @@ final class ProjectsController
     }
 
     /** Purge: only an archived Project (#819). */
-    public function destroy(Request $request, string $project): JsonResponse
-    {
-        $this->lifecycle->purge($this->username($request), $project);
-
-        return response()->json(['ok' => true]);
-    }
-
     /** @return array<string, mixed> */
     private function payload(Request $request): array
     {

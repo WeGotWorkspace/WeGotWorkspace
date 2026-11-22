@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\Admin\AppUrlController as AdminAppUrlController;
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
+use App\Http\Controllers\Api\V1\Admin\ProjectsController as AdminProjectsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
@@ -265,7 +266,6 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::post('projects', [ProjectsController::class, 'store']);
     Route::get('projects/{project}', [ProjectsController::class, 'show'])->where('project', '[0-9a-z]{26}');
     Route::patch('projects/{project}', [ProjectsController::class, 'update'])->where('project', '[0-9a-z]{26}');
-    Route::delete('projects/{project}', [ProjectsController::class, 'destroy'])->where('project', '[0-9a-z]{26}');
     Route::post('projects/{project}/archive', [ProjectsController::class, 'archive'])->where('project', '[0-9a-z]{26}');
     Route::post('projects/{project}/unarchive', [ProjectsController::class, 'unarchive'])->where('project', '[0-9a-z]{26}');
     Route::put('settings/profile', SettingsProfileController::class);
@@ -454,6 +454,10 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
         ->where('username', '[a-z0-9_-]+');
     Route::delete('users/{username}', [AdminUsersController::class, 'destroy'])
         ->where('username', '[a-z0-9_-]+');
+    // Archived Projects of every Team, and deleting one for good: organization admins only.
+    Route::get('projects', [AdminProjectsController::class, 'index']);
+    Route::delete('projects/{project}', [AdminProjectsController::class, 'destroy'])
+        ->where('project', '[0-9a-z]{26}');
     Route::post('groups', [AdminGroupsController::class, 'store']);
     Route::patch('groups/{group}', [AdminGroupsController::class, 'update'])
         ->where('group', '[a-z0-9_-]+');
