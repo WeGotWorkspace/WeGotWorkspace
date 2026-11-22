@@ -240,11 +240,11 @@ export const GroupsSection: Story = {
     await expect(friends.closest(".collection-sidebar-row")).toHaveClass(
       "collection-sidebar-row--selected",
     );
-    // Each group icon wears its address book's colour.
+    // A group icon carries no colour: address books belong to a Team.
     const icon = friends
       .closest(".collection-sidebar-row")
       ?.querySelector<HTMLElement>(".contacts-group-icon");
-    await expect(icon?.style.getPropertyValue("--collection-row-color")).not.toBe("");
+    await expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("");
     await expect(canvas.queryByRole("button", { name: /^(Collapse|Expand) / })).toBeNull();
     await userEvent.click(
       canvas.getAllByRole("button", { name: defaultContactsLabels.renameGroup })[0]!,

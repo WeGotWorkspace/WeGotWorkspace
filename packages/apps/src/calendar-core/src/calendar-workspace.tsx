@@ -10,7 +10,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { CalendarNoticeBar } from "@/calendar-core/src/calendar-notice-bar";
-import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 import { useTeamAvailability } from "@/calendar-core/src/use-team-availability";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
@@ -282,7 +281,6 @@ export function CalendarWorkspace({
     weekStart: surfaceDisplay.weekStart,
     online,
     busyLabel: L.teamAvailabilityBusy,
-    teamSlug: useSelectedProjectTeamSlug(),
   });
   const editCalendar =
     calendarDialog?.mode === "edit"

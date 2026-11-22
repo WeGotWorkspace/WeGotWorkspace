@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { JmapClient } from "@/lib/jmap-client";
+import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 import { JmapAvailabilityClient } from "@/lib/jmap-client/availability/JmapAvailabilityClient";
 import {
   mergeWeekPeriods,
@@ -90,7 +91,7 @@ export type UseTeamAvailabilityArgs = {
   tickMs?: number;
   /** Title of untitled busy blocks. */
   busyLabel?: string;
-  /** Only this Team's people: the Team of the selected Project (#818). Null lists everyone. */
+  /** Overrides the Team of the selected Project filter (#818); null lists everyone. */
   teamSlug?: string | null;
 };
 
@@ -223,8 +224,11 @@ export function useTeamAvailability({
   now = Date.now,
   tickMs = TEAM_AVAILABILITY_TICK_MS,
   busyLabel = defaultCalendarLabels.teamAvailabilityBusy,
-  teamSlug = null,
+  teamSlug: teamSlugOverride,
 }: UseTeamAvailabilityArgs): TeamAvailabilityState {
+  // Only the people of the selected Project's Team (#818); everyone without a Project filter.
+  const filterTeamSlug = useSelectedProjectTeamSlug();
+  const teamSlug = teamSlugOverride === undefined ? filterTeamSlug : teamSlugOverride;
   const presetMode = preset != null;
   const live = !presetMode && Boolean(source) && Boolean(viewer);
   const [members, setMembers] = useState<CachedTeamMembers | null>(null);
