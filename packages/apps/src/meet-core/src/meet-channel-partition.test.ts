@@ -53,6 +53,7 @@ describe("partitionMeetChannels", () => {
         channel({ id: "m-zebra", name: "Zebra standup", kind: "meeting" }),
       ],
       projects: [],
+      teamChats: [],
     });
   });
 
@@ -73,6 +74,7 @@ describe("partitionMeetChannels", () => {
       shared: [],
       meetings: [],
       projects: [],
+      teamChats: [],
     });
   });
 });
@@ -111,6 +113,7 @@ describe("Project channels (#818)", () => {
       shared: [],
       meetings: [meeting],
       projects: [brand, web],
+      teamChats: [],
     });
   });
 
@@ -120,6 +123,7 @@ describe("Project channels (#818)", () => {
       shared: [],
       meetings: [],
       projects: [web],
+      teamChats: [],
     });
   });
 
@@ -153,10 +157,11 @@ describe("Project channels (#818)", () => {
         "design",
       ),
     ).toEqual({
-      channels: [named2, team],
+      channels: [],
       shared: [],
       meetings: [],
       projects: [web],
+      teamChats: [named2, team],
     });
   });
 

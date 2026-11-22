@@ -1,4 +1,4 @@
-import { CalendarDays, Hash } from "lucide-react";
+import { CalendarDays, Hash, Users } from "lucide-react";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
 import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
@@ -135,7 +135,10 @@ export function MeetSidebarRows({
   channelHasLiveCall,
   channelCallAudioOnly,
   startLabelForChannel,
+  teamChats = false,
 }: {
+  /** Rows of the Team's chats: a Users mark instead of the hash. */
+  teamChats?: boolean;
   channels: MeetChannel[];
   selectedId: string | null;
   onSelect: (channelId: string) => void;
@@ -156,6 +159,8 @@ export function MeetSidebarRows({
             leading={
               channel.kind === "meeting" ? (
                 <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
+              ) : teamChats ? (
+                <Users className="meet-workspace__sidebar-kind-icon" aria-hidden />
               ) : (
                 <Hash className="meet-workspace__sidebar-kind-icon" aria-hidden />
               )

@@ -8,6 +8,8 @@ export type MeetChannelSections = {
   meetings: MeetChannel[];
   /** Project channels (#818): a group of their own, apart from the Team and named channels. */
   projects: MeetChannel[];
+  /** With a Project selected: the chats of its Team, a section of their own. */
+  teamChats: MeetChannel[];
 };
 
 /**
@@ -24,7 +26,8 @@ export function partitionMeetChannels(
 ): MeetChannelSections {
   if (projectId !== null) {
     return {
-      channels: partitionOwnedAndShared(items.filter((item) => isTeamChat(item, teamSlug))).owned,
+      channels: [],
+      teamChats: partitionOwnedAndShared(items.filter((item) => isTeamChat(item, teamSlug))).owned,
       shared: [],
       meetings: [],
       projects: collectionsInProject(items, projectId),
@@ -36,6 +39,7 @@ export function partitionMeetChannels(
   return {
     channels: owned.filter((item) => item.kind === "channel"),
     shared,
+    teamChats: [],
     meetings: owned.filter((item) => item.kind === "meeting"),
     projects: items.filter(isProjectCollection).sort((a, b) => a.name.localeCompare(b.name)),
   };
