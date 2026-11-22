@@ -7,7 +7,7 @@ Technical translation of #2338, a child of Epic #2284 (traffic budget). Spec onl
 
 ## Open product questions (for the product lead — not decided here)
 
-Each has a **default this spec builds in**, so nothing blocks; the answer only changes one constant in the device policy (chunk D).
+Each has a **default this spec builds in**, so nothing blocks. Questions 1, 2, 4 and 5 only change the default of the device policy (chunk D). Question 3 is the setting UI, which is out of scope here. Question 6 is chunk S1 (server); the other chunks read the value from the session and do not wait for it.
 
 1. **Which documents and files are kept offline by default?** All / recent only (for example the newest 100, or the last 90 days) / only the ones a person opened. Today every eligible document is downloaded, newest first, up to 8 MB each.
 2. **Which contacts details are kept offline by default?** Photos for everyone, or only for people shown on screen.
@@ -53,11 +53,12 @@ A lean record is a **view**, not a source of truth. Every record the lean pass s
 - **Projection is standard.** `properties` is part of every JMAP `/get` (RFC 8620 §5.1); the server always adds `id`. A client that omits a property must treat it as **unknown**, never as empty (this is the lean-record rule above).
 - **The server projects after it builds.** `projectProperties` filters the already-built record (`packages/api/app/Services/Jmap/Methods/Concerns/HandlesGetArguments.php:56`), so a projection saves bytes, not server CPU. The 0.7 ms per card is conversion cost; skipping it needs a pushdown (plan.md chunk S2).
 - **Page size.** `maxObjectsInGet` is one constant for every typed get (`packages/api/app/Services/Jmap/JmapCapabilities.php:79`), enforced in `HandlesGetArguments.php:29` and `:50`. Clients already read it from the session (`maxObjectsInGet(this.client.session)`), so a raise needs no client change.
-- **One tab, one schedule.** The detail pass runs under a Web Lock (`withCrossTabLock`, `src/lib/offline/core/cross-tab-lock.ts`) and draws from the browser-wide pace schedule of #2290 (not yet on main when this spec was written; chunk C depends on it). Lean pages are first-download traffic too and take the highest priority class; details sit below them.
+- **One tab, one schedule.** The detail pass runs under a Web Lock (`withCrossTabLock`, `src/lib/offline/core/cross-tab-lock.ts`) and draws from the browser-wide pace schedule of #2290 (not yet on main when this spec was written; chunk B depends on it). Lean pages are first-download traffic too and take the highest priority class; details sit below them.
+- **Measuring needs the harness.** The traffic harness (`playwright.traffic.config.mjs`) is #2292, Epic #2284 chunk H, and is not on main yet; every chunk that quotes cold-start numbers depends on it.
 - **Resumable.** Progress is a cursor in the account meta store (`src/lib/offline/core/meta-store.ts`, as `progressive-sync-runner.ts` already does): a refresh, a second tab or a crash resumes, never restarts, and never re-fetches a record already `full`.
 - **Device policy, not app code.** What the detail pass fetches is read from one per-device policy object (extends `src/lib/offline/core/offline-device-settings.ts`, today `contentSyncEnabled` + `maxFileSizeBytes`). Apps ask the policy `shouldPrefetch(kind, item)`; they never hard-code "all" or "recent".
-- **Tasks are REST, not JMAP** (`packages/apps/src/lib/api/wgw/tasks.ts:125`), so there is no `properties` argument; lean for Tasks means the list endpoint plus a detail GET (chunk H checks what the list already returns).
-- **Docs and Drive are already list-first.** Their bodies are paced, newest first, behind `contentSyncEnabled` and a size cap (`src/lib/offline/docs/docs-body-sync.ts:89`, `src/lib/offline/drive/drive-content-sync.ts:170`). What is missing is one shared queue: the same files are downloaded once per app (measured below).
+- **Tasks are REST, not JMAP** (`packages/apps/src/lib/api/wgw/tasks.ts:125`), so there is no `properties` argument and `maxObjectsInGet` does not apply. `GET /tasks/items` already returns the full `Task` including `description`; that payload is the lean data. The detail is the live-text resource `GET /tasks/items/{taskId}/text` (chunk H).
+- **Docs and Drive are already list-first.** Their bodies are paced, newest first, behind `contentSyncEnabled` and a size cap (`src/lib/offline/docs/docs-body-sync.ts:87`, `:94`, `src/lib/offline/drive/drive-content-sync.ts:170`). Today the two apps keep two queues, so a file both want is downloaded once per app (measured below); chunk F's target is one shared download.
 
 ## Measured starting point (main f39b75fe8, one run each, 2000 contacts and 40 documents)
 
@@ -80,4 +81,4 @@ Source: cold-start notes of the traffic session (not a repository file). The tar
 - Policy flips from "all" to "opened only": the pass stops; already-`full` records stay; nothing is deleted by this change (eviction is a separate decision, open question 4).
 - Device storage full: the pass stops and reports; the lean list keeps working.
 - Server returns 429 or 503: the shared pacer backs off for the whole browser (existing behaviour); a lean page that fails is retried before any detail work.
-- Old client data without a marker: treated as `full` (it was downloaded in full), so upgrade never makes records unwritable.
+- Old client data without a marker: treated as `full` **only for data written by code that stores complete records**. Any lean pass that stores projected records (the contacts-lean-first work, #2297) must write the `lean` marker itself, or ship after chunk A; otherwise its photo-less cards would count as `full` and a whole-card write would drop the photo. Chunk E also re-checks every contact row stored before the helper (a cache-version bump treats rows without photo data as `lean`).
