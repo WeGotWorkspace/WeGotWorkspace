@@ -4,6 +4,7 @@ import {
   driveFolderIcon,
   isProjectFolder,
   isProjectFolderUiPath,
+  projectOfFolder,
   projectsWithFolder,
 } from "@/drive-core/src/drive-project-folder";
 
@@ -14,6 +15,15 @@ const project = (over: Record<string, unknown> = {}): WorkspaceProject =>
     resources: { driveFolderId: "node-1", driveFolderPath: "/groups/eng/Launch" },
     ...over,
   }) as unknown as WorkspaceProject;
+
+describe("projectOfFolder", () => {
+  it("returns the Project (and so its color) whose folder this is", () => {
+    const launch = project({ id: "p1", color: "#3366ff" });
+    expect(projectOfFolder({ id: "node-1" }, [launch])).toBe(launch);
+    expect(projectOfFolder({ id: "other" }, [launch])).toBeNull();
+    expect(projectOfFolder({ id: "node-1" }, [project({ archived: true })])).toBeNull();
+  });
+});
 
 describe("isProjectFolder", () => {
   it("matches by node id or by API path", () => {

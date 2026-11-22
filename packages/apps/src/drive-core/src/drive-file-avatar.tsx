@@ -30,12 +30,18 @@ export function DriveFileAvatar({
   const projectFolders = useProjectFolders();
 
   if (file.kind === "folder") {
-    const Icon = isDrivePickerRootFile(file)
-      ? HardDrive
-      : driveFolderIcon(projectFolders.isProjectFolder(file));
+    const project = isDrivePickerRootFile(file) ? null : projectFolders.projectOfFolder(file);
+    const Icon = isDrivePickerRootFile(file) ? HardDrive : driveFolderIcon(project !== null);
     return (
       <span
-        className={cn("drive-file-avatar drive-file-avatar--folder", sizeClass)}
+        className={cn(
+          "drive-file-avatar drive-file-avatar--folder",
+          project && "drive-file-avatar--project",
+          sizeClass,
+        )}
+        style={
+          project?.color ? ({ "--project-mark-color": project.color } as CSSProperties) : undefined
+        }
         aria-hidden="true"
       >
         <Icon className="drive-folder-tile__icon" />

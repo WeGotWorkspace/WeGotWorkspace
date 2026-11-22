@@ -33,6 +33,24 @@ export function isProjectFolder(
   });
 }
 
+/** The live Project whose Drive folder this is (node id or API path), if any. */
+export function projectOfFolder<T extends ProjectFolderRef & { archived?: boolean }>(
+  node: Partial<Pick<DriveFile, "id" | "apiPath">>,
+  projects: readonly T[],
+): T | null {
+  const apiPath = node.apiPath ? normalizeApiVirtualPath(node.apiPath) : "";
+  return (
+    projectsWithFolder(projects).find(({ resources }) => {
+      if (node.id && resources.driveFolderId && node.id === resources.driveFolderId) return true;
+      return Boolean(
+        apiPath &&
+        resources.driveFolderPath &&
+        normalizeApiVirtualPath(resources.driveFolderPath) === apiPath,
+      );
+    }) ?? null
+  );
+}
+
 /** True when a Drive UI path (`Groups/{team}/{Project}`) is a Project's folder. */
 export function isProjectFolderUiPath(
   uiPath: string,
@@ -53,12 +71,15 @@ export function driveFolderIcon(isProject: boolean, fallback: LucideIcon = Folde
 /** Predicates over the suite's Projects, for the places that render or guard folders. */
 export function useProjectFolders(): {
   isProjectFolder: (node: Partial<Pick<DriveFile, "id" | "apiPath">>) => boolean;
+  /** The Project (for its color) whose folder this is, or null. */
+  projectOfFolder: (node: Partial<Pick<DriveFile, "id" | "apiPath">>) => WorkspaceProject | null;
   isProjectFolderUiPath: (uiPath: string) => boolean;
 } {
   const { projects } = useProjects();
   return useMemo(
     () => ({
       isProjectFolder: (node) => isProjectFolder(node, projects),
+      projectOfFolder: (node) => projectOfFolder(node, projects),
       isProjectFolderUiPath: (uiPath) => isProjectFolderUiPath(uiPath, projects),
     }),
     [projects],
