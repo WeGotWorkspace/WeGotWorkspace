@@ -75,6 +75,7 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
 vi.mock("@/lib/api/wgw/contacts-bootstrap", () => ({
   fetchContactsLiveBootstrap: vi.fn(),
   fetchContactCardPages: vi.fn(),
+  fetchContactCardDetails: vi.fn(async () => undefined),
   fetchContactCardPhotos: vi.fn(async () => undefined),
 }));
 
@@ -192,7 +193,9 @@ describe("contacts first download, saved page by page", () => {
       painted.push(partial.data.cards.length);
     });
 
-    expect(fetchContactCardPages).toHaveBeenCalledWith(["b", "c"], expect.any(Function));
+    expect(fetchContactCardPages).toHaveBeenCalledWith(["b", "c"], expect.any(Function), {
+      lean: true,
+    });
     expect(fetchContactsLiveBootstrap).toHaveBeenCalledTimes(1);
     expect(painted).toEqual([1, 2, 3]);
     expect(loaded.data.cards.map((row) => row.id).sort()).toEqual(["a", "b", "c"]);
@@ -416,7 +419,9 @@ describe("contacts first download, saved page by page", () => {
     await fetchContactsHybridBootstrap();
 
     expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
-    expect(fetchContactCardPages).toHaveBeenCalledWith(["b", "c"], expect.any(Function));
+    expect(fetchContactCardPages).toHaveBeenCalledWith(["b", "c"], expect.any(Function), {
+      lean: true,
+    });
     expect(await cachedIds()).toEqual(["a", "b", "c"]);
   });
 
@@ -870,7 +875,7 @@ describe("one first download per browser", () => {
     await ensureContactsDownloaded();
 
     expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
-    expect(fetchContactCardPages).toHaveBeenCalledWith(["b"], expect.any(Function));
+    expect(fetchContactCardPages).toHaveBeenCalledWith(["b"], expect.any(Function), { lean: true });
     expect(await cachedIds()).toEqual(["a", "b"]);
   });
 });

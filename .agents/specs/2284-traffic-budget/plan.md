@@ -56,6 +56,7 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 3. Chunk K (backup polls off, push as online check) after D (it feeds D's backoff).
 4. Chunk C (idle cadence) after I (idle push 6 s assumes the doorbell).
 5. Chunk L (contacts pages) after F (it uses F's shared schedule and priority).
+6a. Chunk N (lean first download, details second) after L: it reuses L's pages, projection and photo-pass pattern.
 6. Chunk F (browser-wide pacing) before chunk G (governor) so the governor's bulk class has a client-side twin.
 7. Chunk M (suite rule + ratchet) after I, J, K so the ratchet lists the final polls.
 8. Chunk H (harness + docs) last; it measures everything and writes the final numbers.
@@ -174,6 +175,19 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Done when:** #2297 AC met; 2000 contacts offline in under 60 s in the cold-start scenario; Calendar's invitee hook starts or joins the shared cold download instead of calling `listCards`, and its test "asks the server only without any cache" now expects no `listCards` call.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/contacts-core src/calendar-core src/lib/offline`; harness cold start
 - **Parallel with:** G (after F)
+
+### Chunk N: contacts-lean-first (Epic #2284, product choice approved)
+
+- **Skill:** workspace, api (projection test), testing
+- **Inputs:** `path: packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts:26` (the projections); `path: packages/apps/src/lib/offline/contacts/contacts-photo-pass.ts:1` (the resumable, one-tab pass this one copies); `path: packages/apps/src/contacts-core/src/use-contacts-controller.tsx:397` (`canEdit`). Product choice (Wouter): a contact card may be offline first as name and email only (plus the initials avatar) and complete later.
+- **Done when:**
+  - The first download of a device with no copy asks `ContactCard/get` for a lean projection (what the contacts list and Calendar invitee search read: id, uid, kind, name, organizations, emails, members, memberCardIds, addressBookIds, etag, state), in pages of the server's `maxObjectsInGet` (500). A device with a complete copy still refreshes with whole cards, never lean ones.
+  - A second paced pass (`bulk` priority, resumable from a stored marker, one tab per browser through a Web Lock) fetches the rest of every card (phones, addresses, notes, and so on), then the existing photo pass runs. Contact pages keep priority in the shared pace schedule.
+  - **A card that is not complete is never edited or saved from its partial copy.** The stored marker names the partial cards. Opening one while online fetches the whole card at once; until it is in, the card is read-only. Offline, it is read-only and an edit made by any other path (move, group membership, vCard export) fails with a clear error instead of queueing. A full card from any source (open, live sync, refresh) removes the card from the marker.
+  - Cold-start numbers (2000 contacts; a book with 500 rich cards and 250 photos of about 200 KB): time until list and search are usable, time until all details are offline, requests per minute 1/2/3, peak per 10 s, PHP peak memory and server time per page, before and after, one run per case.
+  - Visible UI change listed for the product lead: a partial card shows its name and email read-only until its details arrive; list search finds phone numbers only after the detail pass.
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/lib/offline/contacts src/contacts-core src/calendar-core`; `vendor/bin/phpunit tests/Feature/Jmap/ContactCardProjectedGetTest.php`; the live specs `contacts-first-download.spec.ts`, `contacts-photo-pass.spec.ts`, `contacts-detail-pass.spec.ts`; harness cold start
+- **Parallel with:** none (after L)
 
 ### Chunk M: doorbell-rule (#2298)
 

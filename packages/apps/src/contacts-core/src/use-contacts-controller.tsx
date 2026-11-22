@@ -62,7 +62,6 @@ import type {
 } from "@/lib/models/contacts-types";
 import {
   applyContactAddressBookMoveToCards,
-  canShowContactAddressBookMove,
   contactsViewAfterAddressBookMove,
   groupsToDropOnAddressBookMove,
 } from "@/contacts-core/src/contacts-address-book-move";
@@ -70,12 +69,12 @@ import {
   canCreateGroupInAddressBook,
   contactsAddressBookDisplayName,
   writableGroupAddressBooks,
-  writableMoveAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
 import { useContactsEditAutosave } from "@/contacts-core/src/use-contacts-edit-autosave";
 import { useContactsEditPersist } from "@/contacts-core/src/use-contacts-edit-persist";
 import { useContactsDeleteCards } from "@/contacts-core/src/use-contacts-delete-cards";
+import { useContactsEditRights } from "@/contacts-core/src/use-contacts-edit-rights";
 import { useContactDraftRowAdders } from "@/contacts-core/src/contacts-draft-rows";
 import {
   downloadContactVCard,
@@ -99,6 +98,8 @@ type UseContactsControllerArgs = {
   listRefreshing?: boolean;
   /** Cold download: show the list, but do not apply create, edit, or delete. */
   mutationsLocked?: boolean;
+  /** Cards still partial (lean first download): read-only until their whole card is fetched. */
+  partialCardIds?: readonly string[];
   operations?: ContactsAPIOperations;
   /** Refetch cards after vCard import so group membership resolves against the full list. */
   onRefreshList?: () => void;
@@ -131,6 +132,7 @@ export function useContactsController({
   listLoading = false,
   listRefreshing = false,
   mutationsLocked = false,
+  partialCardIds,
   operations,
   onRefreshList,
   initialView,
@@ -393,30 +395,15 @@ export function useContactsController({
     [createMode, editDraft],
   );
 
-  const canEdit = useMemo(() => {
-    if (mutationsLocked) return false;
-    if (createMode) return true;
-    if (!active) return false;
-    const bookIds = Object.keys(active.addressBookIds ?? {});
-    if (bookIds.length === 0) return Boolean(operations);
-    return bookIds.some((bookId) => {
-      const book = addressBooks.find((row) => row.id === bookId);
-      return book?.myRights?.mayWrite !== false;
+  const { canEdit, activeIsPartial, writableMoveBooks, canMoveActiveContact } =
+    useContactsEditRights({
+      active,
+      createMode,
+      mutationsLocked,
+      operations,
+      addressBooks,
+      partialCardIds,
     });
-  }, [active, addressBooks, createMode, mutationsLocked, operations]);
-
-  const writableMoveBooks = useMemo(() => writableMoveAddressBooks(addressBooks), [addressBooks]);
-
-  const canMoveActiveContact = useMemo(
-    () =>
-      canShowContactAddressBookMove({
-        createMode,
-        canEdit,
-        card: active,
-        writableBookCount: writableMoveBooks.length,
-      }),
-    [active, canEdit, createMode, writableMoveBooks.length],
-  );
 
   const displayName = useMemo(() => {
     if (editDraft && (editMode || createMode)) return draftDisplayName(editDraft, L.unknownContact);
@@ -1367,6 +1354,7 @@ export function useContactsController({
     canRenameGroup,
     canDeleteGroup,
     canEdit,
+    activeIsPartial,
     canMoveActiveContact,
     canSaveCreate,
     writableMoveBooks,

@@ -46,6 +46,7 @@ import {
   removeContactCardFromCache,
   saveContactsColdDownloadPage,
   startContactsColdDownload,
+  startContactsDetailPass,
   startContactsPhotoPass,
   type ContactsColdDownload,
   upsertAddressBookInCache,
@@ -55,7 +56,7 @@ import {
   withStoredPhotos,
   writeSyncToken,
 } from "@/lib/offline/contacts/contacts-offline-store";
-import { runContactsPhotoPass } from "@/lib/offline/contacts/contacts-photo-pass";
+import { runContactsBackgroundPasses } from "@/lib/offline/contacts/contacts-detail-pass";
 import { notifyContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import {
@@ -95,6 +96,54 @@ function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> 
   );
 }
 
+/**
+ * A partial card (stored from a lean first download: name, emails and what the
+ * list needs) lacks fields the server has. Saving it, or a card derived from
+ * it, would drop them, so it is never edited, exported or queued from the
+ * stored copy. This error says why, for an offline caller that cannot fetch
+ * the whole card.
+ */
+export class ContactDetailsNotDownloadedError extends Error {
+  constructor() {
+    super(
+      "This contact's details are not downloaded yet. Go online to open it fully before changing it.",
+    );
+    this.name = "ContactDetailsNotDownloadedError";
+  }
+}
+
+const completions = new Map<string, Promise<ContactCard>>();
+
+/**
+ * Fetches the whole card (with its photo) and stores it, which also takes it
+ * off the partial list. One fetch per card at a time. Offline, or when the
+ * network fails, the card stays partial and this throws
+ * {@link ContactDetailsNotDownloadedError}.
+ */
+export function completeContactCard(
+  username: string,
+  cardId: string,
+  opts?: ContactsMutationOpts,
+): Promise<ContactCard> {
+  const key = `${username}/${cardId}`;
+  const inFlight = completions.get(key);
+  if (inFlight) return inFlight;
+  const run = (async () => {
+    if (!readBrowserOnline()) throw new ContactDetailsNotDownloadedError();
+    try {
+      const card = await getCard(cardId, opts);
+      await upsertContactCardInCache(username, card, false);
+      notifyContactsCacheChanged(username);
+      return card;
+    } catch (error) {
+      if (isFetchNetworkError(error)) throw new ContactDetailsNotDownloadedError();
+      throw error;
+    }
+  })().finally(() => completions.delete(key));
+  completions.set(key, run);
+  return run;
+}
+
 async function resolveCachedCard(
   username: string,
   cardId: string,
@@ -102,6 +151,10 @@ async function resolveCachedCard(
 ): Promise<ContactCard | undefined> {
   const cached = await readContactsBootstrapFromCache(username);
   const fromCache = cached?.data.cards.find((c) => c.id === cardId);
+  // The hard rule: a partial card is replaced by the whole one before anything is built on it.
+  if (fromCache && cached?.partialCardIds?.includes(cardId)) {
+    return completeContactCard(username, cardId, opts);
+  }
   if (fromCache || !readBrowserOnline()) return fromCache;
 
   try {
@@ -221,10 +274,13 @@ export function createHybridContactsOperations(username: string): ContactsAPIOpe
     },
     getCard: async (cardId, opts) => {
       const cached = await readContactsBootstrapFromCache(username);
-      if (cached && !readBrowserOnline()) {
-        const found = cached.data.cards.find((c) => c.id === cardId);
-        if (found) return found;
+      const found = cached?.data.cards.find((c) => c.id === cardId);
+      // Opening a partial card online fetches the whole card at once. Offline
+      // the partial copy is returned for display only (it is never edited).
+      if (found && cached?.partialCardIds?.includes(cardId) && readBrowserOnline()) {
+        return completeContactCard(username, cardId, opts);
       }
+      if (found && !readBrowserOnline()) return found;
       return getCard(cardId, opts);
     },
     createCard: async (body, opts) => {
@@ -395,7 +451,13 @@ async function downloadAllContacts(
   onProgress?: (bootstrap: ContactsBootstrap) => void,
 ): Promise<ContactsBootstrap> {
   let saving: { username: string; id: string } | null = null;
+  // A device with no copy downloads lean cards (name, emails, what the list
+  // needs) in 500-card pages, and completes them in the detail pass. A device
+  // with a copy refreshes with whole cards, so no stored card turns partial.
+  const knownName = readOfflineContactsUsername();
+  const lean = !(knownName && (await hasContactsCopy(knownName)));
   const bootstrap = await fetchContactsLiveBootstrap({
+    lean,
     onProgress,
     onStart: async ({ session, addressBooks, cardIds, groupIds, syncAnchor }) => {
       const name = session.user.username;
@@ -424,7 +486,7 @@ async function downloadAllContacts(
     const books = bookIdsOf(bootstrap.data.addressBooks);
     if (await finishContactsColdDownload(username, savedPages.id, books)) {
       await sendQueuedEditsAfterDownload(username);
-      void runContactsPhotoPass(username);
+      void runContactsBackgroundPasses(username);
     }
     return bootstrap;
   }
@@ -433,8 +495,12 @@ async function downloadAllContacts(
   }
   // The pages were photo-less: keep the stored photos until the photo pass is through.
   const cards = await withStoredPhotos(username, bootstrap.data.cards);
+  // Lean pages (a copy appeared while they downloaded) are partial cards;
+  // whole pages made every card complete.
+  const leanIds = lean ? cards.map((card) => card.id) : [];
   const withPhotos = { ...bootstrap, data: { ...bootstrap.data, cards } };
   await writeContactsBootstrapToCache(username, withPhotos);
+  await startContactsDetailPass(username, leanIds);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
   // Only cards without a photo now: those kept from the stored copy need none.
   await startContactsPhotoPass(
@@ -444,7 +510,7 @@ async function downloadAllContacts(
   if (await discardContactsColdDownload(username)) {
     await sendQueuedEditsAfterDownload(username);
   }
-  void runContactsPhotoPass(username);
+  void runContactsBackgroundPasses(username);
   return withPhotos;
 }
 
@@ -490,23 +556,27 @@ function resumeContactsColdDownload(
       const current = await readContactsColdDownload(username);
       if (!current || current.id !== progress.id) return;
       if (current.remainingCardIds.length > 0) {
-        await fetchContactCardPages(current.remainingCardIds, async (page) => {
-          const kept = await saveContactsColdDownloadPage(
-            username,
-            progress.id,
-            page.cards,
-            page.remainingCardIds,
-          );
-          if (!kept) throw new ColdDownloadTakenOver();
-          for (const card of kept) cards.set(card.id, card);
-          publish(page.remainingCardIds);
-          notifyContactsCacheChanged(username);
-        });
+        await fetchContactCardPages(
+          current.remainingCardIds,
+          async (page) => {
+            const kept = await saveContactsColdDownloadPage(
+              username,
+              progress.id,
+              page.cards,
+              page.remainingCardIds,
+            );
+            if (!kept) throw new ColdDownloadTakenOver();
+            for (const card of kept) cards.set(card.id, card);
+            publish(page.remainingCardIds);
+            notifyContactsCacheChanged(username);
+          },
+          { lean: true },
+        );
       }
       const books = bookIdsOf(saved.data.addressBooks);
       if (await finishContactsColdDownload(username, progress.id, books)) {
         await sendQueuedEditsAfterDownload(username);
-        void runContactsPhotoPass(username);
+        void runContactsBackgroundPasses(username);
       }
     };
     try {
@@ -534,7 +604,7 @@ async function finishContactsDownload(
   const progress = await readContactsColdDownload(username);
   if (!progress) {
     // A photo pass that a reload or a lost connection stopped goes on.
-    void runContactsPhotoPass(username);
+    void runContactsBackgroundPasses(username);
     return saved;
   }
   return resumeContactsColdDownload(username, saved, progress, reportProgress);

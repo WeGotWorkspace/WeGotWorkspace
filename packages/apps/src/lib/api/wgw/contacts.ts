@@ -358,6 +358,11 @@ export type ContactsCardPage = {
 
 /** Load address books and cards from the configured WeGotWorkspace API. */
 export async function fetchContactsLiveBootstrap(options?: {
+  /**
+   * First download of a device with no copy: lean cards (name, emails and what
+   * the list needs) in pages of 500. The caller stores them as partial cards.
+   */
+  lean?: boolean;
   /** First card page (and each later page) so the list can open before the last request. */
   onProgress?: (bootstrap: ContactsAppBootstrap) => void;
   /** Awaited after the query, before the first card page. */
@@ -381,6 +386,7 @@ export async function fetchContactsLiveBootstrap(options?: {
   const { books, cards, contactCardStateAtQuery } = await contacts.getAddressBooksAndCards(
     accountId,
     {
+      lean: options?.lean,
       onQuery: ({ books: queriedBooks, queryIds, contactCardStateAtQuery: cardState, groupIds }) =>
         options?.onStart?.({
           session,
@@ -438,14 +444,40 @@ async function paceNextCardPage(remainingIds: readonly string[]): Promise<void> 
 export async function fetchContactCardPages(
   ids: string[],
   onCardPage: (page: ContactsCardPage) => void | Promise<void>,
+  options?: { lean?: boolean },
 ): Promise<void> {
   const { contacts, accountId } = await connectedContacts();
   // A resumed download already painted its saved pages: every page after the
   // first request is paced.
-  await contacts.getContactCardPages(accountId, ids, async ({ page, remainingIds }) => {
-    await onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds });
-    await paceNextCardPage(remainingIds);
-  });
+  await contacts.getContactCardPages(
+    accountId,
+    ids,
+    async ({ page, remainingIds }) => {
+      await onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds });
+      await paceNextCardPage(remainingIds);
+    },
+    options,
+  );
+}
+
+/**
+ * The detail pass after a lean first download: every property but `media` of
+ * `ids`, one page per request, each request paced as bulk background work.
+ * `onPage` is awaited before the next request.
+ */
+export async function fetchContactCardDetails(
+  ids: string[],
+  onPage: (page: ContactsCardPage) => void | Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const { contacts, accountId } = await connectedContacts();
+  await contacts.getContactCardDetailPages(
+    accountId,
+    ids,
+    ({ page, remainingIds }) =>
+      onPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds }),
+    () => backgroundSyncPacer().acquire(signal, "bulk"),
+  );
 }
 
 /**

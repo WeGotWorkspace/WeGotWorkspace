@@ -21,6 +21,7 @@ export const liveTierSpecs = [
   "calendar-push",
   "calendar-shared-caches",
   "calendar-team-availability-offline",
+  "contacts-detail-pass",
   "contacts-first-download",
   "contacts-first-open-count",
   "contacts-list-windowed",

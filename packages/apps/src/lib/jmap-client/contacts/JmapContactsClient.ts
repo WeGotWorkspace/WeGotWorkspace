@@ -77,6 +77,32 @@ export const CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA = [
   "state",
 ];
 
+/**
+ * The lean first download asks for these only: what the contacts list and
+ * Calendar's invitee search read. Name, organization (the list's second line),
+ * emails, and the group fields (`kind`, `members`, `memberCardIds`) so groups
+ * stay usable; `addressBookIds` places the card in its book; `uid`, `etag` and
+ * `state` identify the version. Everything else arrives in the detail pass.
+ * A card stored from this projection is partial and must never be edited.
+ */
+export const CONTACT_CARD_PROPERTIES_LEAN = [
+  "@type",
+  "version",
+  "uid",
+  "kind",
+  "name",
+  "organizations",
+  "emails",
+  "members",
+  "memberCardIds",
+  "addressBookIds",
+  "etag",
+  "state",
+];
+
+/** Lean first-download pages: the server's maximum, a few hundred bytes a card. */
+export const CONTACT_CARD_LEAN_PAGE_SIZE = DEFAULT_MAX_OBJECTS_IN_GET;
+
 /** The photo pass asks for these: the photos, and the card state they belong to. */
 export const CONTACT_CARD_MEDIA_PROPERTIES = ["media", "state"];
 
@@ -87,6 +113,10 @@ const FULL_CARD_PAGES: CardPaging = { pageSize: CONTACT_CARD_GET_MAX_IDS_PER_REQ
 const PHOTOLESS_CARD_PAGES: CardPaging = {
   pageSize: CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
   properties: CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA,
+};
+const LEAN_CARD_PAGES: CardPaging = {
+  pageSize: CONTACT_CARD_LEAN_PAGE_SIZE,
+  properties: CONTACT_CARD_PROPERTIES_LEAN,
 };
 const MEDIA_PAGES: CardPaging = {
   pageSize: CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
@@ -218,10 +248,38 @@ export class JmapContactsClient {
     accountId: JmapId,
     ids: JmapId[],
     onPage: (page: ContactCardPage) => void | Promise<void>,
+    options?: { lean?: boolean },
   ): Promise<void> {
-    await this.#getContactCardsByIds(accountId, ids, PHOTOLESS_CARD_PAGES, (_all, page) =>
-      onPage(page),
+    await this.#getContactCardsByIds(
+      accountId,
+      ids,
+      options?.lean ? LEAN_CARD_PAGES : PHOTOLESS_CARD_PAGES,
+      (_all, page) => onPage(page),
     );
+  }
+
+  /**
+   * The detail pass after a lean download: every property but `media` of
+   * known ids, in {@link CONTACT_CARD_PHOTOLESS_PAGE_SIZE} pages. `beforePage`
+   * is awaited before every request (the caller's pacing); `onPage` after it.
+   */
+  async getContactCardDetailPages(
+    accountId: JmapId,
+    ids: JmapId[],
+    onPage: (page: ContactCardPage) => void | Promise<void>,
+    beforePage?: () => Promise<void>,
+  ): Promise<void> {
+    const pageSize = Math.min(this.#maxObjectsInGet(), PHOTOLESS_CARD_PAGES.pageSize);
+    for (let index = 0; index < ids.length; index += pageSize) {
+      await beforePage?.();
+      const pageIds = ids.slice(index, index + pageSize);
+      const page = await this.#getContactCardsPage(
+        accountId,
+        pageIds,
+        PHOTOLESS_CARD_PAGES.properties,
+      );
+      await onPage({ page, remainingIds: ids.slice(index + pageSize) });
+    }
   }
 
   /**
@@ -369,6 +427,8 @@ export class JmapContactsClient {
   async getAddressBooksAndCards(
     accountId: JmapId,
     options?: {
+      /** Ask for the lean projection ({@link CONTACT_CARD_PROPERTIES_LEAN}) in 500-card pages. */
+      lean?: boolean;
       /** Awaited after the query batch, before the first card page. */
       onQuery?: (start: {
         books: GetResponse<JmapAddressBook>;
@@ -443,7 +503,7 @@ export class JmapContactsClient {
     const cards = await this.#getContactCardsByIds(
       accountId,
       queryIds,
-      PHOTOLESS_CARD_PAGES,
+      options?.lean ? LEAN_CARD_PAGES : PHOTOLESS_CARD_PAGES,
       (partial, page) =>
         options?.onPage?.({
           books,
