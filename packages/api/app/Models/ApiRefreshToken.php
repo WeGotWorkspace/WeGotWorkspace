@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Crypt;
  * @property int|null $rotated_at
  * @property string|null $successor_hash
  * @property string|null $successor_token
+ * @property int $access_token_epoch
  */
 final class ApiRefreshToken extends Model
 {

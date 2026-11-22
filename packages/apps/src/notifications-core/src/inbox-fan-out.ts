@@ -7,17 +7,11 @@ import type { NotificationInboxList } from "@/lib/models/notifications-types";
  * it got, or that the fetch failed. `state` is the pushed state the fetch
  * answered, so a waiting tab knows the rows are new enough.
  */
-export type InboxMessage = InboxPushMessage | InboxPollMessage;
+export type InboxMessage = InboxPushMessage;
 
 type InboxPushMessage =
   | ({ v: 1; kind: "inbox"; state: string } & NotificationInboxList)
   | { v: 1; kind: "inbox-failed"; state: string };
-
-/**
- * Sent by the one tab that runs the backup poll while push is connected
- * (#2252): the rows its poll got. They answer no pushed state.
- */
-export type InboxPollMessage = { v: 1; kind: "inbox-poll" } & NotificationInboxList;
 
 function hasRows(message: Partial<NotificationInboxList>): boolean {
   return Array.isArray(message.list) && typeof message.unreadCount === "number";
@@ -30,8 +24,8 @@ export function isInboxMessage(value: unknown): value is InboxMessage {
     kind?: unknown;
     state?: unknown;
   } & Partial<NotificationInboxList>;
+  // An `inbox-poll` from a tab on an older build (#2252) has no state and is dropped here.
   if (message.v !== 1) return false;
-  if (message.kind === "inbox-poll") return hasRows(message);
   if (typeof message.state !== "string") return false;
   if (message.kind === "inbox-failed") return true;
   return message.kind === "inbox" && hasRows(message);
@@ -73,7 +67,6 @@ export class InboxFanOut {
   constructor(options: { topic: CrossTabTopic<InboxMessage> }) {
     this.#topic = options.topic;
     this.#topic.subscribe((message) => {
-      if (message.kind === "inbox-poll") return;
       if (message.kind === "inbox") {
         this.#recent.push(message);
         if (this.#recent.length > RECENT_LIMIT) this.#recent.shift();
@@ -97,23 +90,6 @@ export class InboxFanOut {
       { v: 1, kind: "inbox", state, list: payload.list, unreadCount: payload.unreadCount },
       { otherTabsOnly: true },
     );
-  }
-
-  /** Send the rows this tab's backup poll got to the other tabs, which do not poll. */
-  sharePoll(payload: NotificationInboxList): void {
-    this.#topic.publish(
-      { v: 1, kind: "inbox-poll", list: payload.list, unreadCount: payload.unreadCount },
-      { otherTabsOnly: true },
-    );
-  }
-
-  /** Rows another tab's backup poll got. */
-  onPollShared(listener: (payload: NotificationInboxList) => void): () => void {
-    return this.#topic.subscribe((message) => {
-      if (message.kind === "inbox-poll") {
-        listener({ list: message.list, unreadCount: message.unreadCount });
-      }
-    });
   }
 
   /** Tell the waiting tabs this tab's fetch for `state` failed. */

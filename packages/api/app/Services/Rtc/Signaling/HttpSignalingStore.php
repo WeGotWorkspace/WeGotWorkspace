@@ -112,10 +112,12 @@ final class HttpSignalingStore
     }
 
     /**
-     * @param  array{caps?: string, net?: string, access?: string}  $facts
-     *                                                                      Join-time facts: advertised capabilities, measured network class, and
-     *                                                                      (collab only) the computed access right. The access column defaults to
-     *                                                                      `read`, and only this write can widen it.
+     * @param  array{caps?: string, net?: string, access?: string, room_path?: string}  $facts
+     *                                                                                          Join-time facts: advertised capabilities, measured network class, and
+     *                                                                                          (collab only) the computed access right and the canonical room the
+     *                                                                                          right was resolved from. The access column defaults to `read`, and
+     *                                                                                          only this write can widen it. The push heartbeat (#2287) re-checks
+     *                                                                                          the right on `room_path`, since `room` is only its hash.
      */
     public function upsertPeer(
         string $room,
@@ -145,6 +147,10 @@ final class HttpSignalingStore
         if ($this->policy->rosterIncludesAccess) {
             $row['access'] = $facts['access'] ?? RtcPeerAccess::READ;
             $update[] = 'access';
+        }
+        if (isset($facts['room_path'])) {
+            $row['room_path'] = $facts['room_path'];
+            $update[] = 'room_path';
         }
 
         $this->policy->peerModelClass::upsert([$row], ['room', 'peer_id'], $update);
@@ -625,10 +631,11 @@ final class HttpSignalingStore
     /**
      * @return list<object{owner_user: mixed, name: mixed}>
      */
-    public function peersInRoom(string $room, int $limit = 32): array
+    public function peersInRoom(string $room, int $limit = 32, ?int $seenSince = null): array
     {
         return array_values($this->peerQuery()
             ->where('room', $room)
+            ->when($seenSince !== null, static fn ($query) => $query->where('seen_at', '>=', $seenSince))
             ->limit($limit)
             ->get(['owner_user', 'name'])
             ->map(static function ($row): object {

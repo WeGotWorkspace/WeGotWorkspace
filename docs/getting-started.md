@@ -41,6 +41,7 @@ Day-to-day development runs Vite HMR from `packages/apps` and a host or Docker P
 1. Open `/install/` and complete first-run setup (Welcome, Database if needed, first account).
 2. Sign in and connect WebDAV/CalDAV clients to your site URL.
 3. Optional: connect Claude, ChatGPT, or Mistral as you via MCP after an administrator enables **Connected assistants** — [mcp-connect.md](mcp-connect.md). Discovery lives at the origin root (`/.well-known/oauth-*`), not under `/api`.
+4. Optional: turn on two-factor sign-in in **Settings → Security**, and give calendar and contacts apps an app password — [two-factor-authentication.md](two-factor-authentication.md).
 
 ## Updates
 

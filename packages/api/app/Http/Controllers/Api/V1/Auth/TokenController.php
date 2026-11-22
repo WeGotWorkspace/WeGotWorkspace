@@ -26,6 +26,11 @@ final class TokenController
             (string) $request->ip()
         );
 
+        if (isset($payload['status'])) {
+            // Two-factor is on: a challenge, no tokens and no cookie.
+            return response()->json($payload);
+        }
+
         return (new AuthTokenResource($payload))->response()
             ->withCookie($this->refreshCookie->issue($payload['refresh_token']));
     }

@@ -17,7 +17,6 @@ import {
   wgwIsGuestSession,
   wgwFetchPasswordRecoveryEnabled,
   wgwLoginWithCredentials,
-  wgwEstablishMcpWebSession,
   wgwOAuthSessionUrl,
   wgwRequestPasswordReset,
   wgwResetPasswordWithToken,
@@ -834,43 +833,7 @@ describe("login applies refresh expiry metadata", () => {
   });
 });
 
-describe("MCP OAuth web session", () => {
-  it("posts credentials to /oauth/session with the intent token", async () => {
-    const fetchMock = vi.fn(async () => {
-      return new Response(JSON.stringify({ ok: true, redirect: "/oauth/authorize?client_id=a" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    });
-    globalThis.fetch = fetchMock as typeof fetch;
-
-    await expect(wgwEstablishMcpWebSession("bob", "secret", "intent-token")).resolves.toBe(
-      "/oauth/authorize?client_id=a",
-    );
-    expect(fetchMock).toHaveBeenCalledWith("/oauth/session", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username: "bob", password: "secret", intent: "intent-token" }),
-    });
-  });
-
-  it("maps invalid credentials from /oauth/session", async () => {
-    globalThis.fetch = vi.fn(async () => {
-      return new Response(JSON.stringify({ error: "Those credentials were not recognized." }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }) as typeof fetch;
-
-    await expect(wgwEstablishMcpWebSession("bob", "wrong")).rejects.toThrow(
-      "Those credentials were not recognized.",
-    );
-  });
-
+describe("MCP OAuth session URL", () => {
   it("resolves the session URL from an absolute API base", () => {
     vi.stubEnv("VITE_WGW_API_BASE_URL", "https://workspace.example/api/v1");
     expect(wgwOAuthSessionUrl()).toBe("https://workspace.example/oauth/session");

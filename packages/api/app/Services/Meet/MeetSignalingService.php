@@ -597,18 +597,26 @@ final class MeetSignalingService
 
     private function roomHasJoinablePeer(string $room): bool
     {
-        foreach ($this->store->peersInRoom($room) as $row) {
-            $owner = is_string($row->owner_user ?? null) ? $row->owner_user : '';
-            if (str_starts_with($owner, 'u:')) {
-                return true;
-            }
-            $name = is_string($row->name ?? null) ? trim($row->name) : '';
-            if ($name !== '' && ! str_starts_with($name, self::KNOCK_NAME_PREFIX)) {
+        // Peers past the timeout are ghosts until pruned; MeetCallPushState counts the same set.
+        $seenSince = time() - RtcSignalingPolicy::meet()->peerTimeoutSeconds;
+        foreach ($this->store->peersInRoom($room, 32, $seenSince) as $row) {
+            if (self::isJoinablePeer($row->owner_user ?? null, $row->name ?? null)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /** A peer that makes a room joinable: an account, or a named guest who is not knocking. */
+    public static function isJoinablePeer(mixed $owner, mixed $name): bool
+    {
+        if (is_string($owner) && str_starts_with($owner, 'u:')) {
+            return true;
+        }
+        $name = is_string($name) ? trim($name) : '';
+
+        return $name !== '' && ! str_starts_with($name, self::KNOCK_NAME_PREFIX);
     }
 
     private function cleanRoom(mixed $room): string

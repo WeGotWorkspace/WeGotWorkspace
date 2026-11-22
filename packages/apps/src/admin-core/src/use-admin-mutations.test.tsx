@@ -46,6 +46,7 @@ const ACTION_NAMES = [
   "setUserEnabled",
   "deleteUser",
   "updateUserPassword",
+  "resetUserMfa",
   "createGroup",
   "updateGroup",
   "deleteGroup",
