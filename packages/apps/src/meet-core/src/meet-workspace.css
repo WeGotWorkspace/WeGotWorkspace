@@ -1690,15 +1690,3 @@
     @apply duration-150 ease-out transition-[width];
   }
 }
-
-/* A Project channel's icon on a wash of the Project's color. */
-.meet-workspace__project-mark {
-  @apply inline-flex shrink-0 items-center justify-center rounded-md p-1;
-  --meet-project-color: var(--workspace-label-color);
-  color: var(--meet-project-color);
-  background-color: color-mix(in oklab, var(--meet-project-color) 18%, transparent);
-}
-
-.meet-workspace__project-mark > svg {
-  color: inherit;
-}

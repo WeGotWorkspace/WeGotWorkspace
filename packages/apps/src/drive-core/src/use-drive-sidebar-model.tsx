@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FolderKanban, HardDrive } from "lucide-react";
+import { HardDrive } from "lucide-react";
 import { projectsWithFolder } from "@/drive-core/src/drive-project-folder";
 import { driveProjectFolderUiPath } from "@/drive-core/src/use-drive-project-scope";
 import type { WorkspaceProject } from "@/lib/projects/projects-store";
@@ -8,6 +8,7 @@ import { FILES_BROWSER_SIDEBAR_PRIMARY_ORDER } from "@/drive-core/src/files-brow
 import type { ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
+import { ProjectMark } from "@/projects-ui/src/project-mark";
 import { DriveUploadsBadge } from "@/drive-core/src/drive-uploads-badge";
 
 type UseDriveSidebarModelArgs = {
@@ -123,13 +124,15 @@ export function useDriveSidebarModel({
       return path ? [path] : [];
     });
     const inProjectFolder = projectPaths.some((path) => isGroupView(view, path));
-    const groups = sidebarGroupRoots.map((root) => ({
-      label: root.label,
-      selected: isGroupView(view, root.path) && !inProjectFolder,
-      onClick: () => selectView({ type: "folder", path: root.path }),
-      icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
-      ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
-    }));
+    const groups = sidebarGroupRoots
+      .filter((root) => !projectPaths.includes(root.path))
+      .map((root) => ({
+        label: root.label,
+        selected: isGroupView(view, root.path) && !inProjectFolder,
+        onClick: () => selectView({ type: "folder", path: root.path }),
+        icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
+        ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
+      }));
     return hidePersonalDrive ? groups : [personal, ...groups];
   }, [
     hidePersonalDrive,
@@ -156,13 +159,7 @@ export function useDriveSidebarModel({
         description: manyTeams ? project.teamName : undefined,
         selected: isGroupView(view, path),
         onClick: () => selectView({ type: "folder", path }),
-        icon: (
-          <FolderKanban
-            className="size-3.5"
-            style={project.color ? { color: project.color } : undefined}
-            aria-hidden
-          />
-        ),
+        icon: <ProjectMark color={project.color} />,
         ...sidebarDropZoneProps(path, (ids) => commitMoveToFolder(ids, path)),
       } satisfies MenuItemProps;
     });

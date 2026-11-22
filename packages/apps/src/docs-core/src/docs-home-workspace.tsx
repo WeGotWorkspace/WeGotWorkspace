@@ -25,6 +25,8 @@ import {
   type DocsHomeView,
 } from "@/docs-core/src/docs-home-shared";
 import { useDocsProjectScope } from "@/docs-core/src/use-docs-project-scope";
+import { useProjects } from "@/lib/projects/projects-store";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import { docsPersonalDrivePathPrefix } from "@/docs-core/src/docs-home-drives";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
@@ -389,11 +391,15 @@ export function DocsHomeWorkspace({
   const headerTitle = docsHomeHeaderTitle(view, labels, projectDrives);
   useDocumentTitle(headerTitle);
 
-  const { primaryItems, driveItems } = useDocsHomeSidebarModel({
+  const { projects } = useProjects();
+  const selectedProjectIds = useSelectedProjectIds();
+  const { primaryItems, driveItems, projectItems } = useDocsHomeSidebarModel({
     labels,
     drives: projectDrives,
     view,
     selectView,
+    projects,
+    selectedProjectIds,
   });
 
   const handleOpenFile = useCallback(
@@ -463,6 +469,8 @@ export function DocsHomeWorkspace({
             primaryItems={primaryItems}
             driveItems={driveItems}
             drivesSectionLabel={labels.homeDrivesSection}
+            projectItems={projectItems}
+            projectsSectionLabel={labels.homeProjectsSection}
           />
         }
         main={
