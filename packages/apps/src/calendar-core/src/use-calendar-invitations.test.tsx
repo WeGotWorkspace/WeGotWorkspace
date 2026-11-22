@@ -4,7 +4,7 @@ import {
   CALENDAR_BACKGROUND_POLL_MS,
   CALENDAR_PUSH_POLL_MS,
 } from "@/calendar-core/src/calendar-refresh";
-import { useJmapPushConnected } from "@/lib/api/wgw/use-jmap-state-change";
+import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
@@ -17,6 +17,7 @@ import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars/cale
 
 vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
   useJmapPushConnected: vi.fn(() => false),
+  useJmapStateChange: vi.fn(),
 }));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
@@ -82,6 +83,39 @@ describe("useCalendarInvitations", () => {
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes invitations when a CalendarEvent state is pushed, before the slow poll", async () => {
+    vi.mocked(useJmapPushConnected).mockReturnValue(true);
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    const [types, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    expect(types).toEqual(["CalendarEvent"]);
+    await act(async () => {
+      await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a pushed state while the document is hidden", async () => {
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    await act(async () => {
+      await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("skips background polls while the document is hidden", async () => {

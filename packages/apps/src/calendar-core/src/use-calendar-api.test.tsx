@@ -4,6 +4,7 @@ import { createCalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { useCalendarAPI } from "./use-calendar-api";
 import type { CalendarApiSource } from "./calendar-api-source";
+import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 
 const bootstrap = createCalendarAppBootstrap();
 bootstrap.session = {
@@ -127,7 +128,24 @@ describe("useCalendarAPI applyBootstrapRefresh", () => {
     setIntervalSpy.mockRestore();
   });
 
-  it("a tab that turns visible re-reads the cache while push is connected (#2287)", async () => {
+  it("a tab that turns visible re-reads the cache while push is connected and live inbound runs (#2287)", async () => {
+    mockPushConnected.mockReturnValue(true);
+    const source: CalendarApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+    renderHook(() => useCalendarAPI(source, { liveInbound: true }));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(mockPatchBootstrap).toHaveBeenCalledTimes(1));
+    expect(mockLoadBootstrap).not.toHaveBeenCalled();
+    expect(mockFlush).not.toHaveBeenCalled();
+  });
+
+  it("a tab without live inbound keeps the full bootstrap on visible while push is connected", async () => {
     mockPushConnected.mockReturnValue(true);
     const source: CalendarApiSource = {
       loadBootstrap: mockLoadBootstrap,
@@ -139,9 +157,45 @@ describe("useCalendarAPI applyBootstrapRefresh", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    await waitFor(() => expect(mockPatchBootstrap).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockLoadBootstrap).toHaveBeenCalledTimes(1));
+  });
+
+  it("refreshes stale subscriptions after the cache paint and reloads when one was refreshed", async () => {
+    mockPushConnected.mockReturnValue(true);
+    const refreshStaleCalendarSubscriptions = vi.fn(async () => true);
+    const source: CalendarApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () =>
+        ({ refreshStaleCalendarSubscriptions }) as unknown as CalendarAPIOperations,
+    };
+    renderHook(() => useCalendarAPI(source, { liveInbound: true }));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(mockLoadBootstrap).toHaveBeenCalledTimes(1));
+    expect(refreshStaleCalendarSubscriptions).toHaveBeenCalledTimes(1);
+    expect(mockPatchBootstrap).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not reload when no subscription was stale", async () => {
+    mockPushConnected.mockReturnValue(true);
+    const refreshStaleCalendarSubscriptions = vi.fn(async () => false);
+    const source: CalendarApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () =>
+        ({ refreshStaleCalendarSubscriptions }) as unknown as CalendarAPIOperations,
+    };
+    renderHook(() => useCalendarAPI(source, { liveInbound: true }));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(refreshStaleCalendarSubscriptions).toHaveBeenCalledTimes(1));
     expect(mockLoadBootstrap).not.toHaveBeenCalled();
-    expect(mockFlush).not.toHaveBeenCalled();
+    expect(mockPatchBootstrap).toHaveBeenCalledTimes(1);
   });
 
   it("a tab that turns visible runs a full bootstrap while push is down", async () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useJmapPushConnected } from "@/lib/api/wgw/use-jmap-state-change";
+import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import {
   CALENDAR_BACKGROUND_POLL_MS,
   CALENDAR_PUSH_POLL_MS,
@@ -135,7 +135,8 @@ export function useCalendarInvitations(
     };
 
     // Invitations keep their own interval, slower while push is connected (#2287);
-    // event `/changes` is inbound-only.
+    // a pushed `CalendarEvent` state refreshes them (below), as delivering an
+    // invitation writes the invitee's event copy.
     const intervalId = window.setInterval(
       runSilentRefresh,
       pushConnected ? CALENDAR_PUSH_POLL_MS : CALENDAR_BACKGROUND_POLL_MS,
@@ -151,6 +152,15 @@ export function useCalendarInvitations(
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [busy, operations?.listSchedulingNotifications, pushConnected, refreshIfIdle]);
+
+  useJmapStateChange(["CalendarEvent"], () => {
+    if (!operations?.listSchedulingNotifications || busy) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    return refreshIfIdle().then(
+      () => true,
+      () => false,
+    );
+  });
 
   const dropNotifications = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
