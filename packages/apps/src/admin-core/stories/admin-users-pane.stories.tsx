@@ -9,6 +9,7 @@ import {
   useAdminPaneStoryController,
 } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
+import { createMockAdminProjectOperations } from "@/admin-core/src/admin-projects-operations";
 import { AppToaster } from "@/ui/sonner";
 
 function UsersPaneHarness() {
@@ -50,6 +51,7 @@ function UsersPaneHarness() {
     }),
     [],
   );
+  const projectOperations = useMemo(() => createMockAdminProjectOperations(), []);
   const controller = useAdminPaneStoryController(dataOverride);
   const groupMemberCount = buildGroupMemberCountFromController(controller);
   const [lastAction, setLastAction] = useState<string | null>(null);
@@ -68,6 +70,7 @@ function UsersPaneHarness() {
         onNewGroup={() => setLastAction("new-group")}
         onEditGroup={(groupId) => setLastAction(`edit-group:${groupId}`)}
         onDeleteGroup={() => setLastAction("delete-group")}
+        projectOperations={projectOperations}
       />
       <UserDialog
         open={Boolean(editingUser)}
