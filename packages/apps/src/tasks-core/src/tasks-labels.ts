@@ -340,7 +340,7 @@ export const defaultTasksLabels: TasksUILabels = {
   changeListOwnerConfirmToGroup: (groupName) =>
     `This list will move to ${groupName}. Tasks and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeListOwnerConfirmToPersonal:
-    "This list will move to your personal lists. Tasks and existing shares stay. Other team members lose access unless they have a share.",
+    "This list will move to your personal lists. Tasks and existing shares stay. Other Team members lose access unless they have a share.",
   changeListOwnerConfirm: workspaceLabels.sharing.changeOwner,
   createProjectButton: workspaceLabels.dialog.create,
   saveProjectButton: workspaceLabels.dialog.save,

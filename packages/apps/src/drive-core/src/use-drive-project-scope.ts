@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { driveGroupUiPath, uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import type { ViewKey } from "@/lib/files/drive-models";
-import { teamSlugOfFilter } from "@/lib/projects/project-filter";
+import { isPersonalFilter, teamSlugOfFilter } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
 import { useProjects, type WorkspaceProject } from "@/lib/projects/projects-store";
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
@@ -51,9 +51,12 @@ export function useDriveProjectScope({
     ? project.name
     : (groupRoots.find((root) => root.path === folderPath)?.label ?? teamSlug ?? "");
 
+  // "Personal": only the user's own drive; no Team Drives, no Project folders.
+  const personal = isPersonalFilter(filter);
+  const targetPath = personal ? "My Drive" : folderPath;
   const scopedRoots = useMemo(
-    () => (folderPath ? [{ path: folderPath, label }] : groupRoots),
-    [folderPath, groupRoots, label],
+    () => (personal ? [] : folderPath ? [{ path: folderPath, label }] : groupRoots),
+    [folderPath, groupRoots, label, personal],
   );
 
   // Open the folder when the Project changes, and on entry when Drive opens on Home.
@@ -62,12 +65,12 @@ export function useDriveProjectScope({
   viewRef.current = view;
   useEffect(() => {
     const first = shownForRef.current === undefined;
-    if (shownForRef.current === folderPath) return;
-    shownForRef.current = folderPath;
-    if (!folderPath || isInside(viewRef.current, folderPath)) return;
+    if (shownForRef.current === targetPath) return;
+    shownForRef.current = targetPath;
+    if (!targetPath || isInside(viewRef.current, targetPath)) return;
     if (first && viewRef.current.type !== "all") return;
-    selectView({ type: "folder", path: folderPath });
-  }, [folderPath, selectView]);
+    selectView({ type: "folder", path: targetPath });
+  }, [targetPath, selectView]);
 
   return { groupRoots: scopedRoots, hidePersonalDrive: folderPath !== null };
 }

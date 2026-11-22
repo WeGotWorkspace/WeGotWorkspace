@@ -22,7 +22,7 @@ export const teamMembersLabels = {
   removeAction: "Remove",
   leaveTitle: (team: string) => `Leave ${team}?`,
   leaveConfirm:
-    "You lose access to everything this Team owns, in every app. Another team admin or an organization admin can add you again.",
+    "You lose access to everything this Team owns, in every app. Another Team admin or an organization admin can add you again.",
   leaveAction: "Leave",
   cancel: "Cancel",
   done: "Done",

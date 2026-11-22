@@ -1,4 +1,5 @@
 import { partitionOwnedAndShared } from "@/collection-sidebar/src/collection-sidebar-partition";
+import { isPersonalScope, PERSONAL_PROJECT_ID } from "@/lib/projects/project-filter";
 import { collectionsInProject, isProjectCollection } from "@/lib/projects/project-match";
 import type { MeetChannel } from "@/lib/models/meet-types";
 
@@ -24,7 +25,7 @@ export function partitionMeetChannels(
   projectIds: string | readonly string[] | null = null,
   teamSlug: string | null = null,
 ): MeetChannelSections {
-  if (projectIds !== null) {
+  if (projectIds !== null && !isPersonalScope(projectIds)) {
     return {
       channels: [],
       shared: [],
@@ -40,15 +41,21 @@ export function partitionMeetChannels(
   const { owned, shared } = partitionOwnedAndShared(
     items.filter((item) => !isProjectCollection(item) && !isTeamChat(item)),
   );
+  // "Personal": the user's own chats and meetings; Team chats and Project channels are out.
+  const personal = isPersonalScope(projectIds);
   return {
     channels: owned.filter((item) => item.kind === "channel"),
     shared,
-    teamChats: partitionOwnedAndShared(items.filter(isTeamChat)).owned.sort(
-      (x, y) =>
-        x.name.localeCompare(y.name) || (x.groupSlug ?? "").localeCompare(y.groupSlug ?? ""),
-    ),
+    teamChats: personal
+      ? []
+      : partitionOwnedAndShared(items.filter(isTeamChat)).owned.sort(
+          (x, y) =>
+            x.name.localeCompare(y.name) || (x.groupSlug ?? "").localeCompare(y.groupSlug ?? ""),
+        ),
     meetings: owned.filter((item) => item.kind === "meeting"),
-    projects: items.filter(isProjectCollection).sort((a, b) => a.name.localeCompare(b.name)),
+    projects: personal
+      ? []
+      : items.filter(isProjectCollection).sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
 
@@ -69,8 +76,7 @@ export function meetSelectionUnderProject(
 ): string | null {
   if (projectIds === null || selectedId === null) return selectedId;
   const ids = typeof projectIds === "string" ? [projectIds] : projectIds;
-  const inScope = (channel: MeetChannel) =>
-    typeof channel.projectId === "string" && ids.includes(channel.projectId);
+  const inScope = (channel: MeetChannel) => ids.includes(channel.projectId ?? PERSONAL_PROJECT_ID);
   const selected = channels.find((channel) => channel.id === selectedId);
   if (
     !selected ||

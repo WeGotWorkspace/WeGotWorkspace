@@ -120,7 +120,7 @@ export const meetLabels = {
   sidebarChannels: "My channels",
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   sidebarProjects: "Projects",
-  sidebarTeamChats: "Team chats",
+  sidebarTeamChats: "Team Chats",
   sidebarDirectMessages: "Direct messages",
   sidebarMeetings: "Today’s meetings",
   upcomingStartsInOneMinute: "starts in 1 minute",
@@ -168,7 +168,7 @@ export const meetLabels = {
   delete: workspaceLabels.dialog.delete,
   shareChannelSectionTitle: "People with access",
   shareChannelSectionHint:
-    "Share this channel with workspace people or teams. Email guests cannot be added.",
+    "Share this channel with workspace people or Teams. Email guests cannot be added.",
   shareChannelAddPlaceholder: sharePrincipalCopy.addPlaceholder,
   shareChannelSearchEmpty: noPeopleOrTeamsFoundCopy,
   shareChannelOffline: "Sharing needs a connection.",

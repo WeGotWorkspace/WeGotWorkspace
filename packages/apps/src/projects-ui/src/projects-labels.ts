@@ -2,6 +2,7 @@
 export const projectsLabels = {
   filterLabel: "Project",
   allProjects: "All Teams",
+  personal: "Personal",
   allOfTeam: (team: string) => `All in ${team}`,
   teamAll: (team: string) => `${team} · All`,
   createProject: "Create Project",
@@ -30,7 +31,7 @@ export const projectsLabels = {
   emptyState: "You are in no Project yet.",
   loadFailed: "Could not load the Projects",
   defaultTag: "Default",
-  readOnlyHint: "Only a team admin can add or change Projects.",
+  readOnlyHint: "Only a Team admin can add or change Projects.",
   nameOf: (name: string) => `Name of ${name}`,
   colorOf: (name: string) => `Color of ${name}`,
   archive: "Archive",

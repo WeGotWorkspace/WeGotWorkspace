@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { DocsHomeDrive } from "@/docs-core/src/docs-home-drives";
 import type { DocsHomeView } from "@/docs-core/src/docs-home-shared";
-import { teamSlugOfFilter } from "@/lib/projects/project-filter";
+import { isPersonalFilter, teamSlugOfFilter } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
 import { useProjects, type WorkspaceProject } from "@/lib/projects/projects-store";
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
@@ -41,24 +41,32 @@ export function useDocsProjectScope({
       teamSlug ??
       "");
 
-  const scoped = useMemo(
-    () => (prefix ? [{ key: prefix, label, pathPrefix: prefix }] : drives),
-    [drives, label, prefix],
+  // "Personal": only the user's own drive, no Team Drives.
+  const personal = isPersonalFilter(filter);
+  const personalDrives = useMemo(
+    () => drives.filter((drive) => !drive.pathPrefix?.toLowerCase().startsWith("groups/")),
+    [drives],
   );
+  const scoped = useMemo(
+    () =>
+      personal ? personalDrives : prefix ? [{ key: prefix, label, pathPrefix: prefix }] : drives,
+    [drives, label, personal, personalDrives, prefix],
+  );
+  const targetPrefix = personal ? (personalDrives[0]?.pathPrefix ?? null) : prefix;
 
   const shownForRef = useRef<string | null | undefined>(undefined);
   const viewRef = useRef(view);
   viewRef.current = view;
   useEffect(() => {
     const first = shownForRef.current === undefined;
-    if (shownForRef.current === prefix) return;
-    shownForRef.current = prefix;
-    if (!prefix) return;
+    if (shownForRef.current === targetPrefix) return;
+    shownForRef.current = targetPrefix;
+    if (!targetPrefix) return;
     const current = viewRef.current;
-    if (current.type === "drive" && current.pathPrefix === prefix) return;
+    if (current.type === "drive" && current.pathPrefix === targetPrefix) return;
     if (first && current.type !== "all") return;
-    selectView({ type: "drive", pathPrefix: prefix });
-  }, [prefix, selectView]);
+    selectView({ type: "drive", pathPrefix: targetPrefix });
+  }, [targetPrefix, selectView]);
 
   return scoped;
 }

@@ -1,4 +1,5 @@
 import {
+  PERSONAL_PROJECT_ID,
   projectIdOfFilter,
   teamSlugOfFilter,
   type ProjectFilterValue,
@@ -28,12 +29,13 @@ export function selectedTeamSlug(
 
 /**
  * The ids of the Projects the filter keeps: one for a Project, every Project of the Team
- * for a Team filter, null for "All Projects" (no narrowing).
+ * for a Team filter, null for "All Teams" (no narrowing), and the personal id for "Personal".
  */
 export function projectIdsInScope(
   filter: ProjectFilterValue,
   projects: readonly WorkspaceProject[],
 ): string[] | null {
+  if (filter === "personal") return [PERSONAL_PROJECT_ID];
   const projectId = projectIdOfFilter(filter);
   if (projectId !== null) return [projectId];
   const teamSlug = teamSlugOfFilter(filter);
@@ -72,8 +74,9 @@ export function collectionsInProject<T extends { projectId?: string | null }>(
 ): T[] {
   if (scope === null) return [...collections];
   const ids = typeof scope === "string" ? [scope] : scope;
-  return collections.filter(
-    (collection) => typeof collection.projectId === "string" && ids.includes(collection.projectId),
+  // A collection without a Project reads as the personal id.
+  return collections.filter((collection) =>
+    ids.includes(collection.projectId ?? PERSONAL_PROJECT_ID),
   );
 }
 

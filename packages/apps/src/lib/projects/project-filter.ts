@@ -4,12 +4,20 @@
  * `t:<teamSlug>` narrows to everything of one Team: its default Project and all others.
  * Other tabs follow through the `storage` event; this tab through a custom event.
  */
-export type ProjectFilterValue = "all" | `p:${string}` | `t:${string}`;
+export type ProjectFilterValue = "all" | "personal" | `p:${string}` | `t:${string}`;
+
+/**
+ * `personal` keeps what belongs to no Project: the user's own calendars, lists, notebooks,
+ * chats and drive. In a scope list it is the empty project id, which a collection without
+ * a Project carries ({@link PERSONAL_PROJECT_ID}).
+ */
+export const PERSONAL_PROJECT_ID = "";
 
 export const PROJECT_FILTER_STORAGE_KEY = "wgw.ui.projectFilter";
 const CHANGE_EVENT = "wgw-project-filter";
 
 export function parseProjectFilter(raw: string | null | undefined): ProjectFilterValue {
+  if (raw === "personal") return "personal";
   if (typeof raw === "string" && (raw.startsWith("p:") || raw.startsWith("t:")) && raw.length > 2) {
     return raw as ProjectFilterValue;
   }
@@ -22,6 +30,17 @@ export function projectFilterValue(projectId: string | null): ProjectFilterValue
 
 export function teamFilterValue(teamSlug: string): ProjectFilterValue {
   return `t:${teamSlug}`;
+}
+
+export function isPersonalFilter(value: ProjectFilterValue): boolean {
+  return value === "personal";
+}
+
+/** True for the scope list `personal` produces: what belongs to no Project. */
+export function isPersonalScope(scope: string | readonly string[] | null): boolean {
+  return (
+    scope !== null && (typeof scope === "string" ? [scope] : scope).includes(PERSONAL_PROJECT_ID)
+  );
 }
 
 /** The Project id a single-Project filter narrows to; null for "All Projects" and for a Team. */
@@ -79,7 +98,7 @@ export function effectiveProjectFilter(
   knownIds: ReadonlySet<string> | null,
   knownTeamSlugs: ReadonlySet<string> | null = null,
 ): ProjectFilterValue {
-  if (value === "all" || knownIds === null) return value;
+  if (value === "all" || value === "personal" || knownIds === null) return value;
   if (value.startsWith("t:")) {
     return knownTeamSlugs === null || knownTeamSlugs.has(value.slice(2)) ? value : "all";
   }

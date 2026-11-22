@@ -20,6 +20,7 @@ import {
   meetSelectionUnderProject,
   partitionMeetChannels,
 } from "@/meet-core/src/meet-channel-partition";
+import { isPersonalScope } from "@/lib/projects/project-filter";
 import {
   useSelectedProjectIds,
   useSelectedProjectTeamSlug,
@@ -647,7 +648,7 @@ export function MeetWorkspace({
             channelCallAudioOnly={channelCallAudioOnly}
             meetingStartLabel={meetingStartLabel}
             onCreateChannel={() => dialogs.openCreate("channel")}
-            canCreateChannel={projectIds === null}
+            canCreateChannel={projectIds === null || isPersonalScope(projectIds)}
             onCreateMeeting={() => dialogs.setCreateMeetingOpen(true)}
             onJoinUpcomingMeeting={onJoinUpcomingMeeting}
             onEditUpcomingMeeting={calendar ? dialogs.openEditLeftover : undefined}

@@ -406,7 +406,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   changeCalendarOwnerConfirmToGroup: (groupName) =>
     `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeCalendarOwnerConfirmToPersonal:
-    "This calendar will move to your personal calendars. Events and existing shares stay. Other team members lose access unless they have a share.",
+    "This calendar will move to your personal calendars. Events and existing shares stay. Other Team members lose access unless they have a share.",
   changeCalendarOwnerConfirm: workspaceLabels.sharing.changeOwner,
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",
