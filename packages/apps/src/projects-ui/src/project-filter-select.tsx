@@ -96,7 +96,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
           <SelectItem value="all">{labels.allProjects}</SelectItem>
           {groups.map(({ team, projects }) => (
             <Fragment key={team.slug}>
-              <SelectSeparator />
+              <SelectSeparator className="project-filter-select__separator" />
               <SelectGroup>
                 <SelectLabel className="project-filter-select__team">
                   {team.displayName}
@@ -121,7 +121,7 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
               </SelectGroup>
             </Fragment>
           ))}
-          {canManage ? <SelectSeparator /> : null}
+          {canManage ? <SelectSeparator className="project-filter-select__separator" /> : null}
           {canManage ? (
             <SelectItem value={MANAGE_VALUE}>
               <span className="project-filter-select__item">
