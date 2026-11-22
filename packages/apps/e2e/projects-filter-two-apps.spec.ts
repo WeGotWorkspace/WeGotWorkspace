@@ -3,7 +3,7 @@
 // A team admin creates a Project over REST (creating happens in Settings). The
 // spec picks it in the sidebar's Project filter; Calendar then lists only its
 // calendar and Tasks only its task list. The choice survives a reload and shows in a second
-// tab; "All Teams & Projects" brings the other collections back. Everything the spec
+// tab; "All Teams" brings the other collections back. Everything the spec
 // creates is removed again (archive, then purge, over REST; the purge is the organization admin's Admin route).
 import { openCalendarWeek } from "./helpers/calendar-live";
 import { expect, test, type Page } from "./helpers/live-test";
@@ -85,7 +85,7 @@ test.describe("Project filter across two apps", () => {
   }) => {
     await openCalendarWeek(page);
     await expect(filterTrigger(page)).toBeVisible();
-    await expect(filterTrigger(page)).toContainText("All Teams & Projects");
+    await expect(filterTrigger(page)).toContainText("All Teams");
 
     // Create the Project over REST, then pick it in the filter menu.
     const created = await api(OWNER, "POST", "/projects", { teamSlug: TEAM, name });
@@ -117,9 +117,9 @@ test.describe("Project filter across two apps", () => {
     await expectSection(second, "My calendars", [name]);
     await second.close();
 
-    // "All Teams & Projects" brings the other collections back.
-    await pickFilter(page, "All Teams & Projects");
-    await expect(filterTrigger(page)).toContainText("All Teams & Projects");
+    // "All Teams" brings the other collections back.
+    await pickFilter(page, "All Teams");
+    await expect(filterTrigger(page)).toContainText("All Teams");
     expect([null, "all"]).toContain(await storedFilter(page));
     await expectSectionBeyond(page, "My lists", name);
     await openCalendarWeek(page);

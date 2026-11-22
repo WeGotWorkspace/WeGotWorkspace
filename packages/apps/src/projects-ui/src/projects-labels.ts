@@ -1,7 +1,7 @@
 /** Copy for the Project filter and the Create Project dialog (#818). */
 export const projectsLabels = {
   filterLabel: "Project",
-  allProjects: "All Teams & Projects",
+  allProjects: "All Teams",
   allOfTeam: (team: string) => `All in ${team}`,
   teamAll: (team: string) => `${team} · All`,
   createProject: "Create Project",

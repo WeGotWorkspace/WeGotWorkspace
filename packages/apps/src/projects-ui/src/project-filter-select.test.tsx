@@ -41,11 +41,11 @@ describe("ProjectFilterSelect", () => {
   it("shows All Projects, then per Team its All and the other Projects", async () => {
     renderSelect(await loadedStore());
     const trigger = screen.getByRole("combobox", { name: "Project" });
-    expect(trigger.textContent).toContain("All Teams & Projects");
+    expect(trigger.textContent).toContain("All Teams");
     fireEvent.keyDown(trigger, { key: "Enter" });
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(options).toEqual([
-      "All Teams & Projects",
+      "All Teams",
       "All in Design",
       "Design ProjectDefault",
       "Website relaunch",
@@ -59,7 +59,7 @@ describe("ProjectFilterSelect", () => {
     fireEvent.keyDown(screen.getByRole("combobox", { name: "Project" }), { key: "Enter" });
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(options).toEqual([
-      "All Teams & Projects",
+      "All Teams",
       "All in Sales",
       "Sales ProjectDefault",
       "Website relaunch",
