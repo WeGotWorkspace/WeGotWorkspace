@@ -37,7 +37,7 @@ function ProjectDot({ color }: { color: string | null }) {
 
 /**
  * The suite's Project filter (#818), at the foot of every app sidebar: "All Projects",
- * then each Team's Projects (its default Project first), then "Create Project" for a
+ * then each Team with "All" (its default Project) and its other Projects, then "Manage Projects" for a
  * team admin. Renders nothing until the Projects have loaded (mock data, Storybook).
  */
 export function ProjectFilterSelect({ store = projectsStore() }: { store?: ProjectsStore }) {

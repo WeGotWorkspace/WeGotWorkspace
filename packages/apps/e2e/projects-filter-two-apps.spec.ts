@@ -1,10 +1,10 @@
 // One Project switch across two apps (#818, chunk C3 of the Projects on Teams plan).
 //
-// A team admin creates a Project from the sidebar's Project filter. The new
-// Project becomes the selected filter; Calendar then lists only its calendar and
-// Tasks only its task list. The choice survives a reload and shows in a second
+// A team admin creates a Project over REST (creating happens in Settings). The
+// spec picks it in the sidebar's Project filter; Calendar then lists only its
+// calendar and Tasks only its task list. The choice survives a reload and shows in a second
 // tab; "All Projects" brings the other collections back. Everything the spec
-// creates is removed again (archive, then purge, over REST).
+// creates is removed again (archive, then purge, over REST; the purge is the organization admin's Admin route).
 import { openCalendarWeek } from "./helpers/calendar-live";
 import { expect, test, type Page } from "./helpers/live-test";
 import { api, OWNER } from "./helpers/live-matrix";
@@ -73,7 +73,7 @@ test.describe("Project filter across two apps", () => {
     const mine = (list.json as { list: ProjectRow[] }).list.filter((p) => p.name === name);
     for (const project of mine) {
       await api(OWNER, "POST", `/projects/${project.id}/archive`);
-      const purged = await api(OWNER, "DELETE", `/projects/${project.id}`);
+      const purged = await api(OWNER, "DELETE", `/admin/projects/${project.id}`);
       expect(purged.status, "purge the spec's Project").toBeLessThan(300);
     }
     if (appointedAdmin) await api(OWNER, "DELETE", `/teams/${TEAM}/admins/${OWNER}`);
@@ -87,12 +87,12 @@ test.describe("Project filter across two apps", () => {
     await expect(filterTrigger(page)).toBeVisible();
     await expect(filterTrigger(page)).toContainText("All Projects");
 
-    // Create the Project from the filter menu; it becomes the selected filter.
-    await pickFilter(page, "Create Project");
-    const dialog = page.getByRole("dialog", { name: "Create Project" });
-    await dialog.getByRole("textbox", { name: "Name" }).fill(name);
-    await dialog.getByRole("button", { name: "Create" }).click();
-    await expect(dialog).toBeHidden();
+    // Create the Project over REST, then pick it in the filter menu.
+    const created = await api(OWNER, "POST", "/projects", { teamSlug: TEAM, name });
+    expect(created.status, "POST /projects").toBeLessThan(300);
+    await page.reload();
+    await expect(filterTrigger(page)).toBeVisible({ timeout: 30_000 });
+    await pickFilter(page, name);
     await expect(filterTrigger(page)).toContainText(name);
     expect(await storedFilter(page)).toMatch(/^p:/);
 
