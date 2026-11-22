@@ -75,7 +75,8 @@
 }
 
 .project-filter-select__dot {
-  @apply inline-block size-2.5 shrink-0 rounded-full;
+  /* Same 1rem slot as the icon (size-4), so dots and icons line up. */
+  @apply mx-[0.1875rem] inline-block size-2.5 shrink-0 rounded-full;
   background-color: var(--collection-row-color, var(--workspace-muted-foreground, currentColor));
 }
 
@@ -90,6 +91,10 @@
 /* A Team: its name with the Project count at the end, its entries indented under a rule. */
 .project-filter-select__team {
   @apply flex items-center justify-between gap-3 px-2 pb-0.5 pt-2 text-sm font-medium;
+}
+
+.project-filter-select__team {
+  color: var(--workspace-muted-foreground, currentColor);
 }
 
 .project-filter-select__count {
