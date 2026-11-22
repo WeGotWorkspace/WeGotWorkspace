@@ -6,13 +6,12 @@ import { useProjects, type WorkspaceProject } from "@/lib/projects/projects-stor
 
 type ProjectFolderRef = Pick<WorkspaceProject, "resources">;
 
-/** The Projects that own a Drive folder of their own: the default Project uses the whole Team drive. */
-export function projectsWithFolder<
-  T extends ProjectFolderRef & { isDefault?: boolean; archived?: boolean },
->(projects: readonly T[]): T[] {
+/** The live Projects that own a Drive folder, the default Project of each Team included. */
+export function projectsWithFolder<T extends ProjectFolderRef & { archived?: boolean }>(
+  projects: readonly T[],
+): T[] {
   return projects.filter(
     (project) =>
-      !project.isDefault &&
       !project.archived &&
       Boolean(project.resources.driveFolderId || project.resources.driveFolderPath),
   );
@@ -21,7 +20,7 @@ export function projectsWithFolder<
 /** True when the folder (node id or API path) is a Project's Drive folder. */
 export function isProjectFolder(
   node: Partial<Pick<DriveFile, "id" | "apiPath">>,
-  projects: readonly (ProjectFolderRef & { isDefault?: boolean; archived?: boolean })[],
+  projects: readonly (ProjectFolderRef & { archived?: boolean })[],
 ): boolean {
   const apiPath = node.apiPath ? normalizeApiVirtualPath(node.apiPath) : "";
   return projectsWithFolder(projects).some(({ resources }) => {
@@ -37,7 +36,7 @@ export function isProjectFolder(
 /** True when a Drive UI path (`Groups/{team}/{Project}`) is a Project's folder. */
 export function isProjectFolderUiPath(
   uiPath: string,
-  projects: readonly (ProjectFolderRef & { isDefault?: boolean; archived?: boolean })[],
+  projects: readonly (ProjectFolderRef & { archived?: boolean })[],
 ): boolean {
   return projectsWithFolder(projects).some(
     ({ resources }) =>

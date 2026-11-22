@@ -9,15 +9,14 @@ import { useProjectFilter } from "@/lib/projects/use-project-filter";
 type DriveRoot = { path: string; label: string };
 
 /**
- * Where a Project lives in Drive: its own folder, or the whole Team Drive for a
- * default Project (it has no folder of its own). Null when it has neither (archived).
+ * Where a Project lives in Drive: its own folder directly under the Team Drive root, the
+ * default Project's included. Null when it has none (archived, or the server has not made it yet).
  */
 export function driveProjectFolderUiPath(
-  project: Pick<WorkspaceProject, "isDefault" | "teamSlug" | "resources">,
+  project: Pick<WorkspaceProject, "resources">,
 ): string | null {
   const apiPath = project.resources.driveFolderPath;
-  if (apiPath) return uiPathFromApiPath(apiPath, "");
-  return project.isDefault ? driveGroupUiPath(project.teamSlug) : null;
+  return apiPath ? uiPathFromApiPath(apiPath, "") : null;
 }
 
 function isInside(view: ViewKey, path: string): boolean {
@@ -42,7 +41,7 @@ export function useDriveProjectScope({
   const { projects } = useProjects();
   const project = selectedProject(filter, projects);
   const teamSlug = teamSlugOfFilter(filter);
-  // A Team filter shows the whole Team Drive, like the Team's default Project.
+  // A Team filter shows the whole Team Drive (everything of the Team); a Project, its own folder.
   const folderPath = project
     ? driveProjectFolderUiPath(project)
     : teamSlug !== null

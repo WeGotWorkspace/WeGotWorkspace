@@ -20,7 +20,12 @@ const own = {
   teamSlug: "design",
   resources: { driveFolderPath: "/groups/design/Website relaunch" },
 } as never;
-const teamDefault = { isDefault: true, teamSlug: "design", resources: {} } as never;
+const teamDefault = {
+  isDefault: true,
+  teamSlug: "design",
+  resources: { driveFolderPath: "/groups/design/Design Project" },
+} as never;
+const noFolder = { teamSlug: "design", resources: { driveFolderPath: null } } as never;
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -29,11 +34,13 @@ afterEach(() => {
 });
 
 describe("Project folder paths", () => {
-  it("is the Project folder, or the Team Drive for a default Project", () => {
+  it("is the Project's own folder, the default Project's included", () => {
     expect(driveProjectFolderUiPath(own)).toBe("Groups/design/Website relaunch");
-    expect(driveProjectFolderUiPath(teamDefault)).toBe("Groups/design");
+    expect(driveProjectFolderUiPath(teamDefault)).toBe("Groups/design/Design Project");
+    expect(driveProjectFolderUiPath(noFolder)).toBeNull();
     expect(docsProjectPathPrefix(own)).toBe("groups/design/Website relaunch");
-    expect(docsProjectPathPrefix(teamDefault)).toBe("groups/design");
+    expect(docsProjectPathPrefix(teamDefault)).toBe("groups/design/Design Project");
+    expect(docsProjectPathPrefix(noFolder)).toBeNull();
   });
 });
 

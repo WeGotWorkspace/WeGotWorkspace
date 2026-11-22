@@ -44,6 +44,7 @@ final class ProjectService
         private readonly ProjectSlugs $slugs,
         private readonly DefaultProjectProvisioner $defaults,
         private readonly ProjectFolder $folders,
+        private readonly ProjectFolderEnsurer $folderEnsurer,
     ) {}
 
     /** @return list<array<string, mixed>> the Projects of the caller's Teams, the default Project of each Team first */
@@ -101,7 +102,7 @@ final class ProjectService
 
         $project = $this->createWithCollections($teamSlug, $name, $color);
         // After the commit: a directory cannot roll back. When this fails, ensure makes it on the next read.
-        $this->ensureFolders(new Collection([$project]));
+        $this->folderEnsurer->ensure(new Collection([$project]));
 
         return $this->presenter->presentOne($viewer, $project);
     }
@@ -182,57 +183,7 @@ final class ProjectService
                 }
             });
         }
-        $this->ensureFolders($live);
-    }
-
-    /**
-     * Every live Project except a default one has a Project folder. One that is gone
-     * (deleted outside the app, or a create that failed after its commit) is made again
-     * and the registry points at the new node id.
-     *
-     * @param  Collection<int, Project>  $projects
-     */
-    private function ensureFolders(Collection $projects): void
-    {
-        $candidates = $projects->filter(
-            static fn (Project $project): bool => $project->archived_at === null && $project->default_for_group === null,
-        );
-        if ($candidates->isEmpty()) {
-            return;
-        }
-        $registered = ProjectResource::query()
-            ->whereIn('project_id', $candidates->map(static fn (Project $project): string => (string) $project->id)->all())
-            ->where('kind', ProjectKind::DriveFolder->value)
-            ->pluck('locator', 'project_id');
-
-        foreach ($candidates as $project) {
-            $nodeId = $registered[(string) $project->id] ?? null;
-            if ($nodeId !== null && $this->folders->live((string) $nodeId) !== null) {
-                continue;
-            }
-            try {
-                DB::connection('wgw')->transaction(function () use ($project): void {
-                    $locked = Project::query()->whereKey($project->id)->lockForUpdate()->first();
-                    if ($locked === null || $locked->archived_at !== null) {
-                        return;
-                    }
-                    $current = ProjectResource::query()
-                        ->where('project_id', $locked->id)
-                        ->where('kind', ProjectKind::DriveFolder->value)
-                        ->value('locator');
-                    if ($current !== null && $this->folders->live((string) $current) !== null) {
-                        return;
-                    }
-                    ProjectResource::query()->updateOrCreate(
-                        ['project_id' => $locked->id, 'kind' => ProjectKind::DriveFolder->value],
-                        ['locator' => $this->folders->create((string) $locked->group_slug, (string) $locked->name)],
-                    );
-                    $this->markers->bump((string) $locked->group_slug);
-                });
-            } catch (\Throwable $exception) {
-                Log::error('project_folder_ensure_failed', ['project' => (string) $project->id, 'error' => $exception->getMessage()]);
-            }
-        }
+        $this->folderEnsurer->ensure($live);
     }
 
     private function renameFolder(Project $project): void

@@ -22,7 +22,9 @@ use Illuminate\Support\Str;
  * It bundles the Team's provisioned calendar (`{slug}`), task list (`tasks-{slug}`) and
  * notebook (`notes-{slug}`) with one new channel, and is named "{Team name} Project".
  * The existing collections keep their names and colors; the Project takes the Team
- * calendar's color. It has no Drive folder: its Drive view is the whole Team Drive.
+ * calendar's color. Like any Project it has a folder directly under the Team Drive root
+ * ({@see ProjectFolderEnsurer}); the Team Drive root itself stays the view of everything
+ * the Team has. Files already in the root are never moved into the folder.
  *
  * Made when a Team is created, by a one-time migration for existing Teams, and lazily on
  * `GET /projects` for a Team that still has none. Find-or-create: a Team never gets two.
@@ -36,6 +38,7 @@ final class DefaultProjectProvisioner
         private readonly ProjectCollections $collections,
         private readonly ProjectMarkers $markers,
         private readonly ProjectSlugs $slugs,
+        private readonly ProjectFolderEnsurer $folders,
     ) {}
 
     /**
@@ -58,6 +61,8 @@ final class DefaultProjectProvisioner
                 $this->provision($teamSlug);
             }
         }
+        // After the commit: a directory cannot roll back. A default Project without a folder gets it here too.
+        $this->folders->ensure(Project::query()->whereIn('default_for_group', $teamSlugs)->get());
     }
 
     /** Every Team of the instance: the one-time backfill. Returns how many Teams were looked at. */

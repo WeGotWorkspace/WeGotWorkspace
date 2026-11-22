@@ -10,9 +10,12 @@ use App\Models\Project;
 use App\Models\ProjectResource;
 use App\Services\Admin\AdminGroupManagementService;
 use App\Services\Calendars\CalDavCollections;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Projects\DefaultProjectProvisioner;
 use App\Services\Projects\ProjectKind;
+use App\Storage\WgwStorage;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -37,6 +40,7 @@ final class DefaultProjectBackfillTest extends WgwDatabaseTestCase
         $this->assertSame('Studio Project', $project->name);
         $this->assertSame('studio-project', $project->slug);
 
+        $this->assertTrue($this->files()->directoryExists('groups/studio/Studio Project'), 'Team create makes the default Project folder.');
         $byKind = $this->registeredInstances($project);
         $this->assertSame('studio', $byKind[ProjectKind::Calendar->value]->uri);
         $this->assertSame('tasks-studio', $byKind[ProjectKind::TaskList->value]->uri);
@@ -62,7 +66,35 @@ final class DefaultProjectBackfillTest extends WgwDatabaseTestCase
         $this->assertSame('T1 Project', $names['t1'] ?? null);
         $this->assertSame('T2 Project', $names['t2'] ?? null);
         $this->assertSame(1, Project::query()->where('group_slug', 't1')->count());
-        $this->assertSame(4 * count($names), ProjectResource::query()->count(), 'Four items per default Project.');
+        $this->assertSame(5 * count($names), ProjectResource::query()->count(), 'Four collections and a folder per default Project.');
+    }
+
+    public function test_backfill_creates_the_folder_once_and_a_clash_takes_the_suffix(): void
+    {
+        app(DefaultProjectProvisioner::class)->ensureForAllTeams();
+        $project = Project::query()->where('default_for_group', 't1')->firstOrFail();
+        // An older Team: its default Project exists but has no folder, and a folder of that name is in the way.
+        $first = (string) ProjectResource::query()->where('project_id', $project->id)->where('kind', ProjectKind::DriveFolder->value)->value('locator');
+        $this->files()->deleteDirectory('groups/t1/T1 Project');
+        app(FileNodeIndexService::class)->recordDelete('groups/t1/T1 Project');
+        ProjectResource::query()->where('project_id', $project->id)->where('kind', ProjectKind::DriveFolder->value)->delete();
+        $this->files()->makeDirectory('groups/t1/T1 Project');
+        $this->files()->put('groups/t1/loose.txt', 'stays');
+
+        $migration = require database_path('migrations/wgw/2026_11_22_000981_wgw_backfill_default_project_folders.php');
+        $migration->up();
+        $registered = ProjectResource::query()->where('project_id', $project->id)->where('kind', ProjectKind::DriveFolder->value)->pluck('locator')->all();
+        $migration->up();
+
+        $this->assertCount(1, $registered);
+        $this->assertNotSame($first, $registered[0]);
+        $this->assertSame(
+            $registered,
+            ProjectResource::query()->where('project_id', $project->id)->where('kind', ProjectKind::DriveFolder->value)->pluck('locator')->all(),
+            'The second run changes nothing.',
+        );
+        $this->assertTrue($this->files()->directoryExists('groups/t1/T1 Project (2)'));
+        $this->assertSame('stays', $this->files()->get('groups/t1/loose.txt'), 'Files in the Team Drive root are not moved.');
     }
 
     public function test_the_list_gives_a_team_without_one_its_default_project_first(): void
@@ -74,7 +106,7 @@ final class DefaultProjectBackfillTest extends WgwDatabaseTestCase
         $this->assertSame(['T1 Project', 'Launch'], array_column($list, 'name'));
         $this->assertTrue($list[0]['isDefault']);
         $this->assertSame('group-t1', $list[0]['resources']['calendarId']);
-        $this->assertNull($list[0]['resources']['driveFolderId'], 'The default Project has no Drive folder.');
+        $this->assertSame('/groups/t1/T1 Project', $list[0]['resources']['driveFolderPath'], 'The default Project has its own Drive folder.');
     }
 
     public function test_team_collections_stay_writable_after_backfill(): void
@@ -122,7 +154,7 @@ final class DefaultProjectBackfillTest extends WgwDatabaseTestCase
     private function registeredInstances(Project $project): array
     {
         $byKind = [];
-        foreach (ProjectResource::query()->where('project_id', $project->id)->get() as $resource) {
+        foreach (ProjectResource::query()->where('project_id', $project->id)->where('kind', '!=', ProjectKind::DriveFolder->value)->get() as $resource) {
             $byKind[(string) $resource->kind] = CalendarInstance::query()
                 ->where('calendarid', (int) $resource->locator)
                 ->where('principaluri', 'principals/groups/'.$project->group_slug)
@@ -130,5 +162,10 @@ final class DefaultProjectBackfillTest extends WgwDatabaseTestCase
         }
 
         return $byKind;
+    }
+
+    private function files(): Filesystem
+    {
+        return app(WgwStorage::class)->files();
     }
 }

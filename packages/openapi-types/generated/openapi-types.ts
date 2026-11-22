@@ -9901,7 +9901,7 @@ export interface paths {
         };
         /**
          * List the Projects of the caller's Teams
-         * @description Per Team, the default Project first, then by name. Archived Projects only with `archived=1`. Reading repairs a live Project whose calendar, task list, notebook or channel is gone.
+         * @description Per Team, the default Project first, then by name. Archived Projects only with `archived=1`. Reading repairs a live Project whose calendar, task list, notebook, channel or Drive folder is gone. Every Project, the default one included, has its own folder directly under the Team Drive root.
          */
         get: {
             parameters: {

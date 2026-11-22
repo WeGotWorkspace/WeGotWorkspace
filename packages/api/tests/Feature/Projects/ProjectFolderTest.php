@@ -87,13 +87,41 @@ final class ProjectFolderTest extends WgwDatabaseTestCase
         );
     }
 
-    public function test_the_default_project_has_no_folder(): void
+    public function test_the_default_project_has_a_top_level_folder_like_any_other(): void
     {
         $default = $this->listProjects('dave')->assertOk()->json('list.0');
 
         $this->assertTrue($default['isDefault']);
-        $this->assertNull($default['resources']['driveFolderId']);
-        $this->assertNull($default['resources']['driveFolderPath']);
+        $this->assertSame('/groups/t1/T1 Project', $default['resources']['driveFolderPath']);
+        $node = JmapFileNode::query()->where('node_id', $default['resources']['driveFolderId'])->firstOrFail();
+        $this->assertSame('groups/t1/T1 Project', $node->storage_key);
+        $this->assertTrue((bool) $node->is_dir);
+        $this->assertSame(
+            $default['resources']['driveFolderId'],
+            ProjectResource::query()->where('project_id', $default['id'])->where('kind', ProjectKind::DriveFolder->value)->value('locator'),
+        );
+    }
+
+    public function test_renaming_the_default_project_renames_its_folder(): void
+    {
+        $default = $this->listProjects('dave')->assertOk()->json('list.0');
+
+        $patched = $this->asUser('bob')->patchJson('/api/v1/projects/'.$default['id'], ['name' => 'Everything'])->assertOk()->json();
+
+        $this->assertSame($default['resources']['driveFolderId'], $patched['resources']['driveFolderId']);
+        $this->assertSame('/groups/t1/Everything', $patched['resources']['driveFolderPath']);
+        $this->assertTrue($this->files()->directoryExists('groups/t1/Everything'));
+    }
+
+    public function test_the_default_projects_folder_cannot_be_removed_by_a_client(): void
+    {
+        $default = $this->listProjects('dave')->assertOk()->json('list.0');
+        $folderId = (string) $default['resources']['driveFolderId'];
+
+        $response = $this->fileNodes('bob', [['FileNode/set', ['accountId' => 'bob', 'destroy' => [$folderId]], 's']]);
+
+        $this->assertArrayHasKey($folderId, $response->json('methodResponses.0.1.notDestroyed') ?? []);
+        $this->assertTrue($this->files()->directoryExists('groups/t1/T1 Project'));
     }
 
     public function test_file_node_set_cannot_rename_move_or_destroy_the_folder_itself(): void
