@@ -23,10 +23,17 @@ describe("isProjectFolder", () => {
     expect(isProjectFolder({ id: "x", apiPath: "/groups/eng/Other" }, projects)).toBe(false);
   });
 
-  it("ignores the default Project (no folder of its own) and archived Projects", () => {
-    const projects = [project({ isDefault: true }), project({ archived: true })];
+  it("counts the default Project's folder and ignores archived Projects", () => {
+    const projects = [project({ archived: true })];
     expect(projectsWithFolder(projects)).toEqual([]);
     expect(isProjectFolder({ id: "node-1", apiPath: "/groups/eng/Launch" }, projects)).toBe(false);
+    const withDefault = project({
+      isDefault: true,
+      resources: { driveFolderId: "node-0", driveFolderPath: "/groups/eng/Eng Project" },
+    });
+    expect(projectsWithFolder([withDefault])).toHaveLength(1);
+    expect(isProjectFolder({ id: "node-0" }, [withDefault])).toBe(true);
+    expect(isProjectFolderUiPath("Groups/eng/Eng Project", [withDefault])).toBe(true);
   });
 
   it("matches a Drive UI path", () => {

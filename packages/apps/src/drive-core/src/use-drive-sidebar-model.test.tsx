@@ -115,7 +115,7 @@ describe("useDriveSidebarModel", () => {
         teamName: "Engineering",
         isDefault: true,
         archived: false,
-        resources: {},
+        resources: { driveFolderId: "n2", driveFolderPath: "/groups/eng/Default" },
       },
       {
         id: "p3",
@@ -147,6 +147,7 @@ describe("useDriveSidebarModel", () => {
       const { result } = render(null);
       expect(result.current.projectSidebarItems.map((i) => [i.label, i.description])).toEqual([
         ["Launch", "Engineering"],
+        ["Default", "Engineering"],
         ["Site", "Operations"],
       ]);
       expect(result.current.projectSidebarItems[0]?.selected).toBe(true);
@@ -162,7 +163,7 @@ describe("useDriveSidebarModel", () => {
     it("opens the Project folder on select", () => {
       const selectView = vi.fn();
       const { result } = render(null, selectView);
-      result.current.projectSidebarItems[1]?.onClick?.();
+      result.current.projectSidebarItems[2]?.onClick?.();
       expect(selectView).toHaveBeenCalledWith({ type: "folder", path: "Groups/ops/Site" });
     });
   });

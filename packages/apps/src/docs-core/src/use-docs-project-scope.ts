@@ -6,13 +6,10 @@ import { selectedProject } from "@/lib/projects/project-match";
 import { useProjects, type WorkspaceProject } from "@/lib/projects/projects-store";
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
 
-/** Browse prefix of a Project: its folder, or the whole Team Drive for a default Project. */
-export function docsProjectPathPrefix(
-  project: Pick<WorkspaceProject, "isDefault" | "teamSlug" | "resources">,
-): string | null {
+/** Browse prefix of a Project: its folder under the Team Drive root, the default Project's included. */
+export function docsProjectPathPrefix(project: Pick<WorkspaceProject, "resources">): string | null {
   const apiPath = project.resources.driveFolderPath;
-  if (apiPath) return apiPath.replace(/^\/+|\/+$/g, "");
-  return project.isDefault ? `groups/${project.teamSlug}` : null;
+  return apiPath ? apiPath.replace(/^\/+|\/+$/g, "") : null;
 }
 
 /**
@@ -32,7 +29,7 @@ export function useDocsProjectScope({
   const { projects } = useProjects();
   const project = selectedProject(filter, projects);
   const teamSlug = teamSlugOfFilter(filter);
-  // A Team filter shows the whole Team Drive, like the Team's default Project.
+  // A Team filter shows the whole Team Drive (everything of the Team); a Project, its own folder.
   const prefix = project
     ? docsProjectPathPrefix(project)
     : teamSlug !== null
