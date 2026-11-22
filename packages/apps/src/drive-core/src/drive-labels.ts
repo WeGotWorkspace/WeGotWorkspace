@@ -17,7 +17,7 @@ export const driveLabels = {
   /** Drive's Team Drives section title (Docs keeps "My Drives"). */
   sidebarSharedDrives: "Team Drives",
   /** Section of the Project folders (#818). */
-  sidebarProjects: "Projects",
+  sidebarProjects: "Project Folders",
   /** Root label for Team drives; the UI path segment stays `Groups`. */
   teamsRoot: filesBrowserSidebarLabels.teamsRoot,
   searchPlaceholder: "Search in Drive...",

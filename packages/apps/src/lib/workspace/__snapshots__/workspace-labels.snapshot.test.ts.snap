@@ -1221,7 +1221,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: drive 1`
   "sharedIndicator": "Shared",
   "sidebarHome": "All Files",
   "sidebarMyDrive": "Personal",
-  "sidebarProjects": "Projects",
+  "sidebarProjects": "Project Folders",
   "sidebarRecent": "Recent",
   "sidebarSharedDrives": "Team Drives",
   "sidebarSharedWithMe": "Shared with me",
