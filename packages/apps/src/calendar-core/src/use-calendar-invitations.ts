@@ -33,17 +33,62 @@ function cacheUsername(sessionUsername?: string): string | null {
   return resolveCalendarsOfflineUsername(sessionUsername);
 }
 
+function useInviteesDirectory(
+  operations: CalendarAPIOperations | undefined,
+  username: string | null,
+) {
+  const [invitees, setInvitees] = useState<CalendarInvitee[]>([]);
+  const [canSubmitEmail, setCanSubmitEmail] = useState(false);
+
+  useEffect(() => {
+    if (!operations?.listInvitees) {
+      if (!username) {
+        setInvitees([]);
+        setCanSubmitEmail(false);
+        return;
+      }
+      void readCalendarInviteesDirectory(username).then((cached) => {
+        setInvitees(cached?.list ?? []);
+        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
+      });
+      return;
+    }
+    if (!readBrowserOnline()) {
+      if (!username) return;
+      void readCalendarInviteesDirectory(username).then((cached) => {
+        setInvitees(cached?.list ?? []);
+        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
+      });
+      return;
+    }
+    void operations
+      .listInvitees()
+      .then(async (next) => {
+        setInvitees(next.list);
+        setCanSubmitEmail(next.canSubmitEmail);
+        if (username) await writeCalendarInviteesDirectory(username, next);
+      })
+      .catch(async () => {
+        if (!username) return;
+        const cached = await readCalendarInviteesDirectory(username);
+        setInvitees(cached?.list ?? []);
+        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
+      });
+  }, [operations, username]);
+
+  return { invitees, canSubmitEmail };
+}
+
 export function useCalendarInvitations(
   operations?: CalendarAPIOperations,
   options?: UseCalendarInvitationsOptions,
 ) {
   const [notifications, setNotifications] = useState<CalendarSchedulingNotification[]>([]);
-  const [invitees, setInvitees] = useState<CalendarInvitee[]>([]);
-  const [canSubmitEmail, setCanSubmitEmail] = useState(false);
   const [busy, setBusy] = useState(false);
   const refreshInFlightRef = useRef(false);
   const pushConnected = useJmapPushConnected();
   const username = cacheUsername(options?.username);
+  const { invitees, canSubmitEmail } = useInviteesDirectory(operations, username);
 
   /** Resolves false only when the server list failed (the cache is shown instead). */
   const refresh = useCallback(async (): Promise<boolean> => {
@@ -89,42 +134,6 @@ export function useCalendarInvitations(
   useEffect(() => {
     void refresh();
   }, [refresh]);
-
-  useEffect(() => {
-    if (!operations?.listInvitees) {
-      if (!username) {
-        setInvitees([]);
-        setCanSubmitEmail(false);
-        return;
-      }
-      void readCalendarInviteesDirectory(username).then((cached) => {
-        setInvitees(cached?.list ?? []);
-        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
-      });
-      return;
-    }
-    if (!readBrowserOnline()) {
-      if (!username) return;
-      void readCalendarInviteesDirectory(username).then((cached) => {
-        setInvitees(cached?.list ?? []);
-        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
-      });
-      return;
-    }
-    void operations
-      .listInvitees()
-      .then(async (next) => {
-        setInvitees(next.list);
-        setCanSubmitEmail(next.canSubmitEmail);
-        if (username) await writeCalendarInviteesDirectory(username, next);
-      })
-      .catch(async () => {
-        if (!username) return;
-        const cached = await readCalendarInviteesDirectory(username);
-        setInvitees(cached?.list ?? []);
-        setCanSubmitEmail(cached?.canSubmitEmail ?? false);
-      });
-  }, [operations, username]);
 
   useEffect(() => {
     if (!operations?.listSchedulingNotifications) return;
