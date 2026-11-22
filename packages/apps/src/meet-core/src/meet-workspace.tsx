@@ -217,6 +217,10 @@ export function MeetWorkspace({
     () => workspaceProjects.find((project) => project.id === projectId)?.teamSlug ?? null,
     [projectId, workspaceProjects],
   );
+  const teamNames = useMemo(
+    () => Object.fromEntries((data.groups ?? []).map((group) => [group.slug, group.displayName])),
+    [data.groups],
+  );
   const sections = useMemo(
     () => partitionMeetChannels(channels, projectId, projectTeamSlug),
     [channels, projectId, projectTeamSlug],
@@ -632,6 +636,7 @@ export function MeetWorkspace({
             session={session}
             onLogout={onLogout}
             sections={sections}
+            teamNames={teamNames}
             todayMeetings={todayMeetings}
             leftoverUpcoming={leftoverUpcoming}
             directMessagePeople={dmPeople}

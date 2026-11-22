@@ -57,7 +57,7 @@ describe("partitionMeetChannels", () => {
     });
   });
 
-  it("keeps group-owned (not isSharee) rows out of Shared with me", () => {
+  it("lists group-owned (not isSharee) rows as Team chats, not Shared with me", () => {
     const items: MeetChannel[] = [
       channel({
         id: "c-group",
@@ -70,11 +70,11 @@ describe("partitionMeetChannels", () => {
     ];
 
     expect(partitionMeetChannels(items)).toEqual({
-      channels: [items[0]],
+      channels: [],
       shared: [],
       meetings: [],
       projects: [],
-      teamChats: [],
+      teamChats: [items[0]],
     });
   });
 });
@@ -109,11 +109,11 @@ describe("Project channels (#818)", () => {
 
   it("lists Project channels in their own group with All Projects", () => {
     expect(partitionMeetChannels(items)).toEqual({
-      channels: [team, named],
+      channels: [named],
       shared: [],
       meetings: [meeting],
       projects: [brand, web],
-      teamChats: [],
+      teamChats: [team],
     });
   });
 
@@ -184,5 +184,22 @@ describe("Project channels (#818)", () => {
     expect(meetChannelLockedByProject(web)).toBe(true);
     expect(meetChannelLockedByProject(named)).toBe(false);
     expect(meetChannelLockedByProject({ ...named, myRights: { mayRename: false } })).toBe(true);
+  });
+});
+
+describe("Team chats in every view", () => {
+  const a = channel({ id: "a", name: "General", kind: "channel", scope: "group", groupSlug: "t1" });
+  const b = channel({ id: "b", name: "General", kind: "channel", scope: "group", groupSlug: "t2" });
+  const mine = channel({ id: "m", name: "Notes", kind: "channel" });
+
+  it("puts every Team's chats in teamChats, never also in channels", () => {
+    expect(partitionMeetChannels([b, mine, a])).toMatchObject({
+      channels: [mine],
+      teamChats: [a, b],
+    });
+  });
+
+  it("keeps only the Project's Team under a Project", () => {
+    expect(partitionMeetChannels([a, b, mine], "p-x", "t2").teamChats).toEqual([b]);
   });
 });

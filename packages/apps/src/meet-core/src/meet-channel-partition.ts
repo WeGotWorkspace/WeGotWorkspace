@@ -27,33 +27,32 @@ export function partitionMeetChannels(
   if (projectId !== null) {
     return {
       channels: [],
-      teamChats: partitionOwnedAndShared(items.filter((item) => isTeamChat(item, teamSlug))).owned,
       shared: [],
       meetings: [],
       projects: collectionsInProject(items, projectId),
+      teamChats: partitionOwnedAndShared(
+        items.filter((item) => isTeamChat(item) && item.groupSlug === teamSlug),
+      ).owned,
     };
   }
   const { owned, shared } = partitionOwnedAndShared(
-    items.filter((item) => !isProjectCollection(item)),
+    items.filter((item) => !isProjectCollection(item) && !isTeamChat(item)),
   );
   return {
     channels: owned.filter((item) => item.kind === "channel"),
     shared,
-    teamChats: [],
+    teamChats: partitionOwnedAndShared(items.filter(isTeamChat)).owned.sort(
+      (x, y) =>
+        x.name.localeCompare(y.name) || (x.groupSlug ?? "").localeCompare(y.groupSlug ?? ""),
+    ),
     meetings: owned.filter((item) => item.kind === "meeting"),
     projects: items.filter(isProjectCollection).sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
 
-/** A chat the Team owns (Team channel or named channel), not a Project channel or meeting. */
-function isTeamChat(channel: MeetChannel, teamSlug: string | null): boolean {
-  return (
-    teamSlug !== null &&
-    channel.kind === "channel" &&
-    channel.scope === "group" &&
-    channel.groupSlug === teamSlug &&
-    !isProjectCollection(channel)
-  );
+/** A chat a Team owns (Team channel or the Team's named channel), not a Project channel or meeting. */
+function isTeamChat(channel: MeetChannel): boolean {
+  return channel.kind === "channel" && channel.scope === "group" && !isProjectCollection(channel);
 }
 
 /**
@@ -68,7 +67,11 @@ export function meetSelectionUnderProject(
 ): string | null {
   if (projectId === null || selectedId === null) return selectedId;
   const selected = channels.find((channel) => channel.id === selectedId);
-  if (!selected || selected.projectId === projectId || isTeamChat(selected, teamSlug)) {
+  if (
+    !selected ||
+    selected.projectId === projectId ||
+    (isTeamChat(selected) && teamSlug !== null && selected.groupSlug === teamSlug)
+  ) {
     return selectedId;
   }
   return channels.find((channel) => channel.projectId === projectId)?.id ?? null;
