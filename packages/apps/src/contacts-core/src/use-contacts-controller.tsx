@@ -141,18 +141,7 @@ export function useContactsController({
   const L = useMemo(() => mergeContactsLabels(labels), [labels]);
   const [cards, setCards] = useState<ContactCard[]>(() => data.cards);
   const [addressBooks, setAddressBooks] = useState(() => data.addressBooks);
-  const { hiddenAddressBookIds, setHiddenAddressBookIds } = useContactsHiddenIds(addressBooks);
-  const toggleAddressBookVisibility = useCallback(
-    (bookId: string) => {
-      setHiddenAddressBookIds((current) => {
-        const next = new Set(current);
-        if (next.has(bookId)) next.delete(bookId);
-        else next.add(bookId);
-        return next;
-      });
-    },
-    [setHiddenAddressBookIds],
-  );
+  const { hiddenAddressBookIds } = useContactsHiddenIds(addressBooks);
   const [view, setView] = useState(
     () => initialView ?? resolveDefaultContactsView(data.addressBooks),
   );
@@ -1434,7 +1423,6 @@ export function useContactsController({
     setGroupRenameDialog,
     addMembersToGroup,
     hiddenAddressBookIds,
-    toggleAddressBookVisibility,
   };
 }
 

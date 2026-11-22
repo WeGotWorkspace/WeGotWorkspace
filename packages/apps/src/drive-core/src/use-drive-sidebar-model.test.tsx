@@ -143,12 +143,12 @@ describe("useDriveSidebarModel", () => {
         }),
       );
 
-    it("lists Project folders, labelled by Team when there are several", () => {
+    it("lists Project folders by name, with no Team sublabel", () => {
       const { result } = render(null);
       expect(result.current.projectSidebarItems.map((i) => [i.label, i.description])).toEqual([
-        ["Launch", "Engineering"],
-        ["Default", "Engineering"],
-        ["Site", "Operations"],
+        ["Launch", undefined],
+        ["Default", undefined],
+        ["Site", undefined],
       ]);
       expect(result.current.projectSidebarItems[0]?.selected).toBe(true);
     });
@@ -172,7 +172,7 @@ describe("useDriveSidebarModel", () => {
       ).toBe(false);
     });
 
-    it("narrows to the Projects in scope and drops the Team label", () => {
+    it("narrows to the Projects in scope", () => {
       const { result } = render(["p3"]);
       expect(result.current.projectSidebarItems.map((i) => [i.label, i.description])).toEqual([
         ["Site", undefined],

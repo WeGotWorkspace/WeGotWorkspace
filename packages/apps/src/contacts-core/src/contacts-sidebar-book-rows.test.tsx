@@ -2,9 +2,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ContactsSidebarBookRows } from "./contacts-sidebar-book-rows";
-import { addressBookDotColor } from "./contacts-addressbook-color";
 import type { ContactsAddressBookRow } from "./contacts-addressbook-write";
-import { CONTACTS_VIEW_PREFS_STORAGE_KEY, persistAddressBookColor } from "./contacts-view-prefs";
+import { CONTACTS_VIEW_PREFS_STORAGE_KEY } from "./contacts-view-prefs";
 
 afterEach(() => {
   cleanup();
@@ -36,8 +35,7 @@ const viewOnlySharee: ContactsAddressBookRow = {
 };
 
 describe("ContactsSidebarBookRows", () => {
-  it("renders a colored visibility checkbox and the view-only mark", () => {
-    const onToggleVisibility = vi.fn();
+  it("marks each address book with the address book icon, no colour and no checkbox", () => {
     const { container } = render(
       <TooltipProvider delayDuration={0}>
         <ContactsSidebarBookRows
@@ -45,43 +43,17 @@ describe("ContactsSidebarBookRows", () => {
           view="all"
           editLabel="Address book settings"
           viewOnlyLabel="View only"
-          hiddenAddressBookIds={new Set()}
-          onToggleVisibility={onToggleVisibility}
           onSelect={vi.fn()}
           onEdit={vi.fn()}
         />
       </TooltipProvider>,
     );
 
-    const row = container.querySelector(".collection-sidebar-row") as HTMLElement | null;
-    expect(row?.style.getPropertyValue("--collection-row-color")).toBe(
-      addressBookDotColor(ownerBook),
+    expect(container.querySelectorAll(".collection-sidebar-row svg.lucide-book-user")).toHaveLength(
+      2,
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: "Hide Personal" }));
-    expect(onToggleVisibility).toHaveBeenCalledWith("default");
+    expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.getByRole("img", { name: "View only" })).toBeTruthy();
-  });
-
-  it("tints the row from a device-local color override", () => {
-    persistAddressBookColor("default", "#ec4899");
-    const { container } = render(
-      <TooltipProvider delayDuration={0}>
-        <ContactsSidebarBookRows
-          books={[ownerBook]}
-          view="all"
-          editLabel="Address book settings"
-          viewOnlyLabel="View only"
-          hiddenAddressBookIds={new Set()}
-          onToggleVisibility={vi.fn()}
-          onSelect={vi.fn()}
-          onEdit={vi.fn()}
-        />
-      </TooltipProvider>,
-    );
-
-    const row = container.querySelector(".collection-sidebar-row") as HTMLElement | null;
-    expect(row?.style.getPropertyValue("--collection-row-color")).toBe("#ec4899");
-    expect(addressBookDotColor(ownerBook)).toBe("#ec4899");
   });
 
   it("renders books only, marks the selected book, and has no group fold", () => {
@@ -95,8 +67,6 @@ describe("ContactsSidebarBookRows", () => {
             view="book:shared-42"
             editLabel="Address book settings"
             viewOnlyLabel="View only"
-            hiddenAddressBookIds={new Set()}
-            onToggleVisibility={vi.fn()}
             onSelect={onSelect}
             onEdit={onEdit}
           />

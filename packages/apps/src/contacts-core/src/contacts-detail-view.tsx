@@ -40,8 +40,6 @@ import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { cn } from "@/lib/utils";
 import { TagGroup, type TagItem } from "@/tag/src/tag";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
-import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-color";
-import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import type { ContactDetailGroupChip } from "@/contacts-core/src/contacts-detail-groups";
 import type { ContactCard } from "@/lib/models/contacts-types";
 import { emptyContactEditDraft } from "@/contacts-core/src/contacts-edit-utils";
@@ -130,15 +128,6 @@ function addressFilled(row: ContactAddressDraft): boolean {
   return [row.street, row.postalCode, row.locality, row.region, row.country].some((part) =>
     part.trim(),
   );
-}
-
-/** A group chip in its address book's colour: a light wash, the name mixed into ink. */
-function groupTagColors(color: string | undefined): TagItem["colors"] {
-  if (!color) return undefined;
-  return {
-    backgroundColor: `color-mix(in oklch, ${color} 16%, transparent)`,
-    color: `color-mix(in oklch, ${color} 55%, var(--workspace-foreground))`,
-  };
 }
 
 /**
@@ -271,7 +260,6 @@ export function ContactsDetailView({
   const [focusId, setFocusId] = useState<string | null>(null);
   // A field added from "Add field": the menu must not take focus back to its button.
   const menuFocusIdRef = useRef<string | null>(null);
-  const overrides = useAddressBookColorOverrides();
 
   useLayoutEffect(() => {
     if (!focusId) return;
@@ -347,7 +335,6 @@ export function ContactsDetailView({
     label: contactDisplayName(chip.group),
     icon: <ContactsGroupIcon />,
     removable: !groupTags.readonly && chip.writable,
-    colors: groupTagColors(groupAddressBookColor(chip.group, overrides)),
   }));
 
   // Name and organisation, the rare fields, company: one block. Read-only and empty: none.
@@ -449,7 +436,6 @@ export function ContactsDetailView({
               suggestions={groupTags.suggestions.map((group) => ({
                 id: group.id,
                 label: contactDisplayName(group),
-                colors: groupTagColors(groupAddressBookColor(group, overrides)),
               }))}
               readonly={groupTags.readonly}
               allowCreate={groupTags.allowCreate}

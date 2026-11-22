@@ -150,13 +150,11 @@ export function useDriveSidebarModel({
     const inScope = projectsWithFolder(projects).filter(
       (project) => !selectedProjectIds || selectedProjectIds.includes(project.id),
     );
-    const manyTeams = new Set(inScope.map((project) => project.teamSlug)).size > 1;
     return inScope.flatMap((project) => {
       const path = driveProjectFolderUiPath(project);
       if (!path) return [];
       return {
         label: project.name,
-        description: manyTeams ? project.teamName : undefined,
         selected: isGroupView(view, path),
         onClick: () => selectView({ type: "folder", path }),
         icon: <ProjectMark color={project.color} />,

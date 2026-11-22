@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import { useHiddenCollectionIds } from "@/collection-sidebar/src/use-hidden-collection-ids";
-import { contactsHiddenAddressBooks } from "@/contacts-core/src/contacts-view-prefs";
 import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 
 /** The Team address book of a Team: `group-{slug}` (server-set id). */
@@ -22,16 +20,14 @@ export function addressBooksHiddenByProject(
 }
 
 /**
- * Device-local hidden address-book set. Same localStorage algorithm as Notes/Tasks/Calendar.
- * The Project filter adds its hidden books on read only. The setter still works on the
- * stored set, so they are never saved and "All Projects" brings back what was shown.
+ * Address books the list leaves out: only those the Project filter hides. Address books
+ * belong to a Team and have no show/hide switch of their own.
  */
 export function useContactsHiddenIds(books: ReadonlyArray<{ id: string }>) {
-  const { hiddenIds, setHiddenIds } = useHiddenCollectionIds(books, contactsHiddenAddressBooks);
   const teamSlug = useSelectedProjectTeamSlug();
-  const hiddenAddressBookIds = useMemo<ReadonlySet<string>>(() => {
-    const byProject = addressBooksHiddenByProject(books, teamSlug);
-    return byProject.size === 0 ? hiddenIds : new Set([...hiddenIds, ...byProject]);
-  }, [books, hiddenIds, teamSlug]);
-  return { hiddenAddressBookIds, setHiddenAddressBookIds: setHiddenIds };
+  const hiddenAddressBookIds = useMemo(
+    () => addressBooksHiddenByProject(books, teamSlug),
+    [books, teamSlug],
+  );
+  return { hiddenAddressBookIds };
 }
