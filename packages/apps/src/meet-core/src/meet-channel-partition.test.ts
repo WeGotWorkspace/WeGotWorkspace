@@ -165,6 +165,44 @@ describe("Project channels (#818)", () => {
     });
   });
 
+  it("under a Team filter lists all its Projects' channels and its Team chats", () => {
+    const other = channel({
+      id: "c-other",
+      name: "Sales",
+      kind: "channel",
+      scope: "group",
+      groupSlug: "sales",
+    });
+    const otherProject = channel({
+      id: "c-op",
+      name: "Pitch",
+      kind: "channel",
+      scope: "group",
+      groupSlug: "sales",
+      projectId: "p-pitch",
+    });
+    expect(
+      partitionMeetChannels(
+        [web, brand, team, named, other, otherProject, meeting],
+        ["p-web", "p-brand"],
+        "design",
+      ),
+    ).toEqual({
+      channels: [],
+      shared: [],
+      meetings: [],
+      projects: [brand, web],
+      teamChats: [team],
+    });
+  });
+
+  it("keeps a channel open under a Team filter, else falls back to a Team Project channel", () => {
+    const ids = ["p-web", "p-brand"];
+    expect(meetSelectionUnderProject("c-brand", items, ids, "design")).toBe("c-brand");
+    expect(meetSelectionUnderProject("c-team", items, ids, "design")).toBe("c-team");
+    expect(meetSelectionUnderProject("c-named", items, ids, "design")).toBe("c-web");
+  });
+
   it("keeps a Team chat open under the Project filter", () => {
     expect(meetSelectionUnderProject("c-team", items, "p-web", "design")).toBe("c-team");
     expect(meetSelectionUnderProject("c-team", items, "p-web", "sales")).toBe("c-web");

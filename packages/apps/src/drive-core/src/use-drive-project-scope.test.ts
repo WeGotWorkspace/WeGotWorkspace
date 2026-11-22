@@ -70,4 +70,18 @@ describe("useDriveProjectScope", () => {
     });
     expect(selectView).toHaveBeenCalledWith({ type: "folder", path });
   });
+
+  it("shows the whole Team Drive and opens it under a Team filter", async () => {
+    await withStore();
+    const selectView = vi.fn();
+    const { result } = renderHook(() =>
+      useDriveProjectScope({ view: { type: "recent" }, groupRoots: roots, selectView }),
+    );
+    act(() => writeProjectFilter("t:design"));
+    expect(result.current).toEqual({
+      groupRoots: [{ path: "Groups/design", label: "Design" }],
+      hidePersonalDrive: true,
+    });
+    expect(selectView).toHaveBeenCalledWith({ type: "folder", path: "Groups/design" });
+  });
 });

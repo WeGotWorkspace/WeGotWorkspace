@@ -15,21 +15,23 @@ export type MeetChannelSections = {
 /**
  * My channels (owned channel) → Shared with me → Projects → Today’s meetings (owned meeting,
  * filtered to today in the workspace). Direct messages are directory people, not channels.
- * With a Project selected (`projectId`), that Project's channel and the chats of its Team
+ * With a Project or a Team selected (`projectIds`: the Projects in scope), their channels and the chats of its Team
  * (`teamSlug`: the Team channel and the named channels the Team owns) are listed; other
  * Teams' channels, other Projects' channels and meetings are hidden.
  */
 export function partitionMeetChannels(
   items: readonly MeetChannel[],
-  projectId: string | null = null,
+  projectIds: string | readonly string[] | null = null,
   teamSlug: string | null = null,
 ): MeetChannelSections {
-  if (projectId !== null) {
+  if (projectIds !== null) {
     return {
       channels: [],
       shared: [],
       meetings: [],
-      projects: collectionsInProject(items, projectId),
+      projects: collectionsInProject(items, projectIds).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
       teamChats: partitionOwnedAndShared(
         items.filter((item) => isTeamChat(item) && item.groupSlug === teamSlug),
       ).owned,
@@ -62,19 +64,22 @@ export function isTeamChat(channel: MeetChannel): boolean {
 export function meetSelectionUnderProject(
   selectedId: string | null,
   channels: readonly MeetChannel[],
-  projectId: string | null,
+  projectIds: string | readonly string[] | null,
   teamSlug: string | null = null,
 ): string | null {
-  if (projectId === null || selectedId === null) return selectedId;
+  if (projectIds === null || selectedId === null) return selectedId;
+  const ids = typeof projectIds === "string" ? [projectIds] : projectIds;
+  const inScope = (channel: MeetChannel) =>
+    typeof channel.projectId === "string" && ids.includes(channel.projectId);
   const selected = channels.find((channel) => channel.id === selectedId);
   if (
     !selected ||
-    selected.projectId === projectId ||
+    inScope(selected) ||
     (isTeamChat(selected) && teamSlug !== null && selected.groupSlug === teamSlug)
   ) {
     return selectedId;
   }
-  return channels.find((channel) => channel.projectId === projectId)?.id ?? null;
+  return channels.find(inScope)?.id ?? null;
 }
 
 /** A Project channel's name and lifetime follow the Project: no rename, edit or delete here. */

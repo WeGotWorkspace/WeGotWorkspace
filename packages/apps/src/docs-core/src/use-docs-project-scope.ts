@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { DocsHomeDrive } from "@/docs-core/src/docs-home-drives";
 import type { DocsHomeView } from "@/docs-core/src/docs-home-shared";
+import { teamSlugOfFilter } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
 import { useProjects, type WorkspaceProject } from "@/lib/projects/projects-store";
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
@@ -30,11 +31,22 @@ export function useDocsProjectScope({
   const [filter] = useProjectFilter();
   const { projects } = useProjects();
   const project = selectedProject(filter, projects);
-  const prefix = project ? docsProjectPathPrefix(project) : null;
+  const teamSlug = teamSlugOfFilter(filter);
+  // A Team filter shows the whole Team Drive, like the Team's default Project.
+  const prefix = project
+    ? docsProjectPathPrefix(project)
+    : teamSlug !== null
+      ? `groups/${teamSlug}`
+      : null;
+  const label = project
+    ? project.name
+    : (drives.find((drive) => drive.pathPrefix?.toLowerCase() === prefix?.toLowerCase())?.label ??
+      teamSlug ??
+      "");
 
   const scoped = useMemo(
-    () => (project && prefix ? [{ key: prefix, label: project.name, pathPrefix: prefix }] : drives),
-    [drives, prefix, project],
+    () => (prefix ? [{ key: prefix, label, pathPrefix: prefix }] : drives),
+    [drives, label, prefix],
   );
 
   const shownForRef = useRef<string | null | undefined>(undefined);

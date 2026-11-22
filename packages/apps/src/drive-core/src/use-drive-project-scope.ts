@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { driveGroupUiPath, uiPathFromApiPath } from "@/lib/files/drive-path-utils";
 import type { ViewKey } from "@/lib/files/drive-models";
+import { teamSlugOfFilter } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
 import { useProjects, type WorkspaceProject } from "@/lib/projects/projects-store";
 import { useProjectFilter } from "@/lib/projects/use-project-filter";
@@ -24,7 +25,7 @@ function isInside(view: ViewKey, path: string): boolean {
 }
 
 /**
- * The Project filter in Drive and Docs (#818 C3). With a Project selected the sidebar
+ * The Project filter in Drive and Docs (#818 C3). With a Project (or a Team: its whole Team Drive) selected the sidebar
  * lists only its folder (under the Project's name, no personal drive, no other Teams),
  * and choosing the Project opens that folder. Home, Recent, Starred and Trash stay.
  */
@@ -40,11 +41,20 @@ export function useDriveProjectScope({
   const [filter] = useProjectFilter();
   const { projects } = useProjects();
   const project = selectedProject(filter, projects);
-  const folderPath = project ? driveProjectFolderUiPath(project) : null;
+  const teamSlug = teamSlugOfFilter(filter);
+  // A Team filter shows the whole Team Drive, like the Team's default Project.
+  const folderPath = project
+    ? driveProjectFolderUiPath(project)
+    : teamSlug !== null
+      ? driveGroupUiPath(teamSlug)
+      : null;
+  const label = project
+    ? project.name
+    : (groupRoots.find((root) => root.path === folderPath)?.label ?? teamSlug ?? "");
 
   const scopedRoots = useMemo(
-    () => (project && folderPath ? [{ path: folderPath, label: project.name }] : groupRoots),
-    [folderPath, groupRoots, project],
+    () => (folderPath ? [{ path: folderPath, label }] : groupRoots),
+    [folderPath, groupRoots, label],
   );
 
   // Open the folder when the Project changes, and on entry when Drive opens on Home.
@@ -60,5 +70,5 @@ export function useDriveProjectScope({
     selectView({ type: "folder", path: folderPath });
   }, [folderPath, selectView]);
 
-  return { groupRoots: scopedRoots, hidePersonalDrive: Boolean(project && folderPath) };
+  return { groupRoots: scopedRoots, hidePersonalDrive: folderPath !== null };
 }
