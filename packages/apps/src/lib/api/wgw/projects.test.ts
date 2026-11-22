@@ -71,7 +71,7 @@ describe("createWgwProjectOperations", () => {
   it("turns every failure into a WgwRequestError with the status", async () => {
     wgwFetch.mockImplementation(async () => json({ error: "Only a team admin can do this" }, 403));
     const failure = await createWgwProjectOperations()
-      .purge("p1")
+      .archive("p1")
       .catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(WgwRequestError);
     expect((failure as WgwRequestError).status).toBe(403);

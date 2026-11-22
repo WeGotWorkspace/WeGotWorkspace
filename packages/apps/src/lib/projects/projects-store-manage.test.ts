@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMockProjectOperations } from "@/lib/api/mock/projects";
-import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { createProjectsStore } from "@/lib/projects/projects-store";
 
 beforeEach(() => localStorage.clear());
@@ -43,7 +42,7 @@ describe("projects store: manage", () => {
     expect(snapshot.projects.some((project) => project.id === id)).toBe(true);
   });
 
-  it("loads the archived Projects and purges one for good", async () => {
+  it("loads the archived Projects", async () => {
     const operations = createMockProjectOperations();
     const store = createProjectsStore(operations);
     await store.load();
@@ -53,17 +52,13 @@ describe("projects store: manage", () => {
     expect(store.getSnapshot().archived).toHaveLength(1);
     await store.loadArchived();
     expect(store.getSnapshot().archived.map((project) => project.teamName)).toEqual(["Design"]);
-    await store.purge(id);
-    expect(store.getSnapshot().archived).toEqual([]);
-    expect(await operations.list({ archived: true })).toEqual([]);
   });
 
-  it("answers 409 for the default Project, a purge of an active one and a patch of an archived one", async () => {
+  it("answers 409 for the default Project and a patch of an archived one", async () => {
     const store = await loadedStore();
     const defaultProject = store.getSnapshot().projects.find((project) => project.isDefault)!;
     const active = website(store);
     await expect(store.archive(defaultProject.id)).rejects.toMatchObject({ status: 409 });
-    await expect(store.purge(active.id)).rejects.toBeInstanceOf(WgwRequestError);
     await store.archive(active.id);
     await expect(store.patch(active.id, { name: "Late" })).rejects.toMatchObject({ status: 409 });
     // A refusal leaves the snapshot as it was.

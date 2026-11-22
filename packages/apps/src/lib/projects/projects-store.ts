@@ -46,8 +46,6 @@ export type ProjectsStore = {
   archive: (id: string) => Promise<WorkspaceProject>;
   /** Moves the Project back to the active list. */
   unarchive: (id: string) => Promise<WorkspaceProject>;
-  /** Deletes an archived Project for good and drops it from the archived list. */
-  purge: (id: string) => Promise<void>;
 };
 
 /** Last good list, so the filter still works offline. Overwritten by every successful load. */
@@ -198,10 +196,6 @@ export function createProjectsStore(operations: ProjectOperations): ProjectsStor
         archived: snapshot.archived.filter((project) => project.id !== id),
       });
       return moved as WorkspaceProject;
-    },
-    purge: async (id) => {
-      await operations.purge(id);
-      set({ ...snapshot, archived: snapshot.archived.filter((project) => project.id !== id) });
     },
   };
 }

@@ -37,7 +37,7 @@ function renderPane() {
 
 async function openDialog() {
   fireEvent.click(screen.getByRole("button", { name: "Manage members of Editorial Team" }));
-  const dialog = await screen.findByRole("dialog", { name: "Members of Editorial Team" });
+  const dialog = await screen.findByRole("dialog", { name: "Edit Editorial Team" });
   await within(dialog).findByText("Grace Hopper");
   return dialog;
 }
@@ -61,7 +61,7 @@ describe("Settings Teams pane for a team admin (#2278)", () => {
 
     await within(dialog).findByText("Sophie Wilson");
     expect((await operations.listMembers("editorial")).map((m) => m.username)).toContain("sophie");
-    await waitFor(() => expect(screen.getByText("7 members")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTitle("7 members")).toBeTruthy());
   });
 
   it("does not offer someone who is already a member", async () => {

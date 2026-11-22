@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import { SettingsTeamMembersDialog } from "@/settings-core/src/settings-team-members-dialog";
-import { teamMembersLabels as labels } from "@/share-ui/team-members-labels";
 import { defaultTeamMembersOperations } from "@/settings-core/src/settings-team-members-source";
 import type { TeamMembersOperations } from "@/lib/api/wgw/teams";
 import { ProjectsManagePane } from "@/settings-core/src/settings-projects-pane";
