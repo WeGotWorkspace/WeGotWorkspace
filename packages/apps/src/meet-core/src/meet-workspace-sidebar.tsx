@@ -148,7 +148,6 @@ export function MeetWorkspaceSidebar({
       {sections.teamChats.length > 0 ? (
         <SidebarSection title={meetLabels.sidebarTeamChats}>
           <MeetSidebarRows
-            teamChats
             teamNameOf={(channel) => teamChatLabel(sections.teamChats, channel, teamNames)}
             channels={sections.teamChats}
             selectedId={selectedId}

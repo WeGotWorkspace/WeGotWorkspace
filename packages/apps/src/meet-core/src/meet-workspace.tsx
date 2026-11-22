@@ -661,6 +661,9 @@ export function MeetWorkspace({
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={headerTitle}
             selected={selected}
+            directMessagePresence={
+              selectedDm ? (data.authorPresence?.[selectedDm.id] ?? "offline") : null
+            }
             conversationOpen={conversationOpen}
             showStart={showHeaderStart}
             onStartCall={onCallInvite}

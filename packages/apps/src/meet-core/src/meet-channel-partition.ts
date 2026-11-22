@@ -51,7 +51,7 @@ export function partitionMeetChannels(
 }
 
 /** A chat a Team owns (Team channel or the Team's named channel), not a Project channel or meeting. */
-function isTeamChat(channel: MeetChannel): boolean {
+export function isTeamChat(channel: MeetChannel): boolean {
   return channel.kind === "channel" && channel.scope === "group" && !isProjectCollection(channel);
 }
 

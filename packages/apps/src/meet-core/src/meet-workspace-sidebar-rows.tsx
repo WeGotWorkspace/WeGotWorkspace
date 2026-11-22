@@ -1,4 +1,4 @@
-import { CalendarDays, Hash, Users } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
 import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
@@ -10,6 +10,7 @@ import {
 } from "@/meet-core/src/meet-calendar-meeting";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetDirectMessagePerson } from "@/lib/meetings/meet-direct-messages";
+import { meetChannelIcon } from "@/meet-core/src/meet-channel-icon";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannel } from "@/lib/models/meet-types";
 
@@ -139,13 +140,10 @@ export function MeetSidebarRows({
   channelHasLiveCall,
   channelCallAudioOnly,
   startLabelForChannel,
-  teamChats = false,
   teamNameOf,
 }: {
   /** Team chats: the Team's name to show next to a chat, or null. */
   teamNameOf?: (channel: MeetChannel) => string | null;
-  /** Rows of the Team's chats: a Users mark instead of the hash. */
-  teamChats?: boolean;
   channels: MeetChannel[];
   selectedId: string | null;
   onSelect: (channelId: string) => void;
@@ -157,21 +155,14 @@ export function MeetSidebarRows({
     <>
       {channels.map((channel) => {
         const startLabel = startLabelForChannel?.(channel) ?? null;
+        const ChannelIcon = meetChannelIcon(channel);
         return (
           <CollectionSidebarRow
             key={channel.id}
             name={sidebarChannelLabel(channel) + teamSuffix(teamNameOf?.(channel))}
             color={channelDotColor(channel)}
             selected={selectedId === channel.id}
-            leading={
-              channel.kind === "meeting" ? (
-                <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
-              ) : teamChats ? (
-                <Users className="meet-workspace__sidebar-kind-icon" aria-hidden />
-              ) : (
-                <Hash className="meet-workspace__sidebar-kind-icon" aria-hidden />
-              )
-            }
+            leading={<ChannelIcon className="meet-workspace__sidebar-kind-icon" aria-hidden />}
             onSelect={() => onSelect(channel.id)}
             trailing={
               <>
