@@ -1,11 +1,12 @@
 import { useState, type CSSProperties } from "react";
-import { Folder, HardDrive } from "lucide-react";
+import { HardDrive } from "lucide-react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { canBrowserPreviewImage, extensionFromFileName } from "@/lib/files/file-name-utils";
 import { extensionAvatarLabel, extensionHue } from "@/drive-core/src/drive-file-avatar-label";
 import { kindIcon } from "@/lib/files/file-kind-icons";
 import { isDrivePickerRootFile } from "@/drive-core/src/drive-folder-picker-utils";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
+import { driveFolderIcon, useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { cn } from "@/lib/utils";
 import "@/drive-core/src/drive-file-avatar.css";
 
@@ -26,9 +27,12 @@ export function DriveFileAvatar({
 }) {
   const sizeClass = size === "sm" ? "drive-file-avatar--sm" : undefined;
   const [failed, setFailed] = useState(false);
+  const projectFolders = useProjectFolders();
 
   if (file.kind === "folder") {
-    const Icon = isDrivePickerRootFile(file) ? HardDrive : Folder;
+    const Icon = isDrivePickerRootFile(file)
+      ? HardDrive
+      : driveFolderIcon(projectFolders.isProjectFolder(file));
     return (
       <span
         className={cn("drive-file-avatar drive-file-avatar--folder", sizeClass)}

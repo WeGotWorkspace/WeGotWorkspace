@@ -1,5 +1,8 @@
 import { useMemo } from "react";
-import { HardDrive } from "lucide-react";
+import { FolderKanban, HardDrive } from "lucide-react";
+import { projectsWithFolder } from "@/drive-core/src/drive-project-folder";
+import { driveProjectFolderUiPath } from "@/drive-core/src/use-drive-project-scope";
+import type { WorkspaceProject } from "@/lib/projects/projects-store";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { FILES_BROWSER_SIDEBAR_PRIMARY_ORDER } from "@/drive-core/src/files-browser-sidebar";
 import type { ViewKey } from "@/lib/files/drive-models";
@@ -25,6 +28,10 @@ type UseDriveSidebarModelArgs = {
   commitMoveToFolder: (ids: string[], destinationPath: string) => void;
   /** A Project is selected: the sidebar lists only its folder (#818). */
   hidePersonalDrive?: boolean;
+  /** The suite's active Projects; those with a Drive folder get their own section. */
+  projects?: readonly WorkspaceProject[];
+  /** Project ids the Project/Team filter keeps; null = all. */
+  selectedProjectIds?: readonly string[] | null;
 };
 
 function isMyDriveView(view: ViewKey) {
@@ -50,6 +57,8 @@ export function useDriveSidebarModel({
   sidebarDropZoneProps,
   commitMoveToFolder,
   hidePersonalDrive = false,
+  projects = [],
+  selectedProjectIds = null,
 }: UseDriveSidebarModelArgs) {
   const primarySidebarItems = useMemo<MenuItemProps[]>(() => {
     const byId = {
@@ -126,5 +135,31 @@ export function useDriveSidebarModel({
     view,
   ]);
 
-  return { primarySidebarItems, groupSidebarItems };
+  // The Project folders live inside the Team drives, which list only their roots: no duplicates.
+  const projectSidebarItems = useMemo<MenuItemProps[]>(() => {
+    const inScope = projectsWithFolder(projects).filter(
+      (project) => !selectedProjectIds || selectedProjectIds.includes(project.id),
+    );
+    const manyTeams = new Set(inScope.map((project) => project.teamSlug)).size > 1;
+    return inScope.flatMap((project) => {
+      const path = driveProjectFolderUiPath(project);
+      if (!path) return [];
+      return {
+        label: project.name,
+        description: manyTeams ? project.teamName : undefined,
+        selected: isGroupView(view, path),
+        onClick: () => selectView({ type: "folder", path }),
+        icon: (
+          <FolderKanban
+            className="size-3.5"
+            style={project.color ? { color: project.color } : undefined}
+            aria-hidden
+          />
+        ),
+        ...sidebarDropZoneProps(path, (ids) => commitMoveToFolder(ids, path)),
+      } satisfies MenuItemProps;
+    });
+  }, [commitMoveToFolder, projects, selectView, selectedProjectIds, sidebarDropZoneProps, view]);
+
+  return { primarySidebarItems, groupSidebarItems, projectSidebarItems };
 }

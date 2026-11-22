@@ -94,4 +94,76 @@ describe("useDriveSidebarModel", () => {
     rerender({ view: { type: "folder", path: "My Drive" }, uploads: { count: 0, failed: 0 } });
     expect(labels()).not.toContain("Uploads");
   });
+
+  describe("Projects section", () => {
+    const projects = [
+      {
+        id: "p1",
+        name: "Launch",
+        color: "#3366ff",
+        teamSlug: "eng",
+        teamName: "Engineering",
+        isDefault: false,
+        archived: false,
+        resources: { driveFolderId: "n1", driveFolderPath: "/groups/eng/Launch" },
+      },
+      {
+        id: "p2",
+        name: "Default",
+        color: null,
+        teamSlug: "eng",
+        teamName: "Engineering",
+        isDefault: true,
+        archived: false,
+        resources: {},
+      },
+      {
+        id: "p3",
+        name: "Site",
+        color: null,
+        teamSlug: "ops",
+        teamName: "Operations",
+        isDefault: false,
+        archived: false,
+        resources: { driveFolderId: "n3", driveFolderPath: "/groups/ops/Site" },
+      },
+    ] as never;
+
+    const render = (selectedProjectIds: string[] | null, selectView = vi.fn()) =>
+      renderHook(() =>
+        useDriveSidebarModel({
+          labels: driveLabels,
+          view: { type: "folder", path: "Groups/eng/Launch" },
+          sidebarGroupRoots: [],
+          selectView,
+          sidebarDropZoneProps,
+          commitMoveToFolder,
+          projects,
+          selectedProjectIds,
+        }),
+      );
+
+    it("lists Project folders, labelled by Team when there are several", () => {
+      const { result } = render(null);
+      expect(result.current.projectSidebarItems.map((i) => [i.label, i.description])).toEqual([
+        ["Launch", "Engineering"],
+        ["Site", "Operations"],
+      ]);
+      expect(result.current.projectSidebarItems[0]?.selected).toBe(true);
+    });
+
+    it("narrows to the Projects in scope and drops the Team label", () => {
+      const { result } = render(["p3"]);
+      expect(result.current.projectSidebarItems.map((i) => [i.label, i.description])).toEqual([
+        ["Site", undefined],
+      ]);
+    });
+
+    it("opens the Project folder on select", () => {
+      const selectView = vi.fn();
+      const { result } = render(null, selectView);
+      result.current.projectSidebarItems[1]?.onClick?.();
+      expect(selectView).toHaveBeenCalledWith({ type: "folder", path: "Groups/ops/Site" });
+    });
+  });
 });

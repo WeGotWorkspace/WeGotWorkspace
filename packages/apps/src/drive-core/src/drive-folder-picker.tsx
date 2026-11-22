@@ -37,6 +37,7 @@ import {
   DRIVE_LIST_SORT_COLUMNS,
   sortDriveFiles,
 } from "@/drive-core/src/drive-list-sort";
+import { useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { DriveViewIcon, withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
@@ -360,9 +361,14 @@ export function DriveFolderPicker({
     onDestinationChange?.(destinationPath);
   }, [destinationPath, fileSelect, onDestinationChange, onSelectedFileChange, selectedFile]);
 
+  const { isProjectFolderUiPath } = useProjectFolders();
   const breadcrumbItems = useMemo(
-    () => withDriveRootIcons(buildDriveFolderPickerBreadcrumbs(browsePath, labels, rootLabels)),
-    [browsePath, labels, rootLabels],
+    () =>
+      withDriveRootIcons(
+        buildDriveFolderPickerBreadcrumbs(browsePath, labels, rootLabels),
+        isProjectFolderUiPath,
+      ),
+    [browsePath, isProjectFolderUiPath, labels, rootLabels],
   );
 
   const breadcrumbView = useMemo<ViewKey>(() => {

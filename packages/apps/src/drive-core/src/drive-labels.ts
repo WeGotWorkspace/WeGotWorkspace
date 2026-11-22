@@ -16,6 +16,8 @@ export const driveLabels = {
   sidebarTrash: filesBrowserSidebarLabels.trash,
   /** My Drives section title (SST with Docs; was "Team drives"). */
   sidebarSharedDrives: filesBrowserSidebarLabels.drivesSection,
+  /** Section of the Project folders (#818). */
+  sidebarProjects: "Projects",
   /** Root label for Team drives; the UI path segment stays `Groups`. */
   teamsRoot: filesBrowserSidebarLabels.teamsRoot,
   searchPlaceholder: "Search in Drive...",
