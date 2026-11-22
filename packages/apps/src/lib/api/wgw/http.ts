@@ -14,6 +14,8 @@ import { sendWgwRequest, type WgwRequestInit } from "@/lib/api/wgw/send-with-upl
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import { workspaceSessionFromAccountReads } from "@/lib/api/wgw/principal-from-account";
+import { createAccountReads } from "@/lib/api/wgw/shared-account-read";
 
 export { WgwSessionRenewalError, WgwSignInRequiredError };
 
@@ -211,6 +213,7 @@ export function clearWgwSession(reason: WgwSessionClearReason): void {
   resetRefreshFailures();
   refreshRejectedByAuth = false;
   persistTokens();
+  wgwInvalidateAccountReads();
 }
 
 async function postJson(path: string, body: unknown, auth?: string): Promise<Response> {
@@ -822,6 +825,23 @@ function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
   };
 }
 
+/** Username of the signed-in member, from the access token; `null` for guests or no session. */
+function signedInUsername(): string | null {
+  readTokensFromStorage();
+  const sub = accessToken && sessionKind !== "guest" ? decodeJwtPayload(accessToken)?.sub : null;
+  return typeof sub === "string" && sub.trim() ? sub : null;
+}
+
+/** `GET /settings/state` and `GET /me`, once per browser; see `shared-account-read.ts`. */
+const accountReads = createAccountReads({
+  fetch: wgwFetch,
+  readJson: wgwReadJson,
+  identity: signedInUsername,
+});
+export const wgwSettingsStateRead = accountReads.settings;
+export const wgwMeRead = accountReads.me;
+export const wgwInvalidateAccountReads = accountReads.invalidateAll;
+
 export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   readTokensFromStorage();
   if (wgwIsGuestSession()) {
@@ -831,70 +851,20 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
     return wgwGuestPrincipalFromAccessToken(accessToken);
   }
 
-  const res = await wgwFetch("/me");
-  if (!res.ok) throw new WgwRequestError(`GET /me failed (${res.status})`, res.status);
-  const j = (await wgwReadJson(res)) as Record<string, unknown>;
-  const meUsername = typeof j.username === "string" ? j.username : "User";
-
-  // Keep identity consistent with Settings when available.
-  let settingsUser:
-    | {
-        username?: string;
-        displayName?: string;
-        email?: string;
-      }
-    | undefined;
-  try {
-    const settingsRes = await wgwFetch("/settings/state");
-    if (settingsRes.ok) {
-      const settingsJson = (await wgwReadJson(settingsRes)) as Record<string, unknown>;
-      const user = settingsJson.user;
-      if (user && typeof user === "object") {
-        const candidate = user as Record<string, unknown>;
-        settingsUser = {
-          username: typeof candidate.username === "string" ? candidate.username : undefined,
-          displayName:
-            typeof candidate.displayName === "string" ? candidate.displayName : undefined,
-          email: typeof candidate.email === "string" ? candidate.email : undefined,
-        };
-      }
-    }
-  } catch {
-    // Optional enrichment only; /me remains the fallback source.
-  }
-
-  const username = settingsUser?.username?.trim() || meUsername;
-  const explicitDisplayName =
-    typeof settingsUser?.displayName === "string"
-      ? settingsUser.displayName
-      : typeof j.displayName === "string"
-        ? j.displayName
-        : typeof j.displayname === "string"
-          ? j.displayname
-          : typeof j.name === "string"
-            ? j.name
-            : null;
-  const normalizedDisplayName =
-    explicitDisplayName?.trim() ||
-    username
-      .trim()
-      .split(/[._-]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ") ||
-    "User";
-  const user = {
-    displayName: normalizedDisplayName,
-    initials: workspaceUserInitials({ displayName: normalizedDisplayName }),
-    username,
-    email: settingsUser?.email ?? (typeof j.email === "string" ? j.email : undefined),
-  };
-  return { user, viewerInboxLabel: "me" };
+  const meRead = await wgwMeRead.read();
+  if (!meRead.ok) throw new WgwRequestError(`GET /me failed (${meRead.status})`, meRead.status);
+  // Keep identity consistent with Settings when available; /me is the fallback.
+  const settingsRead = await wgwSettingsStateRead.read().catch(() => undefined);
+  return workspaceSessionFromAccountReads(
+    meRead.json,
+    settingsRead?.ok ? settingsRead.json : undefined,
+  );
 }
 
 export function resetWgwSessionStateForTests(keepTokens = false): void {
   refreshPromise = null;
   legacySwept = false;
+  accountReads.resetForTests();
   if (keepTokens) return;
   accessToken = null;
   sessionKind = null;

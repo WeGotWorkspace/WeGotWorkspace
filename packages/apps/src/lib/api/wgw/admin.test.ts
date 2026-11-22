@@ -1,12 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchAdminLiveBootstrap } from "@/lib/api/wgw/admin";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { createWgwAdminOperations, fetchAdminLiveBootstrap } from "@/lib/api/wgw/admin";
+import {
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwInvalidateAccountReads,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwFetch: vi.fn(),
   wgwFetchPrincipal: vi.fn(),
+  wgwInvalidateAccountReads: vi.fn(),
+  wgwSettingsStateRead: { invalidate: vi.fn() },
   wgwReadJson: vi.fn(),
 }));
 
@@ -91,5 +98,38 @@ describe("fetchAdminLiveBootstrap retry", () => {
     await bootstrapFailure();
 
     expect(principalMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("admin writes that can change the admin's own account", () => {
+  afterEach(() => vi.resetAllMocks());
+
+  it("drops the shared account reads after a team write, before reading admin state", async () => {
+    vi.mocked(wgwReadJson).mockResolvedValue({});
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    principalMock.mockResolvedValue({
+      user: { username: "admin", displayName: "Admin", email: "" },
+    } as Awaited<ReturnType<typeof wgwFetchPrincipal>>);
+    const ops = createWgwAdminOperations();
+    await ops.updateGroup("principals/groups/team", { displayName: "Team" }).catch(() => undefined);
+    expect(wgwInvalidateAccountReads).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the shared account reads after a user is created", async () => {
+    vi.mocked(wgwReadJson).mockResolvedValue({});
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    principalMock.mockResolvedValue({
+      user: { username: "admin", displayName: "Admin", email: "" },
+    } as Awaited<ReturnType<typeof wgwFetchPrincipal>>);
+    const ops = createWgwAdminOperations();
+    await ops.createUser({ username: "new", password: "pw" } as never).catch(() => undefined);
+    expect(wgwInvalidateAccountReads).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the shared account reads when the write fails", async () => {
+    fetchMock.mockResolvedValue(new Response("", { status: 500 }));
+    const ops = createWgwAdminOperations();
+    await expect(ops.deleteGroup("team")).rejects.toMatchObject({ status: 500 });
+    expect(wgwInvalidateAccountReads).not.toHaveBeenCalled();
   });
 });
