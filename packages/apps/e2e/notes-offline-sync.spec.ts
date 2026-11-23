@@ -163,6 +163,47 @@ test.describe("Notes offline sync (live app)", () => {
     }
   });
 
+  test("two tabs, stale navigator.onLine: one tab's probe brings the other online", async ({
+    browser,
+  }) => {
+    const token = `e2e-shared-probe-${Date.now()}`;
+    const context = await browser.newContext({ storageState: "e2e/.auth/admin.json" });
+    const tabA = await context.newPage();
+    const tabB = await context.newPage();
+
+    try {
+      await prepareNotesForOfflineSync(tabA);
+      await prepareNotesForOfflineSync(tabB);
+      await blockReachabilityAndApi(tabA);
+      await blockReachabilityAndApi(tabB);
+      await reloadNotesOffline(tabA);
+      await reloadNotesOffline(tabB);
+      await expectOfflineIndicator(tabA);
+      await expectOfflineIndicator(tabB);
+
+      await openFirstNote(tabB);
+      await appendToActiveNoteBody(tabB, token);
+      await expectPendingDotVisible(tabB);
+
+      // Lift B's API block but keep its own HEAD / probe aborted: B can only
+      // come back online through A's broadcast probe result.
+      await tabB.unroute("**/*");
+      await tabB.route("**/*", (route) => {
+        const request = route.request();
+        if (request.method() === "HEAD" && new URL(request.url()).pathname === "/") {
+          return route.abort("failed");
+        }
+        return route.continue();
+      });
+
+      await restoreNetwork(tabA);
+      await expectSyncCompleted(tabB);
+      await expect.poll(() => noteTokenOnServer(tabB, token), { timeout: 20_000 }).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+
   test("online delete: permanent delete syncs to server", async ({ page }) => {
     const token = `e2e-del-${Date.now()}`;
 

@@ -17,6 +17,9 @@ vi.mock("@/lib/api/wgw/http", async () => {
     wgwApiBaseUrl: () => "/api/v1",
     wgwFetch,
     wgwFetchPrincipal: vi.fn(async () => ({ user: { username: "bob" } })),
+    wgwSettingsStateRead: {
+      read: vi.fn(async () => ({ ok: true, status: 200, json: { apps: { contacts: true } } })),
+    },
   };
 });
 
