@@ -59,7 +59,7 @@ export function registerBuiltinSettings(): void {
   });
   registerPanel({
     id: "memberships",
-    label: "Teams",
+    label: "Teams & Projects",
     description: projectsLabels.panelDescription,
     icon: <Users className="size-3.5" />,
     group: "account",
