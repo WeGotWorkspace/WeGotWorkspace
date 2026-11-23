@@ -160,6 +160,39 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_a_replayed_code_is_refused_without_using_up_an_attempt(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $code])->assertOk();
+
+        // More tries than a challenge (5), the per-user lock (10) or the sign-in limit allow.
+        $challenge = $this->challengeFor('bob');
+        for ($i = 0; $i < 15; $i++) {
+            $this->verifyChallenge($challenge, ['code' => $code])
+                ->assertStatus(401)
+                ->assertJsonPath('code', 'mfa_code_invalid');
+        }
+        $this->assertSame(0, (int) AuthChallenge::query()->where('id_hash', hash('sha256', $challenge))->value('attempts'));
+
+        // Nothing was counted anywhere, so the next step's code still signs in.
+        $this->nextStep();
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret)])->assertOk();
+    }
+
+    public function test_a_wrong_code_still_uses_up_an_attempt(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $code])->assertOk();
+        $challenge = $this->challengeFor('bob');
+
+        $this->verifyChallenge($challenge, ['code' => $this->wrongCode($secret)])->assertStatus(401);
+        $this->assertSame(1, (int) AuthChallenge::query()->where('id_hash', hash('sha256', $challenge))->value('attempts'));
+        // A code of a step that was never accepted is no replay, even next to a spent one.
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret, 1)])->assertOk();
+    }
+
     public function test_a_challenge_is_single_use(): void
     {
         $secret = $this->turnOnMfa('bob')['secret'];
