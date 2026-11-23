@@ -46,9 +46,9 @@ export function useMeetChatSession({
   initialThreadId = null,
 }: UseMeetChatSessionArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  /** Messages deleted on screen whose delete is still within its Undo window: id -> when. */
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  /** Messages deleted on screen whose delete is still within its Undo window: id -> when. */
   const [pendingDeletes, setPendingDeletes] = useState<ReadonlyMap<string, number>>(new Map());
   const { showError } = useAppToast();
   const { queueMutation, undoLatest } = useQueuedMutation({
