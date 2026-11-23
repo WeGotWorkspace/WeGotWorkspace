@@ -184,7 +184,7 @@ export const uiActions = {
     if (!task) throw new Error("task added in the browser is not on the server");
     const ids = { taskId: task.id, listId: list.ids.listId };
     if (!a.params.assignee) return { ids, extra: { status: "open", title: a.params.title }, note };
-    await assignInBrowser(b, ctx, a, a.params.title);
+    await assignInBrowser(b, ctx, a, task.id);
     return { ids, extra: { status: "open", title: a.params.title, assignee: a.params.assignee }, note: [note, `assigned ${a.params.assignee} in the task`].filter(Boolean).join("; ") };
   },
 
@@ -194,9 +194,15 @@ export const uiActions = {
     const c = ctx.client(a.persona);
     const suggestions = async () => {
       const res = await c.request("GET", `/api/v1/files/threads?path=${encodeURIComponent(doc.ids.path)}`);
-      return res.ok ? (res.json.list ?? []).filter((t) => t.kind === "suggestion" && !t.resolved && !t.resolvedAt) : null;
+      return res.ok ? (res.json.list ?? []).filter((t) => t.kind === "suggestion" && !t.resolved && !t.archived) : null;
     };
     const before = new Set(((await suggestions()) ?? []).map((t) => t.id));
+    const readFile = () => c.request("GET", `/api/v1/files/content?path=${encodeURIComponent(doc.ids.path)}`, { headers: { accept: "*/*" } });
+    const slice = a.params.text.slice(0, 30);
+    const countOf = (text) => text.split(slice).length - 1;
+    const fileBefore = await readFile();
+    if (!fileBefore.ok) throw new Error(`could not read the doc before suggesting (HTTP ${fileBefore.status})`);
+    const occurrencesBefore = countOf(fileBefore.text);
     await openDoc(b, doc.ids.path);
     const toggle = page.locator(".docs-collab-suggest-controls").first();
     await toggle.waitFor({ timeout: T });
@@ -208,8 +214,10 @@ export const uiActions = {
     const thread = await b.wait("suggestion on the server", () => pollFor(async () => ((await suggestions()) ?? []).find((t) => !before.has(t.id)), 30000));
     if (!thread) throw new Error("a suggestion made in the browser has no suggestion thread on the server");
     // A suggestion is not an edit: the stored file keeps the text without it until someone accepts.
-    const res = await c.request("GET", `/api/v1/files/content?path=${encodeURIComponent(doc.ids.path)}`, { headers: { accept: "*/*" } });
-    if (res.ok && res.text.includes(a.params.text.slice(0, 30))) throw new Error("suggested text landed in the file before anyone accepted it");
+    // The paragraph pool is small, so the doc may already hold the text: only more occurrences than before count.
+    const res = await readFile();
+    if (!res.ok) throw new Error(`could not read the doc after suggesting (HTTP ${res.status})`);
+    if (countOf(res.text) > occurrencesBefore) throw new Error("suggested text landed in the file before anyone accepted it");
     return { note: "suggested an edit in Suggest mode" };
   },
 
@@ -370,18 +378,19 @@ async function openDriveFolder(b, ctx, folder) {
 }
 
 /** Opens the task, picks the colleague in the Assignee picker and waits for the server to have them. */
-async function assignInBrowser(b, ctx, a, title) {
+async function assignInBrowser(b, ctx, a, taskId) {
   const { page } = b;
   const mate = ctx.world.persona(a.params.assignee);
-  const row = page.locator(".tasks-list-row").filter({ has: page.locator(".list-item__title").getByText(title, { exact: true }) }).first();
-  await row.locator(".list-item__button").click();
+  // Titles repeat in a project list: open the row of the task just created, by its id.
+  await page.locator(`.tasks-list-row [data-list-item-id="${taskId}"]`).first().click({ timeout: T });
   const detail = page.locator(".tasks-detail-view");
   await detail.getByRole("textbox", { name: "Task name" }).waitFor({ timeout: T });
   await detail.getByRole("button", { name: /^Assignee:/ }).click();
   const picker = page.getByRole("listbox", { name: "Assignee" });
   await picker.waitFor({ timeout: T });
   const option = picker.getByRole("option", { name: new RegExp(mate.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).first();
-  if (!(await option.isVisible().catch(() => false))) {
+  // The listbox renders before the list members have loaded, so wait for the option.
+  if (!(await option.waitFor({ timeout: T }).then(() => true, () => false))) {
     await page.keyboard.press("Escape");
     throw new Error(`${mate.displayName} is not in the Assignee picker of a project task`);
   }
@@ -391,8 +400,8 @@ async function assignInBrowser(b, ctx, a, title) {
   const email = ctx.world.email(mate.id).toLowerCase();
   const assigned = await b.wait("assignee on the server", () =>
     pollFor(async () => {
-      const { list: items } = await c.get(`/api/v1/tasks/items?taskListId=${encodeURIComponent(need(ctx, a.params.list).ids.listId)}`);
-      const task = items.find((t) => t.title === title);
+      const res = await c.request("GET", `/api/v1/tasks/items/${encodeURIComponent(taskId)}`);
+      const task = res.ok ? res.json : null;
       return Object.entries(task?.participants ?? {}).some(([k, p]) => k !== "org" && (k === `u:${mate.id}` || String(p?.email ?? "").toLowerCase() === email));
     }, 30000),
   );
