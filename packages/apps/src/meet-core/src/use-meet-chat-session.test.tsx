@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatMessage, MeetChatOperations } from "@/lib/models/meet-types";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
@@ -89,5 +89,30 @@ describe("useMeetChatSession sendChannel", () => {
     expect(send.echoId).toBeNull();
     expect(await send.saved).toBeNull();
     expect(sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("useMeetChatSession deleteMessage", () => {
+  it("deletes a message that never reached the server at once, without the Undo hold", async () => {
+    const deleteMessage = vi.fn(async () => undefined);
+    const queued: ChatMessage = {
+      ...savedRow("queued-1", "chat-general", "later"),
+      syncState: "pending",
+    };
+    const initialMessages = [queued];
+    const { result } = renderHook(() =>
+      useMeetChatSession({
+        initialMessages,
+        operations: { deleteMessage },
+        selectedChannelId: "chat-general",
+        author: { id: "alice", displayName: "Alice" },
+        directory: [],
+      }),
+    );
+
+    act(() => result.current.deleteMessage("queued-1"));
+
+    expect(deleteMessage).toHaveBeenCalledWith("queued-1");
+    expect(result.current.messages[0]?.deletedAt).toBeTruthy();
   });
 });

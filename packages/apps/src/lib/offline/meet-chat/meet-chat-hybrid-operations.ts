@@ -88,6 +88,10 @@ export function getMeetChatSyncRunner(
   return syncRunnerRegistry.getOrCreate(username, () => flushMeetChatOutbox(username));
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+}
+
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -336,6 +340,8 @@ export function createHybridMeetChatOperations(
         ? { ...existing, body: "", deletedAt: Date.now(), previews: [], mentions: [] }
         : undefined;
       const queueDelete = async (): Promise<void> => {
+        // Undo can land while this waits for the send lock: then nothing is queued.
+        throwIfAborted(opts?.signal);
         const { serverDeleteQueued } = await enqueueChatDelete(username, { messageId });
         if (!serverDeleteQueued) {
           // The message only ever existed locally (queued send) — drop it fully.
@@ -348,7 +354,9 @@ export function createHybridMeetChatOperations(
       };
       if (await queueUnderLock(messageId, queueDelete)) return;
       try {
-        await deleteChatMessage(messageId, opts);
+        throwIfAborted(opts?.signal);
+        if (opts) await deleteChatMessage(messageId, opts);
+        else await deleteChatMessage(messageId);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
         notifyMeetChatCacheChanged(username);
         await runner.flush();
@@ -357,7 +365,9 @@ export function createHybridMeetChatOperations(
           await removeChatMessageFromCache(username, messageId);
           return;
         }
-        if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
+        if (!shouldQueueChatWrite(error, opts?.signal)) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
         await queueDelete();
       }
     },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type { ChatMentionPrincipal, ChatSendPayload } from "@/lib/models/chat-types";
@@ -47,6 +47,8 @@ export function useMeetChatSession({
 }: UseMeetChatSessionArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   /** Messages deleted on screen whose delete is still within its Undo window: id -> when. */
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [pendingDeletes, setPendingDeletes] = useState<ReadonlyMap<string, number>>(new Map());
   const { showError } = useAppToast();
   const { queueMutation, undoLatest } = useQueuedMutation({
@@ -189,6 +191,21 @@ export function useMeetChatSession({
   const deleteMessage = useCallback(
     (messageId: string) => {
       const deletedAt = Date.now();
+      // A send that never reached the server (pending or failed): nothing to take back, and holding the
+      // delete would let the queued send go out first. Cancel it at once.
+      if (messagesRef.current.find((row) => row.id === messageId)?.syncState != null) {
+        void operations
+          ?.deleteMessage?.(messageId)
+          .catch(() => showError("Could not delete the message."));
+        setMessages((current) =>
+          current.map((row) =>
+            row.id === messageId
+              ? { ...row, deletedAt, body: "", previews: [], mentions: [] }
+              : row,
+          ),
+        );
+        return;
+      }
       setPendingDeletes((current) => new Map(current).set(messageId, deletedAt));
       const release = () =>
         setPendingDeletes((current) => {
@@ -202,6 +219,7 @@ export function useMeetChatSession({
         irreversible: true,
         execute: async (signal) => {
           await operations?.deleteMessage?.(messageId, { signal });
+          if (signal.aborted) return;
           setMessages((current) =>
             current.map((row) =>
               row.id === messageId
@@ -216,7 +234,7 @@ export function useMeetChatSession({
         undoToastMessage: "Deletion undone.",
       });
     },
-    [operations, queueMutation],
+    [operations, queueMutation, showError],
   );
 
   // Cmd/Ctrl+Z takes back the latest delete, unless a text field has its own Undo to
