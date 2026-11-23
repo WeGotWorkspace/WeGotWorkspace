@@ -182,7 +182,7 @@ final class LoginRateLimiter
         }
 
         [$user, $ipNorm] = $this->normalized($username, $ip);
-        $this->cache->add($this->knownKey($user, $ipNorm), true, self::KNOWN_ADDRESS_SECONDS);
+        $this->cache->put($this->knownKey($user, $ipNorm), true, self::KNOWN_ADDRESS_SECONDS);
     }
 
     private function isKnown(string $user, string $ipNorm): bool

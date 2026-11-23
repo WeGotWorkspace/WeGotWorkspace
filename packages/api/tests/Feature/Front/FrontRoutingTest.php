@@ -351,6 +351,20 @@ final class FrontRoutingTest extends TestCase
         $this->assertStringContainsString('display-capture=(self)', SecurityHeaderPolicy::PERMISSIONS_POLICY);
     }
 
+    public function test_mcp_oauth_login_step_gets_no_opener_policy(): void
+    {
+        $this->installedShell();
+        $accept = ['HTTP_ACCEPT' => 'text/html'];
+
+        $this->call('GET', 'http://localhost/login', [], [], [], $accept)
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $this->call('GET', 'http://localhost/login?return=%2Foauth%2Fauthorize&intent=abc', [], [], [], $accept)
+            ->assertOk()
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy');
+        $this->call('GET', 'http://localhost/login?return=/oauth/authorize?x=1', [], [], [], $accept)
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy');
+    }
+
     public function test_api_json_gets_the_resource_policy_only(): void
     {
         $this->getJson('http://localhost/api/v1/health')

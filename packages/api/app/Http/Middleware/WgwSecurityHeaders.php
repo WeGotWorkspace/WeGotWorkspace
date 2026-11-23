@@ -35,7 +35,7 @@ final class WgwSecurityHeaders
         }
         if (str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
             $response->headers->set('Permissions-Policy', SecurityHeaderPolicy::PERMISSIONS_POLICY);
-            if (! $mcp) {
+            if (! $mcp && ! McpPaths::isOauthLogin($request)) {
                 $response->headers->set('Cross-Origin-Opener-Policy', SecurityHeaderPolicy::OPENER_POLICY);
             }
             $response->headers->set(

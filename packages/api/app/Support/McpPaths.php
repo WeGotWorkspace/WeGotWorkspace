@@ -23,4 +23,19 @@ final class McpPaths
             || $request->is('.well-known/oauth-protected-resource')
             || $request->is('.well-known/oauth-protected-resource/*');
     }
+
+    /**
+     * The SPA sign-in step of an MCP OAuth connect: `/login?return=/oauth/authorize…`.
+     * A popup client must keep its opener through it, so it gets no COOP.
+     */
+    public static function isOauthLogin(Request $request): bool
+    {
+        if (! $request->is('login')) {
+            return false;
+        }
+        $return = $request->query('return');
+
+        return is_string($return)
+            && ($return === '/oauth/authorize' || str_starts_with($return, '/oauth/authorize?'));
+    }
 }
