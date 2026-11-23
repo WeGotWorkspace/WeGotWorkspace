@@ -58,15 +58,19 @@ export function TextEditorSlashMenu({
     setOpen(true);
   }, [editor]);
 
+  const closeSlashMenu = useCallback(() => setOpen(false), []);
+
   useEffect(() => {
     if (!editor) return;
     editor.on("selectionUpdate", syncSlashMenu);
     editor.on("update", syncSlashMenu);
+    editor.on("blur", closeSlashMenu);
     return () => {
       editor.off("selectionUpdate", syncSlashMenu);
       editor.off("update", syncSlashMenu);
+      editor.off("blur", closeSlashMenu);
     };
-  }, [editor, syncSlashMenu]);
+  }, [editor, syncSlashMenu, closeSlashMenu]);
 
   useEffect(() => {
     if (!open || !editor) return;
@@ -88,6 +92,8 @@ export function TextEditorSlashMenu({
   useEffect(() => {
     if (!visible || !editor) return;
     const onKey = (e: KeyboardEvent) => {
+      // Another editor may hold focus (chat edit composer beside the main one).
+      if (!editor.view.hasFocus()) return;
       const handled = () => {
         // The menu owns these keys while it is open: a host editor (chat: Enter sends,
         // Escape cancels an edit) must not act on them as well.

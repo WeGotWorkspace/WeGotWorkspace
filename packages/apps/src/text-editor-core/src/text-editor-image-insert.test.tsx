@@ -49,7 +49,7 @@ describe("docs image insert UI", () => {
     editor.commands.focus("end");
     editor.commands.insertContent("/");
 
-    fireEvent.mouseDown(await screen.findByRole("option", { name: /Image/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /Image/i }));
     expect(onInsertImage).toHaveBeenCalledTimes(1);
 
     insertDocsImageFromNodeId(editor, NODE_ID, "Diagram");
