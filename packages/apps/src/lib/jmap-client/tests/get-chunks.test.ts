@@ -6,7 +6,12 @@ import {
   JmapContactsClient,
 } from "../contacts/JmapContactsClient.js";
 import { JmapClient } from "../core/JmapClient.js";
-import { DEFAULT_MAX_OBJECTS_IN_GET, getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
+import {
+  DEFAULT_MAX_OBJECTS_IN_GET,
+  GENERAL_GET_PAGE_CAP,
+  getInChunks,
+  maxObjectsInGet,
+} from "../core/get-chunks.js";
 import {
   CALENDARS_CAPABILITY,
   CHAT_CAPABILITY,
@@ -141,6 +146,18 @@ describe("getInChunks", () => {
       DEFAULT_MAX_OBJECTS_IN_GET,
     );
     expect(maxObjectsInGet({ capabilities: {} })).toBe(DEFAULT_MAX_OBJECTS_IN_GET);
+  });
+});
+
+describe("pages of everything but lean contact cards stay at 500 (#2284)", () => {
+  it("a server that allows 1000 still gets 500-id pages from the shared helper", () => {
+    expect(GENERAL_GET_PAGE_CAP).toBe(500);
+    expect(
+      maxObjectsInGet({ capabilities: { [CORE_CAPABILITY]: { maxObjectsInGet: 1000 } } }),
+    ).toBe(500);
+    expect(maxObjectsInGet({ capabilities: { [CORE_CAPABILITY]: { maxObjectsInGet: 300 } } })).toBe(
+      300,
+    );
   });
 });
 

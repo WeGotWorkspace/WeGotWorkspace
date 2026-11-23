@@ -71,6 +71,8 @@ final class JmapSessionTest extends WgwDatabaseTestCase
             $this->assertArrayHasKey($field, $core, $field);
         }
         $this->assertSame(JmapCapabilities::MAX_CALLS_IN_REQUEST, $core['maxCallsInRequest']);
+        // Contacts' lean first download asks for pages of this size (#2284); RFC 8620 §2 minimum is 500.
+        $this->assertSame(1000, $core['maxObjectsInGet']);
 
         // Session-level calendars capability is the EMPTY object (draft-27 §1.5.1);
         // the six-property object lives at the account level.

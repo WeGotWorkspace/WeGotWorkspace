@@ -169,7 +169,7 @@ One JMAP account per authenticated principal. **`accountId = username`, used raw
       "maxSizeRequest": 2000000,
       "maxConcurrentRequests": 4,
       "maxCallsInRequest": 32,
-      "maxObjectsInGet": 500,
+      "maxObjectsInGet": 1000,
       "maxObjectsInSet": 200,
       "collationAlgorithms": ["i;unicode-casemap"]
     },

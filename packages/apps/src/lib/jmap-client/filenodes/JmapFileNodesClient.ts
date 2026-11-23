@@ -1,5 +1,6 @@
 import { JmapSetItemError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
+import { GENERAL_GET_PAGE_CAP } from "../core/get-chunks.js";
 import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
@@ -205,7 +206,9 @@ export class JmapFileNodesClient {
     const core = this.client.session.capabilities[CORE_CAPABILITY];
     if (!core || typeof core !== "object") return DEFAULT_MAX_OBJECTS_IN_GET;
     const value = Number((core as Record<string, unknown>).maxObjectsInGet);
-    return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_MAX_OBJECTS_IN_GET;
+    const advertised =
+      Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_MAX_OBJECTS_IN_GET;
+    return Math.min(advertised, GENERAL_GET_PAGE_CAP);
   }
 
   /** `FileNode/get` per chunk of at most `maxObjectsInGet` ids, one HTTP request each. */

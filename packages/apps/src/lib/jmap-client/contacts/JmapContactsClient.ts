@@ -101,7 +101,7 @@ export const CONTACT_CARD_PROPERTIES_LEAN = [
 ];
 
 /** Lean first-download pages: the server's maximum, a few hundred bytes a card. */
-export const CONTACT_CARD_LEAN_PAGE_SIZE = DEFAULT_MAX_OBJECTS_IN_GET;
+export const CONTACT_CARD_LEAN_PAGE_SIZE = 1000;
 
 /** The photo pass asks for these: the photos, and the card state they belong to. */
 export const CONTACT_CARD_MEDIA_PROPERTIES = ["media", "state"];
