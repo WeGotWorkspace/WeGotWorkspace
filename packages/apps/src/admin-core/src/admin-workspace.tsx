@@ -170,7 +170,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
                 onNewGroup={() => setNewGroupOpen(true)}
                 onEditGroup={setEditGroupId}
                 onDeleteGroup={setDeleteGroupId}
-                projectOperations={props.projectOperations}
               />
             ) : null}
             {controller.section === "email-delivery" ? (

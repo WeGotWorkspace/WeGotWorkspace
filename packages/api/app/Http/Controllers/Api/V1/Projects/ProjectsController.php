@@ -54,7 +54,14 @@ final class ProjectsController
         return response()->json($this->lifecycle->unarchive($this->username($request), $project));
     }
 
-    /** Purge: only an archived Project (#819). */
+    /** Purge: a team admin deletes an archived Project for good (#819). */
+    public function destroy(Request $request, string $project): JsonResponse
+    {
+        $this->lifecycle->purge($this->username($request), $project);
+
+        return response()->json(['ok' => true]);
+    }
+
     /** @return array<string, mixed> */
     private function payload(Request $request): array
     {

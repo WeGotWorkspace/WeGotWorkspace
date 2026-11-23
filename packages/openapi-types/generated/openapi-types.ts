@@ -9788,7 +9788,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a member from a Team
-         * @description Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         * @description Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team. The last team admin of the Team cannot be removed: 409 `last_team_admin`.
          */
         delete: {
             parameters: {
@@ -9812,6 +9812,13 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["JmapNotFound"];
+                /** @description The last team admin of the Team cannot be removed (`last_team_admin`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         options?: never;
@@ -9865,7 +9872,7 @@ export interface paths {
         post?: never;
         /**
          * Dismiss a team admin
-         * @description Idempotent. A team admin may dismiss themself; a Team may be left without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         * @description Idempotent. A team admin may dismiss themself, unless they are the last one: 409 `last_team_admin`. A Team may start without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
          */
         delete: {
             parameters: {
@@ -9889,6 +9896,13 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["JmapNotFound"];
+                /** @description The last team admin of the Team cannot be dismissed (`last_team_admin`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         options?: never;
@@ -10004,7 +10018,55 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Purge an archived Project
+         * @description Team admins of the Project's Team. Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. 403 for a member who is not a team admin; 404 for a caller outside the Team, an organization admin included. A purge that stopped half-way completes on retry.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not archived, or the default Project */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         /**

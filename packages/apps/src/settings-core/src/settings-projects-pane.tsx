@@ -25,6 +25,7 @@ import {
 } from "@/lib/projects/projects-store";
 import type { ProjectTeam } from "@/lib/api/wgw/projects";
 import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
+import { PurgeProjectDialog } from "@/projects-ui/src/purge-project-dialog";
 import { EditProjectDialog } from "@/projects-ui/src/edit-project-dialog";
 import { CreateProjectDialog } from "@/projects-ui/src/create-project-dialog";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
@@ -60,6 +61,7 @@ function ProjectRow({
   onAction,
   onArchiveRequest,
   onEditRequest,
+  onPurgeRequest,
 }: {
   project: WorkspaceProject;
   canManage: boolean;
@@ -67,6 +69,7 @@ function ProjectRow({
   onAction: (work: () => Promise<unknown>, success: string, failure: string) => Promise<void>;
   onArchiveRequest: (project: WorkspaceProject) => void;
   onEditRequest: (project: WorkspaceProject) => void;
+  onPurgeRequest: (project: WorkspaceProject) => void;
 }) {
   const archived = project.archived;
   return (
@@ -109,6 +112,14 @@ function ProjectRow({
               )
             }
           />
+          <Button
+            type="button"
+            variant="ghost"
+            severity="danger"
+            label={labels.purge}
+            aria-label={`${labels.purge}: ${project.name}`}
+            onClick={() => onPurgeRequest(project)}
+          />
         </>
       ) : null}
     </li>
@@ -140,6 +151,7 @@ export function ProjectsManagePane({
   const track = useTrackAutosave();
   const [archiving, setArchiving] = useState<WorkspaceProject | null>(null);
   const [editing, setEditing] = useState<WorkspaceProject | null>(null);
+  const [purging, setPurging] = useState<WorkspaceProject | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [creatingIn, setCreatingIn] = useState<ProjectTeam | null>(null);
 
@@ -190,6 +202,7 @@ export function ProjectsManagePane({
           onAction={onAction}
           onArchiveRequest={setArchiving}
           onEditRequest={setEditing}
+          onPurgeRequest={setPurging}
         />
       ))}
     </ul>
@@ -307,6 +320,25 @@ export function ProjectsManagePane({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <PurgeProjectDialog
+        projectName={purging?.name ?? null}
+        onOpenChange={(open) => {
+          if (!open) setPurging(null);
+        }}
+        onPurge={async () => {
+          const target = purging;
+          if (!target) return false;
+          try {
+            await track(() => store.purge(target.id));
+            toast.showSuccess(labels.purged(target.name));
+            return true;
+          } catch (error) {
+            setPurging(null);
+            fail(labels.purgeFailed, error);
+            return false;
+          }
+        }}
+      />
       <CreateProjectDialog
         open={creatingIn !== null}
         teams={creatingIn ? [creatingIn] : []}

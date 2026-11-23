@@ -16,8 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { AdminArchivedProjectsSection } from "@/admin-core/src/admin-archived-projects-section";
-import type { AdminProjectOperations } from "@/admin-core/src/admin-projects-operations";
 import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
@@ -30,8 +28,6 @@ export type AdminUsersPaneProps = {
   onNewGroup: () => void;
   onEditGroup: (groupId: string) => void;
   onDeleteGroup: (groupId: string) => void;
-  /** Archived Projects sit under Teams; the section is hidden without operations. */
-  projectOperations?: AdminProjectOperations;
 };
 
 type PendingMfaReset = { userId: string; displayName: string };
@@ -64,7 +60,6 @@ export function AdminUsersPane({
   onNewGroup,
   onEditGroup,
   onDeleteGroup,
-  projectOperations,
 }: AdminUsersPaneProps) {
   const [pendingEnabled, setPendingEnabled] = useState<PendingEnabledChange | null>(null);
   const [pendingMfaReset, setPendingMfaReset] = useState<PendingMfaReset | null>(null);
@@ -180,7 +175,6 @@ export function AdminUsersPane({
           ))}
         </AvatarList>
       </WorkspacePageSection>
-      <AdminArchivedProjectsSection operations={projectOperations} />
 
       <AlertDialog
         open={pendingEnabled !== null}

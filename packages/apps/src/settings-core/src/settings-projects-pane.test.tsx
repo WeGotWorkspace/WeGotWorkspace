@@ -133,13 +133,70 @@ describe("ProjectsManagePane", () => {
     expect(toast.showSuccess).toHaveBeenCalledWith("Project “Website relaunch” archived");
     const row = rowOf("Website relaunch");
     expect(within(row).getByText("Archived")).toBeTruthy();
-    // Deleting for good is an organization-admin action in the Admin app.
-    expect(within(row).queryByRole("button", { name: "Delete permanently" })).toBeNull();
+    // A team admin deletes an archived Project for good, after typing its name.
+    expect(within(row).getByRole("button", { name: /Delete permanently/ })).toBeTruthy();
     await act(async () => {
       fireEvent.click(within(row).getByRole("button", { name: "Restore" }));
     });
     await waitFor(() => expect(store.getSnapshot().archived).toEqual([]));
     expect(within(rowOf("Website relaunch")).queryByText("Archived")).toBeNull();
+  });
+
+  it("deletes an archived Project only after its name is typed", async () => {
+    const { store } = await renderPane();
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await act(async () => {
+      fireEvent.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Archive" }),
+      );
+    });
+    await waitFor(() => expect(store.getSnapshot().archived).toHaveLength(1));
+    fireEvent.click(
+      within(rowOf("Website relaunch")).getByRole("button", { name: /Delete permanently/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    const confirm = within(dialog).getByRole("button", { name: "Delete permanently" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "Website relaunch" },
+    });
+    expect((confirm as HTMLButtonElement).disabled).toBe(false);
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+    await waitFor(() => expect(store.getSnapshot().archived).toEqual([]));
+    expect(toast.showSuccess).toHaveBeenCalledWith("Project “Website relaunch” deleted");
+    expect(screen.queryByText("Website relaunch")).toBeNull();
+  });
+
+  it("shows the server's answer when a delete is refused", async () => {
+    const operations = createMockProjectOperations();
+    const purge = vi.fn(async () => {
+      throw new WgwRequestError("Only a team admin can change a Project.", 403);
+    });
+    const { store } = await renderPane({ ...operations, purge });
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await act(async () => {
+      fireEvent.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Archive" }),
+      );
+    });
+    await waitFor(() => expect(store.getSnapshot().archived).toHaveLength(1));
+    fireEvent.click(
+      within(rowOf("Website relaunch")).getByRole("button", { name: /Delete permanently/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "Website relaunch" },
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Delete permanently" }));
+    });
+    await waitFor(() =>
+      expect(toast.showError).toHaveBeenCalledWith("Could not delete the Project", {
+        description: "Only a team admin can change a Project.",
+      }),
+    );
   });
 
   it("does not archive when the confirmation is cancelled", async () => {

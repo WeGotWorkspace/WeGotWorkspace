@@ -98,5 +98,14 @@ export function createMockProjectOperations(
       return replace({ ...project, archived: true, archivedAt: new Date().toISOString() });
     },
     unarchive: async (id) => replace({ ...manageable(id), archived: false, archivedAt: null }),
+    purge: async (id) => {
+      const project = manageable(id);
+      if (project.isDefault) throw new WgwRequestError("The default Project stays", 409);
+      if (!project.archived) throw new WgwRequestError("Archive the Project first", 409);
+      projects.splice(
+        projects.findIndex((entry) => entry.id === id),
+        1,
+      );
+    },
   };
 }

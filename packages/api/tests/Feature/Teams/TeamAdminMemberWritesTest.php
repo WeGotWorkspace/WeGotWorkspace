@@ -114,9 +114,13 @@ final class TeamAdminMemberWritesTest extends WgwDatabaseTestCase
         $this->assertSame(['dave'], app(TeamRoles::class)->teamAdminsOf('t1'));
         $this->asUser('bob')->getJson('/api/v1/teams/t1/members')->assertStatus(404);
 
-        // The last team admin may dismiss themself: a Team may have no team admin.
-        $this->asUser('dave')->deleteJson('/api/v1/teams/t1/admins/dave')->assertOk();
-        $this->assertSame([], app(TeamRoles::class)->teamAdminsOf('t1'));
+        // The last team admin stays: neither a dismissal nor removing them as a member empties the role.
+        $this->asUser('dave')->deleteJson('/api/v1/teams/t1/admins/dave')
+            ->assertStatus(409)->assertJsonPath('code', 'last_team_admin');
+        $this->asUser('dave')->deleteJson('/api/v1/teams/t1/members/dave')
+            ->assertStatus(409)->assertJsonPath('code', 'last_team_admin');
+        $this->assertSame(['dave'], app(TeamRoles::class)->teamAdminsOf('t1'));
+        $this->assertContains('dave', $this->memberUsernames('t1'));
     }
 
     public function test_only_a_member_can_be_team_admin_and_only_a_real_user_can_be_added(): void

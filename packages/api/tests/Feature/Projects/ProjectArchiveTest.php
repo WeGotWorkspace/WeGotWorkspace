@@ -8,7 +8,6 @@ use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\Calendar;
 use App\Models\JmapFileNode;
-use App\Models\Principal;
 use App\Models\Project;
 use App\Models\ProjectResource;
 use App\Services\Calendars\CalendarCollectionAccess;
@@ -156,12 +155,11 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->archive('dave', $project['id'])->assertForbidden()->assertJsonPath('code', 'team_admin_only');
         $this->archive('carol', $project['id'])->assertNotFound();
         $this->archive('bob', $default)->assertStatus(409)->assertJsonPath('code', 'default_project');
-        // Purge is for organization admins, through the Admin routes; a team admin has none.
-        $this->asUser('bob')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertForbidden();
-        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$project['id'])->assertStatus(405);
-        $this->joinTeam('alice', 't1');
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$default)->assertStatus(409)->assertJsonPath('code', 'default_project');
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertStatus(409)->assertJsonPath('code', 'not_archived');
+        // Purge is a team admin's: a member is refused, an outsider gets a 404.
+        $this->asUser('dave')->deleteJson('/api/v1/projects/'.$project['id'])->assertForbidden()->assertJsonPath('code', 'team_admin_only');
+        $this->asUser('carol')->deleteJson('/api/v1/projects/'.$project['id'])->assertNotFound();
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$default)->assertStatus(409)->assertJsonPath('code', 'default_project');
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$project['id'])->assertStatus(409)->assertJsonPath('code', 'not_archived');
         $this->assertSame(2, Project::query()->where('group_slug', 't1')->whereNull('archived_at')->count());
     }
 
@@ -175,13 +173,12 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         // While archived the slug stays reserved.
         $this->assertSame('launch-2', $this->createProject('bob', 't1', 'Launch')['slug']);
 
-        $this->joinTeam('alice', 't1');
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertOk();
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$project['id'])->assertOk();
 
         $this->assertNull(Project::query()->find($project['id']));
         $this->assertSame(0, ProjectResource::query()->where('project_id', $project['id'])->count());
         $this->assertSame(0, Calendar::query()->whereIn('id', $calendarIds)->count());
-        $this->assertTrue($this->files()->fileExists('users/alice/.Trash/launch/plan.md'), 'The folder lands in the purging admin\'s trash.');
+        $this->assertTrue($this->files()->fileExists('users/bob/.Trash/launch/plan.md'), 'The folder lands in the purging team admin\'s trash.');
         $this->assertFalse($this->files()->directoryExists('groups/t1/.project-archive/launch'));
         $this->assertSame('launch', app(ProjectSlugs::class)->free('t1', 'Launch'), 'The slug is free again.');
     }
@@ -192,7 +189,7 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->files()->put('groups/t1/Launch/plan.md', '# Plan');
         $this->archive('bob', $project['id'])->assertOk();
 
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertNotFound();
+        $this->asUser('alice')->deleteJson('/api/v1/projects/'.$project['id'])->assertNotFound();
 
         $this->assertNotNull(Project::query()->find($project['id']));
         $this->assertFalse($this->files()->directoryExists('users/alice/.Trash/launch'), 'Nothing lands in the outsider\'s trash.');
@@ -201,7 +198,6 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
 
     public function test_a_purge_that_failed_half_way_completes_on_retry(): void
     {
-        $this->joinTeam('alice', 't1');
         $created = app(ProjectService::class)->create('bob', ['teamSlug' => 't1', 'name' => 'Launch']);
         app(ProjectLifecycle::class)->archive('bob', (string) $created['id']);
         // One stand-in for the whole test: the router keeps the controller from the first request on.
@@ -209,45 +205,15 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $collections->failAfter = 1;
         $this->app->instance(ProjectCollections::class, $collections);
 
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$created['id'])->assertStatus(500);
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$created['id'])->assertStatus(500);
         $this->assertSame(1, $collections->deleted, 'The first collection went before the failure.');
         $this->assertNotNull(Project::query()->find($created['id']));
         $this->assertSame(4, ProjectResource::query()->where('project_id', $created['id'])->count(), 'Three collections and the folder are left.');
 
         $collections->failAfter = null;
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$created['id'])->assertOk();
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$created['id'])->assertOk();
         $this->assertNull(Project::query()->find($created['id']));
         $this->assertSame(0, ProjectResource::query()->where('project_id', $created['id'])->count());
-    }
-
-    public function test_an_organization_admin_outside_the_team_does_not_get_its_archived_projects(): void
-    {
-        $launch = $this->createProject('bob', 't1', 'Launch');
-        $this->archive('bob', $launch['id'])->assertOk();
-
-        $this->assertSame([], $this->asUser('alice')->getJson('/api/v1/admin/projects')->assertOk()->json('list'));
-    }
-
-    public function test_an_organization_admin_lists_the_archived_projects_of_the_teams_they_are_in(): void
-    {
-        $this->joinTeam('alice', 't1');
-        $launch = $this->createProject('bob', 't1', 'Launch');
-        $this->createProject('bob', 't1', 'Live');
-        $this->archive('bob', $launch['id'])->assertOk();
-        $other = $this->createProject('carol', 't2', 'Elsewhere');
-        $this->archive('carol', $other['id'])->assertOk();
-
-        $list = $this->asUser('alice')->getJson('/api/v1/admin/projects')->assertOk()->json('list');
-        $this->assertSame([$launch['id']], array_column($list, 'id'));
-        $this->assertSame('t1', $list[0]['teamSlug']);
-        $this->assertSame('Launch', $list[0]['name']);
-        $this->asUser('bob')->getJson('/api/v1/admin/projects')->assertForbidden();
-    }
-
-    private function joinTeam(string $username, string $team): void
-    {
-        $group = Principal::query()->where('uri', 'principals/groups/'.$team)->firstOrFail();
-        $this->addPrincipalToGroup($group, Principal::forUsername($username));
     }
 
     private function archive(string $username, string $id): TestResponse

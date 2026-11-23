@@ -117,6 +117,7 @@ final class OwnershipRegistry
             'PATCH /projects/{project}',
             'POST /projects/{project}/archive',
             'POST /projects/{project}/unarchive',
+            'DELETE /projects/{project}',
         ] as $operation) {
             $exempt[$operation] = [
                 'reason' => ExemptionReason::TeamRole,

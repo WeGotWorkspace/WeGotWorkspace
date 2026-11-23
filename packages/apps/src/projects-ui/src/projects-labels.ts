@@ -46,7 +46,7 @@ export const projectsLabels = {
   purge: "Delete permanently",
   purgeTitle: (name: string) => `Delete “${name}” permanently?`,
   purgeDescription:
-    "This deletes the Project's calendar, tasks, notes, channel and files for good. This action cannot be undone.",
+    "This deletes the Project's calendar, tasks, notes and channel for good, and moves its files to your Drive trash. This action cannot be undone.",
   purgeConfirmLabel: (name: string) => `Type “${name}” to confirm`,
   purged: (name: string) => `Project “${name}” deleted`,
   purgeFailed: "Could not delete the Project",

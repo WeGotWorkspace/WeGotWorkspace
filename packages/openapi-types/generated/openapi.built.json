@@ -24394,7 +24394,7 @@
                     "Teams"
                 ],
                 "summary": "Remove a member from a Team",
-                "description": "Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+                "description": "Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team. The last team admin of the Team cannot be removed: 409 `last_team_admin`.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -24434,6 +24434,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "description": "The last team admin of the Team cannot be removed (`last_team_admin`)."
                     }
                 }
             }
@@ -24495,7 +24498,7 @@
                     "Teams"
                 ],
                 "summary": "Dismiss a team admin",
-                "description": "Idempotent. A team admin may dismiss themself; a Team may be left without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
+                "description": "Idempotent. A team admin may dismiss themself, unless they are the last one: 409 `last_team_admin`. A Team may start without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -24535,6 +24538,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "description": "The last team admin of the Team cannot be dismissed (`last_team_admin`)."
                     }
                 }
             }
@@ -24720,6 +24726,59 @@
                     },
                     "409": {
                         "$ref": "#/components/responses/JmapConflict"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Projects"
+                ],
+                "summary": "Purge an archived Project",
+                "description": "Team admins of the Project's Team. Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. 403 for a member who is not a team admin; 404 for a caller outside the Team, an organization admin included. A purge that stopped half-way completes on retry.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "project",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9a-z]{26}$"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Purged",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ok"
+                                    ],
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Project not found"
+                    },
+                    "409": {
+                        "description": "Not archived, or the default Project"
                     }
                 }
             }

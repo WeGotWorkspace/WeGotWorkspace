@@ -56,6 +56,9 @@ final class TeamMemberDirectory
     {
         $groupUri = $this->manageableTeamUri($viewer, $groupSlug);
         $username = $this->existingUsername($username);
+        if (! $member) {
+            $this->refuseLastTeamAdmin($groupSlug, $username);
+        }
         $this->groups->setMembership($groupUri, $username, $member);
     }
 
@@ -64,6 +67,7 @@ final class TeamMemberDirectory
         $groupUri = $this->manageableTeamUri($viewer, $groupSlug);
         $username = $this->existingUsername($username);
         if (! $teamAdmin) {
+            $this->refuseLastTeamAdmin($groupSlug, $username);
             $this->roles->dismiss($groupSlug, $username);
 
             return;
@@ -72,6 +76,14 @@ final class TeamMemberDirectory
             throw new ApiHttpException(409, 'Only a member of the team can be its team admin.', 'not_a_member');
         }
         $this->roles->appoint($groupSlug, $username);
+    }
+
+    /** A Team that has a team admin keeps one: dismissing or removing the last is refused. */
+    private function refuseLastTeamAdmin(string $groupSlug, string $username): void
+    {
+        if ($this->roles->teamAdminsOf($groupSlug) === [$username]) {
+            throw new ApiHttpException(409, 'A Team needs at least one team admin. Appoint another first.', 'last_team_admin');
+        }
     }
 
     /**

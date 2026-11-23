@@ -290,25 +290,3 @@
 .admin-workspace .admin-fix-link > svg {
   @apply size-4;
 }
-
-/* --- Archived Projects (under Teams): dot, name and tag on one line, Team and date below --- */
-:is(.admin-workspace, .admin-dialog-surface) .admin-project-row__main {
-  @apply flex min-w-0 flex-1 flex-col gap-0.5;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-project-row__head {
-  @apply flex min-w-0 items-center gap-2;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-project-row__name {
-  @apply truncate text-sm font-medium;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-project-row__meta {
-  @apply truncate text-xs text-muted-foreground;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-project-dot {
-  @apply size-2.5 shrink-0 rounded-full;
-  background-color: var(--admin-project-color, var(--color-ink));
-}

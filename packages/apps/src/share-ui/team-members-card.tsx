@@ -58,7 +58,8 @@ export function TeamMembersCard({
   status,
 }: TeamMembersCardProps) {
   const addFieldId = useId();
-  // The only team admin stays: the server refuses to dismiss them, so the role is locked here.
+  // The only team admin stays: the server refuses to dismiss or remove them (409 last_team_admin),
+  // so the role and the remove control are locked here.
   const soleTeamAdmin = members.filter((member) => member.isTeamAdmin).length === 1;
   return (
     <ShareAccessCard
@@ -66,7 +67,7 @@ export function TeamMembersCard({
       htmlFor={addFieldId}
       icon={<Users aria-hidden />}
       title={labels.sectionTitle}
-      description={labels.sectionHint}
+      description={soleTeamAdmin ? labels.soleTeamAdminHint : labels.sectionHint}
       addControl={
         <SharePrincipalSearchDropdown
           query={query}
@@ -116,6 +117,8 @@ export function TeamMembersCard({
             />
           }
           removeLabel={labels.removeLabel(member.displayName)}
+          removeDisabled={soleTeamAdmin && member.isTeamAdmin}
+          removeTitle={soleTeamAdmin && member.isTeamAdmin ? labels.soleTeamAdminHint : undefined}
           onRemove={() => onRemove(member)}
         />
       ))}

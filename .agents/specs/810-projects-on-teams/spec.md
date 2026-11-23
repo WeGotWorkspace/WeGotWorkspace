@@ -46,7 +46,7 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 |---|---|
 | **Team** (group principal `principals/groups/{slug}`) | address book, Drive (`files/groups/{slug}`), Team chat channel, and one or more Projects |
 | **Project** | calendar, task list, notebook, chat channel, Drive folder |
-| **Default Project** (one per Team) | the Team's provisioned calendar, task list and notebook, plus one new channel. No Drive folder: its Drive view is the whole Team Drive. |
+| **Default Project** (one per Team) | the Team's provisioned calendar, task list and notebook, plus one new channel and a folder directly under the Team Drive root (`{Team name} Project`), like any Project. The Team Drive root stays the view of everything the Team has, which the Team filter row "All in {Team}" shows. |
 
 - `projects`: `id`, `group_slug` (the owning Team), `slug`, `name`, `color`, `default_for_group` (nullable, unique: marks the default Project the way `chat_channel_meta.default_for_group` marks the Team channel), `archived_at`, timestamps. `UNIQUE (group_slug, slug)`, archived rows included.
 - `project_resources`: `project_id`, `kind` (`calendar | tasklist | notebook | meet_channel | drive_folder`), `locator`. `UNIQUE (project_id, kind)` and `UNIQUE (locator)`.
@@ -111,7 +111,7 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 
 - One service, `TeamRoles`, answers `mayManageMembers(viewer, slug)` (organization admin, or team admin of that Team) and `mayManageProjects(viewer, slug)` (team admin of that Team). It also answers `mayManageTeamCollections(viewer, slug)` (team admin of that Team). Each method names its bypass and nothing else reads `team_admins`.
 - Creating a calendar, task list, notebook or channel with a `groupSlug`, moving one to a Team, and deleting or transferring a Team-owned one need `mayManageTeamCollections`. This replaces today's rule (any member creates; only an organization admin deletes or transfers). Not covered: personal collections, meeting rooms created with a Team, renaming or recoloring an existing Team collection, and files and folders in the Team Drive.
-- A team admin is always a member. Removing a member removes their team-admin row in the same transaction. A Team may be left without a team admin; an organization admin appoints a new one.
+- A team admin is always a member. Removing a member removes their team-admin row in the same transaction. A Team starts without a team admin and an organization admin appoints the first. Once it has one, the last team admin cannot be dismissed or removed: `DELETE /teams/{team}/admins/{username}` and `DELETE /teams/{team}/members/{username}` answer 409 `last_team_admin`, and the members card locks that row and says why. The organization-admin routes under `admin/groups` are not limited by it.
 - New routes outside the `admin` prefix, each checked with `TeamRoles`: list members of a Team, add and remove a member, appoint and dismiss a team admin. The organization-admin routes under `admin/groups` stay and gain the team-admin flag.
 - `settings/state` reports `isTeamAdmin` per Team, so the apps know where to show the controls.
 
@@ -166,7 +166,7 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 - **Archive** sets `archived_at`. The four collections disappear for everyone, sharees included: from lists, changes, push state, DAV listings and availability. The Team address book, Team Drive and Team channel stay.
 - The Project folder moves to a server-owned tree `files/groups/{team}/.project-archive/{slug}`. Clients cannot list, open, search or share anything under it, and grants on paths under it are inert. FileNode ids are kept, so unarchive restores the same ids, links and grants.
 - **Unarchive** clears `archived_at` and moves the folder back (with a collision suffix if the old name is taken).
-- **Purge** on a live Project is 409. On an archived Project it hard-deletes the four collections, moves the folder to the Drive trash of the member who purged, and deletes the rows. Each step is skipped when already done, so a purge that failed half-way completes on retry. Purge frees the slug.
+- **Purge** is `DELETE /projects/{id}` and needs `TeamRoles::mayManageProjects` (a plain member gets 403; a caller outside the Team, an organization admin included, gets 404 and nothing is trashed into their Drive). On a live Project it is 409. On an archived Project it hard-deletes the four collections, moves the folder to the Drive trash of the team admin who purged, and deletes the rows. Each step is skipped when already done, so a purge that failed half-way completes on retry. Purge frees the slug.
 - Team delete (organization admin) removes every Project of the Team, live or archived: rows first, inside the existing transaction, then the collections through the existing DAV teardown, and the folders with the Team's files. The Admin confirmation names the number of Projects.
 
 ### Live updates
@@ -180,21 +180,21 @@ On the server a Project is a row plus a registry of the five things it bundles. 
 - **Filter value.** One localStorage key for the suite, `wgw.ui.projectFilter`, with a same-tab event and the `storage` event, as `lib/theme-preference.ts` does. Values: `all`, or `p:<id>`. A stored id that is no longer in the list falls back to `all`.
 - **Projects store.** One module-level store loaded once per session by the live shell, refreshed on the `Project` push state, with an offline copy so the filter works offline. Transport follows the client-transport rule: every failure is a `WgwRequestError` with a status.
 - **Mount.** One place for every app: inside `WorkspaceSidebarAccountFooter`, above the account row. No per-app prop.
-- **Filter list.** "All Projects", then per Team its Projects (default Project first), then "Create Project" and "Manage Projects". Archived Projects are not listed. The last two appear only for a caller who is team admin of at least one Team, and the create dialog offers only those Teams.
+- **Filter list.** "All Teams", then a "Personal" group with "All in Personal" (collections in no Team), then per Team a group with "All in {Team}" and its Projects (default Project first; a Team with only its default Project lists just "All in {Team}"), then "Manage Projects" for a caller who is team admin of at least one Team. Archived Projects are not listed. There is no "Create Project" entry: creating a Project lives in Settings → "Teams & Projects", which "Manage Projects" opens, and offers only the Teams the caller is team admin of.
 - **Matching.** A collection matches when its `projectId` equals the selected id. Drive and Docs narrow to the Project folder path, the default Project's own folder included; the Team filter ("All in {Team}") shows the whole Team Drive. Contacts shows the owning Team's address book.
-- **"All Projects"** shows everything, including items in no Project.
+- **"All Teams"** (the first row; stored as `all`) shows everything, including items in no Project and Personal ones.
 - **Chrome.** No edit pencil and no delete on Project collections. "New calendar / list / notebook / channel" is hidden while a Project is selected and creates an item outside every Project otherwise. The owner choice offers a Team only to a team admin of it, and delete of a Team item in no Project shows only to a team admin.
-- **Manage.** A Projects panel in Settings: name and color, archive, unarchive, purge, for Teams where the caller is team admin; read-only rows elsewhere. The purge confirmation asks for the Project name.
+- **Manage.** The Settings panel "Teams & Projects" lists every Team the caller is in with its Projects: name and color, archive, unarchive, purge and "New Project" for Teams where the caller is team admin; read-only rows elsewhere. The purge confirmation asks for the Project name. A team admin who is not an organization admin can purge; Admin has no archived-Projects list.
 - **Members.** In Settings, a team admin sees the members of their Team, adds one through the candidates search, removes one, and appoints or dismisses team admins. Admin says "Organization admin" and gets a team-admin toggle per member.
 - **Dialog norm.** Inline `FieldLabelRow`, Create/Cancel on the create dialog, autosave in the Settings panel.
 
 ## Edge cases
 
 - A team admin adds someone, looks at their availability, and removes them again. The role allows it; the added person sees the Team in Settings at once. A notice to the added person is a follow-up, not part of this work.
-- The only team admin leaves the Team or is disabled: the Team has no team admin until an organization admin appoints one. Its Projects keep working for members.
-- A team admin dismisses themself: allowed.
+- The only team admin is disabled or removed by an organization admin: the Team has no team admin until an organization admin appoints one. Its Projects keep working for members. The only team admin cannot leave, be dismissed or be removed through the team routes (409 `last_team_admin`).
+- A team admin dismisses themself: allowed while another team admin remains.
 - An organization admin who is a member but not team admin of a Team cannot manage its Projects, but can appoint themself.
-- A user in no Team has no Projects: the filter shows "All Projects" only, with no create action and no empty-state prompt.
+- A user in no Team has no Projects: the filter shows "All Teams" and "Personal", with no manage action and no empty-state prompt.
 - A member is removed from a Team while one of its Projects is selected: the next Projects refresh drops the id and the filter falls back to `all`.
 - A Project is archived by someone else while selected: same fallback; the offline stores drop the four collections through their normal reconcile.
 - A Team is renamed: the default Project keeps its own name. Nothing is renamed today for the Team's collections either.

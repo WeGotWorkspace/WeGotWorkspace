@@ -4,7 +4,7 @@
 // spec picks it in the sidebar's Project filter; Calendar then lists only its
 // calendar and Tasks only its task list. The choice survives a reload and shows in a second
 // tab; "All Teams" brings the other collections back. Everything the spec
-// creates is removed again (archive, then purge, over REST; the purge is the organization admin's Admin route).
+// creates is removed again (archive, then purge, over REST; the purge is the team admin's route).
 import { openCalendarWeek } from "./helpers/calendar-live";
 import { expect, test, type Page } from "./helpers/live-test";
 import { api, OWNER } from "./helpers/live-matrix";
@@ -73,9 +73,10 @@ test.describe("Project filter across two apps", () => {
     const mine = (list.json as { list: ProjectRow[] }).list.filter((p) => p.name === name);
     for (const project of mine) {
       await api(OWNER, "POST", `/projects/${project.id}/archive`);
-      const purged = await api(OWNER, "DELETE", `/admin/projects/${project.id}`);
+      const purged = await api(OWNER, "DELETE", `/projects/${project.id}`);
       expect(purged.status, "purge the spec's Project").toBeLessThan(300);
     }
+    // The only team admin stays (409 last_team_admin), so this only undoes it when another one exists.
     if (appointedAdmin) await api(OWNER, "DELETE", `/teams/${TEAM}/admins/${OWNER}`);
   });
 

@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberC
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
 use App\Http\Controllers\Api\V1\Admin\MfaResetsController as AdminMfaResetsController;
-use App\Http\Controllers\Api\V1\Admin\ProjectsController as AdminProjectsController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StateController as AdminStateController;
@@ -275,6 +274,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::patch('projects/{project}', [ProjectsController::class, 'update'])->where('project', '[0-9a-z]{26}');
     Route::post('projects/{project}/archive', [ProjectsController::class, 'archive'])->where('project', '[0-9a-z]{26}');
     Route::post('projects/{project}/unarchive', [ProjectsController::class, 'unarchive'])->where('project', '[0-9a-z]{26}');
+    Route::delete('projects/{project}', [ProjectsController::class, 'destroy'])->where('project', '[0-9a-z]{26}');
     Route::put('settings/profile', SettingsProfileController::class);
     Route::post('settings/totp', [SettingsTotpController::class, 'start']);
     Route::delete('settings/totp', [SettingsTotpController::class, 'disable']);
@@ -465,10 +465,6 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
         ->where('username', '[a-z0-9_-]+');
     Route::delete('users/{username}', [AdminUsersController::class, 'destroy'])
         ->where('username', '[a-z0-9_-]+');
-    // Archived Projects of the admin's own Teams, and deleting one for good: organization admins only.
-    Route::get('projects', [AdminProjectsController::class, 'index']);
-    Route::delete('projects/{project}', [AdminProjectsController::class, 'destroy'])
-        ->where('project', '[0-9a-z]{26}');
     Route::post('users/{username}/mfa-resets', AdminMfaResetsController::class)
         ->where('username', '[a-z0-9_-]+');
     Route::post('groups', [AdminGroupsController::class, 'store']);

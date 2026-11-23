@@ -9,6 +9,8 @@ export const teamMembersLabels = {
   nameHint: "Renaming is done in Admin.",
   sectionTitle: "Members",
   sectionHint: "Members see everything this Team owns.",
+  soleTeamAdminHint:
+    "Members see everything this Team owns. The only team admin stays: appoint another first.",
   addPlaceholder: "Add by name or email",
   noCandidates: "No one found",
   loading: "Loading members",

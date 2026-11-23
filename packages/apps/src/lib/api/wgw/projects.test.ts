@@ -56,7 +56,8 @@ describe("createWgwProjectOperations", () => {
     await operations.patch("p1", { name: "Brand book" });
     await operations.archive("p1");
     await operations.unarchive("p1");
-    const [create, patch, archive, unarchive] = wgwFetch.mock.calls;
+    await operations.purge("p1");
+    const [create, patch, archive, unarchive, purge] = wgwFetch.mock.calls;
     expect(create?.[0]).toBe("/projects");
     expect(create?.[1]).toMatchObject({
       method: "POST",
@@ -66,6 +67,8 @@ describe("createWgwProjectOperations", () => {
     expect(patch?.[1]).toMatchObject({ method: "PATCH" });
     expect(archive?.[0]).toBe("/projects/p1/archive");
     expect(unarchive?.[0]).toBe("/projects/p1/unarchive");
+    expect(purge?.[0]).toBe("/projects/p1");
+    expect(purge?.[1]).toMatchObject({ method: "DELETE" });
   });
 
   it("turns every failure into a WgwRequestError with the status", async () => {

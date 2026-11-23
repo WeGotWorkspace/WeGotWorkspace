@@ -26,6 +26,11 @@ final class DriveCycleTest extends WgwDatabaseTestCase
         return (array) ($got['list'] ?? []) !== [];
     }
 
+    protected function purgedFolderStaysInTheTrash(): bool
+    {
+        return true;
+    }
+
     protected function seesTeamAsset(string $user): ?bool
     {
         return $this->asUser($user)->getJson('/api/v1/files/children?path='.urlencode('/groups/t1'))->status() === 200;

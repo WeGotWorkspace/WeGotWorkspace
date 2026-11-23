@@ -165,5 +165,6 @@ function failingOperations(error: unknown): ProjectOperations {
     patch: reject,
     archive: reject,
     unarchive: reject,
+    purge: reject,
   };
 }

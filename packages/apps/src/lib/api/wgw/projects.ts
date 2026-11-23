@@ -18,7 +18,7 @@ export type ProjectTeamsResult = { username: string; teams: ProjectTeam[] };
 
 /**
  * Projects of the caller's Teams (#817, #819). Members read; team admins create, rename,
- * archive and restore. Deleting an archived Project for good is an organization-admin action in the Admin app. Every failure is a `WgwRequestError` with the HTTP status.
+ * archive, restore and delete for good. Every failure is a `WgwRequestError` with the HTTP status.
  */
 export type ProjectOperations = {
   list: (opts?: { archived?: boolean }) => Promise<Project[]>;
@@ -28,7 +28,8 @@ export type ProjectOperations = {
   patch: (id: string, patch: ProjectPatchRequest) => Promise<Project>;
   archive: (id: string) => Promise<Project>;
   unarchive: (id: string) => Promise<Project>;
-  /** Deletes an archived Project for good. */
+  /** Deletes an archived Project for good (a team admin of its Team). */
+  purge: (id: string) => Promise<void>;
 };
 
 async function readOk(res: Response, label: string): Promise<unknown> {
@@ -87,5 +88,11 @@ export function createWgwProjectOperations(): ProjectOperations {
       project(`/projects/${encodeURIComponent(id)}/archive`, jsonInit("POST"), "Archive project"),
     unarchive: (id) =>
       project(`/projects/${encodeURIComponent(id)}/unarchive`, jsonInit("POST"), "Restore project"),
+    purge: async (id) => {
+      await readOk(
+        await wgwFetch(`/projects/${encodeURIComponent(id)}`, jsonInit("DELETE")),
+        "Delete project",
+      );
+    },
   };
 }

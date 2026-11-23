@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Projects\Cycle;
 
-use App\Models\Principal;
 use App\Models\Project;
 use App\Services\Chat\ChatGroupDefaultChannelProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
@@ -16,7 +15,7 @@ use Tests\Support\WgwDatabaseTestCase;
  * The membership cycle of #819, for one Team (T1) and one of its Projects, in one app.
  *
  * dave is a member of T1 from the start, fred joins and leaves, erin is in no Team, and
- * alice is organization admin (she joins T1 to purge, as the purge needs). A test class
+ * alice is organization admin and bob the team admin of T1 (he purges). A test class
  * says what each user sees of the Project's content, and of the Team's own asset that
  * outlives the Project, through its app's reads. `null` means the app has no such thing.
  *
@@ -69,21 +68,27 @@ trait WalksTheMembershipCycle
         $this->asUser('bob')->postJson('/api/v1/projects/'.$this->project['id'].'/archive')->assertOk();
         $this->assertViews('archived', content: ['bob' => false, 'dave' => false, 'fred' => false, 'erin' => false], team: ['dave' => true, 'fred' => false, 'erin' => false]);
 
-        // 4. Purge (an organization admin in the Team does it): gone, the Team's asset stays.
-        $this->addPrincipalToGroup(Principal::query()->where('uri', 'principals/groups/t1')->firstOrFail(), Principal::forUsername('alice') ?? $this->fail('alice has no principal.'));
-        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$this->project['id'])->assertOk();
+        // 4. Purge (the team admin does it): gone, the Team's asset stays.
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$this->project['id'])->assertOk();
         $this->assertNull(Project::query()->find($this->project['id']));
-        $this->assertViews('purged', content: ['bob' => false, 'dave' => false, 'fred' => false, 'erin' => false], team: ['dave' => true, 'fred' => false, 'erin' => false]);
+        // The folder is in the trash of the team admin who purged it, so only that file node is still readable (bob).
+        $this->assertViews('purged', content: ['bob' => $this->purgedFolderStaysInTheTrash(), 'dave' => false, 'fred' => false, 'erin' => false], team: ['dave' => true, 'fred' => false, 'erin' => false]);
 
         // 5. Delete the Team: nothing of it is left to anyone.
         $this->asUser('alice')->deleteJson('/api/v1/admin/groups/t1')->assertOk();
-        $this->assertViews('team deleted', content: ['bob' => false, 'dave' => false, 'fred' => false, 'erin' => false], team: ['bob' => false, 'dave' => false, 'fred' => false, 'erin' => false]);
+        $this->assertViews('team deleted', content: ['bob' => $this->purgedFolderStaysInTheTrash(), 'dave' => false, 'fred' => false, 'erin' => false], team: ['bob' => false, 'dave' => false, 'fred' => false, 'erin' => false]);
     }
 
     /**
      * @param  array<string, bool>  $content
      * @param  array<string, bool>  $team
      */
+    /** The Drive folder lands in the purger's Drive trash; no other app keeps anything of the Project. */
+    protected function purgedFolderStaysInTheTrash(): bool
+    {
+        return false;
+    }
+
     private function assertViews(string $step, array $content, array $team): void
     {
         foreach ($content as $user => $expected) {

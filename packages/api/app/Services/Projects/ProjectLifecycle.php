@@ -19,15 +19,14 @@ use Illuminate\Support\Facades\DB;
  *   included ({@see ProjectRegistry::isArchived()} on every read path). The folder moves
  *   to the server-owned `.project-archive` tree with its node ids.
  * - Unarchive clears it and moves the folder back, with a suffix when the name is taken.
- * - Purge (organization admins, Admin routes) works on an archived Project only. It deletes the four collections, moves the
- *   folder to the purging member's Drive trash and deletes the rows. Each step is skipped
+ * - Purge (a team admin of the Team) works on an archived Project only. It deletes the four collections, moves the
+ *   folder to the purging team admin's Drive trash and deletes the rows. Each step is skipped
  *   when already done, so a purge that failed half-way completes on retry. The slug is
  *   free afterwards; while archived it stays reserved.
  *
  * The default Project cannot be archived or purged (409): it goes when the Team goes.
- * Archive and unarchive need the team-admin role for the Project's Team. Purge is for
- * organization admins only ({@see purgeAsOrganizationAdmin()}); a team admin archives, an
- * organization admin deletes for good.
+ * Archive, unarchive and purge need the team-admin role for the Project's Team. An organization
+ * admin outside the Team gets a 404, like for an unknown id, and nothing is trashed into their Drive.
  */
 final class ProjectLifecycle
 {
@@ -71,17 +70,13 @@ final class ProjectLifecycle
     }
 
     /**
-     * Delete an archived Project for good: organization admins only, through the Admin
-     * routes. The Project must be in one of the caller's Teams: an admin outside the Team sees
-     * a Team's Projects only as a member. `$viewer` is the admin whose Drive trash receives the folder.
+     * Delete an archived Project for good: a team admin of its Team. A caller outside the Team
+     * gets a 404 (an organization admin sees a Team's Projects only as a member), a plain member
+     * a 403. `$viewer` is the team admin whose Drive trash receives the folder.
      */
-    public function purgeAsOrganizationAdmin(string $viewer, string $id): void
+    public function purge(string $viewer, string $id): void
     {
-        // An admin outside the Team gets the same 404 as for an unknown id: the folder goes to the purger's Drive trash.
-        $project = $this->projects->findVisible($viewer, $id);
-        if ($project->default_for_group !== null) {
-            throw new ApiHttpException(409, 'The default Project cannot be purged. It goes when the Team goes.', 'default_project');
-        }
+        $project = $this->manageable($viewer, $id, 'purged');
         if ($project->archived_at === null) {
             throw new ApiHttpException(409, 'Archive the Project before you purge it.', 'not_archived');
         }
