@@ -111,6 +111,48 @@ final class LoginRateLimiterTest extends TestCase
         $this->assertTrue($limiter->allow('bob', '203.0.113.40'));
     }
 
+    public function test_a_known_address_skips_the_cap_across_source_ips(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+        $limiter->rememberAddress('Alice', '198.51.100.7');
+
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('alice', '203.0.113.'.$host);
+            $limiter->hitProtocol('alice', '203.0.113.'.$host);
+        }
+
+        $this->assertFalse($limiter->allow('alice', '203.0.113.40'));
+        $this->assertFalse($limiter->allowProtocol('alice', '203.0.113.40'));
+        $this->assertTrue($limiter->allow('alice', '198.51.100.7'));
+        $this->assertTrue($limiter->allowProtocol('alice', '198.51.100.7'));
+        $this->assertSame(1, $limiter->retryAfter('alice', '198.51.100.7'));
+        $this->assertSame(1, $limiter->protocolRetryAfter('alice', '198.51.100.7'));
+    }
+
+    public function test_a_known_address_is_known_for_one_user_only(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+        $limiter->rememberAddress('bob', '198.51.100.7');
+
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('alice', '203.0.113.'.$host);
+        }
+
+        $this->assertFalse($limiter->allow('alice', '198.51.100.7'));
+    }
+
+    public function test_a_known_address_keeps_its_own_limits(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+        $limiter->rememberAddress('alice', '198.51.100.7');
+
+        for ($i = 0; $i < LoginRateLimiter::USER_IP_LIMIT; $i++) {
+            $limiter->hit('alice', '198.51.100.7');
+        }
+
+        $this->assertFalse($limiter->allow('alice', '198.51.100.7'));
+    }
+
     public function test_protocol_user_ip_limit_does_not_lock_web_login(): void
     {
         $limiter = $this->app->make(LoginRateLimiter::class);
