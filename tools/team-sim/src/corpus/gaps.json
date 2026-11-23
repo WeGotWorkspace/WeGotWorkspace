@@ -13,8 +13,7 @@
     { "need": "Shared whiteboard during a workshop", "workaround": "Photo of a paper whiteboard uploaded to Drive" }
   ],
   "copywriter": [
-    { "need": "Dutch spelling and word count check", "workaround": "Copied text to an outside spell checker" },
-    { "need": "Suggest edits (track changes) in a client doc", "workaround": "Comments instead of suggestions" }
+    { "need": "Dutch spelling and word count check", "workaround": "Copied text to an outside spell checker" }
   ],
   "art-director": [
     { "need": "Colour proof sign-off with the printer", "workaround": "Emailed the printer from a personal mail client" },

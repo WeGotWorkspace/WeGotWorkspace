@@ -85,8 +85,21 @@ export const collabExecutors = {
     return { patch: { key: a.params.task, assignee: a.params.assignee } };
   },
 
-  async "task.comment"() {
-    throw new Unsupported("Tasks have no comments", { workaround: "the discussion moves to the project chat" });
+  async "task.comment"(a, ctx) {
+    const t = need(ctx, a.params.task);
+    const c = ctx.client(a.persona);
+    const base = `/api/v1/threads/task/${encodeURIComponent(t.ids.taskId)}/entries`;
+    const id = ulid();
+    const entry = await c.post(base, { id, body: a.params.text });
+    let found = false;
+    for (let page = 0, cursor = null; page < 10 && !found; page += 1) {
+      const res = (await c.get(cursor ? `${base}?cursor=${encodeURIComponent(cursor)}` : base)) ?? {};
+      found = (res.list ?? []).some((e) => e.id === (entry?.id ?? id));
+      cursor = res.nextCursor;
+      if (!cursor) break;
+    }
+    if (!found) throw new Error("task comment posted but not in the task thread");
+    return { note: "commented in the task thread", extra: { entry: entry?.id ?? id } };
   },
 
   async "task.complete"(a, ctx) {

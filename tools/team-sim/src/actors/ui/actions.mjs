@@ -177,12 +177,40 @@ export const uiActions = {
       await box.press("Enter");
       await b.wait("task shown", () => page.locator(".tasks-list-row .list-item__title", { hasText: a.params.title }).first().waitFor({ timeout: T }));
     });
-    if (a.params.assignee) ctx.friction?.({ what: "The Tasks screen has no way to assign a task to a colleague", workaround: "the task stays unassigned; the persona says it in chat", source: "actor-workaround" });
     await settle(page, 2000);
-    const { list: items } = await ctx.client(a.persona).get(`/api/v1/tasks/items?taskListId=${encodeURIComponent(list.ids.listId)}`);
+    const c = ctx.client(a.persona);
+    const { list: items } = await c.get(`/api/v1/tasks/items?taskListId=${encodeURIComponent(list.ids.listId)}`);
     const task = items.filter((t) => t.title === a.params.title).sort((x, y) => String(y.created ?? "").localeCompare(String(x.created ?? "")))[0];
     if (!task) throw new Error("task added in the browser is not on the server");
-    return { ids: { taskId: task.id, listId: list.ids.listId }, extra: { status: "open", title: a.params.title }, note: note ?? "no assignee: the Tasks UI has no assign control" };
+    const ids = { taskId: task.id, listId: list.ids.listId };
+    if (!a.params.assignee) return { ids, extra: { status: "open", title: a.params.title }, note };
+    await assignInBrowser(b, ctx, a, a.params.title);
+    return { ids, extra: { status: "open", title: a.params.title, assignee: a.params.assignee }, note: [note, `assigned ${a.params.assignee} in the task`].filter(Boolean).join("; ") };
+  },
+
+  async "doc.suggest"(b, a, ctx) {
+    const doc = need(ctx, a.params.doc);
+    const { page } = b;
+    const c = ctx.client(a.persona);
+    const suggestions = async () => {
+      const res = await c.request("GET", `/api/v1/files/threads?path=${encodeURIComponent(doc.ids.path)}`);
+      return res.ok ? (res.json.list ?? []).filter((t) => t.kind === "suggestion" && !t.resolved && !t.resolvedAt) : null;
+    };
+    const before = new Set(((await suggestions()) ?? []).map((t) => t.id));
+    await openDoc(b, doc.ids.path);
+    const toggle = page.locator(".docs-collab-suggest-controls").first();
+    await toggle.waitFor({ timeout: T });
+    await toggle.click();
+    await b.wait("suggest mode on", () => page.locator('.docs-collab-suggest-controls[aria-pressed="true"]').first().waitFor({ timeout: T }));
+    await typeAtEnd(page, page.locator(".ProseMirror").first(), a.params.text);
+    await b.wait("suggestion card shown", () => page.locator(".docs-suggestion-card").first().waitFor({ timeout: T }));
+    await waitSaved(b, page);
+    const thread = await b.wait("suggestion on the server", () => pollFor(async () => ((await suggestions()) ?? []).find((t) => !before.has(t.id)), 30000));
+    if (!thread) throw new Error("a suggestion made in the browser has no suggestion thread on the server");
+    // A suggestion is not an edit: the stored file keeps the text without it until someone accepts.
+    const res = await c.request("GET", `/api/v1/files/content?path=${encodeURIComponent(doc.ids.path)}`, { headers: { accept: "*/*" } });
+    if (res.ok && res.text.includes(a.params.text.slice(0, 30))) throw new Error("suggested text landed in the file before anyone accepted it");
+    return { note: "suggested an edit in Suggest mode" };
   },
 
   async "doc.edit"(b, a, ctx) {
@@ -339,6 +367,36 @@ async function openDriveFolder(b, ctx, folder) {
     await row.first().dblclick({ timeout: T });
     await settle(page, 1200);
   }
+}
+
+/** Opens the task, picks the colleague in the Assignee picker and waits for the server to have them. */
+async function assignInBrowser(b, ctx, a, title) {
+  const { page } = b;
+  const mate = ctx.world.persona(a.params.assignee);
+  const row = page.locator(".tasks-list-row").filter({ has: page.locator(".list-item__title").getByText(title, { exact: true }) }).first();
+  await row.locator(".list-item__button").click();
+  const detail = page.locator(".tasks-detail-view");
+  await detail.getByRole("textbox", { name: "Task name" }).waitFor({ timeout: T });
+  await detail.getByRole("button", { name: /^Assignee:/ }).click();
+  const picker = page.getByRole("listbox", { name: "Assignee" });
+  await picker.waitFor({ timeout: T });
+  const option = picker.getByRole("option", { name: new RegExp(mate.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).first();
+  if (!(await option.isVisible().catch(() => false))) {
+    await page.keyboard.press("Escape");
+    throw new Error(`${mate.displayName} is not in the Assignee picker of a project task`);
+  }
+  await option.click();
+  await page.keyboard.press("Escape");
+  const c = ctx.client(a.persona);
+  const email = ctx.world.email(mate.id).toLowerCase();
+  const assigned = await b.wait("assignee on the server", () =>
+    pollFor(async () => {
+      const { list: items } = await c.get(`/api/v1/tasks/items?taskListId=${encodeURIComponent(need(ctx, a.params.list).ids.listId)}`);
+      const task = items.find((t) => t.title === title);
+      return Object.entries(task?.participants ?? {}).some(([k, p]) => k !== "org" && (k === `u:${mate.id}` || String(p?.email ?? "").toLowerCase() === email));
+    }, 30000),
+  );
+  if (!assigned) throw new Error("the assignee picked in the browser is not on the server after 30 s");
 }
 
 async function openDoc(b, path) {

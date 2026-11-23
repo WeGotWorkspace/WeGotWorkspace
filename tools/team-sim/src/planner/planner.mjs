@@ -128,6 +128,12 @@ function traitActions(ctx, present, ui, projects) {
       b.add({ persona: writers[0], kind: "doc.cowrite", minute, deps: [doc.key], refs: [doc.key], params: { doc: doc.key, partner: writers[1], text: b.line(b.corpus.docs.paragraphs, writers[0]) } });
     }
   }
+  // Track changes: one browser persona suggests an edit in a doc instead of typing it in.
+  const suggester = ui.find((p) => world.persona(p).role === "copywriter") ?? ui[ui.length - 1];
+  if (suggester) {
+    const doc = b.pickObject("doc", suggester);
+    if (doc) b.add({ persona: suggester, kind: "doc.suggest", minute: rng.int(300, 420), deps: [doc.key], refs: [doc.key], params: { doc: doc.key, text: b.line(b.corpus.docs.paragraphs, suggester) } });
+  }
   // Browser behaviours: offline mid-edit, a reload mid-action, a second tab.
   const offline = ui.find((p) => world.persona(p).traits?.includes("offline"));
   const flagged = new Set();

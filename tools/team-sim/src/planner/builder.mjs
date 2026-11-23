@@ -13,6 +13,7 @@ export const UI_KINDS = new Set([
   "drive.upload",
   "meet.call",
   "doc.cowrite",
+  "doc.suggest",
 ]);
 
 /** Kinds a native calendar, contacts or reminders app plays over CalDAV/CardDAV, per app. */
@@ -57,7 +58,7 @@ export function createBuilder({ world, date, rng, snapshot, ui }) {
   function layerFor(persona, kind) {
     const app = APP_OF(kind);
     if (NATIVE_KINDS[app]?.has(kind) && world.appMode(persona, app) === "native") return "dav";
-    if (kind === "meet.call" || kind === "doc.cowrite") return "ui";
+    if (kind === "meet.call" || kind === "doc.cowrite" || kind === "doc.suggest") return "ui";
     if (ui.includes(persona) && UI_KINDS.has(kind)) return "ui";
     return "api";
   }
