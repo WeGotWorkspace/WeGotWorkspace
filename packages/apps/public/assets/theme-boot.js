@@ -1,8 +1,8 @@
 /*
  * Runs before first paint: marks an installed PWA, resolves the theme onto <html>
- * and gives Android its pinch-zoom back. A same-origin file, not inline: the runtime CSP is
- * `script-src 'self'`. Loaded as a classic script before the stylesheet by
- * `index.html` and by `scripts/sync-runtime-app-builds.mjs`.
+ * and gives Android its pinch-zoom back. A same-origin file, not inline: the
+ * runtime CSP is `script-src 'self'`. Loaded as a classic script before the
+ * stylesheet by `index.html` and by `scripts/sync-runtime-app-builds.mjs`.
  */
 
 /*
