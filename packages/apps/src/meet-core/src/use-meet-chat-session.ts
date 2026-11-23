@@ -191,12 +191,11 @@ export function useMeetChatSession({
   const deleteMessage = useCallback(
     (messageId: string) => {
       const deletedAt = Date.now();
-      // A send that never reached the server (pending or failed): nothing to take back, and holding the
-      // delete would let the queued send go out first. Cancel it at once.
-      if (messagesRef.current.find((row) => row.id === messageId)?.syncState != null) {
-        void operations
-          ?.deleteMessage?.(messageId)
-          .catch(() => showError("Could not delete the message."));
+      // A send that never reached the server (queued, pending or failed): nothing to take back, and
+      // holding the delete would let the queued send go out first. Cancel it at once. An edit or delete
+      // of a saved message still queued does not count: the server has that message.
+      const before = messagesRef.current.find((row) => row.id === messageId);
+      if (before?.sendQueued) {
         setMessages((current) =>
           current.map((row) =>
             row.id === messageId
@@ -204,6 +203,10 @@ export function useMeetChatSession({
               : row,
           ),
         );
+        void operations?.deleteMessage?.(messageId).catch(() => {
+          setMessages((current) => current.map((row) => (row.id === messageId ? before : row)));
+          showError("Could not delete the message.");
+        });
         return;
       }
       setPendingDeletes((current) => new Map(current).set(messageId, deletedAt));

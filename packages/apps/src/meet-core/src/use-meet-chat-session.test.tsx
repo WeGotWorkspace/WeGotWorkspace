@@ -98,6 +98,7 @@ describe("useMeetChatSession deleteMessage", () => {
     const queued: ChatMessage = {
       ...savedRow("queued-1", "chat-general", "later"),
       syncState: "pending",
+      sendQueued: true,
     };
     const initialMessages = [queued];
     const { result } = renderHook(() =>
@@ -114,5 +115,55 @@ describe("useMeetChatSession deleteMessage", () => {
 
     expect(deleteMessage).toHaveBeenCalledWith("queued-1");
     expect(result.current.messages[0]?.deletedAt).toBeTruthy();
+  });
+
+  function renderWith(row: ChatMessage, deleteMessage: MeetChatOperations["deleteMessage"]) {
+    const initialMessages = [row];
+    return renderHook(() =>
+      useMeetChatSession({
+        initialMessages,
+        operations: { deleteMessage },
+        selectedChannelId: "chat-general",
+        author: { id: "alice", displayName: "Alice" },
+        directory: [],
+      }),
+    );
+  }
+
+  it("puts the row back when the immediate delete fails", async () => {
+    const deleteMessage = vi.fn(async () => {
+      throw new Error("boom");
+    });
+    const { result } = renderWith(
+      { ...savedRow("queued-2", "chat-general", "later"), syncState: "pending", sendQueued: true },
+      deleteMessage,
+    );
+
+    await act(async () => result.current.deleteMessage("queued-2"));
+
+    expect(deleteMessage).toHaveBeenCalled();
+    expect(result.current.messages[0]?.deletedAt).toBeUndefined();
+    expect(result.current.messages[0]?.body).toBe("later");
+  });
+
+  it("holds the delete of a saved message that only has a pending edit", () => {
+    vi.useFakeTimers();
+    try {
+      const deleteMessage = vi.fn(async () => undefined);
+      const { result } = renderWith(
+        { ...savedRow("saved-1", "chat-general", "edited"), syncState: "pending" },
+        deleteMessage,
+      );
+
+      act(() => result.current.deleteMessage("saved-1"));
+      expect(deleteMessage).not.toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(10_500);
+      });
+      expect(deleteMessage).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

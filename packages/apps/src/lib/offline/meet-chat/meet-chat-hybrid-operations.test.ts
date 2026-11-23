@@ -382,7 +382,7 @@ describe("createHybridMeetChatOperations", () => {
         finishSend();
         await flush;
         await removal;
-        expect(deleteChatMessage).toHaveBeenCalledWith(id);
+        expect(deleteChatMessage).toHaveBeenCalledWith(id, undefined);
         expect(await listMeetChatOutbox(username)).toHaveLength(0);
       });
     });

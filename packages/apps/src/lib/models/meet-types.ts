@@ -106,6 +106,11 @@ export type ChatMessage = {
    * Derived from the outbox when the cache is read; never stored.
    */
   syncState?: ChatMessageSyncState;
+  /**
+   * The message's `send` is still queued: the server has never seen it. Derived
+   * from the outbox like `syncState`; never stored.
+   */
+  sendQueued?: boolean;
 };
 
 export type { ChatMessageSyncState };

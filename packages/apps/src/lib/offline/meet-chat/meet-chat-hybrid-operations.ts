@@ -222,7 +222,7 @@ export function createHybridMeetChatOperations(
         ...(mentions.length ? { mentions } : {}),
       });
       notifyMeetChatCacheChanged(username);
-      return { ...optimistic, syncState: "pending" };
+      return { ...optimistic, syncState: "pending", sendQueued: true };
     };
     if (!readBrowserOnline()) return queueSend();
     try {
@@ -330,7 +330,9 @@ export function createHybridMeetChatOperations(
         await upsertChatMessageInCache(username, optimistic, true);
         await enqueueChatEdit(username, { messageId, body: optimistic.body });
         notifyMeetChatCacheChanged(username);
-        return { ...optimistic, syncState: "pending" };
+        // The edit may have merged into a queued send: the message is still unsent.
+        const sendQueued = await hasQueuedChatSend(username, messageId);
+        return { ...optimistic, syncState: "pending", ...(sendQueued ? { sendQueued } : {}) };
       };
       return writeMessage(messageId, () => patchChatMessage(messageId, { body }), queueEdit);
     },
@@ -355,8 +357,7 @@ export function createHybridMeetChatOperations(
       if (await queueUnderLock(messageId, queueDelete)) return;
       try {
         throwIfAborted(opts?.signal);
-        if (opts) await deleteChatMessage(messageId, opts);
-        else await deleteChatMessage(messageId);
+        await deleteChatMessage(messageId, opts);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
         notifyMeetChatCacheChanged(username);
         await runner.flush();
