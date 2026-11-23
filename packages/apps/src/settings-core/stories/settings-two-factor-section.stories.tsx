@@ -121,7 +121,6 @@ export const SetupWrongCode: Story = {
   play: async ({ canvasElement }) => {
     await startSetup(canvasElement);
     await typeCode(canvasElement, "000000");
-    await userEvent.click(page(canvasElement).getByRole("button", { name: labels.turnOnConfirm }));
     await expect(await page(canvasElement).findByText(labels.wrongCode)).toBeInTheDocument();
     await expect(page(canvasElement).getByText(twoFactorLabels.clockHint)).toBeInTheDocument();
   },
@@ -134,7 +133,6 @@ export const SetupRecoveryCodes: Story = {
     const body = page(canvasElement);
     await startSetup(canvasElement);
     await typeCode(canvasElement, MOCK_SIGN_IN.code);
-    await userEvent.click(body.getByRole("button", { name: labels.turnOnConfirm }));
     await expect(await body.findByText(MOCK_SIGN_IN.recoveryCodes[0])).toBeInTheDocument();
     await expect(body.getByRole("button", { name: labels.done })).toBeDisabled();
   },
@@ -154,7 +152,6 @@ export const CodesPaused: Story = {
     const body = page(canvasElement);
     await userEvent.click(await body.findByRole("button", { name: labels.replaceCodes }));
     await typeCode(canvasElement, MOCK_SIGN_IN.throttledCode);
-    await userEvent.click(body.getByRole("button", { name: labels.replaceConfirm }));
     await expect(await body.findByText(/^Too many tries\. Try again at /)).toBeInTheDocument();
   },
 };

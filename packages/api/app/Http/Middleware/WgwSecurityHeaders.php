@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Support\CspFormActions;
 use App\Support\CspNonce;
+use App\Support\McpPaths;
 use App\Support\SecurityHeaderPolicy;
 use Closure;
 use Illuminate\Http\Request;
@@ -28,7 +29,15 @@ final class WgwSecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $mcp = McpPaths::matches($request);
+        if (! $mcp) {
+            $response->headers->set('Cross-Origin-Resource-Policy', SecurityHeaderPolicy::RESOURCE_POLICY);
+        }
         if (str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
+            $response->headers->set('Permissions-Policy', SecurityHeaderPolicy::PERMISSIONS_POLICY);
+            if (! $mcp && ! McpPaths::isOauthLogin($request)) {
+                $response->headers->set('Cross-Origin-Opener-Policy', SecurityHeaderPolicy::OPENER_POLICY);
+            }
             $response->headers->set(
                 'Content-Security-Policy',
                 SecurityHeaderPolicy::policy(

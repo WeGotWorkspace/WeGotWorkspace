@@ -6,7 +6,8 @@ import {
 } from "@/lib/api/wgw/meet-chat";
 import { createMeetChatJmapClient } from "@/lib/api/wgw/meet-chat-jmap";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { usePushBackupPoll } from "@/lib/live/use-push-backup-poll";
 import { useSharedInboundSync } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { JmapChatAdapter, type JmapChatChannel, type JmapChatMessage } from "@/lib/jmap-client";
 import { backfillChatChannelHistory } from "@/lib/offline/meet-chat/meet-chat-inbound-sync";
@@ -20,14 +21,8 @@ import {
 import { notifyMeetChatCacheChanged } from "@/lib/offline/meet-chat/meet-chat-cache-changed";
 import { isChatChannelBackfilled } from "@/lib/offline/meet-chat/meet-chat-offline-store";
 
-/** Inbound `/changes` poll while push is down: chat cadence (Notes polls every 10 s). */
+/** Backup `/changes` poll while push is not healthy: chat cadence (Notes polls every 10 s). */
 export const CHAT_CHANGES_POLL_MS = 4_000;
-/**
- * While push is connected the poll only backs it up. 30 s, not the 60 s of
- * Notes and Contacts: past 30 s the saving is 2 requests a minute per tab,
- * while a missed chat message is noticed sooner than a missed note (#1667).
- */
-export const CHAT_CHANGES_PUSH_POLL_MS = 30_000;
 
 const PUSH_TYPES = ["ChatChannel", "ChatMessage"] as const;
 const NO_TYPES: readonly string[] = [];
@@ -54,8 +49,8 @@ type UseMeetChatLiveInboundArgs = {
 /**
  * Live inbound Meet chat sync over JMAP (#1667): a push for `ChatMessage` or
  * `ChatChannel` runs one `/changes` round when the pushed state differs from
- * the adapter's own. The poll backs it up every 4 s, or every 30 s while push
- * is connected. One tab per browser does this; the others re-read the cache
+ * the adapter's own. The poll backs it up every 4 s, only while push
+ * is not healthy. One tab per browser does this; the others re-read the cache
  * it writes (#2252). Peers on the mesh still see a message first through the mesh
  * preview (`meet-mesh-sot.ts`); this is the server-authoritative path, and the
  * only one for peers without a mesh. Without the chat capability the REST
@@ -137,12 +132,7 @@ export function useMeetChatLiveInbound({
   // The syncing tab already tells the others per write (`notifyMeetChatCacheChanged`).
   useSharedInboundSync(adapter, "meet-chat", username, noSharedRepaint);
 
-  const pushConnected = useJmapPushConnected();
-  useEffect(() => {
-    if (!adapter) return;
-    adapter.startPolling(pushConnected ? CHAT_CHANGES_PUSH_POLL_MS : CHAT_CHANGES_POLL_MS);
-    return () => adapter.stopPolling();
-  }, [adapter, pushConnected]);
+  usePushBackupPoll(adapter, CHAT_CHANGES_POLL_MS);
 
   useJmapStateChange(adapter ? PUSH_TYPES : NO_TYPES, (states, accountId) =>
     adapter ? adapter.syncIfStale(states, accountId) : false,

@@ -92,6 +92,16 @@ final class McpTransportTest extends WgwDatabaseTestCase
             ->assertHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
     }
 
+    public function test_mcp_and_oauth_pages_keep_their_opener_and_cross_origin_reads(): void
+    {
+        $this->getJson('/mcp')
+            ->assertHeaderMissing('Cross-Origin-Resource-Policy')
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy');
+        $this->get('/oauth/authorize')
+            ->assertHeaderMissing('Cross-Origin-Resource-Policy')
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy');
+    }
+
     public function test_challenge_and_metadata_use_the_request_host(): void
     {
         $host = 'mcp-tunnel.example.com';

@@ -129,6 +129,9 @@ HTACCESS;
     {
         $hsts = SecurityHeaderPolicy::HSTS;
         $policy = SecurityHeaderPolicy::policy();
+        $permissions = SecurityHeaderPolicy::PERMISSIONS_POLICY;
+        $opener = SecurityHeaderPolicy::OPENER_POLICY;
+        $resource = SecurityHeaderPolicy::RESOURCE_POLICY;
 
         return <<<BLOCK
 # BEGIN wgw-headers
@@ -139,6 +142,8 @@ HTACCESS;
 # that proto into the HTTPS variable: PHP Request::isSecure() reads it and would ignore
 # trustProxies. Browsers ignore HSTS on plain HTTP, so a spoofed proto does not stick.
 # The served shell has no inline script, so the policy needs no hash and no nonce.
+# The other headers are set only on files Apache serves itself: PHP sets them on its
+# own responses, and a doubled opener or resource policy is ignored by browsers.
 # Managed by WebRootDeny::managedHeadersBlock(); edits inside this block are overwritten on upgrade.
 <IfModule mod_headers.c>
     <IfModule mod_setenvif.c>
@@ -148,7 +153,12 @@ HTACCESS;
     Header always set Strict-Transport-Security "{$hsts}" env=WGW_HTTPS
     <Files "index.html">
         Header always set Content-Security-Policy "{$policy}"
+        Header always set Permissions-Policy "{$permissions}"
+        Header always set Cross-Origin-Opener-Policy "{$opener}"
     </Files>
+    <FilesMatch "\\.(?!php\$)[^.]+\$">
+        Header always set Cross-Origin-Resource-Policy "{$resource}"
+    </FilesMatch>
 </IfModule>
 # END wgw-headers
 BLOCK;

@@ -275,7 +275,6 @@ describe("SettingsSecurityPane", () => {
       expect(operations.create).not.toHaveBeenCalled();
 
       type(twoFactorLabels.codeLabel, "123 456");
-      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
       expect(await screen.findByLabelText(labels.createdLabel)).toBeTruthy();
       expect(operations.create).toHaveBeenCalledWith({ name: "Phone", code: MOCK_SIGN_IN.code });
     });
@@ -284,7 +283,6 @@ describe("SettingsSecurityPane", () => {
       renderPane([], {}, true);
       const dialog = await openCreateWithCode();
       type(twoFactorLabels.codeLabel, "654321");
-      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
       expect(await within(dialog).findByText(twoFactorSettingsLabels.wrongCode)).toBeTruthy();
       expect(within(dialog).getByText(twoFactorLabels.clockHint)).toBeTruthy();
       expect(screen.queryByLabelText(labels.createdLabel)).toBeNull();
@@ -294,7 +292,6 @@ describe("SettingsSecurityPane", () => {
       renderPane([], {}, true);
       const dialog = await openCreateWithCode();
       type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.throttledCode);
-      fireEvent.click(within(dialog).getByRole("button", { name: labels.create }));
       expect(await within(dialog).findByText(/^Too many tries\. Try again at /)).toBeTruthy();
     });
   });

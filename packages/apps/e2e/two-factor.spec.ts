@@ -136,8 +136,7 @@ test("turns on two-factor in Settings and signs in with a code", async ({ browse
   await setup.getByRole("button", { name: "Next" }).click();
 
   authenticator = new Authenticator(await readSetupKey(page));
-  await setup.getByLabel("Code", { exact: true }).fill(await authenticator.next());
-  await setup.getByRole("button", { name: "Turn on" }).click();
+  await setup.getByLabel("Code", { exact: true }).fill(await authenticator.next()); // the sixth digit submits
 
   recoveryCodes = await readRecoveryCodes(page);
   expect(recoveryCodes[0]).toMatch(/^[0-9a-f]{4}(-[0-9a-f]{4}){3}$/);
@@ -151,9 +150,8 @@ test("turns on two-factor in Settings and signs in with a code", async ({ browse
   expect(await tokenStatus()).toBe("mfa_required");
 
   await submitPassword(page);
-  await expect(page.getByRole("heading", { name: "One more step." })).toBeVisible();
-  await page.getByLabel("Code", { exact: true }).fill(await authenticator.next());
-  await page.getByRole("button", { name: "Verify" }).click();
+  await expect(page.getByRole("heading", { name: "Two-factor auth" })).toBeVisible();
+  await page.getByLabel("Code", { exact: true }).fill(await authenticator.next()); // the sixth digit submits
   await expectSignedIn(page);
 
   await openSettings(page, "security");
@@ -165,7 +163,7 @@ test("turns on two-factor in Settings and signs in with a code", async ({ browse
 test("a recovery code signs in and sets up a new authenticator", async ({ browser }) => {
   const page = await freshPage(browser);
   await submitPassword(page);
-  await expect(page.getByRole("heading", { name: "One more step." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Two-factor auth" })).toBeVisible();
   await page.getByRole("button", { name: "Use a recovery code" }).click();
   // Typed the way people copy it: spaces instead of dashes.
   await page
@@ -175,8 +173,7 @@ test("a recovery code signs in and sets up a new authenticator", async ({ browse
 
   await expect(page.getByRole("heading", { name: "Set up your app again." })).toBeVisible();
   authenticator.replaceSecret(await readSetupKey(page));
-  await page.getByLabel("Code", { exact: true }).fill(await authenticator.next());
-  await page.getByRole("button", { name: "Verify" }).click();
+  await page.getByLabel("Code", { exact: true }).fill(await authenticator.next()); // the sixth digit submits
 
   await expect(page.getByRole("heading", { name: "Save your new recovery codes." })).toBeVisible();
   const fresh = await readRecoveryCodes(page);
@@ -193,8 +190,7 @@ test("a calendar app signs in with an app password; the account password is refu
 }) => {
   const page = await freshPage(browser);
   await submitPassword(page);
-  await page.getByLabel("Code", { exact: true }).fill(await authenticator.next());
-  await page.getByRole("button", { name: "Verify" }).click();
+  await page.getByLabel("Code", { exact: true }).fill(await authenticator.next()); // the sixth digit submits
   await expectSignedIn(page);
 
   await openSettings(page, "security");
@@ -203,8 +199,7 @@ test("a calendar app signs in with an app password; the account password is refu
   await dialog.getByLabel("Name", { exact: true }).fill("Calendar on the laptop");
   // With two-factor on, creating one asks for a code, not the account password.
   await expect(dialog.getByLabel("Account password", { exact: true })).toHaveCount(0);
-  await dialog.getByLabel("Code", { exact: true }).fill(await authenticator.next());
-  await dialog.getByRole("button", { name: "Save" }).click();
+  await dialog.getByLabel("Code", { exact: true }).fill(await authenticator.next()); // the sixth digit submits
   appPassword = await page.getByLabel("App password", { exact: true }).inputValue();
   expect(appPassword).toMatch(/^[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}$/);
   await page.getByRole("button", { name: "Done" }).click();

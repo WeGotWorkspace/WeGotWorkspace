@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef } from "react";
-import { Copy } from "lucide-react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
+import { CircleAlert, Copy } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -7,6 +7,8 @@ import { copyShareText } from "@/share-ui/share-path-utils";
 import { Checkbox } from "@/ui/checkbox";
 import { FieldLabelRow, type FieldLabelRowLayout } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
+import { OtpInput } from "@/ui/otp-input";
+import type { ControlSize } from "@/ui/control-size";
 import { groupInFours, twoFactorLabels as labels } from "@/two-factor-ui/src/two-factor-labels";
 import "./two-factor-ui.css";
 
@@ -24,6 +26,10 @@ type CodeFieldProps = {
   error?: string;
   /** Under the message: the phone-clock hint after a wrong code. */
   clockHint?: boolean;
+  /** The login step names the field in its lead line: the label stays for screen readers only. */
+  labelHidden?: boolean;
+  /** Size of the six boxes (`OtpInput`); the login step uses `xl`, like its buttons. */
+  size?: ControlSize;
 };
 
 /**
@@ -40,6 +46,8 @@ export function TwoFactorCodeField({
   describedBy,
   error,
   clockHint = false,
+  labelHidden = false,
+  size,
 }: CodeFieldProps) {
   const id = useId();
   const errorId = `${id}-error`;
@@ -49,40 +57,67 @@ export function TwoFactorCodeField({
   useEffect(() => {
     if (autoFocus && !disabled) inputRef.current?.focus();
   }, [autoFocus, disabled]);
-  return (
-    <FieldLabelRow
-      htmlFor={id}
-      layout={layout}
-      fill={layout === "inline"}
-      label={recovery ? labels.recoveryCodeLabel : labels.codeLabel}
-    >
-      <div className="two-factor-code-control">
+  const labelText = recovery ? labels.recoveryCodeLabel : labels.codeLabel;
+  // A plain function, not a component: a component made here would remount (and unfocus) the boxes.
+  const wrap = (children: ReactNode) =>
+    labelHidden ? (
+      <>
+        <label htmlFor={id} className="sr-only">
+          {labelText}
+        </label>
+        {children}
+      </>
+    ) : (
+      <FieldLabelRow htmlFor={id} layout={layout} fill={layout === "inline"} label={labelText}>
+        {children}
+      </FieldLabelRow>
+    );
+  return wrap(
+    <div className="two-factor-code-control">
+      {recovery ? (
         <Input
           ref={inputRef}
           id={id}
-          name={recovery ? "recovery_code" : "code"}
+          name="recovery_code"
           className="two-factor-code-input"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          inputMode={recovery ? "text" : "numeric"}
-          autoComplete={recovery ? "off" : "one-time-code"}
+          inputMode="text"
+          autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          placeholder={recovery ? labels.recoveryCodePlaceholder : labels.codePlaceholder}
-          maxLength={recovery ? 32 : 9}
+          placeholder={labels.recoveryCodePlaceholder}
+          maxLength={32}
           aria-invalid={described ? true : undefined}
           aria-describedby={described}
           disabled={disabled}
           required
         />
-        {error ? (
-          <p id={errorId} className="two-factor-field-error" role="alert">
+      ) : (
+        <OtpInput
+          inputRef={inputRef}
+          id={id}
+          name="code"
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          invalid={Boolean(described)}
+          size={size}
+          groupSize={3}
+          aria-label={labels.codeLabel}
+          aria-describedby={described}
+        />
+      )}
+      {error ? (
+        <p id={errorId} className="two-factor-field-error" role="alert">
+          <CircleAlert aria-hidden className="two-factor-field-error__icon" />
+          <span>
             {error}
             {clockHint ? <span className="two-factor-field-hint">{labels.clockHint}</span> : null}
-          </p>
-        ) : null}
-      </div>
-    </FieldLabelRow>
+          </span>
+        </p>
+      ) : null}
+    </div>,
   );
 }
 

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { createNotesJmapClient } from "@/lib/api/wgw/notes-jmap";
 import { noteFromVjournal, type NotesVjournalNote } from "@/lib/api/wgw/notes-vjournal";
-import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { usePushBackupPoll } from "@/lib/live/use-push-backup-poll";
 import { useSharedInboundSync } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { JmapNotesAdapter, type JmapNote, type JmapNotebook } from "@/lib/jmap-client";
 import type { Note } from "@/lib/models/note";
@@ -20,10 +21,8 @@ import {
 import { noteBodyInRoom } from "@/notes-core/src/note-body-rooms";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 
-/** Inbound poll while push is down (REST `/changes` is the mock-tier fallback). */
+/** Backup poll while push is not healthy (REST `/changes` is the mock-tier fallback). */
 export const NOTES_CHANGES_POLL_MS = 10_000;
-/** While push is connected the poll only backs it up. */
-export const NOTES_CHANGES_PUSH_POLL_MS = 60_000;
 
 const PUSH_TYPES = ["Note", "Notebook"] as const;
 const NO_TYPES: readonly string[] = [];
@@ -94,8 +93,8 @@ type UseNotesLiveInboundArgs = {
 
 /**
  * Live inbound Notes sync over JMAP (#1533): a push for `Note` or `Notebook`
- * runs one `/changes` round right away; the poll backs it up, slower while
- * push is connected. One tab per browser does this; the others re-read the
+ * runs one `/changes` round right away; the poll backs it up only while
+ * push is not healthy. One tab per browser does this; the others re-read the
  * cache it writes (#2252). Returns false when JMAP is unavailable, so the
  * caller runs its REST `/changes` interval instead (#1351).
  */
@@ -178,12 +177,7 @@ export function useNotesLiveInbound({
 
   useSharedInboundSync(adapter, "notes", username, () => void latestPatch.current());
 
-  const pushConnected = useJmapPushConnected();
-  useEffect(() => {
-    if (!adapter) return;
-    adapter.startPolling(pushConnected ? NOTES_CHANGES_PUSH_POLL_MS : NOTES_CHANGES_POLL_MS);
-    return () => adapter.stopPolling();
-  }, [adapter, pushConnected]);
+  usePushBackupPoll(adapter, NOTES_CHANGES_POLL_MS);
 
   useJmapStateChange(adapter ? PUSH_TYPES : NO_TYPES, (states, accountId) =>
     adapter ? adapter.syncIfStale(states, accountId) : false,
