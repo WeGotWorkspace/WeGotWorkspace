@@ -25,7 +25,7 @@ final class TeamCalendarObject extends CalendarObject
         parent::__construct($caldavBackend, $calendarInfo, $objectData);
     }
 
-    public function getOwner()
+    public function getOwner(): string
     {
         return $this->member;
     }

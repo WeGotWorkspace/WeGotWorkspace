@@ -52,7 +52,7 @@ final class TeamCalendar extends AppSharedCalendar
         return $this->member;
     }
 
-    public function getChild($name)
+    public function getChild($name): TeamCalendarObject
     {
         $obj = $this->caldavBackend->getCalendarObject($this->calendarInfo['id'], $name);
         if (! $obj) {
@@ -62,20 +62,27 @@ final class TeamCalendar extends AppSharedCalendar
         return $this->childFor($obj);
     }
 
-    public function getChildren()
+    /**
+     * @return list<TeamCalendarObject>
+     */
+    public function getChildren(): array
     {
-        return array_map(
+        return array_values(array_map(
             $this->childFor(...),
             $this->caldavBackend->getCalendarObjects($this->calendarInfo['id']),
-        );
+        ));
     }
 
-    public function getMultipleChildren(array $paths)
+    /**
+     * @param  list<string>  $paths
+     * @return list<TeamCalendarObject>
+     */
+    public function getMultipleChildren(array $paths): array
     {
-        return array_map(
+        return array_values(array_map(
             $this->childFor(...),
             $this->caldavBackend->getMultipleCalendarObjects($this->calendarInfo['id'], $paths),
-        );
+        ));
     }
 
     public function delete(): void
