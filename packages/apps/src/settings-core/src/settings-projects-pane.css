@@ -86,5 +86,8 @@
 .projects-manage-teams .card__title {
   @apply text-sm font-normal;
   font-size: 0.875rem;
-  color: var(--workspace-muted-foreground, color-mix(in oklab, var(--workspace-foreground) 60%, transparent));
+  color: var(
+    --workspace-muted-foreground,
+    color-mix(in oklab, var(--workspace-foreground) 60%, transparent)
+  );
 }

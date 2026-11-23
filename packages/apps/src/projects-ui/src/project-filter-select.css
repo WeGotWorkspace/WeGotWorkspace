@@ -105,7 +105,6 @@
   color: color-mix(in oklab, currentColor 55%, transparent);
 }
 
-
 .project-filter-select__all {
   color: var(--workspace-muted-foreground, currentColor);
 }
@@ -117,5 +116,8 @@
 /* The suite hairline: the default separator is nearly invisible on the dark menu. */
 .project-filter-select__separator {
   @apply my-1.5;
-  background-color: var(--workspace-divider-color, color-mix(in oklab, currentColor 18%, transparent));
+  background-color: var(
+    --workspace-divider-color,
+    color-mix(in oklab, currentColor 18%, transparent)
+  );
 }
