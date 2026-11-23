@@ -1,6 +1,6 @@
 /*
- * Runs before first paint: resolves the theme onto <html> and gives Android its
- * pinch-zoom back. A same-origin file, not inline: the runtime CSP is
+ * Runs before first paint: marks an installed PWA, resolves the theme onto <html>
+ * and gives Android its pinch-zoom back. A same-origin file, not inline: the runtime CSP is
  * `script-src 'self'`. Loaded as a classic script before the stylesheet by
  * `index.html` and by `scripts/sync-runtime-app-builds.mjs`.
  */
@@ -15,6 +15,19 @@
   var meta = document.querySelector('meta[name="viewport"]');
   if (meta) {
     meta.setAttribute("content", meta.content.replace(/,\s*maximum-scale=[^,]*/, ""));
+  }
+})();
+
+/*
+ * Installed PWA. `styles.css` paints the status bar with the sidebar fill under
+ * `html.pwa-standalone`; iOS samples it before module CSS, so it is set here.
+ */
+(function () {
+  if (
+    window.navigator.standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches
+  ) {
+    document.documentElement.classList.add("pwa-standalone");
   }
 })();
 
