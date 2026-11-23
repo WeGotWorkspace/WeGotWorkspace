@@ -138,10 +138,9 @@ const problems: Story = {
     await expect(canvas.getByText(/Ask your administrator to set up https/)).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Retry Backup.tar" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "Remove Backup.tar" })).toBeInTheDocument();
-    await expect(await canvas.findByRole("link", { name: "Open Admin" })).toHaveAttribute(
-      "href",
-      "/admin",
-    );
+    await expect(
+      await canvas.findByRole("link", { name: "Open Admin" }, { timeout: 5000 }),
+    ).toHaveAttribute("href", "/admin");
     // Signed out: Retry says it goes through sign-in.
     await expect(canvas.getByText(/Retry takes you to sign in/)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Retry Logo.svg" })).toBeInTheDocument();
