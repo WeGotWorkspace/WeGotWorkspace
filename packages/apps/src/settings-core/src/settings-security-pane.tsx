@@ -202,7 +202,8 @@ function CreateAppPasswordDialog({ controller }: { controller: SettingsAppPasswo
                     value={code}
                     onChange={(value) => {
                       form.setValue("code", value);
-                      form.clearErrors("code");
+                      // Emptying the boxes after a wrong code keeps the message.
+                      if (value !== "") form.clearErrors("code");
                     }}
                     disabled={busy}
                     error={codeError}

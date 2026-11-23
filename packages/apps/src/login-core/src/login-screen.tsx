@@ -112,7 +112,8 @@ export function LoginScreen({
 
   return (
     <AuthenticationPage title={loginTitle(signIn.step, oauthConnect)}>
-      {errorMessage ? (
+      {errorMessage &&
+      !(signIn.step.kind === "code" && !signIn.step.recovery && signIn.wrongCode) ? (
         <p id={LOGIN_ERROR_ID} className="login-screen__error" role="alert">
           {errorMessage}
         </p>

@@ -7,6 +7,7 @@ import {
   TwoFactorCodeField,
 } from "@/two-factor-ui/src/two-factor-fields";
 import { MOCK_SIGN_IN } from "@/lib/api/mock/sign-in";
+import { OtpInput } from "@/ui/otp-input";
 import { TooltipProvider } from "@/ui/tooltip";
 
 const meta = {
@@ -63,6 +64,45 @@ export const RecoveryCodes: Story = {
           onSavedChange={setSaved}
         />
       </div>
+    );
+  },
+};
+
+/** Six boxes drawn from one real input: type, paste `123 456`, or let the phone fill it. */
+export const OtpBoxes: Story = {
+  name: "OtpInput",
+  render: function OtpStory() {
+    const [code, setCode] = useState("");
+    const [sent, setSent] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+    const [wrong, setWrong] = useState(false);
+    return (
+      <form
+        className="flex max-w-sm flex-col gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setSent(code);
+          setBusy(true);
+          setWrong(false);
+          setTimeout(() => {
+            setBusy(false);
+            setWrong(code !== "123456");
+          }, 600);
+        }}
+      >
+        <OtpInput
+          aria-label="Code"
+          value={code}
+          onChange={setCode}
+          disabled={busy}
+          invalid={wrong}
+          autoFocus
+        />
+        <p className="text-sm text-muted-foreground">
+          {busy ? "Verifying…" : wrong ? "That code is not right (123456 works)." : "Try 123456."}
+          {sent ? ` Sent: ${sent}` : ""}
+        </p>
+      </form>
     );
   },
 };
