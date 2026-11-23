@@ -1,11 +1,12 @@
 import { Fragment, type CSSProperties } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { ChevronDown, FolderKanban, Settings2 } from "lucide-react";
+import { ChevronDown, FolderKanban, Settings2, User } from "lucide-react";
 import { useOpenSettingsPanel } from "@/lib/settings/open-settings-panel";
 import {
   projectFilterValue,
   teamFilterValue,
   teamSlugOfFilter,
+  isPersonalFilter,
   type ProjectFilterValue,
 } from "@/lib/projects/project-filter";
 import { selectedProject } from "@/lib/projects/project-match";
@@ -87,14 +88,22 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
           <span className="project-filter-trigger__label">
             {current
               ? current.name
-              : currentTeam
-                ? labels.teamAll(currentTeam.displayName)
-                : labels.allProjects}
+              : isPersonalFilter(filter)
+                ? labels.personal
+                : currentTeam
+                  ? labels.teamAll(currentTeam.displayName)
+                  : labels.allProjects}
           </span>
           <ChevronDown className="project-filter-trigger__chevron" aria-hidden />
         </SelectPrimitive.Trigger>
         <SelectContent className="project-filter-select__menu">
           <SelectItem value="all">{labels.allProjects}</SelectItem>
+          <SelectItem value="personal">
+            <span className="project-filter-select__item">
+              <User className="project-filter-select__icon" aria-hidden />
+              {labels.personal}
+            </span>
+          </SelectItem>
           {groups.map(({ team, projects }) => (
             <Fragment key={team.slug}>
               <SelectSeparator className="project-filter-select__separator" />

@@ -46,6 +46,7 @@ describe("ProjectFilterSelect", () => {
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(options).toEqual([
       "All Teams",
+      "Personal",
       "All in Design",
       "Design ProjectDefault",
       "Website relaunch",
@@ -60,6 +61,7 @@ describe("ProjectFilterSelect", () => {
     const options = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(options).toEqual([
       "All Teams",
+      "Personal",
       "All in Sales",
       "Sales ProjectDefault",
       "Website relaunch",
