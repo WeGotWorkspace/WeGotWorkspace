@@ -11,11 +11,13 @@ use App\Models\ProjectResource;
 use App\Services\Drive\DriveService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
+use App\Services\Projects\ProjectFolder;
 use App\Services\Projects\ProjectKind;
 use App\Storage\WgwStorage;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Testing\TestResponse;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Server;
 use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
 use Tests\Support\WgwDatabaseTestCase;
@@ -161,6 +163,7 @@ final class ProjectFolderTest extends WgwDatabaseTestCase
     {
         $this->createProject('bob', 't1', 'Launch');
         $guard = app(WebdavWriteGuardPlugin::class);
+        $guard->initialize(new Server([]));
         $move = new SabreRequest('MOVE', '/files/groups/t1/Launch');
         $move->setHeader('Destination', '/files/groups/t1/Other');
 
