@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
-import { ComposerSendButton } from "@/chat-ui/src/composer-send-button";
+import { ComposerSendButton } from "@/button/src/composer-send-button";
 
 const meta = {
   title: "Chat/Composer Send Button",

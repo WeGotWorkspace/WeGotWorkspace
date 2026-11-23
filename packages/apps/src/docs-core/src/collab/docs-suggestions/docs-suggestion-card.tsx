@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
-import { ComposerSendButton } from "@/chat-ui/src/composer-send-button";
+import { ComposerSendButton } from "@/button/src/composer-send-button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsCommentAuthor } from "@/text-editor-core/docs-collab/docs-comments-types";
 import type { DocsSuggestionWithThread } from "@/text-editor-core/docs-collab/docs-suggestions-types";

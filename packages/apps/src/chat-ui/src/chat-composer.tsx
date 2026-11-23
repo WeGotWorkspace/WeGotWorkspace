@@ -3,7 +3,7 @@ import type { Editor } from "@tiptap/react";
 import { X } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
-import { ComposerSendButton } from "@/chat-ui/src/composer-send-button";
+import { ComposerSendButton } from "@/button/src/composer-send-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
