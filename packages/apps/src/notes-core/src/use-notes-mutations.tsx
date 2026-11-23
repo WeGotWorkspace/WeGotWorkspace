@@ -594,7 +594,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   );
 
   const resolveCreateTarget = useNotesCreateTarget(notebooks, notebookCollections);
-
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
