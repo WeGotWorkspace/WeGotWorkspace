@@ -98,6 +98,27 @@ final class TeamDeleteWithProjectsTest extends WgwDatabaseTestCase
         $this->assertSame('forbidden', $set[0][1]['notUpdated'][$root->node_id]['type'] ?? null);
         $this->assertSame('forbidden', $set[1][1]['notDestroyed'][$root->node_id]['type'] ?? null);
         $this->assertTrue(app(WgwStorage::class)->files()->directoryExists('groups/t1'));
+
+        // Unbinding the root is how an overwriting MOVE or COPY would delete it.
+        try {
+            $guard->beforeUnbind('files/groups/t1');
+            $this->fail('Unbinding a Drive root must be refused.');
+        } catch (Forbidden) {
+            $this->addToAssertionCount(1);
+        }
+        foreach (['MOVE', 'COPY'] as $method) {
+            foreach (['files/groups/t1', 'files/users/bob'] as $root) {
+                $overwrite = new SabreRequest($method, '/files/groups/t1/Scratch');
+                $overwrite->setHeader('Destination', '/'.$root);
+                try {
+                    $guard->beforeMethod($overwrite, new SabreResponse);
+                    $this->fail($method.' onto '.$root.' must be refused.');
+                } catch (Forbidden) {
+                    $this->addToAssertionCount(1);
+                }
+            }
+        }
+        $this->assertTrue(app(WgwStorage::class)->files()->directoryExists('groups/t1'));
         $this->assertFalse($rights['mayRename']);
         $this->assertFalse($rights['mayDelete']);
     }

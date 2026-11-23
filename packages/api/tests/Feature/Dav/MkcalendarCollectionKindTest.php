@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Dav;
 
 use App\Models\CalendarInstance;
+use App\Models\ProjectResource;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,60 @@ final class MkcalendarCollectionKindTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_a_real_mkcalendar_makes_a_personal_collection_of_the_kind_the_components_name(): void
+    {
+        foreach (['VEVENT' => CollectionKind::EventCalendar, 'VTODO' => CollectionKind::TaskList, 'VJOURNAL' => CollectionKind::Notebook] as $component => $kind) {
+            $uri = 'made-'.strtolower($component);
+            $this->dav('MKCALENDAR', '/calendars/alice/'.$uri.'/', $this->mkcalendarXml('  Made '.$component.'  ', $component, ' #123456 '), [
+                'CONTENT_TYPE' => 'application/xml',
+            ])->assertCreated();
+
+            $this->assertSame($kind->value, $this->kindFor('principals/alice', $uri));
+            $instance = CalendarInstance::query()->where('principaluri', 'principals/alice')->where('uri', $uri)->firstOrFail();
+            $this->assertSame('Made '.$component, $instance->displayname);
+            $this->assertSame('#123456', $instance->calendarcolor);
+            $this->assertSame(
+                0,
+                ProjectResource::query()->where('locator', (string) $instance->calendarid)->count(),
+                'No Project owns a personal collection.',
+            );
+        }
+        $this->assertSame(0, DB::connection('wgw')->table('projects')->count(), 'No Project is created for it.');
+    }
+
+    public function test_a_calendar_needs_a_display_name_when_it_sends_one(): void
+    {
+        $this->dav('MKCALENDAR', '/calendars/alice/blank-name/', $this->mkcalendarXml('   ', 'VEVENT'), [
+            'CONTENT_TYPE' => 'application/xml',
+        ])->assertStatus(400);
+
+        $this->assertSame(0, CalendarInstance::query()->where('uri', 'blank-name')->count());
+    }
+
+    public function test_a_calendar_cannot_be_made_in_a_team_home_or_in_another_users_home(): void
+    {
+        $this->seedWgwUser('bob', displayName: 'Bob');
+        $this->seedSharedTeam('t1', 'alice', 'bob');
+        $this->appointTeamAdmin('t1', 'alice');
+        $before = CalendarInstance::query()->count();
+
+        foreach (['MKCALENDAR', 'MKCOL'] as $method) {
+            foreach (['/calendars/groups/t1/team-made/', '/calendars/bob/bob-made/'] as $path) {
+                $body = $method === 'MKCOL' ? $this->mkcolCalendarXml('Nope', 'VEVENT') : $this->mkcalendarXml('Nope', 'VEVENT');
+                $this->dav($method, $path, $body, ['CONTENT_TYPE' => 'application/xml'])->assertForbidden();
+            }
+        }
+
+        $this->assertSame($before, CalendarInstance::query()->count(), 'Nothing was created.');
+    }
+
+    public function test_reserved_uri_prefixes_stay_refused_over_mkcalendar(): void
+    {
+        $this->dav('MKCALENDAR', '/calendars/alice/chat-shadow/', $this->mkcalendarXml('Shadow', 'VEVENT'), [
+            'CONTENT_TYPE' => 'application/xml',
+        ])->assertForbidden();
+    }
+
     private function kindFor(string $principalUri, string $uri): string
     {
         $calendarId = CalendarInstance::query()
@@ -108,6 +163,26 @@ final class MkcalendarCollectionKindTest extends WgwDatabaseTestCase
         }
 
         return $this->call($method, $path, [], [], [], $server, $body);
+    }
+
+    private function mkcalendarXml(string $displayName, string $component, ?string $color = null): string
+    {
+        $colorProp = $color === null ? '' : '<a:calendar-color xmlns:a="http://apple.com/ns/ical/">'.$color.'</a:calendar-color>';
+
+        return <<<XML
+<?xml version="1.0" encoding="utf-8" ?>
+<c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:set>
+    <d:prop>
+      <d:displayname>{$displayName}</d:displayname>
+      {$colorProp}
+      <c:supported-calendar-component-set>
+        <c:comp name="{$component}"/>
+      </c:supported-calendar-component-set>
+    </d:prop>
+  </d:set>
+</c:mkcalendar>
+XML;
     }
 
     private function mkcolCalendarXml(string $displayName, string $component): string

@@ -72,8 +72,8 @@ final class ProjectLifecycle
 
     /**
      * Delete an archived Project for good: organization admins only, through the Admin
-     * routes. The Project need not be in one of the caller's Teams. `$viewer` is the admin
-     * whose Drive trash receives the folder.
+     * routes. The Project must be in one of the caller's Teams: an admin outside the Team sees
+     * a Team's Projects only as a member. `$viewer` is the admin whose Drive trash receives the folder.
      */
     public function purgeAsOrganizationAdmin(string $viewer, string $id): void
     {

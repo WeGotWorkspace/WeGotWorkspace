@@ -81,6 +81,12 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (CollabSidecarPaths::davIsProtected($path)) {
             throw new Forbidden('The Yjs sidecar is server-owned.');
         }
+        // A new calendar, task list or notebook (MKCALENDAR, or MKCOL with a calendar resource type) is personal:
+        // a Team's collections are made in the app, where the Project and its roles apply (#819).
+        if (preg_match('#^calendars/([^/]+)/[^/]+$#', $path, $match) === 1
+            && $match[1] !== DavCurrentUsername::of($this->server)) {
+            throw new Forbidden('A calendar can only be created in your own calendar home.');
+        }
     }
 
     /**
@@ -105,6 +111,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new Forbidden('Deleting this path under files/ is not allowed.');
         }
         // Also reached when a MOVE or COPY overwrites its destination.
+        if (self::isDriveRoot($p)) {
+            throw new Forbidden('A Drive root goes with its user or Team.');
+        }
         if ($this->isProjectFolder($p)) {
             throw new Forbidden('A Project folder follows its Project. Rename or delete the Project in the app.');
         }
@@ -179,6 +188,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             }
             if (ProjectArchivePaths::davIsProtected($destPath)) {
                 throw new Forbidden('Archived Project folders are server-owned.');
+            }
+            if (self::isDriveRoot($destPath)) {
+                throw new Forbidden('A Drive root goes with its user or Team. It cannot be overwritten.');
             }
             if ($this->isProjectFolder($destPath)) {
                 throw new Forbidden('A Project folder follows its Project. It cannot be overwritten.');
