@@ -137,6 +137,16 @@ final class TeamCollectionsInDavHomeTest extends WgwDatabaseTestCase
             ->where('calendarobjects.uid', $uid)
             ->exists();
         $this->assertTrue($delivered, 'dave got the invitation in his own calendar');
+
+        $delete = $this->sabre('bob', 'DELETE', '/calendars/bob/team~t1~t1/planning.ics', '');
+        $this->assertContains($delete['status'], [200, 204], $delete['body']);
+
+        $copy = DB::connection('wgw')->table('calendarobjects')
+            ->join('calendarinstances', 'calendarinstances.calendarid', '=', 'calendarobjects.calendarid')
+            ->where('calendarinstances.principaluri', 'principals/dave')
+            ->where('calendarobjects.uid', $uid)
+            ->value('calendarobjects.calendardata');
+        $this->assertStringContainsString('STATUS:CANCELLED', (string) $copy, 'dave got the cancellation');
     }
 
     public function test_a_team_mate_cannot_reach_a_team_calendar_through_another_members_home(): void

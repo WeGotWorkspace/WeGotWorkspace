@@ -6,6 +6,7 @@ namespace App\Dav\Server;
 
 use Sabre\CalDAV\Backend\BackendInterface;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Exception\NotFound;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -20,7 +21,8 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  * is refused: removing a Team collection is an admin action in the web app.
  *
  * {@see getOwner()} is the member whose home lists it. Sabre's scheduling reads
- * the organizer's addresses from the calendar's owner, so an event with
+ * the organizer's addresses from the calendar's owner (and, on delete, the
+ * object's owner, see {@see TeamCalendarObject}), so an event with
  * attendees that a member saves here sends invitations as that member, like
  * the web app does for Team calendars. The ACL does not use the owner.
  */
@@ -48,6 +50,42 @@ final class TeamCalendar extends AppSharedCalendar
     public function getOwner(): string
     {
         return $this->member;
+    }
+
+    public function getChild($name)
+    {
+        $obj = $this->caldavBackend->getCalendarObject($this->calendarInfo['id'], $name);
+        if (! $obj) {
+            throw new NotFound('Calendar object not found');
+        }
+
+        return $this->childFor($obj);
+    }
+
+    public function getChildren()
+    {
+        return array_map(
+            $this->childFor(...),
+            $this->caldavBackend->getCalendarObjects($this->calendarInfo['id']),
+        );
+    }
+
+    public function getMultipleChildren(array $paths)
+    {
+        return array_map(
+            $this->childFor(...),
+            $this->caldavBackend->getMultipleCalendarObjects($this->calendarInfo['id'], $paths),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $obj
+     */
+    private function childFor(array $obj): TeamCalendarObject
+    {
+        $obj['acl'] = $this->getChildACL();
+
+        return new TeamCalendarObject($this->caldavBackend, $this->calendarInfo, $obj, $this->member);
     }
 
     public function delete(): void
