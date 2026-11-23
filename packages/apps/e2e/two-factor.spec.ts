@@ -150,7 +150,7 @@ test("turns on two-factor in Settings and signs in with a code", async ({ browse
   expect(await tokenStatus()).toBe("mfa_required");
 
   await submitPassword(page);
-  await expect(page.getByRole("heading", { name: "One more step." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Two-factor auth" })).toBeVisible();
   await page.getByLabel("Code", { exact: true }).fill(await authenticator.next()); // the sixth digit submits
   await expectSignedIn(page);
 
@@ -163,7 +163,7 @@ test("turns on two-factor in Settings and signs in with a code", async ({ browse
 test("a recovery code signs in and sets up a new authenticator", async ({ browser }) => {
   const page = await freshPage(browser);
   await submitPassword(page);
-  await expect(page.getByRole("heading", { name: "One more step." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Two-factor auth" })).toBeVisible();
   await page.getByRole("button", { name: "Use a recovery code" }).click();
   // Typed the way people copy it: spaces instead of dashes.
   await page
