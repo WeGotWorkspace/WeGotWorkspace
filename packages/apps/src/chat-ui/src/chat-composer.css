@@ -19,17 +19,61 @@
   @apply cursor-pointer;
 }
 
-/* One row: the text grows upward from a single line; the buttons stay at its foot. */
+/* The row is the scroller (not the text sheet): its scrollbar then runs along the
+   card's own right edge instead of squeezing in between the text and the buttons.
+   One row: the text grows from a single line; the buttons stay at its foot. */
 .chat-composer__row {
-  @apply flex min-w-0 items-end gap-0.5 p-1.5 ps-4;
+  @apply min-w-0 gap-0.5 p-1.5 ps-4;
+  /* A grid, not a flex row: its one track is as tall as the text (a flex line is
+     clamped to `max-height` and would leave the buttons floating mid-scroll). */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+/* The buttons stay pinned at the foot while long text scrolls past. */
+.chat-composer__row > :not(.chat-composer__sheet) {
+  @apply sticky bottom-0;
 }
 
 .chat-composer__sheet {
-  @apply min-w-0 flex-1 py-1.5;
+  @apply min-w-0 py-1.5;
   /* One line at the control height (with the row padding). */
   --text-editor-prose-line-height: 1.5;
-  max-height: 12rem;
-  overflow-y: auto;
+}
+
+/* A slim thumb with no track, set in from the card's edges; it only shows while
+   there is something to scroll. (Standard properties for engines without the
+   WebKit pseudo-elements.) */
+.chat-composer__row::-webkit-scrollbar {
+  width: 0.75rem;
+}
+
+.chat-composer__row::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 0.5rem;
+}
+
+.chat-composer__row::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
+  background-clip: padding-box;
+  border: 0.25rem solid transparent;
+  border-radius: 9999px;
+}
+
+.chat-composer__row::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .chat-composer__row {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent) transparent;
+  }
 }
 
 .chat-composer__sheet .text-editor-prose > :first-child {

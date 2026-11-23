@@ -1101,7 +1101,39 @@
 
 /* The capped conversation: the composer ends where the messages' text does. */
 .meet-workspace__chat-main .meet-workspace__chat-composer > .chat-composer {
-  max-width: calc(var(--chat-max-width) - 2 * var(--list-item-padding-x));
+  max-width: var(--chat-max-width);
+  margin-inline: auto;
+}
+
+/* A message's hover/selection fill is the row itself: full width on small panes,
+   and on wide ones a centred column with the content's side padding around the
+   text. The content (avatar edge to text end) is exactly `--chat-max-width` wide
+   and starts under the header's toggle icon, as the composer does. */
+.meet-workspace__chat-main .chat-message {
+  --chat-message-padding-x: var(--chat-content-start);
+  width: 100%;
+  max-width: calc(var(--chat-max-width) + 2 * var(--chat-content-start));
+  margin-inline: auto;
+  border-radius: 0;
+}
+
+@media (min-width: 768px) {
+  .meet-workspace__chat-main .chat-message {
+    border-radius: var(--list-row-radius, 0.625rem);
+  }
+}
+
+/* The typing line sits on the same centred column as the messages' text. */
+.meet-workspace__chat-main .meet-workspace__typing {
+  max-width: calc(var(--chat-max-width) + 2 * var(--chat-content-start));
+  width: 100%;
+  margin-inline: auto;
+}
+
+/* Day labels span the pane (the frost runs edge to edge); their text is centred. */
+.meet-workspace__chat-main .chat-message-list__day-section .list-sticky-header {
+  justify-content: center;
+  text-align: center;
 }
 
 /* Fixed-height row so a typing label never moves the composer. */
@@ -1689,4 +1721,27 @@
   .meet-guest-lobby__mic-level-fill {
     @apply duration-150 ease-out transition-[width];
   }
+}
+
+/* Wide panes: reserve the scrollbar gutter on both edges so the messages centre on
+   the same axis as the floating composer and typing line (which ignore the
+   scrollbar). Small panes skip it: the rows run edge to edge there. */
+@media (min-width: 768px) {
+  .meet-workspace__chat-main .chat-message-list__scroll {
+    scrollbar-gutter: stable both-edges;
+  }
+}
+
+/* Messages fade out as they scroll toward the floating composer: a pane-coloured
+   gradient above the dock (below the dock itself, over the list). It ignores the
+   pointer so rows stay clickable underneath. */
+.meet-workspace__chat-column::after {
+  content: "";
+  @apply pointer-events-none absolute inset-x-0 bottom-0 z-[6];
+  height: calc(var(--chat-dock-height, 0px) + 2.5rem);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--workspace-surface) calc(100% - var(--chat-dock-height, 0px) / 2)
+  );
 }
