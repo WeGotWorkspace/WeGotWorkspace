@@ -115,6 +115,11 @@
   color: inherit;
 }
 
+/* The in-place editor is a card, not a line of text: it gets room under the author. */
+.chat-message[data-editing="true"] .chat-composer {
+  margin-top: 0.5rem;
+}
+
 .chat-message__body mark {
   @apply rounded-sm px-0.5;
   background-color: var(

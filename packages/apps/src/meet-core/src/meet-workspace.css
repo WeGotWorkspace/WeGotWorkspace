@@ -1733,12 +1733,22 @@
 }
 
 /* Messages fade out as they scroll toward the floating composer: a pane-coloured
-   gradient above the dock (below the dock itself, over the list). It ignores the
-   pointer so rows stay clickable underneath. */
-.meet-workspace__chat-column::after {
+   gradient pinned to the foot of the scroller, inside it, so the scrollbar stays
+   clear of it. It ignores the pointer so rows stay clickable underneath. It takes
+   no room in the flow: it sits in the scroller's bottom padding (the dock's height)
+   and reaches up from there, so the last message is not dimmed at the end. */
+.meet-workspace__chat-main .chat-message-list__scroll {
+  --chat-fade-dock: calc(var(--chat-dock-height, 0px) + 0.75rem);
+  --chat-fade-height: calc(var(--chat-dock-height, 0px) + 2.5rem);
+}
+
+.meet-workspace__chat-main .chat-message-list__scroll::after {
   content: "";
-  @apply pointer-events-none absolute inset-x-0 bottom-0 z-[6];
-  height: calc(var(--chat-dock-height, 0px) + 2.5rem);
+  @apply pointer-events-none sticky z-[6] block;
+  height: var(--chat-fade-height);
+  margin-top: calc(var(--chat-fade-dock) - var(--chat-fade-height));
+  margin-bottom: calc(-1 * var(--chat-fade-dock));
+  bottom: calc(-1 * var(--chat-fade-dock));
   background: linear-gradient(
     to bottom,
     transparent,

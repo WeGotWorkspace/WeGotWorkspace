@@ -9,8 +9,6 @@ export const threadUiLabels = {
   offline: "Connect to load the conversation",
   placeholder: "Write a comment… (@ to mention)",
   replyPlaceholder: "Write a reply…",
-  comment: "Comment",
-  reply: "Reply",
   readOnly: "You can read this conversation but not comment.",
   notSent: "Not sent",
   notSaved: "Not saved",
