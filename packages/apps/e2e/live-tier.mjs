@@ -13,6 +13,7 @@
 export const liveTierSpecs = [
   "account-reads-shared",
   "auth-password-change-signs-out",
+  "background-sync-shared-pace",
   "calendar-delete-mid-round",
   "calendar-far-week-event",
   "calendar-invitations-push",

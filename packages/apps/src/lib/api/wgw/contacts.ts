@@ -20,6 +20,7 @@ import {
   wgwReadJsonFailureMessage,
 } from "@/lib/api/wgw/http";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+import { backgroundSyncPacer } from "@/lib/offline/core/background-sync-pacer";
 import {
   CONTACTS_CAPABILITY,
   JmapClient,
@@ -402,6 +403,7 @@ export async function fetchContactsLiveBootstrap(options?: {
           },
           pendingContactCount: snapshot.pendingContactCount,
         });
+        await paceNextCardPage(snapshot.remainingIds);
       },
     },
   );
@@ -420,6 +422,16 @@ export async function fetchContactsLiveBootstrap(options?: {
 }
 
 /**
+ * Shared hosting traffic budget: the first card page goes at once (so the list
+ * paints), and every further page takes a turn from the browser-wide
+ * background schedule it shares with Docs and Drive downloads.
+ */
+async function paceNextCardPage(remainingIds: readonly string[]): Promise<void> {
+  if (remainingIds.length === 0) return;
+  await backgroundSyncPacer().acquire();
+}
+
+/**
  * Rest of an interrupted first download: ContactCard/get for `ids`, one page
  * per request. `onCardPage` is awaited before the next request.
  */
@@ -428,7 +440,10 @@ export async function fetchContactCardPages(
   onCardPage: (page: ContactsCardPage) => void | Promise<void>,
 ): Promise<void> {
   const { contacts, accountId } = await connectedContacts();
-  await contacts.getContactCardPages(accountId, ids, ({ page, remainingIds }) =>
-    onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds }),
-  );
+  // A resumed download already painted its saved pages: every page after the
+  // first request is paced.
+  await contacts.getContactCardPages(accountId, ids, async ({ page, remainingIds }) => {
+    await onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds });
+    await paceNextCardPage(remainingIds);
+  });
 }

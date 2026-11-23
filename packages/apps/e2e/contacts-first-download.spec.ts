@@ -224,6 +224,8 @@ test.describe("Contacts first download on a new device", () => {
   test("a reload keeps the saved pages, offline shows them, online fetches only the rest", async ({
     page,
   }) => {
+    // The rest of the book arrives one paced page every 3 s.
+    test.setTimeout(300_000);
     await installOfflineSwitch(page);
 
     // 1. First open: page 1 goes through, page 2 is held, as if the tab closes there.
@@ -324,7 +326,7 @@ test.describe("Contacts first download on a new device", () => {
             total: now.ids.length,
           };
         },
-        { timeout: 60_000, intervals: [500] },
+        { timeout: 180_000, intervals: [500] },
       )
       .toEqual({
         unfinished: false,
