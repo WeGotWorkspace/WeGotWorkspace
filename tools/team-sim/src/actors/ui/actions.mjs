@@ -210,11 +210,11 @@ export const uiActions = {
         typeAtEnd(partner.page, partner.page.locator(".ProseMirror").first(), theirs),
       ]);
       await Promise.all([waitSaved(b, b.page), waitSaved(partner, partner.page)]);
-      await settle(b.page, 3000);
-      for (const p of [b.page, partner.page]) {
-        const text = await p.locator(".ProseMirror").first().innerText();
-        if (!text.includes(mine.slice(0, 25)) || !text.includes(theirs.slice(0, 25))) throw new Error("co-writers do not see each other's text in the editor");
-      }
+      // Playwright's WebKit reaches a peer only through the slower fallback (4-7 s); real Safari shows the
+      // other person's text within a second (checked with safaridriver, 2026-11-23). Wait up to 15 s.
+      const bothShown = (p) => p.locator(".ProseMirror").first().innerText().then((text) => text.includes(mine.slice(0, 25)) && text.includes(theirs.slice(0, 25)));
+      const shown = await b.wait("each sees the other's text", () => pollFor(async () => (await bothShown(b.page)) && (await bothShown(partner.page)), 15000));
+      if (!shown) throw new Error("co-writers do not see each other's text in the editor after 15 s");
       await expectDocContains(ctx, a.persona, doc.ids.path, mine);
       await expectDocContains(ctx, a.persona, doc.ids.path, theirs);
       return { note: `co-wrote with ${a.params.partner}` };
