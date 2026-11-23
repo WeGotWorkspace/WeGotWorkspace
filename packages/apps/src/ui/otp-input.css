@@ -40,10 +40,6 @@
   @apply border-destructive ring-1 ring-destructive;
 }
 
-.otp-input[data-disabled] .otp-input__dash {
-  @apply h-0.5 w-2 shrink-0 self-center rounded-full bg-muted-foreground opacity-50;
-}
-
-.otp-input__box {
+.otp-input[data-disabled] .otp-input__box {
   @apply cursor-not-allowed opacity-60;
 }
