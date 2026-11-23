@@ -465,7 +465,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
         ->where('username', '[a-z0-9_-]+');
     Route::delete('users/{username}', [AdminUsersController::class, 'destroy'])
         ->where('username', '[a-z0-9_-]+');
-    // Archived Projects of every Team, and deleting one for good: organization admins only.
+    // Archived Projects of the admin's own Teams, and deleting one for good: organization admins only.
     Route::get('projects', [AdminProjectsController::class, 'index']);
     Route::delete('projects/{project}', [AdminProjectsController::class, 'destroy'])
         ->where('project', '[0-9a-z]{26}');

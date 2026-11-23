@@ -9,25 +9,34 @@ use App\Models\Principal;
 use App\Models\Project;
 use App\Services\Admin\AdminConstants;
 use App\Services\Projects\ProjectLifecycle;
+use App\Services\Teams\TeamColleagues;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Archived Projects of every Team, for organization admins (#810). A team admin archives a
+ * Archived Projects of the organization admin's own Teams (#810). A team admin archives a
  * Project; deleting it for good, with its collections and folder, is done here.
  */
 final class ProjectsController
 {
-    public function __construct(private readonly ProjectLifecycle $lifecycle) {}
+    public function __construct(
+        private readonly ProjectLifecycle $lifecycle,
+        private readonly TeamColleagues $colleagues,
+    ) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $viewer = (string) $principal['username'];
+        // Same rule as ProjectService::findVisible, which the purge applies: only a member sees a Team's Projects.
         $projects = Project::query()
             ->whereNotNull('archived_at')
             ->whereNull('default_for_group')
             ->orderBy('group_slug')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->filter(fn (Project $p): bool => $this->colleagues->isOwnTeam($viewer, (string) $p->group_slug))
+            ->values();
         $teamNames = Principal::query()
             ->whereIn('uri', $projects->map(fn (Project $p): string => AdminConstants::GROUP_PREFIX.$p->group_slug)->unique()->values()->all())
             ->pluck('displayname', 'uri');

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Plugin as CalDAVPlugin;
+use Sabre\DAV\Exception\BadRequest;
 use Sabre\DAV\Exception\Conflict;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\PropPatch;
@@ -392,6 +393,8 @@ final class WgwCalendarBackend extends CalPDO
             throw new Forbidden('This calendar URI prefix is reserved for API-only collections.');
         }
 
+        $properties = $this->limitedCreateProperties($properties);
+
         $requested = $properties['{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set'] ?? null;
         $components = is_object($requested) && method_exists($requested, 'getValue')
             ? implode(',', (array) $requested->getValue())
@@ -403,6 +406,35 @@ final class WgwCalendarBackend extends CalPDO
             (string) $calendarUri,
             $properties,
         );
+    }
+
+    /**
+     * Display name and color as the REST and JMAP create paths take them: trimmed, a blank
+     * name refused, a blank color dropped.
+     *
+     * @param  array<string, mixed>  $properties
+     * @return array<string, mixed>
+     */
+    private function limitedCreateProperties(array $properties): array
+    {
+        if (array_key_exists('{DAV:}displayname', $properties)) {
+            $name = is_string($properties['{DAV:}displayname']) ? trim($properties['{DAV:}displayname']) : '';
+            if ($name === '') {
+                throw new BadRequest('A calendar needs a display name.');
+            }
+            $properties['{DAV:}displayname'] = $name;
+        }
+        $colorKey = '{http://apple.com/ns/ical/}calendar-color';
+        if (array_key_exists($colorKey, $properties)) {
+            $color = is_string($properties[$colorKey]) ? trim($properties[$colorKey]) : '';
+            if ($color === '') {
+                unset($properties[$colorKey]);
+            } else {
+                $properties[$colorKey] = $color;
+            }
+        }
+
+        return $properties;
     }
 
     /**

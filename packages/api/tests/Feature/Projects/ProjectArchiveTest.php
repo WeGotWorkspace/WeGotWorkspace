@@ -220,11 +220,22 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->assertSame(0, ProjectResource::query()->where('project_id', $created['id'])->count());
     }
 
-    public function test_an_organization_admin_lists_the_archived_projects_of_every_team(): void
+    public function test_an_organization_admin_outside_the_team_does_not_get_its_archived_projects(): void
     {
+        $launch = $this->createProject('bob', 't1', 'Launch');
+        $this->archive('bob', $launch['id'])->assertOk();
+
+        $this->assertSame([], $this->asUser('alice')->getJson('/api/v1/admin/projects')->assertOk()->json('list'));
+    }
+
+    public function test_an_organization_admin_lists_the_archived_projects_of_the_teams_they_are_in(): void
+    {
+        $this->joinTeam('alice', 't1');
         $launch = $this->createProject('bob', 't1', 'Launch');
         $this->createProject('bob', 't1', 'Live');
         $this->archive('bob', $launch['id'])->assertOk();
+        $other = $this->createProject('carol', 't2', 'Elsewhere');
+        $this->archive('carol', $other['id'])->assertOk();
 
         $list = $this->asUser('alice')->getJson('/api/v1/admin/projects')->assertOk()->json('list');
         $this->assertSame([$launch['id']], array_column($list, 'id'));
