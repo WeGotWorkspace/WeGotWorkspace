@@ -54,7 +54,6 @@ export function OtpInput({
   "aria-describedby": describedBy,
 }: OtpInputProps) {
   const fieldRef = useRef<HTMLInputElement | null>(null);
-  const focused = useRef(false);
   const sent = useRef(false);
   const wasInvalid = useRef(false);
   const refocus = useRef(false);
@@ -118,13 +117,9 @@ export function OtpInput({
         onChange={(event) => onChange(digitsOf(event.target.value, length))}
         onPaste={paste}
         onFocus={(event) => {
-          focused.current = true;
           // The caret stays after the last digit: the active box is where typing lands.
           const end = event.currentTarget.value.length;
           event.currentTarget.setSelectionRange(end, end);
-        }}
-        onBlur={() => {
-          focused.current = false;
         }}
         onSelect={(event) => {
           const end = event.currentTarget.value.length;
