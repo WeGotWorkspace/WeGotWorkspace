@@ -145,7 +145,7 @@ export function ChatComposer({
           <div ref={cardRef} className="chat-composer__card" onMouseDown={onCardMouseDown}>
             <div className="chat-composer__row">
               <div className="chat-composer__sheet">
-                <TextEditorSheet editor={editor} variant="inline" slashMenu={false} />
+                <TextEditorSheet editor={editor} variant="inline" />
               </div>
               {onCancel ? (
                 <IconButton

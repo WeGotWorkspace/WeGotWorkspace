@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Editor } from "@tiptap/react";
+import { MenuItem } from "@/menu-item/src/menu-item";
+import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
+import { DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut } from "@/ui/dropdown-menu";
 import { subscribeEditorLayoutUpdates } from "@/text-editor-core/src/text-editor-overlay-utils";
 import {
+  groupSlashCommands,
   slashCommands,
   type SlashCommandOptions,
 } from "@/text-editor-core/src/text-editor-slash-commands";
@@ -11,14 +14,14 @@ export type TextEditorSlashMenuProps = SlashCommandOptions & {
   editor: Editor | null;
 };
 
-/** Viewport coordinates for `position: fixed` (portaled to `document.body`). */
-function slashMenuPosition(editor: Editor): { top: number; left: number } {
+/** The caret as a point the popover can anchor to (viewport coordinates). */
+type CaretAnchor = { getBoundingClientRect: () => DOMRect };
+
+function caretAnchor(editor: Editor): CaretAnchor {
   const { from } = editor.state.selection;
-  const coords = editor.view.coordsAtPos(from);
-  return {
-    top: coords.bottom + 6,
-    left: coords.left,
-  };
+  const { left, top, bottom } = editor.view.coordsAtPos(from);
+  const rect = new DOMRect(left, top, 0, bottom - top);
+  return { getBoundingClientRect: () => rect };
 }
 
 function readSlashQuery(editor: Editor): string | null {
@@ -33,12 +36,12 @@ export function TextEditorSlashMenu({
   onInsertImage,
   pageBreak,
 }: TextEditorSlashMenuProps) {
-  const labelId = useId();
+  const idPrefix = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [anchor, setAnchor] = useState<CaretAnchor | null>(null);
   const [active, setActive] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const syncSlashMenu = useCallback(() => {
     if (!editor) return;
@@ -47,12 +50,11 @@ export function TextEditorSlashMenu({
       setOpen(false);
       return;
     }
-    const nextPos = slashMenuPosition(editor);
     setQuery((previous) => {
       if (previous !== query) setActive(0);
       return query;
     });
-    setPos(nextPos);
+    setAnchor(caretAnchor(editor));
     setOpen(true);
   }, [editor]);
 
@@ -71,78 +73,118 @@ export function TextEditorSlashMenu({
     return subscribeEditorLayoutUpdates(editor.view.dom, syncSlashMenu);
   }, [editor, open, syncSlashMenu]);
 
-  const filtered = slashCommands({ onInsertImage, pageBreak }).filter(
-    (c) =>
-      (c.title + " " + c.keywords).toLowerCase().includes(query.toLowerCase()) &&
-      (!editor || !c.isAvailable || c.isAvailable(editor)),
+  // Sections in display order: the arrow keys walk this flat order.
+  const groups = groupSlashCommands(
+    slashCommands({ onInsertImage, pageBreak }).filter(
+      (c) =>
+        (c.title + " " + c.keywords).toLowerCase().includes(query.toLowerCase()) &&
+        (!editor || !c.isAvailable || c.isAvailable(editor)),
+    ),
   );
+  const filtered = groups.flatMap((group) => group.commands);
+  const visible = open && editor != null && anchor != null && filtered.length > 0;
+  const virtualRef = useMemo(() => ({ current: anchor }), [anchor]);
 
   useEffect(() => {
-    if (!open || !editor) return;
+    if (!visible || !editor) return;
     const onKey = (e: KeyboardEvent) => {
-      if (!open) return;
-      if (e.key === "ArrowDown") {
+      const handled = () => {
+        // The menu owns these keys while it is open: a host editor (chat: Enter sends,
+        // Escape cancels an edit) must not act on them as well.
         e.preventDefault();
+        e.stopPropagation();
+      };
+      if (e.key === "ArrowDown") {
+        handled();
         setActive((a) => (a + 1) % filtered.length);
       } else if (e.key === "ArrowUp") {
-        e.preventDefault();
+        handled();
         setActive((a) => (a - 1 + filtered.length) % filtered.length);
       } else if (e.key === "Enter") {
         if (filtered[active]) {
-          e.preventDefault();
+          handled();
           filtered[active].run(editor);
           setOpen(false);
         }
       } else if (e.key === "Escape") {
+        handled();
         setOpen(false);
       }
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, filtered, active, editor]);
+  }, [visible, filtered, active, editor]);
 
-  if (!open || !pos || !editor || filtered.length === 0) return null;
+  // Arrow keys move the active row; keep it in view in a scrolled list.
+  useEffect(() => {
+    if (!visible) return;
+    listRef.current
+      ?.querySelector<HTMLElement>('[data-active="true"]')
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [active, visible]);
 
-  return createPortal(
-    <div
-      ref={containerRef}
-      style={{ top: pos.top, left: pos.left }}
-      className="text-editor-slash-menu no-print"
-    >
-      <div id={labelId} className="text-editor-slash-menu__label">
-        Basic blocks
-      </div>
-      <ul className="text-editor-slash-menu__list" role="listbox" aria-labelledby={labelId}>
-        {filtered.map((c, i) => (
-          <li
-            key={c.title}
-            role="option"
-            aria-selected={i === active}
-            // Focus stays in the editor; -1 keeps the scrolling list reachable for AT.
-            tabIndex={-1}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              c.run(editor);
-              setOpen(false);
-            }}
-            onMouseEnter={() => setActive(i)}
-            className={
-              i === active
-                ? "text-editor-slash-menu__item text-editor-slash-menu__item--active"
-                : "text-editor-slash-menu__item"
-            }
-          >
-            <span className="text-editor-slash-menu__icon" aria-hidden>
-              <c.icon className="h-4 w-4" />
-            </span>
-            <span className="text-editor-slash-menu__copy">
-              <span className="text-editor-slash-menu__title">{c.title}</span>
-              <span className="text-editor-slash-menu__desc">{c.desc}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>,
-    document.body,
+  if (!editor) return null;
+
+  let index = -1;
+  return (
+    <Popover open={visible}>
+      <PopoverAnchor virtualRef={virtualRef} />
+      <PopoverContent
+        frost
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        className="text-editor-slash-menu no-print"
+        // The caret stays in the editor: typing keeps filtering the list.
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        // Clicks in the editor move the caret, which closes or keeps the menu in sync.
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <div ref={listRef} role="listbox" aria-label="Insert block">
+          {groups.map((group, groupIndex) => {
+            const labelId = `${idPrefix}-${group.id}`;
+            return (
+              <Fragment key={group.id}>
+                {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
+                <div role="group" aria-labelledby={labelId}>
+                  <DropdownMenuLabel id={labelId} className="text-editor-slash-menu__label">
+                    {group.label}
+                  </DropdownMenuLabel>
+                  {group.commands.map((c) => {
+                    const i = ++index;
+                    return (
+                      <MenuItem
+                        key={c.title}
+                        role="option"
+                        aria-selected={i === active}
+                        data-active={i === active ? "true" : "false"}
+                        // Focus stays in the editor; -1 keeps the list reachable for AT.
+                        tabIndex={-1}
+                        icon={<c.icon className="size-4" />}
+                        label={c.title}
+                        badge={
+                          c.shortcut ? (
+                            <DropdownMenuShortcut className="text-editor-slash-menu__shortcut">
+                              {c.shortcut}
+                            </DropdownMenuShortcut>
+                          ) : undefined
+                        }
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setActive(i)}
+                        onClick={() => {
+                          c.run(editor);
+                          setOpen(false);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
