@@ -19,6 +19,14 @@ describe("isPwaNavigateFallbackDenied", () => {
     expect(isPwaNavigateFallbackDenied("/.well-known/oauth-protected-resource/mcp")).toBe(true);
   });
 
+  it("sends the MCP OAuth sign-in step to the network", () => {
+    expect(isPwaNavigateFallbackDenied("/login?return=%2Foauth%2Fauthorize&intent=abc")).toBe(true);
+    expect(isPwaNavigateFallbackDenied("/login?return=/oauth/authorize&intent=abc")).toBe(true);
+    expect(isPwaNavigateFallbackDenied("/login?intent=abc&return=%2Foauth%2Fauthorize")).toBe(true);
+    expect(isPwaNavigateFallbackDenied("/login")).toBe(false);
+    expect(isPwaNavigateFallbackDenied("/login?return=%2Fdrive")).toBe(false);
+  });
+
   it("keeps existing API and apps aliases on the network", () => {
     expect(isPwaNavigateFallbackDenied("/api/v1/health")).toBe(true);
     expect(isPwaNavigateFallbackDenied("/apps/shell/index.html")).toBe(true);

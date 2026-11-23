@@ -18,8 +18,13 @@ const IMAGE_FILES = Array.from({ length: 8 }, (_, i) => `Photo ${RUN} ${pad(i + 
 const SEEDED = [...TEXT_FILES, ...IMAGE_FILES];
 const LISTING_FAILED = /This folder could not be loaded/;
 
-/** The background pacer allows 2 requests per second; a window may also hold a few previews. */
-const MAX_BACKGROUND_REQUESTS_PER_10S = 25;
+/**
+ * The background pacer starts one request every 3 s (20 per minute): a 10 s
+ * window holds 4 starts, plus one for timing jitter.
+ */
+const MAX_BACKGROUND_REQUESTS_PER_10S = 5;
+/** Room for every seeded file at one paced request per 3 s, plus setup. */
+const PACED_COPY_MS = SEEDED.length * 3_000 + 60_000;
 
 /** 1×1 PNG. */
 const PNG = Uint8Array.from(
@@ -194,6 +199,7 @@ test.describe("Drive first sync on a new device", () => {
   test("paces the copy, leaves room for Tasks, and needs one request per text file", async ({
     page,
   }) => {
+    test.setTimeout(PACED_COPY_MS + 60_000);
     const statuses: number[] = [];
     page.context().on("response", (response) => {
       if (new URL(response.url()).pathname.startsWith("/api/")) statuses.push(response.status());
@@ -214,7 +220,7 @@ test.describe("Drive first sync on a new device", () => {
     // Every seeded file is copied: text files with one request each.
     await expect
       .poll(() => new Set(seen.map((entry) => entry.seeded).filter(Boolean)).size, {
-        timeout: 60_000,
+        timeout: PACED_COPY_MS,
       })
       .toBe(SEEDED.length);
 
@@ -258,6 +264,7 @@ test.describe("Drive first sync on a new device", () => {
   });
 
   test("a reload mid-copy does not fetch the synced files again", async ({ page }) => {
+    test.setTimeout(PACED_COPY_MS + 60_000);
     const before = watchBackgroundSync(page);
     await page.goto("/drive?view=folder&path=My%20Drive");
 
@@ -284,7 +291,7 @@ test.describe("Drive first sync on a new device", () => {
 
     // The copy resumes and finishes...
     await expect
-      .poll(async () => (await syncedSeededFiles(page)).length, { timeout: 60_000 })
+      .poll(async () => (await syncedSeededFiles(page)).length, { timeout: PACED_COPY_MS })
       .toBe(SEEDED.length);
     expect(requestedBeforeReload).toBeGreaterThan(0);
     // ...without fetching a file it already had.
@@ -358,6 +365,7 @@ test.describe("Drive first sync on a new device", () => {
   });
 
   test("row spinners follow the first copy: only files still to copy spin", async ({ browser }) => {
+    test.setTimeout(300_000);
     const rowFolder = `Row state ${RUN}`;
     const rowUrl = `/drive?view=folder&path=${encodeURIComponent(`My Drive/${rowFolder}`)}`;
     const small = Array.from({ length: 16 }, (_, i) => `Small ${RUN} ${pad(i + 1)}.md`);
@@ -474,7 +482,7 @@ test.describe("Drive first sync on a new device", () => {
       // When the copy is done, nothing spins.
       await expect
         .poll(async () => (await syncedInFolder()).filter((n) => small.includes(n)).length, {
-          timeout: 90_000,
+          timeout: 150_000,
         })
         .toBe(small.length);
       // A later pass may still copy the file uploaded mid-run; then it settles too.

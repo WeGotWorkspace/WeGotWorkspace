@@ -13,6 +13,7 @@
 export const liveTierSpecs = [
   "account-reads-shared",
   "auth-password-change-signs-out",
+  "background-sync-shared-pace",
   "calendar-delete-mid-round",
   "calendar-far-week-event",
   "calendar-invitations-push",
@@ -90,6 +91,7 @@ export const liveTierSpecs = [
   "notes-new-before-notebooks-load",
   "notes-new-tab-unsaved-text",
   "notes-offline-sync",
+  "notes-push-network-loss",
   "notes-push-open-note",
   "notes-relist-many-notes",
   "notes-save-in-flight",
