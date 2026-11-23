@@ -78,6 +78,11 @@ final class TeamCalendar extends AppSharedCalendar
         );
     }
 
+    public function delete(): void
+    {
+        throw new Forbidden('A Team collection cannot be removed from a calendar app.');
+    }
+
     /**
      * @param  array<string, mixed>  $obj
      */
@@ -86,10 +91,5 @@ final class TeamCalendar extends AppSharedCalendar
         $obj['acl'] = $this->getChildACL();
 
         return new TeamCalendarObject($this->caldavBackend, $this->calendarInfo, $obj, $this->member);
-    }
-
-    public function delete(): void
-    {
-        throw new Forbidden('A Team collection cannot be removed from a calendar app.');
     }
 }
