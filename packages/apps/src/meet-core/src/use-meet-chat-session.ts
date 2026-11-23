@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAppToast } from "@/hooks/use-app-toast";
+import { useQueuedMutation } from "@/hooks/use-queued-mutation";
 import type { ChatMentionPrincipal, ChatSendPayload } from "@/lib/models/chat-types";
 import {
   meetRoomChatEchoId,
@@ -18,6 +20,14 @@ export type MeetActiveThread = {
   directory: ChatMentionPrincipal[];
 };
 
+/** A deleted message can be taken back for this long; then the delete is sent. */
+const DELETE_UNDO_MS = 10_000;
+
+/** Whether the key is typed into a plain text field, whose own Undo is the browser's. */
+function inPlainTextField(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest("input, textarea") != null;
+}
+
 export type UseMeetChatSessionArgs = {
   initialMessages: ChatMessage[];
   operations?: MeetChatOperations;
@@ -36,6 +46,13 @@ export function useMeetChatSession({
   initialThreadId = null,
 }: UseMeetChatSessionArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  /** Messages deleted on screen whose delete is still within its Undo window: id -> when. */
+  const [pendingDeletes, setPendingDeletes] = useState<ReadonlyMap<string, number>>(new Map());
+  const { showError } = useAppToast();
+  const { queueMutation, undoLatest } = useQueuedMutation({
+    delayMs: DELETE_UNDO_MS,
+    onMutationError: () => showError("Could not delete the message."),
+  });
   const [threadId, setThreadId] = useState<string | null>(initialThreadId);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
@@ -47,14 +64,31 @@ export function useMeetChatSession({
     setMessages(initialMessages);
   }, [initialMessages]);
 
-  const channelMessages = useMemo(
-    () => meetChannelMessages(messages, selectedChannelId),
-    [messages, selectedChannelId],
+  // Pending deletes show as deleted at once, also when a live sync hands back the
+  // stored row while the Undo window is open.
+  const shownMessages = useMemo(
+    () =>
+      pendingDeletes.size === 0
+        ? messages
+        : messages.map((row) => {
+            const deletedAt = pendingDeletes.get(row.id);
+            return deletedAt === undefined
+              ? row
+              : { ...row, deletedAt, body: "", previews: [], mentions: [] };
+          }),
+    [messages, pendingDeletes],
   );
-  const parent = useMemo(() => meetThreadParent(messages, threadId), [messages, threadId]);
+  const channelMessages = useMemo(
+    () => meetChannelMessages(shownMessages, selectedChannelId),
+    [shownMessages, selectedChannelId],
+  );
+  const parent = useMemo(
+    () => meetThreadParent(shownMessages, threadId),
+    [shownMessages, threadId],
+  );
   const replies = useMemo(
-    () => meetThreadReplies(messages, parent?.id ?? null),
-    [messages, parent?.id],
+    () => meetThreadReplies(shownMessages, parent?.id ?? null),
+    [shownMessages, parent?.id],
   );
   const activeThread = useMemo<MeetActiveThread | null>(
     () => (parent ? { parent, replies, directory } : null),
@@ -148,19 +182,55 @@ export function useMeetChatSession({
     [applyMessage, operations],
   );
 
+  /**
+   * Shows the message as deleted at once and sends the delete after the Undo window
+   * (the suite's irreversible write: Undo cancels it; leaving the page sends it).
+   */
   const deleteMessage = useCallback(
-    async (messageId: string) => {
-      await operations?.deleteMessage?.(messageId);
-      setMessages((current) =>
-        current.map((row) =>
-          row.id === messageId
-            ? { ...row, deletedAt: Date.now(), body: "", previews: [], mentions: [] }
-            : row,
-        ),
-      );
+    (messageId: string) => {
+      const deletedAt = Date.now();
+      setPendingDeletes((current) => new Map(current).set(messageId, deletedAt));
+      const release = () =>
+        setPendingDeletes((current) => {
+          const next = new Map(current);
+          next.delete(messageId);
+          return next;
+        });
+      queueMutation({
+        key: `meet:delete:${messageId}`,
+        toastMessage: "Message deleted",
+        irreversible: true,
+        execute: async (signal) => {
+          await operations?.deleteMessage?.(messageId, { signal });
+          setMessages((current) =>
+            current.map((row) =>
+              row.id === messageId
+                ? { ...row, deletedAt, body: "", previews: [], mentions: [] }
+                : row,
+            ),
+          );
+          release();
+        },
+        undo: release,
+        onError: release,
+        undoToastMessage: "Deletion undone.",
+      });
     },
-    [operations],
+    [operations, queueMutation],
   );
+
+  // Cmd/Ctrl+Z takes back the latest delete, unless a text field has its own Undo to
+  // run: the composer handles the key first when it has typing to undo.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key.toLowerCase() !== "z") return;
+      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return;
+      if (inPlainTextField(event.target)) return;
+      if (undoLatest()) event.preventDefault();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [undoLatest]);
 
   const react = useCallback(
     async (messageId: string, emoji: string) => {
@@ -198,7 +268,7 @@ export function useMeetChatSession({
   }, []);
 
   return {
-    messages,
+    messages: shownMessages,
     channelMessages,
     threadOpen: Boolean(activeThread),
     activeThread,

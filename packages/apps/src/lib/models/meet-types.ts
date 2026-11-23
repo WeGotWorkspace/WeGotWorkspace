@@ -150,7 +150,8 @@ export type MeetChatOperations = {
    */
   newMessageId?: () => string;
   editMessage?: (messageId: string, body: string) => Promise<ChatMessage>;
-  deleteMessage?: (messageId: string) => Promise<void>;
+  /** `signal` aborts the request when Undo is used while it is in flight. */
+  deleteMessage?: (messageId: string, opts?: { signal?: AbortSignal }) => Promise<void>;
   react?: (messageId: string, emoji: string) => Promise<ChatMessage>;
   reply?: (
     parentId: string,

@@ -330,7 +330,7 @@ export function createHybridMeetChatOperations(
       };
       return writeMessage(messageId, () => patchChatMessage(messageId, { body }), queueEdit);
     },
-    deleteMessage: async (messageId) => {
+    deleteMessage: async (messageId, opts) => {
       const existing = await getCachedChatMessage(username, messageId);
       const tombstone: ChatMessage | undefined = existing
         ? { ...existing, body: "", deletedAt: Date.now(), previews: [], mentions: [] }
@@ -348,7 +348,7 @@ export function createHybridMeetChatOperations(
       };
       if (await queueUnderLock(messageId, queueDelete)) return;
       try {
-        await deleteChatMessage(messageId);
+        await deleteChatMessage(messageId, opts);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
         notifyMeetChatCacheChanged(username);
         await runner.flush();
