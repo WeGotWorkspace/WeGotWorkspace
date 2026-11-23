@@ -121,10 +121,6 @@ const ALLOWED = {
     "storage space probe while an upload is blocked on quota",
   "lib/offline/drive/upload/drive-upload-leave-warning.ts::setInterval":
     "last-tab check for the upload leave warning; no network",
-  "lib/offline/core/browser-online.ts::OFFLINE_REACHABILITY_POLL_MS":
-    "reachability probe while the browser reports offline",
-  "lib/offline/core/browser-online.ts::setInterval":
-    "reachability probe timer while offline",
   "lib/api/wgw/session-keeper.ts::setInterval": "session keep-alive ping",
   // Local timers that send no request.
   "presence-core/src/principal-tab-sync.ts::setInterval":

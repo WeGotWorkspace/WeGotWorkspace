@@ -4,19 +4,18 @@ vi.mock("@/lib/api/wgw/calendar-scheduling", () => ({
   fetchCalendarSchedulingInvitees: vi.fn(),
 }));
 vi.mock("@/lib/api/wgw/http", () => ({
-  wgwFetch: vi.fn(),
-  wgwReadJson: vi.fn(),
+  wgwSettingsStateRead: { read: vi.fn() },
 }));
 
 import { fetchCalendarSchedulingInvitees } from "@/lib/api/wgw/calendar-scheduling";
-import { wgwFetch } from "@/lib/api/wgw/http";
+import { wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import { fetchMeetChatDirectory } from "@/lib/api/wgw/meet-chat-directory";
 import { viewerHasNoTeam } from "@/lib/sharing/collection-share";
 import { meetDirectMessagePeople } from "@/lib/meetings/meet-direct-messages";
 
 describe("fetchMeetChatDirectory", () => {
   beforeEach(() => {
-    vi.mocked(wgwFetch).mockResolvedValue(new Response(null, { status: 500 }));
+    vi.mocked(wgwSettingsStateRead.read).mockResolvedValue({ ok: false, status: 500 });
   });
 
   it("keeps people outside the viewer's Teams for mentions but not for DMs", async () => {

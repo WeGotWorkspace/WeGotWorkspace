@@ -24,9 +24,10 @@ export function SettingsApp({ apiSource }: SettingsAppProps = {}) {
       retry={retry}
       errorTitle="Could not load settings"
       successVersion={successVersion}
-      render={(key) => (
+      // No `key` on the successVersion: the first answer replaces the placeholder data in place.
+      // Remounting here dropped any dialog the user had opened while Settings was loading.
+      render={() => (
         <SettingsWorkspace
-          key={key}
           data={data}
           session={session}
           operations={operations}

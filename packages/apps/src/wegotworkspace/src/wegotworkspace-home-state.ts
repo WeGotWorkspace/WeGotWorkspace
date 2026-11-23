@@ -1,4 +1,4 @@
-import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwLiveApiEnabled, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import type { WgwSettingsStateResponse } from "@/lib/api/wgw/types";
 import { mocksInBuild } from "@/lib/api/create-workspace-source";
 
@@ -26,8 +26,8 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
   }
 
   try {
-    const res = await wgwFetch("/settings/state");
-    if (!res.ok) {
+    const read = await wgwSettingsStateRead.read();
+    if (!read.ok) {
       return {
         showAdmin: false,
         showCalendar: true,
@@ -37,7 +37,7 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
         showUserMenu: false,
       };
     }
-    const state = (await wgwReadJson(res)) as WgwSettingsStateResponse & {
+    const state = read.json as unknown as WgwSettingsStateResponse & {
       apps?: { calendars?: boolean; contacts?: boolean; tasks?: boolean };
     };
     const userDisplayName = state.user.displayName?.trim() || state.user.username?.trim() || "User";

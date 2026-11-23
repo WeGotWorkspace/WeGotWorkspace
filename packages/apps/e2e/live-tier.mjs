@@ -11,6 +11,7 @@
  * `tools/live-e2e-webserver.test.mjs` checks the order.
  */
 export const liveTierSpecs = [
+  "account-reads-shared",
   "auth-password-change-signs-out",
   "background-sync-shared-pace",
   "calendar-delete-mid-round",
@@ -104,6 +105,7 @@ export const liveTierSpecs = [
   "queued-write-reload",
   "rtc-idle-poll",
   "settings-calendar-availability",
+  "settings-dialog-stays-open",
   "settings-offline-clear-cache",
   "sync-notice-bar",
   "tasks-assignees",

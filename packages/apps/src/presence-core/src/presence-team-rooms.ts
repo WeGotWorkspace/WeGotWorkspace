@@ -1,4 +1,4 @@
-import { wgwApiBaseUrl, wgwCurrentAccessToken, wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwApiBaseUrl, wgwCurrentAccessToken, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import { resolveRoomId } from "@/lib/rtc/room-id";
 import type { RtcSettings } from "@/lib/rtc/types";
@@ -28,9 +28,9 @@ export function teamRoomsFromSettingsState(state: unknown): string[] {
 
 /** The caller's own Teams as presence rooms. Throws when the API cannot be reached. */
 export async function fetchOwnTeamRooms(): Promise<string[]> {
-  const res = await wgwFetch("/settings/state");
-  if (!res.ok) throw new Error(`GET /settings/state failed (${res.status})`);
-  return teamRoomsFromSettingsState(await wgwReadJson(res));
+  const read = await wgwSettingsStateRead.read();
+  if (!read.ok) throw new Error(`GET /settings/state failed (${read.status})`);
+  return teamRoomsFromSettingsState(read.json);
 }
 
 /** RTC settings are the same for every room; ask through a room the caller may use. */

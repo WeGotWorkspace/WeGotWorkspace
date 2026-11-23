@@ -1,7 +1,7 @@
 import { settingsRequestFailure } from "@/lib/api/wgw/app-passwords";
 import type { AuthenticatorSecret } from "@/lib/api/wgw/auth-sign-in";
 import { normalizeTotpCode } from "@/lib/api/wgw/auth-sign-in";
-import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwFetch, wgwMeRead, wgwReadJson } from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 
 /**
@@ -61,12 +61,18 @@ async function send(method: string, path: string, body?: unknown): Promise<unkno
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) throw await settingsRequestFailure(res, method, path);
+  if (method !== "GET") wgwMeRead.invalidate();
   return res.status === 204 ? {} : wgwReadJson(res);
 }
 
 export function createWgwTwoFactorOperations(): TwoFactorOperations {
   return {
-    state: async () => twoFactorStateFromMe(await send("GET", "/me")),
+    // Always the server's answer (the screen shows what a write just changed); the shared copy is refreshed too.
+    state: async () => {
+      const read = await wgwMeRead.readFresh();
+      if (!read.ok) throw new WgwRequestError(`GET /me failed (${read.status})`, read.status);
+      return twoFactorStateFromMe(read.json);
+    },
     start: async (currentPassword) => {
       const o = record(await send("POST", PATH, { currentPassword }));
       if (typeof o.secret !== "string" || typeof o.otpauth_uri !== "string") {
