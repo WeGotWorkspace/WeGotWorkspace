@@ -43,7 +43,7 @@ Persistence reuses the existing Sabre CalDAV PDO backend (`calendars`, `calendar
 
 ## Decision 2 — Isolation: notebooks vs event calendars vs task lists
 
-**Decision:** New event calendars are **`VEVENT` only**. Existing event and group calendars have `VJOURNAL` stripped. Notebooks are provisioned separately (`notes-general`, display name `General`) per user and per group principal.
+**Decision:** New event calendars are **`VEVENT` only**. Existing event and group calendars have `VJOURNAL` stripped. Notebooks are provisioned separately (`notes-general`) per user and per group principal. A new individual's notebook is named `Personal`; a principal that already owns a notebook keeps its names (`General` on older installs).
 
 **Why:** Mixing VJOURNAL into event calendars or task lists is a non-goal. Calendar REST stays `scopeSupportsVevent()` and must not list notebooks. `scopeVjournalOnly()` = has `VJOURNAL`, not `VEVENT`/`VTODO`.
 
@@ -265,7 +265,7 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 - **Principal:** `principals/users/{username}`; group principals `notes-{groupSlug}`.
 - **ACL:** `calendarinstances.access` (1=owner, 2=read, 3=read-write); CalDAV sharing plugin.
 - **REST paths:** `/api/v1/notes/notebooks`, `/api/v1/notes/items`, `/api/v1/notes/items/{uid}`, `/changes` (CRUD + fallback inbound). Live sync is `POST /api/v1/jmap`.
-- **Default notebook:** `notes-general` (`General`) per user and per group principal. Personal default and provisioned group homes (e.g. Team / `group-team`) cannot be deleted — UI hides delete like calendars/tasks.
+- **Default notebook:** `notes-general` (`Personal` for new users, `General` on older installs) per user and per group principal. Personal default and provisioned group homes (e.g. Team / `group-team`) cannot be deleted — UI hides delete like calendars/tasks.
 - **Synctoken / changes:** Per-collection `calendarchanges` + `synctoken` — same as Calendar/Tasks. Moves must write dual changelog rows (Decision 12).
 
 ---

@@ -27,8 +27,9 @@ final class TasksTaskListsTest extends WgwDatabaseTestCase
             ->getJson('/api/v1/tasks/tasklists');
 
         $response->assertOk()
-            ->assertJsonCount(3, 'list')
+            ->assertJsonCount(1, 'list')
             ->assertJsonPath('list.0.id', InboxTaskListProvisioner::URI)
+            ->assertJsonPath('list.0.role', 'inbox')
             ->assertJsonPath('list.0.name', InboxTaskListProvisioner::DISPLAY_NAME)
             ->assertJsonPath('list.0.isDefault', true)
             ->assertJsonPath('list.0.scope', 'personal')
@@ -84,8 +85,12 @@ final class TasksTaskListsTest extends WgwDatabaseTestCase
         $response->assertOk();
         $ids = collect($response->json('list'))->pluck('id')->all();
         $this->assertContains(InboxTaskListProvisioner::URI, $ids);
-        $this->assertContains('tasks-home', $ids);
-        $this->assertContains('tasks-work', $ids);
+        $this->assertNotContains('tasks-home', $ids);
+        $this->assertNotContains('tasks-work', $ids);
+        $this->assertSame(
+            ['Personal'],
+            collect($response->json('list'))->where('id', InboxTaskListProvisioner::URI)->pluck('name')->values()->all(),
+        );
         $this->assertTrue(
             app(InboxTaskListProvisioner::class)->hasInboxCalendar('principals/legacy-only'),
         );

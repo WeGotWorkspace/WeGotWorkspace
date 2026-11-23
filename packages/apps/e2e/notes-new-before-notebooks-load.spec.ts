@@ -40,7 +40,7 @@ test("a note started before the notebooks load is saved in the default notebook"
     const newNote = page.getByRole("button", { name: "New note" });
     await expect(newNote).toBeEnabled({ timeout: 60_000 });
     // The sidebar has no notebooks yet.
-    await expect(page.getByRole("button", { name: "General", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Personal", exact: true })).toHaveCount(0);
     await newNote.click();
 
     const body = page.locator(".ProseMirror[contenteditable='true']").first();

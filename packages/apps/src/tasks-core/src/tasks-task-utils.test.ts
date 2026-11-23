@@ -77,6 +77,12 @@ describe("tasks-task-utils", () => {
     ).toBe(INBOX_TASK_LIST_ID);
   });
 
+  it("defaultTaskListId picks the one Inbox-role list a new user has, whatever its name", () => {
+    expect(
+      defaultTaskListId([{ id: "tasks-inbox", role: "inbox", isDefault: true, isSharee: false }]),
+    ).toBe("tasks-inbox");
+  });
+
   it("defaultTaskListId ignores a shared Inbox even when named Inbox", () => {
     expect(
       defaultTaskListId([
