@@ -119,7 +119,6 @@ export const CreateWithTwoFactorOn: Story = {
     await userEvent.type(name, "Work laptop");
     await expect(page.queryByLabelText(labels.currentPasswordLabel)).toBeNull();
     await userEvent.type(page.getByLabelText(twoFactorLabels.codeLabel), "654321");
-    await userEvent.click(page.getByRole("button", { name: labels.create }));
     await expect(await page.findByText(twoFactorSettingsLabels.wrongCode)).toBeInTheDocument();
     await expect(page.getByText(twoFactorLabels.clockHint)).toBeInTheDocument();
   },

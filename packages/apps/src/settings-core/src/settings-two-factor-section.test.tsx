@@ -114,9 +114,8 @@ describe("turning it on", () => {
     expect(operations.start).toHaveBeenCalledWith(MOCK_ACCOUNT_PASSWORD);
     expect(screen.getByDisplayValue("JBSW Y3DP EHPK 3PXP")).toBeTruthy();
     type(twoFactorLabels.codeLabel, "123 456");
-    click(labels.turnOnConfirm);
     const codes = await screen.findByRole("alertdialog");
-    expect(operations.confirm).toHaveBeenCalledWith(MOCK_ACCOUNT_PASSWORD, "123 456");
+    expect(operations.confirm).toHaveBeenCalledWith(MOCK_ACCOUNT_PASSWORD, "123456");
     expect(within(codes).getByText(MOCK_SIGN_IN.recoveryCodes[0])).toBeTruthy();
     const done = within(codes).getByRole("button", { name: labels.done });
     expect((done as HTMLButtonElement).disabled).toBe(true);
@@ -130,7 +129,6 @@ describe("turning it on", () => {
     renderPane();
     await startSetup();
     type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.code);
-    click(labels.turnOnConfirm);
     const codes = await screen.findByRole("alertdialog");
     fireEvent.keyDown(codes, { key: "Escape" });
     expect(screen.getByRole("alertdialog")).toBeTruthy();
@@ -161,7 +159,6 @@ describe("turning it on", () => {
     renderPane();
     await startSetup();
     type(twoFactorLabels.codeLabel, "000000");
-    click(labels.turnOnConfirm);
     expect(await screen.findByText(labels.wrongCode)).toBeTruthy();
     expect(screen.getByText(twoFactorLabels.clockHint)).toBeTruthy();
   });
@@ -198,7 +195,6 @@ describe("when it is on", () => {
     fireEvent.click(await screen.findByRole("button", { name: labels.turnOff }));
     await screen.findByRole("dialog");
     type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.code);
-    click(labels.disableConfirm);
     expect(await screen.findByText(labels.statusOff)).toBeTruthy();
     expect(operations.disable).toHaveBeenCalledWith(MOCK_SIGN_IN.code);
     expect(toast.success).toHaveBeenCalledWith(labels.turnedOff);
@@ -209,7 +205,6 @@ describe("when it is on", () => {
     fireEvent.click(await screen.findByRole("button", { name: labels.replaceCodes }));
     await screen.findByRole("dialog");
     type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.code);
-    click(labels.replaceConfirm);
     const codes = await screen.findByRole("alertdialog");
     fireEvent.click(within(codes).getByRole("checkbox", { name: twoFactorLabels.codesSaved }));
     fireEvent.click(within(codes).getByRole("button", { name: labels.done }));
@@ -223,7 +218,6 @@ describe("when it is on", () => {
     fireEvent.click(await screen.findByRole("button", { name: labels.turnOff }));
     await screen.findByRole("dialog");
     type(twoFactorLabels.codeLabel, MOCK_SIGN_IN.throttledCode);
-    click(labels.disableConfirm);
     expect(await screen.findByText(/^Too many tries\. Try again at /)).toBeTruthy();
   });
 });

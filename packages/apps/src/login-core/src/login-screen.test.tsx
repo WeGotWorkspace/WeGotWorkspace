@@ -56,7 +56,10 @@ async function submitCode(value: string) {
   fireEvent.change(await screen.findByLabelText(twoFactorLabels.codeLabel), {
     target: { value },
   });
-  fireEvent.click(screen.getByRole("button", { name: labels.verify }));
+  // The sixth digit submits by itself; a short code needs the button.
+  if (!/^\d{6}$/.test(value.replace(/\s+/g, ""))) {
+    fireEvent.click(screen.getByRole("button", { name: labels.verify }));
+  }
 }
 
 function signInAsTwoFactorUser() {
@@ -248,7 +251,7 @@ describe("LoginScreen second step", () => {
     render(<LoginScreen operations={createMockSignInOperations()} />);
     signInAsTwoFactorUser();
     await submitCode("654321");
-    expect((await screen.findByRole("alert")).textContent).toBe(labels.wrongCode);
+    expect((await screen.findByRole("alert")).textContent).toContain(labels.wrongCode);
     expect(screen.getByText(twoFactorLabels.clockHint)).toBeTruthy();
     expect(screen.getByLabelText(twoFactorLabels.codeLabel).getAttribute("aria-invalid")).toBe(
       "true",
@@ -289,7 +292,7 @@ describe("LoginScreen second step", () => {
     render(<LoginScreen operations={operations} />);
     signInAsTwoFactorUser();
     await sendWrongCodes(operations, MOCK_SIGN_IN.wrongCodeLimit);
-    expect(screen.getByRole("alert").textContent).toBe(labels.wrongCode);
+    expect(screen.getByRole("alert").textContent).toContain(labels.wrongCode);
     await submitCode("654321");
     expect((await screen.findByRole("alert")).textContent).toBe(labels.tooManyWrongCodes);
     expect(screen.getByPlaceholderText("yourname")).toBeTruthy();

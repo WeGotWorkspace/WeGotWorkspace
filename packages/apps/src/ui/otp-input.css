@@ -1,0 +1,45 @@
+@import "../styles.css" reference;
+
+/*
+ * One-time code boxes (`otp-input.tsx`). The boxes are `.input` surfaces (fill, radius, height
+ * from the control-size scale); the real field lies on top, invisible, and takes the clicks.
+ * The active box shows the focus ring only while the field has focus.
+ */
+.otp-input {
+  @apply relative flex w-full min-w-0;
+}
+
+.otp-input__boxes {
+  @apply flex w-full min-w-0 gap-2;
+}
+
+.otp-input__field {
+  @apply absolute inset-0 z-10 m-0 h-full w-full border-0 bg-transparent p-0 opacity-0;
+  font-size: 1rem;
+  cursor: text;
+}
+
+.otp-input__field:disabled {
+  @apply cursor-not-allowed;
+}
+
+.otp-input__dash {
+  @apply h-0.5 w-2 shrink-0 self-center rounded-full bg-muted-foreground opacity-50;
+}
+
+.otp-input__box {
+  @apply min-w-0 flex-1 justify-center px-0 font-mono tabular-nums;
+}
+
+.otp-input:has(.otp-input__field:focus) .otp-input__box[data-active] {
+  @apply ring-1 ring-ring;
+  border-color: var(--input-border-focus, var(--input-border-color, var(--control-border-color)));
+}
+
+.otp-input__box[data-invalid] {
+  @apply border-destructive ring-1 ring-destructive;
+}
+
+.otp-input[data-disabled] .otp-input__box {
+  @apply cursor-not-allowed opacity-60;
+}

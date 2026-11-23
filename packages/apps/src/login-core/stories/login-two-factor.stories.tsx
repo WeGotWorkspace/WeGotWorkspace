@@ -52,7 +52,8 @@ async function enterCode(page: Page, code: string, recovery = false) {
   );
   await userEvent.clear(field);
   await userEvent.type(field, code);
-  await userEvent.click(page.getByRole("button", { name: labels.verify }));
+  // The sixth digit of an app code submits by itself; a recovery code has the button.
+  if (recovery) await userEvent.click(page.getByRole("button", { name: labels.verify }));
 }
 
 /** After the password: the code from the authenticator app. */

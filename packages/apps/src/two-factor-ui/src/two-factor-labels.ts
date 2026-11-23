@@ -1,7 +1,6 @@
 /** Copy shared by the sign-in step (#2274) and two-factor setup in Settings (#2275). */
 export const twoFactorLabels = {
   codeLabel: "Code",
-  codePlaceholder: "123 456",
   recoveryCodeLabel: "Recovery code",
   recoveryCodePlaceholder: "abcd-1234-ef56-7890",
   qrLabel: "QR code for your authenticator app",
