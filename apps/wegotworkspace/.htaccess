@@ -43,6 +43,8 @@ RedirectMatch 404 ^/wgw-config\.php\.bak(?:\.|$)
 # that proto into the HTTPS variable: PHP Request::isSecure() reads it and would ignore
 # trustProxies. Browsers ignore HSTS on plain HTTP, so a spoofed proto does not stick.
 # The served shell has no inline script, so the policy needs no hash and no nonce.
+# The other headers are set only on files Apache serves itself: PHP sets them on its
+# own responses, and a doubled opener or resource policy is ignored by browsers.
 # Managed by WebRootDeny::managedHeadersBlock(); edits inside this block are overwritten on upgrade.
 <IfModule mod_headers.c>
     <IfModule mod_setenvif.c>
@@ -52,7 +54,12 @@ RedirectMatch 404 ^/wgw-config\.php\.bak(?:\.|$)
     Header always set Strict-Transport-Security "max-age=15552000" env=WGW_HTTPS
     <Files "index.html">
         Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
+        Header always set Permissions-Policy "accelerometer=(), camera=(self), display-capture=(self), fullscreen=(self), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(self), midi=(), payment=(), picture-in-picture=(self), serial=(), usb=()"
+        Header always set Cross-Origin-Opener-Policy "same-origin"
     </Files>
+    <FilesMatch "\.(?!php$)[^.]+$">
+        Header always set Cross-Origin-Resource-Policy "same-origin"
+    </FilesMatch>
 </IfModule>
 # END wgw-headers
 
