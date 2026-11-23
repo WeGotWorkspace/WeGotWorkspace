@@ -29,9 +29,7 @@ import {
   persistBestEffort,
 } from "./notes-note-utils";
 import { noteAfterNotebookMove } from "@/lib/models/note-list-model";
-import { collectionsInProject } from "@/lib/projects/project-match";
-import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
-import { resolveNotesCreateTarget } from "./notes-create-target";
+import { useNotesCreateTarget } from "./use-notes-create-target";
 import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save-debouncer";
 import type { NoteMetadataField } from "@/lib/models/notes-types";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
@@ -595,25 +593,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [setNotes],
   );
 
-  // The notebooks the Project or Team filter shows, the same set the sidebar and list use.
-  const selectedProjectIds = useSelectedProjectIds();
-  const projectNotebooks = useMemo(
-    () =>
-      selectedProjectIds === null
-        ? null
-        : collectionsInProject(notebookCollections, selectedProjectIds),
-    [notebookCollections, selectedProjectIds],
-  );
+  const resolveCreateTarget = useNotesCreateTarget(notebooks, notebookCollections);
 
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    const target = resolveNotesCreateTarget(
-      createView,
-      notebooks,
-      notebookCollections,
-      projectNotebooks,
-    );
+    const target = resolveCreateTarget(createView);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     // The app picks the final UID, so the note keeps this id from the first
     // keystroke: no temporary id, no remap when the server has it.
@@ -652,11 +637,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     L.syncFailedMessage,
     L.toastNewNote,
     canCreateNote,
-    notebookCollections,
-    notebooks,
     operations,
     openMobileDetail,
-    projectNotebooks,
+    resolveCreateTarget,
     selectSingle,
     setActiveId,
     setNotes,
