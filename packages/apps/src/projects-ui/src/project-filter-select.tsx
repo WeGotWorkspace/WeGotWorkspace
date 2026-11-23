@@ -98,12 +98,18 @@ export function ProjectFilterSelect({ store = projectsStore() }: { store?: Proje
         </SelectPrimitive.Trigger>
         <SelectContent className="project-filter-select__menu">
           <SelectItem value="all">{labels.allProjects}</SelectItem>
-          <SelectItem value="personal">
-            <span className="project-filter-select__item">
-              <User className="project-filter-select__icon" aria-hidden />
-              {labels.personal}
-            </span>
-          </SelectItem>
+          <SelectSeparator className="project-filter-select__separator" />
+          <SelectGroup className="project-filter-select__group">
+            <SelectLabel className="project-filter-select__team">{labels.personal}</SelectLabel>
+            <SelectItem value="personal">
+              <span className="project-filter-select__item">
+                <User className="project-filter-select__icon" aria-hidden />
+                <span className="project-filter-select__all">
+                  {labels.allOfTeam(labels.personal)}
+                </span>
+              </span>
+            </SelectItem>
+          </SelectGroup>
           {groups.map(({ team, projects }) => (
             <Fragment key={team.slug}>
               <SelectSeparator className="project-filter-select__separator" />
