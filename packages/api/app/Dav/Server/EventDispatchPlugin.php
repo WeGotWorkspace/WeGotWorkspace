@@ -38,7 +38,8 @@ class EventDispatchPlugin extends ServerPlugin
             return;
         }
 
-        $path = trim((string) $request->getPath(), '/');
+        // A Team collection written through a member's home reports its Team path (#2158).
+        $path = TeamCollectionName::canonicalPath(trim((string) $request->getPath(), '/'));
         if ($path === '') {
             return;
         }
@@ -119,7 +120,7 @@ class EventDispatchPlugin extends ServerPlugin
             return '';
         }
         try {
-            return trim((string) $this->server->calculateUri($destination), '/');
+            return TeamCollectionName::canonicalPath(trim((string) $this->server->calculateUri($destination), '/'));
         } catch (\Throwable) {
             return '';
         }

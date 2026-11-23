@@ -58,6 +58,10 @@ See [ics-conversion-matrix.md](ics-conversion-matrix.md) for field mapping.
 
 Composite event ids in paths must be URL-encoded (`#` → `%23`). Scheduling inbox details: [scheduling.md](scheduling.md).
 
+## Team collections in native apps
+
+Team calendars, task lists and address books show up in each member's own CalDAV and CardDAV home as `team~{slug}~{uri}`, so Apple Calendar, Reminders and DAVx5 find them (#2158). See [team-collections-in-dav-home.md](team-collections-in-dav-home.md).
+
 ## Team availability
 
 | Method | Path | Description |

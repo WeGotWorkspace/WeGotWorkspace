@@ -118,7 +118,7 @@ final class CalendarMeetLinkPlugin extends ServerPlugin
      */
     private function parseCalendarObjectPath(string $path): ?array
     {
-        $path = trim($path, '/');
+        $path = TeamCollectionName::canonicalPath(trim($path, '/'));
         if (! str_starts_with($path, 'calendars/')) {
             return null;
         }

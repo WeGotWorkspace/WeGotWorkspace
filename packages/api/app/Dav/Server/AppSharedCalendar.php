@@ -14,7 +14,7 @@ use Sabre\CalDAV\SharedCalendar;
  * it. Team colleagues get availability only through the scheduling outbox, which
  * applies the Team availability rules (#1907).
  */
-final class AppSharedCalendar extends SharedCalendar
+class AppSharedCalendar extends SharedCalendar
 {
     private const READ_FREE_BUSY = '{urn:ietf:params:xml:ns:caldav}read-free-busy';
 
@@ -26,9 +26,15 @@ final class AppSharedCalendar extends SharedCalendar
     /** The `calendars.id` of this collection (the same for the owner and every sharee). */
     public function collectionId(): int
     {
+        return $this->calendarId();
+    }
+
+    /** The calendar's id, shared by every instance of it. */
+    public function calendarId(): int
+    {
         $id = $this->calendarInfo['id'] ?? null;
 
-        return (int) (is_array($id) ? ($id[0] ?? 0) : $id);
+        return is_array($id) ? (int) ($id[0] ?? 0) : (int) $id;
     }
 
     /**

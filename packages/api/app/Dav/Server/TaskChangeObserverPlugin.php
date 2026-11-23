@@ -204,6 +204,7 @@ final class TaskChangeObserverPlugin extends ServerPlugin
      */
     private function taskListForObjectPath(string $path): ?CalendarInstance
     {
+        $path = TeamCollectionName::canonicalPath($path);
         if (! str_starts_with($path, 'calendars/')) {
             return null;
         }
