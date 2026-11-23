@@ -266,8 +266,15 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* Once per switch: a workspace that mounts a second time right after the first
+     (`app-switch-fade.ts`) marks its panes to skip the fade, so it does not flash again. */
   .app-rail
-    ~ :not(.app-sidebar__scrim, .workspace-app-layout__panel, .workspace-app-layout__panel-scrim) {
+    ~ :not(
+      .app-sidebar__scrim,
+      .workspace-app-layout__panel,
+      .workspace-app-layout__panel-scrim,
+      [data-app-fade-skip]
+    ) {
     animation: app-rail-app-in 160ms ease-out;
   }
 }

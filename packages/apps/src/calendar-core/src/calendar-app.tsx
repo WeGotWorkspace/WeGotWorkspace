@@ -224,6 +224,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
                   window.location.assign(href);
                 }}
                 availabilitySource={availabilitySource}
+                calendarsLoading={phase !== "ready"}
               />
             </CalendarSyncNoticeContext.Provider>
           </TeamAvailabilityProvider>

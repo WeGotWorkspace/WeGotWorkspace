@@ -123,6 +123,7 @@ export function CalendarWorkspace({
   onOpenTaskInTasks,
   availabilitySource,
   availabilityPreset,
+  calendarsLoading = false,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -754,6 +755,7 @@ export function CalendarWorkspace({
       rowProps={calendarRowProps}
       onSetVisible={setCalendarsVisible}
       canWrite={canWrite}
+      calendarsLoading={calendarsLoading}
       onCreateEvent={() => {
         closeEventPreview();
         openCreateEvent();
