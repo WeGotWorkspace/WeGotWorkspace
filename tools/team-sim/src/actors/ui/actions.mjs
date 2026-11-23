@@ -144,7 +144,7 @@ export const uiActions = {
       await page.keyboard.insertText(a.params.body.split("\n")[0]);
     });
     await settle(page, 4000);
-    const found = await findNote(ctx, a.persona, a.params.title, page.url());
+    const found = await findNote(ctx, a.persona, a.params.title, page);
     if (!found) throw new Error(`note "${a.params.title}" typed in the browser is not on the server`);
     return { ids: { noteId: found.id }, extra: { title: a.params.title }, note };
   },
@@ -383,12 +383,24 @@ async function waitForServerFile(ctx, persona, path, bytes, timeoutMs = 180000) 
 }
 
 /** The open note's id is the last segment of the Notes route; poll until the server has the title. */
-async function findNote(ctx, persona, title, url) {
-  const id = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() ?? "");
-  if (!id || id === "notes" || id === "all") return null;
-  for (let i = 0; i < 8; i += 1) {
-    const res = await ctx.client(persona).request("GET", `/api/v1/notes/items/${encodeURIComponent(id)}`);
-    if (res.ok && (res.json.title ?? "") === title) return res.json;
+/**
+ * The note just created in the browser, on the server. Safari can still show the list URL for a moment, so
+ * read the id from the page each try and, without one, look the title up in the notebook the note went to.
+ */
+async function findNote(ctx, persona, title, page) {
+  const c = ctx.client(persona);
+  // Corpus titles repeat across nights: a title match counts only for a note saved during this action.
+  const since = new Date(Date.now() - 120000).toISOString().slice(0, 19);
+  for (let i = 0; i < 10; i += 1) {
+    const id = decodeURIComponent(new URL(page.url()).pathname.split("/").filter(Boolean).pop() ?? "");
+    if (id && id !== "notes" && id !== "all") {
+      const res = await c.request("GET", `/api/v1/notes/items/${encodeURIComponent(id)}`);
+      if (res.ok && (res.json.title ?? "") === title) return res.json;
+    } else {
+      const res = await c.request("GET", "/api/v1/notes/items?notebookId=notes-general");
+      const hit = (res.json?.list ?? []).filter((n) => n.title === title && String(n.updatedAt ?? "") >= since).sort((x, y) => String(y.updatedAt).localeCompare(String(x.updatedAt)))[0];
+      if (res.ok && hit) return hit;
+    }
     await new Promise((r) => setTimeout(r, 2000));
   }
   return null;
