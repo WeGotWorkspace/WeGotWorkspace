@@ -1,3 +1,4 @@
+import { useDocsSuggestionsOutsideClick } from "./use-docs-suggestions-outside-click";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
@@ -116,6 +117,7 @@ export function useDocsSuggestions(
   );
   const { activeChangeId, setActiveChangeId, clearActiveSuggestion } =
     useDocsSuggestionsActive(editor);
+  useDocsSuggestionsOutsideClick(activeChangeId, clearActiveSuggestion);
   const threads = source.suggestions;
 
   const threadMap = useMemo(

@@ -248,12 +248,12 @@ export function ChatMessage({
             {showReplies ? (
               <button
                 type="button"
-                className="chat-reaction-bar__reaction chat-message__replies"
+                className="reaction-chip chat-message__replies"
                 disabled={!openThread}
                 onClick={openThread}
               >
-                <MessageSquare className="chat-reaction-bar__reaction-add-icon" aria-hidden />
-                <span className="chat-reaction-bar__reaction-count">
+                <MessageSquare className="reaction-chip__add-icon" aria-hidden />
+                <span className="reaction-chip__count">
                   {chatThreadReplyCountLabel(replyCount)}
                 </span>
               </button>

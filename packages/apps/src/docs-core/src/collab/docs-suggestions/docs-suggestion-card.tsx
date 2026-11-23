@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
-import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
+import { ComposerSendButton } from "@/chat-ui/src/composer-send-button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsCommentAuthor } from "@/text-editor-core/docs-collab/docs-comments-types";
 import type { DocsSuggestionWithThread } from "@/text-editor-core/docs-collab/docs-suggestions-types";
@@ -59,11 +60,14 @@ export function DocsSuggestionCard({
   const suggestionBody = suggestion.summary || suggestion.anchorText;
   const showFallbackBody = !suggestion.parts.length && !suggestionBody && suggestion.archived;
 
+  // Like a comment: the reply field unfolds while the card is selected.
+  const showComposer = canComment && active;
+
   useEffect(() => {
-    if (!active) return;
+    if (!showComposer) return;
     composerRef.current?.focus();
     composerRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-  }, [active, suggestion.changeId]);
+  }, [showComposer, suggestion.changeId]);
 
   useEffect(() => {
     setComposerText("");
@@ -90,7 +94,32 @@ export function DocsSuggestionCard({
         authorName={suggestion.authorName || labels.suggestionsUnknownAuthor}
         authorColor={suggestion.authorColor}
         createdAt={suggestion.timestamp || undefined}
-        actions={null}
+        actions={
+          canReview ? (
+            <>
+              <IconButton
+                label={labels.suggestionsReject}
+                icon={<X />}
+                size="md"
+                variant="ghost"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runExitAnimation(onReject);
+                }}
+              />
+              <IconButton
+                label={labels.suggestionsAccept}
+                icon={<Check />}
+                size="md"
+                variant="ghost"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runExitAnimation(onAccept);
+                }}
+              />
+            </>
+          ) : null
+        }
       />
 
       {suggestion.parts.length > 0 ? (
@@ -109,35 +138,6 @@ export function DocsSuggestionCard({
             {suggestionBody || labels.suggestionsArchivedEmpty}
           </span>
         </p>
-      ) : null}
-
-      {canReview ? (
-        <div className="docs-suggestion-card__decision">
-          <Button
-            label={labels.suggestionsAcceptShort}
-            aria-label={labels.suggestionsAccept}
-            icon={<Check />}
-            size="md"
-            variant="primary"
-            className="docs-suggestion-card__accept"
-            onClick={(event) => {
-              event.stopPropagation();
-              runExitAnimation(onAccept);
-            }}
-          />
-          <Button
-            label={labels.suggestionsRejectShort}
-            aria-label={labels.suggestionsReject}
-            icon={<X />}
-            size="md"
-            variant="outline"
-            className="docs-suggestion-card__reject"
-            onClick={(event) => {
-              event.stopPropagation();
-              runExitAnimation(onReject);
-            }}
-          />
-        </div>
       ) : null}
 
       {/* A commenter needs the row for its add button, also before the first reaction. */}
@@ -162,15 +162,15 @@ export function DocsSuggestionCard({
         </ul>
       ) : null}
 
-      {active && canComment ? (
+      {showComposer ? (
         <div
-          className="docs-suggestion-card__composer"
+          className="docs-collab-card__footer docs-collab-card__footer--reply"
           onClick={(event) => event.stopPropagation()}
         >
           <input
             ref={composerRef}
             type="text"
-            className="docs-suggestion-card__composer-input"
+            className="docs-collab-card__reply-input"
             value={composerText}
             placeholder={labels.commentsReplyPlaceholder}
             aria-label={labels.commentsReplyPlaceholder}
@@ -182,14 +182,11 @@ export function DocsSuggestionCard({
               }
             }}
           />
-          <button
-            type="button"
-            className="docs-suggestion-card__composer-post"
+          <ComposerSendButton
+            label={labels.commentsReplyAction}
             disabled={!canPost}
             onClick={submitComposer}
-          >
-            {labels.commentsReplyAction}
-          </button>
+          />
         </div>
       ) : null}
     </DocsCollabCardShell>
