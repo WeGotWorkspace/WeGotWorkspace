@@ -3,7 +3,7 @@ import { Button } from "@/button/src/button";
 import { TASK_LIST_DOT_COLORS } from "@/lib/models/task-lists";
 import type { ProjectTeam } from "@/lib/api/wgw/projects";
 import { projectsLabels as labels } from "@/projects-ui/src/projects-labels";
-import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
+import { ProjectNameColorField } from "@/projects-ui/src/project-name-color-field";
 import {
   Dialog,
   DialogContent,
@@ -13,11 +13,7 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { Input } from "@/ui/input";
-import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
-import { NO_AUTOFILL } from "@/ui/no-autofill";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
-import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 
 export type CreateProjectInput = { teamSlug: string; name: string; color: string };
 
@@ -76,30 +72,13 @@ export function CreateProjectDialog({
             if (created) onOpenChange(false);
           }}
         >
-          <FieldLabelRow layout="inline" fill label={labels.nameLabel} htmlFor={nameId}>
-            <NameColorRow>
-              <Input
-                id={nameId}
-                {...NO_AUTOFILL}
-                className={NAME_COLOR_ROW_INPUT_CLASS}
-                autoFocus
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <SwatchColorPicker
-                value={color}
-                onChange={setColor}
-                colorLabel={labels.colorLabel}
-                swatches={TASK_LIST_DOT_COLORS}
-              >
-                <ColorSwatchTrigger
-                  color={color}
-                  label={labels.colorLabel}
-                  aria-haspopup="dialog"
-                />
-              </SwatchColorPicker>
-            </NameColorRow>
-          </FieldLabelRow>
+          <ProjectNameColorField
+            id={nameId}
+            name={name}
+            color={color}
+            onNameChange={setName}
+            onColorChange={setColor}
+          />
           <FieldLabelRow layout="inline" fill label={labels.teamLabel} htmlFor={teamId}>
             <Select value={teamSlug} onValueChange={setTeamSlug} disabled={teams.length < 2}>
               <SelectTrigger id={teamId}>
