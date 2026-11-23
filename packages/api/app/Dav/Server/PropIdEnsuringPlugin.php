@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Admin\AdminConstants;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use Sabre\DAV\Server;
@@ -140,6 +141,12 @@ final class PropIdEnsuringPlugin extends ServerPlugin
 
         $principalUri = 'principals/'.$segments[1];
         $bookUri = $segments[2];
+        // A Team address book in a member's home lives under its Team principal (#2158).
+        $team = TeamCollectionName::parse($bookUri);
+        if ($team !== null) {
+            $principalUri = AdminConstants::GROUP_PREFIX.$team['slug'];
+            $bookUri = $team['uri'];
+        }
         $addressBookId = $this->resolveAddressBookId($principalUri, $bookUri);
         if ($addressBookId === null) {
             return null;
