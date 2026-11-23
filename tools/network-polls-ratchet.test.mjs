@@ -42,6 +42,8 @@ const ALLOWED = {
     "Notes list refresh at NOTES_CHANGES_POLL_MS for the on-screen list",
   "calendar-core/src/calendar-refresh.ts::CALENDAR_BACKGROUND_POLL_MS":
     "Calendar event poll while push is down",
+  "calendar-core/src/calendar-refresh.ts::CALENDAR_PUSH_POLL_MS":
+    "Calendar invitations safety poll while push is connected",
   "calendar-core/src/use-calendar-invitations.ts::setInterval":
     "silent invitation refresh at the Calendar background cadence",
   "calendar-core/src/use-team-availability.ts::setInterval":
