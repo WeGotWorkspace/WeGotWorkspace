@@ -83,7 +83,7 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         }
         // A new calendar, task list or notebook (MKCALENDAR, or MKCOL with a calendar resource type) is personal:
         // a Team's collections are made in the app, where the Project and its roles apply (#819).
-        if (preg_match('#^calendars/([^/]+)/[^/]+$#', $path, $match) === 1
+        if (preg_match('#^calendars/(groups/[^/]+|[^/]+)/[^/]+$#', $path, $match) === 1
             && $match[1] !== DavCurrentUsername::of($this->server)) {
             throw new Forbidden('A calendar can only be created in your own calendar home.');
         }
