@@ -70,6 +70,27 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->refreshCookieValue($response);
     }
 
+    public function test_the_password_alone_does_not_make_the_address_known(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $challenge = $this->challengeFor('bob');
+        $limiter = app(LoginRateLimiter::class);
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('bob', '198.51.100.'.$host);
+        }
+
+        $this->assertFalse($limiter->allow('bob', '203.0.113.20'));
+
+        Cache::flush();
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret)])->assertOk();
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('bob', '198.51.100.'.$host);
+        }
+
+        $this->assertTrue($limiter->allow('bob', '203.0.113.20'));
+        $this->assertFalse($limiter->allow('bob', '198.51.100.99'));
+    }
+
     public function test_the_password_alone_returns_a_challenge_and_no_tokens(): void
     {
         $this->turnOnMfa('bob');
