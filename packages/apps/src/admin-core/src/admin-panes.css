@@ -34,15 +34,6 @@
   @apply shrink-0;
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch {
-  @apply inline-flex items-center justify-center;
-  min-height: var(--control-height-md, 2.25rem);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch .switch {
-  align-self: center;
-}
-
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-avatar-slot {
   @apply size-9 rounded-full flex items-center justify-center shrink-0;
   background-color: var(--workspace-accent);
@@ -314,11 +305,4 @@
 
 .admin-workspace .admin-fix-link > svg {
   @apply size-4;
-}
-
-/* Row actions (edit, password, delete) end on the column edge like the page rows. */
-.admin-workspace .admin-list-row__actions > .icon-button--size-md:last-child {
-  margin-inline-end: calc(
-    (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
-  );
 }

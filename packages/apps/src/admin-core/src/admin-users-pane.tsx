@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { KeyRound, Pencil, Plus, ShieldOff, Trash2, User, Users } from "lucide-react";
+import { MoreHorizontal, User, Users } from "lucide-react";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { Tag } from "@/tag/src/tag";
-import { Switch } from "@/ui/switch";
 import { Button } from "@/button/src/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { IconButton } from "@/button/src/icon-button";
+import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 export type AdminUsersPaneProps = {
@@ -38,10 +37,7 @@ type PendingEnabledChange = {
   enabled: boolean;
 };
 
-function userEnabledSwitchLabel(enabled: boolean, isSelf: boolean): string {
-  if (isSelf && enabled) {
-    return "You cannot disable your own account.";
-  }
+function userEnabledLabel(enabled: boolean): string {
   return enabled ? "Disable account" : "Enable account";
 }
 
@@ -63,18 +59,13 @@ export function AdminUsersPane({
       <WorkspacePageSection
         title="Users"
         icon={<User aria-hidden />}
-        action={
-          <IconActionButton label="New user" onClick={onNewUser}>
-            <Plus className="size-4" />
-          </IconActionButton>
-        }
+        action={<Button label="New user" size="md" variant="outline" onClick={onNewUser} />}
       >
         <ul className="admin-divided-list">
           {controller.users.map((user) => {
             const isSelf = user.username === controller.currentUser;
             const enabled = user.enabled !== false;
             const cannotDisableSelf = isSelf && enabled;
-            const switchLabel = userEnabledSwitchLabel(enabled, isSelf);
             return (
               <li key={user.id} className="admin-list-row">
                 <UserAvatar
@@ -99,49 +90,53 @@ export function AdminUsersPane({
                   }
                 />
                 <div className="admin-list-row__actions">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="admin-list-row__enabled-switch">
-                        <Switch
-                          checked={enabled}
-                          disabled={cannotDisableSelf}
-                          aria-label={switchLabel}
-                          onCheckedChange={(next) => {
-                            if (next === enabled) return;
-                            setPendingEnabled({
-                              userId: user.id,
-                              displayName: user.displayName,
-                              enabled: next,
-                            });
-                          }}
-                        />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{switchLabel}</TooltipContent>
-                  </Tooltip>
-                  <IconActionButton
-                    label={`Edit ${user.displayName}`}
-                    onClick={() => onEditUser(user.id)}
-                  >
-                    <Pencil className="size-4" />
-                  </IconActionButton>
-                  <IconActionButton
-                    label={`Set password for ${user.displayName}`}
-                    onClick={() => onPasswordUser(user.id)}
-                  >
-                    <KeyRound className="size-4" />
-                  </IconActionButton>
-                  {/* Your own two-factor is turned off in Settings → Security, with a code (#2275). */}
-                  {user.mfaEnabled && !isSelf ? (
-                    <IconActionButton
-                      label={`Reset two-factor sign-in for ${user.displayName}`}
-                      onClick={() =>
-                        setPendingMfaReset({ userId: user.id, displayName: user.displayName })
-                      }
-                    >
-                      <ShieldOff className="size-4" />
-                    </IconActionButton>
-                  ) : null}
+                  <DropdownMenu
+                    align="end"
+                    contentClassName="min-w-[11rem] p-1.5"
+                    items={[
+                      { id: "edit", label: "Edit", onClick: () => onEditUser(user.id) },
+                      {
+                        id: "password",
+                        label: "Change password",
+                        onClick: () => onPasswordUser(user.id),
+                      },
+                      {
+                        id: "enabled",
+                        label: userEnabledLabel(enabled),
+                        // You cannot disable your own account.
+                        disabled: cannotDisableSelf,
+                        onClick: () =>
+                          setPendingEnabled({
+                            userId: user.id,
+                            displayName: user.displayName,
+                            enabled: !enabled,
+                          }),
+                      },
+                      // Your own two-factor is turned off in Settings → Security, with a code (#2275).
+                      ...(user.mfaEnabled && !isSelf
+                        ? [
+                            { type: "separator" as const },
+                            {
+                              id: "reset-two-factor",
+                              label: "Reset two-factor sign-in",
+                              onClick: () =>
+                                setPendingMfaReset({
+                                  userId: user.id,
+                                  displayName: user.displayName,
+                                }),
+                            },
+                          ]
+                        : []),
+                    ]}
+                    trigger={
+                      <IconButton
+                        label={`More actions for ${user.displayName}`}
+                        icon={<MoreHorizontal />}
+                        size="md"
+                        variant="outline"
+                      />
+                    }
+                  />
                 </div>
               </li>
             );
@@ -151,11 +146,7 @@ export function AdminUsersPane({
       <WorkspacePageSection
         title="Teams"
         icon={<Users aria-hidden />}
-        action={
-          <IconActionButton label="New team" onClick={onNewGroup}>
-            <Plus className="size-4" />
-          </IconActionButton>
-        }
+        action={<Button label="New team" size="md" variant="outline" onClick={onNewGroup} />}
       >
         <ul className="admin-divided-list">
           {controller.groups.map((group) => (
@@ -167,18 +158,22 @@ export function AdminUsersPane({
                 className="flex-1"
               />
               <div className="admin-list-row__actions">
-                <IconActionButton
-                  label={`Edit ${group.displayName}`}
-                  onClick={() => onEditGroup(group.id)}
-                >
-                  <Pencil className="size-4" />
-                </IconActionButton>
-                <IconActionButton
-                  label={`Delete ${group.displayName}`}
-                  onClick={() => onDeleteGroup(group.id)}
-                >
-                  <Trash2 className="size-4" />
-                </IconActionButton>
+                <DropdownMenu
+                  align="end"
+                  contentClassName="min-w-[11rem] p-1.5"
+                  items={[
+                    { id: "edit", label: "Edit", onClick: () => onEditGroup(group.id) },
+                    { id: "delete", label: "Delete", onClick: () => onDeleteGroup(group.id) },
+                  ]}
+                  trigger={
+                    <IconButton
+                      label={`More actions for ${group.displayName}`}
+                      icon={<MoreHorizontal />}
+                      size="md"
+                      variant="outline"
+                    />
+                  }
+                />
               </div>
             </li>
           ))}

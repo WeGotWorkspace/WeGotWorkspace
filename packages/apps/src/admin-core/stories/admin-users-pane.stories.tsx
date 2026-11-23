@@ -101,6 +101,13 @@ function UsersPaneHarness() {
   );
 }
 
+/** Opens a row's "…" menu and returns the menu's queries (it renders in a portal). */
+async function openRowMenu(canvasElement: HTMLElement, displayName: string) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole("button", { name: `More actions for ${displayName}` }));
+  return within(await within(canvasElement.ownerDocument.body).findByRole("menu"));
+}
+
 const meta = {
   title: "Features/Admin/Panes/Users",
   component: AdminUsersPane,
@@ -122,29 +129,33 @@ export const Default: Story = {
     await expect(canvas.getByText("Bob Example")).toBeInTheDocument();
     await expect(canvas.getByText("Carol Example")).toBeInTheDocument();
     await expect(canvas.getByText("Disabled")).toBeInTheDocument();
-    await expect(canvas.getByRole("switch", { name: "Enable account" })).toHaveAttribute(
-      "aria-checked",
-      "false",
+    // Your own account cannot be disabled; a disabled one offers Enable.
+    const ownMenu = await openRowMenu(canvasElement, "Alice Example");
+    await expect(ownMenu.getByRole("menuitem", { name: "Disable account" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
     );
-    await expect(
-      canvas.getByRole("switch", { name: "You cannot disable your own account." }),
-    ).toBeDisabled();
-    await expect(canvas.queryByRole("button", { name: /Delete Alice Example/ })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    const carolMenu = await openRowMenu(canvasElement, "Carol Example");
+    await expect(carolMenu.getByRole("menuitem", { name: "Enable account" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
 
-    await userEvent.click(canvas.getByRole("switch", { name: "Disable account" }));
+    const bobMenu = await openRowMenu(canvasElement, "Bob Example");
+    await userEvent.click(bobMenu.getByRole("menuitem", { name: "Disable account" }));
     const disableDialog = await body.findByRole("alertdialog");
     await expect(disableDialog).toHaveTextContent("Disable Bob Example?");
     await expect(disableDialog).toHaveTextContent("They will not be able to sign in");
     await userEvent.click(body.getByRole("button", { name: "Disable" }));
     await waitFor(() => {
-      expect(canvas.getAllByRole("switch", { name: "Enable account" })).toHaveLength(2);
+      expect(canvas.getAllByText("Disabled")).toHaveLength(2);
     });
-    await expect(canvas.getAllByText("Disabled")).toHaveLength(2);
     await waitFor(() => {
       expect(body.getAllByText("User disabled").length).toBeGreaterThan(0);
     });
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
+    await userEvent.click(
+      (await openRowMenu(canvasElement, "Bob Example")).getByRole("menuitem", { name: "Edit" }),
+    );
     await expect(await body.findByRole("dialog", { name: "Edit user" })).toBeInTheDocument();
     await userEvent.click(body.getByRole("button", { name: "Delete user" }));
     await expect(await body.findByRole("alertdialog")).toHaveTextContent("Delete user?");
@@ -170,7 +181,9 @@ export const AdminRole: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await expect(canvas.getAllByText("Admin")).toHaveLength(1);
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit Alice Example" }));
+    await userEvent.click(
+      (await openRowMenu(canvasElement, "Alice Example")).getByRole("menuitem", { name: "Edit" }),
+    );
     const ownDialog = await body.findByRole("dialog", { name: "Edit user" });
     const ownSwitch = within(ownDialog).getByRole("switch", { name: "Administrator" });
     await expect(ownSwitch).toHaveAttribute("aria-checked", "true");
@@ -181,7 +194,9 @@ export const AdminRole: Story = {
       expect(body.queryByRole("dialog")).toBeNull();
     });
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
+    await userEvent.click(
+      (await openRowMenu(canvasElement, "Bob Example")).getByRole("menuitem", { name: "Edit" }),
+    );
     const bobDialog = await body.findByRole("dialog", { name: "Edit user" });
     const bobSwitch = within(bobDialog).getByRole("switch", { name: "Administrator" });
     await expect(bobSwitch).toHaveAttribute("aria-checked", "false");
@@ -207,12 +222,14 @@ export const ResetTwoFactor: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(canvas.getAllByText("Two-factor")).toHaveLength(2);
-    await expect(
-      canvas.queryByRole("button", { name: "Reset two-factor sign-in for Alice Example" }),
-    ).toBeNull();
+    const ownMenu = await openRowMenu(canvasElement, "Alice Example");
+    await expect(ownMenu.queryByRole("menuitem", { name: "Reset two-factor sign-in" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
 
     await userEvent.click(
-      canvas.getByRole("button", { name: "Reset two-factor sign-in for Bob Example" }),
+      (await openRowMenu(canvasElement, "Bob Example")).getByRole("menuitem", {
+        name: "Reset two-factor sign-in",
+      }),
     );
     const confirm = await body.findByRole("alertdialog");
     await expect(confirm).toHaveTextContent("Reset two-factor sign-in for Bob Example?");

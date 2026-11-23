@@ -231,7 +231,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="admin-dialog-surface">
         <DialogHeader>
-          <DialogTitle>Set password</DialogTitle>
+          <DialogTitle>Change password</DialogTitle>
           <DialogDescription>
             {user ? `Set a new password for ${user.displayName}.` : "Set a new password."}
           </DialogDescription>
