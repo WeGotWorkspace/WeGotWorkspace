@@ -130,6 +130,23 @@ final class McpDriveWriteToolsTest extends WgwDatabaseTestCase
         $this->assertFalse(Storage::disk('wgw_files')->fileExists('users/bob/to.txt'));
     }
 
+    public function test_drive_write_cannot_delete_or_move_a_drive_root(): void
+    {
+        $bob = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($bob, [McpScopes::DRIVE_WRITE], 'api', $client);
+        $this->seedGroupFile('keep.txt');
+
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(DriveWriteTool::class, ['action' => 'delete', 'path' => '/groups/team'])
+            ->assertHasErrors();
+        WorkspaceServer::actingAs($bob, 'api')
+            ->tool(DriveWriteTool::class, ['action' => 'move', 'from' => '/groups/team', 'to' => '/groups/moved'])
+            ->assertHasErrors();
+
+        $this->assertTrue(Storage::disk('wgw_files')->fileExists('groups/team/keep.txt'));
+    }
+
     public function test_drive_share_get_set_and_acl(): void
     {
         $bob = $this->mcpUser('bob');

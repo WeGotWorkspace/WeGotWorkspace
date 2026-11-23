@@ -99,6 +99,14 @@ describe("projects store", () => {
     expect(store.getSnapshot().projects.length).toBe(3);
   });
 
+  it("ignores a copy written by another account", async () => {
+    await createProjectsStore(createMockProjectOperations(), () => "admin").load();
+    const failing = failingOperations(new TypeError("Failed to fetch"));
+    const other = createProjectsStore(failing, () => "grace");
+    expect(await other.load()).toBe(false);
+    expect(other.getSnapshot()).toMatchObject({ status: "error", projects: [] });
+  });
+
   it("never shows the copy when signed out or forbidden", async () => {
     await createProjectsStore(createMockProjectOperations()).load();
     const store = createProjectsStore(failingOperations(new WgwRequestError("no", 401)));

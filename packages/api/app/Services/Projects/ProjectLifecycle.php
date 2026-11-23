@@ -11,7 +11,6 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Teams\TeamRoles;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Archive, unarchive and purge (#819 B2, spec "Archive, unarchive, purge").
@@ -48,13 +47,9 @@ final class ProjectLifecycle
         $project = $this->manageable($viewer, $id, 'archived');
         $project = $this->setArchived($project, true);
         $folder = $this->folderNodeId($project);
+        // A failed move fails the request: archived_at is already set, so a retry attempts the move again.
         if ($folder !== null) {
-            try {
-                $this->folders->archive($folder, (string) $project->group_slug, (string) $project->slug);
-            } catch (\Throwable $exception) {
-                // The Project is archived; the folder stays where it was and the next archive or unarchive moves it.
-                Log::error('project_folder_archive_failed', ['project' => (string) $project->id, 'error' => $exception->getMessage()]);
-            }
+            $this->folders->archive($folder, (string) $project->group_slug, (string) $project->slug);
         }
 
         return $this->presenter->presentOne($viewer, $project);
@@ -67,11 +62,7 @@ final class ProjectLifecycle
         $project = $this->setArchived($project, false);
         $folder = $this->folderNodeId($project);
         if ($folder !== null) {
-            try {
-                $this->folders->unarchive($folder, (string) $project->group_slug, (string) $project->name);
-            } catch (\Throwable $exception) {
-                Log::error('project_folder_unarchive_failed', ['project' => (string) $project->id, 'error' => $exception->getMessage()]);
-            }
+            $this->folders->unarchive($folder, (string) $project->group_slug, (string) $project->name);
         }
         // Repair what went missing while it was archived.
         $this->projects->ensure(new Collection([$project]));
@@ -86,10 +77,8 @@ final class ProjectLifecycle
      */
     public function purgeAsOrganizationAdmin(string $viewer, string $id): void
     {
-        $project = Project::query()->find(strtolower($id));
-        if ($project === null) {
-            throw new ApiHttpException(404, 'Project not found.', 'not_found');
-        }
+        // An admin outside the Team gets the same 404 as for an unknown id: the folder goes to the purger's Drive trash.
+        $project = $this->projects->findVisible($viewer, $id);
         if ($project->default_for_group !== null) {
             throw new ApiHttpException(409, 'The default Project cannot be purged. It goes when the Team goes.', 'default_project');
         }
@@ -98,21 +87,39 @@ final class ProjectLifecycle
         }
         $groupUri = AdminConstants::GROUP_PREFIX.$project->group_slug;
 
-        // One step per item, each committed on its own: a retry skips what is done.
+        // One step per item, each committed on its own and under the row lock, so an
+        // unarchive that committed in between stops the purge: a retry skips what is done.
         foreach ($this->resources($project) as $resource) {
-            $kind = ProjectKind::tryFrom((string) $resource->kind);
-            if ($kind === ProjectKind::DriveFolder) {
-                $this->folders->trashFor((string) $resource->locator, $viewer);
-            } elseif ($kind !== null) {
-                $this->collections->delete($groupUri, (int) $resource->locator);
-            }
-            $resource->delete();
+            $this->whileArchived($project, function () use ($resource, $groupUri, $viewer): void {
+                $kind = ProjectKind::tryFrom((string) $resource->kind);
+                if ($kind === ProjectKind::DriveFolder) {
+                    $this->folders->trashFor((string) $resource->locator, $viewer);
+                } elseif ($kind !== null) {
+                    $this->collections->delete($groupUri, (int) $resource->locator);
+                }
+                $resource->delete();
+            });
         }
-        DB::connection('wgw')->transaction(function () use ($project): void {
+        $this->whileArchived($project, function () use ($project): void {
             Project::query()->whereKey($project->id)->delete();
             $this->markers->bump((string) $project->group_slug);
         });
         $this->registry->forget();
+    }
+
+    /** Run a purge step in a `wgw` transaction that holds the Project row and still sees it archived. */
+    private function whileArchived(Project $project, \Closure $step): void
+    {
+        DB::connection('wgw')->transaction(function () use ($project, $step): void {
+            $locked = Project::query()->whereKey($project->id)->lockForUpdate()->first();
+            if ($locked === null) {
+                return;
+            }
+            if ($locked->archived_at === null) {
+                throw new ApiHttpException(409, 'The Project was unarchived.', 'not_archived');
+            }
+            $step();
+        });
     }
 
     /** A Project of the caller's Teams that the caller may manage and that is no default Project. */

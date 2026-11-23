@@ -141,7 +141,7 @@ describe("Notes project scope helpers", () => {
 
   it("puts a new note into the Project's notebook outside a notebook view", () => {
     expect(projectCreateNotebook(project)?.id).toBe("nb-site");
-    expect(resolveNotesCreateTarget("all", ["Personal"], notebookCollections, PROJECT)).toEqual({
+    expect(resolveNotesCreateTarget("all", ["Personal"], notebookCollections, project)).toEqual({
       notebook: "Website",
       notebookId: "nb-site",
       scope: "group",
@@ -150,10 +150,15 @@ describe("Notes project scope helpers", () => {
     expect(resolveNotesCreateTarget("all", ["Personal"], notebookCollections, null)).toEqual({
       notebook: "Personal",
     });
-    // A stale Project id matches no notebook and falls back to the default.
-    expect(resolveNotesCreateTarget("all", ["Personal"], notebookCollections, "gone")).toEqual({
+    // A selection with no writable notebook falls back to the default.
+    expect(resolveNotesCreateTarget("all", ["Personal"], notebookCollections, [])).toEqual({
       notebook: "Personal",
     });
+    // A Team filter passes its notebooks as well: the note goes there, not to the hidden default.
+    const teamNotebooks = notebookCollections.filter((nb) => nb.projectId);
+    expect(
+      resolveNotesCreateTarget("all", ["Personal"], notebookCollections, teamNotebooks).notebookId,
+    ).toBe(teamNotebooks[0]?.id);
   });
 
   it("locks rename, owner change and delete on a Project notebook's owner side", () => {

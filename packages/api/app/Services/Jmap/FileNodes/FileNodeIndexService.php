@@ -9,6 +9,7 @@ use App\Services\Collab\CollabSidecarMover;
 use App\Services\Collab\DocYjsStateStore;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Storage\ProjectArchivePaths;
 use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Str;
@@ -162,7 +163,10 @@ final class FileNodeIndexService
             }
         });
 
-        return array_values($query->orderBy('storage_key')->get()->all());
+        // The archived Project tree keeps its nodes but no client lists it (#819).
+        return array_values($query->orderBy('storage_key')->get()
+            ->reject(static fn (JmapFileNode $node): bool => ProjectArchivePaths::isUnder((string) $node->storage_key))
+            ->all());
     }
 
     /**

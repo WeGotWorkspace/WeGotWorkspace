@@ -8,6 +8,7 @@ use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\Calendar;
 use App\Models\JmapFileNode;
+use App\Models\Principal;
 use App\Models\Project;
 use App\Models\ProjectResource;
 use App\Services\Calendars\CalendarCollectionAccess;
@@ -95,6 +96,18 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->assertSame([], $got->json('methodResponses.0.1.list'));
         $this->assertEqualsCanonicalizing([$folderId, $file->node_id], $got->json('methodResponses.0.1.notFound'));
 
+        // Nor do the listing paths: get without ids, and a query on the Team root, with parentId or ancestorId.
+        $teamRoot = (string) JmapFileNode::query()->where('storage_key', 'groups/t1')->whereNull('deleted_at')->value('node_id');
+        $all = $this->jmap('bob', JmapCapabilities::FILENODE, [['FileNode/get', ['accountId' => 'bob', 'ids' => null], 'g']]);
+        $this->assertStringNotContainsString('project-archive', (string) json_encode($all->json('methodResponses.0.1.list')));
+        $this->assertNotContains($folderId, array_column($all->json('methodResponses.0.1.list'), 'id'));
+        foreach ([[], ['parentId' => $teamRoot], ['ancestorId' => $teamRoot]] as $filter) {
+            $query = $this->jmap('bob', JmapCapabilities::FILENODE, [['FileNode/query', ['accountId' => 'bob', 'filter' => $filter], 'q']]);
+            $ids = $query->json('methodResponses.0.1.ids');
+            $this->assertNotContains($folderId, $ids);
+            $this->assertNotContains($file->node_id, $ids);
+        }
+
         // REST: not in the Team Drive listing, not found by Drive search.
         $listing = $this->asUser('bob')->getJson('/api/v1/files/children?path='.urlencode('/groups/t1'))->assertOk()->json();
         $this->assertStringNotContainsString('project-archive', (string) json_encode($listing));
@@ -146,6 +159,7 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         // Purge is for organization admins, through the Admin routes; a team admin has none.
         $this->asUser('bob')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertForbidden();
         $this->asUser('bob')->deleteJson('/api/v1/projects/'.$project['id'])->assertStatus(405);
+        $this->joinTeam('alice', 't1');
         $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$default)->assertStatus(409)->assertJsonPath('code', 'default_project');
         $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertStatus(409)->assertJsonPath('code', 'not_archived');
         $this->assertSame(2, Project::query()->where('group_slug', 't1')->whereNull('archived_at')->count());
@@ -161,6 +175,7 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         // While archived the slug stays reserved.
         $this->assertSame('launch-2', $this->createProject('bob', 't1', 'Launch')['slug']);
 
+        $this->joinTeam('alice', 't1');
         $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertOk();
 
         $this->assertNull(Project::query()->find($project['id']));
@@ -171,8 +186,22 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->assertSame('launch', app(ProjectSlugs::class)->free('t1', 'Launch'), 'The slug is free again.');
     }
 
+    public function test_an_organization_admin_outside_the_team_cannot_purge_and_gets_no_files(): void
+    {
+        $project = $this->createProject('bob', 't1', 'Launch');
+        $this->files()->put('groups/t1/Launch/plan.md', '# Plan');
+        $this->archive('bob', $project['id'])->assertOk();
+
+        $this->asUser('alice')->deleteJson('/api/v1/admin/projects/'.$project['id'])->assertNotFound();
+
+        $this->assertNotNull(Project::query()->find($project['id']));
+        $this->assertFalse($this->files()->directoryExists('users/alice/.Trash/launch'), 'Nothing lands in the outsider\'s trash.');
+        $this->assertTrue($this->files()->fileExists('groups/t1/.project-archive/launch/plan.md'));
+    }
+
     public function test_a_purge_that_failed_half_way_completes_on_retry(): void
     {
+        $this->joinTeam('alice', 't1');
         $created = app(ProjectService::class)->create('bob', ['teamSlug' => 't1', 'name' => 'Launch']);
         app(ProjectLifecycle::class)->archive('bob', (string) $created['id']);
         // One stand-in for the whole test: the router keeps the controller from the first request on.
@@ -202,6 +231,12 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->assertSame('t1', $list[0]['teamSlug']);
         $this->assertSame('Launch', $list[0]['name']);
         $this->asUser('bob')->getJson('/api/v1/admin/projects')->assertForbidden();
+    }
+
+    private function joinTeam(string $username, string $team): void
+    {
+        $group = Principal::query()->where('uri', 'principals/groups/'.$team)->firstOrFail();
+        $this->addPrincipalToGroup($group, Principal::forUsername($username));
     }
 
     private function archive(string $username, string $id): TestResponse

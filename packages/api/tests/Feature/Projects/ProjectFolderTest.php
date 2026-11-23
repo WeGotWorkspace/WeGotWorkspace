@@ -173,11 +173,39 @@ final class ProjectFolderTest extends WgwDatabaseTestCase
             }
         }
 
+        // A MOVE or COPY onto the folder would overwrite it, so the destination is refused too.
+        foreach (['MOVE', 'COPY'] as $method) {
+            $onto = new SabreRequest($method, '/files/groups/t1/Scratch');
+            $onto->setHeader('Destination', '/files/groups/t1/Launch');
+            try {
+                $guard->beforeMethod($onto, new SabreResponse);
+                $this->fail($method.' onto the Project folder must be refused.');
+            } catch (Forbidden $e) {
+                $this->assertStringContainsString('Project folder', $e->getMessage());
+            }
+        }
+        try {
+            $guard->beforeUnbind('files/groups/t1/Launch');
+            $this->fail('Unbinding the Project folder must be refused.');
+        } catch (Forbidden) {
+            $this->addToAssertionCount(1);
+        }
+
         // Inside the folder, and a sibling folder, DAV works as before.
         $guard->beforeMethod(new SabreRequest('DELETE', '/files/groups/t1/Launch/notes.txt'), new SabreResponse);
         $guard->beforeMethod(new SabreRequest('DELETE', '/files/groups/t1/Launch/Drafts'), new SabreResponse);
         $guard->beforeMethod(new SabreRequest('DELETE', '/files/groups/t1/Other'), new SabreResponse);
         $this->addToAssertionCount(1);
+    }
+
+    public function test_a_long_cjk_name_still_gets_a_folder(): void
+    {
+        $name = str_repeat('漢', 100);
+        $this->createProject('bob', 't1', $name);
+        $folder = ProjectFolder::folderName($name);
+        $this->assertLessThanOrEqual(200, strlen($folder));
+        $this->assertTrue(mb_check_encoding($folder, 'UTF-8'));
+        $this->assertTrue($this->files()->directoryExists('groups/t1/'.$folder));
     }
 
     public function test_drive_service_cannot_rename_or_delete_the_folder_itself(): void

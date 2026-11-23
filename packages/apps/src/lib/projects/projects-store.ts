@@ -12,6 +12,7 @@ import {
   type ProjectTeam,
 } from "@/lib/api/wgw/projects";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import { resolveOfflineUsername } from "@/lib/offline/core/offline-account";
 import type {
   Project,
   ProjectCreateRequest,
@@ -48,8 +49,11 @@ export type ProjectsStore = {
   unarchive: (id: string) => Promise<WorkspaceProject>;
 };
 
-/** Last good list, so the filter still works offline. Overwritten by every successful load. */
-export const PROJECTS_CACHE_KEY = "wgw.projects.cache";
+/**
+ * Last good list, so the filter still works offline. Overwritten by every successful load.
+ * Under the `wgw.offline.` prefix, so the logout wipe removes it with the other offline copies.
+ */
+export const PROJECTS_CACHE_KEY = "wgw.offline.projects.cache";
 
 type CachedProjects = { username: string; teams: ProjectTeam[]; projects: Project[] };
 
@@ -94,7 +98,15 @@ function isAuthFailure(error: unknown): boolean {
   return error instanceof WgwRequestError && (error.status === 401 || error.status === 403);
 }
 
-export function createProjectsStore(operations: ProjectOperations): ProjectsStore {
+/** The account this device last signed in as; null when signed out or unknown. */
+function rememberedUsername(): string | null {
+  return resolveOfflineUsername("drive", undefined);
+}
+
+export function createProjectsStore(
+  operations: ProjectOperations,
+  currentUsername: () => string | null = rememberedUsername,
+): ProjectsStore {
   let snapshot: ProjectsSnapshot = EMPTY;
   let inFlight: Promise<boolean> | null = null;
   const listeners = new Set<() => void>();
@@ -115,7 +127,10 @@ export function createProjectsStore(operations: ProjectOperations): ProjectsStor
       set({ ...snapshot, status: "ready", teams, projects: withTeamNames(projects, teams) });
       return true;
     } catch (error) {
-      const cached = isAuthFailure(error) ? null : readCache();
+      const stored = isAuthFailure(error) ? null : readCache();
+      // Another account's copy never stands in.
+      const username = currentUsername();
+      const cached = stored && (!username || stored.username === username) ? stored : null;
       if (snapshot.status === "ready" || snapshot.status === "offline") {
         // Keep what is on screen; the next push or reconnect reads again.
       } else if (cached) {
@@ -219,6 +234,12 @@ let sharedStore: ProjectsStore | null = null;
 export function projectsStore(): ProjectsStore {
   sharedStore ??= createProjectsStore(defaultProjectOperations());
   return sharedStore;
+}
+
+/** Sign-out: the next sign-in starts with an empty store. */
+export function resetProjectsStore(): void {
+  sharedStore = null;
+  mockOperations = null;
 }
 
 export function resetProjectsStoreForTests(store: ProjectsStore | null = null): void {

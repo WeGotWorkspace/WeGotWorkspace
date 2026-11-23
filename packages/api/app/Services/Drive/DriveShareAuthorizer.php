@@ -84,6 +84,7 @@ final class DriveShareAuthorizer
      */
     public function assertMoveWithinScope(string $fromPath, string $toPath, array $principal): void
     {
+        $this->assertNotDriveRoot($fromPath);
         $this->assertNotProjectFolder($fromPath);
         $from = $this->resolvePathContext($fromPath, $principal);
         $to = $this->resolvePathContext($toPath, $principal);
@@ -148,7 +149,16 @@ final class DriveShareAuthorizer
         if ($this->isGrantScopeRoot($virtualPath, $principal)) {
             $this->deny();
         }
+        $this->assertNotDriveRoot($virtualPath);
         $this->assertNotProjectFolder($virtualPath);
+    }
+
+    /** A Drive root (`/users/{name}`, `/groups/{team}`) goes with its user or Team and is never renamed, moved or deleted (#819). */
+    private function assertNotDriveRoot(string $virtualPath): void
+    {
+        if (preg_match('#^/(users|groups)/[^/]+$#', $this->scope->normalize($virtualPath)) === 1) {
+            throw new ApiHttpException(403, 'A Drive root goes with its user or Team.', 'drive_root');
+        }
     }
 
     /** A Project folder follows its Project (#817): it is renamed, moved or deleted only through the Project. */

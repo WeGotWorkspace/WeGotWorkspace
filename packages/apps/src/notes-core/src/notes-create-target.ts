@@ -1,6 +1,4 @@
 import { preferredCollectionName } from "@/lib/default-collection-prefs";
-import { projectIdOfFilter, readProjectFilter } from "@/lib/projects/project-filter";
-import { collectionsInProject } from "@/lib/projects/project-match";
 import { projectCreateNotebook } from "@/notes-core/src/notes-project-scope";
 import { parseGroupNotebookPath } from "@/notes-core/src/notes-note-utils";
 import { findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
@@ -27,13 +25,14 @@ function targetOfCollection(collection: NotesNotebookCollection): NotesCreateTar
 /**
  * Resolve notebook (+ optional group scope) for a new note from the active view.
  * Outside a notebook view, the selected Project's notebook wins over the default
- * (#818). `projectId` defaults to the stored Project filter; a stale id matches none.
+ * (#818). `projectNotebooks` are the notebooks the Project or Team filter shows
+ * ({@link useNotesProjectScope}); null when no Project is selected.
  */
 export function resolveNotesCreateTarget(
   view: string,
   personalNotebooks: string[],
   notebookCollections: readonly NotesNotebookCollection[] = [],
-  projectId: string | null = projectIdOfFilter(readProjectFilter()),
+  projectNotebooks: readonly NotesNotebookCollection[] | null = null,
 ): NotesCreateTarget {
   if (view.startsWith("shared-nb:")) {
     const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
@@ -49,10 +48,7 @@ export function resolveNotesCreateTarget(
     if (collection) return targetOfCollection(collection);
     return { notebook: key };
   }
-  const projectNotebook =
-    projectId === null
-      ? null
-      : projectCreateNotebook(collectionsInProject(notebookCollections, projectId));
+  const projectNotebook = projectCreateNotebook(projectNotebooks);
   if (projectNotebook) return targetOfCollection(projectNotebook);
   return {
     notebook:

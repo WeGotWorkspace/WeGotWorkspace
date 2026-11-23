@@ -11,7 +11,6 @@ use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRelocator;
 use App\Storage\ProjectArchivePaths;
 use App\Storage\WgwStorage;
-use Illuminate\Support\Str;
 
 /**
  * The Drive folder of a Project (#817 A3): `files/groups/{team}/{name}`.
@@ -25,7 +24,7 @@ use Illuminate\Support\Str;
  */
 final class ProjectFolder
 {
-    private const NAME_MAX_LENGTH = 120;
+    private const NAME_MAX_BYTES = 200;
 
     public function __construct(
         private readonly WgwStorage $storage,
@@ -143,12 +142,12 @@ final class ProjectFolder
         return '/'.ltrim((string) $node->storage_key, '/');
     }
 
-    /** A folder name from a Project name: no slashes, no leading dot (that would hide it), at most 120 characters. */
+    /** A folder name from a Project name: no slashes, no leading dot (that would hide it), at most 200 bytes (a file name holds 255, room for a suffix), cut at a character boundary. */
     public static function folderName(string $projectName): string
     {
         $name = trim(str_replace(['/', '\\', "\0"], '-', $projectName));
         $name = ltrim($name, '. ');
-        $name = trim(Str::substr($name, 0, self::NAME_MAX_LENGTH));
+        $name = trim(mb_strcut($name, 0, self::NAME_MAX_BYTES, 'UTF-8'));
 
         return $name !== '' ? $name : 'Project';
     }

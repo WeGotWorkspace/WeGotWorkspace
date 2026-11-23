@@ -104,6 +104,10 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (self::isStrayFilesPath($p)) {
             throw new Forbidden('Deleting this path under files/ is not allowed.');
         }
+        // Also reached when a MOVE or COPY overwrites its destination.
+        if ($this->isProjectFolder($p)) {
+            throw new Forbidden('A Project folder follows its Project. Rename or delete the Project in the app.');
+        }
         if (DocAttachmentPaths::davIsProtected($p)) {
             throw new Forbidden('The .attachments tree is server-owned.');
         }
@@ -175,6 +179,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             }
             if (ProjectArchivePaths::davIsProtected($destPath)) {
                 throw new Forbidden('Archived Project folders are server-owned.');
+            }
+            if ($this->isProjectFolder($destPath)) {
+                throw new Forbidden('A Project folder follows its Project. It cannot be overwritten.');
             }
             if (CollabSidecarPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The Yjs sidecar is server-owned.');
