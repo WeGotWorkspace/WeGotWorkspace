@@ -59,8 +59,12 @@ export function LoginCodeStep({ signIn, recovery }: { signIn: LoginSignIn; recov
         disabled={signIn.busy}
         autoFocus
         describedBy={signIn.error ? LOGIN_ERROR_ID : undefined}
+        // A wrong app code is told under the boxes; a recovery code keeps the line above.
+        error={!recovery && signIn.wrongCode ? signIn.error || undefined : undefined}
+        clockHint={!recovery && signIn.wrongCode}
+        labelHidden={!recovery}
+        size="xl"
       />
-      <ClockHint show={signIn.wrongCode && !recovery} />
       <SubmitButton busy={signIn.busy} label={labels.verify} busyLabel={labels.verifying} />
       <p className="login-screen__hint login-screen__links">
         <button
@@ -73,7 +77,11 @@ export function LoginCodeStep({ signIn, recovery }: { signIn: LoginSignIn; recov
         >
           {recovery ? labels.useApp : labels.useRecovery}
         </button>
-        <button type="button" className="login-screen__link" onClick={signIn.startOver}>
+        <button
+          type="button"
+          className="login-screen__link login-screen__link--muted"
+          onClick={signIn.startOver}
+        >
           {labels.startOver}
         </button>
       </p>
