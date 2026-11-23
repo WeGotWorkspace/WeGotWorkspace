@@ -24,10 +24,13 @@ describe("PWA document shell", () => {
   });
 
   it("has no inline script, because the CSP is script-src 'self' without hashes", () => {
-    const scripts = indexHtml.match(/<script\b[^>]*>[\s\S]*?<\/script>/g) ?? [];
+    // Case-insensitive: HTML tag names are, so `<SCRIPT>` must not slip through.
+    const openings = indexHtml.match(/<script\b/gi) ?? [];
+    const scripts = indexHtml.match(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi) ?? [];
     expect(scripts.length).toBeGreaterThan(0);
+    expect(scripts).toHaveLength(openings.length);
     for (const script of scripts) {
-      expect(script).toMatch(/^<script\b[^>]*\bsrc="[^"]+"[^>]*><\/script>$/);
+      expect(script).toMatch(/^<script\b[^>]*\bsrc="[^"]+"[^>]*><\/script[^>]*>$/i);
     }
   });
 
