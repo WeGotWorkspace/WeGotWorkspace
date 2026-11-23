@@ -90,6 +90,7 @@ function ProjectRow({
         <Button
           type="button"
           variant="ghost"
+          severity="danger"
           label={labels.archive}
           onClick={() => onArchiveRequest(project)}
         />
@@ -284,20 +285,24 @@ export function ProjectsManagePane({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{labels.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const target = archiving;
-                setArchiving(null);
-                if (target) {
-                  void onAction(
-                    () => store.archive(target.id),
-                    labels.archived(target.name),
-                    labels.archiveFailed,
-                  );
-                }
-              }}
-            >
-              {labels.archive}
+            <AlertDialogAction asChild>
+              <Button
+                variant="outline"
+                severity="danger"
+                onClick={() => {
+                  const target = archiving;
+                  setArchiving(null);
+                  if (target) {
+                    void onAction(
+                      () => store.archive(target.id),
+                      labels.archived(target.name),
+                      labels.archiveFailed,
+                    );
+                  }
+                }}
+              >
+                {labels.archive}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
