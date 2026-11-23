@@ -14,7 +14,21 @@ describe("PWA document shell", () => {
     expect(indexHtml).toMatch(/viewport-fit=cover/);
     expect(indexHtml).toMatch(/apple-mobile-web-app-status-bar-style" content="black-translucent"/);
     expect(indexHtml).toMatch(/<style>[\s\S]*html,\s*body\s*\{[\s\S]*background-color:\s*#f6f7f9/);
-    expect(indexHtml).toMatch(/documentElement\.classList\.add\("pwa-standalone"\)/);
+  });
+
+  it("marks an installed PWA from the same-origin boot script, not inline", () => {
+    expect(indexHtml).not.toContain("pwa-standalone");
+    expect(themeBootJs).toMatch(/window\.navigator\.standalone === true/);
+    expect(themeBootJs).toMatch(/window\.matchMedia\("\(display-mode: standalone\)"\)\.matches/);
+    expect(themeBootJs).toMatch(/documentElement\.classList\.add\("pwa-standalone"\)/);
+  });
+
+  it("has no inline script, because the CSP is script-src 'self' without hashes", () => {
+    const scripts = indexHtml.match(/<script\b[^>]*>[\s\S]*?<\/script>/g) ?? [];
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) {
+      expect(script).toMatch(/^<script\b[^>]*\bsrc="[^"]+"[^>]*><\/script>$/);
+    }
   });
 
   it("samples the page surface for the status bar, not ink", () => {
