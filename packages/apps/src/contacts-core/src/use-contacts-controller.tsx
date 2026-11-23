@@ -79,6 +79,7 @@ import { useContactDraftRowAdders } from "@/contacts-core/src/contacts-draft-row
 import {
   downloadContactVCard,
   downloadMultipleContactsVCard,
+  saveVcfText,
   vcardFilename,
 } from "@/lib/models/contacts-vcard-export";
 import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
@@ -703,21 +704,7 @@ export function useContactsController({
       const cardId = card.id;
       const filename = vcardFilename(contactDisplayName(card));
       operations.downloadCardVcf(cardId).then(
-        (vcfText) => {
-          const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
-          const url = URL.createObjectURL(blob);
-          try {
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = filename;
-            anchor.style.display = "none";
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-        },
+        (vcfText) => saveVcfText(vcfText, filename),
         () => showError(L.detailsOffline),
       );
     } else {
@@ -741,26 +728,13 @@ export function useContactsController({
     if (operations?.downloadCardVcf && cardsToDownload.length > 0) {
       const downloadVcf = operations.downloadCardVcf;
       Promise.all(cardsToDownload.map((card) => downloadVcf(card.id))).then(
-        (vcfParts) => {
-          const vcfText = vcfParts.join("\r\n");
-          const filename =
+        (vcfParts) =>
+          saveVcfText(
+            vcfParts.join("\r\n"),
             cardsToDownload.length === 1
               ? vcardFilename(contactDisplayName(cardsToDownload[0]))
-              : `${cardsToDownload.length}-contacts.vcf`;
-          const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
-          const url = URL.createObjectURL(blob);
-          try {
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = filename;
-            anchor.style.display = "none";
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-        },
+              : `${cardsToDownload.length}-contacts.vcf`,
+          ),
         () => showError(L.detailsOffline),
       );
     } else {
