@@ -123,7 +123,8 @@ final class AppCalendarHome extends CalendarHome
     private function teamSlugs(): array
     {
         $owner = (string) ($this->principalInfo['uri'] ?? '');
-        if ($this->viewer !== $owner || ! str_starts_with($owner, 'principals/') || str_starts_with($owner, AdminConstants::GROUP_PREFIX)) {
+        // Case-insensitive: on MySQL a person can sign in as `Bob` and open the home `bob`.
+        if ($this->viewer === null || strcasecmp($this->viewer, $owner) !== 0 || ! str_starts_with($owner, 'principals/') || str_starts_with($owner, AdminConstants::GROUP_PREFIX)) {
             return [];
         }
 
