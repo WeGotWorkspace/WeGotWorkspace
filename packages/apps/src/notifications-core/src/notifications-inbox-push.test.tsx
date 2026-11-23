@@ -427,7 +427,7 @@ describe("notification inbox on push", () => {
     expect(ackLocalNotifications).not.toHaveBeenCalled();
   });
 
-  it("polls every 15 s while push is down and slows down while it is connected", async () => {
+  it("polls every 15 s while push is down and not at all while it is connected (#2287)", async () => {
     vi.useFakeTimers();
     render(<NotificationsProvider />);
     await act(async () => {
@@ -442,19 +442,15 @@ describe("notification inbox on push", () => {
 
     setPushConnected(true);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_PUSH_POLL_MS - 1);
+      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_PUSH_POLL_MS * 3);
     });
     expect(listCalls()).toBe(2);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1);
-    });
-    expect(listCalls()).toBe(3);
 
     setPushConnected(false);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_POLL_MS);
     });
-    expect(listCalls()).toBe(4);
+    expect(listCalls()).toBe(3);
   });
 
   /** Fake timers: mount, let the first fetch land, then connect push. */
@@ -476,51 +472,17 @@ describe("notification inbox on push", () => {
       await vi.advanceTimersByTimeAsync(ms);
     });
 
-  it("while push is connected the stream tab's poll shares its rows with the other tabs (#2252)", async () => {
+  it("while push is connected neither the stream tab nor the others poll (#2287)", async () => {
     await mountConnected();
-    const inOther = vi.fn();
-    tabs.other!.onPollShared(inOther);
-    vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
-
-    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS);
-    await advance(1);
-
-    expect(listCalls()).toBe(2);
-    expect(inOther).toHaveBeenCalledWith({ list: [row], unreadCount: 1 });
-  });
-
-  it("a poll that failed shares nothing", async () => {
-    await mountConnected();
-    const inOther = vi.fn();
-    tabs.other!.onPollShared(inOther);
-    vi.mocked(listNotifications).mockRejectedValue(new TypeError("Failed to fetch"));
-
-    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS);
-    await advance(1);
-
-    expect(listCalls()).toBe(2);
-    expect(inOther).not.toHaveBeenCalled();
-  });
-
-  it("a tab without the stream does not poll while push is connected; its bell and list show the shared rows", async () => {
-    hub.state.leading = false;
-    await mountConnected();
-
     await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS * 3);
     expect(listCalls()).toBe(1);
 
-    tabs.other!.sharePoll({ list: [row], unreadCount: 1 });
-    await advance(1);
+    cleanup();
+    vi.mocked(listNotifications).mockClear();
+    hub.state.leading = false;
+    await mountConnected();
+    await advance(NOTIFICATIONS_INBOX_PUSH_POLL_MS * 3);
     expect(listCalls()).toBe(1);
-    expect(probe.inbox?.items).toEqual([row]);
-    expect(probe.inbox?.unreadCount).toBe(1);
-    // A visible tab that shows a row acks it, wherever the row came from.
-    expect(ackedIds()).toContain("n1");
-
-    tabs.other!.sharePoll({ list: [], unreadCount: 0 });
-    await advance(1);
-    expect(probe.inbox?.items).toEqual([]);
-    expect(probe.inbox?.unreadCount).toBe(0);
   });
 
   it("a tab without the stream polls again as soon as push is down", async () => {
@@ -534,7 +496,7 @@ describe("notification inbox on push", () => {
     expect(listCalls()).toBe(2);
   });
 
-  it("a tab without the stream still retries a failed read ack on its poll tick", async () => {
+  it("a tab still retries a failed read ack on its tick while push is connected", async () => {
     hub.state.leading = false;
     vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
     vi.mocked(ackNotifications).mockReset().mockRejectedValue(new TypeError("Failed to fetch"));

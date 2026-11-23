@@ -154,5 +154,26 @@ export function useAdminUserMutations({ operations, shell, showSuccess, showErro
     return true;
   };
 
-  return { createUser, updateUser, setUserEnabled, deleteUser, updateUserPassword };
+  const resetUserMfa = async (userId: string) => {
+    const user = users.find((candidate) => candidate.id === userId);
+    if (!user) return false;
+    if (operations?.resetUserMfa) {
+      try {
+        applyAdminData(await operations.resetUserMfa(user.username));
+      } catch (error) {
+        showError(mutationErrorMessage(error, "Could not reset two-factor sign-in"));
+        return false;
+      }
+    } else {
+      setUsers((prev) =>
+        prev.map((candidate) =>
+          candidate.id === userId ? { ...candidate, mfaEnabled: false } : candidate,
+        ),
+      );
+    }
+    showSuccess("Two-factor sign-in reset");
+    return true;
+  };
+
+  return { createUser, updateUser, setUserEnabled, deleteUser, updateUserPassword, resetUserMfa };
 }

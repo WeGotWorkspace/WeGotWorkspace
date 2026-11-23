@@ -19,7 +19,7 @@ describe("useSettingsSidebarModel", () => {
     expect(result.current.account.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
-      "projects",
+      "security",
     ]);
     expect(result.current.connections.map((section) => section.id)).toEqual([
       "assistants",
@@ -49,7 +49,7 @@ describe("useSettingsSidebarModel", () => {
     expect(result.current.account.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
-      "projects",
+      "security",
     ]);
     expect(result.current.connections.map((section) => section.id)).toEqual(["incoming-email"]);
     expect(result.current.apps.map((section) => section.id)).toEqual([

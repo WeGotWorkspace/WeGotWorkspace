@@ -1,6 +1,12 @@
 import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
 import type { AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwInvalidateAccountReads,
+  wgwReadJson,
+  wgwSettingsStateRead,
+} from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type {
   WgwAdminStateResponse,
@@ -142,6 +148,7 @@ export function mapWgwAdminStateToUI(
       createdAt: user.createdAt,
       enabled: user.enabled !== false,
       isAdmin: user.isAdmin === true,
+      mfaEnabled: (user as { mfaEnabled?: unknown }).mfaEnabled === true,
     })),
     groups: state.groups.map((group) => ({
       id: group.id,
@@ -353,6 +360,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       });
       if (!res.ok)
         throw new WgwRequestError(`PUT /admin/settings failed (${res.status})`, res.status);
+      wgwSettingsStateRead.invalidate();
       return fetchAdminUiData(opts);
     },
     setAppUrl: async (url, opts) => {
@@ -552,6 +560,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       if (!res.ok)
         throw new WgwRequestError(`POST /admin/users failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     updateUser: async (username, input, opts) => {
@@ -567,6 +576,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     deleteUser: async (username, opts) => {
@@ -580,6 +590,14 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
+      return fetchAdminUiData(opts);
+    },
+    resetUserMfa: async (username, opts) => {
+      const path = `/admin/users/${encodeURIComponent(username)}/mfa-resets`;
+      const res = await wgwFetch(path, { method: "POST", signal: opts?.signal });
+      if (!res.ok) throw new WgwRequestError(`POST ${path} failed (${res.status})`, res.status);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     createGroup: async (input, opts) => {
@@ -596,6 +614,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       if (!res.ok)
         throw new WgwRequestError(`POST /admin/groups failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     updateGroup: async (groupSlug, input, opts) => {
@@ -629,6 +648,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
             );
         }
       }
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     deleteGroup: async (groupSlug, opts) => {
@@ -643,6 +663,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
   };

@@ -14,6 +14,8 @@ import { sendWgwRequest, type WgwRequestInit } from "@/lib/api/wgw/send-with-upl
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
 import { WgwSignInRequiredError } from "@/lib/api/wgw/sign-in-required-error";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
+import { workspaceSessionFromAccountReads } from "@/lib/api/wgw/principal-from-account";
+import { createAccountReads } from "@/lib/api/wgw/shared-account-read";
 
 export { WgwSessionRenewalError, WgwSignInRequiredError };
 
@@ -211,6 +213,7 @@ export function clearWgwSession(reason: WgwSessionClearReason): void {
   resetRefreshFailures();
   refreshRejectedByAuth = false;
   persistTokens();
+  wgwInvalidateAccountReads();
 }
 
 async function postJson(path: string, body: unknown, auth?: string): Promise<Response> {
@@ -239,7 +242,11 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
       j && typeof j === "object" && "error" in j ? String((j as { error: unknown }).error) : text;
     throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
   }
-  const o = j as Record<string, unknown>;
+  return tokenResponseFromBody(j);
+}
+
+function tokenResponseFromBody(j: unknown): TokenResponse {
+  const o = (j && typeof j === "object" ? j : {}) as Record<string, unknown>;
   const at = o.access_token;
   if (typeof at !== "string") {
     throw new UnexpectedApiResponseError("Auth response missing access_token");
@@ -454,6 +461,7 @@ export function wgwEstablishMockSession(): void {
   applyTokens({ access_token: "mock" }, "member");
 }
 
+/** Installer and dev auto-login: a user who has no second step (`auth-sign-in.ts` for the login screen). */
 export async function wgwLoginWithCredentials(username: string, password: string): Promise<void> {
   const normalized = username.trim();
   if (!normalized || !password) {
@@ -468,6 +476,11 @@ export async function wgwLoginWithCredentials(username: string, password: string
   applyTokens(tokens, "member");
 }
 
+/** A member session from a token body the server sent (`auth/token`, a code verification). */
+export function wgwApplyMemberTokens(body: unknown): void {
+  applyTokens(tokenResponseFromBody(body), "member");
+}
+
 /** Origin-root Passport login. Relative `/api/v1` stays same-origin (Vite proxy). */
 export function wgwOAuthSessionUrl(): string {
   const base = wgwApiBaseUrl();
@@ -479,52 +492,6 @@ export function wgwOAuthSessionUrl(): string {
     }
   }
   return "/oauth/session";
-}
-
-/** Laravel web session for Passport `/oauth/authorize`. The SPA JWT is not that session. */
-export async function wgwEstablishMcpWebSession(
-  username: string,
-  password: string,
-  intent?: string | null,
-): Promise<string | null> {
-  const normalized = username.trim();
-  if (!normalized || !password) {
-    throw new Error("Username and password are required.");
-  }
-  if (!wgwLiveApiEnabled()) {
-    return null;
-  }
-  const body: Record<string, string> = { username: normalized, password };
-  const token = intent?.trim();
-  if (token) body.intent = token;
-  const res = await fetch(wgwOAuthSessionUrl(), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  let payload: unknown;
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    throw new AuthHttpError(res.status, `Auth response was not JSON (${res.status})`);
-  }
-  if (!res.ok) {
-    const err =
-      payload && typeof payload === "object" && "error" in payload
-        ? String((payload as { error: unknown }).error)
-        : text;
-    throw new AuthHttpError(res.status, err || `HTTP ${res.status}`);
-  }
-  if (payload && typeof payload === "object" && "redirect" in payload) {
-    const redirect = (payload as { redirect: unknown }).redirect;
-    return typeof redirect === "string" && redirect.startsWith("/") ? redirect : null;
-  }
-  return null;
 }
 
 export async function wgwFetchPasswordRecoveryEnabled(): Promise<boolean> {
@@ -858,6 +825,23 @@ function wgwGuestPrincipalFromAccessToken(token: string): WorkspaceSession {
   };
 }
 
+/** Username of the signed-in member, from the access token; `null` for guests or no session. */
+function signedInUsername(): string | null {
+  readTokensFromStorage();
+  const sub = accessToken && sessionKind !== "guest" ? decodeJwtPayload(accessToken)?.sub : null;
+  return typeof sub === "string" && sub.trim() ? sub : null;
+}
+
+/** `GET /settings/state` and `GET /me`, once per browser; see `shared-account-read.ts`. */
+const accountReads = createAccountReads({
+  fetch: wgwFetch,
+  readJson: wgwReadJson,
+  identity: signedInUsername,
+});
+export const wgwSettingsStateRead = accountReads.settings;
+export const wgwMeRead = accountReads.me;
+export const wgwInvalidateAccountReads = accountReads.invalidateAll;
+
 export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   readTokensFromStorage();
   if (wgwIsGuestSession()) {
@@ -867,70 +851,20 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
     return wgwGuestPrincipalFromAccessToken(accessToken);
   }
 
-  const res = await wgwFetch("/me");
-  if (!res.ok) throw new WgwRequestError(`GET /me failed (${res.status})`, res.status);
-  const j = (await wgwReadJson(res)) as Record<string, unknown>;
-  const meUsername = typeof j.username === "string" ? j.username : "User";
-
-  // Keep identity consistent with Settings when available.
-  let settingsUser:
-    | {
-        username?: string;
-        displayName?: string;
-        email?: string;
-      }
-    | undefined;
-  try {
-    const settingsRes = await wgwFetch("/settings/state");
-    if (settingsRes.ok) {
-      const settingsJson = (await wgwReadJson(settingsRes)) as Record<string, unknown>;
-      const user = settingsJson.user;
-      if (user && typeof user === "object") {
-        const candidate = user as Record<string, unknown>;
-        settingsUser = {
-          username: typeof candidate.username === "string" ? candidate.username : undefined,
-          displayName:
-            typeof candidate.displayName === "string" ? candidate.displayName : undefined,
-          email: typeof candidate.email === "string" ? candidate.email : undefined,
-        };
-      }
-    }
-  } catch {
-    // Optional enrichment only; /me remains the fallback source.
-  }
-
-  const username = settingsUser?.username?.trim() || meUsername;
-  const explicitDisplayName =
-    typeof settingsUser?.displayName === "string"
-      ? settingsUser.displayName
-      : typeof j.displayName === "string"
-        ? j.displayName
-        : typeof j.displayname === "string"
-          ? j.displayname
-          : typeof j.name === "string"
-            ? j.name
-            : null;
-  const normalizedDisplayName =
-    explicitDisplayName?.trim() ||
-    username
-      .trim()
-      .split(/[._-]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ") ||
-    "User";
-  const user = {
-    displayName: normalizedDisplayName,
-    initials: workspaceUserInitials({ displayName: normalizedDisplayName }),
-    username,
-    email: settingsUser?.email ?? (typeof j.email === "string" ? j.email : undefined),
-  };
-  return { user, viewerInboxLabel: "me" };
+  const meRead = await wgwMeRead.read();
+  if (!meRead.ok) throw new WgwRequestError(`GET /me failed (${meRead.status})`, meRead.status);
+  // Keep identity consistent with Settings when available; /me is the fallback.
+  const settingsRead = await wgwSettingsStateRead.read().catch(() => undefined);
+  return workspaceSessionFromAccountReads(
+    meRead.json,
+    settingsRead?.ok ? settingsRead.json : undefined,
+  );
 }
 
 export function resetWgwSessionStateForTests(keepTokens = false): void {
   refreshPromise = null;
   legacySwept = false;
+  accountReads.resetForTests();
   if (keepTokens) return;
   accessToken = null;
   sessionKind = null;

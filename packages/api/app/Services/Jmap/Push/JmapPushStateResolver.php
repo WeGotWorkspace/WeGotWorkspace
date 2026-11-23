@@ -19,6 +19,7 @@ use App\Services\Jmap\FileNodes\FileNodeRootMarkers;
 use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
+use App\Services\Meet\MeetCallPushState;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notify\NotificationInboxMarkers;
 use App\Services\Projects\ProjectMarkers;
@@ -45,6 +46,9 @@ use Illuminate\Database\Eloquent\Collection;
  * `RtcRoom` (#2294) is the doorbell for signaling rooms where the user has a live peer
  * ({@see RtcRoomPushState}); heartbeats (`seen_at`) do not move it.
  *
+ * `MeetCall` (#2295) is the doorbell for "a call is running in a channel of the caller"
+ * ({@see MeetCallPushState}): the set of channels (and DMs) whose room has a joinable peer.
+ *
  * `FileNode` is the exception in what is hashed: the pushed value is the
  * global sequence `FileNode/changes` expects, but the hash covers the sorted
  * `root → marker` pairs of the user's roots, so another user's write elsewhere
@@ -69,6 +73,7 @@ final class JmapPushStateResolver
         'DocThread',
         'RtcRoom',
         'Project',
+        'MeetCall',
     ];
 
     /** Types that share one state source are resolved once. */
@@ -88,6 +93,7 @@ final class JmapPushStateResolver
         'DocThread' => 'docthreads',
         'RtcRoom' => 'rtcrooms',
         'Project' => 'projects',
+        'MeetCall' => 'meetcalls',
     ];
 
     /** Sources whose state is a composite over CalDAV collections of one kind. */
@@ -96,6 +102,7 @@ final class JmapPushStateResolver
         'calendars' => CollectionKind::EventCalendar,
         'chat' => CollectionKind::ChatChannel,
         'tasks' => CollectionKind::TaskList,
+        'meetcalls' => CollectionKind::ChatChannel,
     ];
 
     /** A JMAP-backed source is served only while its capability is enabled. */
@@ -104,6 +111,7 @@ final class JmapPushStateResolver
         'calendars' => JmapCapabilities::CALENDARS,
         'contacts' => JmapCapabilities::CONTACTS,
         'chat' => JmapCapabilities::CHAT,
+        'meetcalls' => JmapCapabilities::CHAT,
         'files' => JmapCapabilities::FILENODE,
         'docthreads' => JmapCapabilities::FILENODE,
     ];
@@ -128,6 +136,7 @@ final class JmapPushStateResolver
         private readonly JmapCapabilitySet $capabilities,
         private readonly DocThreadPushState $docThreads,
         private readonly RtcRoomPushState $rtcRooms,
+        private readonly MeetCallPushState $meetCalls,
     ) {}
 
     /**
@@ -206,7 +215,8 @@ final class JmapPushStateResolver
         foreach ($types as $type) {
             $source = self::SOURCE_OF_TYPE[$type];
             if (isset(self::CALDAV_KIND_OF_SOURCE[$source])) {
-                $kinds[$source] = self::CALDAV_KIND_OF_SOURCE[$source];
+                // `chat` and `meetcalls` read the same kind once.
+                $kinds[self::CALDAV_KIND_OF_SOURCE[$source]->value] = self::CALDAV_KIND_OF_SOURCE[$source];
             }
         }
         if ($kinds === []) {
@@ -214,7 +224,7 @@ final class JmapPushStateResolver
         }
 
         $started = hrtime(true);
-        if (isset($kinds['chat'])) {
+        if (isset($kinds[CollectionKind::ChatChannel->value])) {
             // Same as ChatChannelRepository::accessibleChatInstances(): every Team gets its default channel on read.
             $this->teamChannels->ensureForGroupSlugs($this->groups->allowedGroupSlugs($username));
         }
@@ -246,6 +256,7 @@ final class JmapPushStateResolver
             'docthreads' => $this->docThreads->stateFor($this->rootsAndGrantPairs($username)['roots']),
             'rtcrooms' => $this->rtcRooms->stateFor($username),
             'projects' => $this->projectState($username),
+            'meetcalls' => $this->meetCalls->stateFor($instances ?? []),
             default => throw new \LogicException('Unknown push state source '.$source),
         };
 

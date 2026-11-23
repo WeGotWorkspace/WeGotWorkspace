@@ -67,6 +67,8 @@ export type AdminUser = {
   enabled: boolean;
   /** Admin is a role per user, not membership of a Team (#1925). */
   isAdmin: boolean;
+  /** Two-factor sign-in is on (#2275); an admin can reset it. */
+  mfaEnabled?: boolean;
 };
 
 export type AdminGroup = {
@@ -303,6 +305,8 @@ export type AdminAPIOperations = {
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteUser: (username: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
+  /** Removes the user's authenticator and recovery codes and signs them out everywhere. */
+  resetUserMfa: (username: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   createGroup: (
     input: { name: string; displayName?: string },
     opts?: { signal?: AbortSignal },

@@ -1,4 +1,4 @@
-Source: #2284 (body-hash: 7ae460e8)
+Source: #2284 (body-hash: cdb9979e)
 Goal: WeGotWorkspace/Product#153
 
 # Traffic budget for shared hosting
@@ -31,17 +31,17 @@ Keep one browser of one user — every tab, installed PWA window and service wor
 - Shared hosting: no long-lived connections, no extra processes (README promise; `docs/realtime-capacity.md` 5 FPM children profile).
 
 - Push cost budget: a push request with every type stays ≤ 25 ms on the reference stack (measured ~14 ms for 13 types, ~0.3 ms per type). Each new type's state is one indexed query per caller and excludes heartbeat fields (`seen_at`), or it would change on every poll.
-- Signaling peers expire after `peerTimeoutSeconds` (60–90 s) without a poll; a room behind the doorbell keeps a heartbeat poll below that.
-- Push cadence 3 s active, 6 s idle, 30 s hidden (20/6/2 per minute) is most of the per-browser budget; little else may poll.
+- Signaling peers expire after `peerTimeoutSeconds` (60–90 s) without a poll; a room behind the doorbell is kept alive by the push request (which refreshes only the peers its browser names), and by its own heartbeat poll only while push is down.
+- Push cadence 3 s active, 6 s idle, 30 s hidden (20/10/2 per minute) is most of the per-browser budget; little else may poll. At 6 s idle, push alone fills the ≤ 10/min idle budget, so room heartbeats and the notifications poll ride the push request instead of polling on their own (decided 2026-11-20, plan.md Open decisions).
 
 ## Edge cases
 
 - Service worker not controlling yet (first load, private window, SW disabled): client-side pacing (pacer, idle cadence, probe backoff) still holds the budget; the governor is a second line.
 - Several tabs claim pacer slots at once: Web Lock makes read-and-reserve atomic; without Web Locks or `localStorage` each tab falls back to its own schedule.
 - A stored next-slot time far in the future (clock change): ignored after 10 intervals.
-- Push down: the Docs threads poll and the Calendar invitations poll resume at their old cadence.
-- Calendar with no Tasks or Contacts cache: one Tasks bootstrap; invitee suggestions start empty and fetch once only when the user searches with no cache at all.
-- A colleague opens a document the user is alone in: found within one slow interval (6 s alone after 30 s; 20 s when the user is idle). Accepted in Product#153 Decisions.
+- Push down: the app backup polls (Docs threads, Calendar invitations, Notes, Contacts, Tasks, Meet chat, notifications) resume their previous intervals; signaling rooms use the slow interval (6 s alone after 30 s; 20 s when idle) and their own heartbeat poll, until push is healthy again.
+- Calendar with no Tasks or Contacts cache: one Tasks bootstrap. Calendar never downloads the address book itself: with no Contacts cache it starts (or joins) the shared, paced Contacts cold download (chunk L), and invitee suggestions show teammates until those pages land, including when the user searches with no cache. Decided 2026-11-20, option (b) of the review: a Calendar-only user still gets contact suggestions.
+- A colleague opens a document the user is alone in: seen within one push round (~3 s active, ~6 s idle) while push is healthy; while push is down, within one slow interval (6 s alone after 30 s; 20 s when the user is idle).
 - Push healthy vs connected: "healthy" means a push response within the last two rounds; backup polls key on healthy, not on an open connection.
 - A user with a peer in a room on another device: the `RtcRoom` state is per account, so both devices' streams see the change; each device's room then polls once. Acceptable (one extra request per change).
 - Contacts photo pass: cards render with initials until their photo arrives; Calendar invitee search needs no photos.

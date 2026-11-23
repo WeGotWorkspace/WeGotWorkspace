@@ -6,6 +6,7 @@ namespace App\Services\Docs;
 
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
+use App\Models\CalendarChange;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\DocsThreadIndex;
@@ -324,14 +325,19 @@ final class DocsThreadRepository
         }
 
         $syncToken = $this->normalizeSyncToken($since);
-        $changes = $this->backends->calBackend()->getChangesForCalendar(
-            $this->collections->backendId($instance),
-            $syncToken === null ? '0' : (string) $syncToken, // falsy token = Sabre initial sync
-            1,
-            self::CHANGES_PAGE_SIZE,
-        );
-        if ($changes === null) {
-            throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
+        if ($syncToken === null) {
+            // Falsy token = Sabre initial sync: the current token, no rows.
+            $changes = $this->backends->calBackend()->getChangesForCalendar(
+                $this->collections->backendId($instance),
+                '0',
+                1,
+                self::CHANGES_PAGE_SIZE,
+            );
+            if ($changes === null) {
+                throw new ApiHttpException(400, 'Sync state is invalid or expired.', 'cannotCalculateChanges');
+            }
+        } else {
+            $changes = $this->changePage((int) $instance->calendarid, $syncToken);
         }
 
         $onPath = $this->uidsOnPath((int) $instance->calendarid, $path);
@@ -347,6 +353,48 @@ final class DocsThreadRepository
             )),
             'hasMoreChanges' => ($changes['result_truncated'] ?? false) === true,
         ];
+    }
+
+    /**
+     * One page of the pool's calendarchanges rows from $syncToken. Pages by raw row, not by distinct uri
+     * as Sabre does: a uri repeated within the page would otherwise hide that rows remain, and the
+     * resume token would skip them. The token is the last returned row + 1; the last operation per uri wins.
+     *
+     * @return array{syncToken: int, added: list<string>, modified: list<string>, deleted: list<string>, result_truncated: bool}
+     */
+    private function changePage(int $calendarId, int $syncToken): array
+    {
+        $rows = CalendarChange::query()
+            ->where('calendarid', $calendarId)
+            ->where('synctoken', '>=', $syncToken)
+            ->orderBy('synctoken')
+            ->orderBy('id')
+            ->limit(self::CHANGES_PAGE_SIZE + 1)
+            ->get(['uri', 'operation', 'synctoken']);
+
+        $truncated = $rows->count() > self::CHANGES_PAGE_SIZE;
+        $page = $truncated ? $rows->take(self::CHANGES_PAGE_SIZE) : $rows;
+
+        $last = [];
+        $token = $syncToken;
+        foreach ($page as $row) {
+            $uri = (string) $row->uri;
+            unset($last[$uri]);
+            $last[$uri] = (int) $row->operation;
+            $token = max($token, (int) $row->synctoken + 1);
+        }
+
+        $result = ['syncToken' => $token, 'added' => [], 'modified' => [], 'deleted' => [], 'result_truncated' => $truncated];
+        foreach ($last as $uri => $operation) {
+            match ($operation) {
+                1 => $result['added'][] = (string) $uri,
+                2 => $result['modified'][] = (string) $uri,
+                3 => $result['deleted'][] = (string) $uri,
+                default => null,
+            };
+        }
+
+        return $result;
     }
 
     private function requirePoolForPath(string $path): CalendarInstance

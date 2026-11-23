@@ -52,6 +52,13 @@ final class BearerAuthenticationService
             if (array_key_exists('uid', $claims) && (int) $claims['uid'] !== $session['id']) {
                 return null;
             }
+            // users.access_token_epoch is bumped only by UserSessionRevoker::revokeAll()
+            // (sign-out everywhere), not by signing out one device. A token minted
+            // before that is refused at once instead of at exp.
+            // Tokens minted before the ep claim existed stay valid until they expire.
+            if (array_key_exists('ep', $claims) && $claims['ep'] < $session['access_epoch']) {
+                return null;
+            }
         }
 
         $role = $claims['role'];

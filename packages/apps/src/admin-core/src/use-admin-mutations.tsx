@@ -57,6 +57,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
       setUserEnabled: users.setUserEnabled,
       deleteUser: users.deleteUser,
       updateUserPassword: users.updateUserPassword,
+      resetUserMfa: users.resetUserMfa,
       createGroup: groups.createGroup,
       updateGroup: groups.updateGroup,
       deleteGroup: groups.deleteGroup,

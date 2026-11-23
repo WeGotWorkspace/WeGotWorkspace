@@ -131,7 +131,14 @@ final class SabreServerFactory
             $server->addPlugin(app(TeamGatedSharingPlugin::class));
         }
         if ($cal || $card || $files) {
-            $server->addPlugin(new DAVACL\Plugin);
+            // Stock DAVACL allows unauthenticated access and switches off the auth plugin's
+            // automatic login requirement. The challenge then only comes from a privilege
+            // check on a node that exists, so /principals/<user>/ and /files/users/<user>/
+            // (hidden from anyone but the owner) answered 404 and native clients stopped
+            // asking for the password. No DAV path here is public: always challenge.
+            $acl = new DAVACL\Plugin;
+            $acl->allowUnauthenticatedAccess = false;
+            $server->addPlugin($acl);
             $server->addPlugin(new CollectionReportReadPlugin);
         }
 

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
+import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import {
+  CALENDAR_BACKGROUND_POLL_MS,
+  CALENDAR_PUSH_POLL_MS,
+} from "@/calendar-core/src/calendar-refresh";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import {
@@ -29,57 +33,12 @@ function cacheUsername(sessionUsername?: string): string | null {
   return resolveCalendarsOfflineUsername(sessionUsername);
 }
 
-export function useCalendarInvitations(
-  operations?: CalendarAPIOperations,
-  options?: UseCalendarInvitationsOptions,
+function useInviteesDirectory(
+  operations: CalendarAPIOperations | undefined,
+  username: string | null,
 ) {
-  const [notifications, setNotifications] = useState<CalendarSchedulingNotification[]>([]);
   const [invitees, setInvitees] = useState<CalendarInvitee[]>([]);
   const [canSubmitEmail, setCanSubmitEmail] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const refreshInFlightRef = useRef(false);
-  const username = cacheUsername(options?.username);
-
-  const refresh = useCallback(async () => {
-    if (!operations?.listSchedulingNotifications) {
-      if (username) {
-        const cached = await readCalendarSchedulingInbox(username);
-        setNotifications(cached);
-      } else {
-        setNotifications([]);
-      }
-      return;
-    }
-    refreshInFlightRef.current = true;
-    try {
-      if (!readBrowserOnline()) {
-        if (username) {
-          setNotifications(await readCalendarSchedulingInbox(username));
-        }
-        return;
-      }
-      try {
-        const next = await operations.listSchedulingNotifications();
-        setNotifications(next);
-        if (username) await writeCalendarSchedulingInbox(username, next);
-      } catch {
-        if (username) {
-          setNotifications(await readCalendarSchedulingInbox(username));
-        }
-      }
-    } finally {
-      refreshInFlightRef.current = false;
-    }
-  }, [operations, username]);
-
-  const refreshIfIdle = useCallback(async () => {
-    if (refreshInFlightRef.current) return;
-    await refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useEffect(() => {
     if (!operations?.listInvitees) {
@@ -117,6 +76,65 @@ export function useCalendarInvitations(
       });
   }, [operations, username]);
 
+  return { invitees, canSubmitEmail };
+}
+
+export function useCalendarInvitations(
+  operations?: CalendarAPIOperations,
+  options?: UseCalendarInvitationsOptions,
+) {
+  const [notifications, setNotifications] = useState<CalendarSchedulingNotification[]>([]);
+  const [busy, setBusy] = useState(false);
+  const refreshInFlightRef = useRef(false);
+  const pushConnected = useJmapPushConnected();
+  const username = cacheUsername(options?.username);
+  const { invitees, canSubmitEmail } = useInviteesDirectory(operations, username);
+
+  /** Resolves false only when the server list failed (the cache is shown instead). */
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (!operations?.listSchedulingNotifications) {
+      if (username) {
+        const cached = await readCalendarSchedulingInbox(username);
+        setNotifications(cached);
+      } else {
+        setNotifications([]);
+      }
+      return true;
+    }
+    refreshInFlightRef.current = true;
+    try {
+      if (!readBrowserOnline()) {
+        if (username) {
+          setNotifications(await readCalendarSchedulingInbox(username));
+        }
+        return true;
+      }
+      try {
+        const next = await operations.listSchedulingNotifications();
+        setNotifications(next);
+        if (username) await writeCalendarSchedulingInbox(username, next);
+        return true;
+      } catch {
+        if (username) {
+          setNotifications(await readCalendarSchedulingInbox(username));
+        }
+        return false;
+      }
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, [operations, username]);
+
+  /** Resolves false when a fetch already in flight (sent earlier) was skipped. */
+  const refreshIfIdle = useCallback(async (): Promise<boolean> => {
+    if (refreshInFlightRef.current) return false;
+    return refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
   useEffect(() => {
     if (!operations?.listSchedulingNotifications) return;
     if (typeof window === "undefined") return;
@@ -129,8 +147,13 @@ export function useCalendarInvitations(
       void refreshIfIdle().catch(() => undefined);
     };
 
-    // Invitations keep their own interval; event `/changes` is inbound-only.
-    const intervalId = window.setInterval(runSilentRefresh, CALENDAR_BACKGROUND_POLL_MS);
+    // Invitations keep their own interval, slower while push is connected (#2287);
+    // a pushed `CalendarEvent` state refreshes them (below), as delivering an
+    // invitation writes the invitee's event copy.
+    const intervalId = window.setInterval(
+      runSilentRefresh,
+      pushConnected ? CALENDAR_PUSH_POLL_MS : CALENDAR_BACKGROUND_POLL_MS,
+    );
     const onVisibilityChange = () => {
       if (!document.hidden) runSilentRefresh();
     };
@@ -141,7 +164,15 @@ export function useCalendarInvitations(
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [busy, operations?.listSchedulingNotifications, refreshIfIdle]);
+  }, [busy, operations?.listSchedulingNotifications, pushConnected, refreshIfIdle]);
+
+  useJmapStateChange(["CalendarEvent"], () => {
+    if (!operations?.listSchedulingNotifications || busy) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    // Hidden, busy and missing-list exits stay void: the visibility handler and
+    // `respond` refresh later, and `false` would pin `CalendarEvent` unconfirmed.
+    return refreshIfIdle().catch(() => false);
+  });
 
   const dropNotifications = useCallback((ids: string[]) => {
     if (ids.length === 0) return;

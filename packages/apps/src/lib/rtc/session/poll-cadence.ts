@@ -45,6 +45,11 @@ export type MeshPollCadenceSnapshot = {
   linkedElsewhere?: (peerId: string) => boolean;
   /** The push doorbell is connected (`room-doorbell.ts`): newcomers ring instead of being polled for. */
   doorbell?: boolean;
+  /**
+   * Each push read names this room's peer, so it keeps the peer alive
+   * (`push-heartbeat-peers.ts`, #2287): behind the doorbell the room needs no poll at all.
+   */
+  pushHeartbeat?: boolean;
 };
 
 function allPeersConnected(
@@ -125,6 +130,8 @@ function isHiddenWithoutPeerConnections(snapshot: MeshPollCadenceSnapshot): bool
  * Delay before the next steady-state poll: the configured cadence, stretched by
  * whichever idle backoff the mesh currently qualifies for, or to the doorbell
  * heartbeat while push is connected and no peer is connecting (#2294).
+ * `Infinity` means no steady poll: the push read is the heartbeat (#2287), and a
+ * ring or a push status change wakes the room.
  */
 export function steadyPollDelayMs(
   intervals: RtcPollIntervals,
@@ -136,9 +143,12 @@ export function steadyPollDelayMs(
   } else if (hasStableMeetTopology(snapshot)) {
     delay = Math.max(delay, MEET_IDLE_POLL_INTERVAL_MS);
   }
-  // Behind the doorbell a quiet room only heartbeats; it never polls more than before.
+  // Behind the doorbell a quiet room only heartbeats, and not even that when the push
+  // read carries its peer (#2287); it never polls more than before.
   if (snapshot.doorbell && !isAnyPeerConnecting(snapshot)) {
-    delay = Math.max(delay, DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
+    delay = snapshot.pushHeartbeat
+      ? Number.POSITIVE_INFINITY
+      : Math.max(delay, DOORBELL_HEARTBEAT_POLL_INTERVAL_MS);
   }
   if (isHiddenWithoutPeerConnections(snapshot)) {
     delay = Math.max(delay, HIDDEN_IDLE_POLL_INTERVAL_MS);

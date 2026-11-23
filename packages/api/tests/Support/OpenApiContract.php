@@ -207,6 +207,7 @@ final class OpenApiContract
             '{subjectId}' => 'demo-task',
             '{entryId}' => '01J6Y6M0R2V9GKJ4W1T8Q3ZBEX',
             '{appPasswordId}' => '1',
+            '{challenge}' => str_repeat('0', 64),
         ];
 
         $path = $openApiPath;

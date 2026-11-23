@@ -1,0 +1,22 @@
+@import "../../styles.css" reference;
+
+/* The login screen's second step (#2274); the shell is `authentication-page/login-screen.css`. */
+
+.login-screen__lead {
+  color: color-mix(in oklab, var(--workspace-foreground) 78%, transparent);
+  @apply mb-4 text-sm;
+}
+
+.login-screen__links {
+  @apply flex flex-wrap justify-between gap-x-4 gap-y-2;
+}
+
+/* Same look as the hint links (`.login-screen__hint a`), as buttons: they change the step. */
+.login-screen__link {
+  color: var(--workspace-foreground);
+  @apply cursor-pointer bg-transparent p-0 font-medium underline underline-offset-2;
+}
+
+.login-screen__qr {
+  @apply flex justify-center py-2;
+}

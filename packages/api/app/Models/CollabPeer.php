@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $net
  * @property string $access
  * @property string $browser_id
+ * @property string|null $room_path
  */
 final class CollabPeer extends Model
 {
@@ -40,6 +41,7 @@ final class CollabPeer extends Model
         'net',
         'access',
         'browser_id',
+        'room_path',
         'seen_at',
     ];
 }

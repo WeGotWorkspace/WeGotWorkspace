@@ -49,7 +49,7 @@ describe("useSettingsController MCP kill-switch", () => {
     expect(result.current.sidebarGroups.account.map((section) => section.id)).toEqual([
       "profile",
       "memberships",
-      "projects",
+      "security",
     ]);
     expect(result.current.sidebarGroups.connections.map((section) => section.id)).toEqual([
       "incoming-email",

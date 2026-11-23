@@ -8,6 +8,7 @@ use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Jmap\Push\JmapPushEventId;
 use App\Services\Jmap\Push\JmapPushStateResolver;
+use App\Services\Rtc\Signaling\RtcPushHeartbeat;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -20,12 +21,18 @@ use Illuminate\Http\Response;
  * nothing differs. No setting holds the connection open, so a shared host's
  * few PHP-FPM workers stay free for signaling. `closeafter` and `ping` are
  * validated and otherwise moot: the stream always closes before a ping is due.
+ *
+ * A read that names this browser's signaling peers (`X-WGW-Rtc-Peers`) also
+ * keeps them alive, so a quiet room behind the doorbell needs no poll (#2287).
  */
 final class JmapEventSourceController
 {
     private const MAX_TYPES_LENGTH = 512;
 
-    public function __construct(private readonly JmapPushStateResolver $states) {}
+    public function __construct(
+        private readonly JmapPushStateResolver $states,
+        private readonly RtcPushHeartbeat $heartbeat,
+    ) {}
 
     public function __invoke(Request $request, string $types, string $closeafter, string $ping): Response
     {
@@ -39,6 +46,12 @@ final class JmapEventSourceController
 
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $username = (string) $principal['username'];
+
+        // The push read is the heartbeat of this browser's rooms (#2287).
+        $this->heartbeat->refresh(
+            ['username' => $username, 'role' => (string) ($principal['role'] ?? '')],
+            $request->headers->get(RtcPushHeartbeat::HEADER),
+        );
 
         $served = $this->states->enabledTypes($requested);
         $resolved = $this->states->resolve($username, $served);

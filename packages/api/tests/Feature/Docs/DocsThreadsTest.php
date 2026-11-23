@@ -191,6 +191,43 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         $this->assertNotSame('', $changes['newState']);
     }
 
+    public function test_changes_walk_lists_a_new_thread_after_a_repeated_uri_in_the_first_page(): void
+    {
+        $oldId = $this->ulid('AH');
+        $this->asBob()->postJson($this->threadsPath(), [
+            'id' => $oldId,
+            'kind' => 'comment',
+            'body' => 'old',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+        $since = (string) $this->asBob()->getJson($this->threadUrl('changes'))->assertOk()->json('newState');
+
+        // More than one page of change rows, all on the same thread: Sabre dedupes by uri and would
+        // report no more changes with a token just past the page.
+        for ($i = 0; $i < DocsThreadRepository::CHANGES_PAGE_SIZE + 5; $i++) {
+            $this->asBob()->postJson($this->threadUrl($oldId.'/reactions'), ['emoji' => '👍'])->assertOk();
+        }
+        $newId = $this->ulid('AJ');
+        $this->asBob()->postJson($this->threadsPath(), [
+            'id' => $newId,
+            'kind' => 'comment',
+            'body' => 'new',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $seen = [];
+        $pages = 0;
+        do {
+            $page = $this->asBob()->getJson($this->threadUrl('changes').'&since='.urlencode($since))->assertOk()->json();
+            $seen = array_merge($seen, $page['created'], $page['updated']);
+            $since = (string) $page['newState'];
+            $pages++;
+        } while (($page['hasMoreChanges'] ?? false) === true && $pages < 20);
+
+        $this->assertGreaterThan(1, $pages);
+        $this->assertContains($newId, $seen);
+    }
+
     public function test_reactions_and_resolve(): void
     {
         $rootId = $this->ulid('AG');

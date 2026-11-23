@@ -56,6 +56,9 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'docs_thread_index',
             'thread_index',
             'app_passwords',
+            'user_mfa',
+            'mfa_recovery_codes',
+            'auth_challenges',
             'notifications',
             'notification_deliveries',
             'notification_markers',
@@ -91,12 +94,16 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'access_token_epoch'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'dav_password_used_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('app_passwords', 'token_hash'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('user_mfa', 'last_used_step'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('auth_challenges', 'pending_secret'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'access_token_epoch'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));

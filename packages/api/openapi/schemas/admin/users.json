@@ -58,6 +58,10 @@
       "isAdmin": {
         "type": "boolean",
         "description": "Whether the user has the admin role."
+      },
+      "mfaEnabled": {
+        "type": "boolean",
+        "description": "Whether the user signs in with an authenticator code."
       }
     },
     "required": [
@@ -68,7 +72,8 @@
       "groups",
       "createdAt",
       "enabled",
-      "isAdmin"
+      "isAdmin",
+      "mfaEnabled"
     ]
   }
 }
