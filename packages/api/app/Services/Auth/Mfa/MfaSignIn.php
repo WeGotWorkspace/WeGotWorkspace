@@ -79,6 +79,7 @@ final class MfaSignIn
             }
             $this->challenges->consume($challenge);
             $this->limiter->reset($username, $ip);
+            $this->limiter->rememberAddress($username, $ip);
 
             return ['status' => 'ok', 'username' => $username, 'epoch' => $epoch];
         }
@@ -118,6 +119,7 @@ final class MfaSignIn
         $this->challenges->consume($challenge);
         $recoveryCodes = $this->mfa->replace($username, $secret, $step);
         $this->limiter->reset($username, $ip);
+        $this->limiter->rememberAddress($username, $ip);
 
         return ['username' => $username, 'recovery_codes' => $recoveryCodes];
     }

@@ -6,6 +6,7 @@ namespace App\Services\Auth;
 
 use App\Exceptions\ApiHttpException;
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 final class LoginRateLimiter
 {
@@ -25,7 +26,13 @@ final class LoginRateLimiter
     /** @var int Per-user ceiling across source IPs: 15 minutes */
     public const int USER_DECAY_SECONDS = 900;
 
-    public function __construct(private RateLimiter $rateLimiter) {}
+    /** @var int How long an address that completed a sign-in stays known for that user: 30 days */
+    public const int KNOWN_ADDRESS_SECONDS = 2_592_000;
+
+    public function __construct(
+        private RateLimiter $rateLimiter,
+        private CacheRepository $cache,
+    ) {}
 
     public function allow(string $username, string $ip): bool
     {
@@ -37,7 +44,7 @@ final class LoginRateLimiter
 
         return ! $this->tooMany($this->ipKey($ipNorm), self::IP_LIMIT)
             && ! $this->tooMany($this->userIpKey($user, $ipNorm), self::USER_IP_LIMIT)
-            && ! $this->tooMany($this->userKey($user), self::USER_LIMIT);
+            && ($this->isKnown($user, $ipNorm) || ! $this->tooMany($this->userKey($user), self::USER_LIMIT));
     }
 
     public function hit(string $username, string $ip): void
@@ -66,7 +73,7 @@ final class LoginRateLimiter
 
         return ! $this->tooMany($this->protocolIpKey($ipNorm), self::PROTOCOL_IP_LIMIT)
             && ! $this->tooMany($this->protocolUserIpKey($user, $ipNorm), self::PROTOCOL_USER_IP_LIMIT)
-            && ! $this->tooMany($this->protocolUserKey($user), self::USER_LIMIT);
+            && ($this->isKnown($user, $ipNorm) || ! $this->tooMany($this->protocolUserKey($user), self::USER_LIMIT));
     }
 
     public function hitProtocol(string $username, string $ip): void
@@ -93,7 +100,7 @@ final class LoginRateLimiter
             1,
             $this->rateLimiter->availableIn($this->protocolIpKey($ipNorm)),
             $this->rateLimiter->availableIn($this->protocolUserIpKey($user, $ipNorm)),
-            $this->rateLimiter->availableIn($this->protocolUserKey($user)),
+            $this->isKnown($user, $ipNorm) ? 0 : $this->rateLimiter->availableIn($this->protocolUserKey($user)),
         );
     }
 
@@ -112,7 +119,7 @@ final class LoginRateLimiter
             1,
             $this->rateLimiter->availableIn($this->ipKey($ipNorm)),
             $this->rateLimiter->availableIn($this->userIpKey($user, $ipNorm)),
-            $this->rateLimiter->availableIn($this->userKey($user)),
+            $this->isKnown($user, $ipNorm) ? 0 : $this->rateLimiter->availableIn($this->userKey($user)),
         );
     }
 
@@ -156,6 +163,36 @@ final class LoginRateLimiter
         $this->rateLimiter->clear(
             $this->userIpKey($this->normalizeUser($username), $this->normalizeIp($ip))
         );
+    }
+
+    /**
+     * Record that this user completed a sign-in from this address. Call it only
+     * after the last factor, never after the password alone.
+     *
+     * The per-user ceiling across addresses stops a password spray from many
+     * addresses, but it also lets anyone lock a named account (`admin`) out
+     * everywhere. A known address skips that ceiling, so the owner still gets
+     * in from where they signed in before. The per-address and
+     * per-user-and-address limits still apply to it.
+     */
+    public function rememberAddress(string $username, string $ip): void
+    {
+        if ($this->isDisabled()) {
+            return;
+        }
+
+        [$user, $ipNorm] = $this->normalized($username, $ip);
+        $this->cache->add($this->knownKey($user, $ipNorm), true, self::KNOWN_ADDRESS_SECONDS);
+    }
+
+    private function isKnown(string $user, string $ipNorm): bool
+    {
+        return $this->cache->has($this->knownKey($user, $ipNorm));
+    }
+
+    private function knownKey(string $user, string $ipNorm): string
+    {
+        return 'login-known-address:'.hash('sha256', $user."\0".$ipNorm);
     }
 
     private function tooMany(string $key, int $limit): bool

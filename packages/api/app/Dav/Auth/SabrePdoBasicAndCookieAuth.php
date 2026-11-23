@@ -56,6 +56,7 @@ final class SabrePdoBasicAndCookieAuth extends PDOBasicAuth
 
             return false;
         }
+        $limiter->rememberAddress($user, $clientIp);
 
         return true;
     }
