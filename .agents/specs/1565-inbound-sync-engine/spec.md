@@ -23,7 +23,7 @@ Move the inbound half of offline sync (pull what changed on the server and fold 
 
 - One engine, many bindings. The engine is plain TypeScript with no React and no Dexie import. Bindings pass in their store functions, which is how `OfflineDomainStore` in `lib/offline/core/types.ts` already works.
 - The JMAP adapters keep `sync()` as their public entry point. PR #1785 (#1661) moves the four adapters onto a shared `JmapInboundAdapter` base with a `protected pullChanges()` / `refetchAll()` seam, and `syncIfStale` needs only `sync()` to resolve true or false. The adapter chunk builds on that base after #1785 merges and does not touch adapter files before then.
-- JMAP `*/get` calls with many ids must stay under the server's `maxObjectsInGet` (1000 by default). Today only `JmapContactsClient` and `JmapFileNodesClient` chunk, each with its own private copy. #1726 and #1780 were this limit on two Drive call paths.
+- JMAP `*/get` calls with many ids must stay under the server's `maxObjectsInGet` (500 by default). Today only `JmapContactsClient` and `JmapFileNodesClient` chunk, each with its own private copy. #1726 and #1780 were this limit on two Drive call paths.
 - Inbound runs under the domain's outbox lock where it does today (Tasks, Contacts). It must never run in the middle of a flush of the same domain.
 - No new IndexedDB schema version for the engine itself. Tokens stay where each domain stores them today. Calendars gets a persisted token in its own chunk (its store already has `readCalendarSyncToken` / `writeCalendarSyncToken`, unused outside the contract).
 
