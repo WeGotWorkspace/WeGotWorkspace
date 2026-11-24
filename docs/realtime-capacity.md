@@ -57,6 +57,24 @@ The burst is the constraint. It lasts until ICE settles and Meet drops back to a
 
 Confirm the assumption on the host with the k6 script.
 
+## Browser traffic budget (#2291)
+
+A shared host's firewall may block an IP above about 60 requests a minute, and it counts every tab, window and device behind that IP. Every API answer therefore carries `X-WGW-Traffic-Budget: background=N; bulk=N; burst=N`, and the service worker of each browser (the one place all its tabs' requests pass) paces to it:
+
+- **Background** (the push stream, signaling events, `…/changes`, notification lists, anything marked `X-WGW-Traffic: background`) draws from one token bucket per browser: `background` per minute, `burst` at once, a request waits at most 30 s.
+- **Bulk** (marked `X-WGW-Traffic: bulk`: first downloads, prefetch) goes one at a time, `bulk` per minute.
+- **Session reads** (`settings/state`, `me`, `jmap/session`) of one signed-in session share one answer for 15 s; a write drops it.
+- **Everything else** (foreground reads, writes) is never delayed; it only uses a token, so polls yield to it.
+- A network error, 429 or 503 brakes background and bulk (2 s doubling to 60 s, or `Retry-After`, at most 5 minutes).
+
+| Profile | background / min | bulk / min | burst | Default for |
+| --- | --- | --- | --- | --- |
+| `shared` | 30 | 20 | 10 | ZIP installs |
+| `standard` | 120 | 120 | 30 | Docker and Kubernetes (`WGW_INSTALL_CHANNEL=docker`) |
+| `off` | 0 | 0 | 0 | — |
+
+`WGW_TRAFFIC_PROFILE` picks the profile; `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE` and `WGW_TRAFFIC_BURST` override one number each (clamped 0–10000; `0` = unpaced). Until a browser has read the header it holds the `shared` numbers. Without a service worker (first visit, private window) the client's own pacing (pacer, idle cadence) still holds; the governor is the second line. A browser that is idle or has every tab hidden is slowed by the clients' cadence (6 s and 30 s push), not by this budget.
+
 ## JMAP push (event source)
 
 Open apps learn about changes through short-burst requests to `GET /api/v1/jmap/events/{types}/{closeafter}/{ping}` ([architecture/jmap-push.md](architecture/jmap-push.md)). Each request computes the per-type states, answers at once and closes. The client reconnects after `retry:` (`WGW_JMAP_PUSH_RETRY_MS`, default 3000 ms). A request never holds an FPM child open.

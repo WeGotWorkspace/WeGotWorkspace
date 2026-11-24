@@ -46,6 +46,24 @@ return [
         'guest_upload_bytes_per_day' => (int) env('WGW_GUEST_UPLOAD_BYTES_PER_DAY', 10 * 1024 * 1024 * 1024),
     ],
     /**
+     * Browser traffic budget (shared hosting, #2291): the service worker of every
+     * browser paces the suite's background requests to these numbers, which it
+     * reads from the `X-WGW-Traffic-Budget` header on API answers. A shared
+     * host's firewall counts all tabs and devices behind one IP, so a ZIP
+     * install defaults to the strict `shared` profile. `standard` is the default
+     * on the Docker channel (also Kubernetes, which uses the image) and `off`
+     * turns pacing off. Each number overrides its profile; all are clamped to
+     * 0-10000 and 0 means unpaced.
+     *
+     * @see docs/realtime-capacity.md
+     */
+    'traffic' => [
+        'profile' => env('WGW_TRAFFIC_PROFILE', env('WGW_INSTALL_CHANNEL') === 'docker' ? 'standard' : 'shared'),
+        'background_per_minute' => env('WGW_TRAFFIC_BACKGROUND_PER_MINUTE'),
+        'bulk_per_minute' => env('WGW_TRAFFIC_BULK_PER_MINUTE'),
+        'burst' => env('WGW_TRAFFIC_BURST'),
+    ],
+    /**
      * JMAP event source (RFC 8620 §7.3, #1660), short-burst only: every
      * response ends at once. `retry_ms` is the reconnect interval sent to the
      * client; raise it on a slow host. `server_timing` adds a `Server-Timing`

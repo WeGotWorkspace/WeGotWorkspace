@@ -18,6 +18,13 @@ import {
   serviceWorkerApiBaseUrl,
 } from "./notifications-core/src/push-subscription-change";
 import { readPushScopes } from "./lib/notifications/push-scope";
+import {
+  classifyRequest,
+  DEFAULT_GOVERNOR_OPTIONS,
+  isGovernedClass,
+  RequestGovernor,
+  TRAFFIC_CLASS_HEADER,
+} from "./lib/traffic/request-governor";
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
@@ -46,6 +53,36 @@ if (import.meta.env.PROD) {
   void self.skipWaiting();
 }
 clientsClaim();
+
+// Shared hosting traffic budget (#2291): every tab's API requests pass one
+// governor. Polls wait their turn, session reads are shared, everything else
+// goes on natively (no respondWith) and is only counted.
+const governorApiPrefix = new URL(
+  serviceWorkerApiBaseUrl(import.meta.env.VITE_WGW_API_BASE_URL as string | undefined),
+  self.location.origin,
+).pathname.replace(/\/$/, "");
+const governor = new RequestGovernor({
+  ...DEFAULT_GOVERNOR_OPTIONS,
+  now: () => Date.now(),
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  fetch: (request) => self.fetch(request),
+});
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  const kind = classifyRequest(
+    event.request.method,
+    url,
+    governorApiPrefix,
+    event.request.headers.get(TRAFFIC_CLASS_HEADER),
+  );
+  if (!kind) return;
+  if (!isGovernedClass(kind)) {
+    governor.observe(kind as "foreground" | "write");
+    return;
+  }
+  event.respondWith(governor.handle(event.request, kind));
+});
 
 self.addEventListener("push", (event) => {
   event.waitUntil(
