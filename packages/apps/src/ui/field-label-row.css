@@ -104,8 +104,7 @@
  * with caption + description: a two-row grid, the description alone on the second row.
  * Columns of one third (caption) and two thirds (control), so fields get room; the
  * description may reach half the row. Neither side reaches into the other (a long
- * value truncates). Phones keep two
- * columns; the text wraps.
+ * value truncates). Phones fold it to one column (see the end of this file).
  */
 .field-label-row--inline {
   @apply mb-0 grid items-center gap-x-4 gap-y-0.5 space-y-0 py-4;
@@ -285,4 +284,50 @@
   margin-inline-end: calc(
     (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
   );
+}
+
+/*
+ * Phones: one column. The caption, its description and then the control, each on its own
+ * line; a half-width value column leaves a text field a sliver of the screen. The control
+ * starts at the row's start (a switch, a dropdown) and a filled field takes the full width.
+ * The selectors match the two-column rules above, so these win by order.
+ */
+@media (max-width: 767px) {
+  .field-label-row--inline,
+  .field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    row-gap: 0.5rem;
+    align-items: start;
+  }
+
+  .field-label-row--inline .field-label-row__control,
+  .field-label-row--inline:has(.field-label-row__description) .field-label-row__control,
+  .field-label-row--inline:has(> .field-label-row__control .input) > .field-label-row__control,
+  .field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input)
+    > .field-label-row__control {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+    margin-block: 0;
+  }
+
+  .field-label-row--inline:has(> .field-label-row__control .input)
+    > .field-label-row__text
+    > .field-label-row__label,
+  .field-label-row--inline:has(> .field-label-row__control .input)
+    > .field-label-row__text
+    > .field-label-row__caption-row {
+    margin-top: 0;
+  }
+
+  .field-label-row__description,
+  .field-label-row--fill .field-label-row__description {
+    grid-column: 1;
+    max-width: none;
+  }
+
+  .field-label-row__below {
+    grid-row: auto;
+  }
 }

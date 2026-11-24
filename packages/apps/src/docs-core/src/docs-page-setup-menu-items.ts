@@ -28,7 +28,7 @@ export function docsPageSetupButtonLabel(
 }
 
 /**
- * Menu rows: paper size (`None` shows no pages), then orientation, then Fit to screen.
+ * Menu rows: paper size (`None` shows no pages), then orientation, then Fit to width.
  * Each row is a one-tap choice. Orientation and fit have no meaning without paper, so
  * they are off for `None`.
  */
