@@ -280,19 +280,21 @@ test("an admin reset lets the user sign in with the password alone", async ({ br
   const page = await admin.newPage();
   await page.goto("/admin/users");
   const confirm = page.getByRole("alertdialog");
+  const resetItem = page.getByRole("menuitem", { name: "Reset two-factor sign-in" });
+  const openRowMenu = () => page.getByRole("button", { name: `More options: ${DISPLAY_NAME}` });
   await expect(async () => {
     if (!(await confirm.isVisible())) {
-      await page
-        .getByRole("button", { name: `Reset two-factor sign-in for ${DISPLAY_NAME}` })
-        .click();
+      await openRowMenu().click();
+      await resetItem.click();
     }
     await expect(confirm).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await expect(confirm.getByText(`Reset two-factor sign-in for ${DISPLAY_NAME}?`)).toBeVisible();
   await confirm.getByRole("button", { name: /^Reset/ }).click();
-  await expect(
-    page.getByRole("button", { name: `Reset two-factor sign-in for ${DISPLAY_NAME}` }),
-  ).toHaveCount(0);
+  await expect(confirm).toBeHidden();
+  await openRowMenu().click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(resetItem).toHaveCount(0);
   await admin.close();
 
   expect(await tokenStatus()).toBe("ok");
