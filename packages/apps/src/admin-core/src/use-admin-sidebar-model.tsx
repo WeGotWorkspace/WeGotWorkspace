@@ -1,26 +1,33 @@
 import {
   Activity,
   ArrowUpCircle,
+  CalendarDays,
   DatabaseBackup,
-  FolderSync,
   MessagesSquare,
   Search,
   Send,
   Sparkles,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 import type { AdminSection } from "@/lib/models/admin-types";
 
 /** Sidebar groups; the group title is also the header path (Admin › Services). */
-export type AdminSectionGroup = "people" | "services" | "system";
+export type AdminSectionGroup = "people" | "services" | "apps" | "system";
 
 export const ADMIN_GROUP_LABELS: Record<AdminSectionGroup, string> = {
   people: "People",
   services: "Services",
+  apps: "Apps",
   system: "System",
 };
 
-export const ADMIN_GROUP_ORDER: readonly AdminSectionGroup[] = ["people", "services", "system"];
+export const ADMIN_GROUP_ORDER: readonly AdminSectionGroup[] = [
+  "people",
+  "services",
+  "apps",
+  "system",
+];
 
 export type AdminSectionDescriptor = {
   id: AdminSection;
@@ -54,18 +61,25 @@ const ADMIN_SECTIONS_MODEL: readonly AdminSectionDescriptor[] = [
     icon: <MessagesSquare className="size-3.5" />,
   },
   {
-    id: "webdav",
-    group: "services",
-    label: "WebDAV",
-    description: "Defaults for calendar, contacts and file sync apps.",
-    icon: <FolderSync className="size-3.5" />,
-  },
-  {
     id: "mcp",
     group: "services",
     label: "Connected assistants",
     description: "Let people connect Claude, ChatGPT or Mistral to their workspace.",
     icon: <Sparkles className="size-3.5" />,
+  },
+  {
+    id: "calendar",
+    group: "apps",
+    label: "Calendar",
+    description: "Defaults for calendars on this server.",
+    icon: <CalendarDays className="size-3.5" />,
+  },
+  {
+    id: "general",
+    group: "system",
+    label: "General",
+    description: "Where this server lives on its domain.",
+    icon: <SlidersHorizontal className="size-3.5" />,
   },
   {
     id: "health",
