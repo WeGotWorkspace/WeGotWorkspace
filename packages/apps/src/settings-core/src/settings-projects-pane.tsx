@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { EllipsisVertical } from "lucide-react";
 import type { SettingsGroup } from "@/lib/models/settings-types";
-import { teamMembersLabels } from "@/share-ui/team-members-labels";
 import { Tag } from "@/tag/src/tag";
 import {
   AlertDialog,
@@ -250,35 +249,45 @@ export function ProjectsManagePane({
                 </span>
               }
               action={
-                group.isTeamAdmin && onManageMembers ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    label="Edit"
-                    aria-label={teamMembersLabels.manageOf(group.displayName)}
-                    onClick={() => onManageMembers(group)}
-                  />
+                group.isTeamAdmin ? (
+                  <span className="projects-manage-team-actions">
+                    {onManageMembers || snapshot.status === "ready" ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            type="button"
+                            variant="ghost"
+                            label={`${labels.moreOptions}: ${group.displayName}`}
+                            icon={<EllipsisVertical aria-hidden />}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {snapshot.status === "ready" ? (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setCreatingIn({
+                                  slug,
+                                  displayName: group.displayName,
+                                  isTeamAdmin: true,
+                                })
+                              }
+                            >
+                              {labels.newProject}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {onManageMembers ? (
+                            <DropdownMenuItem onSelect={() => onManageMembers(group)}>
+                              {labels.edit}
+                            </DropdownMenuItem>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </span>
                 ) : null
               }
             >
               {projects.length > 0 ? renderRows(projects) : null}
-              {group.isTeamAdmin && snapshot.status === "ready" ? (
-                <div className="projects-manage-new">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    label={labels.newProject}
-                    className="-ms-3"
-                    onClick={() =>
-                      setCreatingIn({
-                        slug,
-                        displayName: group.displayName,
-                        isTeamAdmin: true,
-                      })
-                    }
-                  />
-                </div>
-              ) : null}
             </SettingsPaneCard>
           );
         })}
