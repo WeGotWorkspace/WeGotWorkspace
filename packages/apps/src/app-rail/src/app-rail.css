@@ -45,6 +45,40 @@
   margin-inline-start: calc(-1 * (var(--app-rail-width) + env(safe-area-inset-left, 0px)));
 }
 
+/*
+ * The sidebar's rounded start corners leave two notches against the rail edge, where the
+ * page (or the drawer scrim) would show. Fill just those notches with the rail's own
+ * fill, so the strip reads as continuing behind the panel. Each patch is the square
+ * outside the corner's quarter circle.
+ */
+.app-rail::before,
+.app-rail::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 100%;
+  inline-size: var(--sidebar-panel-radius);
+  block-size: var(--sidebar-panel-radius);
+  pointer-events: none;
+}
+
+.app-rail::before {
+  inset-block-start: 0;
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent calc(var(--sidebar-panel-radius) - 0.5px),
+    var(--app-rail-bg) var(--sidebar-panel-radius)
+  );
+}
+
+.app-rail::after {
+  inset-block-end: 0;
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent calc(var(--sidebar-panel-radius) - 0.5px),
+    var(--app-rail-bg) var(--sidebar-panel-radius)
+  );
+}
+
 /* Beside the rail the sidebar is a panel with two free edges: round, rule and shadow on both. */
 .app-rail ~ .app-sidebar {
   border-inline-start: 1px solid var(--workspace-divider-color);
