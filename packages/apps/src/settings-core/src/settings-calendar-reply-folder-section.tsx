@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { ArrowRight, MailCheck } from "lucide-react";
+import { MailCheck } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import { calendarReplyFolderLabels as labels } from "@/settings-core/src/settings-calendar-reply-folder-labels";
@@ -70,7 +70,6 @@ function ReplyFolderBody({ controller }: { controller: SettingsCalendarReplyFold
               variant="outline"
               size="sm"
               label={labels.openIncomingEmail}
-              trailingIcon={<ArrowRight aria-hidden />}
               onClick={() => showPanel("incoming-email")}
             />
           </span>

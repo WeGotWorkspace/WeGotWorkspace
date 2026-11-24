@@ -41,6 +41,13 @@
   min-block-size: var(--control-height-sm);
 }
 
+/* One column (phones): the control starts at the row's start, like the rows above it. */
+@media (max-width: 767px) {
+  .settings-incoming-email__folder {
+    @apply justify-start;
+  }
+}
+
 .settings-incoming-email__folder-status {
   @apply flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground;
 }

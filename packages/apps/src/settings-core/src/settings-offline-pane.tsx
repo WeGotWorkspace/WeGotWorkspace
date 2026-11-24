@@ -127,10 +127,9 @@ export function SettingsOfflinePane() {
       onConfirm: () => void clearCache(),
     });
 
-  const turnOff = (alsoClear: boolean) => {
+  const turnOff = () => {
     persist({ contentSyncEnabled: false });
     setTurnOffOpen(false);
-    if (alsoClear) void clearCache();
   };
 
   return (
@@ -209,12 +208,7 @@ export function SettingsOfflinePane() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            {username ? (
-              <AlertDialogAction asChild onClick={() => turnOff(true)}>
-                <Button variant="outline">Turn off and clear cache</Button>
-              </AlertDialogAction>
-            ) : null}
-            <AlertDialogAction asChild onClick={() => turnOff(false)}>
+            <AlertDialogAction asChild onClick={turnOff}>
               <Button variant="primary">Turn off</Button>
             </AlertDialogAction>
           </AlertDialogFooter>
