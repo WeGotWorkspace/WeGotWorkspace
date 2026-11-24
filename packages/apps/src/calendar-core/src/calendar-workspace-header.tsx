@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button, IconButton } from "@/button/src/button";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import { DropdownMenu, type DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
 import { CollectionGhostButton } from "@/ui/collection-ghost-select";
 import { ViewHeader } from "@/view-header/src/view-header";
@@ -42,9 +42,9 @@ export type CalendarWorkspaceHeaderProps = {
 };
 
 /**
- * The calendar's header, two rows in both modes. Row one: the range title, the inbox at
- * the end. Row two: the calendar/list menu, the
- * period menu (day, week, month, year), then Today and previous / next at the end.
+ * The calendar's header, two rows in both modes. Row one: the range title (its menu holds
+ * Today), the inbox at the end. Row two: the period menu (day, week, month, year) under the
+ * title, then the calendar/list menu and previous / next at the end.
  */
 export function CalendarWorkspaceHeader({
   L,
@@ -82,18 +82,12 @@ export function CalendarWorkspaceHeader({
     checked: view === id,
     onClick: () => onSelectView(id),
   }));
+  // The range title's menu has one entry: back to today.
+  const titleMenu: DropdownMenuEntry[] = [
+    { id: "today", label: L.today, icon: <CalendarDays />, onClick: onToday },
+  ];
   const toolbar = (
     <div className="calendar-header-toolbar">
-      <ViewModeToggle
-        value={presentation}
-        onChange={onPresentationChange}
-        gridLabel={L.showAsCalendar}
-        listLabel={L.showAsList}
-        disabled={searching}
-        variant="menu"
-        triggerVariant="ghost"
-        onOpenChange={onMenuOpenChange}
-      />
       <DropdownMenu
         items={periodMenu}
         disabled={searching}
@@ -107,12 +101,14 @@ export function CalendarWorkspaceHeader({
         }
       />
       <div className="calendar-header-toolbar__end">
-        <Button
-          label={L.today}
-          size="md"
-          variant="outline"
+        <ViewModeToggle
+          value={presentation}
+          onChange={onPresentationChange}
+          gridLabel={L.showAsCalendar}
+          listLabel={L.showAsList}
           disabled={searching}
-          onClick={onToday}
+          variant="menu"
+          onOpenChange={onMenuOpenChange}
         />
         <IconButton
           label={periodNav.previous}
@@ -140,6 +136,8 @@ export function CalendarWorkspaceHeader({
           title={searching ? L.searchTitle : title}
           // Narrow headers (phones, the grid) fall back to the short range.
           compactTitle={searching || wideList ? undefined : compactTitle}
+          titleMenu={searching ? undefined : titleMenu}
+          onTitleMenuOpenChange={onMenuOpenChange}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={onToggleSidebar}
           {...(listLayout

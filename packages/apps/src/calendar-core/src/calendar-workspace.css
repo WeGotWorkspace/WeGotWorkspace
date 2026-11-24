@@ -49,9 +49,10 @@
 }
 
 /*
- * Two header rows, grid and list alike. Row one: the range title (sidebar toggle before it),
- * the inbox at the end. Row two: the calendar/list menu, the period menu, then Today and
- * previous / next at the end. Each row is one header strip high, with its own hairline.
+ * Two header rows, grid and list alike. Row one: the range title (its menu holds Today,
+ * the sidebar toggle before it), the inbox at the end. Row two: the period menu at the start,
+ * then the calendar/list menu and previous / next at the end. Row one is one header strip
+ * high, row two slimmer and frosted; each has its own hairline.
  */
 .calendar-workspace
   :is(.workspace-app-layout__main-header, .collection-header):has(> .calendar-header-row) {
@@ -91,9 +92,12 @@
   @apply ms-auto flex shrink-0 items-center gap-1;
 }
 
-/* The period menu follows the calendar/list menu: no pull-back into the gutter. */
+/*
+ * The period menu's label lines up with the sidebar toggle's glyph above it: the toggle's
+ * inset (control height less the 14px glyph, halved), less the ghost button's own padding.
+ */
 .calendar-workspace .calendar-header-toolbar__period {
-  margin-inline-start: 0;
+  margin-inline-start: calc((var(--workspace-header-control-height) - 0.875rem) / 2 - 0.625rem);
 }
 
 .calendar-workspace .workspace-app-layout__main {

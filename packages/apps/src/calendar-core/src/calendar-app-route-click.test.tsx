@@ -139,9 +139,11 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname).not.toBe("/calendar/list/month/2026-09-01");
     });
 
-    const toolbar = document.querySelector<HTMLElement>(".calendar-header-toolbar");
-    if (!toolbar) throw new Error("header toolbar not found");
-    fireEvent.click(within(toolbar).getByRole("button", { name: "Today" }));
+    // Today sits in the range title's menu.
+    await pickFromMenu(
+      within(screen.getByRole("heading", { level: 2 })).getByRole("button"),
+      "Today",
+    );
     // "Today" anchors on the real current date (local), which may coincide with
     // the 2026-09-01 anchor reached via "Next" — assert the exact target instead.
     const now = new Date();
