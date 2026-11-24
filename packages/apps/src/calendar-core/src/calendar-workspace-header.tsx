@@ -37,13 +37,13 @@ export type CalendarWorkspaceHeaderProps = {
   onToday: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  /** The grid's invitations inbox (list mode has none). */
+  /** The invitations inbox, in both modes (list mode opens it as a side drawer). */
   invitationsTrigger: ReactNode;
 };
 
 /**
  * The calendar's header, two rows in both modes. Row one: the range title, the inbox at
- * the end (list mode has none and searches instead). Row two: the calendar/list menu, the
+ * the end. Row two: the calendar/list menu, the
  * period menu (day, week, month, year), then Today and previous / next at the end.
  */
 export function CalendarWorkspaceHeader({
@@ -152,7 +152,7 @@ export function CalendarWorkspaceHeader({
                 searchInputRef,
               }
             : {})}
-          titleTrailing={listLayout ? undefined : invitationsTrigger}
+          titleTrailing={invitationsTrigger}
         />
       </div>
       {toolbar}

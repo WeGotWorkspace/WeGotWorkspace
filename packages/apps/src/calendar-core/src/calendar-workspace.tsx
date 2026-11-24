@@ -258,7 +258,6 @@ export function CalendarWorkspace({
     [invitations.notifications, session.user.email, session.user.username],
   );
   const invitationsLayout = useDocsCommentsLayout();
-  const useInvitationsDrawer = invitationsLayout === "drawer";
   const { directoryGroups, sharePrincipals, searchSharePrincipals, noTeam, attendeePickerNoTeam } =
     useCalendarSharePrincipals({
       data,
@@ -679,6 +678,8 @@ export function CalendarWorkspace({
 
   /** List mode is a list + detail workspace (as Tasks, Notes, Contacts); the grid keeps the popover. */
   const listLayout = presentation === "list";
+  /** List mode has no docked column to spare: its inbox is always the side drawer. */
+  const useInvitationsDrawer = invitationsLayout === "drawer" || listLayout;
   const closeEventDetail = eventPreview?.interactiveEdit
     ? closeInteractiveEditor
     : closeEventPreview;
@@ -712,9 +713,7 @@ export function CalendarWorkspace({
   });
   /** Wide list mode: the list header has room for the full range title. */
   const wideList = listLayout && !detailOverlay;
-  /** The invitations inbox is the grid's: list mode has no trigger and hides the panel
-   * (it is back on switching to the grid). */
-  const invitationsShown = invitationsOpen && !listLayout;
+  const invitationsShown = invitationsOpen;
   const listEvents = surfaceEventsForView ?? surface?.events;
   const periodDays = useMemo(
     () =>
@@ -1046,7 +1045,7 @@ export function CalendarWorkspace({
 
   const workspaceClassName = cn(
     "calendar-workspace",
-    invitationsShown && "calendar-workspace--panel-open",
+    invitationsShown && !listLayout && "calendar-workspace--panel-open",
     listLayout && "calendar-workspace--list note-detail-desk",
     className,
   );
