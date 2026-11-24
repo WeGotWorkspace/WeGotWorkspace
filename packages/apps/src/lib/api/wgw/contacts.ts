@@ -424,11 +424,12 @@ export async function fetchContactsLiveBootstrap(options?: {
 /**
  * Shared hosting traffic budget: the first card page goes at once (so the list
  * paints), and every further page takes a turn from the browser-wide
- * background schedule it shares with Docs and Drive downloads.
+ * background schedule it shares with Docs and Drive downloads. Card pages go
+ * before those: Contacts and Calendar invitee search wait on them.
  */
 async function paceNextCardPage(remainingIds: readonly string[]): Promise<void> {
   if (remainingIds.length === 0) return;
-  await backgroundSyncPacer().acquire();
+  await backgroundSyncPacer().acquire(undefined, "first");
 }
 
 /**
@@ -446,4 +447,35 @@ export async function fetchContactCardPages(
     await onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds });
     await paceNextCardPage(remainingIds);
   });
+}
+
+/**
+ * The photo pass after a photo-less first download: `media` and `state` of
+ * `ids`, one page per request, each request paced as bulk background work in
+ * the browser-wide schedule (after Contacts pages, alongside Docs and Drive).
+ * `onPage` is awaited before the next request.
+ */
+export async function fetchContactCardPhotos(
+  ids: string[],
+  onPage: (page: {
+    photos: Pick<ContactCard, "id" | "media" | "state">[];
+    remainingCardIds: string[];
+  }) => void | Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const { contacts, accountId } = await connectedContacts();
+  await contacts.getContactCardMediaPages(
+    accountId,
+    ids,
+    ({ page, remainingIds }) =>
+      onPage({
+        photos: page.list.map((card) => ({
+          id: card.id,
+          media: card.media as ContactCard["media"],
+          state: card.state,
+        })),
+        remainingCardIds: remainingIds,
+      }),
+    () => backgroundSyncPacer().acquire(signal, "bulk"),
+  );
 }

@@ -118,14 +118,14 @@ final class ContactCardRepository
     /**
      * @return array<string, mixed>
      */
-    public function show(string $username, string $cardId): array
+    public function show(string $username, string $cardId, bool $withMedia = true): array
     {
         $located = $this->findOwnedCard($username, $cardId);
         if ($located === null) {
             throw new ApiHttpException(404, 'Contact card not found.', 'not_found');
         }
 
-        return $this->mapper->toContactCard($located['card'], $located['bookApiId'], $username);
+        return $this->mapper->toContactCard($located['card'], $located['bookApiId'], $username, $withMedia);
     }
 
     /**

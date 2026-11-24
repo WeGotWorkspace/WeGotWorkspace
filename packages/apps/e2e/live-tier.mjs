@@ -29,6 +29,7 @@ export const liveTierSpecs = [
   "contacts-list-windowed",
   "contacts-offline-read-only",
   "contacts-open-draft-merge",
+  "contacts-photo-pass",
   "contacts-push",
   "docs-collab-access-revoked",
   "docs-collab-doorbell",

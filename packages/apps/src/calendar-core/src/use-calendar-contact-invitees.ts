@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listCards } from "@/lib/api/wgw/contacts";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
@@ -7,7 +6,10 @@ import {
   readContactsBootstrapFromCache,
   readContactsColdDownload,
 } from "@/lib/offline/contacts/contacts-offline-store";
-import { refreshCachedContacts } from "@/lib/offline/contacts/contacts-hybrid-operations";
+import {
+  ensureContactsDownloaded,
+  refreshCachedContacts,
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
 export type CalendarContactInviteesState = {
@@ -18,25 +20,29 @@ export type CalendarContactInviteesState = {
 /**
  * Invitee suggestions come from the Contacts app's offline cache, which its
  * paced first download and live sync keep current. Calendar never downloads
- * the whole address book on open: on a cold start that doubled the Contacts
- * download as an unpaced burst (shared hosting traffic budget). Without a
- * cache the list starts empty; teammates and a typed email still work.
+ * the whole address book itself: that doubled the Contacts download as an
+ * unpaced burst (shared hosting traffic budget). Without a cache the list
+ * starts empty; teammates and a typed email still work.
  *
  * Typing in the invitee search re-reads the cache, which the Contacts live
  * inbound sync keeps current (mounted below, one syncing tab per browser).
- * Only when this browser has no contacts cache at all does it ask the server.
+ * When this browser has no complete contacts cache, a search starts (or
+ * joins) the shared Contacts first download: paced, in large photo-less
+ * pages, once for every app. A search during that download shows what is
+ * cached so far; this resolves with the cards once the download is done.
  */
 export async function refreshCalendarContactCards(username: string): Promise<ContactCard[] | null> {
   const account = username.trim();
   if (!account) return null;
   const cached = await readContactsBootstrapFromCache(account);
-  if (cached) return cached.data.cards;
+  if (cached && !(await readContactsColdDownload(account))) return cached.data.cards;
   try {
-    return await listCards();
+    await ensureContactsDownloaded();
   } catch {
-    // Keep the last good cache/list; callers treat null as "do not replace".
+    // Keep what is cached; the next search tries again. Null means "do not replace".
     return null;
   }
+  return (await readContactsBootstrapFromCache(account))?.data.cards ?? null;
 }
 
 export function useCalendarContactInvitees(username?: string): CalendarContactInviteesState {
@@ -109,6 +115,8 @@ export function useCalendarContactInvitees(username?: string): CalendarContactIn
       const next = await refreshCalendarContactCards(account);
       if (next == null || loadGen.current !== gen) return;
       setCards(next);
+      // A first download may have just finished: start the live sync.
+      await readCacheState(gen);
     });
   }, [account, readCacheState]);
 
