@@ -1,13 +1,22 @@
 import type { MeetChannel } from "@/lib/models/meet-types";
 
-export function meetChannelHashName(channel: Pick<MeetChannel, "name" | "kind">): string {
-  if (channel.kind === "meeting") return channel.name;
-  return `# ${channel.name.toLowerCase()}`;
+type LabeledChannel = Pick<MeetChannel, "name" | "kind"> &
+  Partial<Pick<MeetChannel, "projectId" | "scope">>;
+
+/** A Project or Team channel carries its name as written; personal channels read lowercased. */
+export function meetChannelText(channel: LabeledChannel): string {
+  if (channel.kind === "meeting" || channel.projectId || channel.scope === "group") {
+    return channel.name;
+  }
+  return channel.name.toLowerCase();
 }
 
-export function meetChannelTitle(channel: Pick<MeetChannel, "name" | "kind">): string {
-  if (channel.kind === "meeting") return channel.name;
-  return `#${channel.name.toLowerCase()}`;
+export function meetChannelHashName(channel: LabeledChannel): string {
+  return channel.kind === "meeting" ? channel.name : `# ${meetChannelText(channel)}`;
+}
+
+export function meetChannelTitle(channel: LabeledChannel): string {
+  return channel.kind === "meeting" ? channel.name : `#${meetChannelText(channel)}`;
 }
 
 export function meetChannelTopicSubtitle(topic: string | null | undefined): string | undefined {

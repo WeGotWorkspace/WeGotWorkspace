@@ -70,3 +70,13 @@ describe("meetChannelMatchesQuery", () => {
     expect(meetChannelMatchesQuery({ name: "Design" }, "ship")).toBe(false);
   });
 });
+
+describe("Project and Team channel casing", () => {
+  it("keeps the name as written for Project and Team channels", () => {
+    expect(meetChannelTitle({ name: "Studio Project", kind: "channel", projectId: "p1" })).toBe(
+      "#Studio Project",
+    );
+    expect(meetChannelTitle({ name: "General", kind: "channel", scope: "group" })).toBe("#General");
+    expect(meetChannelTitle({ name: "General", kind: "channel" })).toBe("#general");
+  });
+});

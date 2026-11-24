@@ -1,3 +1,6 @@
+import { useProjects } from "@/lib/projects/projects-store";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
+import { useDriveProjectScope } from "@/drive-core/src/use-drive-project-scope";
 import { TooltipProvider } from "@/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, Download, PanelRight } from "lucide-react";
@@ -62,6 +65,7 @@ import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/hooks/use-offline-sync-toast";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { isTopLevelDriveApiPath } from "@/lib/files/drive-path-utils";
+import { isProjectFolderUiPath, useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { resolveDetailFilePreview } from "@/lib/file-preview/file-preview-utils";
 import "@/drive-core/src/drive-workspace.css";
@@ -102,6 +106,7 @@ export function DriveWorkspace({
     username: controller.currentUsername,
   });
 
+  const projectFolders = useProjectFolders();
   const activeFile = controller.active;
   const needsActiveRightsFetch = Boolean(
     shareOperations &&
@@ -243,11 +248,26 @@ export function DriveWorkspace({
         : null,
     [uploadModel],
   );
-  const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({
+  const projectScope = useDriveProjectScope({
+    view: controller.view,
+    groupRoots: controller.sidebarGroupRoots,
+    selectView: controller.selectView,
+  });
+  const { projects } = useProjects();
+  const teamDriveRoots = useMemo(
+    () => projectScope.groupRoots.filter((root) => !isProjectFolderUiPath(root.path, projects)),
+    [projectScope.groupRoots, projects],
+  );
+  const selectedProjectIds = useSelectedProjectIds();
+  const { primarySidebarItems, groupSidebarItems, projectSidebarItems } = useDriveSidebarModel({
+    projects,
+    selectedProjectIds,
     labels: controller.labels,
     view: controller.view,
     uploads: uploadCounts,
-    sidebarGroupRoots: controller.sidebarGroupRoots,
+    // Project folders are listed under Projects only, never as Team Drives rows.
+    sidebarGroupRoots: teamDriveRoots,
+    hidePersonalDrive: projectScope.hidePersonalDrive,
     selectView: controller.selectView,
     sidebarDropZoneProps: controller.sidebarDropZoneProps,
     commitMoveToFolder: controller.commitMoveToFolder,
@@ -339,6 +359,7 @@ export function DriveWorkspace({
         }
         canManageStructure={
           structureEnabled &&
+          !projectFolders.isProjectFolder(active) &&
           resolveDriveFileCanManageStructure(active.mayManageStructure, {
             isActive: true,
             activeMayManageStructure,
@@ -353,6 +374,7 @@ export function DriveWorkspace({
     );
   }, [
     active,
+    projectFolders,
     folderPickerRootLabels,
     selectedIds.length,
     selectionBarButtons,
@@ -394,6 +416,7 @@ export function DriveWorkspace({
                 onOpenDocsFile={onOpenDocsFile}
                 primarySidebarItems={primarySidebarItems}
                 groupSidebarItems={groupSidebarItems}
+                projectSidebarItems={projectSidebarItems}
               />
             }
             mainHeader={<DriveMainHeader controller={controller} searchEnabled={searchEnabled} />}
@@ -488,6 +511,7 @@ function DriveSidebar({
   onOpenDocsFile,
   primarySidebarItems,
   groupSidebarItems,
+  projectSidebarItems,
 }: {
   controller: DriveController;
   session: WorkspaceSession;
@@ -495,6 +519,7 @@ function DriveSidebar({
   onOpenDocsFile?: (apiPath: string) => void;
   primarySidebarItems: ReturnType<typeof useDriveSidebarModel>["primarySidebarItems"];
   groupSidebarItems: ReturnType<typeof useDriveSidebarModel>["groupSidebarItems"];
+  projectSidebarItems: ReturnType<typeof useDriveSidebarModel>["projectSidebarItems"];
 }) {
   const {
     labels,
@@ -542,6 +567,9 @@ function DriveSidebar({
       {groupSidebarItems.length > 0 ? (
         <SidebarSection title={labels.sidebarSharedDrives} items={groupSidebarItems} />
       ) : null}
+      {projectSidebarItems.length > 0 ? (
+        <SidebarSection title={labels.sidebarProjects} items={projectSidebarItems} />
+      ) : null}
     </AppSidebar>
   );
 }
@@ -553,6 +581,7 @@ function DriveMainHeader({
   controller: DriveController;
   searchEnabled: boolean;
 }) {
+  const projectFolders = useProjectFolders();
   const {
     labels,
     sidebarOpen,
@@ -588,7 +617,7 @@ function DriveMainHeader({
         trail.length > 0 ? (
           <span className="drive-main-header__trail">
             <PathBreadcrumb
-              items={withDriveRootIcons(trail)}
+              items={withDriveRootIcons(trail, projectFolders.isProjectFolderUiPath)}
               currentPath={view.type === "folder" ? view.path : undefined}
               onNavigate={(path) => selectView({ type: "folder", path })}
             />

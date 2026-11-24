@@ -30,6 +30,8 @@ export type MeetChannelRights = {
   mayShare?: boolean;
   mayReadItems?: boolean;
   mayDelete?: boolean;
+  /** False for a Project channel: its name follows the Project. */
+  mayRename?: boolean;
 };
 
 export type MeetChannel = {
@@ -39,6 +41,8 @@ export type MeetChannel = {
   kind: MeetChannelKind;
   scope: "personal" | "group";
   groupSlug?: string | null;
+  /** The Project this channel belongs to (#818), or null. Mocks may leave it out. */
+  projectId?: string | null;
   shareWith?: CollectionShareWith | null;
   isSharee?: boolean;
   myRights?: MeetChannelRights | null;

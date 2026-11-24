@@ -37,6 +37,7 @@ import { incomingEmailLabels } from "@/settings-core/src/settings-incoming-email
 import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
+import { projectsLabels } from "@/projects-ui/src/projects-labels";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
 import { SettingsSecurityPane } from "@/settings-core/src/settings-security-pane";
 import { appPasswordLabels } from "@/settings-core/src/settings-app-passwords-labels";
@@ -61,8 +62,8 @@ export function registerBuiltinSettings(): void {
   });
   registerPanel({
     id: "memberships",
-    label: "Teams",
-    description: "Teams you belong to",
+    label: "Teams & Projects",
+    description: projectsLabels.panelDescription,
     icon: <Users className="size-3.5" />,
     group: "account",
     needsSettingsApi: true,
@@ -176,7 +177,12 @@ export function registerBuiltinSettings(): void {
   registerSlice({
     id: "memberships",
     panelIds: ["memberships"],
-    render: (props) => <SettingsMembershipsPane groups={props.memberships} />,
+    render: (props) => (
+      <SettingsMembershipsPane
+        groups={props.memberships}
+        currentUsername={props.profile.username}
+      />
+    ),
   });
   registerSlice({
     id: "security-app-passwords",

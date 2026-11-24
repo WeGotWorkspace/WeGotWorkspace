@@ -158,4 +158,34 @@ describe("calendar share helpers", () => {
       shareWith: null,
     });
   });
+
+  it("maps projectId and mayRename; a Project calendar's owner side cannot delete it", () => {
+    const rights: JmapCalendarRights = {
+      mayReadFreeBusy: true,
+      mayReadItems: true,
+      mayWriteAll: true,
+      mayWriteOwn: true,
+      mayUpdatePrivate: true,
+      mayRSVP: true,
+      mayShare: true,
+      mayDelete: true,
+    };
+    const owner = calendarInfoFromJmap({
+      id: "project-cal",
+      name: "Launch",
+      projectId: "p-1",
+      myRights: { ...rights, mayRename: false },
+    });
+    expect(owner).toMatchObject({ projectId: "p-1", mayRename: false, mayDelete: false });
+    const sharee = calendarInfoFromJmap({
+      id: "project-copy",
+      name: "Launch",
+      projectId: "p-1",
+      myRights: { ...rights, mayRename: true },
+    });
+    expect(sharee).toMatchObject({ projectId: "p-1", mayRename: true, mayDelete: true });
+    const plain = calendarInfoFromJmap({ id: "plain", name: "Plain", projectId: null });
+    expect(plain.projectId).toBeUndefined();
+    expect(plain.mayRename).toBeUndefined();
+  });
 });

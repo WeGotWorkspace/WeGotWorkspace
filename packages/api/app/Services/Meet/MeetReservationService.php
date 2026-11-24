@@ -15,6 +15,7 @@ use App\Services\Calendars\CalendarRepository;
 use App\Services\Calendars\Conversion\LocationConversionSupport;
 use App\Services\Chat\ChatChannelRepository;
 use App\Services\Notify\MeetStartedNotify;
+use App\Services\Notify\NotificationProjects;
 use App\Services\Settings\GroupMembershipResolver;
 use DateTimeInterface;
 use Illuminate\Support\Carbon;
@@ -212,13 +213,18 @@ final class MeetReservationService
             'meet',
             MeetStartedNotify::ACTION,
             'meet/'.$room,
-            MeetStartedNotify::eventData(
-                MeetStartedNotify::actorLabel($actor),
-                $room,
-                $recipients,
-                $channel?->channelUri,
-                $channel !== null ? ($channel->isDm ? 'dm' : 'channel') : null,
-            ),
+            [
+                ...MeetStartedNotify::eventData(
+                    MeetStartedNotify::actorLabel($actor),
+                    $room,
+                    $recipients,
+                    $channel?->channelUri,
+                    $channel !== null ? ($channel->isDm ? 'dm' : 'channel') : null,
+                ),
+                'projectId' => $channel !== null && ! $channel->isDm
+                    ? app(NotificationProjects::class)->forChannelUri($channel->channelUri)
+                    : null,
+            ],
         );
     }
 

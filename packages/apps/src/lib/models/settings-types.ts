@@ -3,6 +3,7 @@ import type { SettingsProfileRequest } from "@wgw/openapi-types/settings-types";
 export const BUILTIN_PANEL_IDS = [
   "profile",
   "memberships",
+  "projects",
   "security",
   "offline",
   "assistants",
@@ -49,6 +50,8 @@ export type SettingsGroup = {
   displayName: string;
   /** Members of the Team, the user included. */
   memberCount: number;
+  /** The user is a team admin of this Team (#2278). */
+  isTeamAdmin: boolean;
 };
 
 export type SettingsMcpShareCall = {

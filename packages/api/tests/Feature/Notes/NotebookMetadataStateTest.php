@@ -33,6 +33,7 @@ final class NotebookMetadataStateTest extends WgwDatabaseTestCase
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/bob');
         app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal('principals/alice');
         $team = $this->seedWgwGroup('principals/groups/'.self::TEAM, 'Team');
+        $this->appointTeamAdmin(self::TEAM, 'bob');
         $this->addPrincipalToGroup($team, $this->principal('bob'));
         $this->addPrincipalToGroup($team, $this->principal('alice'));
     }

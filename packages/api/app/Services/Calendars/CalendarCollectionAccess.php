@@ -8,9 +8,12 @@ use App\Exceptions\ApiHttpException;
 use App\Models\CalendarCollectionMeta;
 use App\Models\CalendarInstance;
 use App\Models\CalendarSubscription;
+use App\Models\ChatChannelMeta;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Projects\ProjectRegistry;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Database\Eloquent\Collection;
 use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -24,12 +27,16 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  */
 final class CalendarCollectionAccess
 {
+    public const PROJECT_ITEM_MESSAGE = 'This belongs to a Project. Rename, recolor or delete the Project instead.';
+
     public function __construct(
         private readonly DriveGroupResolver $groups,
         private readonly CalendarShareInvites $shareInvites,
         private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
+        private readonly TeamRoles $teamRoles,
         private readonly AdminRoleResolver $admins,
+        private readonly ProjectRegistry $projects,
     ) {}
 
     /**
@@ -101,10 +108,10 @@ final class CalendarCollectionAccess
      */
     public function visibleHighestAccess(string $username, $instances)
     {
-        return $this->shareVisibility->rejectDismissedSharees(
+        return $this->withoutArchivedProjects($this->shareVisibility->rejectDismissedSharees(
             $username,
             $this->preferHighestAccessPerCalendar($this->shareVisibility->rejectHiddenSharees($username, $instances)),
-        );
+        ));
     }
 
     /**
@@ -147,18 +154,21 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * Sharees may change their instance name/color only.
+     * Sharees may change their instance name/color only. On the owner side, a Project
+     * collection's name and color are the Project's (#817 B1).
      *
      * @param  list<string>  $disallowedKeys
      * @param  array<string, mixed>  $payload
      */
-    public function assertShareePatchAllowed(
+    public function assertPatchAllowed(
         CalendarInstance $instance,
         array $payload,
         array $disallowedKeys,
         string $message,
     ): void {
         if (! $this->shareInvites->isSharee($instance)) {
+            $this->assertProjectPatchAllowed($instance, $payload);
+
             return;
         }
 
@@ -172,25 +182,35 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * Group-owned collections (not inbound sharee copies) may be destroyed
-     * only by an instance admin. Sharees still dismiss; personal owners stay.
+     * Team-owned collections (not inbound sharee copies) may be destroyed only
+     * by a team admin of that Team (#2278). An organization admin has no bypass.
+     * Sharees still dismiss; personal owners stay. A Team meeting room is no Team
+     * collection ($meeting): it keeps the organization-admin rule from before #2278.
      */
-    public function mayDeleteGroupOwned(string $username, CalendarInstance $instance): bool
+    public function mayDeleteGroupOwned(string $username, CalendarInstance $instance, bool $meeting = false): bool
     {
         if ($this->shareInvites->isSharee($instance)) {
             return true;
+        }
+        if ($this->isProjectCollection($instance)) {
+            return false;
         }
 
         $principalUri = $instance->principaluri;
 
         return ! is_string($principalUri)
             || ! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)
-            || $this->admins->isAdmin($username);
+            || ($meeting
+                ? $this->admins->isAdmin($username)
+                : $this->teamRoles->mayManageTeamCollections(
+                    $username,
+                    substr($principalUri, strlen(AdminConstants::GROUP_PREFIX)),
+                ));
     }
 
-    public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance): void
+    public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance, bool $meeting = false): void
     {
-        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a team collection.');
+        $this->assertGroupOwnedAdmin($username, $instance, 'Only a team admin can delete a team collection.', $meeting);
     }
 
     /**
@@ -198,13 +218,38 @@ final class CalendarCollectionAccess
      * another group) removes it for the rest of the group, so it needs the
      * same right as deleting it. Personal collections move freely.
      */
-    public function assertGroupOwnedTransferAllowed(string $username, CalendarInstance $instance): void
+    public function assertGroupOwnedTransferAllowed(string $username, CalendarInstance $instance, bool $meeting = false): void
     {
         $this->assertGroupOwnedAdmin(
             $username,
             $instance,
-            'Only an instance admin can move a team collection out of its team.',
+            'Only a team admin can move a team collection out of its team.',
+            $meeting,
         );
+    }
+
+    /**
+     * Adding a collection to a Team, by creating it there or by moving one in,
+     * is for that Team's team admins (#2278). The caller has checked membership.
+     */
+    public function assertMayAddToTeam(string $username, string $groupSlug): void
+    {
+        $this->teamRoles->assertMayManageTeamCollections(
+            $username,
+            $groupSlug,
+            'Only a team admin can add a collection to a team.',
+        );
+    }
+
+    /**
+     * A named channel is a Team collection. A meeting room started with a Team is not:
+     * every member may open one.
+     */
+    public function assertMayAddChannelToTeam(string $username, string $groupSlug, string $chatKind): void
+    {
+        if ($chatKind !== ChatChannelMeta::KIND_MEETING) {
+            $this->assertMayAddToTeam($username, $groupSlug);
+        }
     }
 
     /**
@@ -223,10 +268,69 @@ final class CalendarCollectionAccess
         return true;
     }
 
-    private function assertGroupOwnedAdmin(string $username, CalendarInstance $instance, string $message): void
+    /** The id of the Project that owns this collection, or null (#817 B1). */
+    public function projectIdOf(CalendarInstance $instance): ?string
     {
-        if (! $this->mayDeleteGroupOwned($username, $instance)) {
-            throw new ApiHttpException(403, $message, 'group_delete_admin_only');
+        return $this->projects->projectIdFor((int) $instance->calendarid);
+    }
+
+    /**
+     * The Project fields of a collection response: `projectId`, and `myRights` with `mayRename`.
+     *
+     * @param  array<string, bool>  $rights
+     * @return array{projectId: ?string, myRights: array<string, bool>}
+     */
+    public function projectFields(CalendarInstance $instance, array $rights): array
+    {
+        return [
+            'projectId' => $this->projectIdOf($instance),
+            'myRights' => [...$rights, 'mayRename' => $this->mayRename($instance)],
+        ];
+    }
+
+    /**
+     * Whether the caller may rename or recolor the collection itself. A Project collection
+     * follows its Project, so only a sharee's own copy can be renamed (#817 B1).
+     */
+    public function mayRename(CalendarInstance $instance): bool
+    {
+        return $this->shareInvites->isSharee($instance) || ! $this->isProjectCollection($instance);
+    }
+
+    /**
+     * A Project collection's name and color are the Project's: an owner-side change is 403.
+     * A sharee's own name and color stay theirs; other properties stay writable.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function assertProjectPatchAllowed(CalendarInstance $instance, array $payload): void
+    {
+        if ($this->mayRename($instance)) {
+            return;
+        }
+        // Sending the current value back (a form that posts every field) is no change.
+        $renames = array_key_exists('name', $payload)
+            && trim((string) $payload['name']) !== trim((string) ($instance->displayname ?? ''));
+        $recolors = array_key_exists('color', $payload)
+            && CalendarColorPalette::normalize($payload['color'])
+                !== CalendarColorPalette::normalize($instance->calendarcolor);
+        if ($renames || $recolors) {
+            throw new ApiHttpException(403, self::PROJECT_ITEM_MESSAGE, 'project_item');
+        }
+    }
+
+    private function isProjectCollection(CalendarInstance $instance): bool
+    {
+        return $this->projectIdOf($instance) !== null;
+    }
+
+    private function assertGroupOwnedAdmin(string $username, CalendarInstance $instance, string $message, bool $meeting): void
+    {
+        if (! $this->shareInvites->isSharee($instance) && $this->isProjectCollection($instance)) {
+            throw new ApiHttpException(403, self::PROJECT_ITEM_MESSAGE, 'project_item');
+        }
+        if (! $this->mayDeleteGroupOwned($username, $instance, $meeting)) {
+            throw new ApiHttpException(403, $message, 'team_admin_only');
         }
     }
 
@@ -261,7 +365,21 @@ final class CalendarCollectionAccess
      */
     public function withoutDismissedOrHidden(string $username, Collection $instances): Collection
     {
-        return $this->shareVisibility->rejectInvisibleSharees($username, $instances);
+        return $this->withoutArchivedProjects($this->shareVisibility->rejectInvisibleSharees($username, $instances));
+    }
+
+    /**
+     * The collections of an archived Project are gone for everyone, sharees included, until
+     * it is unarchived (#819 B2).
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function withoutArchivedProjects(Collection $instances): Collection
+    {
+        return $instances
+            ->reject(fn (CalendarInstance $instance): bool => $this->projects->isArchived((int) $instance->calendarid))
+            ->values();
     }
 
     /**
@@ -382,7 +500,10 @@ final class CalendarCollectionAccess
         $team = $teamUris === [] ? new Collection : $owned($teamUris)
             ->reject(fn (CalendarInstance $instance): bool => $this->isTeamSubscription((string) $instance->uri));
 
-        return ['personal' => array_values($personal->all()), 'team' => array_values($team->all())];
+        return [
+            'personal' => array_values($this->withoutArchivedProjects($personal->values())->all()),
+            'team' => array_values($this->withoutArchivedProjects($team->values())->all()),
+        ];
     }
 
     /**

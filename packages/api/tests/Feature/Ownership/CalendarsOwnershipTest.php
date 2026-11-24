@@ -214,9 +214,9 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
             }
             $cases[] = OwnershipCase::of(self::EVT_QUERY_CHANGES, $actor, Scope::OtherUser, Outcome::NotFound);
 
-            foreach ([Scope::OwnUser, Scope::OwnGroup] as $scope) {
-                $cases[] = OwnershipCase::of(self::CAL_SET, $actor, $scope, Outcome::Allowed)->variant('create');
-            }
+            $cases[] = OwnershipCase::of(self::CAL_SET, $actor, Scope::OwnUser, Outcome::Allowed)->variant('create');
+            // Adding a calendar to a Team is for its team admins (#2278); neither actor is one in crew.
+            $cases[] = OwnershipCase::of(self::CAL_SET, $actor, Scope::OwnGroup, Outcome::Forbidden)->variant('create');
             // The membership check answers 403 for every slug the caller is not
             // in, existing or not, so it reveals nothing (see unknown-group).
             foreach ([Scope::OtherGroup, Scope::FormerGroup] as $scope) {
@@ -233,9 +233,11 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
                 }
                 $cases[] = OwnershipCase::of($op, $actor, Scope::OtherUser, Outcome::NotFound);
             }
-            foreach ($member ? [Scope::OwnUser, Scope::OwnGroup] : [Scope::OwnGroup] as $scope) {
-                $cases[] = OwnershipCase::of(self::SUB_STORE, $actor, $scope, Outcome::Allowed);
+            if ($member) {
+                $cases[] = OwnershipCase::of(self::SUB_STORE, $actor, Scope::OwnUser, Outcome::Allowed);
             }
+            // A Team subscription adds a calendar to the Team: team admins only (#2278).
+            $cases[] = OwnershipCase::of(self::SUB_STORE, $actor, Scope::OwnGroup, Outcome::Forbidden)->withCode('team_admin_only');
             foreach ($member ? [Scope::OtherGroup, Scope::FormerGroup] : [Scope::OtherGroup] as $scope) {
                 $cases[] = OwnershipCase::of(self::SUB_STORE, $actor, $scope, Outcome::Forbidden);
             }
@@ -303,11 +305,12 @@ final class CalendarsOwnershipTest extends WgwDatabaseTestCase implements Owners
         $case = OwnershipCase::of(self::CAL_SET, $actor, $scope, match (true) {
             ! $visible => Outcome::NotFound,
             $sharee => Outcome::Dismissed,
-            $scope === Scope::OwnGroup && $actor === Actor::Member => Outcome::Forbidden,
+            // Team admins only (#2278): not a plain member, not an organization admin.
+            $scope === Scope::OwnGroup => Outcome::Forbidden,
             default => Outcome::Allowed,
         })->variant('destroy');
 
-        // JMAP maps group_delete_admin_only onto the forbidden SetError type.
+        // JMAP maps team_admin_only onto the forbidden SetError type.
         return $case;
     }
 

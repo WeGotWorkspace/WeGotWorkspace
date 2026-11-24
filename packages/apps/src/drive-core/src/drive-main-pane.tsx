@@ -16,6 +16,7 @@ import { resolveGridFilePreview } from "@/lib/file-preview/file-preview-utils";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { isTopLevelDriveApiPath } from "@/lib/files/drive-path-utils";
+import { useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
 import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
@@ -164,6 +165,8 @@ export function DriveMainPane({
     onOpenShare(file.apiPath, file.title);
   };
 
+  const projectFolders = useProjectFolders();
+
   const fileCanShare = (file: DriveFile) => {
     if (!shareEnabled || inTrashView || !file.apiPath?.trim()) return false;
     if (isTopLevelDriveApiPath(file.apiPath)) return false;
@@ -171,8 +174,10 @@ export function DriveMainPane({
     return resolvedMayShare === true;
   };
 
+  // The server refuses to rename, move or delete a Project's folder: no actions for it.
   const fileCanManageStructure = (file: DriveFile) =>
     structureEnabled &&
+    !projectFolders.isProjectFolder(file) &&
     resolveDriveFileCanManageStructure(file.mayManageStructure, {
       isActive: file.id === active?.id,
       activeMayManageStructure,

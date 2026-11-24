@@ -23,6 +23,12 @@ class AppSharedCalendar extends SharedCalendar
         return new self($backend, $calendar->calendarInfo);
     }
 
+    /** The `calendars.id` of this collection (the same for the owner and every sharee). */
+    public function collectionId(): int
+    {
+        return $this->calendarId();
+    }
+
     /** The calendar's id, shared by every instance of it. */
     public function calendarId(): int
     {

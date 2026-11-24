@@ -7,6 +7,7 @@ namespace Tests\Support;
 use App\Models\GroupMember;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Teams\TeamRoles;
 
 trait SeedsWgwIdentity
 {
@@ -36,6 +37,14 @@ trait SeedsWgwIdentity
     {
         $username = $user instanceof Principal ? substr((string) $user->uri, strlen('principals/')) : $user;
         User::query()->where('username', $username)->update(['is_admin' => true]);
+    }
+
+    /** Team admin of `principals/groups/{slug}` (#2278). The users must already be members. */
+    protected function appointTeamAdmin(string $slug, string ...$usernames): void
+    {
+        foreach ($usernames as $username) {
+            app(TeamRoles::class)->appoint($slug, $username);
+        }
     }
 
     protected function addPrincipalToGroup(Principal $group, Principal $member): GroupMember

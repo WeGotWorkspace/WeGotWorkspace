@@ -10,6 +10,7 @@ use App\Models\DriveShareGrant;
 use App\Models\GroupMember;
 use App\Services\Admin\AdminConstants;
 use App\Services\Notify\DocsSharedNotify;
+use App\Services\Notify\NotificationProjects;
 
 /**
  * Notifies new member sharees after a share is created or its grants change.
@@ -50,6 +51,7 @@ final class DriveShareNotifier
                     (string) $share->id,
                 ),
                 'path' => $path,
+                'projectId' => app(NotificationProjects::class)->forPath($path),
             ],
         );
     }

@@ -15,6 +15,8 @@ const hub = vi.hoisted(() => ({
   },
 }));
 
+// The Project filter is not under test here: All Projects.
+vi.mock("@/lib/projects/use-project-filter", () => ({ useSelectedProjectIds: () => null }));
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwHasAuthenticatedSession: () => true,
   wgwIsGuestSession: () => false,

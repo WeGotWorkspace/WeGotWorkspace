@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { Temporal } from "@js-temporal/polyfill";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { JmapClient } from "@/lib/jmap-client";
+import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 import { JmapAvailabilityClient } from "@/lib/jmap-client/availability/JmapAvailabilityClient";
 import {
   mergeWeekPeriods,
@@ -90,6 +91,8 @@ export type UseTeamAvailabilityArgs = {
   tickMs?: number;
   /** Title of untitled busy blocks. */
   busyLabel?: string;
+  /** Overrides the Team of the selected Project filter (#818); null lists everyone. */
+  teamSlug?: string | null;
 };
 
 export type TeamAvailabilityState = {
@@ -124,6 +127,21 @@ export function visibleAvailabilityWeeks(
   } catch {
     return [];
   }
+}
+
+/**
+ * Narrows the people to one Team (the selected Project's Team): you, and everyone whose
+ * shared Teams include it. A cached list from before the server sent `teamSlugs` stays whole.
+ */
+export function membersOfTeam(
+  list: readonly JmapTeamMember[],
+  teamSlug: string | null | undefined,
+): JmapTeamMember[] {
+  if (!teamSlug) return [...list];
+  return list.filter(
+    (member) =>
+      member.isSelf || member.teamSlugs === undefined || member.teamSlugs.includes(teamSlug),
+  );
 }
 
 export function orderTeamMembers(list: readonly JmapTeamMember[]): JmapTeamMember[] {
@@ -206,7 +224,11 @@ export function useTeamAvailability({
   now = Date.now,
   tickMs = TEAM_AVAILABILITY_TICK_MS,
   busyLabel = defaultCalendarLabels.teamAvailabilityBusy,
+  teamSlug: teamSlugOverride,
 }: UseTeamAvailabilityArgs): TeamAvailabilityState {
+  // Only the people of the selected Project's Team (#818); everyone without a Project filter.
+  const filterTeamSlug = useSelectedProjectTeamSlug();
+  const teamSlug = teamSlugOverride === undefined ? filterTeamSlug : teamSlugOverride;
   const presetMode = preset != null;
   const live = !presetMode && Boolean(source) && Boolean(viewer);
   const [members, setMembers] = useState<CachedTeamMembers | null>(null);
@@ -224,7 +246,11 @@ export function useTeamAvailability({
     [view, anchor, weekStart],
   );
   const visibleKey = visibleWeeks.join(",");
-  const memberList = presetMode ? preset.members : (members?.list ?? null);
+  const allMembers = presetMode ? preset.members : (members?.list ?? null);
+  const memberList = useMemo(
+    () => (allMembers ? membersOfTeam(allMembers, teamSlug) : null),
+    [allMembers, teamSlug],
+  );
   const shownList = useMemo(
     () => (memberList ?? []).filter((member) => shownIds.has(member.id)).map((m) => m.id),
     [memberList, shownIds],

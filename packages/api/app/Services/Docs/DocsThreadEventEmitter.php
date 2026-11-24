@@ -7,6 +7,7 @@ namespace App\Services\Docs;
 use App\Events\EventDispatch;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Notify\DocsThreadActivityNotify;
+use App\Services\Notify\NotificationProjects;
 
 /**
  * Fires docs.thread_activity into the suite notify pipeline from the thread save-path.
@@ -44,17 +45,20 @@ final class DocsThreadEventEmitter
             'docs',
             DocsThreadActivityNotify::ACTION,
             $path,
-            DocsThreadActivityNotify::eventData(
-                DocsThreadActivityNotify::actorLabel($actor),
-                $path,
-                $threadId,
-                $messageId,
-                $kind,
-                $isReply,
-                $recipients,
-                $snippet,
-                $this->fileNodes->liveByKey(ltrim($path, '/'))?->node_id,
-            ),
+            [
+                ...DocsThreadActivityNotify::eventData(
+                    DocsThreadActivityNotify::actorLabel($actor),
+                    $path,
+                    $threadId,
+                    $messageId,
+                    $kind,
+                    $isReply,
+                    $recipients,
+                    $snippet,
+                    $this->fileNodes->liveByKey(ltrim($path, '/'))?->node_id,
+                ),
+                'projectId' => app(NotificationProjects::class)->forPath($path),
+            ],
         );
     }
 }

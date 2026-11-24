@@ -39,6 +39,7 @@ describe("useAdminGroupMutations", () => {
         await result.current.updateGroup("principals/groups/ops-team", {
           name: "Operations",
           memberUserIds: ["carol"],
+          teamAdminUserIds: [],
         }),
       ).toBe(true);
     });
@@ -69,6 +70,7 @@ describe("useAdminGroupMutations", () => {
         await result.current.updateGroup("principals/groups/administrators", {
           name: "Admins",
           memberUserIds: ["carol", "alice"],
+          teamAdminUserIds: [],
         }),
       ).toBe(true);
       expect(await result.current.deleteGroup("principals/groups/administrators")).toBe(true);
@@ -78,6 +80,7 @@ describe("useAdminGroupMutations", () => {
     expect(updateGroup).toHaveBeenCalledWith("principals/groups/administrators", {
       displayName: "Admins",
       members: ["alice", "carol"],
+      teamAdmins: [],
     });
     expect(result.current.applyAdminData).toHaveBeenCalledWith(data);
     expect(showSuccess).toHaveBeenCalledWith("Team saved");

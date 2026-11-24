@@ -1,0 +1,29 @@
+@import "../styles.css" reference;
+
+/* One list of people or Teams: avatar, name, a line under it, icon actions at the end. */
+.avatar-list {
+  @apply m-0 list-none p-0;
+}
+
+.avatar-list > * + * {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.avatar-list__row {
+  @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
+}
+
+.avatar-list__actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.avatar-list__action {
+  color: var(--workspace-foreground);
+}
+
+/* The last action ends on the column edge, like the page rows. */
+.avatar-list__actions > .icon-button--size-md:last-child {
+  margin-inline-end: calc(
+    (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
+  );
+}

@@ -60,12 +60,15 @@ final class TaskAssignedNotify
             'tasks',
             self::ACTION,
             'tasks/'.$changes->taskId,
-            self::eventData(
-                TaskStatusChangedNotify::actorLabel($actor),
-                trim((string) ($task['title'] ?? '')),
-                $changes->taskId,
-                $recipients,
-            ),
+            [
+                ...self::eventData(
+                    TaskStatusChangedNotify::actorLabel($actor),
+                    trim((string) ($task['title'] ?? '')),
+                    $changes->taskId,
+                    $recipients,
+                ),
+                'projectId' => app(NotificationProjects::class)->forCollection((int) $list->calendarid),
+            ],
         );
     }
 

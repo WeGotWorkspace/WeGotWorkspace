@@ -22,7 +22,7 @@ export async function reconcileWorld({ project = "wgw-sim", dataDir, date, log, 
     return writes;
   }
   const infraClient = (u) => client(u, "bootstrap");
-  await applyPlan({ admin, writes, registry, infraCreate: createInfra({ world, client: infraClient, origin: origin(project) }), log });
+  await applyPlan({ admin, writes, registry, infraCreate: createInfra({ world, client: infraClient, origin: origin(project), admin }), log });
   registry.save();
   return writes;
 }

@@ -14,8 +14,10 @@ export const driveLabels = {
   sidebarRecent: filesBrowserSidebarLabels.recent,
   sidebarStarred: filesBrowserSidebarLabels.starred,
   sidebarTrash: filesBrowserSidebarLabels.trash,
-  /** My Drives section title (SST with Docs; was "Team drives"). */
-  sidebarSharedDrives: filesBrowserSidebarLabels.drivesSection,
+  /** The drives section title (Docs shares it). */
+  sidebarSharedDrives: "Drives",
+  /** Section of the Project folders (#818). */
+  sidebarProjects: "Project Folders",
   /** Root label for Team drives; the UI path segment stays `Groups`. */
   teamsRoot: filesBrowserSidebarLabels.teamsRoot,
   searchPlaceholder: "Search in Drive...",
@@ -185,7 +187,7 @@ export const driveLabels = {
   accessScopesTitle: "Scopes",
   accessRevokeAllPublic: "Revoke all public links",
   accessManageShare: "Manage share",
-  accessSearchPlaceholder: "Search people and teams…",
+  accessSearchPlaceholder: "Search people and Teams…",
   accessFilterAll: "All",
   accessFilterExternal: "External",
   accessFilterPublic: "Public links",
@@ -202,7 +204,7 @@ export const driveLabels = {
   accessRevokeSuccess: "Public links revoked",
   sharedIndicator: "Shared",
   publicShareIndicator: "Public link",
-  teamShareIndicator: "Shared with team",
+  teamShareIndicator: "Shared with Team",
   /** Location column for items received via Shared with me. */
   sharedBy: (username: string) => `Shared by ${username}`,
 } as const;

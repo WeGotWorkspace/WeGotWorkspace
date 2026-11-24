@@ -23,6 +23,8 @@ export type MeetWorkspaceSidebarProps = {
   session: WorkspaceSession;
   onLogout?: () => void;
   sections: MeetChannelSections;
+  /** Team display names by slug, to tell same-named Team chats apart. */
+  teamNames?: Readonly<Record<string, string>>;
   /** Owned meeting channels that belong in today's sidebar, already filtered. */
   todayMeetings: MeetChannel[];
   /** Calendar meetings without a channel of their own. */
@@ -38,10 +40,24 @@ export type MeetWorkspaceSidebarProps = {
   channelCallAudioOnly: (channelId: string) => boolean;
   meetingStartLabel: (channel: MeetChannel) => string | null;
   onCreateChannel: () => void;
+  /** False while a Project is selected: a new channel would not belong to it. */
+  canCreateChannel?: boolean;
   onCreateMeeting: () => void;
   onJoinUpcomingMeeting?: (href: string) => void;
   onEditUpcomingMeeting?: (meeting: MeetUpcomingMeeting) => void;
 };
+
+/** The Team's name for a Team chat whose name another row in the section shares. */
+function teamChatLabel(
+  chats: readonly MeetChannel[],
+  channel: MeetChannel,
+  teamNames: Readonly<Record<string, string>> | undefined,
+): string | null {
+  const name = channel.name.toLowerCase();
+  const clash = chats.some((other) => other.id !== channel.id && other.name.toLowerCase() === name);
+  if (!clash || !channel.groupSlug) return null;
+  return teamNames?.[channel.groupSlug] ?? channel.groupSlug;
+}
 
 /** Left sidebar: new-meeting menu, channel/meeting/DM sections, settings footer. */
 export function MeetWorkspaceSidebar({
@@ -50,6 +66,7 @@ export function MeetWorkspaceSidebar({
   session,
   onLogout,
   sections,
+  teamNames,
   todayMeetings,
   leftoverUpcoming,
   directMessagePeople,
@@ -62,6 +79,7 @@ export function MeetWorkspaceSidebar({
   channelCallAudioOnly,
   meetingStartLabel,
   onCreateChannel,
+  canCreateChannel = true,
   onCreateMeeting,
   onJoinUpcomingMeeting,
   onEditUpcomingMeeting,
@@ -78,14 +96,18 @@ export function MeetWorkspaceSidebar({
           menuLabel={meetLabels.newChannelMenu}
           icon={<Video />}
           onMainAction={onCreateMeeting}
-          items={[
-            {
-              id: "create-channel",
-              label: meetLabels.newChannel,
-              icon: <Hash aria-hidden />,
-              onClick: onCreateChannel,
-            },
-          ]}
+          items={
+            canCreateChannel
+              ? [
+                  {
+                    id: "create-channel",
+                    label: meetLabels.newChannel,
+                    icon: <Hash aria-hidden />,
+                    onClick: onCreateChannel,
+                  },
+                ]
+              : []
+          }
         />
       }
       footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
@@ -105,6 +127,29 @@ export function MeetWorkspaceSidebar({
         <SidebarSection title={meetLabels.sidebarSharedWithMe}>
           <MeetSidebarRows
             channels={sections.shared}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            channelHasLiveCall={channelHasLiveCall}
+            channelCallAudioOnly={channelCallAudioOnly}
+          />
+        </SidebarSection>
+      ) : null}
+      {sections.projects.length > 0 ? (
+        <SidebarSection title={meetLabels.sidebarProjects}>
+          <MeetSidebarRows
+            channels={sections.projects}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            channelHasLiveCall={channelHasLiveCall}
+            channelCallAudioOnly={channelCallAudioOnly}
+          />
+        </SidebarSection>
+      ) : null}
+      {sections.teamChats.length > 0 ? (
+        <SidebarSection title={meetLabels.sidebarTeamChats}>
+          <MeetSidebarRows
+            teamNameOf={(channel) => teamChatLabel(sections.teamChats, channel, teamNames)}
+            channels={sections.teamChats}
             selectedId={selectedId}
             onSelect={onSelect}
             channelHasLiveCall={channelHasLiveCall}

@@ -1,12 +1,23 @@
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
+import { isProjectCollection } from "@/lib/projects/project-match";
 
 export type CalendarCollectionWriteInfo = Pick<CalendarInfo, "scope" | "mayShare" | "mayWrite">;
 export type CalendarSettingsInfo = Pick<
   CalendarInfo,
   "scope" | "groupSlug" | "mayShare" | "mayWrite" | "subscriptionId"
 > &
-  Partial<Pick<CalendarInfo, "id" | "isDefault" | "mayDelete">>;
+  Partial<Pick<CalendarInfo, "id" | "isDefault" | "mayDelete" | "projectId" | "mayRename">>;
+
+/**
+ * The owner side of a Project calendar: its name, color and lifetime follow the Project,
+ * so it has no edit pencil and no delete. A sharee's own copy (`mayRename`) stays editable.
+ */
+export function isProjectLockedCalendar(
+  calendar: Pick<CalendarInfo, "projectId" | "mayRename">,
+): boolean {
+  return isProjectCollection(calendar) && calendar.mayRename !== true;
+}
 
 /**
  * Personal owners (`mayShare === true` or omitted). Group calendars stay
@@ -46,7 +57,7 @@ export function pickDefaultCalendarId(
 
 /** Open Edit calendar — owners, team, subscriptions, and ACL sharees (name + color). */
 export function canOpenCalendarSettings(calendar?: CalendarSettingsInfo): boolean {
-  if (!calendar) return false;
+  if (!calendar || isProjectLockedCalendar(calendar)) return false;
   return (
     canWriteCalendarCollection(calendar) ||
     Boolean(calendar.subscriptionId) ||

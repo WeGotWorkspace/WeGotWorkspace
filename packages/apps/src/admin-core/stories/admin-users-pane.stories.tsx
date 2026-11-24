@@ -168,14 +168,16 @@ export const AdminRole: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await expect(canvas.getAllByText("Admin")).toHaveLength(1);
+    await expect(canvas.getAllByText("Organization admin")).toHaveLength(1);
 
     await userEvent.click(canvas.getByRole("button", { name: "Edit Alice Example" }));
     const ownDialog = await body.findByRole("dialog", { name: "Edit user" });
-    const ownSwitch = within(ownDialog).getByRole("switch", { name: "Administrator" });
+    const ownSwitch = within(ownDialog).getByRole("switch", { name: "Organization admin" });
     await expect(ownSwitch).toHaveAttribute("aria-checked", "true");
     await expect(ownSwitch).toBeDisabled();
-    await expect(ownDialog).toHaveTextContent("You cannot remove your own administrator access.");
+    await expect(ownDialog).toHaveTextContent(
+      "You cannot remove your own organization admin role.",
+    );
     await userEvent.click(within(ownDialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => {
       expect(body.queryByRole("dialog")).toBeNull();
@@ -183,14 +185,14 @@ export const AdminRole: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
     const bobDialog = await body.findByRole("dialog", { name: "Edit user" });
-    const bobSwitch = within(bobDialog).getByRole("switch", { name: "Administrator" });
+    const bobSwitch = within(bobDialog).getByRole("switch", { name: "Organization admin" });
     await expect(bobSwitch).toHaveAttribute("aria-checked", "false");
     await expect(bobSwitch).toBeEnabled();
     await userEvent.click(bobSwitch);
     await userEvent.click(within(bobDialog).getByRole("button", { name: "Save" }));
     await waitFor(() => {
       expect(body.queryByRole("dialog")).toBeNull();
-      expect(canvas.getAllByText("Admin")).toHaveLength(2);
+      expect(canvas.getAllByText("Organization admin")).toHaveLength(2);
     });
     toast.dismiss();
   },

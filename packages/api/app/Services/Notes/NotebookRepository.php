@@ -19,6 +19,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use App\Services\Notify\NotificationProjects;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -49,7 +50,8 @@ final class NotebookRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
-        $lists = $this->accessibleNotebookInstances($username)
+        $instances = $this->accessibleNotebookInstances($username);
+        $lists = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -81,6 +83,17 @@ final class NotebookRepository
      */
     public function create(string $username, array $payload): array
     {
+        return $this->createNotebook($username, $payload, viaLegacyImport: false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  bool  $viaLegacyImport  the update's notes import, which runs as the system on
+     *                                 behalf of a Team member and so skips the team-admin rule
+     * @return array<string, mixed>
+     */
+    private function createNotebook(string $username, array $payload, bool $viaLegacyImport): array
+    {
         $name = trim((string) ($payload['name'] ?? ''));
         if ($name === '') {
             throw new ApiHttpException(400, 'name is required.', 'bad_request');
@@ -96,6 +109,9 @@ final class NotebookRepository
         if ($groupSlug !== null) {
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
+            }
+            if (! $viaLegacyImport) {
+                $this->collectionAccess->assertMayAddToTeam($username, $groupSlug);
             }
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
@@ -154,7 +170,7 @@ final class NotebookRepository
             }
             [$instance, $groupSlug] = $resolved;
 
-            $this->collectionAccess->assertShareePatchAllowed(
+            $this->collectionAccess->assertPatchAllowed(
                 $instance,
                 $payload,
                 ['description', 'shareWith', 'groupSlug'],
@@ -261,7 +277,7 @@ final class NotebookRepository
     /**
      * @return array<string, mixed>
      */
-    public function findOrCreateNamed(string $username, string $name, ?string $groupSlug = null): array
+    public function findOrCreateNamedForLegacyImport(string $username, string $name, ?string $groupSlug = null): array
     {
         foreach ($this->list($username)['list'] as $notebook) {
             $sameName = ($notebook['name'] ?? '') === $name;
@@ -272,10 +288,10 @@ final class NotebookRepository
             }
         }
 
-        return $this->create($username, [
+        return $this->createNotebook($username, [
             'name' => $name,
             ...(is_string($groupSlug) && $groupSlug !== '' ? ['groupSlug' => $groupSlug] : []),
-        ]);
+        ], viaLegacyImport: true);
     }
 
     public function findAccessibleNotebook(string $username, string $notebookId): ?CalendarInstance
@@ -470,14 +486,17 @@ final class NotebookRepository
                 'notes',
                 CollectionSharedNotify::NOTES_ACTION,
                 'notes/'.$id,
-                CollectionSharedNotify::eventData(
-                    'notes',
-                    CollectionSharedNotify::actorLabel($username),
-                    $name,
-                    $id,
-                    $access,
-                    [$sharee],
-                ),
+                [
+                    ...CollectionSharedNotify::eventData(
+                        'notes',
+                        CollectionSharedNotify::actorLabel($username),
+                        $name,
+                        $id,
+                        $access,
+                        [$sharee],
+                    ),
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
+                ],
             );
         }
     }
@@ -545,7 +564,7 @@ final class NotebookRepository
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            ...$this->collectionAccess->projectFields($instance, $rights),
         ];
     }
 

@@ -46,6 +46,7 @@ trait TaskThreadFixtures
             $this->seedInboxTaskListFor($username);
         }
         $this->seedSharedTeam('crew', 'bob', 'alice', 'carol');
+        $this->appointTeamAdmin('crew', 'bob');
     }
 
     /** bob's "Groceries", shared with alice (write) and carol (read). Returns bob's list id. */

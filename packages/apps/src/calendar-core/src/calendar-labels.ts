@@ -373,7 +373,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
       ? "1 task was skipped. Import it in Tasks."
       : `${count} tasks were skipped. Import them in Tasks.`,
   importFileHasOnlyTasks: "This file has tasks, not events. Import it in Tasks.",
-  myCalendarsSection: "My calendars",
+  myCalendarsSection: "Calendars",
   myCalendarsShowAll: "Show all my calendars",
   myCalendarsHideAll: "Hide all my calendars",
   sharedWithMeSection: workspaceLabels.sharing.sharedWithMe,
@@ -406,7 +406,7 @@ export const defaultCalendarLabels: CalendarUILabels = {
   changeCalendarOwnerConfirmToGroup: (groupName) =>
     `This calendar will move to ${groupName}. Events and existing shares stay. People who are not in that team lose access unless they have a share.`,
   changeCalendarOwnerConfirmToPersonal:
-    "This calendar will move to your personal calendars. Events and existing shares stay. Other team members lose access unless they have a share.",
+    "This calendar will move to your personal calendars. Events and existing shares stay. Other Team members lose access unless they have a share.",
   changeCalendarOwnerConfirm: workspaceLabels.sharing.changeOwner,
   subscribeCalendar: "Subscribe to a calendar",
   subscribeCalendarTitle: "Subscribe to calendar",

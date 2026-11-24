@@ -43,6 +43,7 @@ import {
   canOpenCalendarSettings,
   canRenameCalendar,
   canWriteCalendarCollection,
+  isProjectLockedCalendar,
   pickDefaultCalendarId,
 } from "@/calendar-core/src/calendar-collection-write";
 import { isSharedWithMeCalendar } from "@/calendar-core/src/calendar-sidebar-order";
@@ -95,6 +96,7 @@ import { calendarViewPrefs } from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
 import { useCalendarHiddenIds } from "@/calendar-core/src/use-calendar-hidden-ids";
+import { useCalendarProjectScope } from "@/calendar-core/src/use-calendar-project-scope";
 import { withIds } from "@/sidebar-section/src/section-toggle-all";
 import { useCalendarSearch } from "@/calendar-core/src/use-calendar-search";
 import {
@@ -393,10 +395,7 @@ export function useCalendarController({
     setHiddenCalendarIds((current) => withIds(current, [calendarId], !current.has(calendarId)));
   }, []);
 
-  const visibleCalendarIds = useMemo(
-    () => new Set(calendars.filter((c) => !hiddenCalendarIds.has(c.id)).map((c) => c.id)),
-    [calendars, hiddenCalendarIds],
-  );
+  const { visibleCalendarIds, ...scope } = useCalendarProjectScope(calendars, hiddenCalendarIds);
 
   const dateRange = useMemo(
     () => viewDateRange(view, anchor, weekStart),
@@ -451,8 +450,8 @@ export function useCalendarController({
 
   /** Sidebar create-target; falls back if the selection disappears from bootstrap data. */
   const defaultCalendarId = useMemo(
-    () => pickDefaultCalendarId(calendars, selectedCalendarId),
-    [calendars, selectedCalendarId],
+    () => pickDefaultCalendarId(scope.shown, selectedCalendarId),
+    [scope.shown, selectedCalendarId],
   );
 
   /** Click sidebar row: set create target (and unhide if needed, matching Lit CalendarsSidebar). */
@@ -476,7 +475,7 @@ export function useCalendarController({
 
   const openCreateEvent = useCallback(
     (dateISO?: string, startTime?: string) => {
-      const calendarId = writableCalendarId(calendars, defaultCalendarId);
+      const calendarId = writableCalendarId(scope.shown, defaultCalendarId);
       if (!calendarId) return;
       ensureCalendarVisible(calendarId);
       setHeldCreateIntent(null);
@@ -486,7 +485,7 @@ export function useCalendarController({
         form: emptyCalendarEventForm(calendarId, dateISO ?? anchor, startTime, timeZone),
       });
     },
-    [calendars, defaultCalendarId, anchor, ensureCalendarVisible, timeZone],
+    [scope.shown, defaultCalendarId, anchor, ensureCalendarVisible, timeZone],
   );
 
   /** Drag/click create from the Lit surface — popover UI; nothing persisted yet. */
@@ -494,7 +493,7 @@ export function useCalendarController({
     (intent: CalendarSurfaceCreateIntent) => {
       // Sidebar create-target owns assignment; do not trust a stale Lit intent
       // calendarId (EventsAPI historically fell back to isDefault).
-      const calendarId = writableCalendarId(calendars, defaultCalendarId);
+      const calendarId = writableCalendarId(scope.shown, defaultCalendarId);
       if (!calendarId) return;
       const calendar = calendars.find((entry) => entry.id === calendarId);
       if (!canWriteCalendarCollection(calendar)) return;
@@ -507,7 +506,7 @@ export function useCalendarController({
         ...(intent.origin ? { origin: intent.origin } : {}),
       });
     },
-    [calendars, defaultCalendarId, ensureCalendarVisible, timeZone],
+    [calendars, scope.shown, defaultCalendarId, ensureCalendarVisible, timeZone],
   );
 
   const askRecurrenceScope = useCallback(
@@ -810,8 +809,8 @@ export function useCalendarController({
     });
   }, [deleteCalendarEvent, editor]);
 
-  const canCreateCalendar = Boolean(operations?.createCalendar);
-  const canSubscribeCalendar = Boolean(operations?.subscribeCalendar);
+  const canCreateCalendar = Boolean(operations?.createCalendar) && scope.projectIds === null;
+  const canSubscribeCalendar = Boolean(operations?.subscribeCalendar) && scope.projectIds === null;
   const handleImportCalendarCreated = useCallback(
     (calendar: CalendarInfo) => {
       setCalendars((prev) => sortCalendarsForSidebar([...prev, calendar]));
@@ -856,7 +855,7 @@ export function useCalendarController({
       const mayDelete = subscribed
         ? Boolean(operations?.unsubscribeCalendar)
         : (calendar.mayDelete !== false || sharedWithMe) && Boolean(operations?.deleteCalendar);
-      if (!mayEdit && !mayDelete) return;
+      if (isProjectLockedCalendar(calendar) || (!mayEdit && !mayDelete)) return;
       const canPublish = canPublishCalendar(calendar) && Boolean(operations?.publishCalendarFeed);
       setPublishFeed(null);
       setCalendarDialog({
@@ -1331,7 +1330,7 @@ export function useCalendarController({
     goNext,
     sidebarOpen,
     setSidebarOpen,
-    calendars,
+    calendars: scope.shown,
     hiddenCalendarIds,
     toggleCalendarVisibility,
     setCalendarsVisible,

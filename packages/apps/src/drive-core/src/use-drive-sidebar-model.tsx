@@ -1,10 +1,14 @@
 import { useMemo } from "react";
 import { HardDrive } from "lucide-react";
+import { projectsWithFolder } from "@/drive-core/src/drive-project-folder";
+import { driveProjectFolderUiPath } from "@/drive-core/src/use-drive-project-scope";
+import type { WorkspaceProject } from "@/lib/projects/projects-store";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { FILES_BROWSER_SIDEBAR_PRIMARY_ORDER } from "@/drive-core/src/files-browser-sidebar";
 import type { ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
+import { ProjectMark } from "@/projects-ui/src/project-mark";
 import { DriveUploadsBadge } from "@/drive-core/src/drive-uploads-badge";
 
 type UseDriveSidebarModelArgs = {
@@ -23,6 +27,12 @@ type UseDriveSidebarModelArgs = {
     "isDropTarget" | "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop"
   >;
   commitMoveToFolder: (ids: string[], destinationPath: string) => void;
+  /** A Project is selected: the sidebar lists only its folder (#818). */
+  hidePersonalDrive?: boolean;
+  /** The suite's active Projects; those with a Drive folder get their own section. */
+  projects?: readonly WorkspaceProject[];
+  /** Project ids the Project/Team filter keeps; null = all. */
+  selectedProjectIds?: readonly string[] | null;
 };
 
 function isMyDriveView(view: ViewKey) {
@@ -47,6 +57,9 @@ export function useDriveSidebarModel({
   selectView,
   sidebarDropZoneProps,
   commitMoveToFolder,
+  hidePersonalDrive = false,
+  projects = [],
+  selectedProjectIds = null,
 }: UseDriveSidebarModelArgs) {
   const primarySidebarItems = useMemo<MenuItemProps[]>(() => {
     const byId = {
@@ -105,22 +118,50 @@ export function useDriveSidebarModel({
       icon: <HardDrive className="size-3.5" />,
       ...sidebarDropZoneProps("My Drive", (ids) => commitMoveToFolder(ids, "My Drive")),
     };
-    const groups = sidebarGroupRoots.map((root) => ({
-      label: root.label,
-      selected: isGroupView(view, root.path),
-      onClick: () => selectView({ type: "folder", path: root.path }),
-      icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
-      ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
-    }));
-    return [personal, ...groups];
+    // A folder inside a Project folder selects that Project, not also its Team drive.
+    const projectPaths = projectsWithFolder(projects).flatMap((project) => {
+      const path = driveProjectFolderUiPath(project);
+      return path ? [path] : [];
+    });
+    const inProjectFolder = projectPaths.some((path) => isGroupView(view, path));
+    const groups = sidebarGroupRoots
+      .filter((root) => !projectPaths.includes(root.path))
+      .map((root) => ({
+        label: root.label,
+        selected: isGroupView(view, root.path) && !inProjectFolder,
+        onClick: () => selectView({ type: "folder", path: root.path }),
+        icon: <DriveViewIcon view={{ type: "folder", path: root.path }} />,
+        ...sidebarDropZoneProps(root.path, (ids) => commitMoveToFolder(ids, root.path)),
+      }));
+    return hidePersonalDrive ? groups : [personal, ...groups];
   }, [
+    hidePersonalDrive,
     commitMoveToFolder,
     labels.sidebarMyDrive,
+    projects,
     selectView,
     sidebarDropZoneProps,
     sidebarGroupRoots,
     view,
   ]);
 
-  return { primarySidebarItems, groupSidebarItems };
+  // The Project folders live inside the Team drives, which list only their roots: no duplicates.
+  const projectSidebarItems = useMemo<MenuItemProps[]>(() => {
+    const inScope = projectsWithFolder(projects).filter(
+      (project) => !selectedProjectIds || selectedProjectIds.includes(project.id),
+    );
+    return inScope.flatMap((project) => {
+      const path = driveProjectFolderUiPath(project);
+      if (!path) return [];
+      return {
+        label: project.name,
+        selected: isGroupView(view, path),
+        onClick: () => selectView({ type: "folder", path }),
+        icon: <ProjectMark color={project.color} />,
+        ...sidebarDropZoneProps(path, (ids) => commitMoveToFolder(ids, path)),
+      } satisfies MenuItemProps;
+    });
+  }, [commitMoveToFolder, projects, selectView, selectedProjectIds, sidebarDropZoneProps, view]);
+
+  return { primarySidebarItems, groupSidebarItems, projectSidebarItems };
 }
