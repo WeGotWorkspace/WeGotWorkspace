@@ -29,9 +29,7 @@ describe("AdminEmailDeliveryPane", () => {
     fireEvent.change(fromInput, { target: { value: "noreply@example.test" } });
 
     expect(screen.getByDisplayValue("noreply@example.test")).toBeTruthy();
-    expect(
-      screen.getByText(/password resets and invitations come from this address/i),
-    ).toBeTruthy();
+    expect(screen.getByText(/used for password resets and invitations/i)).toBeTruthy();
   });
 
   it("explains that a placeholder From is used when none is saved", () => {
@@ -71,7 +69,7 @@ describe("AdminEmailDeliveryPane", () => {
     );
 
     expect(screen.getByText("Cannot send")).toBeTruthy();
-    expect(screen.getByText(/sign-in page hides .*forgot password/i)).toBeTruthy();
+    expect(screen.getByText(/forgot password.*stays hidden/i)).toBeTruthy();
   });
 
   it("collects a recipient before sending a test email", async () => {
