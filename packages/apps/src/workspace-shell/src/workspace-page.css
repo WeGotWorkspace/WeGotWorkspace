@@ -58,6 +58,28 @@
   }
 }
 
+/* Phones: the title takes what the state tag leaves (a long title like "Real-time
+ * collaboration" stays on one line when there is no tag). The save tag holds its place while
+ * faded, so here it floats under the state tag instead of squeezing the title. */
+@media (max-width: 767px) {
+  .workspace-page-header__title {
+    font-size: 1.75rem;
+  }
+
+  .workspace-page-header__title-row {
+    @apply grid items-start;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .workspace-page-header__status {
+    @apply relative flex-col items-end;
+  }
+
+  .workspace-page-header__status > .autosave-status {
+    @apply absolute right-0 top-full mt-1;
+  }
+}
+
 .workspace-page-header__description {
   @apply m-0 text-base;
   color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
