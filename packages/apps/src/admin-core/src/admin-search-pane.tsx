@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { DatabaseZap, Loader2, RefreshCw, ScrollText, StopCircle } from "lucide-react";
+import { DatabaseZap, Loader2, ScrollText, StopCircle } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
-import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import {
   AlertDialog,
@@ -66,12 +65,14 @@ export function AdminSearchPane({ controller }: { controller: AdminControllerSta
         title="Index"
         icon={<DatabaseZap aria-hidden />}
         action={
-          <IconActionButton
-            label="Refresh state"
+          <Button
+            type="button"
+            variant="ghost"
+            className="-me-3"
+            label="Refresh"
+            aria-label="Refresh state"
             onClick={controller.actions.refreshSearchReindexState}
-          >
-            <RefreshCw className="size-4" />
-          </IconActionButton>
+          />
         }
       >
         <FieldLabelRow
