@@ -3,6 +3,8 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The Project filter is not under test here: All Projects.
+vi.mock("@/lib/projects/use-project-filter", () => ({ useSelectedProjectIds: () => null }));
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwHasAuthenticatedSession: vi.fn(() => true),
   wgwIsGuestSession: vi.fn(() => false),

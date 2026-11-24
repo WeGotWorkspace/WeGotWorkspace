@@ -24,6 +24,9 @@ import {
   docsHomeCreateJumpsToPersonal,
   type DocsHomeView,
 } from "@/docs-core/src/docs-home-shared";
+import { useDocsProjectScope } from "@/docs-core/src/use-docs-project-scope";
+import { useProjects } from "@/lib/projects/projects-store";
+import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import { docsPersonalDrivePathPrefix } from "@/docs-core/src/docs-home-drives";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
@@ -353,9 +356,6 @@ export function DocsHomeWorkspace({
     discoverFromFiles(files);
   }, [discoverFromFiles, files]);
 
-  const headerTitle = docsHomeHeaderTitle(view, labels, drives);
-  useDocumentTitle(headerTitle);
-
   const actions = useDocsHomeActions({
     operations: listingOperations,
     files,
@@ -387,11 +387,19 @@ export function DocsHomeWorkspace({
     dismissSidebarOverlay(() => setSidebarOpen(false));
   }, []);
 
-  const { primaryItems, driveItems } = useDocsHomeSidebarModel({
+  const projectDrives = useDocsProjectScope({ drives, view, selectView });
+  const headerTitle = docsHomeHeaderTitle(view, labels, projectDrives);
+  useDocumentTitle(headerTitle);
+
+  const { projects } = useProjects();
+  const selectedProjectIds = useSelectedProjectIds();
+  const { primaryItems, driveItems, projectItems } = useDocsHomeSidebarModel({
     labels,
-    drives,
+    drives: projectDrives,
     view,
     selectView,
+    projects,
+    selectedProjectIds,
   });
 
   const handleOpenFile = useCallback(
@@ -461,6 +469,8 @@ export function DocsHomeWorkspace({
             primaryItems={primaryItems}
             driveItems={driveItems}
             drivesSectionLabel={labels.homeDrivesSection}
+            projectItems={projectItems}
+            projectsSectionLabel={labels.homeProjectsSection}
           />
         }
         main={

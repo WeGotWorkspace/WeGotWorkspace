@@ -27,6 +27,7 @@ final class CalendarsSharedCalendarsTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpCalendarsFixtures();
         $team = $this->seedWgwGroup('principals/groups/'.self::TEAM, 'Team');
+        $this->appointTeamAdmin(self::TEAM, 'bob');
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);

@@ -103,16 +103,12 @@ function ContactsSidebarHarness({
   onEdit = fn(),
   onSelectGroup = fn(),
   onEditGroup = fn(),
-  onToggleVisibility = fn(),
-  hiddenAddressBookIds = [],
 }: {
   view?: string;
   onSelect?: (bookId: string) => void;
   onEdit?: (book: ContactsAddressBookRow) => void;
   onSelectGroup?: (groupId: string) => void;
   onEditGroup?: (group: ContactCard) => void;
-  onToggleVisibility?: (bookId: string) => void;
-  hiddenAddressBookIds?: string[];
 }) {
   useState(() => {
     window.localStorage.removeItem(CONTACTS_VIEW_PREFS_STORAGE_KEY);
@@ -129,8 +125,6 @@ function ContactsSidebarHarness({
               editLabel={defaultContactsLabels.editAddressBook}
               viewOnlyLabel={defaultContactsLabels.viewOnly}
               personalLabel={defaultContactsLabels.personalAddressBook}
-              hiddenAddressBookIds={new Set(hiddenAddressBookIds)}
-              onToggleVisibility={onToggleVisibility}
               onSelect={onSelect}
               onEdit={onEdit}
             />
@@ -142,8 +136,6 @@ function ContactsSidebarHarness({
               editLabel={defaultContactsLabels.editAddressBook}
               viewOnlyLabel={defaultContactsLabels.viewOnly}
               personalLabel={defaultContactsLabels.personalAddressBook}
-              hiddenAddressBookIds={new Set(hiddenAddressBookIds)}
-              onToggleVisibility={onToggleVisibility}
               onSelect={onSelect}
               onEdit={onEdit}
             />
@@ -174,8 +166,6 @@ const meta: Meta<typeof ContactsSidebarHarness> = {
     onEdit: fn(),
     onSelectGroup: fn(),
     onEditGroup: fn(),
-    onToggleVisibility: fn(),
-    hiddenAddressBookIds: [],
   },
 };
 
@@ -203,9 +193,8 @@ export const OwnedAndShared: Story = {
     await expect(canvas.getByRole("button", { name: "Colleagues" })).toBeInTheDocument();
     // Groups are a flat section of their own: no fold under an address book.
     await expect(canvas.queryByRole("button", { name: /^(Collapse|Expand) / })).toBeNull();
-    await expect(canvas.getByRole("checkbox", { name: "Hide Personal" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("checkbox", { name: "Hide Personal" }));
-    await expect(args.onToggleVisibility).toHaveBeenCalledWith("default");
+    // Address books belong to a Team: an icon, no colour dot, no show/hide checkbox.
+    await expect(canvas.queryByRole("checkbox")).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Personal" }));
     await expect(args.onSelect).toHaveBeenCalledWith("default");
     await expect(
@@ -251,11 +240,11 @@ export const GroupsSection: Story = {
     await expect(friends.closest(".collection-sidebar-row")).toHaveClass(
       "collection-sidebar-row--selected",
     );
-    // Each group icon wears its address book's colour.
+    // A group icon carries no colour: address books belong to a Team.
     const icon = friends
       .closest(".collection-sidebar-row")
       ?.querySelector<HTMLElement>(".contacts-group-icon");
-    await expect(icon?.style.getPropertyValue("--collection-row-color")).not.toBe("");
+    await expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("");
     await expect(canvas.queryByRole("button", { name: /^(Collapse|Expand) / })).toBeNull();
     await userEvent.click(
       canvas.getAllByRole("button", { name: defaultContactsLabels.renameGroup })[0]!,

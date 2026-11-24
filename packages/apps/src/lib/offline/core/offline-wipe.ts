@@ -3,6 +3,7 @@ import { isCrossTabLockTimeout, withCrossTabLock } from "@/lib/offline/core/cros
 import { forgetPushScopes } from "@/lib/notifications/push-scope";
 import { PUSH_SUBSCRIBE_LOCK } from "@/lib/api/wgw/push-subscribe-lock";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
+import { PROJECT_FILTER_STORAGE_KEY } from "@/lib/projects/project-filter";
 import { ERROR_DIAGNOSTICS_DB_NAME } from "@/lib/diagnostics/error-diagnostics-store";
 
 const OFFLINE_DB_PREFIX = "wgw-offline-";
@@ -119,6 +120,9 @@ export async function wipeOfflineAccountData(): Promise<void> {
     }
   }
   removeOfflineLocalStorageKeys();
+  // The Project filter choice and the in-memory Projects belong to the account that signed out.
+  if (typeof window !== "undefined") window.localStorage.removeItem(PROJECT_FILTER_STORAGE_KEY);
+  (await import("@/lib/projects/projects-store")).resetProjectsStore();
   if (failure) throw failure;
 }
 

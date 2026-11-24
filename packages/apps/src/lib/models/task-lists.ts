@@ -66,7 +66,10 @@ export type TaskListSidebarEntry = {
   color?: string | null;
   isSharee?: boolean;
   isDefault?: boolean;
-  myRights?: { mayWriteAll?: boolean; mayShare?: boolean } | null;
+  /** The Project this list belongs to, or null (#818). */
+  projectId?: string | null;
+  /** `mayRename` is false on a Project list's owner side. */
+  myRights?: { mayWriteAll?: boolean; mayShare?: boolean; mayRename?: boolean } | null;
 };
 
 function isPinnedSidebarInbox(list: TaskListSidebarEntry): boolean {

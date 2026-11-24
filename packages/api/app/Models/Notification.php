@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $body
  * @property string $navigate
  * @property string|null $tag
+ * @property string|null $project_id
  * @property string $dedupe_key
  * @property Carbon|null $read_at
  * @property Carbon $created_at
@@ -51,6 +52,7 @@ final class Notification extends Model
         'body',
         'navigate',
         'tag',
+        'project_id',
         'dedupe_key',
         'read_at',
         'created_at',

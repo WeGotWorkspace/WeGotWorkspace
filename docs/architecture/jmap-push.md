@@ -85,6 +85,7 @@ The id is a plain list of independent per-type hashes, never one hash over the w
 | `Notification`               | a change marker per principal on `notifications` (below)                                      | WGW type for active news; the client fetches the inbox                                                         |
 | `DocThread`                  | Docs thread pools behind the user's Drive roots (below)                                       | WGW type (#2286); the open document calls `files/threads/changes`                                              |
 | `RtcRoom`                    | roster signature and newest message per signaling room where the user has a live peer (below) | WGW type (#2294); the user's rooms poll their mailbox once                                                     |
+| `Project`                    | a change marker per Team on `project_markers`, over the user's Teams                          | WGW type for Projects (#817); the client refetches `GET /projects`. Joining or leaving a Team changes it too.  |
 | `MeetCall`                   | the set of the user's channel and DM rooms that have a joinable peer (below)                  | WGW type (#2295); Meet chat reads room status once                                                             |
 
 Every state read is O(collections or roots the user can see), never O(changes on the server).

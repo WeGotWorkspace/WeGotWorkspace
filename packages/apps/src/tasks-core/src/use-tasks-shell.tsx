@@ -18,6 +18,12 @@ import {
 import { canWriteTaskList } from "@/lib/models/task-lists";
 import type { Task, TasksAPIOperations, TasksUIData } from "@/lib/models/tasks-types";
 import { useTasksHiddenIds } from "@/tasks-core/src/use-tasks-hidden-ids";
+import {
+  projectCreateListId,
+  tasksInProjectLists,
+  useLeaveListOutsideProject,
+  useTasksProjectScope,
+} from "@/tasks-core/src/use-tasks-project-scope";
 
 export type UseTasksShellArgs = {
   data: TasksUIData;
@@ -47,6 +53,7 @@ export function useTasksShell({
   const workspaceLayoutRef = useRef<WorkspaceAppHandle>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const { hiddenTaskListIds, setHiddenTaskListIds } = useTasksHiddenIds(taskLists);
+  const { projectLists, visibleLists } = useTasksProjectScope(taskLists);
 
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
@@ -108,9 +115,13 @@ export function useTasksShell({
 
   const selectedListId = view.startsWith("list:") ? view.slice(5) : null;
   const preferredListId = useDefaultCollectionId("tasks");
+  // A selected Project's list is the default for new tasks (#818).
   const createListId = useMemo(
-    () => selectedListId ?? defaultTaskListId(taskLists, preferredListId),
-    [selectedListId, taskLists, preferredListId],
+    () =>
+      selectedListId ??
+      projectCreateListId(projectLists) ??
+      defaultTaskListId(taskLists, preferredListId),
+    [selectedListId, projectLists, taskLists, preferredListId],
   );
   const createTargetList = useMemo(
     () => taskLists.find((list) => list.id === createListId),
@@ -153,6 +164,11 @@ export function useTasksShell({
     [taskLists],
   );
   useLeaveRemovedListView(view, taskLists, selectView);
+  const followView = useCallback((nextView: string) => {
+    pendingViewRef.current = nextView;
+    setView(nextView);
+  }, []);
+  useLeaveListOutsideProject(view, taskLists, projectLists, followView);
 
   const viewSyncedRef = useRef(false);
   useEffect(() => {
@@ -167,13 +183,21 @@ export function useTasksShell({
 
   const visibleTasks = useMemo(() => {
     const byView = filterTasksByHiddenLists(
-      filterTasksByView(tasks, view, viewer),
+      filterTasksByView(tasksInProjectLists(tasks, projectLists), view, viewer),
       view,
       hiddenTaskListIds,
     );
     if (!showCompletedToggle || showCompletedTasks) return byView;
     return filterHiddenCompletedTasks(byView);
-  }, [hiddenTaskListIds, showCompletedTasks, showCompletedToggle, tasks, view, viewer]);
+  }, [
+    hiddenTaskListIds,
+    projectLists,
+    showCompletedTasks,
+    showCompletedToggle,
+    tasks,
+    view,
+    viewer,
+  ]);
 
   const toggleShowCompletedTasks = useCallback(() => {
     setShowCompletedTasks((current) => !current);
@@ -185,6 +209,10 @@ export function useTasksShell({
     setTasks,
     taskLists,
     setTaskLists,
+    /** Null for "All Projects"; else the selected Project's lists (#818). */
+    projectLists,
+    /** The lists the sidebar and pickers show under the Project filter. */
+    visibleLists,
     view,
     viewLabel,
     workspaceLayoutRef,

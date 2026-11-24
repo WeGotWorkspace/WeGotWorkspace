@@ -9,7 +9,7 @@ describe("notes create-collection labels", () => {
   });
 
   it("matches Tasks/Calendar owned vs shared section headings", () => {
-    expect(defaultNotesLabels.sectionNotebooks).toBe("My notebooks");
+    expect(defaultNotesLabels.sectionNotebooks).toBe("Notebooks");
     expect(defaultNotesLabels.sidebarSharedWithMe).toBe("Shared with me");
     expect(defaultNotesLabels.sectionSharedNotebooks).toBe("Shared with me");
   });

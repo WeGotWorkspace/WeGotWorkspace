@@ -1,3 +1,5 @@
+import { teamAddressBookId } from "@/contacts-core/src/use-contacts-hidden-ids";
+import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -123,7 +125,6 @@ export function ContactsWorkspace({
     removeActiveGroupTag,
     moveActiveContactToAddressBook,
     hiddenAddressBookIds,
-    toggleAddressBookVisibility,
     handleSelect,
     enterSelectionFor,
     closeMobileDetail,
@@ -218,10 +219,19 @@ export function ContactsWorkspace({
     hideSharedAddressBook,
   } = bookMutations;
 
+  // With a Project selected, only its Team's address book is listed (#818).
+  const projectTeamSlug = useSelectedProjectTeamSlug();
+  const sidebarBooks = useMemo(
+    () =>
+      projectTeamSlug === null
+        ? books
+        : books.filter((book) => book.id === teamAddressBookId(projectTeamSlug)),
+    [books, projectTeamSlug],
+  );
   const { primarySidebarItems, ownedAddressBooks, sharedAddressBooks } = useContactsSidebarModel({
     labels: L,
     view,
-    addressBooks: books,
+    addressBooks: sidebarBooks,
     selectView,
   });
 
@@ -359,8 +369,6 @@ export function ContactsWorkspace({
                     editLabel={L.editAddressBook}
                     viewOnlyLabel={L.viewOnly}
                     personalLabel={L.personalAddressBook}
-                    hiddenAddressBookIds={hiddenAddressBookIds}
-                    onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
                   />
@@ -374,8 +382,6 @@ export function ContactsWorkspace({
                     editLabel={L.editAddressBook}
                     viewOnlyLabel={L.viewOnly}
                     personalLabel={L.personalAddressBook}
-                    hiddenAddressBookIds={hiddenAddressBookIds}
-                    onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
                   />

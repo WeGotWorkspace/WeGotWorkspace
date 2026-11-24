@@ -30,6 +30,7 @@ final class CalendarFeedBindingTest extends WgwDatabaseTestCase
         parent::setUp();
         $this->setUpCalendarsFixtures();
         $team = $this->seedWgwGroup('principals/groups/'.self::TEAM, 'Team');
+        $this->appointTeamAdmin(self::TEAM, 'bob', 'carol', 'alice');
         foreach (['bob', 'carol', 'alice'] as $username) {
             $principal = Principal::forUsername($username);
             $this->assertNotNull($principal);

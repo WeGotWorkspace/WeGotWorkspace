@@ -6,6 +6,7 @@ import {
   type MeetUpcomingMeeting,
 } from "@/meet-core/src/meet-calendar-meeting";
 import type { MeetChannelDialogState } from "@/meet-core/src/meet-channel-dialog";
+import { meetChannelLockedByProject } from "@/meet-core/src/meet-channel-partition";
 import { canChangeMeetChannelOwner, canDeleteMeetChannel } from "@/lib/meetings/meet-channel-write";
 import type { MeetChannel, MeetChannelKind, MeetChatOperations } from "@/lib/models/meet-types";
 import type { MeetCalendarSlice } from "@/meet-core/src/meet-workspace-props";
@@ -59,6 +60,8 @@ export function useMeetChannelDialogs({
   };
 
   const openEdit = (channel: MeetChannel) => {
+    // Rename and delete of a Project channel go through the Project.
+    if (meetChannelLockedByProject(channel)) return;
     if (channel.kind === "meeting") {
       const origin = calendar?.workspaceOrigin ?? "";
       const matches = calendarEventsForMeetingChannel(

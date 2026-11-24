@@ -154,8 +154,8 @@ final class ChatCollectionsDavExposureTest extends WgwDatabaseTestCase
 
     public function test_dav_clients_cannot_mint_chat_prefixed_collections(): void
     {
-        // Extended MKCOL with a calendar resourcetype (MKCALENDAR is not even
-        // routed by the Laravel front). The backend refuses hidden prefixes so
+        // Extended MKCOL with a calendar resourcetype (MKCALENDAR takes the same path).
+        // The backend refuses hidden prefixes so
         // DAV clients cannot create shadow collections REST would misread as
         // channels.
         $response = $this->dav('MKCOL', '/calendars/alice/chat-shadow/', $this->mkcolCalendarXml(), [

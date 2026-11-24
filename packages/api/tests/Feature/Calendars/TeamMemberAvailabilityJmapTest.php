@@ -61,6 +61,8 @@ final class TeamMemberAvailabilityJmapTest extends WgwDatabaseTestCase
         $this->assertSame(['bob'], array_column($get['list'], 'id'));
         $this->assertSame('Bob', $get['list'][0]['name']);
         $this->assertFalse($get['list'][0]['isSelf']);
+        // Only Teams the caller is in as well; a client narrows the list to one Team with it.
+        $this->assertNotSame([], $get['list'][0]['teamSlugs']);
         $this->assertSame([], $get['notFound']);
 
         $availability = $this->availability('carol', ['bob']);

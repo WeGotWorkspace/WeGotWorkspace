@@ -1,4 +1,5 @@
 import { formatRelativeDay } from "@/lib/datetime/format-list-date";
+import { isProjectCollection } from "@/lib/projects/project-match";
 import type { Task, TaskAlert } from "@/lib/models/tasks-types";
 import { isTaskCompleted, parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
 import {
@@ -318,8 +319,19 @@ export type TaskListWriteInfo = {
   isDefault?: boolean;
   scope?: "personal" | "group" | null;
   groupSlug?: string | null;
-  myRights?: { mayDelete?: boolean; mayShare?: boolean } | null;
+  projectId?: string | null;
+  myRights?: { mayDelete?: boolean; mayShare?: boolean; mayRename?: boolean } | null;
 };
+
+/**
+ * A Project's task list on the owner side (#818): its name, color and lifetime follow
+ * the Project, so it has no edit pencil and no delete. A sharee keeps its own copy.
+ */
+export function isProjectOwnedTaskList(list?: TaskListWriteInfo): boolean {
+  if (!list) return false;
+  if (list.myRights?.mayRename === false) return true;
+  return isProjectCollection(list) && list.isSharee !== true;
+}
 
 /**
  * Provisioned group home (e.g. Team / Administrators) — API `role: "group"` or
@@ -352,6 +364,7 @@ export function canDeleteTaskList(list?: TaskListWriteInfo): boolean {
     return false;
   }
   if (list.isDefault) return false;
+  if (isProjectCollection(list)) return false;
   if (isProvisionedGroupTaskList(list)) return false;
   if (list.myRights?.mayDelete === false) return false;
   return true;
@@ -381,6 +394,7 @@ export function canChangeTaskListOwner(list?: TaskListWriteInfo): boolean {
   }
   if (list.isDefault) return false;
   if (list.isSharee) return false;
+  if (isProjectCollection(list)) return false;
   if (!canShareTaskList(list)) return false;
   if (list.scope === "group" && list.myRights?.mayDelete === false) return false;
   if (isProvisionedGroupTaskList(list)) return false;

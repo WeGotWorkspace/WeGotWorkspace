@@ -198,7 +198,7 @@ export const Default: Story = {
       (janeRow as HTMLElement).querySelector(".list-item__meta .contacts-list-panel__book"),
     ).toBeTruthy();
     await expect(
-      (janeRow as HTMLElement).querySelector(".list-item__meta .collection-color-dot"),
+      (janeRow as HTMLElement).querySelector(".list-item__meta svg.lucide-book-user"),
     ).toBeTruthy();
 
     await expect(joeRow).toBeTruthy();

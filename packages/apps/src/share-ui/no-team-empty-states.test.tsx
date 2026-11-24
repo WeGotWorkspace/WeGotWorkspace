@@ -136,14 +136,22 @@ describe("attendee picker without a Team", () => {
 
 describe("Settings Teams pane", () => {
   it("says the viewer is not in a Team when there are no memberships", () => {
-    render(<SettingsMembershipsPane groups={[]} />);
+    render(<SettingsMembershipsPane groups={[]} currentUsername="alice" />);
     expect(screen.getByText(noTeamYetCopy)).toBeTruthy();
   });
 
   it("lists memberships otherwise", () => {
     render(
       <SettingsMembershipsPane
-        groups={[{ id: "principals/groups/t1", displayName: "Editorial", memberCount: 2 }]}
+        currentUsername="alice"
+        groups={[
+          {
+            id: "principals/groups/t1",
+            displayName: "Editorial",
+            memberCount: 2,
+            isTeamAdmin: false,
+          },
+        ]}
       />,
     );
     expect(screen.getByText("Editorial")).toBeTruthy();

@@ -46,7 +46,7 @@ export function ContactUserAvatar({
         role="img"
         aria-label={resolvedName}
       >
-        <ContactsGroupIcon book={card} />
+        <ContactsGroupIcon />
       </span>
     );
   }

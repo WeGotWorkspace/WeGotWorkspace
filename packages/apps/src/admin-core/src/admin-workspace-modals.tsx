@@ -1,3 +1,4 @@
+import { EditTeamDialog } from "@/admin-core/src/admin-edit-team-dialog";
 import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
@@ -116,8 +117,6 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
       />
       <GroupDialog
         open={newGroupOpen}
-        title="New team"
-        users={controller.users}
         onOpenChange={setNewGroupOpen}
         onSubmit={async (payload) => {
           if (await controller.actions.createGroup(payload.name)) {
@@ -125,19 +124,18 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
           }
         }}
       />
-      <GroupDialog
+      <EditTeamDialog
         open={Boolean(editingGroup)}
-        title="Edit team"
-        initial={editingGroup ?? undefined}
+        team={editingGroup}
         users={controller.users}
         onOpenChange={(next) => {
           if (!next) setEditGroupId(null);
         }}
-        onSubmit={async (payload) => {
-          if (!editingGroup) return;
-          const ok = await controller.actions.updateGroup(editingGroup.id, payload);
-          if (ok) setEditGroupId(null);
-        }}
+        onSave={(draft) =>
+          editingGroup
+            ? controller.actions.updateGroup(editingGroup.id, draft)
+            : Promise.resolve(false)
+        }
       />
 
       <AlertDialog

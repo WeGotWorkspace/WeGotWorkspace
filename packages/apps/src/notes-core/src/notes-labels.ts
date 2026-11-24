@@ -170,7 +170,7 @@ export const defaultNotesLabels: NotesUILabels = {
   sharedBy: (username) => username,
   viewOnly: workspaceLabels.sharing.viewOnly,
   shared: "Shared",
-  sectionNotebooks: "My notebooks",
+  sectionNotebooks: "Notebooks",
   sectionSharedNotebooks: workspaceLabels.sharing.sharedWithMe,
   sectionTags: "Tags",
   share: "Share",

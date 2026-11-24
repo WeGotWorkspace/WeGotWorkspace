@@ -254,6 +254,10 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
     {
         $creator ??= self::OWNER;
         $groupPayload = $group === null ? [] : ['groupSlug' => $group];
+        if ($group !== null) {
+            // Adding a collection to a Team is for its team admins (#2278).
+            $this->appointTeamAdmin($group, $creator);
+        }
 
         switch ($source) {
             case 'note':

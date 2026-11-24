@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { SettingsDialogContext } from "@/settings-core/src/settings-dialog-context";
 import { useWorkspaceAppSettingsEntry } from "@/settings-core/src/use-workspace-app-settings-entry";
 import { AppSettingsEntryContext } from "@/lib/settings/app-settings-entry";
+import { OpenSettingsPanelContext } from "@/lib/settings/open-settings-panel";
 import "@/settings-core/src/settings-workspace.css";
 
 export {
@@ -94,6 +95,14 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
     [dialogOpen, router],
   );
 
+  const openPanelById = useCallback(
+    (id: string) => {
+      const next = getSettingsPanel(id);
+      if (next) openRegisteredPanel(next);
+    },
+    [openRegisteredPanel],
+  );
+
   const api = useMemo(
     () => ({ openPanel, openRegisteredPanel, showPanel }),
     [openPanel, openRegisteredPanel, showPanel],
@@ -108,7 +117,9 @@ export function SettingsDialogProvider({ children }: { children: ReactNode }): R
   return (
     <SettingsDialogContext.Provider value={api}>
       <AppSettingsEntryContext.Provider value={useWorkspaceAppSettingsEntry}>
-        {children}
+        <OpenSettingsPanelContext.Provider value={openPanelById}>
+          {children}
+        </OpenSettingsPanelContext.Provider>
       </AppSettingsEntryContext.Provider>
       <Dialog
         open={panel !== null}

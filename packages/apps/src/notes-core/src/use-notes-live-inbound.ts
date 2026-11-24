@@ -37,6 +37,7 @@ function jmapNotebookToCollection(notebook: JmapNotebook): NotesNotebookCollecti
     role: notebook.role,
     groupSlug: notebook.groupSlug,
     scope: notebook.scope,
+    projectId: notebook.projectId,
     myRights: notebook.myRights ?? null,
     shareWith: (notebook.shareWith ?? null) as NotesNotebookCollection["shareWith"],
   };

@@ -68,6 +68,7 @@ import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
 import { useNoteBodyCollab } from "@/notes-core/src/use-note-body-collab";
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
+import { isProjectOwnedNotebook } from "@/notes-core/src/notes-notebook-write";
 import {
   NotesMarkdownImportHost,
   type NotesMarkdownImportHostHandle,
@@ -129,7 +130,7 @@ function NotesSidebarRows({
             visible={!hiddenNotebookIds.has(notebook.id)}
             onToggleVisibility={() => onToggleVisibility(notebook.id)}
             onSelect={() => onSelect(notebook.id)}
-            onEdit={() => onEdit(notebook)}
+            onEdit={isProjectOwnedNotebook(notebook) ? undefined : () => onEdit(notebook)}
             editLabel={editLabel}
             badges={
               viewOnly ? (

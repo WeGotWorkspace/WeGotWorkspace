@@ -150,7 +150,6 @@ export type ContactsUILabels = {
   deleteCancel: string;
   addressBookSettingsTitle: string;
   addressBookNameLabel: string;
-  addressBookColorLabel: string;
   addressBookDialogDone: string;
   shareAddressBookTitle: string;
   shareAddressBookHint: string;
@@ -180,7 +179,7 @@ export const defaultContactsLabels: ContactsUILabels = {
   sidebarAllContacts: "All contacts",
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   personalAddressBook: "Personal",
-  sectionAddressBooks: "My address books",
+  sectionAddressBooks: "Address books",
   sectionGroups: "Groups",
   viewOnly: workspaceLabels.sharing.viewOnly,
   editAddressBook: "Address book settings",
@@ -313,7 +312,6 @@ export const defaultContactsLabels: ContactsUILabels = {
   deleteCancel: workspaceLabels.dialog.cancel,
   addressBookSettingsTitle: "Address book",
   addressBookNameLabel: workspaceLabels.dialog.nameField,
-  addressBookColorLabel: workspaceLabels.dialog.colorField,
   addressBookDialogDone: workspaceLabels.dialog.done,
   shareAddressBookTitle: "Share address book",
   shareAddressBookHint: "People you add can open this address book in Contacts.",

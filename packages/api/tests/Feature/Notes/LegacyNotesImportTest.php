@@ -145,7 +145,7 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
     public function test_notes_the_earlier_command_imported_are_not_imported_again(): void
     {
         $this->putLegacyNotes();
-        $drafts = app(NotebookRepository::class)->findOrCreateNamed('bob', 'Drafts');
+        $drafts = app(NotebookRepository::class)->findOrCreateNamedForLegacyImport('bob', 'Drafts');
         app(NoteRepository::class)->create('bob', [
             'notebookId' => $drafts['id'],
             'title' => 'Welcome',
@@ -225,7 +225,7 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
     public function test_an_interrupted_run_keeps_the_star(): void
     {
         $this->putLegacyNotes();
-        $drafts = app(NotebookRepository::class)->findOrCreateNamed('bob', 'Drafts');
+        $drafts = app(NotebookRepository::class)->findOrCreateNamedForLegacyImport('bob', 'Drafts');
         app(NoteRepository::class)->create('bob', [
             'uid' => app(LegacyNoteImportLedger::class)->uidFor('/users/bob/.notes/Drafts/welcome.md'),
             'notebookId' => $drafts['id'],

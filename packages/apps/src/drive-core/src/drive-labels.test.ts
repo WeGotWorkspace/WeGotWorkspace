@@ -7,11 +7,11 @@ describe("driveLabels", () => {
     expect(driveLabels.createMarkdownDialogTitle).toBe("New document");
   });
 
-  it("labels Shared with me and My Drives from the shared files-browser SST", () => {
+  it("labels Shared with me from the shared files-browser SST and names Team Drives", () => {
     expect(driveLabels.sidebarHome).toBe("All Files");
     expect(driveLabels.sidebarMyDrive).toBe("Personal");
     expect(driveLabels.sidebarSharedWithMe).toBe("Shared with me");
-    expect(driveLabels.sidebarSharedDrives).toBe("My Drives");
+    expect(driveLabels.sidebarSharedDrives).toBe("Drives");
     expect(driveLabels.sharedBy("hana")).toBe("Shared by hana");
   });
 });

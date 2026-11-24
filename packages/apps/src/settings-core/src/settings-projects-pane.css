@@ -1,0 +1,93 @@
+@import "../../styles.css" reference;
+
+/* One list look with the Teams pane: rows separated by a hairline, no cards. */
+.projects-manage-list {
+  @apply m-0 list-none p-0;
+}
+
+.projects-manage-row {
+  @apply flex items-center gap-3 py-3;
+}
+
+.projects-manage-row + .projects-manage-row {
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.projects-manage-row__head {
+  @apply min-w-0 flex-1;
+}
+
+.projects-manage-row__static {
+  @apply flex items-center gap-3;
+}
+
+.projects-manage-row__name {
+  @apply min-w-0 flex-1 truncate font-medium;
+  font-size: 1rem;
+  color: var(--workspace-foreground);
+}
+
+.projects-manage-row__dot {
+  @apply size-2.5 shrink-0 rounded-full;
+  background-color: var(--projects-manage-color, var(--color-ink));
+}
+
+.projects-manage-archived-team__name {
+  @apply m-0 pt-2 text-xs font-medium text-muted-foreground;
+}
+
+.projects-manage-row__main {
+  @apply flex min-w-0 flex-1 flex-col gap-1;
+}
+
+.projects-manage-row__contents {
+  @apply m-0 text-xs text-muted-foreground;
+}
+
+.projects-manage-hint {
+  @apply m-0 px-1 text-xs text-muted-foreground;
+}
+
+.projects-manage-team-tags {
+  @apply inline-flex items-center gap-2;
+}
+
+.projects-manage-row__static .projects-manage-row__name {
+  @apply flex-none;
+}
+
+/* A hairline between the Teams, like between the Projects of one Team. */
+.projects-manage-teams > .settings-pane-card + .settings-pane-card {
+  @apply mt-6 pt-6;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+.projects-manage-new {
+  @apply flex justify-end py-3;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
+/* Edit and Archive sit back until the row is in use. */
+.projects-manage-row > .button--variant-ghost:not(.button--severity-danger) {
+  color: var(--color-muted-foreground, var(--workspace-muted-foreground));
+}
+
+.projects-manage-row > .button--variant-ghost:not(.button--severity-danger):hover,
+.projects-manage-row > .button--variant-ghost:not(.button--severity-danger):focus-visible {
+  color: var(--workspace-foreground);
+}
+
+/* Delete permanently keeps its danger color over the ghost variant's own. */
+.projects-manage-row > .button--variant-ghost.button--severity-danger {
+  color: var(--button-severity-color);
+}
+
+/* The Team is the quiet label, the Projects under it carry the weight. */
+.projects-manage-teams .card__title {
+  @apply text-sm font-normal;
+  font-size: 0.875rem;
+  color: var(
+    --workspace-muted-foreground,
+    color-mix(in oklab, var(--workspace-foreground) 60%, transparent)
+  );
+}

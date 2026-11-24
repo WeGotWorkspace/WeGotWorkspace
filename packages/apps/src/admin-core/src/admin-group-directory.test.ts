@@ -54,7 +54,12 @@ describe("local group membership", () => {
   it("appends, renames, and changes membership only when it differs", () => {
     const appended = appendLocalGroup(data.groups, { id: groupId, name: "Ops Team" });
     expect(appended).toHaveLength(2);
-    expect(appended[1]).toEqual({ id: groupId, name: "Ops Team", displayName: "Ops Team" });
+    expect(appended[1]).toEqual({
+      id: groupId,
+      name: "Ops Team",
+      displayName: "Ops Team",
+      teamAdmins: [],
+    });
 
     const renamed = renameGroup(appended, groupId, "Operations");
     expect(renamed[1]).toMatchObject({ name: "Operations", displayName: "Operations" });

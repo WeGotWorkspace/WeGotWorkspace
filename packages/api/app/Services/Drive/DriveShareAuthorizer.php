@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\DriveShare;
 use App\Models\DriveShareSession;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Projects\ProjectFolderRegistry;
 use App\Storage\StoragePaths;
 use Illuminate\Support\Carbon;
 
@@ -20,6 +22,7 @@ final class DriveShareAuthorizer
         private CollabDocFormats $collabDocFormats,
         private FileNodeIndexService $fileNodes,
         private DriveShareOwnerReach $ownerReach,
+        private ProjectFolderRegistry $projectFolders,
     ) {}
 
     /**
@@ -81,6 +84,8 @@ final class DriveShareAuthorizer
      */
     public function assertMoveWithinScope(string $fromPath, string $toPath, array $principal): void
     {
+        $this->assertNotDriveRoot($fromPath);
+        $this->assertNotProjectFolder($fromPath);
         $from = $this->resolvePathContext($fromPath, $principal);
         $to = $this->resolvePathContext($toPath, $principal);
 
@@ -135,12 +140,32 @@ final class DriveShareAuthorizer
     }
 
     /**
+     * Refuses deleting a grant scope root or a Project folder on its own.
+     *
      * @param  array{username: string, role: string}  $principal
      */
     public function assertNotGrantScopeRoot(string $virtualPath, array $principal): void
     {
         if ($this->isGrantScopeRoot($virtualPath, $principal)) {
             $this->deny();
+        }
+        $this->assertNotDriveRoot($virtualPath);
+        $this->assertNotProjectFolder($virtualPath);
+    }
+
+    /** A Drive root (`/users/{name}`, `/groups/{team}`) goes with its user or Team and is never renamed, moved or deleted (#819). */
+    private function assertNotDriveRoot(string $virtualPath): void
+    {
+        if (preg_match('#^/(users|groups)/[^/]+$#', $this->scope->normalize($virtualPath)) === 1) {
+            throw new ApiHttpException(403, 'A Drive root goes with its user or Team.', 'drive_root');
+        }
+    }
+
+    /** A Project folder follows its Project (#817): it is renamed, moved or deleted only through the Project. */
+    private function assertNotProjectFolder(string $virtualPath): void
+    {
+        if ($this->projectFolders->isProjectFolderKey($this->paths->virtualToStorageKey($virtualPath))) {
+            throw new ApiHttpException(403, 'A Project folder follows its Project. Rename or delete the Project instead.', 'project_folder');
         }
     }
 
@@ -283,7 +308,7 @@ final class DriveShareAuthorizer
             }
 
             $rootPath = $this->scope->normalize((string) $share->path);
-            if ($this->scope->isInProductTrash($rootPath)) {
+            if ($this->scope->isInert($rootPath)) {
                 $this->deny();
             }
             if (! $this->scope->isWithin($rootPath, $path)) {

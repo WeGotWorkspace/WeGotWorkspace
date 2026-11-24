@@ -1,10 +1,14 @@
-import { CalendarDays, Hash, Mic, Pencil, Video } from "lucide-react";
+import { Mic, Pencil, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { cn } from "@/lib/utils";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { ViewHeader } from "@/view-header/src/view-header";
+import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
+import type { ChatAuthorPresence } from "@/lib/models/chat-types";
+import { MeetChannelKindIcon } from "@/meet-core/src/meet-channel-kind-icon";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { meetChannelLockedByProject } from "@/meet-core/src/meet-channel-partition";
 import type { MeetChannel } from "@/lib/models/meet-types";
 
 export type MeetWorkspaceHeaderProps = {
@@ -13,6 +17,8 @@ export type MeetWorkspaceHeaderProps = {
   title: string;
   /** Selected channel, or null for a DM or an ad-hoc visit. */
   selected: MeetChannel | null;
+  /** A DM is open: its presence dot is the header mark, as on its sidebar row. */
+  directMessagePresence?: ChatAuthorPresence | null;
   /** A conversation is open, so the action cluster belongs on screen. */
   conversationOpen: boolean;
   /** Start is offered only while no meeting is live here. */
@@ -26,12 +32,17 @@ export type MeetWorkspaceHeaderProps = {
   onEditChannel: (channel: MeetChannel) => void;
 };
 
+function HeaderKindIcon({ channel }: { channel: MeetChannel }) {
+  return <MeetChannelKindIcon channel={channel} className="meet-workspace__header-kind-icon" />;
+}
+
 /** Main header: conversation title with its edit button, plus Meet (or Join while live). */
 export function MeetWorkspaceHeader({
   sidebarOpen,
   onToggleSidebar,
   title,
   selected,
+  directMessagePresence = null,
   conversationOpen,
   showStart,
   onStartCall,
@@ -46,15 +57,16 @@ export function MeetWorkspaceHeader({
       // A channel's # is its icon, as in the sidebar row; the heading is the name.
       title={selected && selected.kind !== "meeting" ? selected.name.toLowerCase() : title}
       titlePrefix={
-        selected?.kind === "meeting" ? (
-          <CalendarDays className="meet-workspace__header-kind-icon" aria-hidden />
-        ) : selected ? (
-          <Hash className="meet-workspace__header-kind-icon" aria-hidden />
+        selected ? (
+          <HeaderKindIcon channel={selected} />
+        ) : directMessagePresence ? (
+          <UserPresenceDot presence={directMessagePresence} standalone />
         ) : null
       }
       // Edit sits on the name it changes, as rename in Docs.
       titleSuffix={
-        conversationOpen && selected ? (
+        // A Project channel's name follows the Project: no pencil.
+        conversationOpen && selected && !meetChannelLockedByProject(selected) ? (
           <IconButton
             className="meet-workspace__header-edit"
             icon={<Pencil />}

@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\V1\Notes\NotebooksController;
 use App\Http\Controllers\Api\V1\Notes\NotesController;
 use App\Http\Controllers\Api\V1\Notify\NotificationsController;
 use App\Http\Controllers\Api\V1\Notify\PushSubscriptionsController;
+use App\Http\Controllers\Api\V1\Projects\ProjectsController;
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
@@ -73,6 +74,7 @@ use App\Http\Controllers\Api\V1\Tasks\TaskImportController;
 use App\Http\Controllers\Api\V1\Tasks\TaskListMembersController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Controllers\Api\V1\Tasks\TaskTextController;
+use App\Http\Controllers\Api\V1\Teams\TeamMembersController;
 use App\Http\Controllers\Api\V1\Threads\ThreadsController;
 use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\GuestUploadRateLimiters;
@@ -254,6 +256,25 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         ->where('resultId', '.+');
 
     Route::get('settings/state', SettingsStateController::class);
+    // Member management by a team admin of the Team or an organization admin (#2278).
+    // The controller answers a Team the caller may not manage like an unknown Team.
+    Route::prefix('teams/{team}')->where(['team' => '[a-z0-9_-]+', 'username' => '[a-z0-9_-]+'])
+        ->group(function (): void {
+            Route::get('members', [TeamMembersController::class, 'index']);
+            Route::get('member-candidates', [TeamMembersController::class, 'candidates']);
+            Route::put('members/{username}', [TeamMembersController::class, 'store']);
+            Route::delete('members/{username}', [TeamMembersController::class, 'destroy']);
+            Route::put('admins/{username}', [TeamMembersController::class, 'appoint']);
+            Route::delete('admins/{username}', [TeamMembersController::class, 'dismiss']);
+        });
+    // Projects of the caller's Teams (#817): membership reads, the team-admin role writes.
+    Route::get('projects', [ProjectsController::class, 'index']);
+    Route::post('projects', [ProjectsController::class, 'store']);
+    Route::get('projects/{project}', [ProjectsController::class, 'show'])->where('project', '[0-9a-z]{26}');
+    Route::patch('projects/{project}', [ProjectsController::class, 'update'])->where('project', '[0-9a-z]{26}');
+    Route::post('projects/{project}/archive', [ProjectsController::class, 'archive'])->where('project', '[0-9a-z]{26}');
+    Route::post('projects/{project}/unarchive', [ProjectsController::class, 'unarchive'])->where('project', '[0-9a-z]{26}');
+    Route::delete('projects/{project}', [ProjectsController::class, 'destroy'])->where('project', '[0-9a-z]{26}');
     Route::put('settings/profile', SettingsProfileController::class);
     Route::post('settings/totp', [SettingsTotpController::class, 'start']);
     Route::delete('settings/totp', [SettingsTotpController::class, 'disable']);
