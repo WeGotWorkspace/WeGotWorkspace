@@ -13,6 +13,8 @@ export type CalendarNewMenuProps = {
   onCreateCalendar?: () => void;
   onSubscribeCalendar?: () => void;
   onImportEvents?: () => void;
+  /** The calendars are not known yet: the main action waits. */
+  disabled?: boolean;
 };
 
 export function CalendarNewMenu({
@@ -21,6 +23,7 @@ export function CalendarNewMenu({
   onCreateCalendar,
   onSubscribeCalendar,
   onImportEvents,
+  disabled,
 }: CalendarNewMenuProps) {
   const items: DropdownMenuItemProps[] = [];
   if (onCreateCalendar) {
@@ -54,6 +57,7 @@ export function CalendarNewMenu({
       mainLabel={labels.newEvent}
       menuLabel={labels.newEventMenu}
       onMainAction={onCreateEvent}
+      mainDisabled={disabled}
       items={items}
     />
   );

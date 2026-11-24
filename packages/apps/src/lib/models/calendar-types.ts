@@ -67,6 +67,10 @@ export type CalendarInfo = {
   subscriptionUrl?: string;
   /** Owner map of username / `groups/{slug}` → rights. Recipients see null. */
   shareWith?: CalendarShareWith | null;
+  /** The Project this calendar belongs to (#817 B1); omitted for none. */
+  projectId?: string | null;
+  /** JMAP `myRights.mayRename`; false on the owner side of a Project calendar. */
+  mayRename?: boolean;
 };
 
 export type CalendarUIData = {

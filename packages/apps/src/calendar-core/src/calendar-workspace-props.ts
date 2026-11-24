@@ -47,6 +47,12 @@ export type CalendarWorkspaceProps = {
   availabilitySource?: TeamAvailabilitySource | null;
   /** Story/test fixture for Team availability — skips Dexie and the network. */
   availabilityPreset?: TeamAvailabilityPreset;
+  /**
+   * The first answer has not landed: `data` is a placeholder. The sidebar's primary
+   * button is then New, disabled, instead of Today (what a read-only calendar list
+   * would show), so it does not change label when the calendars arrive.
+   */
+  calendarsLoading?: boolean;
 };
 
 export function calendarDirectoryGroupsFromBootstrap(

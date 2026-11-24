@@ -28,6 +28,7 @@ export function DocsCollabCardHeader({
           color={authorColor}
           compact
           size="md"
+          variant="tint"
           className="docs-collab-card__avatar"
         />
         <div className="docs-collab-card__meta">

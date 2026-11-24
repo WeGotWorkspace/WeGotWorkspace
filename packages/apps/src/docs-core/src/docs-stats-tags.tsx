@@ -16,13 +16,15 @@ export function DocsStatsTags({
 }: DocsStatsTagsProps) {
   return (
     <>
-      <Tag
-        label={statsWordsLabel(wordCount)}
-        colors={{
-          backgroundColor: "var(--docs-stat-tag-bg)",
-          color: "var(--docs-stat-tag-color)",
-        }}
-      />
+      <span className="docs-workspace__stats-footer-tag--words">
+        <Tag
+          label={statsWordsLabel(wordCount)}
+          colors={{
+            backgroundColor: "var(--docs-stat-tag-bg)",
+            color: "var(--docs-stat-tag-color)",
+          }}
+        />
+      </span>
       <span className="docs-workspace__stats-footer-tag--characters">
         <Tag
           label={statsCharactersLabel(characterCount)}

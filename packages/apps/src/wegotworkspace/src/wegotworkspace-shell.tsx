@@ -5,6 +5,7 @@ import {
   type FilePreviewMarkdownRendererProps,
 } from "@/lib/file-preview/file-preview-markdown-renderer";
 import { useReportRouteToPushHub } from "@/lib/api/wgw/use-jmap-state-change";
+import { ProjectsSync } from "@/lib/projects/projects-sync";
 import { MeetCallMiniPlayer } from "@/meet-core/src/meet-call-mini-player";
 import { MeetKnockChime } from "@/meet-core/src/meet-knock-chime";
 import { NotificationsProvider } from "@/notifications-core/src/notifications-provider";
@@ -58,6 +59,7 @@ export function WeGotWorkspaceShell() {
             <NotificationsProvider>
               <HeadContent />
               <PushHubRouteReporter />
+              <ProjectsSync />
               <Outlet />
               {/* Active-call card outside /meet; renders nothing without the suite call store. */}
               <MeetCallMiniPlayer />

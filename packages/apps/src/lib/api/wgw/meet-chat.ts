@@ -86,6 +86,7 @@ function rightsFromWire(rights: WgwChatChannel["myRights"]): MeetChannelRights {
     mayWriteAll: rights.mayWriteAll,
     mayShare: rights.mayShare,
     mayDelete: rights.mayDelete,
+    ...(rights.mayRename !== undefined ? { mayRename: rights.mayRename } : {}),
   };
 }
 
@@ -107,6 +108,7 @@ export function meetChannelFromWire(row: WgwChatChannel): MeetChannel {
     myRights: rightsFromWire(row.myRights),
     guestRoomCode: row.guestRoomCode ?? null,
     topic: row.topic ?? null,
+    ...(row.projectId ? { projectId: row.projectId } : {}),
     ...(row.unreadCount !== undefined ? { unreadCount: row.unreadCount } : {}),
     ...(row.memberCount !== undefined ? { memberCount: row.memberCount } : {}),
     ...(row.members !== undefined ? { members: row.members } : {}),

@@ -88,6 +88,10 @@ export function getMeetChatSyncRunner(
   return syncRunnerRegistry.getOrCreate(username, () => flushMeetChatOutbox(username));
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+}
+
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -218,7 +222,7 @@ export function createHybridMeetChatOperations(
         ...(mentions.length ? { mentions } : {}),
       });
       notifyMeetChatCacheChanged(username);
-      return { ...optimistic, syncState: "pending" };
+      return { ...optimistic, syncState: "pending", sendQueued: true };
     };
     if (!readBrowserOnline()) return queueSend();
     try {
@@ -326,16 +330,20 @@ export function createHybridMeetChatOperations(
         await upsertChatMessageInCache(username, optimistic, true);
         await enqueueChatEdit(username, { messageId, body: optimistic.body });
         notifyMeetChatCacheChanged(username);
-        return { ...optimistic, syncState: "pending" };
+        // The edit may have merged into a queued send: the message is still unsent.
+        const sendQueued = await hasQueuedChatSend(username, messageId);
+        return { ...optimistic, syncState: "pending", ...(sendQueued ? { sendQueued } : {}) };
       };
       return writeMessage(messageId, () => patchChatMessage(messageId, { body }), queueEdit);
     },
-    deleteMessage: async (messageId) => {
+    deleteMessage: async (messageId, opts) => {
       const existing = await getCachedChatMessage(username, messageId);
       const tombstone: ChatMessage | undefined = existing
         ? { ...existing, body: "", deletedAt: Date.now(), previews: [], mentions: [] }
         : undefined;
       const queueDelete = async (): Promise<void> => {
+        // Undo can land while this waits for the send lock: then nothing is queued.
+        throwIfAborted(opts?.signal);
         const { serverDeleteQueued } = await enqueueChatDelete(username, { messageId });
         if (!serverDeleteQueued) {
           // The message only ever existed locally (queued send) — drop it fully.
@@ -348,7 +356,8 @@ export function createHybridMeetChatOperations(
       };
       if (await queueUnderLock(messageId, queueDelete)) return;
       try {
-        await deleteChatMessage(messageId);
+        throwIfAborted(opts?.signal);
+        await deleteChatMessage(messageId, opts);
         if (tombstone) await upsertChatMessageInCache(username, tombstone, false);
         notifyMeetChatCacheChanged(username);
         await runner.flush();
@@ -357,7 +366,9 @@ export function createHybridMeetChatOperations(
           await removeChatMessageFromCache(username, messageId);
           return;
         }
-        if (!shouldQueueChatWrite(error)) rethrowUnlessOfflineQueue(error);
+        if (!shouldQueueChatWrite(error, opts?.signal)) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
         await queueDelete();
       }
     },

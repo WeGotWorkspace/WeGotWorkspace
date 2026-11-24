@@ -33,6 +33,7 @@ use Laravel\Passport\HasApiTokens;
  * @property bool $enabled
  * @property bool $is_admin
  * @property int $ui_session_epoch
+ * @property int $access_token_epoch
  */
 final class User extends Model implements AuthenticatableContract, OAuthenticatable
 {
@@ -71,6 +72,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
             'enabled' => 'boolean',
             'is_admin' => 'boolean',
             'ui_session_epoch' => 'integer',
+            'access_token_epoch' => 'integer',
         ];
     }
 

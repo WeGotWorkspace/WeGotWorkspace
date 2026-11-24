@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Drive;
 
+use App\Storage\ProjectArchivePaths;
 use App\Storage\StoragePaths;
 
 final class DriveSharePathScope
@@ -34,6 +35,15 @@ final class DriveSharePathScope
     public function isInProductTrash(string $path): bool
     {
         return preg_match('#^/(users|groups)/[^/]+/\.?Trash(/|$)#', $this->normalize($path)) === 1;
+    }
+
+    /**
+     * A grant on this path does nothing: it is in a product trash, or in the server-owned
+     * tree of archived Project folders (#819).
+     */
+    public function isInert(string $path): bool
+    {
+        return $this->isInProductTrash($path) || ProjectArchivePaths::isUnder($this->normalize($path));
     }
 
     public function isWithin(string $rootPath, string $requestedPath): bool

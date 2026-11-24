@@ -6,6 +6,7 @@ namespace App\Services\Auth\Mfa;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\AuthChallenge;
+use App\Models\User;
 use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\UserEnabledGuard;
 
@@ -17,7 +18,8 @@ use App\Services\Auth\UserEnabledGuard;
  *
  * Order on every code: the address limit, the challenge lookup (an unknown id
  * counts on the address only), the user-and-address limit, the enabled check,
- * the per-user code lock, then the code.
+ * the per-user code lock, a spent code (refused, not counted), then the
+ * attempt on the challenge and the code.
  */
 final class MfaSignIn
 {
@@ -51,7 +53,7 @@ final class MfaSignIn
     /**
      * A code or a recovery code on a `login` challenge.
      *
-     * @return array{status: 'ok', username: string}|array{status: 'mfa_replace_required', challenge: string, client: string, secret: string, otpauth_uri: string}
+     * @return array{status: 'ok', username: string, epoch: int|null}|array{status: 'mfa_replace_required', challenge: string, client: string, secret: string, otpauth_uri: string}
      */
     public function verify(string $id, string $client, ?string $code, ?string $recoveryCode, string $ip, string $host): array
     {
@@ -63,6 +65,13 @@ final class MfaSignIn
 
         $challenge = $this->open($id, $client, AuthChallenge::KIND_LOGIN, $ip);
         $username = $challenge->username;
+        if ($code !== null && $this->codes->isSpentTotp($username, $code)) {
+            throw self::wrongCode();
+        }
+        $this->reserve($challenge);
+        // Read before the code is checked: a revokeAll() that commits after this makes the
+        // caller's refresh row older than the user row, and tokenResponse refuses it.
+        $epoch = $this->accessTokenEpoch($username);
 
         if ($code !== null) {
             if (! $this->codes->acceptTotp($username, $code)) {
@@ -70,8 +79,9 @@ final class MfaSignIn
             }
             $this->challenges->consume($challenge);
             $this->limiter->reset($username, $ip);
+            $this->limiter->rememberAddress($username, $ip);
 
-            return ['status' => 'ok', 'username' => $username];
+            return ['status' => 'ok', 'username' => $username, 'epoch' => $epoch];
         }
 
         if (! $this->codes->acceptRecoveryCode($username, (string) $recoveryCode)) {
@@ -98,6 +108,7 @@ final class MfaSignIn
     public function replace(string $id, string $client, string $code, string $ip): array
     {
         $challenge = $this->open($id, $client, AuthChallenge::KIND_REPLACE, $ip);
+        $this->reserve($challenge);
         $username = $challenge->username;
         $secret = $this->mfa->readPendingSecret($challenge);
 
@@ -108,6 +119,7 @@ final class MfaSignIn
         $this->challenges->consume($challenge);
         $recoveryCodes = $this->mfa->replace($username, $secret, $step);
         $this->limiter->reset($username, $ip);
+        $this->limiter->rememberAddress($username, $ip);
 
         return ['username' => $username, 'recovery_codes' => $recoveryCodes];
     }
@@ -143,18 +155,40 @@ final class MfaSignIn
 
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
+
+        return $challenge;
+    }
+
+    /**
+     * Counts this try on the challenge, atomically, before the code is read.
+     */
+    private function reserve(AuthChallenge $challenge): void
+    {
         if (! $this->challenges->reserveAttempt($challenge)) {
             throw AuthChallengeService::notFound();
         }
+    }
 
-        return $challenge;
+    private static function wrongCode(): ApiHttpException
+    {
+        return new ApiHttpException(401, 'That code is not right. Check the time on your phone and try again.', 'mfa_code_invalid');
+    }
+
+    /**
+     * users.access_token_epoch, or null when there is no such user.
+     */
+    public function accessTokenEpoch(string $username): ?int
+    {
+        $epoch = User::query()->where('username', $username)->value('access_token_epoch');
+
+        return $epoch === null ? null : (int) $epoch;
     }
 
     private function refuse(AuthChallenge $challenge, string $ip): never
     {
         $this->limiter->hit($challenge->username, $ip);
 
-        throw new ApiHttpException(401, 'That code is not right. Check the time on your phone and try again.', 'mfa_code_invalid');
+        throw self::wrongCode();
     }
 
     private function blankToNull(?string $value): ?string

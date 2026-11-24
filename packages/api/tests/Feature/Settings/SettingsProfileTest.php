@@ -254,10 +254,10 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
     }
 
     /**
-     * Refresh tokens are revoked, including the caller's. Access JWTs stay
-     * valid until WGW_API_JWT_ACCESS_TTL; bearer auth does not read ui_session_epoch.
+     * Refresh tokens are revoked, including the caller's, and access JWTs minted
+     * before the change are refused at once: they carry the old access_token_epoch (#2315).
      */
-    public function test_password_change_leaves_existing_access_tokens_valid_until_expiry(): void
+    public function test_password_change_ends_existing_access_and_refresh_tokens(): void
     {
         $caller = $this->postJson('/api/v1/auth/token', [
             'username' => 'bob',
@@ -272,7 +272,7 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
         ])->assertOk();
         $otherAccess = (string) $other->json('access_token');
         $otherRefresh = $this->refreshCookieValue($other);
-        $epochBefore = (int) User::query()->where('username', 'bob')->value('ui_session_epoch');
+        $epochBefore = (int) User::query()->where('username', 'bob')->value('access_token_epoch');
 
         $this->withBearer($access)->putJson('/api/v1/settings/profile', [
             'password' => 'newpassword12',
@@ -281,13 +281,13 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
 
         $this->assertSame(
             $epochBefore + 1,
-            (int) User::query()->where('username', 'bob')->value('ui_session_epoch'),
+            (int) User::query()->where('username', 'bob')->value('access_token_epoch'),
         );
 
         $this->postRefresh($refresh)->assertUnauthorized();
         $this->postRefresh($otherRefresh)->assertUnauthorized();
-        $this->withBearer($access)->getJson('/api/v1/settings/state')->assertOk();
-        $this->withBearer($otherAccess)->getJson('/api/v1/settings/state')->assertOk();
+        $this->withBearer($access)->getJson('/api/v1/settings/state')->assertUnauthorized();
+        $this->withBearer($otherAccess)->getJson('/api/v1/settings/state')->assertUnauthorized();
     }
 
     public function test_wrong_current_password_shares_the_login_rate_limit(): void

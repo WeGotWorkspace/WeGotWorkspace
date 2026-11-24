@@ -52,11 +52,11 @@ final class GroupsController
     public function destroy(Request $request, string $group): JsonResponse
     {
         try {
-            $this->groups->delete($group);
+            $deletedProjects = $this->groups->delete($group);
         } catch (\InvalidArgumentException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
         }
 
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'deletedProjects' => $deletedProjects]);
     }
 }

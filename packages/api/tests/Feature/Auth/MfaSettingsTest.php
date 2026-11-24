@@ -22,7 +22,9 @@ use Tests\Support\WgwDatabaseTestCase;
  */
 final class MfaSettingsTest extends WgwDatabaseTestCase
 {
-    use TwoFactorTestHelpers;
+    use TwoFactorTestHelpers {
+        turnOnMfa as private turnOnMfaForUser;
+    }
 
     private string $token = '';
 
@@ -103,11 +105,14 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         $this->assertCount(10, $codes);
         $this->assertSame(10, MfaRecoveryCode::query()->where('username', 'bob')->whereNull('used_at')->count());
         $this->postRefresh($other['refresh_token'])->assertUnauthorized();
+        // #2315: the other session's access token is refused at once, not at expiry.
+        $this->withBearer($other['access_token'])->getJson('/api/v1/me')->assertUnauthorized();
         $this->signInWithPassword('bob')->assertJsonPath('status', 'mfa_required');
         // The confirming code's step is used: it cannot sign in.
         $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertStatus(401);
         $this->nextStep();
-        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertOk();
+        $signedIn = $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($secret)])->assertOk();
+        $this->withBearer((string) $signedIn->json('access_token'))->getJson('/api/v1/me')->assertOk();
     }
 
     public function test_confirm_needs_password_code_and_a_started_setup(): void
@@ -221,6 +226,27 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         $this->assertSame(10, MfaRecoveryCode::query()->where('username', 'bob')->whereNull('used_at')->count());
     }
 
+    public function test_a_replayed_code_is_refused_on_every_code_route_without_counting(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->settings('POST', 'settings/app-passwords', ['name' => 'One', 'code' => $code])->assertCreated();
+
+        // More than the sign-in limit (and the per-user lock) would allow if these counted.
+        for ($i = 0; $i < LoginRateLimiter::USER_IP_LIMIT + 3; $i++) {
+            $this->settings('POST', 'settings/app-passwords', ['name' => 'Two', 'code' => $code])
+                ->assertForbidden()->assertJsonPath('code', 'mfa_code_invalid');
+            $this->settings('POST', 'settings/totp/recovery-codes', ['code' => $code])
+                ->assertForbidden()->assertJsonPath('code', 'mfa_code_invalid');
+            $this->settings('DELETE', 'settings/totp', ['code' => $code])
+                ->assertForbidden()->assertJsonPath('code', 'mfa_code_invalid');
+        }
+        $this->assertSame(1, UserMfa::query()->count());
+
+        $this->nextStep();
+        $this->settings('DELETE', 'settings/totp', ['code' => $this->code($secret)])->assertOk();
+    }
+
     public function test_app_password_create_wrong_codes_count_on_the_limits(): void
     {
         $secret = $this->turnOnMfa('bob')['secret'];
@@ -267,6 +293,22 @@ final class MfaSettingsTest extends WgwDatabaseTestCase
         $this->postJson('/api/v1/settings/totp/confirmation', ['currentPassword' => 'secret', 'code' => '123456'])->assertUnauthorized();
         $this->deleteJson('/api/v1/settings/totp', ['code' => '123456'])->assertUnauthorized();
         $this->postJson('/api/v1/settings/totp/recovery-codes', ['code' => '123456'])->assertUnauthorized();
+    }
+
+    /**
+     * Turning two-factor on signs out everywhere, which refuses access tokens
+     * issued before it (#2315). Sign bob in again, as the app does.
+     *
+     * @return array{secret: string, recovery_codes: list<string>}
+     */
+    protected function turnOnMfa(string $username): array
+    {
+        $result = $this->turnOnMfaForUser($username);
+        if ($username === 'bob') {
+            $this->token = app(AuthTokenService::class)->issueForUsername('bob')['access_token'];
+        }
+
+        return $result;
     }
 
     /**

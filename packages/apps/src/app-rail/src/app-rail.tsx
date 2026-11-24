@@ -1,4 +1,4 @@
-import { memo, useEffect, type MouseEvent } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, type MouseEvent } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
 import {
@@ -10,6 +10,7 @@ import {
 import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/ui/tooltip";
+import { releaseAppFadeHold, settleAppFade } from "@/app-rail/src/app-switch-fade";
 import { lastAppLocation, rememberAppLocation } from "@/app-rail/src/last-app-location";
 import "@/app-rail/src/app-rail.css";
 
@@ -34,6 +35,7 @@ function useAppSwitch(app: AppSwitchMenuApp, current: boolean) {
       event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
     if (!plainClick) return;
     event.preventDefault();
+    releaseAppFadeHold();
     const last = current ? null : lastAppLocation(app.id);
     void navigate(last ? { to: last.pathname, search: last.search } : { to: app.to });
   };
@@ -101,13 +103,18 @@ export const AppRail = memo(function AppRail({
     const here = appSwitchAppAtPath(path);
     if (here) rememberAppLocation(here.id, { pathname: path, search: search ?? {} });
   }, [path, search]);
+  // Before the first paint: the panes after the rail fade in once per app switch.
+  const railRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (railRef.current) settleAppFade(railRef.current);
+  }, []);
   const currentAppId = appSwitchAppAtPath(path)?.id;
   const isCurrent = (app: AppSwitchMenuApp) => app.id === currentAppId;
 
   return (
     // Own provider: the rail also mounts where no suite-level tooltip provider is above it.
     <TooltipProvider>
-      <nav className="app-rail" aria-label="Apps">
+      <nav ref={railRef} className="app-rail" aria-label="Apps">
         <div className="app-rail__notifications" ref={notificationsSlotRef} />
         {/* Tiles scroll when the screen is short; the bell above and the account below stay put. */}
         <div className="app-rail__scroll">

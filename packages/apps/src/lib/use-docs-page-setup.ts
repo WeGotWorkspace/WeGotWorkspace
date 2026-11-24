@@ -37,7 +37,7 @@ function useDocsPageSetupRecords() {
  * One document's page setup, live across editors and tabs on this device: its own choice,
  * else the default from Docs settings. A change applies to this document only. Without a
  * path (a preview), it shows and changes the default. Phones show the pages too, at
- * their real size (the sheet scrolls sideways), unless Fit to screen shrinks them.
+ * their real size (the sheet scrolls sideways), unless Fit to width shrinks them.
  */
 export function useDocsPageSetup(docPath?: string | null): DocsPageSetupState {
   const { prefs, overrides } = useDocsPageSetupRecords();
@@ -51,7 +51,7 @@ export function useDocsPageSetup(docPath?: string | null): DocsPageSetupState {
         writeDocsPageSetupPrefs(change);
         return;
       }
-      // Fit to screen is for every document on this device.
+      // Fit to width is for every document on this device.
       if (change.fitToScreen !== undefined) {
         writeDocsPageSetupPrefs({ fitToScreen: change.fitToScreen });
       }

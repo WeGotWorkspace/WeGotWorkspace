@@ -82,11 +82,6 @@
   @apply size-8 text-[10px];
 }
 
-.docs-collab-card__avatar {
-  --user-avatar-bg: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-  --user-avatar-fg: var(--workspace-foreground);
-}
-
 .docs-collab-card__meta {
   @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
@@ -121,12 +116,12 @@
 }
 
 .docs-collab-card__avatar .user-avatar__mark {
-  @apply size-9 rounded-full text-xs;
+  @apply size-9 text-xs;
 }
 
-/* Name and time share one row. */
+/* Name and time share one row, the time right after the name. */
 .docs-collab-card__meta {
-  @apply flex-row items-baseline justify-between gap-3;
+  @apply flex-row items-baseline justify-start gap-2.5;
 }
 
 .docs-collab-card__author {
@@ -135,4 +130,32 @@
 
 .docs-collab-card__time {
   @apply shrink-0 text-xs;
+}
+
+/* Footer: a full-bleed rule under the card body, actions or the reply field inside it. */
+.docs-collab-card__footer {
+  @apply -mx-4 -mb-4 mt-4 flex items-center gap-2 border-t px-4 py-2.5;
+  border-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
+}
+
+/* Two footers stack as one block: the reply field, then the decision row. */
+.docs-collab-card__footer:has(+ .docs-collab-card__footer) {
+  @apply mb-0;
+}
+
+.docs-collab-card__footer + .docs-collab-card__footer {
+  @apply mt-0;
+}
+
+.docs-collab-card__footer--reply {
+  @apply gap-1 pr-2.5;
+}
+
+.docs-collab-card__reply-input {
+  @apply min-w-0 flex-1 border-0 bg-transparent text-sm outline-none;
+  color: var(--docs-text, var(--workspace-foreground));
+}
+
+.docs-collab-card__reply-input::placeholder {
+  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }

@@ -74,6 +74,7 @@ final class OAuthSessionController
 
             return response()->json($challenge);
         }
+        $this->limiter->rememberAddress($username, $ip);
 
         return $this->signIn($request, $user);
     }
@@ -110,6 +111,11 @@ final class OAuthSessionController
         );
         if ($result['status'] !== 'ok') {
             return response()->json($result);
+        }
+
+        // A sign-out everywhere that committed after the code step began ends this sign-in too.
+        if ($this->mfa->accessTokenEpoch($result['username']) !== $result['epoch']) {
+            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
         return $this->signIn($request, $this->user($result['username']));

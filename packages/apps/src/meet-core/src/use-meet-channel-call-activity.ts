@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { meetChannelIdForRoom, meetChannelRoomId } from "@/meet-core/src/meet-channel-room";
+import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
+import {
+  useJmapPushConnected,
+  useJmapStateChange,
+  type JmapPushHubLike,
+} from "@/lib/api/wgw/use-jmap-state-change";
 import type { MeetAPIOperations, MeetChannel } from "@/lib/models/meet-types";
 
 const NO_OMIT_CHANNEL_IDS: readonly string[] = [];
 
+/** Backup poll, used only while the push stream is down. */
 export const MEET_CALL_ACTIVITY_POLL_MS = 5_000;
+
+/** The push type that rings when a call starts or ends in a channel or DM of this user (#2295). */
+export const MEET_CALL_PUSH_TYPE = "MeetCall";
+const MEET_CALL_PUSH_TYPES: readonly string[] = [MEET_CALL_PUSH_TYPE];
 
 /** Room-status targets: the selected channel plus the channel with the live RTC session. */
 export function meetCallActivityTargets(
@@ -52,9 +63,13 @@ export function omitMeetCallActivityChannels(
 }
 
 /**
- * v1 `callActive` signal (spec: room-status polling, deliberately narrow): polls
+ * v1 `callActive` signal (spec: room-status reads, deliberately narrow): reads
  * only the selected channel's room and the channel with an active local session.
- * Flags for channels that leave the poll set are dropped rather than kept stale.
+ * Flags for channels that leave that set are dropped rather than kept stale.
+ *
+ * Push is the doorbell (#2295, docs/architecture/jmap-push.md): the room status is read
+ * on selection change and whenever the `MeetCall` state changes, and the interval
+ * runs only while the push stream is down.
  */
 export function useMeetChannelCallActivity({
   operations,
@@ -64,6 +79,7 @@ export function useMeetChannelCallActivity({
   pollMs = MEET_CALL_ACTIVITY_POLL_MS,
   resolveRoom,
   omitChannelIds = NO_OMIT_CHANNEL_IDS,
+  pushHub = defaultJmapPushHub(),
 }: {
   operations: MeetAPIOperations;
   channels: readonly MeetChannel[];
@@ -74,6 +90,8 @@ export function useMeetChannelCallActivity({
   resolveRoom?: (channelId: string) => Promise<string | null>;
   /** Mesh-emptied channel ids — drop immediately and ignore stale poll `true`. */
   omitChannelIds?: readonly string[];
+  /** The browser's push hub; null (mock data) leaves only the interval. */
+  pushHub?: JmapPushHubLike | null;
 }): Record<string, boolean> {
   const [active, setActive] = useState<Record<string, boolean>>({});
   const omitChannelIdsRef = useRef(omitChannelIds);
@@ -98,10 +116,22 @@ export function useMeetChannelCallActivity({
     });
   }, [omitChannelIds]);
 
+  // Resolves false when a read failed, so push offers the state again.
+  const pollRef = useRef<() => Promise<boolean>>(async () => true);
+  // Numbers the reads: a slower, older read must not overwrite a newer one.
+  const pollSeq = useRef(0);
+  // A read skipped while the tab was hidden is made up when it shows again.
+  const missedWhileHidden = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
-    const poll = async () => {
-      if (document.hidden) return;
+    const poll = async (): Promise<boolean> => {
+      if (document.hidden) {
+        missedWhileHidden.current = true;
+        return true;
+      }
+      missedWhileHidden.current = false;
+      const seq = ++pollSeq.current;
       const channels = channelsRef.current;
       const extras: { channelId: string; room: string }[] = [];
       const selectedListed = channels.some((channel) => channel.id === selectedChannelId);
@@ -109,36 +139,61 @@ export function useMeetChannelCallActivity({
         const room = await resolveRoom(selectedChannelId);
         if (room) extras.push({ channelId: selectedChannelId, room });
       }
-      if (cancelled) return;
+      if (cancelled || seq !== pollSeq.current) return true;
       const targets = meetCallActivityTargets(channels, selectedChannelId, joinedRoomCode, extras);
       if (targets.length === 0) {
         setActive((prev) => (Object.keys(prev).length === 0 ? prev : {}));
-        return;
+        return true;
       }
+      let failed = false;
       const entries = await Promise.all(
         targets.map(async ({ channelId, room }) => {
           try {
             const status = await operations.roomStatus({ room });
             return [channelId, status.active === true] as const;
           } catch {
+            failed = true;
             return [channelId, false] as const;
           }
         }),
       );
-      if (cancelled) return;
+      if (cancelled || seq !== pollSeq.current) return true;
+      // A failed read keeps the previous flags; the caller retries.
+      if (failed) return false;
       const next = omitMeetCallActivityChannels(
         Object.fromEntries(entries.filter(([, isActive]) => isActive)),
         omitChannelIdsRef.current,
       );
       setActive((prev) => (sameActiveSet(prev, next) ? prev : next));
+      return true;
     };
+    pollRef.current = poll;
     void poll();
-    const id = window.setInterval(() => void poll(), pollMs);
     return () => {
       cancelled = true;
-      window.clearInterval(id);
     };
-  }, [targetKey, joinedRoomCode, operations, pollMs, resolveRoom, selectedChannelId]);
+  }, [targetKey, joinedRoomCode, operations, resolveRoom, selectedChannelId]);
+
+  // Push is the doorbell: a `MeetCall` state change means a call started or ended in one
+  // of this user's channels, so the rooms in view are read once.
+  const pushConnected = useJmapPushConnected(pushHub);
+  useJmapStateChange(MEET_CALL_PUSH_TYPES, () => pollRef.current(), pushHub);
+
+  // The interval is only the backup while push is down.
+  useEffect(() => {
+    if (pushConnected) return;
+    const id = window.setInterval(() => void pollRef.current(), pollMs);
+    return () => window.clearInterval(id);
+  }, [pushConnected, pollMs]);
+
+  useEffect(() => {
+    if (!pushConnected) return;
+    const onVisible = () => {
+      if (!document.hidden && missedWhileHidden.current) void pollRef.current();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [pushConnected]);
 
   return active;
 }

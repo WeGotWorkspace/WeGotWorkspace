@@ -14,6 +14,7 @@ use App\Models\ChatReadMarker;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Chat\Conversion\ChatMessageJournalConverter;
 use App\Services\Notify\ChatMentionedNotify;
+use App\Services\Notify\NotificationProjects;
 use App\Services\Threads\ThreadAuthorNames;
 use App\Services\Threads\ThreadMentions;
 use App\Services\Threads\ThreadReactions;
@@ -558,6 +559,7 @@ final class ChatMessageRepository
                 (string) $instance->uri,
                 [
                     'recipients' => $postedRecipients,
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
                     ...$postedData,
                 ],
             );
@@ -570,6 +572,7 @@ final class ChatMessageRepository
                 (string) $instance->uri,
                 [
                     'recipients' => array_values($mentioned),
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
                     ...ChatMentionedNotify::eventData(
                         (string) $instance->uri,
                         (string) $postedData['channelKind'],

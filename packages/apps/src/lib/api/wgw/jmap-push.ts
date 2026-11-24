@@ -16,8 +16,18 @@ import {
 } from "@/lib/jmap-client/push/mesh-check-now";
 import { meetCallAwake } from "@/lib/jmap-client/push/meet-call-awake";
 import { browserWebLocks } from "@/lib/jmap-client/push/web-locks-leader";
-import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
+import {
+  getConnectivitySnapshot,
+  isFetchNetworkError,
+  reportReachability,
+  setPushHealthy,
+  subscribeBrowserOnline,
+} from "@/lib/offline/core/browser-online";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
+import {
+  pushHeartbeatHeaderValue,
+  RTC_PUSH_PEERS_HEADER,
+} from "@/lib/rtc/session/push-heartbeat-peers";
 import { readRtcBrowserId } from "@/lib/rtc/signaling/browser-id";
 
 const CHANNEL = "wgw-jmap-push";
@@ -124,6 +134,11 @@ function createHub(): JmapPushHub {
         // 6 s instead of 3 s while nobody used any tab for 2 min (#2294).
         userIdle: () => userIsIdle(),
         onStatus: ctx.onStatus,
+        // A push response is the online check; a push that never reached the server feeds the probe backoff (#2296).
+        onResponse: () => reportReachability(true),
+        onRequestError: (error) => {
+          if (isFetchNetworkError(error)) reportReachability(false);
+        },
         connectivity: {
           online: getConnectivitySnapshot,
           subscribe: (listener) =>
@@ -133,8 +148,13 @@ function createHub(): JmapPushHub {
         // A linked presence mesh carries colleagues' check-now; wait 5 s, not 3 s (#1943).
         mesh: { linked: meshLinked, subscribe: subscribeMeshLinked },
         headers: (): Record<string, string> => {
+          const headers: Record<string, string> = {};
           const browserId = readRtcBrowserId();
-          return browserId ? { [BROWSER_ID_HEADER]: browserId } : {};
+          if (browserId) headers[BROWSER_ID_HEADER] = browserId;
+          // Each read keeps this browser's signaling peers alive, so quiet rooms need no poll (#2287).
+          const peers = pushHeartbeatHeaderValue();
+          if (peers) headers[RTC_PUSH_PEERS_HEADER] = peers;
+          return headers;
         },
       }),
     // A peer's `check-now` reconnects the stream early (#1662).
@@ -154,6 +174,8 @@ export function defaultJmapPushHub(): JmapPushHub | null {
   if (hub) {
     installUserActivity();
     const created = hub;
+    // While the stream is healthy it is the online check: the probe stays quiet (#2296).
+    created.subscribeStatus(setPushHealthy);
     // Back from idle: the longer idle interval must not hold up the first news.
     onUserResumed(() => created.wake("active"));
   }

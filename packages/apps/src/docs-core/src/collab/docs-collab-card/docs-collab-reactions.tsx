@@ -1,9 +1,7 @@
 import { useMemo } from "react";
-import { Smile } from "lucide-react";
-import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
+import { ReactionAddPicker, ReactionChip } from "@/reaction-picker/src/reaction-chip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
-  DOCS_COMMENT_REACTION_EMOJIS,
   type DocsCommentAuthor,
   type DocsCommentReaction,
 } from "@/text-editor-core/docs-collab/docs-comments-types";
@@ -76,11 +74,10 @@ export function DocsCollabReactions({
         const names = reactionAuthorNames(reactionUserIds(reactions, emoji), authors);
         const nameList = names.join(", ");
         const chip = (
-          <button
-            type="button"
-            className="docs-collab-reactions__reaction"
-            data-reacted={reacted ? "true" : "false"}
-            aria-pressed={reacted}
+          <ReactionChip
+            emoji={emoji}
+            count={count}
+            reacted={reacted}
             aria-label={`${emoji} ${count} ${nameList}`}
             disabled={!canMutate}
             onClick={(event) => {
@@ -88,12 +85,7 @@ export function DocsCollabReactions({
               if (!canMutate) return;
               onToggleReaction(emoji);
             }}
-          >
-            <span className="docs-collab-reactions__reaction-emoji" aria-hidden>
-              {emoji}
-            </span>
-            <span className="docs-collab-reactions__reaction-count">{count}</span>
-          </button>
+          />
         );
         return (
           <Tooltip key={emoji}>
@@ -111,18 +103,8 @@ export function DocsCollabReactions({
         );
       })}
       {canMutate ? (
-        <ReactionPicker
-          trigger={
-            <button
-              type="button"
-              className="docs-collab-reactions__reaction docs-collab-reactions__reaction--add"
-              aria-label="Add reaction"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Smile className="docs-collab-reactions__reaction-add-icon" aria-hidden />
-            </button>
-          }
-          emojis={DOCS_COMMENT_REACTION_EMOJIS}
+        <ReactionAddPicker
+          label="Add reaction"
           isPicked={(emoji) => userReacted(reactions, emoji, currentUserId)}
           onPick={onToggleReaction}
         />

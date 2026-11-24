@@ -414,6 +414,13 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
       current.users = current.users.filter((u) => u.username !== username);
       return snapshot();
     },
+    resetUserMfa: async (username, opts) => {
+      await sleep(120, opts?.signal);
+      current.users = current.users.map((u) =>
+        u.username === username ? { ...u, mfaEnabled: false } : u,
+      );
+      return snapshot();
+    },
     createGroup: async (input, opts) => {
       await sleep(120, opts?.signal);
       const slug = input.name
@@ -427,6 +434,7 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
           id,
           name: input.name,
           displayName: input.displayName ?? input.name,
+          teamAdmins: [],
         },
       ];
       return snapshot();
@@ -445,6 +453,20 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
             }
           : g,
       );
+      if (input.members || input.teamAdmins) {
+        // Only a member can be team admin; a removed member loses the role.
+        const members =
+          input.members ??
+          current.users.filter((u) => u.groups.includes(id)).map((u) => u.username);
+        current.groups = current.groups.map((g) =>
+          g.id === id
+            ? {
+                ...g,
+                teamAdmins: (input.teamAdmins ?? g.teamAdmins).filter((u) => members.includes(u)),
+              }
+            : g,
+        );
+      }
       if (input.members) {
         current.users = current.users.map((u) => {
           const has = u.groups.includes(id);

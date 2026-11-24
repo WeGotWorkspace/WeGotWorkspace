@@ -16,7 +16,15 @@ import {
   meetChannelComposerPlaceholder,
   meetChannelTitle,
 } from "@/meet-core/src/meet-channel-label";
-import { partitionMeetChannels } from "@/meet-core/src/meet-channel-partition";
+import {
+  meetSelectionUnderProject,
+  partitionMeetChannels,
+} from "@/meet-core/src/meet-channel-partition";
+import { isPersonalScope } from "@/lib/projects/project-filter";
+import {
+  useSelectedProjectIds,
+  useSelectedProjectTeamSlug,
+} from "@/lib/projects/use-project-filter";
 import {
   calendarEventsForMeetingChannel,
   clockLabelForMeetingChannel,
@@ -206,16 +214,33 @@ export function MeetWorkspace({
     setSelectedId((current) => (current === next ? current : next));
   }, [liveCallChannelId, routeChannelId, unmatchedAdHocRoom]);
 
-  const sections = useMemo(() => partitionMeetChannels(channels), [channels]);
+  const projectIds = useSelectedProjectIds();
+  const projectTeamSlug = useSelectedProjectTeamSlug();
+  const teamNames = useMemo(
+    () => Object.fromEntries((data.groups ?? []).map((group) => [group.slug, group.displayName])),
+    [data.groups],
+  );
+  const sections = useMemo(
+    () => partitionMeetChannels(channels, projectIds, projectTeamSlug),
+    [channels, projectIds, projectTeamSlug],
+  );
+  // A Project selected: a hidden open channel falls back to the Project's channel.
+  useEffect(() => {
+    setSelectedId((current) =>
+      meetSelectionUnderProject(current, channels, projectIds, projectTeamSlug),
+    );
+  }, [channels, projectIds, projectTeamSlug]);
   const leftoverUpcoming = useMemo(
     () =>
-      leftoverUpcomingMeetings(
-        upcomingMeetings,
-        channels,
-        sections.meetings,
-        calendar?.workspaceOrigin ?? "",
-      ).filter((row) => leftoverBelongsInTodaySidebar(row, nowTick)),
-    [calendar?.workspaceOrigin, channels, nowTick, sections.meetings, upcomingMeetings],
+      projectIds !== null
+        ? []
+        : leftoverUpcomingMeetings(
+            upcomingMeetings,
+            channels,
+            sections.meetings,
+            calendar?.workspaceOrigin ?? "",
+          ).filter((row) => leftoverBelongsInTodaySidebar(row, nowTick)),
+    [calendar?.workspaceOrigin, channels, nowTick, projectIds, sections.meetings, upcomingMeetings],
   );
   const todayMeetings = useMemo(
     () =>
@@ -610,6 +635,7 @@ export function MeetWorkspace({
             session={session}
             onLogout={onLogout}
             sections={sections}
+            teamNames={teamNames}
             todayMeetings={todayMeetings}
             leftoverUpcoming={leftoverUpcoming}
             directMessagePeople={dmPeople}
@@ -622,6 +648,7 @@ export function MeetWorkspace({
             channelCallAudioOnly={channelCallAudioOnly}
             meetingStartLabel={meetingStartLabel}
             onCreateChannel={() => dialogs.openCreate("channel")}
+            canCreateChannel={projectIds === null || isPersonalScope(projectIds)}
             onCreateMeeting={() => dialogs.setCreateMeetingOpen(true)}
             onJoinUpcomingMeeting={onJoinUpcomingMeeting}
             onEditUpcomingMeeting={calendar ? dialogs.openEditLeftover : undefined}
@@ -633,6 +660,9 @@ export function MeetWorkspace({
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             title={headerTitle}
             selected={selected}
+            directMessagePresence={
+              selectedDm ? (data.authorPresence?.[selectedDm.id] ?? "offline") : null
+            }
             conversationOpen={conversationOpen}
             showStart={showHeaderStart}
             onStartCall={onCallInvite}

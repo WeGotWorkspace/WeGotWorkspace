@@ -69,7 +69,8 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $groupHome = $this->withBearer($this->userBearerToken())
             ->getJson('/api/v1/files/children?path=/groups/support-team')
             ->assertOk();
-        $this->assertSame([], $groupHome->json('data.files'));
+        // A new Team starts with its default Project, whose folder is the only thing in the Drive.
+        $this->assertSame(['Support Team Project'], array_column((array) $groupHome->json('data.files'), 'name'));
 
         $this->withBearer($token)
             ->deleteJson('/api/v1/admin/groups/support-team')

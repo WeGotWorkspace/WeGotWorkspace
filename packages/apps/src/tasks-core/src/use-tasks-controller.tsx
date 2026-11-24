@@ -9,6 +9,7 @@ import { useTasksList } from "@/tasks-core/src/use-tasks-list";
 import { useTasksMutations } from "@/tasks-core/src/use-tasks-mutations";
 import { useTasksProjectMutations } from "@/tasks-core/src/use-tasks-project-mutations";
 import { useTasksShell } from "@/tasks-core/src/use-tasks-shell";
+import { useCloseTaskOutsideProject } from "@/tasks-core/src/use-tasks-project-scope";
 import type { TaskViewer } from "@/tasks-core/src/tasks-task-utils";
 
 type UseTasksControllerArgs = {
@@ -100,6 +101,7 @@ export function useTasksController({
   const projectMutations = useTasksProjectMutations({ shell });
   const openedTaskDeepLinkRef = useRef<string | null>(null);
   const { openTask } = list;
+  useCloseTaskOutsideProject(list.activeTask, shell.projectLists, list.closeTask);
 
   useEffect(() => {
     if (!initialTaskId) return;
@@ -152,7 +154,7 @@ export function useTasksController({
   return {
     L: shell.L,
     showLiveText,
-    taskLists: shell.taskLists,
+    taskLists: shell.visibleLists,
     view: shell.view,
     viewLabel: shell.viewLabel,
     canCreateTask: shell.canCreateTask,
@@ -193,7 +195,8 @@ export function useTasksController({
     requestDeleteTask: mutations.requestDeleteTask,
     moveToList: mutations.moveToList,
     handleTaskExitAnimationEnd: mutations.handleTaskExitAnimationEnd,
-    canManageProjects: projectMutations.canManageProjects,
+    // "New list" is hidden while a Project is selected (#818).
+    canManageProjects: projectMutations.canManageProjects && shell.projectLists === null,
     projectDialog: projectMutations.projectDialog,
     setProjectDialog: projectMutations.setProjectDialog,
     openCreateProjectDialog: projectMutations.openCreateProjectDialog,

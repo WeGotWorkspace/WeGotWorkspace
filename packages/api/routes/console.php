@@ -2,6 +2,7 @@
 
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Models\User;
+use App\Services\Auth\Mfa\AuthChallengeService;
 use App\Services\Auth\Mfa\UserMfaService;
 use App\Services\Calendars\Availability\AvailabilityCachePruner;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
@@ -500,6 +501,13 @@ Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping
 
     return Command::SUCCESS;
 })->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events');
+
+Artisan::command('wgw:auth:prune-challenges', function (AuthChallengeService $challenges): int {
+    $deleted = $challenges->pruneExpired();
+    $this->info(sprintf('Deleted %d expired two-factor sign-in challenge(s).', $deleted));
+
+    return Command::SUCCESS;
+})->purpose('Delete two-factor sign-in challenges that expired more than an hour ago');
 
 Artisan::command('wgw:availability:prune-cache', function (AvailabilityCachePruner $pruner): int {
     $result = $pruner->prune();

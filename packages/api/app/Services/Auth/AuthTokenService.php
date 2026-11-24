@@ -55,6 +55,9 @@ final class AuthTokenService
             );
         }
 
+        // Read before the password check: a sign-out everywhere that lands while
+        // this sign-in runs makes tokenResponse() refuse the pair it would return.
+        $epoch = $this->currentEpoch($username);
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if (! $this->credentials->validate($username, $password, $realm)) {
             $this->rateLimiter->hit($username, $ip);
@@ -63,7 +66,13 @@ final class AuthTokenService
 
         $this->rateLimiter->reset($username, $ip);
 
-        return $this->mfa->challengeAfterPassword($username, AuthChallenge::CLIENT_SPA) ?? $this->issueForUsername($username);
+        $challenge = $this->mfa->challengeAfterPassword($username, AuthChallenge::CLIENT_SPA);
+        if ($challenge !== null) {
+            return $challenge;
+        }
+        $this->rateLimiter->rememberAddress($username, $ip);
+
+        return $this->issueForUsername($username, $epoch);
     }
 
     /**
@@ -86,9 +95,10 @@ final class AuthTokenService
             throw new ApiHttpException(503, 'JWT key configuration missing.', 'config_error');
         }
 
+        // The successor keeps the epoch its parent was minted under (see tokenResponse).
         $rotated = $this->refreshTokens->consume(
             $refreshToken,
-            fn (string $username, string $familyId): string => $this->issueRefreshToken($username, $familyId),
+            fn (string $username, string $familyId, int $epoch): string => $this->issueRefreshToken($username, $familyId, $epoch),
         );
         if ($rotated === null) {
             throw new ApiHttpException(401, 'Invalid refresh token.', 'unauthorized');
@@ -130,7 +140,7 @@ final class AuthTokenService
      *   username: string
      * }
      */
-    public function issueForUsername(string $username): array
+    public function issueForUsername(string $username, ?int $epoch = null): array
     {
         $username = strtolower(trim($username));
         if ($username === '') {
@@ -143,14 +153,24 @@ final class AuthTokenService
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
-        return $this->issueTokenPair($username, $this->roleFor($username));
+        return $this->issueTokenPair($username, $this->roleFor($username), $epoch);
     }
 
-    private function issueRefreshToken(string $username, string $familyId): string
+    /**
+     * users.access_token_epoch, or null when there is no such user.
+     */
+    private function currentEpoch(string $username): ?int
+    {
+        $epoch = User::query()->where('username', $username)->value('access_token_epoch');
+
+        return $epoch === null ? null : (int) $epoch;
+    }
+
+    private function issueRefreshToken(string $username, string $familyId, int $epoch): string
     {
         $this->requireEnabled($username);
 
-        return $this->refreshTokens->issueRotated($username, $this->roleFor($username), $familyId);
+        return $this->refreshTokens->issueRotated($username, $this->roleFor($username), $familyId, $epoch);
     }
 
     private function requireEnabled(string $username): void
@@ -197,9 +217,9 @@ final class AuthTokenService
      *   username: string
      * }
      */
-    private function issueTokenPair(string $username, string $role): array
+    private function issueTokenPair(string $username, string $role, ?int $epoch): array
     {
-        return $this->tokenResponse($username, $role, $this->refreshTokens->issue($username, $role));
+        return $this->tokenResponse($username, $role, $this->refreshTokens->issue($username, $role, null, $epoch));
     }
 
     /**
@@ -218,9 +238,20 @@ final class AuthTokenService
     {
         $ttl = $this->jwtConfig->accessTtl();
         $uid = 0;
+        $epoch = null;
         if ($role !== 'guest') {
-            $user = User::query()->where('username', $username)->first(['id']);
+            $user = User::query()->where('username', $username)->first(['id', 'access_token_epoch']);
             $uid = $user === null ? 0 : (int) $user->id;
+            $epoch = $user === null ? null : (int) $user->access_token_epoch;
+            // The refresh row remembers the epoch it was minted under (sign-in: read before
+            // the password check; rotation: the parent's). A user row ahead of it means a
+            // sign-out everywhere landed since, also when that revoke has not reached this
+            // row yet or this is a grace replay: end the token and refuse.
+            $minted = $this->refreshTokens->epochFor($refreshToken);
+            if ($epoch !== null && $minted !== null && $epoch > $minted) {
+                $this->refreshTokens->revoke($refreshToken);
+                throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
+            }
         }
         $claims = [
             'sub' => $username,
@@ -228,6 +259,10 @@ final class AuthTokenService
             'exp' => time() + $ttl,
             'uid' => $uid,
         ];
+        // A sign-out everywhere bumps access_token_epoch; bearer auth then refuses this token.
+        if ($epoch !== null) {
+            $claims['ep'] = $epoch;
+        }
         $sid = $this->refreshTokens->familyIdFor($refreshToken);
         if ($sid !== null) {
             $claims['sid'] = $sid;

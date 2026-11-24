@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Support\McpPaths;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,7 @@ final class McpCors
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $this->isMcpPath($request)) {
+        if (! McpPaths::matches($request)) {
             return $next($request);
         }
 
@@ -30,17 +31,5 @@ final class McpCors
         $response->headers->set('Access-Control-Max-Age', '86400');
 
         return $response;
-    }
-
-    private function isMcpPath(Request $request): bool
-    {
-        return $request->is('mcp')
-            || $request->is('mcp/*')
-            || $request->is('oauth')
-            || $request->is('oauth/*')
-            || $request->is('.well-known/oauth-authorization-server')
-            || $request->is('.well-known/oauth-authorization-server/*')
-            || $request->is('.well-known/oauth-protected-resource')
-            || $request->is('.well-known/oauth-protected-resource/*');
     }
 }

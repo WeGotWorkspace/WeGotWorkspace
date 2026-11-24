@@ -1,0 +1,43 @@
+@import "../../styles.css" reference;
+
+.reaction-chip {
+  /* Filled capsule, the tag chip's look: a translucent ink wash, so it stays a
+     step darker than whatever is behind it (the paper or a hovered row). No
+     hairline. Hover steps from 8% to 12%. */
+  @apply inline-flex h-7 items-center gap-1.5 border-0 px-2.5 text-xs transition-colors;
+  border-radius: var(--control-radius-pill);
+  --reaction-chip-wash: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+  --reaction-chip-wash-strong: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  background-color: var(--reaction-chip-wash);
+  color: var(--chat-text, var(--workspace-foreground));
+}
+
+.reaction-chip:hover:not(:disabled) {
+  background-color: var(--reaction-chip-wash-strong);
+}
+
+.reaction-chip[data-reacted="true"] {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
+}
+
+/* Add a reaction: the same capsule, a smile in the label ink. */
+.reaction-chip--add {
+  @apply justify-center px-2;
+  color: var(--chat-muted, var(--workspace-label-color));
+}
+
+.reaction-chip--add:hover {
+  color: var(--chat-text, var(--workspace-foreground));
+}
+
+.reaction-chip__add-icon {
+  @apply size-4;
+}
+
+.reaction-chip__emoji {
+  @apply text-[0.9375rem] leading-none;
+}
+
+.reaction-chip__count {
+  @apply text-xs font-medium tabular-nums;
+}

@@ -123,6 +123,33 @@ Public keys are exposed at:
 
 Users can turn on an authenticator app (TOTP, RFC 6238: SHA-1, 6 digits, 30 seconds) in Settings (#2273). With it on, the password alone signs in nowhere.
 
+### At a glance
+
+| Where | Without two-factor | With two-factor on |
+|---|---|---|
+| Web app (`POST /auth/token`) | password → tokens | password → challenge → code → tokens |
+| Assistant connect (`POST /oauth/session`) | password → web session | password → challenge → code → web session |
+| Calendar, contacts, files, Meet (Basic) | account password or app password | app password only |
+| Refresh (`POST /auth/refresh`) | no code | no code |
+| Re-entering the password in Settings | account password | account password (not a sign-in) |
+
+```text
+browser                         API
+   │  POST /auth/token {username, password}
+   │ ─────────────────────────────────────────▶
+   │  200 {status: mfa_required, challenge}     (no tokens, no cookie)
+   │ ◀─────────────────────────────────────────
+   │  POST /auth/mfa-challenges/{challenge}/verification {code}
+   │ ─────────────────────────────────────────▶
+   │  200 {status: ok, access_token, …}         + refresh cookie
+   │ ◀─────────────────────────────────────────
+   │
+   │  … or {recovery_code} instead of {code}:
+   │  200 {status: mfa_replace_required, challenge, secret, otpauth_uri}
+   │  POST /auth/mfa-challenges/{challenge}/replacement {code from the new secret}
+   │  200 {status: ok, access_token, …, recovery_codes}   every older session ended
+```
+
 ### Web sign-in (`client: spa`)
 
 1. `POST /api/v1/auth/token` with the password answers:
@@ -178,6 +205,24 @@ A form post (not JSON) for a user with two-factor on does not sign in; it goes b
 ### Calendar, contacts, files and Meet apps
 
 With two-factor on, DAV Basic and Meet Basic refuse the account password, before the verified-password memory is read, so a password remembered from before does not work either. Those apps use app passwords (`/api/v1/settings/app-passwords`). A valid app password signs in even while the protocol sign-in limit for that user or address is reached; the limit only blocks account-password attempts (an old client still sending the account password cannot lock out the new app passwords). With two-factor on, creating one takes a current authenticator code (`code`) instead of the account password (`currentPassword`); without `code` it answers 422 `mfa_code_required`. `users.dav_password_used_at`, shown when setup starts, tells the user which apps still use the account password.
+
+App passwords work with two-factor off too; then the account password keeps working next to them. Each is 16 lowercase letters, shown once (in groups of four); clients may send it with or without the spaces. Only its sha256 is stored.
+
+| Route | Body | Answer |
+|---|---|---|
+| `GET /api/v1/settings/app-passwords` | | `{ appPasswords: [{ id, name, createdAt, lastUsedAt, lastUsedClient }] }`, newest first |
+| `POST /api/v1/settings/app-passwords` | `name` (≤ 60) and `code` with two-factor on, else `currentPassword` | 201 `{ appPassword, password }`; 403 `current_password_invalid` or `mfa_code_invalid`; 422 `mfa_code_required` or `app_password_limit` (50 active); 429 `throttled` with `Retry-After` |
+| `DELETE /api/v1/settings/app-passwords/{id}` | | revoked; 404 when it is not the caller's |
+| `POST /api/v1/settings/app-passwords/revocations` | | every app password of the caller revoked |
+
+`lastUsedAt` and `lastUsedClient` (the app's `User-Agent`) are written at most once per five minutes. An app password never signs in on `/auth/token`, `/oauth/session` or a current-password check.
+
+```bash
+# APP_PASSWORD holds the 16-letter app password shown once at creation.
+curl -X PROPFIND "${BASE_URL}/calendars/${DAV_USER}/" -H "Depth: 0" \
+  --user "${DAV_USER}:${APP_PASSWORD}"
+# → 207; the account password answers 401 while two-factor is on
+```
 
 ### Settings
 

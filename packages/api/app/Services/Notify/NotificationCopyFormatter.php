@@ -88,6 +88,7 @@ final class NotificationCopyFormatter
             $facts['navigate'],
             $facts['tag'],
             $facts['trigger'],
+            $facts['projectId'],
         );
 
         return $facts === [] ? null : $facts;

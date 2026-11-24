@@ -37,9 +37,6 @@ final class DavNamedFileHttpMatrixTest extends WgwDatabaseTestCase
     {
         parent::setUp();
 
-        $this->seedWgwUser('alice', displayName: 'Alice');
-        $this->seedWgwUser('bob', displayName: 'Bob');
-
         $installRoot = sys_get_temp_dir().'/wgw-dav-matrix-'.uniqid('', true);
         mkdir($installRoot, 0775, true);
         file_put_contents($installRoot.'/index.php', "<?php\n");
@@ -55,6 +52,10 @@ final class DavNamedFileHttpMatrixTest extends WgwDatabaseTestCase
         $this->setAppSetting(WgwSettings::BROWSER_PLUGIN, false);
         WgwTestDisks::refresh($this->dataDir);
         unset($_COOKIE['sabre_ui_auth']);
+
+        // After the install fixture: it points the wgw connection at its own sqlite file,
+        // and a user seeded earlier would not exist there (bob would never sign in).
+        $this->seedWgwUser('bob', displayName: 'Bob');
 
         Principal::query()->firstOrCreate(
             ['uri' => AdminConstants::GROUP_CONTAINER_URI],

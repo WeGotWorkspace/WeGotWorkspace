@@ -75,7 +75,9 @@ export const docsLabels = {
   homeTrash: driveLabels.sidebarTrash,
   /** Location column for docs shared with the current user. */
   homeSharedBy: driveLabels.sharedBy,
-  homeDrivesSection: filesBrowserSidebarLabels.drivesSection,
+  /** Same two sidebar sections as Drive: Team Drives and Project Folders. */
+  homeDrivesSection: driveLabels.sidebarSharedDrives,
+  homeProjectsSection: driveLabels.sidebarProjects,
   /** Personal-drive display label (SST). Drive UI path key remains `"My Drive"`. */
   homeMyDrive: filesBrowserSidebarLabels.personalDrive,
   /** Docs home confirm copy (Drive hardcodes a slightly different permanent-delete body). */

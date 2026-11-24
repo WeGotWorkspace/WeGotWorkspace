@@ -6,6 +6,8 @@ import {
   wgwFetch,
   wgwFetchPrincipal,
   wgwReadJson,
+  wgwMeRead,
+  wgwSettingsStateRead,
 } from "@/lib/api/wgw/http";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import type {
@@ -28,6 +30,7 @@ function toGroups(raw: WgwSettingsUserGroup[]): SettingsUIData["groups"] {
     id: group.id,
     displayName: group.displayName,
     memberCount: group.memberCount,
+    isTeamAdmin: group.isTeamAdmin,
   }));
 }
 
@@ -41,10 +44,13 @@ export function mapWgwSettingsStateToUI(state: WgwSettingsStateResponse): Settin
 }
 
 export async function fetchSettingsLiveBootstrap(): Promise<SettingsAppBootstrap> {
-  const [session, stateRes] = await Promise.all([wgwFetchPrincipal(), wgwFetch("/settings/state")]);
-  if (!stateRes.ok)
-    throw new WgwRequestError(`GET /settings/state failed (${stateRes.status})`, stateRes.status);
-  const json = (await wgwReadJson(stateRes)) as WgwSettingsStateResponse;
+  const [session, stateRead] = await Promise.all([
+    wgwFetchPrincipal(),
+    wgwSettingsStateRead.read(),
+  ]);
+  if (!stateRead.ok)
+    throw new WgwRequestError(`GET /settings/state failed (${stateRead.status})`, stateRead.status);
+  const json = stateRead.json as unknown as WgwSettingsStateResponse;
   const data = mapWgwSettingsStateToUI(json);
 
   return {
@@ -84,6 +90,9 @@ export async function saveSettingsProfile(
 ): Promise<SettingsUIData> {
   await wgwEnsureFreshAccessToken();
   const state = await requestSettings("/settings/profile", input, opts);
+  // The answer is the new settings state: every open tab and app uses it from now on.
+  wgwSettingsStateRead.set(state as unknown as Record<string, unknown>);
+  wgwMeRead.invalidate();
   return mapWgwSettingsStateToUI(state);
 }
 

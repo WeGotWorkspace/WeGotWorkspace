@@ -10,9 +10,10 @@
   --chat-message-padding-x: var(--list-item-padding-x, 1.25rem);
   box-sizing: border-box;
   width: calc(100% - 2 * var(--list-item-inset, 0.5rem));
-  /* Hosts may cap the conversation (`--chat-max-width`); it stays on the start edge. */
+  /* Hosts may cap the conversation (`--chat-max-width`); the capped block is centred
+     in the pane (uncapped, the auto margins equal the list inset). */
   max-width: var(--chat-max-width, none);
-  margin-inline: var(--list-item-inset, 0.5rem);
+  margin-inline: auto;
   padding-inline: var(--chat-message-padding-x);
   padding-block: var(--list-item-padding-y, 1rem);
   border-radius: var(--list-row-radius, 0.625rem);
@@ -112,6 +113,11 @@
 
 .chat-message__body .text-editor-prose {
   color: inherit;
+}
+
+/* The in-place editor is a card, not a line of text: it gets room under the author. */
+.chat-message[data-editing="true"] .chat-composer {
+  margin-top: 0.5rem;
 }
 
 .chat-message__body mark {

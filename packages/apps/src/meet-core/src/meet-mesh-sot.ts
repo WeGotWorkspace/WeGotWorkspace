@@ -237,9 +237,9 @@ export function wrapMeetChatOperationsWithMesh(
         }
       : undefined,
     deleteMessage: operations.deleteMessage
-      ? async (messageId) => {
+      ? async (messageId, opts) => {
           const prior = await port.resolveMessage(messageId);
-          await operations.deleteMessage!(messageId);
+          await operations.deleteMessage!(messageId, opts);
           if (prior) {
             send(prior.channelId, {
               v: 1,

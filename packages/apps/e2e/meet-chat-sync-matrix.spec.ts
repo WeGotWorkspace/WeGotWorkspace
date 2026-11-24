@@ -544,6 +544,98 @@ test.describe("meet chat offline", () => {
     });
   }
 
+  test.describe("delete · ten seconds to undo", () => {
+    const WINDOW_MS = 10_000;
+    const undoToast = (tab: Tab) => tab.getByRole("button", { name: "Undo", exact: true });
+    const serverRow = async (channelId: string, messageId: string) =>
+      (await serverMessages(channelId)).find((row) => row.id === messageId);
+
+    test("undo by toast, then by keyboard · the server never sees the delete", async ({
+      browser,
+    }) => {
+      const id = run();
+      const channelId = await createChannel(`${id} undo`);
+      const context = await openUser(browser, OWNER);
+      try {
+        const tab = await openChannel(context, OWNER, channelId);
+        const messageId = await post(channelId, `${id} keep`);
+        await pollCache(tab, channelId, bodies, "the message arrived").toEqual([`${id} keep`]);
+
+        await deleteShown(tab, `${id} keep`);
+        await expect(tab.getByText(`${id} keep`, { exact: true })).toHaveCount(0);
+        await undoToast(tab).click();
+        await expect(shown(tab, `${id} keep`)).toBeVisible();
+
+        await deleteShown(tab, `${id} keep`);
+        await expect(tab.getByText(`${id} keep`, { exact: true })).toHaveCount(0);
+        await tab.locator("body").click({ position: { x: 1, y: 1 } });
+        await tab.keyboard.press("ControlOrMeta+z");
+        await expect(shown(tab, `${id} keep`)).toBeVisible();
+
+        await sleep(WINDOW_MS + 2_000);
+        expect((await serverRow(channelId, messageId))?.deletedAt).toBeFalsy();
+        await tab.reload();
+        await expect(shown(tab, `${id} keep`)).toBeVisible({ timeout: 30_000 });
+      } finally {
+        await context.close();
+        await deleteChannel(channelId);
+      }
+    });
+
+    test("reload inside the window · the delete is sent on leaving the page", async ({
+      browser,
+    }) => {
+      const id = run();
+      const channelId = await createChannel(`${id} reload`);
+      const context = await openUser(browser, OWNER);
+      try {
+        const tab = await openChannel(context, OWNER, channelId);
+        const messageId = await post(channelId, `${id} gone`);
+        await pollCache(tab, channelId, bodies, "the message arrived").toEqual([`${id} gone`]);
+
+        await deleteShown(tab, `${id} gone`);
+        await expect(tab.getByText(`${id} gone`, { exact: true })).toHaveCount(0);
+        await tab.reload();
+        await expect(composer(tab)).toBeVisible({ timeout: 30_000 });
+        await expect
+          .poll(async () => Boolean((await serverRow(channelId, messageId))?.deletedAt), {
+            message: "the server row is deleted",
+            timeout: MIRROR_MS,
+            intervals: [1_000],
+          })
+          .toBe(true);
+        await expect(tab.getByText(`${id} gone`, { exact: true })).toHaveCount(0);
+      } finally {
+        await context.close();
+        await deleteChannel(channelId);
+      }
+    });
+
+    test("second tab · shows the message as deleted once the window passes", async ({
+      browser,
+    }) => {
+      const id = run();
+      const channelId = await createChannel(`${id} two tabs`);
+      const context = await openUser(browser, OWNER);
+      try {
+        const first = await openChannel(context, OWNER, channelId, "A");
+        const second = await openChannel(context, OWNER, channelId, "B");
+        await post(channelId, `${id} both`);
+        await expect(shown(first, `${id} both`)).toBeVisible({ timeout: MIRROR_MS });
+        await expect(shown(second, `${id} both`)).toBeVisible({ timeout: MIRROR_MS });
+
+        await deleteShown(first, `${id} both`);
+        await sleep(WINDOW_MS + 2_000);
+        await expect(second.getByText(`${id} both`, { exact: true })).toHaveCount(0, {
+          timeout: MIRROR_MS,
+        });
+      } finally {
+        await context.close();
+        await deleteChannel(channelId);
+      }
+    });
+  });
+
   test("inbound · a message posted and one deleted elsewhere arrive through the token · reload", async ({
     browser,
   }) => {

@@ -1,6 +1,12 @@
 import { defaultMailDeliveryState } from "@/lib/models/admin-mail-delivery";
 import type { AdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwInvalidateAccountReads,
+  wgwReadJson,
+  wgwSettingsStateRead,
+} from "@/lib/api/wgw/http";
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import type {
   WgwAdminStateResponse,
@@ -142,11 +148,13 @@ export function mapWgwAdminStateToUI(
       createdAt: user.createdAt,
       enabled: user.enabled !== false,
       isAdmin: user.isAdmin === true,
+      mfaEnabled: (user as { mfaEnabled?: unknown }).mfaEnabled === true,
     })),
     groups: state.groups.map((group) => ({
       id: group.id,
       name: group.name,
       displayName: group.displayName,
+      teamAdmins: group.teamAdmins,
     })),
     mail: {
       smtpHost: state.mail.smtpHost,
@@ -352,6 +360,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       });
       if (!res.ok)
         throw new WgwRequestError(`PUT /admin/settings failed (${res.status})`, res.status);
+      wgwSettingsStateRead.invalidate();
       return fetchAdminUiData(opts);
     },
     setAppUrl: async (url, opts) => {
@@ -551,6 +560,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       if (!res.ok)
         throw new WgwRequestError(`POST /admin/users failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     updateUser: async (username, input, opts) => {
@@ -566,6 +576,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     deleteUser: async (username, opts) => {
@@ -579,6 +590,14 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
+      return fetchAdminUiData(opts);
+    },
+    resetUserMfa: async (username, opts) => {
+      const path = `/admin/users/${encodeURIComponent(username)}/mfa-resets`;
+      const res = await wgwFetch(path, { method: "POST", signal: opts?.signal });
+      if (!res.ok) throw new WgwRequestError(`POST ${path} failed (${res.status})`, res.status);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     createGroup: async (input, opts) => {
@@ -595,6 +614,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       if (!res.ok)
         throw new WgwRequestError(`POST /admin/groups failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     updateGroup: async (groupSlug, input, opts) => {
@@ -602,12 +622,33 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       const res = await wgwFetch(`/admin/groups/${encodeURIComponent(slug)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ displayName: input.displayName, members: input.members }),
         signal: opts?.signal,
       });
       if (!res.ok)
         throw new WgwRequestError(`PATCH /admin/groups/${slug} failed (${res.status})`, res.status);
       await wgwReadJson(res);
+      if (input.teamAdmins) {
+        // After the member write: only a member can be team admin, and a removed member has
+        // already lost the role.
+        const before = (await fetchAdminState(opts)).groups.find((group) => group.name === slug);
+        const current = before?.teamAdmins ?? [];
+        const wanted = input.teamAdmins;
+        const changes = [
+          ...wanted.filter((u) => !current.includes(u)).map((u) => ["PUT", u] as const),
+          ...current.filter((u) => !wanted.includes(u)).map((u) => ["DELETE", u] as const),
+        ];
+        for (const [method, username] of changes) {
+          const path = `/teams/${encodeURIComponent(slug)}/admins/${encodeURIComponent(username)}`;
+          const roleRes = await wgwFetch(path, { method, signal: opts?.signal });
+          if (!roleRes.ok)
+            throw new WgwRequestError(
+              `${method} ${path} failed (${roleRes.status})`,
+              roleRes.status,
+            );
+        }
+      }
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
     deleteGroup: async (groupSlug, opts) => {
@@ -622,6 +663,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
           res.status,
         );
       await wgwReadJson(res);
+      wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },
   };

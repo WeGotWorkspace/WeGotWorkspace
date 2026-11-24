@@ -11,7 +11,7 @@ describe("contacts create-collection labels", () => {
   });
 
   it("matches Notes/Tasks owned vs shared section headings", () => {
-    expect(defaultContactsLabels.sectionAddressBooks).toBe("My address books");
+    expect(defaultContactsLabels.sectionAddressBooks).toBe("Address books");
     expect(defaultContactsLabels.sidebarSharedWithMe).toBe("Shared with me");
     expect(defaultContactsLabels.personalAddressBook).toBe("Personal");
   });

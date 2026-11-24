@@ -6,6 +6,8 @@ namespace App\Dav\Server;
 
 use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Projects\ProjectFolderRegistry;
+use App\Storage\ProjectArchivePaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use Sabre\DAV\Exception\Forbidden;
@@ -33,6 +35,7 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
     public function __construct(
         private WgwStorage $storage,
         private StoragePaths $paths,
+        private ProjectFolderRegistry $projectFolders,
     ) {}
 
     public function initialize(Server $server): void
@@ -78,6 +81,24 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (CollabSidecarPaths::davIsProtected($path)) {
             throw new Forbidden('The Yjs sidecar is server-owned.');
         }
+        // A new calendar, task list or notebook (MKCALENDAR, or MKCOL with a calendar resource type) is personal:
+        // a Team's collections are made in the app, where the Project and its roles apply (#819).
+        $this->refuseForeignCalendarHome($path);
+    }
+
+    /**
+     * Sabre checks the parent before it emits beforeBind, and a Team has no calendar home node, so
+     * {@see beforeMethod} calls this too and the answer is 403 rather than 409.
+     */
+    private function refuseForeignCalendarHome(string $path): void
+    {
+        if (preg_match('#^calendars/(groups/[^/]+|[^/]+)/[^/]+$#', $path, $match) !== 1) {
+            return;
+        }
+        $username = DavCurrentUsername::of($this->server);
+        if ($username === null || strcasecmp($match[1], $username) !== 0) {
+            throw new Forbidden('A calendar can only be created in your own calendar home.');
+        }
     }
 
     /**
@@ -101,6 +122,13 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (self::isStrayFilesPath($p)) {
             throw new Forbidden('Deleting this path under files/ is not allowed.');
         }
+        // Also reached when a MOVE or COPY overwrites its destination.
+        if (self::isDriveRoot($p)) {
+            throw new Forbidden('A Drive root goes with its user or Team.');
+        }
+        if ($this->isProjectFolder($p)) {
+            throw new Forbidden('A Project folder follows its Project. Rename or delete the Project in the app.');
+        }
         if (DocAttachmentPaths::davIsProtected($p)) {
             throw new Forbidden('The .attachments tree is server-owned.');
         }
@@ -111,7 +139,14 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
 
     public function beforeMethod(RequestInterface $request, ResponseInterface $response): void
     {
+        // Archived Project folders are server-owned (#819): no method reaches them, reads included.
+        if (ProjectArchivePaths::davIsProtected($request->getPath())) {
+            throw new NotFound('File could not be located');
+        }
         $method = $request->getMethod();
+        if ($method === 'MKCALENDAR' || $method === 'MKCOL') {
+            $this->refuseForeignCalendarHome(self::normalizePath($request->getPath()));
+        }
         if (! in_array($method, ['DELETE', 'MKCOL', 'PUT', 'MOVE', 'COPY', 'PROPPATCH', 'PATCH'], true)) {
             return;
         }
@@ -129,6 +164,13 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         }
         if (CollabSidecarPaths::davIsProtected($path)) {
             throw new Forbidden('The Yjs sidecar is server-owned.');
+        }
+
+        if (($method === 'DELETE' || $method === 'MOVE') && self::isDriveRoot($path)) {
+            throw new Forbidden('A Drive root goes with its user or Team.');
+        }
+        if (($method === 'DELETE' || $method === 'MOVE') && $this->isProjectFolder($path)) {
+            throw new Forbidden('A Project folder follows its Project. Rename or delete the Project in the app.');
         }
 
         if ($method === 'DELETE') {
@@ -158,6 +200,15 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             }
             if (DocAttachmentPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The .attachments tree is server-owned.');
+            }
+            if (ProjectArchivePaths::davIsProtected($destPath)) {
+                throw new Forbidden('Archived Project folders are server-owned.');
+            }
+            if (self::isDriveRoot($destPath)) {
+                throw new Forbidden('A Drive root goes with its user or Team. It cannot be overwritten.');
+            }
+            if ($this->isProjectFolder($destPath)) {
+                throw new Forbidden('A Project folder follows its Project. It cannot be overwritten.');
             }
             if (CollabSidecarPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The Yjs sidecar is server-owned.');
@@ -210,9 +261,18 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         return $this->storage->files()->fileExists($sidecarKey);
     }
 
+    /** `files/groups/{team}/{name}` registered as a Project folder (#817). */
+    private function isProjectFolder(string $davPath): bool
+    {
+        $p = self::normalizePath($davPath);
+
+        return str_starts_with($p, 'files/') && $this->projectFolders->isProjectFolderKey(substr($p, strlen('files/')));
+    }
+
     private static function normalizePath(string $path): string
     {
-        return trim($path, '/');
+        // `a//b` still resolves to `a/b` in the tree, so every check sees the collapsed path.
+        return trim((string) preg_replace('#/+#', '/', $path), '/');
     }
 
     private static function isPrincipalsSubtree(string $path): bool
@@ -226,6 +286,12 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
      * True for {@code files}, {@code files/users}, {@code files/groups}, or any {@code files/…} path that is
      * not under {@code files/users/{user}/} or {@code files/groups/{group}/}.
      */
+    /** `files/users/{name}` or `files/groups/{team}` itself (#819: the Team Drive root stays). */
+    private static function isDriveRoot(string $path): bool
+    {
+        return preg_match('#^files/(users|groups)/[^/]+$#', self::normalizePath($path)) === 1;
+    }
+
     private static function isStrayFilesPath(string $path): bool
     {
         $p = self::normalizePath($path);

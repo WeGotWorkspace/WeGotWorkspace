@@ -10,6 +10,7 @@ use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
+use App\Storage\ProjectArchivePaths;
 
 /**
  * FileNode/query (draft-ietf-jmap-filenode-14 §3.2.5) over the node index.
@@ -172,6 +173,9 @@ final class FileNodeQueryMethod implements JmapMethodInterface
         while ($frontier !== []) {
             [$children, $level] = array_shift($frontier);
             foreach ($children as $child) {
+                if (ProjectArchivePaths::isUnder((string) $child->storage_key)) {
+                    continue;
+                }
                 $result[] = $child;
                 if ($child->is_dir && $level < $depth) {
                     $frontier[] = [$this->index->reconcileDirectory($child), $level + 1];

@@ -64,9 +64,12 @@ final class ContactCardGetMethod implements JmapMethodInterface
             }
             $this->guardGetAllBound($list);
         } else {
+            // A projection without media (the photo-less first download) skips the photo blobs.
+            $properties = $args['properties'] ?? null;
+            $withMedia = ! is_array($properties) || in_array('media', $properties, true);
             foreach ($ids as $id) {
                 try {
-                    $list[] = $this->cards->show($username, $id);
+                    $list[] = $this->cards->show($username, $id, $withMedia);
                 } catch (ApiHttpException $e) {
                     if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
                         $notFound[] = $id;

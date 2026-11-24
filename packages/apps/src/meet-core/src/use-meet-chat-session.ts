@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMentionPrincipal, ChatSendPayload } from "@/lib/models/chat-types";
 import {
   meetRoomChatEchoId,
@@ -10,6 +10,7 @@ import {
   meetThreadReplies,
   upsertMeetChatMessage,
 } from "@/meet-core/src/meet-chat-thread";
+import { useMeetMessageDelete } from "@/meet-core/src/use-meet-message-delete";
 import type { ChatMessage, MeetChatOperations } from "@/lib/models/meet-types";
 
 export type MeetActiveThread = {
@@ -36,6 +37,13 @@ export function useMeetChatSession({
   initialThreadId = null,
 }: UseMeetChatSessionArgs) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const { pendingDeletes, deleteMessage } = useMeetMessageDelete({
+    messagesRef,
+    setMessages,
+    operations,
+  });
   const [threadId, setThreadId] = useState<string | null>(initialThreadId);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
@@ -47,14 +55,31 @@ export function useMeetChatSession({
     setMessages(initialMessages);
   }, [initialMessages]);
 
-  const channelMessages = useMemo(
-    () => meetChannelMessages(messages, selectedChannelId),
-    [messages, selectedChannelId],
+  // Pending deletes show as deleted at once, also when a live sync hands back the
+  // stored row while the Undo window is open.
+  const shownMessages = useMemo(
+    () =>
+      pendingDeletes.size === 0
+        ? messages
+        : messages.map((row) => {
+            const deletedAt = pendingDeletes.get(row.id);
+            return deletedAt === undefined
+              ? row
+              : { ...row, deletedAt, body: "", previews: [], mentions: [] };
+          }),
+    [messages, pendingDeletes],
   );
-  const parent = useMemo(() => meetThreadParent(messages, threadId), [messages, threadId]);
+  const channelMessages = useMemo(
+    () => meetChannelMessages(shownMessages, selectedChannelId),
+    [shownMessages, selectedChannelId],
+  );
+  const parent = useMemo(
+    () => meetThreadParent(shownMessages, threadId),
+    [shownMessages, threadId],
+  );
   const replies = useMemo(
-    () => meetThreadReplies(messages, parent?.id ?? null),
-    [messages, parent?.id],
+    () => meetThreadReplies(shownMessages, parent?.id ?? null),
+    [shownMessages, parent?.id],
   );
   const activeThread = useMemo<MeetActiveThread | null>(
     () => (parent ? { parent, replies, directory } : null),
@@ -148,20 +173,6 @@ export function useMeetChatSession({
     [applyMessage, operations],
   );
 
-  const deleteMessage = useCallback(
-    async (messageId: string) => {
-      await operations?.deleteMessage?.(messageId);
-      setMessages((current) =>
-        current.map((row) =>
-          row.id === messageId
-            ? { ...row, deletedAt: Date.now(), body: "", previews: [], mentions: [] }
-            : row,
-        ),
-      );
-    },
-    [operations],
-  );
-
   const react = useCallback(
     async (messageId: string, emoji: string) => {
       if (operations?.react) {
@@ -198,7 +209,7 @@ export function useMeetChatSession({
   }, []);
 
   return {
-    messages,
+    messages: shownMessages,
     channelMessages,
     threadOpen: Boolean(activeThread),
     activeThread,

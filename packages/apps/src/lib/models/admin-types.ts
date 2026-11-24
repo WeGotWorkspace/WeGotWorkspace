@@ -67,12 +67,16 @@ export type AdminUser = {
   enabled: boolean;
   /** Admin is a role per user, not membership of a Team (#1925). */
   isAdmin: boolean;
+  /** Two-factor sign-in is on (#2275); an admin can reset it. */
+  mfaEnabled?: boolean;
 };
 
 export type AdminGroup = {
   id: string;
   name: string;
   displayName: string;
+  /** Usernames of the Team's team admins (#2278). */
+  teamAdmins: string[];
 };
 
 /** The pre-delivery SMTP endpoint. Email delivery prefills from it when its own host is empty. */
@@ -301,13 +305,15 @@ export type AdminAPIOperations = {
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteUser: (username: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
+  /** Removes the user's authenticator and recovery codes and signs them out everywhere. */
+  resetUserMfa: (username: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   createGroup: (
     input: { name: string; displayName?: string },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   updateGroup: (
     groupSlug: string,
-    input: { displayName?: string; members?: string[] },
+    input: { displayName?: string; members?: string[]; teamAdmins?: string[] },
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteGroup: (groupSlug: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;

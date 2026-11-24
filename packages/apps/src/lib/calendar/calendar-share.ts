@@ -77,6 +77,12 @@ export function calendarInfoFromJmap(calendar: JmapCalendar): CalendarInfo {
       ? calendar.groupSlug.trim()
       : null;
   const shareWith = shareWithFromJmap(calendar.shareWith);
+  const projectId =
+    typeof calendar.projectId === "string" && calendar.projectId ? calendar.projectId : null;
+  const mayRename =
+    typeof calendar.myRights?.mayRename === "boolean" ? calendar.myRights.mayRename : undefined;
+  // A Project calendar goes with its Project: its owner side never deletes it alone.
+  const projectLocked = projectId !== null && mayRename === false;
   return {
     id: calendar.id,
     name: calendar.name,
@@ -85,7 +91,13 @@ export function calendarInfoFromJmap(calendar: JmapCalendar): CalendarInfo {
     ...(calendar.isVisible === false ? { isVisible: false } : {}),
     ...(calendar.isDefault ? { isDefault: true } : {}),
     mayWrite: calendar.myRights ? calendarRightsAllowWrite(calendar.myRights) : true,
-    mayDelete: calendar.myRights ? calendar.myRights.mayDelete === true : true,
+    mayDelete: projectLocked
+      ? false
+      : calendar.myRights
+        ? calendar.myRights.mayDelete === true
+        : true,
+    ...(mayRename !== undefined ? { mayRename } : {}),
+    ...(projectId !== null ? { projectId } : {}),
     ...(typeof calendar.myRights?.mayShare === "boolean"
       ? { mayShare: calendar.myRights.mayShare }
       : {}),

@@ -38,7 +38,7 @@ final class MfaChallengeController
             return response()->json($result);
         }
 
-        return $this->signedIn($result['username']);
+        return $this->signedIn($result['username'], null, $result['epoch']);
     }
 
     public function replace(Request $request, string $challenge): JsonResponse
@@ -56,9 +56,9 @@ final class MfaChallengeController
     /**
      * @param  list<string>|null  $recoveryCodes
      */
-    private function signedIn(string $username, ?array $recoveryCodes = null): JsonResponse
+    private function signedIn(string $username, ?array $recoveryCodes = null, ?int $epoch = null): JsonResponse
     {
-        $payload = $this->tokens->issueForUsername($username);
+        $payload = $this->tokens->issueForUsername($username, $epoch);
         $body = (new AuthTokenResource($payload))->resolve();
         if ($recoveryCodes !== null) {
             $body['recovery_codes'] = $recoveryCodes;

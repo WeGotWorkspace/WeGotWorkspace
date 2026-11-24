@@ -1,0 +1,93 @@
+{
+  "TeamMember": {
+    "type": "object",
+    "description": "A member of a Team, as its team admins and organization admins see them.",
+    "properties": {
+      "username": {
+        "type": "string"
+      },
+      "displayName": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string",
+        "description": "Empty when the account has no address."
+      },
+      "isTeamAdmin": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "username",
+      "displayName",
+      "email",
+      "isTeamAdmin"
+    ]
+  },
+  "TeamMemberListResponse": {
+    "type": "object",
+    "properties": {
+      "list": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TeamMember"
+        }
+      }
+    },
+    "required": [
+      "list"
+    ]
+  },
+  "TeamMemberCandidate": {
+    "type": "object",
+    "description": "A user a team admin may add to the Team. This search is the only place where the team-admin role shows a user outside the caller's Teams.",
+    "properties": {
+      "username": {
+        "type": "string"
+      },
+      "displayName": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string",
+        "description": "Empty when the account has no address."
+      },
+      "isMember": {
+        "type": "boolean",
+        "description": "Already a member of this Team."
+      }
+    },
+    "required": [
+      "username",
+      "displayName",
+      "email",
+      "isMember"
+    ]
+  },
+  "TeamMemberCandidateListResponse": {
+    "type": "object",
+    "properties": {
+      "list": {
+        "type": "array",
+        "maxItems": 20,
+        "items": {
+          "$ref": "#/components/schemas/TeamMemberCandidate"
+        }
+      }
+    },
+    "required": [
+      "list"
+    ]
+  },
+  "TeamWriteResponse": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "ok"
+    ]
+  }
+}

@@ -281,3 +281,9 @@
   min-height: 100dvh;
   background-color: var(--workspace-surface);
 }
+
+.contacts-detail-view__details-notice {
+  margin: 1rem 0 0;
+  color: var(--color-text-muted, currentColor);
+  font-size: 0.875rem;
+}

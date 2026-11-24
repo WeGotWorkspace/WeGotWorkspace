@@ -26,6 +26,104 @@ const DEFAULT_MAX_OBJECTS_IN_GET = 500;
 export const CONTACT_CARD_GET_MAX_IDS_PER_REQUEST = 40;
 
 /**
+ * First download pages leave out `media`. The server's cost is the vCard
+ * conversion per card (200 cards ≈ 0.15 s); photos add size and blob work,
+ * not conversion time. So pages are large and photo-less, and the photos
+ * follow in a second pass ({@link JmapContactsClient.getContactCardMediaPages}).
+ */
+export const CONTACT_CARD_PHOTOLESS_PAGE_SIZE = 200;
+
+/**
+ * Every ContactCard property the server sends except `media` (`id` always
+ * comes back). The API test `ContactCardProjectedGetTest` reads this list and
+ * fails when the server sends a property that is not in it, so a first download
+ * never loses a field.
+ */
+export const CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA = [
+  "@type",
+  "version",
+  "created",
+  "updated",
+  "kind",
+  "language",
+  "members",
+  "memberCardIds",
+  "prodId",
+  "relatedTo",
+  "uid",
+  "name",
+  "nicknames",
+  "organizations",
+  "speakToAs",
+  "titles",
+  "emails",
+  "onlineServices",
+  "phones",
+  "preferredLanguages",
+  "calendars",
+  "schedulingAddresses",
+  "addresses",
+  "cryptoKeys",
+  "directories",
+  "links",
+  "localizations",
+  "anniversaries",
+  "keywords",
+  "notes",
+  "personalInfo",
+  "vCardProps",
+  "addressBookIds",
+  "etag",
+  "state",
+];
+
+/**
+ * The lean first download asks for these only: what the contacts list and
+ * Calendar's invitee search read. Name, organization (the list's second line),
+ * emails, and the group fields (`kind`, `members`, `memberCardIds`) so groups
+ * stay usable; `addressBookIds` places the card in its book; `uid`, `etag` and
+ * `state` identify the version. Everything else arrives in the detail pass.
+ * A card stored from this projection is partial and must never be edited.
+ */
+export const CONTACT_CARD_PROPERTIES_LEAN = [
+  "@type",
+  "version",
+  "uid",
+  "kind",
+  "name",
+  "organizations",
+  "emails",
+  "members",
+  "memberCardIds",
+  "addressBookIds",
+  "etag",
+  "state",
+];
+
+/** Lean first-download pages: the server's maximum, a few hundred bytes a card. */
+export const CONTACT_CARD_LEAN_PAGE_SIZE = DEFAULT_MAX_OBJECTS_IN_GET;
+
+/** The photo pass asks for these: the photos, and the card state they belong to. */
+export const CONTACT_CARD_MEDIA_PROPERTIES = ["media", "state"];
+
+/** How one paged ContactCard/get asks: page size and projection. */
+type CardPaging = { pageSize: number; properties?: string[] | null };
+
+const FULL_CARD_PAGES: CardPaging = { pageSize: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST };
+const PHOTOLESS_CARD_PAGES: CardPaging = {
+  pageSize: CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
+  properties: CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA,
+};
+const LEAN_CARD_PAGES: CardPaging = {
+  pageSize: CONTACT_CARD_LEAN_PAGE_SIZE,
+  properties: CONTACT_CARD_PROPERTIES_LEAN,
+};
+const MEDIA_PAGES: CardPaging = {
+  pageSize: CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
+  properties: CONTACT_CARD_MEDIA_PROPERTIES,
+};
+
+/**
  * Ids not fetched yet that are not groups. Undefined when the group ids are
  * unknown (the server rejected the kind filter).
  */
@@ -119,7 +217,7 @@ export class JmapContactsClient {
     properties?: string[] | null,
   ): Promise<GetResponse<JmapContactCard>> {
     if (ids === undefined || ids === null) return this.getAllContactCards(accountId, properties);
-    return this.#getContactCardsByIds(accountId, ids, properties);
+    return this.#getContactCardsByIds(accountId, ids, { ...FULL_CARD_PAGES, properties });
   }
 
   /**
@@ -141,16 +239,67 @@ export class JmapContactsClient {
   }
 
   /**
-   * ContactCard/get for known ids, one {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST}
-   * page per request. `onPage` is awaited before the next request, so a caller
-   * can save each page before the next one is asked for.
+   * The rest of a first download: photo-less ContactCard/get for known ids,
+   * one {@link CONTACT_CARD_PHOTOLESS_PAGE_SIZE} page per request. `onPage` is
+   * awaited before the next request, so a caller can save each page before the
+   * next one is asked for.
    */
   async getContactCardPages(
     accountId: JmapId,
     ids: JmapId[],
     onPage: (page: ContactCardPage) => void | Promise<void>,
+    options?: { lean?: boolean },
   ): Promise<void> {
-    await this.#getContactCardsByIds(accountId, ids, undefined, (_all, page) => onPage(page));
+    await this.#getContactCardsByIds(
+      accountId,
+      ids,
+      options?.lean ? LEAN_CARD_PAGES : PHOTOLESS_CARD_PAGES,
+      (_all, page) => onPage(page),
+    );
+  }
+
+  /**
+   * The detail pass after a lean download: every property but `media` of
+   * known ids, in {@link CONTACT_CARD_PHOTOLESS_PAGE_SIZE} pages. `beforePage`
+   * is awaited before every request (the caller's pacing); `onPage` after it.
+   */
+  async getContactCardDetailPages(
+    accountId: JmapId,
+    ids: JmapId[],
+    onPage: (page: ContactCardPage) => void | Promise<void>,
+    beforePage?: () => Promise<void>,
+  ): Promise<void> {
+    const pageSize = Math.min(this.#maxObjectsInGet(), PHOTOLESS_CARD_PAGES.pageSize);
+    for (let index = 0; index < ids.length; index += pageSize) {
+      await beforePage?.();
+      const pageIds = ids.slice(index, index + pageSize);
+      const page = await this.#getContactCardsPage(
+        accountId,
+        pageIds,
+        PHOTOLESS_CARD_PAGES.properties,
+      );
+      await onPage({ page, remainingIds: ids.slice(index + pageSize) });
+    }
+  }
+
+  /**
+   * The photo pass after a photo-less download: only `media` and `state` of
+   * known ids, in {@link CONTACT_CARD_PHOTOLESS_PAGE_SIZE} pages. `beforePage`
+   * is awaited before every request (the caller's pacing); `onPage` after it.
+   */
+  async getContactCardMediaPages(
+    accountId: JmapId,
+    ids: JmapId[],
+    onPage: (page: ContactCardPage) => void | Promise<void>,
+    beforePage?: () => Promise<void>,
+  ): Promise<void> {
+    const pageSize = Math.min(this.#maxObjectsInGet(), MEDIA_PAGES.pageSize);
+    for (let index = 0; index < ids.length; index += pageSize) {
+      await beforePage?.();
+      const pageIds = ids.slice(index, index + pageSize);
+      const page = await this.#getContactCardsPage(accountId, pageIds, MEDIA_PAGES.properties);
+      await onPage({ page, remainingIds: ids.slice(index + pageSize) });
+    }
   }
 
   async contactCardChanges(accountId: JmapId, sinceState: JmapState, maxChanges?: number) {
@@ -270,14 +419,16 @@ export class JmapContactsClient {
   /**
    * Initial sync: AddressBook/get plus ContactCard/query, a kind=group
    * ContactCard/query (so the list can count contacts before they load) and
-   * an empty ContactCard/get (state at query time), then ContactCard/get in
-   * {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST} pages (one HTTP request
-   * each). A get-all (`ids: null`) is rejected once the account has more
+   * an empty ContactCard/get (state at query time), then photo-less
+   * ContactCard/get in {@link CONTACT_CARD_PHOTOLESS_PAGE_SIZE} pages (one
+   * HTTP request each). A get-all (`ids: null`) is rejected once the account has more
    * cards than maxObjectsInGet.
    */
   async getAddressBooksAndCards(
     accountId: JmapId,
     options?: {
+      /** Ask for the lean projection ({@link CONTACT_CARD_PROPERTIES_LEAN}) in 500-card pages. */
+      lean?: boolean;
       /** Awaited after the query batch, before the first card page. */
       onQuery?: (start: {
         books: GetResponse<JmapAddressBook>;
@@ -352,7 +503,7 @@ export class JmapContactsClient {
     const cards = await this.#getContactCardsByIds(
       accountId,
       queryIds,
-      undefined,
+      options?.lean ? LEAN_CARD_PAGES : PHOTOLESS_CARD_PAGES,
       (partial, page) =>
         options?.onPage?.({
           books,
@@ -378,10 +529,11 @@ export class JmapContactsClient {
   async #getContactCardsByIds(
     accountId: JmapId,
     ids: JmapId[],
-    properties?: string[] | null,
+    paging: CardPaging,
     onPage?: (cards: GetResponse<JmapContactCard>, page: ContactCardPage) => void | Promise<void>,
   ): Promise<GetResponse<JmapContactCard>> {
-    const pageSize = Math.min(this.#maxObjectsInGet(), CONTACT_CARD_GET_MAX_IDS_PER_REQUEST);
+    const { properties } = paging;
+    const pageSize = Math.min(this.#maxObjectsInGet(), paging.pageSize);
     if (ids.length <= pageSize) {
       const page = await this.#getContactCardsPage(accountId, ids, properties);
       await onPage?.(page, { page, remainingIds: [] });

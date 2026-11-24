@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useContactsProjectHiddenIds,
+  useLeaveProjectHiddenView,
+} from "@/contacts-core/src/use-contacts-hidden-ids";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -73,6 +77,7 @@ export function ContactsWorkspace({
   listRefreshing: incomingListRefreshing = false,
   mutationsLocked = false,
   pendingContactCount,
+  partialCardIds,
   onRefreshList,
   onLogout,
   className,
@@ -104,6 +109,7 @@ export function ContactsWorkspace({
     canImportVcf,
     canCreateGroup,
     canEdit,
+    activeIsPartial,
     canMoveActiveContact,
     canSaveCreate,
     writableMoveBooks,
@@ -175,6 +181,7 @@ export function ContactsWorkspace({
     listLoading: incomingListLoading,
     listRefreshing: incomingListRefreshing,
     mutationsLocked,
+    partialCardIds,
     operations,
     onRefreshList,
     initialView,
@@ -218,10 +225,22 @@ export function ContactsWorkspace({
     hideSharedAddressBook,
   } = bookMutations;
 
+  // The address books the Project filter hides stay out of the sidebar (#818), and a view of one closes.
+  const projectHiddenAddressBookIds = useContactsProjectHiddenIds(addressBooks);
+  useLeaveProjectHiddenView(
+    view,
+    projectHiddenAddressBookIds,
+    selectedGroup ? firstEnabledAddressBookId(selectedGroup.addressBookIds) : undefined,
+    selectView,
+  );
+  const sidebarBooks = useMemo(
+    () => books.filter((book) => !projectHiddenAddressBookIds.has(book.id)),
+    [books, projectHiddenAddressBookIds],
+  );
   const { primarySidebarItems, ownedAddressBooks, sharedAddressBooks } = useContactsSidebarModel({
     labels: L,
     view,
-    addressBooks: books,
+    addressBooks: sidebarBooks,
     selectView,
   });
 
@@ -494,6 +513,9 @@ export function ContactsWorkspace({
               card={active}
               createMode={createMode}
               readOnly={!canEdit}
+              detailsNotice={
+                activeIsPartial ? (online ? L.detailsLoading : L.detailsOffline) : undefined
+              }
               editDraft={editDraft}
               displayName={displayName}
               groupTags={groupTags}

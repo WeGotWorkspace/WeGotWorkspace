@@ -17,6 +17,7 @@ use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\Mfa\AuthChallengeService;
 use App\Services\Auth\Mfa\MfaCodeLimiter;
 use App\Services\Auth\PasswordRecoveryService;
+use App\Services\Auth\UserSessionRevoker;
 use App\Services\Mcp\ConsentIntent;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Contracts\Cache\Repository;
@@ -67,6 +68,27 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $response->assertJsonPath('status', 'ok');
         $this->assertNotSame('', (string) $response->json('access_token'));
         $this->refreshCookieValue($response);
+    }
+
+    public function test_the_password_alone_does_not_make_the_address_known(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $challenge = $this->challengeFor('bob');
+        $limiter = app(LoginRateLimiter::class);
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('bob', '198.51.100.'.$host);
+        }
+
+        $this->assertFalse($limiter->allow('bob', '203.0.113.20'));
+
+        Cache::flush();
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret)])->assertOk();
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('bob', '198.51.100.'.$host);
+        }
+
+        $this->assertTrue($limiter->allow('bob', '203.0.113.20'));
+        $this->assertFalse($limiter->allow('bob', '198.51.100.99'));
     }
 
     public function test_the_password_alone_returns_a_challenge_and_no_tokens(): void
@@ -157,6 +179,39 @@ final class MfaLoginTest extends WgwDatabaseTestCase
             intdiv(Carbon::now()->getTimestamp(), 30),
             UserMfa::query()->where('username', 'bob')->value('last_used_step'),
         );
+    }
+
+    public function test_a_replayed_code_is_refused_without_using_up_an_attempt(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $code])->assertOk();
+
+        // More tries than a challenge (5), the per-user lock (10) or the sign-in limit allow.
+        $challenge = $this->challengeFor('bob');
+        for ($i = 0; $i < 15; $i++) {
+            $this->verifyChallenge($challenge, ['code' => $code])
+                ->assertStatus(401)
+                ->assertJsonPath('code', 'mfa_code_invalid');
+        }
+        $this->assertSame(0, (int) AuthChallenge::query()->where('id_hash', hash('sha256', $challenge))->value('attempts'));
+
+        // Nothing was counted anywhere, so the next step's code still signs in.
+        $this->nextStep();
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret)])->assertOk();
+    }
+
+    public function test_a_wrong_code_still_uses_up_an_attempt(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $code])->assertOk();
+        $challenge = $this->challengeFor('bob');
+
+        $this->verifyChallenge($challenge, ['code' => $this->wrongCode($secret)])->assertStatus(401);
+        $this->assertSame(1, (int) AuthChallenge::query()->where('id_hash', hash('sha256', $challenge))->value('attempts'));
+        // A code of a step that was never accepted is no replay, even next to a spent one.
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret, 1)])->assertOk();
     }
 
     public function test_a_challenge_is_single_use(): void
@@ -427,11 +482,29 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($turnedOn['secret'])])->assertStatus(401);
         // The new session works; the one from before does not.
         $this->withBearer((string) $done->json('access_token'))->getJson('/api/v1/me')->assertOk();
-        // revokeAll(): refresh tokens die now; an access token already out runs
-        // out within its short lifetime, as on every other revokeAll().
+        // revokeAll(): refresh tokens die now, and the access token already out is refused
+        // at once (#2315).
+        $this->withBearer($oldSession['access_token'])->getJson('/api/v1/me')->assertUnauthorized();
         $this->postRefresh($oldSession['refresh_token'])->assertUnauthorized();
         // The replace challenge is single use.
         $this->replaceWithChallenge($challenge, ['code' => $this->code($newSecret)])->assertNotFound();
+    }
+
+    public function test_a_sign_out_everywhere_ends_a_password_step_taken_before_it(): void
+    {
+        $turnedOn = $this->turnOnMfa('bob');
+        $challenge = $this->challengeFor('bob');
+
+        app(UserSessionRevoker::class)->revokeAll('bob');
+
+        $late = $this->verifyChallenge($challenge, ['code' => $this->code($turnedOn['secret'])]);
+        $this->assertNotSame(200, $late->getStatusCode());
+        $this->assertNull($late->json('access_token'));
+        $this->assertSame(0, DB::connection('wgw')->table('api_refresh_tokens')->where('username', 'bob')->where('revoked', 0)->count());
+
+        $this->nextStep();
+        $done = $this->verifyChallenge($this->challengeFor('bob'), ['code' => $this->code($turnedOn['secret'])])->assertOk();
+        $this->withBearer((string) $done->json('access_token'))->getJson('/api/v1/me')->assertOk();
     }
 
     public function test_abandoned_replacement_leaves_recovery_code_spent(): void

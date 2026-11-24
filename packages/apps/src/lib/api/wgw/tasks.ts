@@ -15,7 +15,7 @@ import type {
 import type { components } from "@wgw/openapi-types/openapi-types";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { TaskProjectGroupOption } from "@/lib/models/tasks-types";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwFetch, wgwFetchPrincipal, wgwReadJson, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import {
   cachedCollectionAudience,
   cachedItemAudience,
@@ -288,11 +288,11 @@ export function mapTaskProjectGroups(
 export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
   const session = await wgwFetchPrincipal();
 
-  const settingsRes = await wgwFetch("/settings/state");
+  const settingsRead = await wgwSettingsStateRead.read();
   // Stays undefined when the Teams could not be loaded: not the same as "no Team".
   let groups: TaskProjectGroupOption[] | undefined;
-  if (settingsRes.ok) {
-    const settings = (await wgwReadJson(settingsRes)) as {
+  if (settingsRead.ok) {
+    const settings = settingsRead.json as {
       apps?: { tasks?: boolean };
       groups?: { id: string; displayName: string }[];
     };

@@ -92,6 +92,8 @@ async function setUp(group: string): Promise<string> {
   for (const member of [OWNER, TEAMMATE]) {
     await ensureCreated(await api(OWNER, "PUT", `/admin/groups/${group}/members/${member}`));
   }
+  // A named Team channel is added by a team admin of that Team.
+  await ensureCreated(await api(OWNER, "PUT", `/teams/${group}/admins/${OWNER}`));
   const shared = `${group}-room`;
   await ensureCreated(
     await api(OWNER, "POST", "/admin/groups", { slug: shared, displayName: shared }),

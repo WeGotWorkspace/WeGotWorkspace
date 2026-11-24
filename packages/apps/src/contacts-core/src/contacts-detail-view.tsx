@@ -56,6 +56,7 @@ import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
 import "@/note-detail-view/src/note-detail-view.css";
+import "@/note-detail-view/src/note-detail-desk.css";
 
 type ContactsDetailViewProps = {
   labels: ContactsUILabels;
@@ -63,6 +64,8 @@ type ContactsDetailViewProps = {
   createMode: boolean;
   /** No write rights on the card: the same sheet, display-only. */
   readOnly: boolean;
+  /** The card is partial (lean first download): why its sheet is short and read-only. */
+  detailsNotice?: string;
   /** The values being edited. Before it exists the sheet shows the card's own values. */
   editDraft: ContactEditDraft | null;
   displayName: string;
@@ -251,6 +254,7 @@ export function ContactsDetailView({
   onAddAddress,
   onAddUrl,
   groupTags,
+  detailsNotice,
   eyebrow,
   locale = "en-US",
   className,
@@ -632,6 +636,12 @@ export function ContactsDetailView({
           </DetailFieldRow>
         </DetailFieldList>
       )}
+
+      {detailsNotice ? (
+        <p className="contacts-detail-view__details-notice" role="status">
+          {detailsNotice}
+        </p>
+      ) : null}
     </article>
   );
 }

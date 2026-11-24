@@ -16,9 +16,11 @@ import {
   wgwFetchPrincipal,
   wgwLooksLikeHtml,
   wgwReadJson,
+  wgwSettingsStateRead,
   wgwReadJsonFailureMessage,
 } from "@/lib/api/wgw/http";
 import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
+import { backgroundSyncPacer } from "@/lib/offline/core/background-sync-pacer";
 import {
   CONTACTS_CAPABILITY,
   JmapClient,
@@ -357,6 +359,11 @@ export type ContactsCardPage = {
 
 /** Load address books and cards from the configured WeGotWorkspace API. */
 export async function fetchContactsLiveBootstrap(options?: {
+  /**
+   * First download of a device with no copy: lean cards (name, emails and what
+   * the list needs) in pages of 500. The caller stores them as partial cards.
+   */
+  lean?: boolean;
   /** First card page (and each later page) so the list can open before the last request. */
   onProgress?: (bootstrap: ContactsAppBootstrap) => void;
   /** Awaited after the query, before the first card page. */
@@ -366,9 +373,9 @@ export async function fetchContactsLiveBootstrap(options?: {
 }): Promise<ContactsLiveBootstrap> {
   const session = await wgwFetchPrincipal();
 
-  const settingsRes = await wgwFetch("/settings/state");
-  if (settingsRes.ok) {
-    const settings = (await wgwReadJson(settingsRes)) as {
+  const settingsRead = await wgwSettingsStateRead.read();
+  if (settingsRead.ok) {
+    const settings = settingsRead.json as {
       apps?: { contacts?: boolean };
     };
     if (settings.apps?.contacts === false) {
@@ -380,6 +387,7 @@ export async function fetchContactsLiveBootstrap(options?: {
   const { books, cards, contactCardStateAtQuery } = await contacts.getAddressBooksAndCards(
     accountId,
     {
+      lean: options?.lean,
       onQuery: ({ books: queriedBooks, queryIds, contactCardStateAtQuery: cardState, groupIds }) =>
         options?.onStart?.({
           session,
@@ -401,6 +409,7 @@ export async function fetchContactsLiveBootstrap(options?: {
           },
           pendingContactCount: snapshot.pendingContactCount,
         });
+        await paceNextCardPage(snapshot.remainingIds);
       },
     },
   );
@@ -419,15 +428,86 @@ export async function fetchContactsLiveBootstrap(options?: {
 }
 
 /**
+ * Shared hosting traffic budget: the first card page goes at once (so the list
+ * paints), and every further page takes a turn from the browser-wide
+ * background schedule it shares with Docs and Drive downloads. Card pages go
+ * before those: Contacts and Calendar invitee search wait on them.
+ */
+async function paceNextCardPage(remainingIds: readonly string[]): Promise<void> {
+  if (remainingIds.length === 0) return;
+  await backgroundSyncPacer().acquire(undefined, "first");
+}
+
+/**
  * Rest of an interrupted first download: ContactCard/get for `ids`, one page
  * per request. `onCardPage` is awaited before the next request.
  */
 export async function fetchContactCardPages(
   ids: string[],
   onCardPage: (page: ContactsCardPage) => void | Promise<void>,
+  options?: { lean?: boolean },
 ): Promise<void> {
   const { contacts, accountId } = await connectedContacts();
-  await contacts.getContactCardPages(accountId, ids, ({ page, remainingIds }) =>
-    onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds }),
+  // A resumed download already painted its saved pages: every page after the
+  // first request is paced.
+  await contacts.getContactCardPages(
+    accountId,
+    ids,
+    async ({ page, remainingIds }) => {
+      await onCardPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds });
+      await paceNextCardPage(remainingIds);
+    },
+    options,
+  );
+}
+
+/**
+ * The detail pass after a lean first download: every property but `media` of
+ * `ids`, one page per request, each request paced as bulk background work.
+ * `onPage` is awaited before the next request.
+ */
+export async function fetchContactCardDetails(
+  ids: string[],
+  onPage: (page: ContactsCardPage) => void | Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const { contacts, accountId } = await connectedContacts();
+  await contacts.getContactCardDetailPages(
+    accountId,
+    ids,
+    ({ page, remainingIds }) =>
+      onPage({ cards: page.list.map(toContactCard), remainingCardIds: remainingIds }),
+    () => backgroundSyncPacer().acquire(signal, "bulk"),
+  );
+}
+
+/**
+ * The photo pass after a photo-less first download: `media` and `state` of
+ * `ids`, one page per request, each request paced as bulk background work in
+ * the browser-wide schedule (after Contacts pages, alongside Docs and Drive).
+ * `onPage` is awaited before the next request.
+ */
+export async function fetchContactCardPhotos(
+  ids: string[],
+  onPage: (page: {
+    photos: Pick<ContactCard, "id" | "media" | "state">[];
+    remainingCardIds: string[];
+  }) => void | Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const { contacts, accountId } = await connectedContacts();
+  await contacts.getContactCardMediaPages(
+    accountId,
+    ids,
+    ({ page, remainingIds }) =>
+      onPage({
+        photos: page.list.map((card) => ({
+          id: card.id,
+          media: card.media as ContactCard["media"],
+          state: card.state,
+        })),
+        remainingCardIds: remainingIds,
+      }),
+    () => backgroundSyncPacer().acquire(signal, "bulk"),
   );
 }
