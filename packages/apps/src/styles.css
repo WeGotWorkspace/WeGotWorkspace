@@ -590,6 +590,19 @@ select {
 }
 
 /* Phones: a slightly smaller editor body (15px). */
+/*
+ * Phones: a detail sheet's text lines up with the glyph of the back button above it
+ * (the action bar's 1rem inset, plus the button's own inset around its 14px glyph),
+ * not with the button's outer edge.
+ */
+@media (max-width: 47.999rem) {
+  :root {
+    --workspace-detail-sheet-padding-x: calc(
+      1rem + (var(--workspace-header-control-height) - 0.875rem) / 2
+    );
+  }
+}
+
 @media (max-width: 767px) {
   .text-editor,
   .text-editor-prose {
