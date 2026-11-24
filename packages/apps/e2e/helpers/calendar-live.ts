@@ -225,7 +225,18 @@ export async function deleteCalendarEventsByTitleViaApi(title: string): Promise<
   ]);
   const ids = (query.methodResponses[0]?.[1]?.ids as string[] | undefined) ?? [];
   if (ids.length === 0) return 0;
-  await e2eJmap([["CalendarEvent/set", { accountId: E2E_USERNAME, destroy: ids }, "s"]]);
+  // The server caps one `CalendarEvent/set` at 200 objects.
+  const BATCH = 100;
+  for (let at = 0; at < ids.length; at += BATCH) {
+    const batch = ids.slice(at, at + BATCH);
+    const destroyed = await e2eJmap([
+      ["CalendarEvent/set", { accountId: E2E_USERNAME, destroy: batch }, "s"],
+    ]);
+    const result = destroyed.methodResponses[0]?.[1] as { destroyed?: string[] };
+    if ((result?.destroyed ?? []).length !== batch.length) {
+      throw new Error(`E2E events not destroyed: ${JSON.stringify(result)}`);
+    }
+  }
   return ids.length;
 }
 

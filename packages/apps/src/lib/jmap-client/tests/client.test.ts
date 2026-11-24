@@ -111,12 +111,14 @@ describe("JmapCalendarsClient windowed queries", () => {
       await client.connect();
       const calendars = new JmapCalendarsClient(client);
 
+      client.setState(server.accountId, "CalendarEvent", "stale");
       server.requestCount = 0;
       const response = await calendars.getCalendarEventsInRange(server.accountId, {
         utcStart: new Date("2026-03-01T00:00:00Z"),
         utcEnd: new Date("2026-04-01T00:00:00Z"),
       });
 
+      expect(client.getState(server.accountId, "CalendarEvent")).toBe(server.state);
       expect(response.list).toHaveLength(count);
       expect(new Set(response.list.map((event) => event.id)).size).toBe(count);
       // One batched attempt, then ceil(count / 500) chunked gets.

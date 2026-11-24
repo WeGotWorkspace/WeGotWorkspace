@@ -197,7 +197,13 @@ export class JmapCalendarsClient {
         // More events than the announced `maxObjectsInGet` (#2360): fetch the ids the
         // query already returned in chunks of that limit. Windows within the limit
         // keep the single round trip above.
-        return this.getCalendarEvents(accountId, queryIds);
+        // The cursor is overwritten like the batched path: `getCalendarEvents` keeps an
+        // existing one, which would leave a rejected `/changes` cursor in place. The state
+        // comes from the first chunk, so an event created between the query and that chunk
+        // is missing from the list yet included in the cursor (narrow window).
+        const chunked = await this.getCalendarEvents(accountId, queryIds);
+        this.client.setState(accountId, CALENDAR_EVENT_TYPE, chunked.state);
+        return chunked;
       }
       const anyError = response.methodResponses.find(([name]) => name === "error");
       const detail = anyError ? JSON.stringify(anyError[1]) : "no response";

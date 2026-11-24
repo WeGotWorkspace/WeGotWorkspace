@@ -41,7 +41,6 @@ test.describe("Calendar with more than 500 events in the window (live app)", () 
       await clearCachedCalendarEvents(page);
 
       const getSizes: (number | null)[] = [];
-      const tooLarge: string[] = [];
       page.on("request", (request) => {
         if (request.method() !== "POST" || !request.url().endsWith("/api/v1/jmap")) return;
         for (const [name, args] of parseCalls(request.postData())) {
@@ -49,13 +48,6 @@ test.describe("Calendar with more than 500 events in the window (live app)", () 
             getSizes.push(args.ids.length);
           }
         }
-      });
-      page.on("response", async (response) => {
-        if (response.request().method() !== "POST" || !response.url().endsWith("/api/v1/jmap")) {
-          return;
-        }
-        const text = await response.text().catch(() => "");
-        if (text.includes("requestTooLarge")) tooLarge.push(text.slice(0, 200));
       });
 
       await page.reload();
@@ -92,8 +84,6 @@ test.describe("Calendar with more than 500 events in the window (live app)", () 
       // Chunks stayed within the announced limit (500).
       expect(getSizes.length).toBeGreaterThan(0);
       for (const size of getSizes) expect(size).toBeLessThanOrEqual(500);
-      console.log(`CalendarEvent/get id counts: ${JSON.stringify(getSizes)}`);
-      console.log(`requestTooLarge answers: ${tooLarge.length}`);
     } finally {
       await deleteCalendarEventsByTitleViaApi(TITLE);
     }
