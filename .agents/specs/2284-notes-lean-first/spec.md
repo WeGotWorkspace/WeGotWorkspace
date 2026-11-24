@@ -3,7 +3,7 @@ Goal: WeGotWorkspace/Product#153
 
 # Notes lean-first first download
 
-Technical translation of the Notes part of Epic #2284 (traffic budget). Spec only: no product code ships with this folder. It applies the contacts approach (PR #2340: lean pages, then a paced detail pass) to Notes, and refines chunk G of [2338-lean-first-sync](../2338-lean-first-sync/plan.md), which assumed Notes already pages and projects. Calendar follows later in its own spec.
+Technical translation of the Notes part of Epic #2284 (traffic budget). Spec only: no product code ships with this folder. It applies the contacts approach (PR #2340: lean pages, then a paced detail pass) to Notes, and supersedes chunk G of [2338-lean-first-sync](../2338-lean-first-sync/plan.md), which assumed Notes are small and need no server change; that chunk now points here. Calendar follows later in its own spec.
 
 ## Goal
 
@@ -35,7 +35,7 @@ So the existing metadata projection is **not enough for a usable list**: notes w
 
 ## Decisions in this spec
 
-1. **Lean projection** = `NOTE_METADATA_PROPERTIES` + new `preview`. The server adds `preview` to `Note` (plain-text, at most 180 characters, same rule the client uses for `excerpt`; the server already has such a rule in `NoteMarkdownCodec::listPreview`). It is additive to the JMAP Note type, so `Note/get` without `properties` also returns it. The client uses `preview` as the partial note's `excerpt`.
+1. **Lean projection** = `NOTE_METADATA_PROPERTIES` + new `preview`. The server adds `preview` to `Note` (plain text of the body, at most 180 characters, exactly the client's `excerptFromBody` rule, with no title fallback; `NoteMarkdownCodec::listPreview` is a different rule and is not reused). It is additive to the JMAP Note type, so `Note/get` without `properties` also returns it. The client uses `preview` as the partial note's `excerpt`.
 2. **The server drops the body per record** while looping over ids in `Note/get`, when `body` is not requested, so a lean page of 500 holds no bodies in PHP memory. That is the change that makes a lean page cheap in memory, not only on the wire.
 3. **Lean pass over JMAP**: `Note/query` (ids, one window of up to the 5000-id helper page) then `Note/get` with the lean projection in pages. The REST bootstrap stays as the path for a device that already has a copy and for the mock tier.
 4. **Detail pass** = `Note/get` with `properties: ["body"]` for the ids in the partial marker, ordered by `updatedAt` descending from the lean rows (best effort: the API has no timestamp that moves on a body edit, and `Note/query` cannot sort), in small byte-bounded pages (starting value 100 ids, set by measurement). Each page is saved with its marker update in one Dexie transaction, then other tabs are told.
@@ -64,6 +64,7 @@ So the existing metadata projection is **not enough for a usable list**: notes w
 - Quota full or storage error during the detail pass: the pass stops, the marker stays, notes stay readable as partial; it resumes on the next start.
 - Search: list search that reads bodies finds titles, tags and previews only until the detail pass finishes (re-check how search matches; UI list for Wouter in plan.md).
 - A tab that hides or closes mid-pass: the lock frees, another tab or the next start resumes.
+- Reconnect, manual refresh and the `cannotCalculateChanges` refetch while the marker is non-empty run lean for notes without a body (plan N2), so they never pull every body at once.
 - Notebooks (a few rows) are not lean-split; they arrive in the first request.
 
 ## Technical constraints
