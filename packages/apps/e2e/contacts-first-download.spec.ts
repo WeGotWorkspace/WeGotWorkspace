@@ -1,7 +1,7 @@
 // Contacts first download on a new device (live app, #1748).
 //
 // The first open of Contacts downloads the cards in lean pages of
-// CONTACT_CARD_LEAN_PAGE_SIZE (1000), then their details and photos in two more
+// CONTACT_CARD_LEAN_PAGE_SIZE (500), then their details and photos in two more
 // passes (#2297, Epic #2284). Each page is saved as it arrives. A reload halfway must keep those cards, show them offline, fetch
 // only the missing ones once online, and replay what changed on the server in
 // between (the sync anchor is the state at query time).

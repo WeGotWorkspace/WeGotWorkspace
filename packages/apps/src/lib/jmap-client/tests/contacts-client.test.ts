@@ -399,8 +399,8 @@ describe("JmapContactsClient contract batches", () => {
     }
   });
 
-  it("a lean download asks for the lean projection in pages of the server maximum (1000)", async () => {
-    const echo = (calls: JmapInvocation[]) =>
+  it("a lean download asks for the lean projection in pages of the server maximum", async () => {
+    const { contacts, recorded } = await makeClient((calls) =>
       calls.map(([name, args, id]) =>
         methodResponse(
           name,
@@ -412,44 +412,20 @@ describe("JmapContactsClient contract batches", () => {
           },
           id,
         ),
-      );
-    const { contacts, recorded } = await makeClient(echo, {
-      maxObjectsInGet: 1000,
-      maxCallsInRequest: 32,
-    });
-    const ids = Array.from({ length: 1200 }, (_, index) => `card-${index}`);
-
-    await contacts.getContactCardPages(ACCOUNT, ids, () => undefined, { lean: true });
-
-    expect(CONTACT_CARD_LEAN_PAGE_SIZE).toBe(1000);
-    expect(recorded.map(([[name, args]]) => [name, (args.ids as string[]).length])).toEqual([
-      ["ContactCard/get", 1000],
-      ["ContactCard/get", 200],
-    ]);
-    for (const [[, args]] of recorded) {
-      expect(args.properties).toEqual(CONTACT_CARD_PROPERTIES_LEAN);
-    }
-  });
-
-  it("a server still advertising 500 gets lean pages of 500", async () => {
-    const sizes: number[] = [];
-    const { contacts } = await makeClient(
-      (calls) =>
-        calls.map(([name, args, id]) => {
-          sizes.push(((args.ids as string[]) ?? []).length);
-          return methodResponse(
-            name,
-            { accountId: ACCOUNT, state: "1:", list: [], notFound: [] },
-            id,
-          );
-        }),
-      { maxObjectsInGet: 500, maxCallsInRequest: 32 },
+      ),
     );
     const ids = Array.from({ length: 700 }, (_, index) => `card-${index}`);
 
     await contacts.getContactCardPages(ACCOUNT, ids, () => undefined, { lean: true });
 
-    expect(sizes).toEqual([500, 200]);
+    expect(CONTACT_CARD_LEAN_PAGE_SIZE).toBe(500);
+    expect(recorded.map(([[name, args]]) => [name, (args.ids as string[]).length])).toEqual([
+      ["ContactCard/get", 500],
+      ["ContactCard/get", 200],
+    ]);
+    for (const [[, args]] of recorded) {
+      expect(args.properties).toEqual(CONTACT_CARD_PROPERTIES_LEAN);
+    }
   });
 
   it("lean pages stay within a smaller maxObjectsInGet (the client trims to the server)", async () => {

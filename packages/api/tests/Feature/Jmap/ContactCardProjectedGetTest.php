@@ -110,21 +110,6 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
         $this->assertNotEmpty($group['members']);
     }
 
-    public function test_the_limit_is_1000_ids_and_one_more_is_request_too_large(): void
-    {
-        $this->seedCardViaPdo('bob', 'one.vcf', $this->sampleVcard('One', 'urn:uuid:1a0c2a51-3c55-4d7a-9a4a-1b1c1d1e1f01'));
-        $ids = array_map(static fn (int $i): string => "missing-{$i}", range(1, 1000));
-        $ok = $this->jmapContacts([['ContactCard/get', ['accountId' => 'bob', 'ids' => $ids, 'properties' => $this->clientLeanProperties()], 'g']])
-            ->assertOk();
-        $this->assertSame('ContactCard/get', $ok->json('methodResponses.0.0'));
-        $this->assertCount(1000, $ok->json('methodResponses.0.1.notFound'));
-
-        $ids[] = 'missing-1001';
-        $this->jmapContacts([['ContactCard/get', ['accountId' => 'bob', 'ids' => $ids], 'g']])
-            ->assertOk()
-            ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
-    }
-
     public function test_a_projection_without_media_does_no_photo_blob_work(): void
     {
         // Photo bytes no other test stores: the blob store outlives a test.

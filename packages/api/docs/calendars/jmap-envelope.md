@@ -22,7 +22,7 @@ All behind `wgw.auth` + `wgw.role:user` — deliberately **outside** any domain 
 - **Capability placement per draft-ietf-jmap-calendars-27 §1.5.1:** the session-level calendars capability is the **empty object**; the six-property object (`maxCalendarsPerEvent: 1`, `minDateTime`, `maxDateTime`, `maxExpandedQueryDuration`, `maxParticipantsPerEvent`, `mayCreateCalendar`) lives in `accountCapabilities`.
 - **All URLs are absolute** (built from the request): the client fetches `apiUrl` verbatim with no base-URL resolution.
 - `state` is derived: the `JmapCapabilities::SESSION_STATE` document version plus a digest of the enabled capability URNs (`JmapCapabilitySet::sessionState()`), echoed as `sessionState` on every `POST /jmap` response. Toggling a domain feature gate changes the session document, so the state changes with it (RFC 8620 §2); the client reacts via `onSessionStateChange`.
-- Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (1000) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`, and `maxSizeUpload` (config `wgw.jmap.max_size_upload`, default 25 MB, enforced by `POST /jmap/upload` — #438).
+- Advertised limits are enforced: `maxCallsInRequest` (32, request-level `urn:ietf:params:jmap:error:limit`), `maxObjectsInGet` (500) and `maxObjectsInSet` (200) (method-level `requestTooLarge`), `maxSizeRequest`, and `maxSizeUpload` (config `wgw.jmap.max_size_upload`, default 25 MB, enforced by `POST /jmap/upload` — #438).
 
 ## Batch endpoint
 

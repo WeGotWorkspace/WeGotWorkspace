@@ -1,6 +1,6 @@
 // Contacts photo pass and one first download per browser (live app, #2297).
 //
-// A new device downloads the address book in lean pages of up to 1000 cards
+// A new device downloads the address book in lean pages of up to 500 cards
 // (name, emails; no photos), completes the cards in a detail pass, then fetches
 // the photos in a third, paced pass that resumes from its marker after a reload. Other tabs never start a download of their own:
 // a Calendar tab's invitee search joins the one that is running.
@@ -213,12 +213,12 @@ test.describe("Contacts photo pass and one download per browser", () => {
       for (const route of stuck) await route.abort("internetdisconnected").catch(() => undefined);
     };
 
-    // 1. The card pages carry no photos: lean pages hold at most 1000 cards, detail pages 200.
+    // 1. The card pages carry no photos: lean pages hold at most 500 cards, detail pages 200.
     await page.goto("/contacts/all");
     await expect.poll(() => held.length, { timeout: 120_000 }).toBe(1);
     expect(cardPages.length).toBeGreaterThan(1);
     for (const get of cardPages) {
-      expect(get.ids.length).toBeLessThanOrEqual(get.properties?.includes("phones") ? 200 : 1000);
+      expect(get.ids.length).toBeLessThanOrEqual(get.properties?.includes("phones") ? 200 : 500);
       expect(get.properties ?? []).toContain("name");
       expect(get.properties ?? []).not.toContain("media");
     }

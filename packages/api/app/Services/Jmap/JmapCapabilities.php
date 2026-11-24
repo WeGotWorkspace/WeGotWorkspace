@@ -76,7 +76,7 @@ final class JmapCapabilities
 
     public const MAX_CALLS_IN_REQUEST = 32;
 
-    public const MAX_OBJECTS_IN_GET = 1000;
+    public const MAX_OBJECTS_IN_GET = 500;
 
     public const MAX_OBJECTS_IN_SET = 200;
 

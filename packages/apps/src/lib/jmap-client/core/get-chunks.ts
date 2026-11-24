@@ -3,25 +3,15 @@ import { CORE_CAPABILITY, type GetResponse, type JmapId, type JmapSession } from
 /** RFC 8620 does not set a default; 500 is what the WGW server advertises. */
 export const DEFAULT_MAX_OBJECTS_IN_GET = 500;
 
-/**
- * Page size of every get except the lean contact pass. The server may allow more (1000 since
- * #2284, for lean contact cards); notes, events, messages and file nodes can be tens of KB
- * each, and a 1000-object page of those does not fit PHP's 128 MB, so they stay at 500.
- */
-export const GENERAL_GET_PAGE_CAP = 500;
-
-/** The server's `maxObjectsInGet` from the session core capability, or the default, capped at {@link GENERAL_GET_PAGE_CAP}. */
+/** The server's `maxObjectsInGet` from the session core capability, or the default. */
 export function maxObjectsInGet(
   session: Pick<JmapSession, "capabilities">,
   fallback = DEFAULT_MAX_OBJECTS_IN_GET,
 ): number {
   const core = session.capabilities[CORE_CAPABILITY];
-  const advertised = (() => {
-    if (!core || typeof core !== "object") return fallback;
-    const value = Number((core as Record<string, unknown>).maxObjectsInGet);
-    return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
-  })();
-  return Math.min(advertised, GENERAL_GET_PAGE_CAP);
+  if (!core || typeof core !== "object") return fallback;
+  const value = Number((core as Record<string, unknown>).maxObjectsInGet);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 }
 
 /**

@@ -331,21 +331,6 @@ final class JmapCalendarMethodsTest extends WgwDatabaseTestCase
             ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
     }
 
-    public function test_get_accepts_exactly_1000_ids_and_refuses_1001(): void
-    {
-        $ids = array_map(static fn (int $i): string => "id-{$i}", range(1, 1000));
-        $this->jmap([
-            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => $ids], 'c0'],
-        ])->assertOk()
-            ->assertJsonPath('methodResponses.0.0', 'CalendarEvent/get');
-
-        $ids[] = 'id-1001';
-        $this->jmap([
-            ['CalendarEvent/get', ['accountId' => 'bob', 'ids' => $ids], 'c0'],
-        ])->assertOk()
-            ->assertJsonPath('methodResponses.0.1.type', 'requestTooLarge');
-    }
-
     public function test_event_get_all_beyond_max_objects_in_get_is_request_too_large(): void
     {
         // Seeded straight into calendarobjects: 501 Sabre createCalendarObject
