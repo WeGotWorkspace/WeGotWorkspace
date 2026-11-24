@@ -101,3 +101,12 @@
   margin-inline: calc(-1 * var(--list-row-padding-x, 1rem));
   width: calc(100% + 2 * var(--list-row-padding-x, 1rem));
 }
+
+/* Section headings (h2): a step bigger, in the serif of the page title, full ink. */
+.workspace-page-section .card__title {
+  @apply font-serif font-normal;
+  font-size: var(--text-2xl, 1.5rem);
+  line-height: 1.2;
+  letter-spacing: normal;
+  color: var(--card-title-color, var(--workspace-foreground));
+}
