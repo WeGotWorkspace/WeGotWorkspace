@@ -106,6 +106,7 @@ export function AdminSearchPane({ controller }: { controller: AdminControllerSta
           ) : (
             <Button
               variant="outline"
+              severity="danger"
               size="sm"
               onClick={() => setConfirmReindexOpen(true)}
               disabled={runningAction}
@@ -126,34 +127,32 @@ export function AdminSearchPane({ controller }: { controller: AdminControllerSta
       <AlertDialog open={confirmReindexOpen} onOpenChange={setConfirmReindexOpen}>
         <AlertDialogContent className="admin-dialog-surface">
           <AlertDialogHeader>
-            <AlertDialogTitle>Start a full search reindex?</AlertDialogTitle>
+            <AlertDialogTitle>Rebuild the search index?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will rebuild the unified search index for files, calendars, and contacts. It may
-              take a while on larger installations.
+              Rebuilds the index for files, calendars and contacts. It may take a while on larger
+              installs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={runningAction}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={runningAction}
-              onClick={async () => {
-                setRunningAction(true);
-                try {
-                  await controller.actions.startSearchReindex();
-                } finally {
-                  setRunningAction(false);
-                  setConfirmReindexOpen(false);
-                }
-              }}
-            >
-              {runningAction ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                "Start reindex"
-              )}
+            <AlertDialogAction asChild>
+              <Button
+                variant="outline"
+                severity="danger"
+                disabled={runningAction}
+                onClick={async (event) => {
+                  event.preventDefault();
+                  setRunningAction(true);
+                  try {
+                    await controller.actions.startSearchReindex();
+                  } finally {
+                    setRunningAction(false);
+                    setConfirmReindexOpen(false);
+                  }
+                }}
+              >
+                {runningAction ? "Rebuilding..." : "Rebuild"}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
