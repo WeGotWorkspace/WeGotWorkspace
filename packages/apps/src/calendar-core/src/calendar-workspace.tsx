@@ -566,12 +566,7 @@ export function CalendarWorkspace({
       if (!model) return;
       // Inbox fallback models only carry the organizer — seed the session invitee for RSVP chrome.
       if (notification && sessionEmail) {
-        const alreadyInvitee = isSessionEventInvitee(
-          model.form.attendees,
-          sessionEmail,
-          invitations.invitees,
-        );
-        if (!alreadyInvitee) {
+        if (!isSessionEventInvitee(model.form.attendees, sessionEmail, invitations.invitees)) {
           model = {
             ...model,
             form: {
@@ -592,7 +587,6 @@ export function CalendarWorkspace({
       }
       setEventTimesDraft(null);
       setEventPreview({ model, origin, invitation: true });
-      // List mode shows the inbox as a scrimmed drawer and no popover; clear it off the detail pane.
       if (presentation === "list") setInvitationsOpen(false);
     },
     [
