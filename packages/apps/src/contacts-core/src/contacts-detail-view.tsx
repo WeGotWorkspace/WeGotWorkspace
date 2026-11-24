@@ -56,6 +56,7 @@ import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import { NoteDetailEyebrow } from "@/note-detail-view/src/note-detail-eyebrow";
 import "@/note-detail-view/src/note-detail-view.css";
+import "@/note-detail-view/src/note-detail-desk.css";
 
 type ContactsDetailViewProps = {
   labels: ContactsUILabels;
