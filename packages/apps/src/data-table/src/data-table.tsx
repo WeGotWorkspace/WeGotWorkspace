@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
+import { listSortAria, type ListSort, type ListSortDirection } from "@/lib/list-sort";
 import { cn } from "@/lib/utils";
+import { SortableColumnHeader } from "@/ui/sortable-column-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
 
 export type DataTableColumn<T> = {
@@ -12,6 +14,12 @@ export type DataTableColumn<T> = {
   muted?: boolean;
   /** Takes only the room its values need. */
   shrink?: boolean;
+  /**
+   * Makes the header sort the list (the table needs `sort` and `onSort`; `header` must be a
+   * string). `firstDirection` is what a first click gives, as in Drive and Docs.
+   */
+  sortKey?: string;
+  firstDirection?: ListSortDirection;
   headerClassName?: string;
   cellClassName?: string;
 };
@@ -20,6 +28,9 @@ type DataTableProps<T> = {
   data: T[];
   columns: DataTableColumn<T>[];
   rowKey: (row: T) => string;
+  /** The sorted column and direction; the rows come in already sorted. */
+  sort?: ListSort;
+  onSort?: (key: string) => void;
   /** On the table (it scrolls sideways in its own wrapper when it does not fit). */
   className?: string;
   tableClassName?: string;
@@ -35,6 +46,8 @@ export function DataTable<T>({
   data,
   columns,
   rowKey,
+  sort,
+  onSort,
   className,
   tableClassName,
   rowClassName,
@@ -50,8 +63,23 @@ export function DataTable<T>({
       <TableHeader>
         <tr>
           {columns.map((column) => (
-            <TableHead key={column.key} className={cn(columnClass(column), column.headerClassName)}>
-              {column.header}
+            <TableHead
+              key={column.key}
+              className={cn(columnClass(column), column.headerClassName)}
+              aria-sort={column.sortKey && sort ? listSortAria(sort, column.sortKey) : undefined}
+            >
+              {column.sortKey && sort && onSort && typeof column.header === "string" ? (
+                <SortableColumnHeader
+                  label={column.header}
+                  sortKey={column.sortKey}
+                  sort={sort}
+                  onSort={onSort}
+                  firstDirection={column.firstDirection}
+                  align={column.align}
+                />
+              ) : (
+                column.header
+              )}
             </TableHead>
           ))}
         </tr>
