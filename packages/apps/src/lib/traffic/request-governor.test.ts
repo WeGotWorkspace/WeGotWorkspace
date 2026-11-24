@@ -28,6 +28,7 @@ function harness(overrides: Overrides = {}) {
       clock += ms;
     },
     fetch: async (request) => {
+      if (request.signal.aborted) throw new DOMException("The operation was aborted", "AbortError");
       sent.push(new URL(request.url).pathname);
       if (overrides.fail) throw new TypeError("Failed to fetch");
       return new Response("{}", { status: overrides.status ?? 200, headers: overrides.headers });
@@ -53,6 +54,13 @@ describe("classifyRequest", () => {
     expect(classifyRequest("GET", url("/api/v1/files/threads/changes"))).toBe("background");
     expect(classifyRequest("GET", url("/api/v1/notifications"))).toBe("background");
     expect(classifyRequest("GET", url("/api/v1/tasks/items"))).toBe("foreground");
+  });
+
+  it("paces only the inbox, not the scheduling invitation list", () => {
+    expect(classifyRequest("GET", url("/api/v1/calendars/scheduling/notifications"))).toBe(
+      "foreground",
+    );
+    expect(classifyRequest("GET", url("/api/v1/notifications"))).toBe("background");
   });
 
   it("leaves other origins' paths and the app shell alone", () => {
@@ -201,6 +209,92 @@ describe("RequestGovernor background budget", () => {
       ),
     );
     expect(sent).toEqual(["/api/v1/a/changes", "/api/v1/b/changes", "/api/v1/c/changes"]);
+  });
+});
+
+describe("RequestGovernor aborts and waits", () => {
+  it("does not brake the browser when a caller aborts", async () => {
+    const { governor, sent, now } = harness();
+    const controller = new AbortController();
+    controller.abort();
+    const aborted = new Request("https://suite.test/api/v1/rooms/a/events", {
+      signal: controller.signal,
+    });
+    await expect(governor.handle(aborted, "background")).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    const before = now();
+    await governor.handle(get("/rooms/b/events"), "background");
+    expect(now() - before).toBe(0);
+    expect(sent).toEqual(["/api/v1/rooms/b/events"]);
+  });
+
+  it("does not brake when the page aborts a request that was already queued", async () => {
+    const { governor, now } = harness({ burst: 1 });
+    for (let index = 0; index < 5; index += 1) governor.observe("foreground");
+    const controller = new AbortController();
+    const queued = new Request("https://suite.test/api/v1/rooms/a/events", {
+      signal: controller.signal,
+    });
+    const result = governor.handle(queued, "background");
+    controller.abort();
+    await expect(result).rejects.toMatchObject({ name: "AbortError" });
+    const before = now();
+    await governor.handle(get("/rooms/b/events"), "background");
+    // The aborted request spent no token and caused no brake.
+    expect(now() - before).toBeLessThanOrEqual(30_000);
+  });
+
+  it("charges no token for a request aborted while queued", async () => {
+    const { governor, sent } = harness({ burst: 2 });
+    const controller = new AbortController();
+    controller.abort();
+    await governor
+      .handle(
+        new Request("https://suite.test/api/v1/rooms/a/events", { signal: controller.signal }),
+        "background",
+      )
+      .catch(() => undefined);
+    await Promise.all(
+      ["/a/changes", "/b/changes"].map((path) => governor.handle(get(path), "background")),
+    );
+    expect(sent).toHaveLength(2);
+  });
+
+  it("counts the maximum wait from arrival, not from reaching the front", async () => {
+    const { governor, now } = harness({ status: 429, headers: { "Retry-After": "120" } });
+    await governor.handle(get("/x/changes"), "background");
+    const start = now();
+    const settled: number[] = [];
+    await Promise.all(
+      ["/a/changes", "/b/changes", "/c/changes"].map((path) =>
+        governor.handle(get(path), "background").then(() => settled.push(now() - start)),
+      ),
+    );
+    expect(settled.every((elapsed) => elapsed <= 30_000)).toBe(true);
+  });
+
+  it("coalesces a read that carries Cookie and Referer", async () => {
+    const { governor, sent } = harness();
+    const request = new Request("https://suite.test/api/v1/me", {
+      headers: { Authorization: "Bearer token-a", Accept: "application/json" },
+    });
+    // Browsers expose these on a worker's request; Node's Request refuses to set them.
+    const withForbidden = new Proxy(request.headers, {
+      get(target, prop) {
+        if (prop === "get") {
+          return (name: string) =>
+            ({ cookie: "sid=1", referer: "https://suite.test/" })[name.toLowerCase()] ??
+            target.get(name);
+        }
+        const value = Reflect.get(target, prop, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    Object.defineProperty(request, "headers", { value: withForbidden });
+    await governor.handle(request, "coalesce");
+    await governor.handle(signedIn("/me"), "coalesce");
+    expect(sent).toEqual(["/api/v1/me"]);
   });
 });
 

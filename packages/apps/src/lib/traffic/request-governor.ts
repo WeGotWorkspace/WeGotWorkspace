@@ -23,8 +23,10 @@
  *
  * This is politeness toward the host's per-IP firewall, not a security
  * boundary: a page can only ever get *slower* by marking its own requests,
- * because unmarked requests are the fast path. See the PR for what the
- * header trusts.
+ * because unmarked requests are the fast path. The budget header is trusted
+ * only from a same-origin answer and is clamped to 0–10000, so the worst a
+ * forged one does is turn pacing off for this browser, which is the state
+ * of any browser without the worker.
  */
 
 export type GovernorClass = "coalesce" | "background" | "bulk" | "foreground" | "write";
@@ -41,12 +43,7 @@ export const TRAFFIC_CLASS_HEADER = "X-WGW-Traffic";
 
 const COALESCE_PATHS = [/\/settings\/state$/, /\/me$/, /\/jmap\/session$/];
 
-const BACKGROUND_PATHS = [
-  /\/rooms\/[^/]+\/events$/,
-  /\/jmap\/events\//,
-  /\/changes$/,
-  /\/notifications$/,
-];
+const BACKGROUND_PATHS = [/\/rooms\/[^/]+\/events$/, /\/jmap\/events\//, /\/changes$/];
 
 /** `null` for anything that is not the suite's own API: the governor never touches it. */
 export function classifyRequest(
@@ -63,6 +60,8 @@ export function classifyRequest(
   if (verb === "HEAD") return "foreground";
   const path = url.pathname;
   if (COALESCE_PATHS.some((pattern) => pattern.test(path))) return "coalesce";
+  // Only the inbox poll: `calendars/scheduling/notifications` is a list the user waits for.
+  if (path === `${apiPrefix}/notifications`) return "background";
   if (BACKGROUND_PATHS.some((pattern) => pattern.test(path))) return "background";
   return "foreground";
 }
@@ -169,9 +168,9 @@ export class RequestGovernor {
   async handle(request: Request, kind: GovernorClass): Promise<Response> {
     if (kind === "coalesce") return this.coalesce(request);
     if (kind === "background" && this.options.backgroundPerMinute > 0) {
-      await this.waitForTurn();
+      await this.waitForTurn(request.signal, this.options.now());
     } else if (kind === "bulk" && this.options.bulkPerMinute > 0) {
-      await this.waitForBulkTurn();
+      await this.waitForBulkTurn(request.signal);
     } else if (kind === "foreground" || kind === "write") {
       this.observe(kind);
     }
@@ -179,12 +178,13 @@ export class RequestGovernor {
   }
 
   /** Bulk requests go one after another at their own pace, never in a burst, and honour the brake. */
-  private waitForBulkTurn(): Promise<void> {
+  private waitForBulkTurn(signal: AbortSignal): Promise<void> {
     const turn = this.bulkQueue.then(async () => {
       for (;;) {
+        throwIfAborted(signal);
         const wait = Math.max(this.bulkNextAt, this.brakeUntil) - this.options.now();
         if (wait <= 0) break;
-        await this.options.sleep(wait);
+        await this.sleepUnlessAborted(wait, signal);
       }
       this.bulkNextAt = this.options.now() + Math.ceil(60_000 / this.options.bulkPerMinute);
     });
@@ -212,9 +212,17 @@ export class RequestGovernor {
     if (hit) return (await hit.response).clone();
     // The answer outlives its first caller: a page that aborts its read must not
     // fail the others waiting on it, so the shared request carries no signal.
+    // Only headers the Request constructor accepts: `Cookie` and `Referer` are
+    // forbidden names there and would throw. The cookie jar still applies
+    // through `credentials`.
+    const headers = new Headers();
+    for (const name of ["Authorization", "Accept"]) {
+      const value = request.headers.get(name);
+      if (value !== null) headers.set(name, value);
+    }
     const shared = new Request(request.url, {
       method: "GET",
-      headers: request.headers,
+      headers,
       credentials: request.credentials,
       mode: request.mode === "navigate" ? "same-origin" : request.mode,
       redirect: request.redirect,
@@ -245,29 +253,49 @@ export class RequestGovernor {
    * Background requests take turns, first come first served: one token each,
    * after any brake. A request that has waited `maxWaitMs` goes anyway, so
    * under a long brake the browser still lets one probe through per
-   * `maxWaitMs` instead of freezing its polls.
+   * `maxWaitMs` instead of freezing its polls. The wait is counted from
+   * `started`, when the request arrived, not from when it reaches the front.
+   * A request whose caller aborts leaves without spending a token.
    */
-  private waitForTurn(): Promise<void> {
+  private waitForTurn(signal: AbortSignal, started: number): Promise<void> {
     const turn = this.queue.then(async () => {
-      const started = this.options.now();
       for (;;) {
+        throwIfAborted(signal);
         const now = this.options.now();
         const remaining = this.options.maxWaitMs - (now - started);
         if (remaining <= 0) break;
         const braked = this.brakeUntil - now;
         if (braked > 0) {
-          await this.options.sleep(Math.min(braked, remaining));
+          await this.sleepUnlessAborted(Math.min(braked, remaining), signal);
           continue;
         }
         this.refill();
         if (this.tokens >= 1) break;
         const perMs = this.options.backgroundPerMinute / 60_000;
-        await this.options.sleep(Math.min(Math.ceil((1 - this.tokens) / perMs), remaining));
+        await this.sleepUnlessAborted(
+          Math.min(Math.ceil((1 - this.tokens) / perMs), remaining),
+          signal,
+        );
       }
+      throwIfAborted(signal);
       this.charge();
     });
     this.queue = turn.catch(() => undefined);
     return turn;
+  }
+
+  /** Sleeps, but ends early (and throws) when the caller aborts, so a cancelled request frees the queue. */
+  private async sleepUnlessAborted(ms: number, signal: AbortSignal): Promise<void> {
+    let onAbort = () => {};
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(abortError());
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    try {
+      await Promise.race([this.options.sleep(ms), aborted]);
+    } finally {
+      signal.removeEventListener("abort", onAbort);
+    }
   }
 
   private refill(): void {
@@ -301,7 +329,9 @@ export class RequestGovernor {
       }
       return response;
     } catch (error) {
-      this.brake(null);
+      // A caller that gave up is not a sign of a struggling server.
+      const aborted = request.signal.aborted || (error as Error)?.name === "AbortError";
+      if (!aborted) this.brake(null);
       throw error;
     }
   }
@@ -321,6 +351,14 @@ export class RequestGovernor {
       ? Math.min(RETRY_AFTER_MAX_MS, Math.max(0, date - this.options.now()))
       : null;
   }
+}
+
+function abortError(): DOMException {
+  return new DOMException("The request was aborted", "AbortError");
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) throw abortError();
 }
 
 async function digest(value: string): Promise<string> {
