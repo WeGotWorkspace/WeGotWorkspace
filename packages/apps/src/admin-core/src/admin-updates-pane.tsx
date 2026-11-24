@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, EllipsisVertical, Loader2, Package, Terminal } from "lucide-react";
+import { EllipsisVertical, Package, Terminal } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import { ProgressRing } from "@/ui/progress";
 import { Tag } from "@/tag/src/tag";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
@@ -36,6 +37,14 @@ import type { AdminControllerState } from "@/admin-core/src/use-admin-controller
 
 const DOCKER_INSTALL_DOCS_URL =
   "https://github.com/WeGotWorkspace/wegotworkspace/blob/main/docs/install-docker.md";
+
+/** The line under the step that is running. */
+const STEP_DETAILS: Record<string, string> = {
+  Downloading: "Fetching the release package.",
+  Extracting: "Unpacking the new files.",
+  "Backing up database": "Saving a copy of the database first.",
+  "Applying update": "Replacing files and running migrations.",
+};
 
 const UPDATE_CHANNEL_OPTIONS: { value: AdminUpdateChannel; label: string }[] = [
   { value: "stable", label: "Stable" },
@@ -136,13 +145,26 @@ export function AdminUpdatesPane({
             )
           : 2;
 
+  const progressTarget = controller.updates.current?.to ?? controller.updates.latest?.version;
   const progressCard = (
     <div className="admin-updates-progress-card">
       <div className="admin-updates-progress-head">
-        <div className="admin-updates-stat-label--strong">Update progress</div>
+        <div className="admin-updates-progress-title">
+          <span className="admin-updates-stat-label--strong">Installing update</span>
+          {progressTarget ? (
+            <span className="admin-updates-progress-version">{progressTarget}</span>
+          ) : null}
+        </div>
         <div className="admin-updates-progress-count">{displayProgressCount}</div>
       </div>
-      <div className="admin-updates-progress-track">
+      <div
+        className="admin-updates-progress-track"
+        role="progressbar"
+        aria-label="Update progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progressPercent)}
+      >
         <div className="admin-updates-progress-fill" style={{ width: `${progressPercent}%` }} />
       </div>
       <ol className="admin-updates-step-list">
@@ -151,17 +173,25 @@ export function AdminUpdatesPane({
           const isActive = activeProgressStep === index;
           const stepState = isDone ? "done" : isActive ? "active" : "pending";
           return (
-            <li key={step.label} className="admin-updates-step-row">
-              <span className="admin-updates-step-dot" data-step-state={stepState}>
-                {isDone ? (
-                  <Check className="size-3" />
-                ) : isActive ? (
-                  <Loader2 className="size-3 animate-spin" />
+            <li key={step.label} className="admin-updates-step-row" data-step-state={stepState}>
+              <span className="admin-updates-step-dot">
+                {isActive ? (
+                  <ProgressRing
+                    value={null}
+                    label={step.label}
+                    valueText={`${step.label}, in progress`}
+                    className="admin-updates-step-ring"
+                  />
                 ) : (
-                  <span className="size-1.5 rounded-full bg-current" />
+                  <span className="admin-updates-step-mark" aria-hidden />
                 )}
               </span>
-              <span className="admin-updates-step-label">{step.label}</span>
+              <span className="admin-updates-step-text">
+                <span className="admin-updates-step-label">{step.label}</span>
+                {isActive ? (
+                  <span className="admin-updates-step-detail">{STEP_DETAILS[step.label]}</span>
+                ) : null}
+              </span>
             </li>
           );
         })}
