@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Dav\Server\TeamCollectionName;
 use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Models\JmapFileNode;
@@ -430,7 +431,8 @@ final class SearchIndexerService
 
     private function normalizeDavPath(string $path): string
     {
-        return trim(str_replace('\\', '/', $path), '/');
+        // A Team collection written through a member's home is indexed under its Team path (#2158).
+        return trim(TeamCollectionName::canonicalPath(trim(str_replace('\\', '/', $path), '/')), '/');
     }
 
     private function categoryForExtension(?string $extension): string

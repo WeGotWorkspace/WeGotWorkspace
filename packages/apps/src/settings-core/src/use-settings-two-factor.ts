@@ -200,6 +200,8 @@ export function useSettingsTwoFactor(
     code,
     setCode: (value) => {
       setCodeValue(value);
+      // Emptying the boxes after a wrong code keeps the message; the next digit clears it.
+      if (value === "") return;
       setCodeError("");
       setWrongCode(false);
     },

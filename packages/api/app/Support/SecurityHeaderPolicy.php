@@ -5,12 +5,26 @@ declare(strict_types=1);
 namespace App\Support;
 
 /**
- * CSP and HSTS strings shared by the response middleware and the Apache block
+ * CSP, HSTS and the other security header strings shared by the response middleware and the Apache block
  * for files PHP does not serve.
  */
 final class SecurityHeaderPolicy
 {
     public const HSTS = 'max-age=15552000';
+
+    /**
+     * Meet needs the camera, the microphone, screen sharing and picture in
+     * picture; nothing in the suite needs the other device features.
+     */
+    public const PERMISSIONS_POLICY = 'accelerometer=(), camera=(self), display-capture=(self), fullscreen=(self), '
+        .'geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(self), midi=(), payment=(), '
+        .'picture-in-picture=(self), serial=(), usb=()';
+
+    /** Another site's window keeps no handle on ours. Not on the MCP OAuth pages, which clients open. */
+    public const OPENER_POLICY = 'same-origin';
+
+    /** Another site cannot load our responses as an image, script or other no-cors resource. */
+    public const RESOURCE_POLICY = 'same-origin';
 
     /**
      * The runtime shell has no inline script. 'wasm-unsafe-eval' covers plugin

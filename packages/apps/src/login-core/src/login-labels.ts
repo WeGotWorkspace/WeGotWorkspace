@@ -4,7 +4,7 @@ export const loginLabels = {
   connect: "Connect Assistant",
   twoFactorOn:
     "Two-factor sign-in is on. Sign in again with your password and a code from your app.",
-  codeTitle: "One more step.",
+  codeTitle: "Two-factor auth",
   replaceTitle: "Set up your app again.",
   codesTitle: "Save your new recovery codes.",
   codeLead: "Enter the 6-digit code from your authenticator app.",
@@ -15,7 +15,7 @@ export const loginLabels = {
     "Your old recovery codes no longer work. Each of these works once, when your phone is not at hand.",
   useRecovery: "Use a recovery code",
   useApp: "Use a code from the app",
-  startOver: "Sign in as someone else",
+  startOver: "Sign in to another account",
   verify: "Verify",
   verifying: "Verifying...",
   continue: "Continue",

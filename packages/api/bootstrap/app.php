@@ -61,6 +61,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $schedule->command('wgw:calendar:imip-poll')->everyMinute()->withoutOverlapping();
         $schedule->command('wgw:rtc:prune')->hourly()->withoutOverlapping();
         $schedule->command('wgw:availability:prune-cache')->hourly()->withoutOverlapping();
+        $schedule->command('wgw:auth:prune-challenges')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: [

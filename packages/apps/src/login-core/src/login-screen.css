@@ -8,7 +8,7 @@
 }
 
 .login-screen__links {
-  @apply flex flex-wrap justify-between gap-x-4 gap-y-2;
+  @apply flex flex-col items-center gap-y-2;
 }
 
 /* Same look as the hint links (`.login-screen__hint a`), as buttons: they change the step. */
@@ -19,4 +19,10 @@
 
 .login-screen__qr {
   @apply flex justify-center py-2;
+}
+
+/* "Sign in to another account": the quieter of the two links under Verify. */
+.login-screen__link--muted {
+  color: color-mix(in oklab, var(--workspace-foreground) 62%, transparent);
+  @apply font-normal;
 }

@@ -66,7 +66,13 @@ final class AuthTokenService
 
         $this->rateLimiter->reset($username, $ip);
 
-        return $this->mfa->challengeAfterPassword($username, AuthChallenge::CLIENT_SPA) ?? $this->issueForUsername($username, $epoch);
+        $challenge = $this->mfa->challengeAfterPassword($username, AuthChallenge::CLIENT_SPA);
+        if ($challenge !== null) {
+            return $challenge;
+        }
+        $this->rateLimiter->rememberAddress($username, $ip);
+
+        return $this->issueForUsername($username, $epoch);
     }
 
     /**

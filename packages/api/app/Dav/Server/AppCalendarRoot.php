@@ -52,7 +52,9 @@ final class AppCalendarRoot extends CalendarRoot
      */
     public function getChildForPrincipal(array $principal): AppCalendarHome
     {
-        return new AppCalendarHome($this->caldavBackend, $principal);
+        $viewer = $this->authPlugin->getCurrentPrincipal();
+
+        return new AppCalendarHome($this->caldavBackend, $principal, is_string($viewer) ? $viewer : null);
     }
 
     public function getChild($name): DAV\INode

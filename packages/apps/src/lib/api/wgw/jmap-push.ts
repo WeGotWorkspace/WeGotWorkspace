@@ -16,7 +16,13 @@ import {
 } from "@/lib/jmap-client/push/mesh-check-now";
 import { meetCallAwake } from "@/lib/jmap-client/push/meet-call-awake";
 import { browserWebLocks } from "@/lib/jmap-client/push/web-locks-leader";
-import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
+import {
+  getConnectivitySnapshot,
+  isFetchNetworkError,
+  reportReachability,
+  setPushHealthy,
+  subscribeBrowserOnline,
+} from "@/lib/offline/core/browser-online";
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
 import {
   pushHeartbeatHeaderValue,
@@ -128,6 +134,11 @@ function createHub(): JmapPushHub {
         // 6 s instead of 3 s while nobody used any tab for 2 min (#2294).
         userIdle: () => userIsIdle(),
         onStatus: ctx.onStatus,
+        // A push response is the online check; a push that never reached the server feeds the probe backoff (#2296).
+        onResponse: () => reportReachability(true),
+        onRequestError: (error) => {
+          if (isFetchNetworkError(error)) reportReachability(false);
+        },
         connectivity: {
           online: getConnectivitySnapshot,
           subscribe: (listener) =>
@@ -163,6 +174,8 @@ export function defaultJmapPushHub(): JmapPushHub | null {
   if (hub) {
     installUserActivity();
     const created = hub;
+    // While the stream is healthy it is the online check: the probe stays quiet (#2296).
+    created.subscribeStatus(setPushHealthy);
     // Back from idle: the longer idle interval must not hold up the first news.
     onUserResumed(() => created.wake("active"));
   }

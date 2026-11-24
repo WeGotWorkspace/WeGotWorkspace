@@ -46,7 +46,11 @@
 
 /* Same look as a form message (`FormTextField`). */
 .two-factor-field-error {
-  @apply m-0 mt-1.5 text-[0.8rem] font-medium text-destructive;
+  @apply m-0 mt-2 flex items-start gap-1.5 text-[0.8rem] font-medium text-destructive;
+}
+
+.two-factor-field-error__icon {
+  @apply mt-px size-3.5 shrink-0;
 }
 
 .two-factor-field-hint {

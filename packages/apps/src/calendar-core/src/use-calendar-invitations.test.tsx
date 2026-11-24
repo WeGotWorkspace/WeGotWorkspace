@@ -1,6 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
+import {
+  CALENDAR_BACKGROUND_POLL_MS,
+  CALENDAR_PUSH_POLL_MS,
+} from "@/calendar-core/src/calendar-refresh";
+import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
 import type { CalendarAPIOperations } from "@/lib/models/calendar-types";
 import { useCalendarInvitations } from "@/calendar-core/src/use-calendar-invitations";
 import type { CalendarSchedulingNotification } from "@/lib/api/wgw/calendar-scheduling";
@@ -10,6 +14,11 @@ import {
   writeCalendarSchedulingInbox,
 } from "@/lib/offline/calendars/calendars-scheduling-offline-store";
 import { reportCalendarsSchedulingConflicts } from "@/lib/offline/calendars/calendars-sync-conflicts";
+
+vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
+  useJmapPushConnected: vi.fn(() => false),
+  useJmapStateChange: vi.fn(),
+}));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
@@ -37,6 +46,7 @@ describe("useCalendarInvitations", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(useJmapPushConnected).mockReturnValue(false);
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
   });
 
@@ -56,6 +66,99 @@ describe("useCalendarInvitations", () => {
     });
 
     expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("polls on the slow interval while push is connected (#2287)", async () => {
+    vi.mocked(useJmapPushConnected).mockReturnValue(true);
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CALENDAR_PUSH_POLL_MS - 1);
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes invitations when a CalendarEvent state is pushed, before the slow poll", async () => {
+    vi.mocked(useJmapPushConnected).mockReturnValue(true);
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+
+    const [types, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    expect(types).toEqual(["CalendarEvent"]);
+    await act(async () => {
+      await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a pushed state unconfirmed while the mount fetch is in flight", async () => {
+    let releaseMount: (() => void) | undefined;
+    const listSchedulingNotifications = vi.fn().mockImplementation(
+      () =>
+        new Promise<[]>((resolve) => {
+          releaseMount = () => resolve([]);
+        }),
+    );
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+    const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(confirmed).toBe(false);
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      releaseMount?.();
+    });
+  });
+
+  it("leaves a pushed state unconfirmed when the list fails", async () => {
+    const listSchedulingNotifications = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("down"));
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(confirmed).toBe(false);
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a pushed state while the document is hidden", async () => {
+    const listSchedulingNotifications = vi.fn().mockResolvedValue([]);
+    const operations = operationsWithList(listSchedulingNotifications);
+    renderHook(() => useCalendarInvitations(operations));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    const [, onChange] = vi.mocked(useJmapStateChange).mock.calls.at(-1)!;
+    let confirmed: unknown = "unset";
+    await act(async () => {
+      confirmed = await onChange({ CalendarEvent: "s2" }, "acc");
+    });
+    expect(confirmed).toBeUndefined();
+    expect(listSchedulingNotifications).toHaveBeenCalledTimes(1);
   });
 
   it("skips background polls while the document is hidden", async () => {

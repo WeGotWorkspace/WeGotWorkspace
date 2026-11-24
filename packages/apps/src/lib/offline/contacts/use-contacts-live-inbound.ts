@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createContactsJmapClient } from "@/lib/api/wgw/contacts";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
-import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { usePushBackupPoll } from "@/lib/live/use-push-backup-poll";
 import { useSharedInboundSync } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { JmapContactsAdapter } from "@/lib/jmap-client";
 import {
@@ -14,10 +15,8 @@ import {
 import { subscribeContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
 import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 
-/** Inbound `/changes` poll while push is down. */
+/** Backup `/changes` poll while push is not healthy. */
 export const CONTACTS_CHANGES_POLL_MS = 10_000;
-/** While push is connected the poll only backs it up. */
-export const CONTACTS_CHANGES_PUSH_POLL_MS = 60_000;
 
 const PUSH_TYPES = ["AddressBook", "ContactCard"] as const;
 const NO_TYPES: readonly string[] = [];
@@ -34,8 +33,8 @@ type UseContactsLiveInboundArgs = {
 /**
  * Live inbound Contacts sync over JMAP (#1666): a push for `ContactCard` or
  * `AddressBook` runs one `/changes` round when the pushed state differs from
- * the adapter's own; the poll backs it up every 10 s, or every 60 s while
- * push is connected. One tab per browser does this; the others re-read the
+ * the adapter's own; the poll backs it up every 10 s, only while
+ * push is not healthy. One tab per browser does this; the others re-read the
  * cache it writes (#2252). Without the contacts capability the Dexie cache still
  * renders and nothing syncs inbound.
  */
@@ -102,12 +101,7 @@ export function useContactsLiveInbound({
     return subscribeContactsCacheChanged(username, () => void latestPatch.current());
   }, [enabled, username]);
 
-  const pushConnected = useJmapPushConnected();
-  useEffect(() => {
-    if (!adapter) return;
-    adapter.startPolling(pushConnected ? CONTACTS_CHANGES_PUSH_POLL_MS : CONTACTS_CHANGES_POLL_MS);
-    return () => adapter.stopPolling();
-  }, [adapter, pushConnected]);
+  usePushBackupPoll(adapter, CONTACTS_CHANGES_POLL_MS);
 
   useJmapStateChange(adapter ? PUSH_TYPES : NO_TYPES, (states, accountId) =>
     adapter ? adapter.syncIfStale(states, accountId) : true,

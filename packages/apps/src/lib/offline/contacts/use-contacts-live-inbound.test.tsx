@@ -9,7 +9,6 @@ import {
 } from "@/lib/jmap-client/push/state-change-subscription";
 import {
   CONTACTS_CHANGES_POLL_MS,
-  CONTACTS_CHANGES_PUSH_POLL_MS,
   useContactsLiveInbound,
 } from "@/lib/offline/contacts/use-contacts-live-inbound";
 import { notifyContactsCacheChanged } from "@/lib/offline/contacts/contacts-cache-changed";
@@ -202,16 +201,23 @@ describe("useContactsLiveInbound", () => {
     expect(mocks.contactCardChanges).toHaveBeenCalledTimes(2);
   });
 
-  it("polls every 10 s without push and every 60 s while push is connected", async () => {
+  it("polls every 10 s only while push is not healthy", async () => {
     const startPolling = vi.spyOn(JmapContactsAdapter.prototype, "startPolling");
+    const stopPolling = vi.spyOn(JmapContactsAdapter.prototype, "stopPolling");
     renderLiveInbound();
     await waitFor(() => expect(startPolling).toHaveBeenCalledWith(CONTACTS_CHANGES_POLL_MS));
+    const started = startPolling.mock.calls.length;
 
     mocks.hub!.connected = true;
     act(() => mocks.hub!.status.forEach((listener) => listener()));
+    expect(stopPolling).toHaveBeenCalled();
+    expect(startPolling).toHaveBeenCalledTimes(started);
 
-    expect(startPolling).toHaveBeenLastCalledWith(CONTACTS_CHANGES_PUSH_POLL_MS);
+    mocks.hub!.connected = false;
+    act(() => mocks.hub!.status.forEach((listener) => listener()));
+    expect(startPolling).toHaveBeenCalledTimes(started + 1);
     startPolling.mockRestore();
+    stopPolling.mockRestore();
   });
 
   it("does not subscribe without the contacts capability", async () => {

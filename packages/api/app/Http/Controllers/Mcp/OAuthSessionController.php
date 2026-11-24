@@ -74,6 +74,7 @@ final class OAuthSessionController
 
             return response()->json($challenge);
         }
+        $this->limiter->rememberAddress($username, $ip);
 
         return $this->signIn($request, $user);
     }

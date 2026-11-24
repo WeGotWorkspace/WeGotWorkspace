@@ -2,7 +2,6 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   syncTasksIfStale,
-  TASKS_INBOUND_PUSH_POLL_MS,
   TASKS_SHARED_PULL_WAIT_MS,
   useTasksLiveInbound,
 } from "@/lib/offline/tasks/use-tasks-live-inbound";
@@ -37,7 +36,7 @@ vi.mock("@/lib/api/wgw/use-shared-inbound-sync", () => ({
   },
 }));
 vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
-  useJmapPushConnected: () => mocks.pushConnected,
+  useJmapPushHealthy: () => mocks.pushConnected,
   useJmapStateChange: (
     types: readonly string[],
     listener: (states: Record<string, string>) => unknown,
@@ -201,7 +200,7 @@ describe("useTasksLiveInbound", () => {
     expect(patchFromCache).toHaveBeenCalledTimes(1);
   });
 
-  it("polls every 10 s without push and every 60 s while push is connected", async () => {
+  it("sends no backup pull while push is healthy and resumes within one interval", async () => {
     vi.useFakeTimers();
     const patchFromCache = vi.fn(async () => undefined);
     const { rerender } = renderHook(() =>
@@ -215,11 +214,14 @@ describe("useTasksLiveInbound", () => {
     mocks.pushConnected = true;
     rerender();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(TASKS_INBOUND_PUSH_POLL_MS - 1);
+      await vi.advanceTimersByTimeAsync(120_000);
     });
     expect(mocks.syncTasksInbound).toHaveBeenCalledTimes(1);
+
+    mocks.pushConnected = false;
+    rerender();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(10_000);
     });
     expect(mocks.syncTasksInbound).toHaveBeenCalledTimes(2);
   });

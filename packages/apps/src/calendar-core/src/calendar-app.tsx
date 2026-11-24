@@ -98,7 +98,7 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     loadEventsInRange,
     refreshBootstrap,
     reloadFromCache,
-  } = useCalendarAPI(apiSource, { onSyncConflict: handleSyncConflict });
+  } = useCalendarAPI(apiSource, { onSyncConflict: handleSyncConflict, liveInbound: true });
   const { online } = useConnectivity();
   const teamAvailability = useMemo(
     () => (jmapClient ? jmapTeamAvailabilitySource(jmapClient) : null),

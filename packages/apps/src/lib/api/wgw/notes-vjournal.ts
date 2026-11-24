@@ -2,7 +2,7 @@ import { ApiError } from "@/lib/api/api-error";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import { wgwFetch, wgwFetchPrincipal, wgwReadJson, wgwSettingsStateRead } from "@/lib/api/wgw/http";
 import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import {
@@ -398,9 +398,9 @@ export async function fetchNotesVjournalBootstrap(): Promise<NotesAppBootstrap> 
   const session = await wgwFetchPrincipal();
   // Stays undefined when the Teams could not be loaded: not the same as "no Team".
   let groups: NotesAppBootstrap["data"]["groups"];
-  const settingsRes = await wgwFetch("/settings/state");
-  if (settingsRes.ok) {
-    const settings = (await wgwReadJson(settingsRes)) as {
+  const settingsRead = await wgwSettingsStateRead.read();
+  if (settingsRead.ok) {
+    const settings = settingsRead.json as {
       groups?: { id: string; displayName: string }[];
     };
     if (Array.isArray(settings.groups)) {

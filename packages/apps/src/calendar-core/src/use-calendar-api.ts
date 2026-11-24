@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { useJmapPushConnected } from "@/lib/api/wgw/use-jmap-state-change";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
@@ -24,6 +25,12 @@ import {
 
 export type UseCalendarAPIOptions = {
   onSyncConflict?: (eventIds: string[]) => void;
+  /**
+   * This screen runs calendar live inbound sync, which keeps the cache current
+   * while push is connected. Only then does a tab that becomes visible re-read
+   * the cache instead of running a bootstrap (#2287). Default: bootstrap.
+   */
+  liveInbound?: boolean;
 };
 
 export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendarAPIOptions) {
@@ -71,6 +78,9 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     onConflicts: options?.onSyncConflict,
   });
 
+  const pushConnected = useJmapPushConnected();
+  const liveInbound = options?.liveInbound ?? false;
+
   const applyBootstrapRefresh = useCallback(async () => {
     if (offlineUsername && readBrowserOnline()) {
       await getCalendarsSyncRunner(offlineUsername).flush();
@@ -107,7 +117,24 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     const onVisibilityChange = () => {
       if (document.hidden || reconnectSyncing || refreshInFlightRef.current) return;
       refreshInFlightRef.current = true;
-      void applyBootstrapRefresh()
+      // Push connected and this screen's live inbound sync writes the cache: re-read
+      // it instead of a full bootstrap (#2287). Pending outbox rows flush on
+      // reconnect or the runner's own triggers, not here. Inbound `/changes` cannot
+      // see ICS feeds the server has not fetched, so stale subscriptions still
+      // refresh, and a refreshed one reloads the bootstrap.
+      const refresh =
+        pushConnected && liveInbound
+          ? readCalendarBootstrapFromCache(offlineUsername).then(async (cached) => {
+              if (!cached) return applyBootstrapRefresh();
+              patchBootstrap(() => cached);
+              setBootstrapRevision((revision) => revision + 1);
+              const refreshed = await operations
+                ?.refreshStaleCalendarSubscriptions?.()
+                .catch(() => false);
+              return refreshed ? applyBootstrapRefresh() : cached;
+            })
+          : applyBootstrapRefresh();
+      void refresh
         .catch(() => undefined)
         .finally(() => {
           refreshInFlightRef.current = false;
@@ -118,7 +145,17 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [applyBootstrapRefresh, offlineUsername, online, phase, reconnectSyncing]);
+  }, [
+    applyBootstrapRefresh,
+    offlineUsername,
+    liveInbound,
+    online,
+    operations,
+    patchBootstrap,
+    phase,
+    pushConnected,
+    reconnectSyncing,
+  ]);
 
   return {
     phase,

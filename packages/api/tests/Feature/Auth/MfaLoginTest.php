@@ -70,6 +70,27 @@ final class MfaLoginTest extends WgwDatabaseTestCase
         $this->refreshCookieValue($response);
     }
 
+    public function test_the_password_alone_does_not_make_the_address_known(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $challenge = $this->challengeFor('bob');
+        $limiter = app(LoginRateLimiter::class);
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('bob', '198.51.100.'.$host);
+        }
+
+        $this->assertFalse($limiter->allow('bob', '203.0.113.20'));
+
+        Cache::flush();
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret)])->assertOk();
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $limiter->hit('bob', '198.51.100.'.$host);
+        }
+
+        $this->assertTrue($limiter->allow('bob', '203.0.113.20'));
+        $this->assertFalse($limiter->allow('bob', '198.51.100.99'));
+    }
+
     public function test_the_password_alone_returns_a_challenge_and_no_tokens(): void
     {
         $this->turnOnMfa('bob');
@@ -158,6 +179,39 @@ final class MfaLoginTest extends WgwDatabaseTestCase
             intdiv(Carbon::now()->getTimestamp(), 30),
             UserMfa::query()->where('username', 'bob')->value('last_used_step'),
         );
+    }
+
+    public function test_a_replayed_code_is_refused_without_using_up_an_attempt(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $code])->assertOk();
+
+        // More tries than a challenge (5), the per-user lock (10) or the sign-in limit allow.
+        $challenge = $this->challengeFor('bob');
+        for ($i = 0; $i < 15; $i++) {
+            $this->verifyChallenge($challenge, ['code' => $code])
+                ->assertStatus(401)
+                ->assertJsonPath('code', 'mfa_code_invalid');
+        }
+        $this->assertSame(0, (int) AuthChallenge::query()->where('id_hash', hash('sha256', $challenge))->value('attempts'));
+
+        // Nothing was counted anywhere, so the next step's code still signs in.
+        $this->nextStep();
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret)])->assertOk();
+    }
+
+    public function test_a_wrong_code_still_uses_up_an_attempt(): void
+    {
+        $secret = $this->turnOnMfa('bob')['secret'];
+        $code = $this->code($secret);
+        $this->verifyChallenge($this->challengeFor('bob'), ['code' => $code])->assertOk();
+        $challenge = $this->challengeFor('bob');
+
+        $this->verifyChallenge($challenge, ['code' => $this->wrongCode($secret)])->assertStatus(401);
+        $this->assertSame(1, (int) AuthChallenge::query()->where('id_hash', hash('sha256', $challenge))->value('attempts'));
+        // A code of a step that was never accepted is no replay, even next to a spent one.
+        $this->verifyChallenge($challenge, ['code' => $this->code($secret, 1)])->assertOk();
     }
 
     public function test_a_challenge_is_single_use(): void

@@ -3,11 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JmapNote, JmapNotesAdapterOptions } from "@/lib/jmap-client";
 import type { Note } from "@/lib/models/note";
 import { holdNoteBodyRoom } from "./note-body-rooms";
-import {
-  NOTES_CHANGES_POLL_MS,
-  NOTES_CHANGES_PUSH_POLL_MS,
-  useNotesLiveInbound,
-} from "./use-notes-live-inbound";
+import { NOTES_CHANGES_POLL_MS, useNotesLiveInbound } from "./use-notes-live-inbound";
 
 const mocks = vi.hoisted(() => ({
   initialize: vi.fn(),
@@ -55,7 +51,7 @@ vi.mock("@/lib/jmap-client", () => ({
 }));
 
 vi.mock("@/lib/api/wgw/use-jmap-state-change", () => ({
-  useJmapPushConnected: () => mocks.pushConnected,
+  useJmapPushHealthy: () => mocks.pushConnected,
   useJmapStateChange: (
     types: readonly string[],
     listener: (states: Record<string, string>, accountId: string) => unknown,
@@ -124,14 +120,20 @@ describe("useNotesLiveInbound", () => {
     expect(confirmed).toBe(false);
   });
 
-  it("polls every 10 s without push and every 60 s while push is connected", async () => {
+  it("polls every 10 s only while push is not healthy, and resumes when it stops", async () => {
     const { rerender } = renderLiveInbound();
     await waitFor(() => expect(mocks.startPolling).toHaveBeenCalledWith(NOTES_CHANGES_POLL_MS));
+    const started = mocks.startPolling.mock.calls.length;
 
     mocks.pushConnected = true;
     rerender();
+    expect(mocks.stopPolling).toHaveBeenCalled();
+    expect(mocks.startPolling).toHaveBeenCalledTimes(started);
 
-    expect(mocks.startPolling).toHaveBeenLastCalledWith(NOTES_CHANGES_PUSH_POLL_MS);
+    mocks.pushConnected = false;
+    rerender();
+    expect(mocks.startPolling).toHaveBeenCalledTimes(started + 1);
+    expect(mocks.startPolling).toHaveBeenLastCalledWith(NOTES_CHANGES_POLL_MS);
   });
 
   it("returns false when JMAP is unavailable, so the REST interval runs", async () => {
