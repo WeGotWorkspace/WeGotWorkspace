@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { Plus, Users } from "lucide-react";
+import { EllipsisVertical } from "lucide-react";
 import type { SettingsGroup } from "@/lib/models/settings-types";
 import { teamMembersLabels } from "@/share-ui/team-members-labels";
 import { Tag } from "@/tag/src/tag";
@@ -14,6 +14,13 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { Button } from "@/button/src/button";
+import { IconButton } from "@/button/src/icon-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 import { useAppToast } from "@/hooks/use-app-toast";
 import {
   archivedProjectsByTeam,
@@ -78,6 +85,7 @@ function ProjectRow({
         <span className="projects-manage-row__head projects-manage-row__static">
           <ProjectDot color={project.color} />
           <span className="projects-manage-row__name">{project.name}</span>
+          {project.isDefault ? <Tag label={labels.defaultTag} /> : null}
           {archived ? <Tag label={labels.archivedTag} tone="warning" /> : null}
         </span>
       </div>
@@ -89,38 +97,47 @@ function ProjectRow({
           onClick={() => onEditRequest(project)}
         />
       ) : null}
-      {canManage && !project.isDefault && !archived ? (
-        <Button
-          type="button"
-          variant="ghost"
-          severity="danger"
-          label={labels.archive}
-          onClick={() => onArchiveRequest(project)}
-        />
-      ) : null}
-      {canManage && archived ? (
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            label={labels.restore}
-            onClick={() =>
-              void onAction(
-                () => store.unarchive(project.id),
-                labels.restored(project.name),
-                labels.restoreFailed,
-              )
-            }
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            severity="danger"
-            label={labels.purge}
-            aria-label={`${labels.purge}: ${project.name}`}
-            onClick={() => onPurgeRequest(project)}
-          />
-        </>
+      {canManage && (archived || !project.isDefault) ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              type="button"
+              variant="ghost"
+              label={`${labels.moreOptions}: ${project.name}`}
+              icon={<EllipsisVertical aria-hidden />}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {archived ? (
+              <>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    void onAction(
+                      () => store.unarchive(project.id),
+                      labels.restored(project.name),
+                      labels.restoreFailed,
+                    )
+                  }
+                >
+                  {labels.restore}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="menu-item--severity-danger menu-item--interactive"
+                  onSelect={() => onPurgeRequest(project)}
+                >
+                  {labels.purge}
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem
+                className="menu-item--severity-danger menu-item--interactive"
+                onSelect={() => onArchiveRequest(project)}
+              >
+                {labels.archive}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
     </li>
   );
@@ -224,15 +241,11 @@ export function ProjectsManagePane({
             <SettingsPaneCard
               key={group.id}
               title={group.displayName}
-              icon={<Users className="size-3.5" aria-hidden />}
               titleTag={
                 <span className="projects-manage-team-tags">
-                  <span title={memberCountLabel(memberCounts[group.id] ?? group.memberCount)}>
-                    <Tag label={String(memberCounts[group.id] ?? group.memberCount)} />
-                  </span>
                   <Tag
-                    label={group.isTeamAdmin ? "Admin" : "Member"}
-                    tone={group.isTeamAdmin ? "success" : "pending"}
+                    label={memberCountLabel(memberCounts[group.id] ?? group.memberCount)}
+                    tone="pending"
                   />
                 </span>
               }
@@ -255,7 +268,7 @@ export function ProjectsManagePane({
                     type="button"
                     variant="ghost"
                     label={labels.newProject}
-                    icon={<Plus className="size-3.5" aria-hidden />}
+                    className="-ms-3"
                     onClick={() =>
                       setCreatingIn({
                         slug,

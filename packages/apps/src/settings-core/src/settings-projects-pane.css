@@ -23,7 +23,8 @@
 
 .projects-manage-row__name {
   @apply min-w-0 flex-1 truncate font-medium;
-  font-size: 1rem;
+  /* One step under the body size. */
+  font-size: var(--input-font-size-md, 0.875rem);
   color: var(--workspace-foreground);
 }
 
@@ -63,7 +64,8 @@
 }
 
 .projects-manage-new {
-  @apply flex justify-end py-3;
+  /* Start-aligned, with room above it. */
+  @apply flex justify-start pt-6 pb-3;
   border-top: 1px solid var(--workspace-divider-color);
 }
 
