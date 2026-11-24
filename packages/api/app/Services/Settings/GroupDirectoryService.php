@@ -7,6 +7,7 @@ namespace App\Services\Settings;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Teams\TeamMembershipReader;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Support\Facades\DB;
 use Sabre\DAVACL\PrincipalBackend\PDO as PrincipalBackend;
 
@@ -15,6 +16,7 @@ final class GroupDirectoryService
     public function __construct(
         private readonly GroupMembershipResolver $membership,
         private readonly TeamMembershipReader $teams,
+        private readonly TeamRoles $roles,
     ) {}
 
     /**
@@ -33,6 +35,22 @@ final class GroupDirectoryService
         }
 
         return $out;
+    }
+
+    /**
+     * For the organization admin: every Team with the usernames of its team admins.
+     *
+     * @return list<array{id: string, name: string, displayName: string, teamAdmins: list<string>}>
+     */
+    public function listGroupSummariesWithTeamAdmins(): array
+    {
+        $groups = $this->listGroupSummaries();
+        $admins = $this->roles->teamAdminsByTeam(array_column($groups, 'name'));
+
+        return array_map(
+            static fn (array $group): array => $group + ['teamAdmins' => $admins[$group['name']] ?? []],
+            $groups,
+        );
     }
 
     /**
@@ -127,16 +145,18 @@ final class GroupDirectoryService
     }
 
     /**
-     * @return list<array{id: string, displayName: string, memberCount: int}>
+     * @return list<array{id: string, displayName: string, memberCount: int, isTeamAdmin: bool}>
      */
     public function groupsForUser(string $username): array
     {
+        $adminOf = $this->roles->teamAdminSlugsOf($username);
         $groups = [];
         foreach ($this->teams->teamsOf($username) as $team) {
             $groups[] = [
                 'id' => $team['uri'],
                 'displayName' => $team['displayName'] !== '' ? $team['displayName'] : basename($team['uri']),
                 'memberCount' => $team['memberCount'],
+                'isTeamAdmin' => in_array($team['slug'], $adminOf, true),
             ];
         }
 
@@ -180,8 +200,18 @@ final class GroupDirectoryService
      */
     private function writeMembers(string $groupUri, array $members): void
     {
-        $backend = new PrincipalBackend(DB::connection('wgw')->getPdo());
-        $backend->setGroupMemberSet($groupUri, $members);
+        // One transaction: nobody stays team admin of a Team they were just removed from (#2278).
+        DB::connection('wgw')->transaction(function () use ($groupUri, $members): void {
+            $backend = new PrincipalBackend(DB::connection('wgw')->getPdo());
+            $backend->setGroupMemberSet($groupUri, $members);
+            $this->teams->forget();
+            if (str_starts_with($groupUri, AdminConstants::GROUP_PREFIX)) {
+                $this->roles->pruneToMembers(
+                    substr($groupUri, strlen(AdminConstants::GROUP_PREFIX)),
+                    array_map(static fn (string $uri): string => basename($uri), $this->memberUris($groupUri)),
+                );
+            }
+        });
         $this->teams->forget();
     }
 

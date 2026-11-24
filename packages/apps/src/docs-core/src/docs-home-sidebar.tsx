@@ -22,6 +22,9 @@ export type DocsHomeSidebarProps = {
   primaryItems: MenuItemProps[];
   driveItems: MenuItemProps[];
   drivesSectionLabel: string;
+  /** Project folders, in a section of their own. */
+  projectItems?: MenuItemProps[];
+  projectsSectionLabel?: string;
 };
 
 /** New-document button, view sections, drives, and the signed-in user. */
@@ -38,6 +41,8 @@ export function DocsHomeSidebar({
   primaryItems,
   driveItems,
   drivesSectionLabel,
+  projectItems = [],
+  projectsSectionLabel = "",
 }: DocsHomeSidebarProps) {
   // Without a primary button there is no menu for Settings: it is the first section's last row.
   const firstItems = useItemsWithAppSettingsRow("docs", primaryItems, !showNewDocument);
@@ -63,6 +68,9 @@ export function DocsHomeSidebar({
       <SidebarSection items={firstItems} />
       {driveItems.length > 0 ? (
         <SidebarSection title={drivesSectionLabel} items={driveItems} />
+      ) : null}
+      {projectItems.length > 0 ? (
+        <SidebarSection title={projectsSectionLabel} items={projectItems} />
       ) : null}
     </AppSidebar>
   );

@@ -1876,12 +1876,17 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Group deleted */
+                /** @description Group deleted, with every Project of the Team (live or archived). */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                            deletedProjects: number;
+                        };
+                    };
                 };
                 /** @description Forbidden */
                 403: {
@@ -9644,6 +9649,670 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/teams/{team}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a Team's members
+         * @description Members with their team-admin flag, ordered by username. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamMemberListResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team}/member-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search users to add to a Team
+         * @description Users whose username, display name or email contains `q`, at most 20, ordered by username. The only place where the team-admin role shows a user outside the caller's Teams. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                };
+                header?: never;
+                path: {
+                    team: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamMemberCandidateListResponse"];
+                    };
+                };
+                /** @description `q` is shorter than two characters (`invalidProperties`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["JmapNotFound"];
+                /** @description More than 60 searches a minute by this caller; carries `Retry-After`. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team}/members/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Add a member to a Team
+         * @description Idempotent. 404 for an unknown user. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        post?: never;
+        /**
+         * Remove a member from a Team
+         * @description Idempotent. Also removes the member's team-admin role for this Team. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team. The last team admin of the Team cannot be removed: 409 `last_team_admin`.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+                /** @description The last team admin of the Team cannot be removed (`last_team_admin`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teams/{team}/admins/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Appoint a team admin
+         * @description Idempotent. The user must be a member of the Team (409 `not_a_member`). For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+                /** @description The user is not a member of this Team (`not_a_member`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Dismiss a team admin
+         * @description Idempotent. A team admin may dismiss themself, unless they are the last one: 409 `last_team_admin`. A Team may start without a team admin. For a team admin of this Team, or an organization admin. Anyone else gets the same 404 as for an unknown Team.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    team: string;
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TeamWriteResponse"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+                /** @description The last team admin of the Team cannot be dismissed (`last_team_admin`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the Projects of the caller's Teams
+         * @description Per Team, the default Project first, then by name. Archived Projects only with `archived=1`. Reading repairs a live Project whose calendar, task list, notebook, channel or Drive folder is gone. Every Project, the default one included, has its own folder directly under the Team Drive root.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `1` includes archived Projects. */
+                    archived?: "0" | "1";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a Project
+         * @description Creates the Project with a new calendar, task list, notebook and channel owned by the Team, in one transaction. A slug clash in the Team gets a `-2`, `-3` suffix. 404 when the caller is not a member of the Team; 403 `team_admin_only` for a member who is not a team admin.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a Project
+         * @description 404 for a Project of a Team the caller is not a member of, the same as for an unknown id.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                404: components["responses"]["JmapNotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Purge an archived Project
+         * @description Team admins of the Project's Team. Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. 403 for a member who is not a team admin; 404 for a caller outside the Team, an organization admin included. A purge that stopped half-way completes on retry.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not archived, or the default Project */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Rename or recolor a Project
+         * @description Writes the name and color through to the Project's collections. 403 `team_admin_only` for a member who is not a team admin; 409 `archived` for an archived Project.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        trace?: never;
+    };
+    "/projects/{project}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a Project
+         * @description The four collections disappear for everyone, sharees included, and the Project folder moves to a server-owned tree with its node ids. The slug stays reserved. Archiving an archived Project changes nothing. 409 `default_project` for the default Project; 403 `team_admin_only` for a member who is not a team admin.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unarchive a Project
+         * @description The collections come back with the same ids, and the folder moves back with the same node ids and grants (a suffix when its name was taken meanwhile). 409 `default_project` for the default Project; 403 `team_admin_only` for a member who is not a team admin.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Project"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Purge an archived Project
+         * @description Organization admins only. Deletes the four collections, moves the Project folder to the caller's Drive trash and deletes the Project; its slug is free again. Only an archived Project: 409 `not_archived` for a live one, 409 `default_project` for the default Project. A purge that stopped half-way completes on retry. A team admin archives; this is the only way to delete for good.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    project: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not archived, or the default Project */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the archived Projects of every Team
+         * @description Organization admins only. Every archived Project that is not a default Project, by Team then name. Deleting one for good is `DELETE /admin/projects/{project}`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            list: {
+                                id: string;
+                                teamSlug: string;
+                                teamName: string;
+                                name: string;
+                                color: string | null;
+                                /** Format: date-time */
+                                archivedAt: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/{username}/mfa-resets": {
         parameters: {
             query?: never;
@@ -10442,6 +11111,10 @@ export interface components {
             id: string;
             name: string;
             displayName: string;
+            /** @description Usernames of the Team's team admins, sorted. */
+            teamAdmins: string[];
+            /** @description Projects of the Team, live or archived. Deleting the Team deletes them. */
+            projectCount: number;
         };
         AdminMailSettings: {
             smtpHost: string;
@@ -10609,12 +11282,14 @@ export interface components {
             displayName: string;
             /** @description How many members the Team has, the caller included. */
             memberCount: number;
+            /** @description Whether the caller is a team admin of this Team: may manage its members, its Projects and its Team collections. */
+            isTeamAdmin: boolean;
         };
         SettingsUserGroupList: components["schemas"]["SettingsUserGroup"][];
         SettingsStateResponse: {
             user: components["schemas"]["SettingsUserProfile"];
             groups: components["schemas"]["SettingsUserGroupList"];
-            /** @description Whether the caller has the admin role. Admin is a role per user, not membership of a Team. */
+            /** @description Whether the caller is an organization admin. Admin is a role per user, not membership of a Team. */
             isAdmin: boolean;
             logoutUrl: string;
             /** @description Whether Connected assistants (MCP) is enabled for this instance. Readable by any signed-in user so Settings can hide the pane without calling Admin APIs. */
@@ -12355,6 +13030,8 @@ export interface components {
             mayShare: boolean;
             /** @description On a sharee instance, true means dismiss/hide the collection (calendar_share_dismissals), not delete the owner's calendar. Owner shareWith grants stay false. */
             mayDelete: boolean;
+            /** @description Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants. */
+            mayRename?: boolean;
         };
         /**
          * @description JMAP Calendar resource.
@@ -12370,6 +13047,7 @@ export interface components {
          *       "subscriptionId": null,
          *       "scope": "personal",
          *       "groupSlug": null,
+         *       "projectId": null,
          *       "shareWith": null,
          *       "myRights": {
          *         "mayRead": true,
@@ -12396,6 +13074,8 @@ export interface components {
              * @enum {string}
              */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             /** @description Group slug when scope is group; null for personal calendars. */
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights. Null when the calendar is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
@@ -12434,6 +13114,8 @@ export interface components {
             mayRSVP: boolean;
             mayAdmin: boolean;
             mayDelete: boolean;
+            /** @description Whether the caller may rename or recolor this collection itself. False for a Project collection; a sharee's own copy stays renamable. Absent on shareWith grants. */
+            mayRename?: boolean;
             /** @description May modify shareWith. True for personal list owners and group-collection members. */
             mayShare: boolean;
         };
@@ -12451,6 +13133,8 @@ export interface components {
              * @enum {string}
              */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             /** @description Group slug when scope is group; null for personal task lists. */
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to CalendarRights (same collection-ACL grants as calendars). Null when the list is not shared or the caller is not the owner. Recipients always see null. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
@@ -12644,7 +13328,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -12678,7 +13362,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -13528,6 +14212,8 @@ export interface components {
             isDefault: boolean;
             /** @enum {string} */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
@@ -13552,7 +14238,7 @@ export interface components {
             color?: string | null;
             /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
-            /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
+            /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -13573,6 +14259,8 @@ export interface components {
             kind: "channel" | "meeting" | "dm";
             /** @enum {string} */
             scope: "personal" | "group";
+            /** @description The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead. */
+            projectId?: string | null;
             groupSlug: string | null;
             /** @description Owner map of JMAP id (username or groups/{slug}) to rights. Null when not shared or caller is not the owner. Epic #1915: a grant to a user who no longer shares a Team with the owner, or to a Team the owner left, is left out here and the share is hidden for the sharee too (admins included). Nothing is deleted: the share comes back when they share a Team again. On the sharee's side the collection drops out of lists and lookups and /changes reports it destroyed, then created when it returns; native CalDAV/CardDAV clients drop their local copy and sync it again. An open app or offline cache on the owner's side keeps a hidden sharee until its next fetch of this collection, because the owner's own collection did not change. */
             shareWith?: {
@@ -13617,7 +14305,7 @@ export interface components {
             name?: string;
             color?: string | null;
             topic?: string | null;
-            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
+            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included. */
             shareWith?: {
@@ -13827,6 +14515,8 @@ export interface components {
             /** @description In-app path (allowlisted SPA prefix). */
             navigate: string;
             tag?: string | null;
+            /** @description Id of the Project the notification's subject belongs to; null for a subject in no Project (a direct message, a personal item) and for rows from before Projects. */
+            projectId?: string | null;
             /** Format: date-time */
             readAt?: string | null;
             /** Format: date-time */
@@ -14140,6 +14830,8 @@ export interface components {
             id: string;
             name: string;
             isSelf: boolean;
+            /** @description The Teams (slugs) this person is in that the caller is in too; absent from servers and caches that predate it. Lets a client narrow the list to one Team, for example the Team of the selected Project. Never names a Team the caller is not in. */
+            teamSlugs?: string[];
             /** @description Changes when the person renames or changes their switch, which calendars count, or how much detail they share. A client drops every cached week of this person when it changes. */
             version: string;
         };
@@ -14420,6 +15112,74 @@ export interface components {
             appPassword: components["schemas"]["SettingsAppPassword"];
             /** @description The new password: 16 lowercase letters. Returned once and never again. Clients show it in groups of four; spaces are ignored when it is used. */
             password: string;
+        };
+        /** @description A member of a Team, as its team admins and organization admins see them. */
+        TeamMember: {
+            username: string;
+            displayName: string;
+            /** @description Empty when the account has no address. */
+            email: string;
+            isTeamAdmin: boolean;
+        };
+        TeamMemberListResponse: {
+            list: components["schemas"]["TeamMember"][];
+        };
+        /** @description A user a team admin may add to the Team. This search is the only place where the team-admin role shows a user outside the caller's Teams. */
+        TeamMemberCandidate: {
+            username: string;
+            displayName: string;
+            /** @description Empty when the account has no address. */
+            email: string;
+            /** @description Already a member of this Team. */
+            isMember: boolean;
+        };
+        TeamMemberCandidateListResponse: {
+            list: components["schemas"]["TeamMemberCandidate"][];
+        };
+        TeamWriteResponse: {
+            ok: boolean;
+        };
+        /** @description The API ids of what the Project bundles. `null` while an item is missing (ensure repairs it on the next read) and, for `driveFolderId`, until the Project folder exists. The default Project has no Drive folder: its Drive view is the whole Team Drive. */
+        ProjectResources: {
+            calendarId: string | null;
+            taskListId: string | null;
+            notebookId: string | null;
+            channelId: string | null;
+            driveFolderId: string | null;
+            /** @description Path of the Project folder in the Drive, e.g. `/groups/{team}/{name}`. Follows the Project's name. */
+            driveFolderPath: string | null;
+        };
+        /** @description A Project of one of the caller's Teams: a calendar, task list, notebook, chat channel and Drive folder. Access is Team membership. */
+        Project: {
+            id: string;
+            teamSlug: string;
+            /** @description Unique per Team, archived Projects included. Does not change on rename. */
+            slug: string;
+            name: string;
+            /** @description Hex color like `#3b82f6`. */
+            color: string | null;
+            /** @description The Team's default Project: its provisioned calendar, task list and notebook plus one channel. */
+            isDefault: boolean;
+            archived: boolean;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** @description Whether the caller may rename, recolor, archive and purge it (team admin of the Team). */
+            mayManage: boolean;
+            resources: components["schemas"]["ProjectResources"];
+        };
+        ProjectListResponse: {
+            list: components["schemas"]["Project"][];
+        };
+        ProjectCreateRequest: {
+            teamSlug: string;
+            name: string;
+            /** @description Hex color like `#3b82f6`. Defaults to a palette color. */
+            color?: string;
+        };
+        /** @description Name and color are written through to the Project's calendar, task list, notebook and channel. Slugs, uris and ids stay. */
+        ProjectPatchRequest: {
+            name?: string;
+            color?: string;
         };
         /** @description Answer to a correct username and password. `ok` carries tokens and sets the refresh cookie; `mfa_required` carries a challenge for the code step and sets no cookie. */
         AuthLoginResponse: components["schemas"]["AuthTokenResponse"] | components["schemas"]["MfaRequiredResponse"];

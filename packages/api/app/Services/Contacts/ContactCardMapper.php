@@ -21,13 +21,20 @@ final class ContactCardMapper
     ) {}
 
     /**
+     * Without `$withMedia` the card leaves out `media`, and its inline photos
+     * are not stored as blobs: a photo-less first download costs no photo work.
+     *
      * @return array<string, mixed>
      */
-    public function toContactCard(Card $card, string $addressBookUri, string $username): array
+    public function toContactCard(Card $card, string $addressBookUri, string $username, bool $withMedia = true): array
     {
         $raw = is_string($card->carddata) ? $card->carddata : (string) $card->carddata;
         $contact = $this->converter->cardFromVCard($raw, 'debug');
-        $contact = $this->mediaBlobs->exposeBlobsOnRead($username, $contact);
+        if ($withMedia) {
+            $contact = $this->mediaBlobs->exposeBlobsOnRead($username, $contact);
+        } else {
+            unset($contact['media']);
+        }
         $contact = $this->members->apply($username, $contact);
         $contact = self::hydrateDerivedNameFull($contact);
 

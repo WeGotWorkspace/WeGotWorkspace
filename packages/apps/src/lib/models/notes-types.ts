@@ -22,12 +22,16 @@ export type NotesNotebookCollection = {
   role?: string | null;
   scope?: "personal" | "group";
   groupSlug?: string | null;
+  /** The Project this notebook belongs to, or null (#818). */
+  projectId?: string | null;
   shareWith?: CollectionShareWith | null;
   myRights?: {
     mayWriteAll?: boolean;
     mayShare?: boolean;
     mayReadItems?: boolean;
     mayDelete?: boolean;
+    /** False on a Project notebook's owner side. */
+    mayRename?: boolean;
   } | null;
 };
 

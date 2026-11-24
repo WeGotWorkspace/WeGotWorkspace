@@ -1,3 +1,5 @@
+import { isProjectCollection } from "@/lib/projects/project-match";
+
 /**
  * Collection-level write gates for notebooks — same shape as
  * `calendar-collection-write` / Tasks `canChangeTaskListOwner`.
@@ -13,8 +15,19 @@ export type NotebookWriteInfo = {
   role?: string | null;
   scope?: "personal" | "group" | null;
   groupSlug?: string | null;
-  myRights?: { mayDelete?: boolean; mayWriteAll?: boolean } | null;
+  projectId?: string | null;
+  myRights?: { mayDelete?: boolean; mayWriteAll?: boolean; mayRename?: boolean } | null;
 };
+
+/**
+ * A Project's notebook on the owner side (#818): its name, color and lifetime follow
+ * the Project, so it has no edit pencil and no delete. A sharee keeps its own copy.
+ */
+export function isProjectOwnedNotebook(notebook?: NotebookWriteInfo | null): boolean {
+  if (!notebook) return false;
+  if (notebook.myRights?.mayRename === false) return true;
+  return isProjectCollection(notebook) && notebook.isSharee !== true;
+}
 
 /** Sidebar key → collection. REST id wins; a display-name key still matches. */
 export function findNotebookCollection<T extends { id: string; name: string }>(
@@ -60,6 +73,7 @@ export function isProvisionedGroupNotebook(notebook?: NotebookWriteInfo): boolea
 export function canDeleteNotebook(notebook?: NotebookWriteInfo): boolean {
   if (!notebook) return false;
   if (notebook.isSharee === true) return false;
+  if (isProjectCollection(notebook)) return false;
   if (isDefaultNotebook(notebook)) return false;
   if (isProvisionedGroupNotebook(notebook)) return false;
   if (notebook.myRights?.mayDelete === false) return false;
@@ -74,6 +88,7 @@ export function canDeleteNotebook(notebook?: NotebookWriteInfo): boolean {
 export function canChangeNotebookOwner(notebook?: NotebookWriteInfo): boolean {
   if (!notebook) return false;
   if (notebook.isSharee === true) return false;
+  if (isProjectCollection(notebook)) return false;
   if (isDefaultNotebook(notebook)) return false;
   if (notebook.scope === "group" && notebook.myRights?.mayDelete === false) return false;
   return !isProvisionedGroupNotebook(notebook);

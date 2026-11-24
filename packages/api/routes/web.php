@@ -22,7 +22,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 /** @var list<string> */
 $wgwFrontMethods = [
     'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS',
-    'PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK', 'REPORT', 'SEARCH',
+    'PROPFIND', 'PROPPATCH', 'MKCOL', 'MKCALENDAR', 'COPY', 'MOVE', 'LOCK', 'UNLOCK', 'REPORT', 'SEARCH',
 ];
 
 // RFC 6764 — CalDAV/CardDAV service discovery.

@@ -213,9 +213,8 @@ class DriveStarService
 
     private function isHiddenBrowsePath(string $virtualPath): bool
     {
-        // `.Trash` is intentionally not excluded: trash is a move, so the star follows and comes back on restore.
-        return $this->isHiddenNotesPath($virtualPath)
-            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
+        // An archived Project's folder is out of client reach until unarchived (#819); its stars wait there.
+        return DriveHiddenPaths::isHidden($virtualPath);
     }
 
     private function logStarSyncFailure(string $op, string $from, ?string $to, \Throwable $e): void
@@ -226,10 +225,5 @@ class DriveStarService
             'to' => $to,
             'error' => $e->getMessage(),
         ]);
-    }
-
-    private function isHiddenNotesPath(string $virtualPath): bool
-    {
-        return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1;
     }
 }

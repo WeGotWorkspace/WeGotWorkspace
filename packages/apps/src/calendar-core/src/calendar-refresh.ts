@@ -4,5 +4,5 @@
  * `use-calendar-api` is on-demand only — no `setInterval`.
  */
 export const CALENDAR_BACKGROUND_POLL_MS = 10_000;
-/** While push is connected the event `/changes` poll only backs it up (#1664). */
+/** While push is connected the invitations poll slows to this interval (#2287). */
 export const CALENDAR_PUSH_POLL_MS = 60_000;

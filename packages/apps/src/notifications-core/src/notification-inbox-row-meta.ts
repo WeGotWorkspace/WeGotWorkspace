@@ -53,3 +53,8 @@ export function formatNotificationRelativeTime(
 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+
+/** The tray's quiet line when the Project filter hides `count` rows. */
+export function notificationHiddenByProjectLabel(count: number): string {
+  return `${count} hidden by the Project filter`;
+}

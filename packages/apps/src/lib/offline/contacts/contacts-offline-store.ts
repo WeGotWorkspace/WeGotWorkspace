@@ -33,6 +33,8 @@ export {
 const META_ADDRESS_BOOKS_STATE = "contacts:addressBooks:state";
 const META_SESSION = "contacts:session";
 const META_COLD_DOWNLOAD = "contacts:coldDownload";
+const META_PHOTO_PASS = "contacts:photoPass";
+const META_DETAIL_PASS = "contacts:detailPass";
 
 function metaKeyForBookState(bookId: string): string {
   return `contacts:book:${bookId}:state`;
@@ -61,12 +63,15 @@ export async function readContactsBootstrapFromCache(
   const cards = await contactsCardsTable(db).toArray();
   if (books.length === 0 && cards.length === 0) return null;
 
+  const partialCardIds = (parseDetailPass((await db.meta.get(META_DETAIL_PASS))?.value) ?? {})
+    .cardIds;
   return {
     session,
     data: {
       addressBooks: parseMirrorRows<AddressBook>(books),
       cards: parseMirrorRows<ContactCard>(cards),
     },
+    ...(partialCardIds?.length ? { partialCardIds } : {}),
   };
 }
 
@@ -200,7 +205,8 @@ export async function finishContactsColdDownload(
   bookIds: string[],
 ): Promise<boolean> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  return db.transaction("rw", db.meta, async () => {
+  const cards = contactsCardsTable(db);
+  return db.transaction("rw", cards, db.meta, async () => {
     const progress = parseColdDownload((await db.meta.get(META_COLD_DOWNLOAD))?.value);
     if (!progress || progress.id !== downloadId) return false;
     await db.meta.put({ key: META_ADDRESS_BOOKS_STATE, value: progress.addressBookState });
@@ -208,7 +214,237 @@ export async function finishContactsColdDownload(
       await db.meta.put({ key: metaKeyForBookState(bookId), value: progress.contactCardState });
     }
     await db.meta.delete(META_COLD_DOWNLOAD);
+    // The pages were photo-less: every saved card still needs its photo.
+    const savedIds = (await cards.toCollection().primaryKeys()).map(String);
+    await writePhotoPass(db, savedIds);
+    // The pages were lean: every saved card is partial until its detail page is in.
+    await writeDetailPass(db, savedIds);
     return true;
+  });
+}
+
+/**
+ * The photos still to fetch: the card ids a photo-less download left without
+ * them, under the id of the pass that fetches them. A newer download installs
+ * a new pass (new id); an older pass still running must then leave it alone.
+ */
+export type ContactsPhotoPass = { id: string; cardIds: string[] };
+
+function parsePhotoPass(value: string | undefined): ContactsPhotoPass | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<ContactsPhotoPass> | null;
+    if (!parsed || typeof parsed.id !== "string" || !Array.isArray(parsed.cardIds)) return null;
+    const cardIds = parsed.cardIds.filter((id): id is string => typeof id === "string");
+    return cardIds.length ? { id: parsed.id, cardIds } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writePhotoPass(
+  db: ReturnType<typeof offlineDbForAccount>,
+  cardIds: string[],
+): Promise<void> {
+  if (cardIds.length === 0) {
+    await db.meta.delete(META_PHOTO_PASS);
+    return;
+  }
+  const pass: ContactsPhotoPass = { id: crypto.randomUUID(), cardIds };
+  await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(pass) });
+}
+
+/** The photo pass still to run, or null when every photo is in. */
+export async function readContactsPhotoPassRun(
+  username: string,
+): Promise<ContactsPhotoPass | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return parsePhotoPass((await db.meta.get(META_PHOTO_PASS))?.value);
+}
+
+/** Card ids whose photos are still to fetch. Empty when there is nothing to fetch. */
+export async function readContactsPhotoPass(username: string): Promise<string[]> {
+  return (await readContactsPhotoPassRun(username))?.cardIds ?? [];
+}
+
+/**
+ * A photo-less download replaced the copy: a new pass fetches the photos of
+ * `cardIds` (those without one). It replaces any pass still running.
+ */
+export async function startContactsPhotoPass(username: string, cardIds: string[]): Promise<void> {
+  await writePhotoPass(offlineDbForAccount(offlineAccountKeyFromUsername(username)), cardIds);
+}
+
+/**
+ * A photo-less download over a stored copy: cards keep the photos stored for
+ * the same version of the card until the photo pass refreshes them, so the
+ * list does not drop to initials meanwhile.
+ */
+export async function withStoredPhotos(
+  username: string,
+  cards: ContactCard[],
+): Promise<ContactCard[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await contactsCardsTable(db).bulkGet(cards.map((card) => card.id));
+  return cards.map((card, index) => {
+    const row = rows[index];
+    if (card.media || !row) return card;
+    const stored = JSON.parse(row.data) as ContactCard;
+    return stored.media && stored.state && stored.state === card.state
+      ? { ...card, media: stored.media }
+      : card;
+  });
+}
+
+/** What the photo pass fetches per card: its photos and the version they belong to. */
+export type ContactCardPhotos = Pick<ContactCard, "id" | "media" | "state">;
+
+/**
+ * Saves one photo page of pass `passId` and the ids still to fetch, in one
+ * transaction. A card takes the photos only when its stored version is the
+ * one they came with: an older or newer stored card is left to the live sync,
+ * which fetches it whole. Cards with unsynced local edits keep the local row.
+ * The marker only moves while it still names this pass; when a newer pass has
+ * replaced it, `superseded` tells the caller to stop and run that one.
+ */
+export async function saveContactsPhotoPage(
+  username: string,
+  passId: string,
+  photos: ContactCardPhotos[],
+  remainingCardIds: string[],
+): Promise<{ changed: number; superseded: boolean }> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = contactsCardsTable(db);
+  return db.transaction("rw", table, db.meta, async () => {
+    const rows = await table.bulkGet(photos.map((entry) => entry.id));
+    const changed: OfflineContactCardRow[] = [];
+    photos.forEach((entry, index) => {
+      const row = rows[index];
+      if (!row || row.pendingSync) return;
+      const card = JSON.parse(row.data) as ContactCard;
+      if (!entry.state || card.state !== entry.state || !entry.media) return;
+      changed.push(contactCardRow({ ...card, media: entry.media }, false));
+    });
+    if (changed.length) await table.bulkPut(changed);
+    const current = parsePhotoPass((await db.meta.get(META_PHOTO_PASS))?.value);
+    if (current?.id !== passId) return { changed: changed.length, superseded: true };
+    if (remainingCardIds.length) {
+      const pass: ContactsPhotoPass = { id: passId, cardIds: remainingCardIds };
+      await db.meta.put({ key: META_PHOTO_PASS, value: JSON.stringify(pass) });
+    } else {
+      await db.meta.delete(META_PHOTO_PASS);
+    }
+    return { changed: changed.length, superseded: false };
+  });
+}
+
+/**
+ * The cards stored from a lean first download that are still partial (name,
+ * emails and what the list needs; no phones, addresses or notes), under the
+ * id of the pass that completes them. THE marker of partial cards: a card is
+ * partial exactly while its id is listed, and a partial card must never be
+ * edited or saved from its stored copy, since the save would drop every
+ * field it lacks. A whole card from any source (the detail pass, opening the
+ * card, live sync) removes its id.
+ */
+export type ContactsDetailPass = { id: string; cardIds: string[] };
+
+function parseDetailPass(value: string | undefined): ContactsDetailPass | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<ContactsDetailPass> | null;
+    if (!parsed || typeof parsed.id !== "string" || !Array.isArray(parsed.cardIds)) return null;
+    const cardIds = parsed.cardIds.filter((id): id is string => typeof id === "string");
+    return cardIds.length ? { id: parsed.id, cardIds } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeDetailPass(
+  db: ReturnType<typeof offlineDbForAccount>,
+  cardIds: string[],
+  passId: string = crypto.randomUUID(),
+): Promise<void> {
+  if (cardIds.length === 0) {
+    await db.meta.delete(META_DETAIL_PASS);
+    return;
+  }
+  const pass: ContactsDetailPass = { id: passId, cardIds };
+  await db.meta.put({ key: META_DETAIL_PASS, value: JSON.stringify(pass) });
+}
+
+/** The detail pass still to run, or null when every card is complete. */
+export async function readContactsDetailPassRun(
+  username: string,
+): Promise<ContactsDetailPass | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return parseDetailPass((await db.meta.get(META_DETAIL_PASS))?.value);
+}
+
+/** Ids of the partial cards (see {@link ContactsDetailPass}). Empty when all are complete. */
+export async function readContactsPartialCardIds(username: string): Promise<string[]> {
+  return (await readContactsDetailPassRun(username))?.cardIds ?? [];
+}
+
+/**
+ * Installs a new detail pass for `cardIds` (replacing the running one), or
+ * clears it with none: a full snapshot made every card complete.
+ */
+export async function startContactsDetailPass(username: string, cardIds: string[]): Promise<void> {
+  await writeDetailPass(offlineDbForAccount(offlineAccountKeyFromUsername(username)), cardIds);
+}
+
+/** Takes `ids` off the partial list. Run inside a transaction on `db.meta`. */
+async function markCardsComplete(
+  db: ReturnType<typeof offlineDbForAccount>,
+  ids: string[],
+): Promise<void> {
+  const current = parseDetailPass((await db.meta.get(META_DETAIL_PASS))?.value);
+  if (!current) return;
+  const done = new Set(ids);
+  const left = current.cardIds.filter((id) => !done.has(id));
+  if (left.length === current.cardIds.length) return;
+  await writeDetailPass(db, left, current.id);
+}
+
+/**
+ * Saves one detail page of pass `passId`, in one transaction. Only a card that
+ * is still partial takes the page: a card a live sync or an open already made
+ * whole is left alone, and a card with unsynced local edits keeps its local
+ * row (and stays listed). The page's cards are whole but for `media`, which
+ * the stored copy keeps. A card the stored copy lacks was deleted: it only
+ * leaves the list. `superseded` tells the caller a newer pass replaced this
+ * one (the page is saved anyway: it is valid for whichever pass lists the card).
+ */
+export async function saveContactsDetailPage(
+  username: string,
+  passId: string,
+  cards: ContactCard[],
+): Promise<{ changed: number; superseded: boolean }> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = contactsCardsTable(db);
+  return db.transaction("rw", table, db.meta, async () => {
+    const current = parseDetailPass((await db.meta.get(META_DETAIL_PASS))?.value);
+    if (!current) return { changed: 0, superseded: true };
+    const partial = new Set(current.cardIds);
+    const rows = await table.bulkGet(cards.map((card) => card.id));
+    const changed: OfflineContactCardRow[] = [];
+    cards.forEach((card, index) => {
+      if (!partial.has(card.id)) return;
+      const row = rows[index];
+      if (!row) {
+        partial.delete(card.id);
+        return;
+      }
+      if (row.pendingSync) return;
+      const stored = JSON.parse(row.data) as ContactCard;
+      changed.push(contactCardRow(stored.media ? { ...card, media: stored.media } : card, false));
+      partial.delete(card.id);
+    });
+    if (changed.length) await table.bulkPut(changed);
+    await writeDetailPass(db, [...partial], current.id);
+    return { changed: changed.length, superseded: current.id !== passId };
   });
 }
 
@@ -228,13 +464,29 @@ export async function hasQueuedContactEdits(username: string): Promise<boolean> 
   return rows.length > 0;
 }
 
+/**
+ * Stores `card`. The card is taken to be whole (from the server, or a create),
+ * so it leaves the partial list; a caller that stores a card derived from a
+ * stored partial copy passes `keepPartial`.
+ */
 export async function upsertContactCardInCache(
   username: string,
   card: ContactCard,
   pendingSync = false,
+  options?: { keepPartial?: boolean },
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await contactsCardsTable(db).put(contactCardRow(card, pendingSync));
+  const table = contactsCardsTable(db);
+  if (options?.keepPartial) {
+    await table.put(contactCardRow(card, pendingSync));
+    return;
+  }
+  // One transaction: a detail page must not commit between the put and the
+  // list update, or it would overwrite this card with an older copy.
+  await db.transaction("rw", table, db.meta, async () => {
+    await table.put(contactCardRow(card, pendingSync));
+    await markCardsComplete(db, [card.id]);
+  });
 }
 
 /** One cached card, or null when the cache does not have it. */

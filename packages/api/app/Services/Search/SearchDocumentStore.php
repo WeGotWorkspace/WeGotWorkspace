@@ -9,6 +9,7 @@ use App\Models\CalendarShareDismissal;
 use App\Models\Card;
 use App\Models\SearchDocument;
 use App\Models\SearchTerm;
+use App\Services\Projects\ProjectRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
@@ -27,6 +28,7 @@ final class SearchDocumentStore
 
     public function __construct(
         private SearchTokenService $tokens,
+        private ProjectRegistry $projects,
     ) {}
 
     /**
@@ -302,6 +304,8 @@ final class SearchDocumentStore
             ->whereColumn('o.id', 'd.object_id')
             ->whereColumn('i.id', 'd.collection_id')
             ->whereIn('i.principaluri', $principalUris)
+            // An archived Project's events, tasks and notes are hidden on every read path (#819).
+            ->whereNotIn('o.calendarid', $this->projects->archivedCalendarIds())
             ->where(function ($visible) use ($username): void {
                 // Same rule as CalendarShareVisibility: a dismissal hides sharee copies only.
                 $visible->whereNull('i.access')

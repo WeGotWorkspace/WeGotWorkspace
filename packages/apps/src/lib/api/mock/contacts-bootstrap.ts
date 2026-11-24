@@ -13,6 +13,12 @@ export type ContactsAppBootstrap = {
    * snapshot leaves it out.
    */
   pendingContactCount?: number;
+  /**
+   * Ids of the cards stored from a lean first download that are still partial
+   * (name, emails and what the list needs). Such a card must not be edited from
+   * its stored copy; left out when every card is complete.
+   */
+  partialCardIds?: string[];
 };
 
 const fullRights: AddressBook["myRights"] = {

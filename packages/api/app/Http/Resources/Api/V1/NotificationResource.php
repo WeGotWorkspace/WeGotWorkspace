@@ -27,6 +27,7 @@ final class NotificationResource extends JsonResource
             'body' => $this->resource['body'] ?? null,
             'navigate' => $this->resource['navigate'],
             'tag' => $this->resource['tag'] ?? null,
+            'projectId' => $this->resource['projectId'] ?? null,
             'readAt' => $this->resource['readAt'] ?? null,
             'createdAt' => $this->resource['createdAt'] ?? null,
         ];

@@ -90,6 +90,7 @@ final class TasksTaskListsCrudTest extends WgwDatabaseTestCase
     public function test_create_group_scoped_task_list(): void
     {
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $this->appointTeamAdmin('team', 'bob');
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);
@@ -120,6 +121,7 @@ final class TasksTaskListsCrudTest extends WgwDatabaseTestCase
     public function test_owner_can_move_personal_list_to_a_group(): void
     {
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $this->appointTeamAdmin('team', 'bob');
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);

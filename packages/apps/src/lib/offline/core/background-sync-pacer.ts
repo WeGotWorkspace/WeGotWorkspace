@@ -1,17 +1,22 @@
 /**
  * Paces background sync requests (Drive content, Docs bodies) so they never
- * use up the account's request budget (600/min, shared by every tab and
- * device). One pacer per tab: Drive and Docs sync share it.
+ * use up the request budget. Drive and Docs sync share one pacer per tab, and
+ * every tab draws its turns from one browser-wide schedule (a Web Lock around a
+ * shared next-slot time), so five open apps download no faster than one.
  *
- * - A fixed request rate, well under the account budget.
+ * - A fixed request rate for the whole browser, well under the host's per-IP limit.
  * - On 429 every background request pauses: `Retry-After` when the server
  *   sends it, otherwise an exponential backoff.
  * - A click or key press pauses background requests briefly, so the user's own
  *   request does not queue behind them.
  */
 
-/** 2 per second. The account budget is 600/min for all tabs and devices together. */
-export const BACKGROUND_SYNC_REQUESTS_PER_MINUTE = 120;
+/**
+ * One every 3 s for the whole browser. The app's own account budget (600/min)
+ * is not the limit that matters on shared hosting: the host's firewall counts
+ * every tab and device behind one IP and may block well before that.
+ */
+export const BACKGROUND_SYNC_REQUESTS_PER_MINUTE = 20;
 /** Pause after a click or key press before background requests resume. */
 export const BACKGROUND_SYNC_USER_IDLE_MS = 1500;
 const BACKOFF_BASE_MS = 5_000;
@@ -55,9 +60,16 @@ export function retryAfterMsFromError(error: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+/**
+ * `first`: work the user waits on to open an app offline (Contacts card pages).
+ * While it flows, `bulk` work (Docs bodies, Drive content, contact photos)
+ * waits for it.
+ */
+export type BackgroundSyncPriority = "first" | "bulk";
+
 export type BackgroundSyncPacer = {
   /** Resolves when the next background request may start. Rejects on abort. */
-  acquire: (signal?: AbortSignal) => Promise<void>;
+  acquire: (signal?: AbortSignal, priority?: BackgroundSyncPriority) => Promise<void>;
   /** The server answered 429: pause every background request. */
   reportRateLimited: (retryAfterMs: number | null) => void;
   /** A request went through: reset the backoff streak. */
@@ -66,8 +78,108 @@ export type BackgroundSyncPacer = {
   noteUserActivity: () => void;
 };
 
+/** A reserved slot, or how long `first` work holds `bulk` work back. */
+export type BackgroundSyncClaim = { slot: number } | { heldUntil: number };
+
+/**
+ * Hands out request slots, one `intervalMs` apart. A `first` claim reserves
+ * the first free slot at or after `at` (several `first` claims queue) and
+ * holds `bulk` claims back until one interval after its slot, so the next
+ * `first` page gets the next slot too. A `bulk` claim only takes a slot that
+ * is free now; otherwise it is told when to ask again and reserves nothing, so
+ * bulk work never books slots ahead of a `first` page that comes later.
+ */
+export type BackgroundSyncSlots = {
+  claim: (
+    at: number,
+    intervalMs: number,
+    priority?: BackgroundSyncPriority,
+  ) => Promise<BackgroundSyncClaim>;
+};
+
+/** The schedule's shared state: next free slot and the end of a `first` hold. */
+type SlotSchedule = { nextSlotAt: number; heldUntil: number };
+
+/** How many intervals ahead a claim may reserve (its slot, or its hold). */
+const SLOT_HORIZON_INTERVALS = 10;
+
+/**
+ * One claim against `schedule` (mutated). A claim never reserves past the
+ * horizon: with a queue that full it reserves nothing and is told when to ask
+ * again. So a stored time past the horizon can only be stale (clock change,
+ * old setting) and is ignored, and a long live queue is never reset.
+ */
+function claimSlot(
+  schedule: SlotSchedule,
+  at: number,
+  intervalMs: number,
+  priority: BackgroundSyncPriority,
+): BackgroundSyncClaim {
+  const horizon = SLOT_HORIZON_INTERVALS * intervalMs;
+  const fresh = (time: number) => (Number.isFinite(time) && time - at <= horizon ? time : 0);
+  const heldUntil = fresh(schedule.heldUntil);
+  const nextSlotAt = fresh(schedule.nextSlotAt);
+  if (priority === "bulk" && Math.max(heldUntil, nextSlotAt) > at) {
+    return { heldUntil: Math.max(heldUntil, nextSlotAt) };
+  }
+  const slot = Math.max(nextSlotAt, at);
+  const end = slot + (priority === "first" ? 2 : 1) * intervalMs;
+  if (end - at > horizon) return { heldUntil: end - horizon };
+  schedule.nextSlotAt = slot + intervalMs;
+  if (priority === "first") schedule.heldUntil = end;
+  return { slot };
+}
+
+export function createMemorySlots(): BackgroundSyncSlots {
+  const schedule: SlotSchedule = { nextSlotAt: 0, heldUntil: 0 };
+  return {
+    async claim(at, intervalMs, priority = "bulk") {
+      return claimSlot(schedule, at, intervalMs, priority);
+    },
+  };
+}
+
+const SHARED_SLOT_KEY = "wgw.backgroundSync.nextSlotAt";
+const SHARED_HOLD_KEY = "wgw.backgroundSync.heldUntil";
+const SHARED_SLOT_LOCK = "wgw.backgroundSync.slot";
+
+/**
+ * Slots shared by every tab of this browser: the next free time lives in
+ * localStorage, and a Web Lock makes read-and-reserve atomic across tabs.
+ * Falls back to this tab's own schedule without Web Locks or storage.
+ */
+export function createBrowserSlots(): BackgroundSyncSlots {
+  const local = createMemorySlots();
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks || typeof localStorage === "undefined") return local;
+  return {
+    async claim(at, intervalMs, priority = "bulk") {
+      try {
+        return await locks.request(SHARED_SLOT_LOCK, () => {
+          const schedule: SlotSchedule = {
+            nextSlotAt: Number(localStorage.getItem(SHARED_SLOT_KEY)),
+            heldUntil: Number(localStorage.getItem(SHARED_HOLD_KEY)),
+          };
+          const before = { ...schedule };
+          const claim = claimSlot(schedule, at, intervalMs, priority);
+          if (schedule.nextSlotAt !== before.nextSlotAt) {
+            localStorage.setItem(SHARED_SLOT_KEY, String(schedule.nextSlotAt));
+          }
+          if (schedule.heldUntil !== before.heldUntil) {
+            localStorage.setItem(SHARED_HOLD_KEY, String(schedule.heldUntil));
+          }
+          return claim;
+        });
+      } catch {
+        return local.claim(at, intervalMs, priority);
+      }
+    },
+  };
+}
+
 export type BackgroundSyncPacerOptions = {
   requestsPerMinute?: number;
+  slots?: BackgroundSyncSlots;
   userIdleMs?: number;
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
@@ -100,25 +212,40 @@ export function createBackgroundSyncPacer({
   userIdleMs = BACKGROUND_SYNC_USER_IDLE_MS,
   now = Date.now,
   sleep = defaultSleep,
+  slots = createMemorySlots(),
 }: BackgroundSyncPacerOptions = {}): BackgroundSyncPacer {
   const intervalMs = 60_000 / requestsPerMinute;
-  let nextSlotAt = 0;
   let backoffUntil = 0;
   let backoffStreak = 0;
   let userActiveAt = Number.NEGATIVE_INFINITY;
 
+  async function waitUntilClear(signal?: AbortSignal): Promise<void> {
+    while (true) {
+      if (signal?.aborted) throw abortError();
+      const at = now();
+      const readyAt = Math.max(backoffUntil, userActiveAt + userIdleMs);
+      if (readyAt <= at) return;
+      await sleep(readyAt - at, signal);
+    }
+  }
+
   return {
-    async acquire(signal) {
+    async acquire(signal, priority = "bulk") {
+      // Backoff and the user's own requests first, then a browser-wide slot.
       while (true) {
-        if (signal?.aborted) throw abortError();
+        await waitUntilClear(signal);
         const at = now();
-        const readyAt = Math.max(nextSlotAt, backoffUntil, userActiveAt + userIdleMs);
-        if (readyAt <= at) {
-          nextSlotAt = at + intervalMs;
-          return;
+        const claim = await slots.claim(at, intervalMs, priority);
+        if ("heldUntil" in claim) {
+          await sleep(claim.heldUntil - at, signal);
+          continue;
         }
-        await sleep(readyAt - at, signal);
+        if (claim.slot > at) await sleep(claim.slot - at, signal);
+        break;
       }
+      // The user clicked, or the server said 429, while this request waited for
+      // its slot: they still go first. The slot is spent; no second claim.
+      await waitUntilClear(signal);
     },
     reportRateLimited(retryAfterMs) {
       const delay = retryAfterMs ?? Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** backoffStreak);
@@ -136,10 +263,13 @@ export function createBackgroundSyncPacer({
 
 let sharedPacer: BackgroundSyncPacer | null = null;
 
-/** The tab's pacer. The first call starts listening for clicks and key presses. */
+/**
+ * The tab's pacer, drawing slots from the browser-wide schedule. The first
+ * call starts listening for clicks and key presses.
+ */
 export function backgroundSyncPacer(): BackgroundSyncPacer {
   if (sharedPacer) return sharedPacer;
-  const pacer = createBackgroundSyncPacer();
+  const pacer = createBackgroundSyncPacer({ slots: createBrowserSlots() });
   sharedPacer = pacer;
   if (typeof window !== "undefined") {
     const onActivity = () => pacer.noteUserActivity();

@@ -85,6 +85,15 @@
   min-height: var(--input-height);
 }
 
+/* Team members (#2278): a little more air between rows, and the role select as wide as its value. */
+.team-members-card .field-label-row__below {
+  @apply gap-3.5;
+}
+
+.team-members-card .share-dialog__permission-select {
+  @apply w-auto gap-2;
+}
+
 .share-dialog__permission-item {
   @apply flex items-center gap-2 text-xs;
 }

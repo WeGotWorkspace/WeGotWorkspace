@@ -5,24 +5,12 @@
  * Use these instead of long `className` / `style` stacks on pane TSX — see `.agents/skills/apps-ui/`.
  */
 
-/* --- Lists (users, groups, group dialog) --- */
-:is(.admin-workspace, .admin-dialog-surface) .admin-divided-list > * + * {
-  border-top: 1px solid color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row {
-  @apply flex items-center gap-3 py-3 first:pt-0 last:pb-0;
-}
-
+/* --- Lists (users, Teams): rows come from ui/avatar-list; these are the admin-only parts --- */
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-status-tag {
   @apply shrink-0;
   /* Ink-mixed warning so 12px chip text meets 4.5:1 on the cream wash. */
   --tag-fg: color-mix(in oklab, var(--color-warning) 32%, var(--workspace-foreground));
   --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__actions {
-  @apply flex shrink-0 items-center gap-1;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-tags {
@@ -32,6 +20,15 @@
 /* Admin is a role per user (#1925). Neutral chip so it reads as a fact, not a warning. */
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-role-tag {
   @apply shrink-0;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch {
+  @apply inline-flex items-center justify-center;
+  min-height: var(--control-height-md, 2.25rem);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-list-row__enabled-switch .switch {
+  align-self: center;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-avatar-slot {
@@ -174,19 +171,6 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-inline-handle {
   @apply ml-2 text-xs font-normal;
   color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-group-member-list {
-  @apply rounded-md border;
-  border-color: var(--workspace-divider-color);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-group-member-list > li + li {
-  border-top: 1px solid var(--workspace-divider-color);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-group-member-row {
-  @apply flex items-center gap-3 px-3 py-2;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-server-check-item {

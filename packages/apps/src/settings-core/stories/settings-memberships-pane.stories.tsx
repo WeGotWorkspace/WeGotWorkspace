@@ -22,17 +22,33 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof SettingsMembershipsPane>;
 
+/** The demo user runs Editorial Team: that row has "Manage members". */
 export const Default: Story = {
   args: {
     groups: createMockGroups(),
+    currentUsername: "demo.user",
+  },
+};
+
+/** A plain member of every Team: the pane as it was before team admins. */
+export const PlainMember: Story = {
+  args: {
+    groups: createMockGroups().map((group) => ({ ...group, isTeamAdmin: false })),
+    currentUsername: "demo.user",
   },
 };
 
 export const SingleGroup: Story = {
   args: {
     groups: createMockGroups([
-      { id: "principals/groups/editorial", displayName: "Editorial Team" },
+      {
+        id: "principals/groups/editorial",
+        displayName: "Editorial Team",
+        memberCount: 6,
+        isTeamAdmin: true,
+      },
     ]),
+    currentUsername: "demo.user",
   },
 };
 
@@ -40,5 +56,6 @@ export const SingleGroup: Story = {
 export const NoTeam: Story = {
   args: {
     groups: [],
+    currentUsername: "demo.user",
   },
 };

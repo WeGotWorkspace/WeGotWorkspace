@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { MoreHorizontal, User, Users } from "lucide-react";
+import { KeyRound, Pencil, Plus, ShieldOff, Trash2, User, Users } from "lucide-react";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
+import { AvatarList, AvatarListAction, AvatarListRow } from "@/ui/avatar-list";
 import { Tag } from "@/tag/src/tag";
+import { Switch } from "@/ui/switch";
 import { Button } from "@/button/src/button";
-import { IconButton } from "@/button/src/icon-button";
-import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
+import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 export type AdminUsersPaneProps = {
@@ -37,7 +38,16 @@ type PendingEnabledChange = {
   enabled: boolean;
 };
 
-function userEnabledLabel(enabled: boolean): string {
+function teamSubtitle(members: number, teamAdmins: number): string {
+  const memberPart = `${members} member${members === 1 ? "" : "s"}`;
+  if (teamAdmins === 0) return `${memberPart} · no team admin`;
+  return `${memberPart} · ${teamAdmins} team admin${teamAdmins === 1 ? "" : "s"}`;
+}
+
+function userEnabledSwitchLabel(enabled: boolean, isSelf: boolean): string {
+  if (isSelf && enabled) {
+    return "You cannot disable your own account.";
+  }
   return enabled ? "Disable account" : "Enable account";
 }
 
@@ -59,125 +69,111 @@ export function AdminUsersPane({
       <WorkspacePageSection
         title="Users"
         icon={<User aria-hidden />}
-        action={<Button label="New user" size="md" variant="outline" onClick={onNewUser} />}
+        action={
+          <IconActionButton label="New user" onClick={onNewUser}>
+            <Plus className="size-4" />
+          </IconActionButton>
+        }
       >
-        <ul className="admin-divided-list">
+        <AvatarList>
           {controller.users.map((user) => {
             const isSelf = user.username === controller.currentUser;
             const enabled = user.enabled !== false;
             const cannotDisableSelf = isSelf && enabled;
+            const switchLabel = userEnabledSwitchLabel(enabled, isSelf);
             return (
-              <li key={user.id} className="admin-list-row">
-                <UserAvatar
-                  displayName={user.displayName}
-                  subtitle={user.username}
-                  size="md"
-                  className="flex-1"
-                  nameAccessory={
-                    user.isAdmin || !enabled || user.mfaEnabled ? (
-                      <span className="admin-user-tags">
-                        {user.isAdmin ? (
-                          <Tag label="Admin" className="admin-user-role-tag" />
-                        ) : null}
-                        {user.mfaEnabled ? (
-                          <Tag label="Two-factor" className="admin-user-role-tag" />
-                        ) : null}
-                        {!enabled ? (
-                          <Tag label="Disabled" className="admin-user-status-tag" />
-                        ) : null}
-                      </span>
-                    ) : null
-                  }
-                />
-                <div className="admin-list-row__actions">
-                  <DropdownMenu
-                    align="end"
-                    contentClassName="min-w-[11rem] p-1.5"
-                    items={[
-                      { id: "edit", label: "Edit", onClick: () => onEditUser(user.id) },
-                      {
-                        id: "password",
-                        label: "Change password",
-                        onClick: () => onPasswordUser(user.id),
-                      },
-                      {
-                        id: "enabled",
-                        label: userEnabledLabel(enabled),
-                        // You cannot disable your own account.
-                        disabled: cannotDisableSelf,
-                        onClick: () =>
+              <AvatarListRow
+                key={user.id}
+                displayName={user.displayName}
+                subtitle={user.username}
+                nameAccessory={
+                  user.isAdmin || !enabled || user.mfaEnabled ? (
+                    <span className="admin-user-tags">
+                      {user.isAdmin ? (
+                        <Tag label="Organization admin" className="admin-user-role-tag" />
+                      ) : null}
+                      {user.mfaEnabled ? (
+                        <Tag label="Two-factor" className="admin-user-role-tag" />
+                      ) : null}
+                      {!enabled ? <Tag label="Disabled" className="admin-user-status-tag" /> : null}
+                    </span>
+                  ) : null
+                }
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="admin-list-row__enabled-switch">
+                      <Switch
+                        checked={enabled}
+                        disabled={cannotDisableSelf}
+                        aria-label={switchLabel}
+                        onCheckedChange={(next) => {
+                          if (next === enabled) return;
                           setPendingEnabled({
                             userId: user.id,
                             displayName: user.displayName,
-                            enabled: !enabled,
-                          }),
-                      },
-                      // Your own two-factor is turned off in Settings → Security, with a code (#2275).
-                      ...(user.mfaEnabled && !isSelf
-                        ? [
-                            { type: "separator" as const },
-                            {
-                              id: "reset-two-factor",
-                              label: "Reset two-factor sign-in",
-                              onClick: () =>
-                                setPendingMfaReset({
-                                  userId: user.id,
-                                  displayName: user.displayName,
-                                }),
-                            },
-                          ]
-                        : []),
-                    ]}
-                    trigger={
-                      <IconButton
-                        label={`More actions for ${user.displayName}`}
-                        icon={<MoreHorizontal />}
-                        size="md"
-                        variant="outline"
+                            enabled: next,
+                          });
+                        }}
                       />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{switchLabel}</TooltipContent>
+                </Tooltip>
+                <AvatarListAction
+                  label={`Edit ${user.displayName}`}
+                  icon={<Pencil className="size-4" />}
+                  onClick={() => onEditUser(user.id)}
+                />
+                <AvatarListAction
+                  label={`Set password for ${user.displayName}`}
+                  icon={<KeyRound className="size-4" />}
+                  onClick={() => onPasswordUser(user.id)}
+                />
+                {/* Your own two-factor is turned off in Settings → Security, with a code (#2275). */}
+                {user.mfaEnabled && !isSelf ? (
+                  <AvatarListAction
+                    label={`Reset two-factor sign-in for ${user.displayName}`}
+                    icon={<ShieldOff className="size-4" />}
+                    onClick={() =>
+                      setPendingMfaReset({ userId: user.id, displayName: user.displayName })
                     }
                   />
-                </div>
-              </li>
+                ) : null}
+              </AvatarListRow>
             );
           })}
-        </ul>
+        </AvatarList>
       </WorkspacePageSection>
       <WorkspacePageSection
         title="Teams"
         icon={<Users aria-hidden />}
-        action={<Button label="New team" size="md" variant="outline" onClick={onNewGroup} />}
+        action={
+          <IconActionButton label="New team" onClick={onNewGroup}>
+            <Plus className="size-4" />
+          </IconActionButton>
+        }
       >
-        <ul className="admin-divided-list">
+        <AvatarList>
           {controller.groups.map((group) => (
-            <li key={group.id} className="admin-list-row">
-              <UserAvatar
-                displayName={group.displayName}
-                subtitle={`${groupMemberCount.get(group.id) ?? 0} member${(groupMemberCount.get(group.id) ?? 0) === 1 ? "" : "s"}`}
-                size="md"
-                className="flex-1"
+            <AvatarListRow
+              key={group.id}
+              displayName={group.displayName}
+              subtitle={teamSubtitle(groupMemberCount.get(group.id) ?? 0, group.teamAdmins.length)}
+            >
+              <AvatarListAction
+                label={`Edit ${group.displayName}`}
+                icon={<Pencil className="size-4" />}
+                onClick={() => onEditGroup(group.id)}
               />
-              <div className="admin-list-row__actions">
-                <DropdownMenu
-                  align="end"
-                  contentClassName="min-w-[11rem] p-1.5"
-                  items={[
-                    { id: "edit", label: "Edit", onClick: () => onEditGroup(group.id) },
-                    { id: "delete", label: "Delete", onClick: () => onDeleteGroup(group.id) },
-                  ]}
-                  trigger={
-                    <IconButton
-                      label={`More actions for ${group.displayName}`}
-                      icon={<MoreHorizontal />}
-                      size="md"
-                      variant="outline"
-                    />
-                  }
-                />
-              </div>
-            </li>
+              <AvatarListAction
+                label={`Delete ${group.displayName}`}
+                icon={<Trash2 className="size-4" />}
+                onClick={() => onDeleteGroup(group.id)}
+              />
+            </AvatarListRow>
           ))}
-        </ul>
+        </AvatarList>
       </WorkspacePageSection>
 
       <AlertDialog

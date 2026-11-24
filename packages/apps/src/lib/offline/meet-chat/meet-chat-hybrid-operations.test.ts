@@ -382,7 +382,7 @@ describe("createHybridMeetChatOperations", () => {
         finishSend();
         await flush;
         await removal;
-        expect(deleteChatMessage).toHaveBeenCalledWith(id);
+        expect(deleteChatMessage).toHaveBeenCalledWith(id, undefined);
         expect(await listMeetChatOutbox(username)).toHaveLength(0);
       });
     });
@@ -400,6 +400,23 @@ describe("createHybridMeetChatOperations", () => {
     expect(row?.deletedAt).toBeTruthy();
     expect(row?.body).toBe("");
     expect((await listMeetChatOutbox(username)).map((r) => r.op)).toEqual(["delete"]);
+  });
+
+  it("rethrows a delete that was undone and queues nothing", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const synced = cachedMessage("01ARZ3NDEKTSV4RRFFQ69G5FAX");
+    await upsertChatMessageInCache(username, synced, false);
+    const controller = new AbortController();
+    controller.abort();
+
+    const operations = createHybridMeetChatOperations(username, author);
+    await expect(
+      operations.deleteMessage!(synced.id, { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(await listMeetChatOutbox(username)).toHaveLength(0);
+    expect((await getCachedChatMessage(username, synced.id))?.deletedAt).toBeUndefined();
+    expect(deleteChatMessage).not.toHaveBeenCalled();
   });
 
   it("toggles reactions offline with pair-cancel coalescing", async () => {

@@ -101,9 +101,9 @@ export function useMeetChatColumnProps({
   );
   const onDeleteChannel = useCallback(
     (messageId: string) => {
-      void chat.deleteMessage(messageId).catch(onError);
+      chat.deleteMessage(messageId);
     },
-    [chat.deleteMessage, onError],
+    [chat.deleteMessage],
   );
   const onCancelEdit = useCallback(() => {
     chat.setEditingMessageId(null);

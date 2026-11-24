@@ -30,7 +30,7 @@ final class DriveShareShareeCheck
         if ($share === null
             || strtolower((string) $share->owner_username) === $user
             || ! $this->presenter->isShareLive($share, Carbon::now())
-            || $this->scope->isInProductTrash((string) $share->path)) {
+            || $this->scope->isInert((string) $share->path)) {
             return false;
         }
 

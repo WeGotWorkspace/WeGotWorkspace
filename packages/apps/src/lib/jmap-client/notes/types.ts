@@ -9,8 +9,14 @@ export type JmapNotebook = {
   role?: string | null;
   groupSlug?: string | null;
   scope?: "personal" | "group";
+  projectId?: string | null;
   shareWith?: Record<string, unknown> | null;
-  myRights?: { mayWriteAll?: boolean; mayReadItems?: boolean; mayDelete?: boolean };
+  myRights?: {
+    mayWriteAll?: boolean;
+    mayReadItems?: boolean;
+    mayDelete?: boolean;
+    mayRename?: boolean;
+  };
   [key: string]: unknown;
 };
 

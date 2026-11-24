@@ -1,8 +1,8 @@
 // Contacts first download on a new device (live app, #1748).
 //
-// The first open of Contacts downloads the cards in pages of
-// CONTACT_CARD_GET_MAX_IDS_PER_REQUEST (40). Each page is saved as it
-// arrives. A reload halfway must keep those cards, show them offline, fetch
+// The first open of Contacts downloads the cards in lean pages of
+// CONTACT_CARD_LEAN_PAGE_SIZE (500), then their details and photos in two more
+// passes (#2297, Epic #2284). Each page is saved as it arrives. A reload halfway must keep those cards, show them offline, fetch
 // only the missing ones once online, and replay what changed on the server in
 // between (the sync anchor is the state at query time).
 //
@@ -12,7 +12,10 @@ import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const RUN = Date.now().toString(36);
-/** More than 2 × 40, so the download takes at least three card pages. */
+/**
+ * All in the first page (their ids sort first); the dev book's other
+ * cards make the pages after it.
+ */
 const SEED_COUNT = 100;
 /**
  * Names end in a number, so they sort under "#" at the top of the list, and
@@ -148,14 +151,19 @@ function headerCount(page: Page) {
   return page.locator(".view-header__title-count").first();
 }
 
-/** Ids of a page request: one ContactCard/get with explicit ids (not the empty state get). */
+/**
+ * Ids of a card page request: one ContactCard/get with explicit ids (not the
+ * empty state get, not the detail pass, which asks for `phones`, and not the
+ * photo pass, which asks only for `media`).
+ */
 function cardPageIds(route: Route): string[] | null {
   const body = JSON.parse(route.request().postData() ?? "{}") as {
-    methodCalls?: Array<[string, { ids?: string[] | null }, string]>;
+    methodCalls?: Array<[string, { ids?: string[] | null; properties?: string[] }, string]>;
   };
   const calls = body.methodCalls ?? [];
   if (calls.length !== 1 || calls[0]![0] !== "ContactCard/get") return null;
-  const ids = calls[0]![1].ids;
+  const { ids, properties } = calls[0]![1];
+  if (properties && (!properties.includes("name") || properties.includes("phones"))) return null;
   return Array.isArray(ids) && ids.length > 0 ? ids : null;
 }
 
@@ -224,6 +232,8 @@ test.describe("Contacts first download on a new device", () => {
   test("a reload keeps the saved pages, offline shows them, online fetches only the rest", async ({
     page,
   }) => {
+    // The rest of the book arrives one paced page every 3 s.
+    test.setTimeout(300_000);
     await installOfflineSwitch(page);
 
     // 1. First open: page 1 goes through, page 2 is held, as if the tab closes there.
@@ -324,7 +334,7 @@ test.describe("Contacts first download on a new device", () => {
             total: now.ids.length,
           };
         },
-        { timeout: 60_000, intervals: [500] },
+        { timeout: 180_000, intervals: [500] },
       )
       .toEqual({
         unfinished: false,

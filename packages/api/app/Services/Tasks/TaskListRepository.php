@@ -19,6 +19,7 @@ use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
+use App\Services\Notify\NotificationProjects;
 use App\Services\Tasks\Threads\TaskThreadHooks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -49,8 +50,8 @@ final class TaskListRepository
     {
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->collections->principalUri($username));
 
-        $lists = $this->collectionAccess
-            ->accessibleInstances($username, CollectionKind::TaskList)
+        $instances = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList);
+        $lists = $instances
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -98,6 +99,7 @@ final class TaskListRepository
             if (! in_array($groupSlug, $this->groups->allowedGroupSlugs($username), true)) {
                 throw new ApiHttpException(403, 'Not a member of this team.', 'forbidden');
             }
+            $this->collectionAccess->assertMayAddToTeam($username, $groupSlug);
             $principalUri = AdminConstants::GROUP_PREFIX.$groupSlug;
             $group = Principal::query()->where('uri', $principalUri)->first(['uri', 'displayname']);
             if ($group === null) {
@@ -155,7 +157,7 @@ final class TaskListRepository
             }
             [$instance, $groupSlug] = $resolved;
 
-            $this->collectionAccess->assertShareePatchAllowed(
+            $this->collectionAccess->assertPatchAllowed(
                 $instance,
                 $payload,
                 ['description', 'shareWith', 'groupSlug'],
@@ -406,14 +408,17 @@ final class TaskListRepository
                 'tasks',
                 CollectionSharedNotify::TASKS_ACTION,
                 'tasks/'.$id,
-                CollectionSharedNotify::eventData(
-                    'tasks',
-                    CollectionSharedNotify::actorLabel($username),
-                    $name,
-                    $id,
-                    $access,
-                    [$sharee],
-                ),
+                [
+                    ...CollectionSharedNotify::eventData(
+                        'tasks',
+                        CollectionSharedNotify::actorLabel($username),
+                        $name,
+                        $id,
+                        $access,
+                        [$sharee],
+                    ),
+                    'projectId' => app(NotificationProjects::class)->forCollection((int) $instance->calendarid),
+                ],
             );
         }
     }
@@ -483,7 +488,7 @@ final class TaskListRepository
             'groupSlug' => $isGroup ? $groupSlug : null,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            'myRights' => $rights,
+            ...$this->collectionAccess->projectFields($instance, $rights),
         ];
     }
 

@@ -142,7 +142,7 @@ final class NotesFileMigrator
         }
 
         $groupSlug = $parsed['scope'] === 'group' ? $parsed['owner'] : null;
-        $notebook = $this->notebooks->findOrCreateNamed($username, $parsed['notebook'], $groupSlug);
+        $notebook = $this->notebooks->findOrCreateNamedForLegacyImport($username, $parsed['notebook'], $groupSlug);
         $calendarId = $this->notebooks->findAccessibleNotebook($username, (string) $notebook['id'])?->calendarid;
         $earlier = $calendarId !== null ? $this->ledger->claimEarlierImport((int) $calendarId, $title, $body) : null;
         if ($earlier !== null) {

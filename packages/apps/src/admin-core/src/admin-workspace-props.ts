@@ -5,6 +5,7 @@ export type AdminWorkspaceProps = {
   data: AdminUIData;
   session: WorkspaceSession;
   operations?: AdminAPIOperations;
+  /** Archived Projects of every Team (Users & Teams); the section is hidden without it. */
   listLoading?: boolean;
   /** Route-owned section (`/admin` or `/admin/:section`). Uncontrolled when omitted. */
   section?: AdminSection;

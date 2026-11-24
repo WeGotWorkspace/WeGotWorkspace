@@ -79,3 +79,10 @@
 .drive-file-avatar--sm.drive-file-avatar--long {
   font-size: 0.5rem;
 }
+
+/* A Project folder: the Project icon on a wash of the Project's color, as in the sidebar. */
+.drive-file-avatar--project {
+  --project-mark-color: var(--workspace-label-color, currentColor);
+  color: var(--project-mark-color);
+  background-color: color-mix(in oklab, var(--project-mark-color) 18%, transparent);
+}

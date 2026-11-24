@@ -22,7 +22,6 @@ import {
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Switch } from "@/ui/switch";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
 type UserDialogPayload = { username: string; displayName: string; email: string; isAdmin: boolean };
@@ -40,8 +39,8 @@ type UserDialogProps = {
 
 function adminRoleHint(lockedOn: boolean): string {
   return lockedOn
-    ? "You cannot remove your own administrator access."
-    : "Can manage users, Teams and settings.";
+    ? "You cannot remove your own organization admin role."
+    : "Creates users and Teams, assigns people to Teams, and changes settings.";
 }
 
 export function UserDialog({
@@ -125,7 +124,7 @@ export function UserDialog({
           </FormField>
           <FormField
             layout="inline"
-            label="Administrator"
+            label="Organization admin"
             htmlFor={adminSwitchId}
             description={<span id={adminHintId}>{adminRoleHint(adminLockedOn)}</span>}
           >
@@ -231,7 +230,7 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="admin-dialog-surface">
         <DialogHeader>
-          <DialogTitle>Change password</DialogTitle>
+          <DialogTitle>Set password</DialogTitle>
           <DialogDescription>
             {user ? `Set a new password for ${user.displayName}.` : "Set a new password."}
           </DialogDescription>
@@ -270,54 +269,24 @@ export function PasswordDialog({ open, user, onOpenChange, onSubmit }: PasswordD
 
 type GroupDialogProps = {
   open: boolean;
-  title: string;
-  initial?: { id: string; displayName: string };
-  users: Array<{ id: string; displayName: string; username: string; groups: string[] }>;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: { name: string; memberUserIds: string[] }) => void;
+  onSubmit: (payload: { name: string }) => void;
 };
 
-export function GroupDialog({
-  open,
-  title,
-  initial,
-  users,
-  onOpenChange,
-  onSubmit,
-}: GroupDialogProps) {
-  const [name, setName] = useState(initial?.displayName ?? "");
+/** New team: a name, then Create. Members are added afterwards in Edit team. */
+export function GroupDialog({ open, onOpenChange, onSubmit }: GroupDialogProps) {
+  const [name, setName] = useState("");
   const nameId = useId();
-  const [memberUserIds, setMemberUserIds] = useState<string[]>(
-    initial ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id) : [],
-  );
-  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (!open) {
-      wasOpenRef.current = false;
-      return;
-    }
-    if (wasOpenRef.current) return;
-    wasOpenRef.current = true;
-    setName(initial?.displayName ?? "");
-    setMemberUserIds(
-      initial
-        ? users.filter((user) => user.groups.includes(initial.id)).map((user) => user.id)
-        : [],
-    );
-  }, [open, initial, users]);
-  const toggleMember = (userId: string) =>
-    setMemberUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((candidate) => candidate !== userId) : [...prev, userId],
-    );
+    if (open) setName("");
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="admin-dialog-surface">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {initial ? "Rename and assign members." : "Create a new team."}
-          </DialogDescription>
+          <DialogTitle>New team</DialogTitle>
+          <DialogDescription>Create a new team.</DialogDescription>
         </DialogHeader>
         <FormField layout="inline" fill label="Team name" htmlFor={nameId}>
           <Input
@@ -327,33 +296,12 @@ export function GroupDialog({
             onChange={(event) => setName(event.currentTarget.value)}
           />
         </FormField>
-        {initial ? (
-          <FormField label="Members">
-            <ul className="admin-group-member-list">
-              {users.map((user) => (
-                <li key={user.id} className="admin-group-member-row">
-                  <UserAvatar
-                    displayName={user.displayName}
-                    subtitle={user.username}
-                    size="md"
-                    className="flex-1"
-                  />
-                  <Switch
-                    checked={memberUserIds.includes(user.id)}
-                    onCheckedChange={() => toggleMember(user.id)}
-                    aria-label={`${user.displayName} team member`}
-                  />
-                </li>
-              ))}
-            </ul>
-          </FormField>
-        ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onSubmit({ name, memberUserIds })} disabled={!name.trim()}>
-            Save
+          <Button onClick={() => onSubmit({ name })} disabled={!name.trim()}>
+            Create
           </Button>
         </DialogFooter>
       </DialogContent>
