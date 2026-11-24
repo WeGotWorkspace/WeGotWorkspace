@@ -62,9 +62,11 @@ async function renderCalendarApp(initialPath: string) {
   return { history };
 }
 
-/** The range title's menu (period views, then Today). */
+/** The period menu in the header's second row (day, week, month, year). */
 function titleMenuTrigger(): HTMLElement {
-  return within(screen.getByRole("heading", { level: 2 })).getByRole("button");
+  const trigger = document.querySelector<HTMLElement>(".calendar-header-toolbar__period");
+  if (!trigger) throw new Error("period menu not found");
+  return trigger;
 }
 
 /** Opens a header dropdown and picks `name` from it. */

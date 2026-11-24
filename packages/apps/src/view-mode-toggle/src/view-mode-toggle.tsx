@@ -23,6 +23,8 @@ export type ViewModeToggleProps = {
   variant?: "segmented" | "menu";
   /** "menu" only: the menu opened or closed. */
   onOpenChange?: (open: boolean) => void;
+  /** "menu" only: the trigger's look. Default `outline`; `ghost` for a quiet toolbar row. */
+  triggerVariant?: "outline" | "ghost";
 };
 
 const VIEW_MODE_LABEL = "View mode";
@@ -37,6 +39,7 @@ export function ViewModeToggle({
   disabled = false,
   variant = "segmented",
   onOpenChange,
+  triggerVariant = "outline",
 }: ViewModeToggleProps) {
   const options = [
     { value: "grid" as const, label: gridLabel, icon: <LayoutGrid className="size-4" /> },
@@ -55,7 +58,7 @@ export function ViewModeToggle({
             icon={current.icon}
             trailingIcon={<ChevronDown />}
             size={size}
-            variant="outline"
+            variant={triggerVariant}
             disabled={disabled}
             className={className}
           />
