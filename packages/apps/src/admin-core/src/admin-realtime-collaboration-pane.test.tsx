@@ -43,12 +43,12 @@ describe("AdminRealtimeCollaborationPane", () => {
 
   it("reports whether a secret is stored without ever showing it", () => {
     const { unmount } = render(<RealtimePaneHarness form={{ turnSecretSet: false }} />);
-    expect(screen.getByText("The use-auth-secret value of your TURN server.")).toBeTruthy();
+    expect(screen.getByText("The use-auth-secret of your TURN server.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
     unmount();
 
     render(<RealtimePaneHarness form={{ turnSecretSet: true }} />);
-    expect(screen.getByText(/^Saved\. It is never shown again/)).toBeTruthy();
+    expect(screen.getByText(/^Saved\. Empty keeps it/)).toBeTruthy();
     expect((screen.getByLabelText("TURN shared secret") as HTMLInputElement).value).toBe("");
     expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
   });

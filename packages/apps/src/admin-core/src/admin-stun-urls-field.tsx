@@ -47,10 +47,10 @@ export function AdminStunUrlsField({
 
   const description =
     urls.length === 0
-      ? "Without one, calls may only work between people on the same network."
+      ? "Without one, calls may only work on the same network."
       : isDefault
-        ? "Default: Nextcloud's public server, which can see the IP address of people in a call."
-        : "Help people find a direct route to each other.";
+        ? "Default: Nextcloud's public server, which sees participants' IP addresses."
+        : "Helps people find a direct route.";
 
   return (
     <>
@@ -73,7 +73,7 @@ export function AdminStunUrlsField({
           {!isDefault ? (
             <Button
               label="Restore default"
-              variant="ghost"
+              variant="outline"
               severity="danger"
               size="sm"
               onClick={() => setConfirmRestore(true)}

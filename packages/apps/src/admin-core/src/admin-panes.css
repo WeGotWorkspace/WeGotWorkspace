@@ -272,6 +272,18 @@
   @apply w-full;
 }
 
+/* One column (phones): the button starts at the row's start, its padding pulled out so the
+ * text lines up with the caption above. */
+@media (max-width: 767px) {
+  .admin-workspace .admin-ice-field {
+    @apply items-start;
+  }
+
+  .admin-workspace .admin-ice-field > .button--size-sm:last-child {
+    margin-inline-start: -0.625rem;
+  }
+}
+
 /* Catches blur/Enter from the fields inside (autosave); takes no box. */
 .admin-workspace .admin-settings-autosave {
   display: contents;
