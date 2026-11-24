@@ -4,7 +4,6 @@ import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 /** Section wrapper for Settings panes, on the page and in the dialog. */
 export function SettingsPaneCard({
   title,
-  icon,
   titleTag,
   action,
   children,
@@ -12,7 +11,7 @@ export function SettingsPaneCard({
   title?: string;
   /** Right after the title, such as a role tag. */
   titleTag?: ReactNode;
-  /** Marks the section, like the section rows in dialogs (Team access, Public link). */
+  /** Accepted, not shown: section headings carry no icon (UI iteration). */
   icon?: ReactNode;
   /** End of the title row, such as a status tag. */
   action?: ReactNode;
@@ -22,7 +21,6 @@ export function SettingsPaneCard({
     <WorkspacePageSection
       className="settings-pane-card"
       title={title}
-      icon={icon}
       titleTag={titleTag}
       action={action}
     >

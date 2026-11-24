@@ -46,8 +46,16 @@
 }
 
 .workspace-page-header__title {
-  @apply m-0 font-serif text-4xl font-normal leading-tight md:text-5xl;
+  @apply m-0 font-serif font-normal leading-tight;
+  /* A touch under text-4xl / text-5xl. */
+  font-size: 2rem;
   color: var(--workspace-foreground);
+}
+
+@media (min-width: 768px) {
+  .workspace-page-header__title {
+    font-size: 2.5rem;
+  }
 }
 
 .workspace-page-header__description {
