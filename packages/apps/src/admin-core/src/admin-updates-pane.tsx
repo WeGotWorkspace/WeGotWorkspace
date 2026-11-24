@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Download, EllipsisVertical, Loader2, Package, Terminal } from "lucide-react";
+import { Check, EllipsisVertical, Loader2, Package, Terminal } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
@@ -195,7 +195,12 @@ export function AdminUpdatesPane({
 
       <WorkspacePageSection title="Version" icon={<Package aria-hidden />}>
         <FieldLabelRow layout="inline" label="Installed">
-          <Tag label={updates.installedVersion || "-"} />
+          <Tag
+            label={updates.installedVersion || "-"}
+            tone={
+              updates.lastCheckedAt ? (updates.updateAvailable ? "warning" : "success") : undefined
+            }
+          />
         </FieldLabelRow>
         {isDockerChannel ? (
           <>
@@ -221,18 +226,7 @@ export function AdminUpdatesPane({
               below={updates.inProgress ? progressCard : undefined}
             >
               <span className="admin-row-actions">
-                {updates.updateAvailable ? (
-                  <Button
-                    size="sm"
-                    onClick={() => setConfirmUpdateOpen(true)}
-                    disabled={!updates.compatible || updatingNow || updates.inProgress}
-                  >
-                    <Download className="size-4 mr-2" />
-                    {`Update to ${latestVersion}`}
-                  </Button>
-                ) : (
-                  <Tag label={latestVersion} />
-                )}
+                <Tag label={latestVersion} />
               </span>
             </FieldLabelRow>
             <FieldLabelRow
@@ -256,7 +250,17 @@ export function AdminUpdatesPane({
                 </SelectContent>
               </Select>
             </FieldLabelRow>
-            <div className="pt-4">{checkButton}</div>
+            <div className="flex items-center gap-2 pt-4">
+              {checkButton}
+              {updates.updateAvailable ? (
+                <Button
+                  label="Update"
+                  aria-label={`Update to ${latestVersion}`}
+                  onClick={() => setConfirmUpdateOpen(true)}
+                  disabled={!updates.compatible || updatingNow || updates.inProgress}
+                />
+              ) : null}
+            </div>
           </>
         )}
       </WorkspacePageSection>
