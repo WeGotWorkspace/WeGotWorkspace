@@ -32,7 +32,7 @@ describe("Team filter", () => {
   });
 
   it("scopes to every Project of the Team, or one Project, or nothing", () => {
-    expect(projectIdsInScope("t:design", projects)).toEqual(["a", "b"]);
+    expect(projectIdsInScope("t:design", projects)).toEqual(["a", "b", "team:design"]);
     expect(projectIdsInScope("p:b", projects)).toEqual(["b"]);
     expect(projectIdsInScope("all", projects)).toBeNull();
     expect(selectedProject("t:design", projects)).toBeNull();
@@ -53,5 +53,22 @@ describe("Team filter", () => {
     expect(effectiveProjectFilter("t:design", ids, new Set(["design"]))).toBe("t:design");
     expect(effectiveProjectFilter("t:sales", ids, new Set(["design"]))).toBe("all");
     expect(effectiveProjectFilter("t:sales", null, null)).toBe("t:sales");
+  });
+
+  it("a Team keeps its collections in no Project, and Personal keeps what has no Team", () => {
+    const collections = [
+      { id: "own", projectId: "a" },
+      { id: "other", projectId: "c" },
+      { id: "team-loose", groupSlug: "design" },
+      { id: "other-team-loose", groupSlug: "sales" },
+      { id: "mine" },
+    ];
+    expect(
+      collectionsInProject(collections, projectIdsInScope("t:design", projects)).map((c) => c.id),
+    ).toEqual(["own", "team-loose"]);
+    expect(
+      collectionsInProject(collections, projectIdsInScope("personal", projects)).map((c) => c.id),
+    ).toEqual(["mine"]);
+    expect(collectionsInProject(collections, ["a"]).map((c) => c.id)).toEqual(["own"]);
   });
 });

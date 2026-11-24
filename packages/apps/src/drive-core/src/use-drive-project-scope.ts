@@ -38,7 +38,8 @@ export function useDriveProjectScope({
   selectView: (view: ViewKey) => void;
 }): { groupRoots: readonly DriveRoot[]; hidePersonalDrive: boolean } {
   const [filter] = useProjectFilter();
-  const { projects } = useProjects();
+  const { projects, status } = useProjects();
+  const projectsKnown = status === "ready" || status === "offline";
   const project = selectedProject(filter, projects);
   const teamSlug = teamSlugOfFilter(filter);
   // A Team filter shows the whole Team Drive (everything of the Team); a Project, its own folder.
@@ -64,13 +65,15 @@ export function useDriveProjectScope({
   const viewRef = useRef(view);
   viewRef.current = view;
   useEffect(() => {
+    // Until the Projects are known the filter has no target: recording one now would move a reload off Recent, Starred or a deep link.
+    if (!projectsKnown) return;
     const first = shownForRef.current === undefined;
     if (shownForRef.current === targetPath) return;
     shownForRef.current = targetPath;
     if (!targetPath || isInside(viewRef.current, targetPath)) return;
     if (first && viewRef.current.type !== "all") return;
     selectView({ type: "folder", path: targetPath });
-  }, [targetPath, selectView]);
+  }, [targetPath, projectsKnown, selectView]);
 
   return { groupRoots: scopedRoots, hidePersonalDrive: folderPath !== null };
 }

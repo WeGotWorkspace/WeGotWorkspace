@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMockTeamMembersOperations } from "@/lib/api/mock/team-members";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
@@ -101,6 +101,22 @@ describe("Settings Teams pane for a team admin (#2278)", () => {
 
     await waitFor(() => expect(screen.queryByText("Editorial Team")).toBeNull());
     expect(screen.getByText("Studio Crew")).toBeTruthy();
+  });
+
+  it("closes the dialog and shows Member when the user dismisses themself as team admin", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const operations = renderPane();
+    await operations.appointTeamAdmin("editorial", "grace");
+    const dialog = await openDialog();
+
+    fireEvent.click(within(dialog).getByRole("combobox", { name: "Role of Demo User" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Member" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Edit Editorial Team" })).toBeNull(),
+    );
+    expect(screen.queryByRole("button", { name: "Manage members of Editorial Team" })).toBeNull();
+    expect(screen.queryByText("Could not")).toBeNull();
   });
 
   it("shows the server's message when a change is refused", async () => {

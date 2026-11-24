@@ -38,7 +38,11 @@ export function SettingsMembershipsPane({
   // Counts after a change in the dialog; the settings state is not re-read for it.
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
   const [left, setLeft] = useState<Record<string, true>>({});
-  const visible = groups.filter((group) => !left[group.id]);
+  // Teams where this user dismissed themself as team admin: shown as a member until the state is read again.
+  const [demoted, setDemoted] = useState<Record<string, true>>({});
+  const visible = groups
+    .filter((group) => !left[group.id])
+    .map((group) => (demoted[group.id] ? { ...group, isTeamAdmin: false } : group));
 
   if (visible.length === 0) {
     return (
@@ -62,6 +66,10 @@ export function SettingsMembershipsPane({
         currentUsername={currentUsername}
         operations={source}
         onOpenChange={(next) => !next && setManaging(null)}
+        onDismissedSelf={(slug) => {
+          const group = groups.find((entry) => teamSlug(entry) === slug);
+          if (group) setDemoted((prev) => ({ ...prev, [group.id]: true }));
+        }}
         onMembersChange={(slug, members) => {
           const group = groups.find((entry) => teamSlug(entry) === slug);
           if (!group) return;

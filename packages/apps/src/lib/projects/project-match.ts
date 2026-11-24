@@ -28,9 +28,12 @@ export function selectedTeamSlug(
 }
 
 /**
- * The ids of the Projects the filter keeps: one for a Project, every Project of the Team
- * for a Team filter, null for "All Teams" (no narrowing), and the personal id for "Personal".
+ * The ids the filter keeps: one Project; for a Team filter every Project of the Team plus
+ * `team:<slug>` (its collections in no Project); null for "All Teams" (no narrowing); the
+ * personal id for "Personal" (collections in no Team and no Project).
  */
+export const TEAM_SCOPE_PREFIX = "team:";
+
 export function projectIdsInScope(
   filter: ProjectFilterValue,
   projects: readonly WorkspaceProject[],
@@ -40,19 +43,11 @@ export function projectIdsInScope(
   if (projectId !== null) return [projectId];
   const teamSlug = teamSlugOfFilter(filter);
   if (teamSlug === null) return null;
-  return projects.filter((project) => project.teamSlug === teamSlug).map((project) => project.id);
-}
-
-/** True when a collection shows under the filter: always for "All Projects". */
-export function collectionMatchesProjectFilter(
-  filter: ProjectFilterValue,
-  projects: readonly WorkspaceProject[],
-  kind: ProjectResourceKind,
-  collectionId: string,
-): boolean {
-  if (filter === "all") return true;
-  const project = selectedProject(filter, projects);
-  return project === null || project.resources[kind] === collectionId;
+  // The Team's own collections that are in no Project ride along as `team:<slug>`.
+  return [
+    ...projects.filter((project) => project.teamSlug === teamSlug).map((project) => project.id),
+    `${TEAM_SCOPE_PREFIX}${teamSlug}`,
+  ];
 }
 
 /** The Project a collection belongs to, for labels and badges. */
@@ -66,18 +61,24 @@ export function projectOfCollection(
 
 /**
  * Collections under the filter, by the `projectId` the server sends on each JMAP
- * collection (#817 B1). "All Projects" keeps every collection; a Project keeps only its own.
+ * collection (#817 B1). "All Teams" keeps every collection; a Project keeps only its own;
+ * a Team keeps its Projects' collections and its own collections in no Project; "Personal"
+ * keeps collections in no Project and no Team.
  */
-export function collectionsInProject<T extends { projectId?: string | null }>(
-  collections: readonly T[],
-  scope: string | readonly string[] | null,
-): T[] {
+export function collectionsInProject<
+  T extends { projectId?: string | null; groupSlug?: string | null },
+>(collections: readonly T[], scope: string | readonly string[] | null): T[] {
   if (scope === null) return [...collections];
   const ids = typeof scope === "string" ? [scope] : scope;
-  // A collection without a Project reads as the personal id.
-  return collections.filter((collection) =>
-    ids.includes(collection.projectId ?? PERSONAL_PROJECT_ID),
-  );
+  const teams = ids
+    .filter((id) => id.startsWith(TEAM_SCOPE_PREFIX))
+    .map((id) => id.slice(TEAM_SCOPE_PREFIX.length));
+  return collections.filter((collection) => {
+    const projectId = collection.projectId ?? PERSONAL_PROJECT_ID;
+    if (projectId !== PERSONAL_PROJECT_ID) return ids.includes(projectId);
+    const team = collection.groupSlug?.trim();
+    return team ? teams.includes(team) : ids.includes(PERSONAL_PROJECT_ID);
+  });
 }
 
 /** A Project collection: its name, color and lifetime follow the Project. */

@@ -40,6 +40,8 @@ export type SettingsTeamMembersDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** After every change, with the Team's member list as the server has it. */
   onMembersChange?: (teamSlug: string, members: TeamMember[]) => void;
+  /** The caller dismissed themself as team admin: they can no longer manage this Team. */
+  onDismissedSelf?: (teamSlug: string) => void;
 };
 
 function errorMessage(error: unknown): string {
@@ -65,6 +67,7 @@ function TeamMembersDialogBody({
   operations,
   onOpenChange,
   onMembersChange,
+  onDismissedSelf,
 }: SettingsTeamMembersDialogProps) {
   const track = useTrackAutosave();
   const slug = team?.slug ?? null;
@@ -167,13 +170,25 @@ function TeamMembersDialogBody({
             searching={searching}
             minQueryLength={TEAM_CANDIDATE_MIN_QUERY}
             onAdd={(username) => change((teamSlug) => operations.addMember(teamSlug, username))}
-            onRoleChange={(member, role) =>
+            onRoleChange={(member, role) => {
+              if (role !== "teamAdmin" && member.username === currentUsername && slug !== null) {
+                // Like leaving: this user can no longer list the members, so close instead of reloading into a 404.
+                setError(null);
+                void operations
+                  .dismissTeamAdmin(slug, member.username)
+                  .then(() => {
+                    onDismissedSelf?.(slug);
+                    onOpenChange(false);
+                  })
+                  .catch((caught: unknown) => setError(errorMessage(caught)));
+                return;
+              }
               change((teamSlug) =>
                 role === "teamAdmin"
                   ? operations.appointTeamAdmin(teamSlug, member.username)
                   : operations.dismissTeamAdmin(teamSlug, member.username),
-              )
-            }
+              );
+            }}
             onRemove={(member) =>
               setPendingRemoval((members ?? []).find((m) => m.username === member.username) ?? null)
             }

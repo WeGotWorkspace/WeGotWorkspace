@@ -91,4 +91,21 @@ describe("useDriveProjectScope", () => {
     });
     expect(selectView).toHaveBeenCalledWith({ type: "folder", path: "Groups/design" });
   });
+
+  it("does not move a reload off Recent while the Projects are still loading", async () => {
+    const probe = createProjectsStore(createMockProjectOperations());
+    await probe.load();
+    const stored = probe.getSnapshot().projects.find((p) => p.name === "Website relaunch");
+    const store = createProjectsStore(createMockProjectOperations());
+    resetProjectsStoreForTests(store);
+    writeProjectFilter(`p:${stored?.id}`);
+    const selectView = vi.fn();
+    renderHook(() =>
+      useDriveProjectScope({ view: { type: "recent" }, groupRoots: roots, selectView }),
+    );
+    await act(async () => {
+      await store.load();
+    });
+    expect(selectView).not.toHaveBeenCalled();
+  });
 });

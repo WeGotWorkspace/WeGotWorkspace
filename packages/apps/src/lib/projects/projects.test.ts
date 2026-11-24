@@ -11,7 +11,7 @@ import {
   subscribeProjectFilter,
   writeProjectFilter,
 } from "@/lib/projects/project-filter";
-import { collectionMatchesProjectFilter, projectOfCollection } from "@/lib/projects/project-match";
+import { projectOfCollection } from "@/lib/projects/project-match";
 import {
   createProjectsStore,
   projectsByTeam,
@@ -126,30 +126,12 @@ describe("projects store", () => {
 });
 
 describe("project match", () => {
-  it("narrows a collection to the selected Project", async () => {
+  it("finds the Project a collection belongs to", async () => {
     const store = createProjectsStore(createMockProjectOperations());
     await store.load();
     const { projects } = store.getSnapshot();
     const [first, second] = projects;
     if (!first || !second) throw new Error("seed");
-    const filter = `p:${first.id}` as const;
-    expect(collectionMatchesProjectFilter("all", projects, "calendarId", "anything")).toBe(true);
-    expect(
-      collectionMatchesProjectFilter(
-        filter,
-        projects,
-        "calendarId",
-        first.resources.calendarId ?? "",
-      ),
-    ).toBe(true);
-    expect(
-      collectionMatchesProjectFilter(
-        filter,
-        projects,
-        "calendarId",
-        second.resources.calendarId ?? "",
-      ),
-    ).toBe(false);
     expect(projectOfCollection(projects, "taskListId", second.resources.taskListId ?? "")?.id).toBe(
       second.id,
     );

@@ -46,4 +46,21 @@ describe("useDocsProjectScope", () => {
     ]);
     expect(selectView).toHaveBeenCalledWith({ type: "drive", pathPrefix: "groups/design" });
   });
+
+  it("does not move a reload off its view while the Projects are still loading", async () => {
+    const probe = createProjectsStore(createMockProjectOperations());
+    await probe.load();
+    const stored = probe.getSnapshot().projects.find((p) => p.name === "Website relaunch");
+    const store = createProjectsStore(createMockProjectOperations());
+    resetProjectsStoreForTests(store);
+    writeProjectFilter(`p:${stored?.id}`);
+    const selectView = vi.fn();
+    renderHook(() =>
+      useDocsProjectScope({ view: { type: "recent" }, drives: [], selectView } as never),
+    );
+    await act(async () => {
+      await store.load();
+    });
+    expect(selectView).not.toHaveBeenCalled();
+  });
 });

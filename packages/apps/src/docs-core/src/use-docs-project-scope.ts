@@ -26,7 +26,8 @@ export function useDocsProjectScope({
   selectView: (view: DocsHomeView) => void;
 }): DocsHomeDrive[] {
   const [filter] = useProjectFilter();
-  const { projects } = useProjects();
+  const { projects, status } = useProjects();
+  const projectsKnown = status === "ready" || status === "offline";
   const project = selectedProject(filter, projects);
   const teamSlug = teamSlugOfFilter(filter);
   // A Team filter shows the whole Team Drive (everything of the Team); a Project, its own folder.
@@ -58,6 +59,8 @@ export function useDocsProjectScope({
   const viewRef = useRef(view);
   viewRef.current = view;
   useEffect(() => {
+    // Until the Projects are known the filter has no target: recording one now would move a reload off Recent, Starred or a deep link.
+    if (!projectsKnown) return;
     const first = shownForRef.current === undefined;
     if (shownForRef.current === targetPrefix) return;
     shownForRef.current = targetPrefix;
@@ -66,7 +69,7 @@ export function useDocsProjectScope({
     if (current.type === "drive" && current.pathPrefix === targetPrefix) return;
     if (first && current.type !== "all") return;
     selectView({ type: "drive", pathPrefix: targetPrefix });
-  }, [targetPrefix, selectView]);
+  }, [targetPrefix, projectsKnown, selectView]);
 
   return scoped;
 }

@@ -39,7 +39,7 @@ function mockProject(team: ProjectTeam, name: string, index: number, isDefault =
       driveFolderId: `folder-${id}`,
       driveFolderPath: `groups/${team.slug}/${name}`,
     },
-  } as Project;
+  } satisfies Project;
 }
 
 /** In-memory Projects for Storybook, Vitest and the mock dev server. */
