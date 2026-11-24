@@ -4,7 +4,7 @@ import { loadWorld } from "../world/load.mjs";
 import { OLDER_SAMPLE, convergenceOracle, pickChecked } from "./convergence.mjs";
 import { coverageOracle } from "./coverage.mjs";
 import { davParityDiff } from "./davparity.mjs";
-import { errorsOracle } from "./errors.mjs";
+import { consoleSignature, errorsOracle } from "./errors.mjs";
 import { gapOracle } from "./gap.mjs";
 import { notifyOracle } from "./notify.mjs";
 import { templateMatcher } from "./routes.mjs";
@@ -152,4 +152,31 @@ test("convergence checks touched objects plus a fixed-size sample", () => {
 test("console noise from the harness's own offline window is not an error", () => {
   const r = errorsOracle({ requests: [], browserEvents: [{ type: "console", level: "error", persona: "maarten", text: "Failed to load resource: net::ERR_INTERNET_DISCONNECTED" }], requestKind: kind });
   assert.equal(r.status, "pass");
+});
+
+test("errors: WebKit's own aborts at a navigation are not failures; a real network error still is", () => {
+  const r = errorsOracle({
+    requests: [
+      { persona: "lotte", layer: "ui", method: "POST", path: "/api/v1/jmap", status: 0, error: "cancelled" },
+      { persona: "lotte", layer: "ui", method: "GET", path: "/api/v1/settings/state", status: 0, error: "cancelled" },
+      { persona: "eva", layer: "ui", method: "GET", path: "/api/v1/me", status: 0, error: "Could not connect to the server." },
+    ],
+    browserEvents: [
+      { type: "pageerror", persona: "lotte", text: "Fetch API cannot load http: /127.0.0.1:9290/api/v1/rooms/p_groups.studio/participants due to access control checks." },
+      { type: "console", level: "error", persona: "fatima", text: "TypeError: Fetch API cannot load http://127.0.0.1:9290/api/v1/rooms/f_OGM1OWIxODUtNzE2NC00ZTI4LTgyYjEtNjhjOTM2Y2VkYWQ5/configuration due to access control checks." },
+      { type: "console", level: "error", persona: "lotte", text: "Fetch API cannot load https://cdn.example.org/x.js due to access control checks." },
+    ],
+    requestKind: kind,
+  });
+  assert.deepEqual(r.failures.map((f) => f.signature).sort(), ["errors:GET /api/v1/me:0", "errors:console:Fetch API cannot load https://cdn.example.org/x.js due to access control checks."].sort());
+});
+
+test("errors: the same console error on another blob, file or room keeps one signature", () => {
+  const a = consoleSignature("Connecting to 'blob:http://127.0.0.1:9290/642a7c15-9340-4f41-9d3e-9891e2d8dc21' violates the following Content Security Policy directive");
+  const b = consoleSignature("Connecting to 'blob:http://127.0.0.1:9290/a2cb6ae5-e050-49ce-9d4d-686c7a29a2e1' violates the following Content Security Policy directive");
+  assert.equal(a, b);
+  assert.equal(consoleSignature("x /rooms/f_OGM1OWIxODUtNzE2NC00ZTI4LTgy/y"), consoleSignature("x /rooms/f_MDNjZDgzYzMtNDAwMSNOTdhLTk3/y"));
+  const r = errorsOracle({ requests: [], browserEvents: [{ type: "console", level: "error", text: a.slice(15) }, { type: "console", level: "error", text: b.slice(15) }], requestKind: kind });
+  assert.equal(r.failures.length, 1);
+  assert.equal(r.failures[0].count, 2);
 });

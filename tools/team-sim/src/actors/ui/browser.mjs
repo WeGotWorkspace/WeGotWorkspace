@@ -60,7 +60,8 @@ export async function openPersonaBrowser({ browser, makeContext = null, persona,
       const url = new URL(req.url());
       if (url.origin !== origin || !url.pathname.startsWith("/api/v1/")) return;
       const why = req.failure()?.errorText ?? "failed";
-      if (/ERR_ABORTED|ERR_INTERNET_DISCONNECTED|NS_BINDING_ABORTED/.test(why)) return; // navigation and offline windows
+      // Navigation and offline windows: Chromium says ERR_ABORTED, Firefox NS_BINDING_ABORTED, WebKit "cancelled".
+      if (/ERR_ABORTED|ERR_INTERNET_DISCONNECTED|NS_BINDING_ABORTED|^cancelled$/i.test(why)) return;
       requestLog.add({ persona, layer: "ui", method: req.method(), path: url.pathname, status: 0, ms: 0, action, error: why });
     });
   };
