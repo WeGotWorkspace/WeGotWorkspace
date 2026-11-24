@@ -110,6 +110,11 @@ export type ChatMessage = {
    * Derived from the outbox when the cache is read; never stored.
    */
   syncState?: ChatMessageSyncState;
+  /**
+   * The message's `send` is still queued: the server has never seen it. Derived
+   * from the outbox like `syncState`; never stored.
+   */
+  sendQueued?: boolean;
 };
 
 export type { ChatMessageSyncState };
@@ -154,7 +159,8 @@ export type MeetChatOperations = {
    */
   newMessageId?: () => string;
   editMessage?: (messageId: string, body: string) => Promise<ChatMessage>;
-  deleteMessage?: (messageId: string) => Promise<void>;
+  /** `signal` aborts the request when Undo is used while it is in flight. */
+  deleteMessage?: (messageId: string, opts?: { signal?: AbortSignal }) => Promise<void>;
   react?: (messageId: string, emoji: string) => Promise<ChatMessage>;
   reply?: (
     parentId: string,

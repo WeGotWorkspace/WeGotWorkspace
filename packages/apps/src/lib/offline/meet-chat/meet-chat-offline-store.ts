@@ -131,14 +131,29 @@ export function chatMessageSyncStates(
   return states;
 }
 
+/** Ids of the messages whose `send` is still queued (`ChatMessage.sendQueued`). */
+function queuedSendIds(rows: readonly OfflineOutboxRow[]): Set<string> {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    const id = row.op === "send" ? meetChatOutboxMessageId(row) : undefined;
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
 function withSyncStates(
   messages: ChatMessage[],
   states: ReadonlyMap<string, ChatMessageSyncState>,
+  sendIds: ReadonlySet<string>,
 ): ChatMessage[] {
   return messages.map((message) => {
     const state = states.get(message.id);
     if (!state) return message;
-    return { ...message, syncState: state };
+    return {
+      ...message,
+      syncState: state,
+      ...(sendIds.has(message.id) ? { sendQueued: true } : {}),
+    };
   });
 }
 
@@ -352,7 +367,7 @@ export async function upsertChatMessageInCache(
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   // Derived from the outbox on every read: a stored copy would go stale.
-  const { syncState: _syncState, ...stored } = message;
+  const { syncState: _syncState, sendQueued: _sendQueued, ...stored } = message;
   await meetChatMessagesTable(db).put({
     id: message.id,
     channelId: message.channelId,
@@ -545,13 +560,15 @@ export async function readMeetChatBootstrapFromCache(
     (await db.meta.get(META_DIRECTORY))?.value,
   );
   const groups = parseJsonMeta<MeetDirectoryGroup[]>((await db.meta.get(META_GROUPS))?.value);
+  const outbox = await listMeetChatOutbox(username);
   return {
     session,
     rtc,
     channels: wireChannels.filter((row) => !isWireDmChannel(row)).map(meetChannelFromWire),
     messages: withSyncStates(
       await listCachedChatMessages(username),
-      chatMessageSyncStates(await listMeetChatOutbox(username)),
+      chatMessageSyncStates(outbox),
+      queuedSendIds(outbox),
     ),
     dmUnread: dmUnreadFromWireChannels(wireChannels),
     ...(directory !== undefined ? { directory } : {}),
