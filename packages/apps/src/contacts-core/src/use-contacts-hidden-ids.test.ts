@@ -1,14 +1,8 @@
-// @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
-import { contactsViewPrefs } from "@/contacts-core/src/contacts-view-prefs";
-import { createMockProjectOperations } from "@/lib/api/mock/projects";
-import { writeProjectFilter } from "@/lib/projects/project-filter";
-import { createProjectsStore, resetProjectsStoreForTests } from "@/lib/projects/projects-store";
+import { describe, expect, it } from "vitest";
 import {
   addressBooksHiddenByProject,
   teamAddressBookId,
-  useContactsHiddenIds,
+  viewAfterProjectFilter,
 } from "@/contacts-core/src/use-contacts-hidden-ids";
 
 const books = [{ id: "default" }, { id: "group-design" }, { id: "group-sales" }];
@@ -18,31 +12,37 @@ describe("addressBooksHiddenByProject", () => {
     expect([...addressBooksHiddenByProject(books, null)]).toEqual([]);
   });
 
+  it("drops every Team address book under Personal and keeps the rest", () => {
+    const withShared = [...books, { id: "shared-abc" }];
+    expect([...addressBooksHiddenByProject(withShared, null, true)]).toEqual([
+      "group-design",
+      "group-sales",
+    ]);
+  });
+
+  it("hides nothing under All Teams", () => {
+    expect([...addressBooksHiddenByProject(books, null, false)]).toEqual([]);
+  });
+
   it("keeps only the owning Team's address book for a Project", () => {
     expect(teamAddressBookId("design")).toBe("group-design");
     expect([...addressBooksHiddenByProject(books, "design")]).toEqual(["default", "group-sales"]);
   });
 });
 
-describe("useContactsHiddenIds", () => {
-  afterEach(() => {
-    resetProjectsStoreForTests();
-    localStorage.clear();
+describe("viewAfterProjectFilter", () => {
+  const personalHidden = addressBooksHiddenByProject(books, null, true);
+
+  it("leaves an open Team book view under Personal", () => {
+    expect(viewAfterProjectFilter("book:group-design", personalHidden)).toBe("all");
   });
 
-  it("joins the books the user hid with the books the Project filter hides", async () => {
-    const store = createProjectsStore(createMockProjectOperations());
-    await store.load();
-    resetProjectsStoreForTests(store);
-    contactsViewPrefs.patch({
-      hiddenAddressBookIds: ["group-sales"],
-      knownAddressBookIds: books.map((book) => book.id),
-    });
-    writeProjectFilter("t:design");
+  it("leaves a group view whose book is hidden", () => {
+    expect(viewAfterProjectFilter("group:g1", personalHidden, "group-sales")).toBe("all");
+  });
 
-    const { result } = renderHook(() => useContactsHiddenIds(books));
-
-    expect([...result.current.hiddenAddressBookIds].sort()).toEqual(["default", "group-sales"]);
-    expect(typeof result.current.setHiddenAddressBookIds).toBe("function");
+  it("keeps views of books the filter keeps", () => {
+    expect(viewAfterProjectFilter("book:default", personalHidden)).toBe("book:default");
+    expect(viewAfterProjectFilter("all", personalHidden)).toBe("all");
   });
 });

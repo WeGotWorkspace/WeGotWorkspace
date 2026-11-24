@@ -72,7 +72,10 @@ import {
   writableGroupAddressBooks,
   writableMoveAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
-import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
+import {
+  useContactsHiddenIds,
+  viewAfterProjectFilter,
+} from "@/contacts-core/src/use-contacts-hidden-ids";
 import { useContactsEditAutosave } from "@/contacts-core/src/use-contacts-edit-autosave";
 import { useContactsEditPersist } from "@/contacts-core/src/use-contacts-edit-persist";
 import { useContactsDeleteCards } from "@/contacts-core/src/use-contacts-delete-cards";
@@ -141,7 +144,8 @@ export function useContactsController({
   const L = useMemo(() => mergeContactsLabels(labels), [labels]);
   const [cards, setCards] = useState<ContactCard[]>(() => data.cards);
   const [addressBooks, setAddressBooks] = useState(() => data.addressBooks);
-  const { hiddenAddressBookIds, setHiddenAddressBookIds } = useContactsHiddenIds(addressBooks);
+  const { hiddenAddressBookIds, projectHiddenAddressBookIds, setHiddenAddressBookIds } =
+    useContactsHiddenIds(addressBooks);
   const toggleAddressBookVisibility = useCallback(
     (bookId: string) => {
       setHiddenAddressBookIds((current) => {
@@ -437,6 +441,17 @@ export function useContactsController({
     },
     [dropDrafts, flushAutosaves],
   );
+
+  // The hidden set only narrows "all", so leave a book or group view the Project filter hides.
+  const openBookHiddenByProject =
+    viewAfterProjectFilter(
+      view,
+      projectHiddenAddressBookIds,
+      selectedGroup ? firstEnabledAddressBookId(selectedGroup.addressBookIds) : undefined,
+    ) !== view;
+  useEffect(() => {
+    if (openBookHiddenByProject) selectView("all");
+  }, [openBookHiddenByProject, selectView]);
 
   const updateEditDraft = useCallback((patch: Partial<ContactEditDraft>) => {
     setEditDraft((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -1434,6 +1449,7 @@ export function useContactsController({
     setGroupRenameDialog,
     addMembersToGroup,
     hiddenAddressBookIds,
+    projectHiddenAddressBookIds,
     toggleAddressBookVisibility,
   };
 }

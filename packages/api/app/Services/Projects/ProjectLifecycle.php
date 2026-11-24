@@ -140,7 +140,6 @@ final class ProjectLifecycle
             }
             if (! $archived && $locked->archived_at !== null) {
                 // A collection is gone only when a purge deleted it: finish that purge, never bring the Project back empty.
-                // Counted under the row lock, so a purge step cannot commit between the count and the clear.
                 $kinds = array_map(static fn (ProjectKind $kind): string => $kind->value, ProjectKind::collections());
                 $present = ProjectResource::query()->where('project_id', $locked->id)->whereIn('kind', $kinds)->count();
                 if ($present < count($kinds)) {

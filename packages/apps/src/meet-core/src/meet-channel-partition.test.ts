@@ -5,6 +5,8 @@ import {
   partitionMeetChannels,
 } from "@/meet-core/src/meet-channel-partition";
 import type { MeetChannel } from "@/lib/models/meet-types";
+import { projectIdsInScope } from "@/lib/projects/project-match";
+import type { WorkspaceProject } from "@/lib/projects/projects-store";
 
 function channel(
   partial: Partial<MeetChannel> & Pick<MeetChannel, "id" | "name" | "kind">,
@@ -184,8 +186,11 @@ describe("Project channels (#818)", () => {
     expect(
       partitionMeetChannels(
         [web, brand, team, named, other, otherProject, meeting],
-        // What a Team filter passes: its Projects and `team:<slug>` for its collections in no Project.
-        ["p-web", "p-brand", "team:design"],
+        projectIdsInScope("t:design", [
+          { id: "p-web", teamSlug: "design" },
+          { id: "p-brand", teamSlug: "design" },
+          { id: "p-pitch", teamSlug: "sales" },
+        ] as WorkspaceProject[]),
         "design",
       ),
     ).toEqual({

@@ -1,5 +1,3 @@
-import { teamAddressBookId } from "@/contacts-core/src/use-contacts-hidden-ids";
-import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -125,6 +123,7 @@ export function ContactsWorkspace({
     removeActiveGroupTag,
     moveActiveContactToAddressBook,
     hiddenAddressBookIds,
+    projectHiddenAddressBookIds,
     toggleAddressBookVisibility,
     handleSelect,
     enterSelectionFor,
@@ -220,14 +219,10 @@ export function ContactsWorkspace({
     hideSharedAddressBook,
   } = bookMutations;
 
-  // With a Project selected, only its Team's address book is listed (#818).
-  const projectTeamSlug = useSelectedProjectTeamSlug();
+  // The address books the Project filter hides stay out of the sidebar (#818).
   const sidebarBooks = useMemo(
-    () =>
-      projectTeamSlug === null
-        ? books
-        : books.filter((book) => book.id === teamAddressBookId(projectTeamSlug)),
-    [books, projectTeamSlug],
+    () => books.filter((book) => !projectHiddenAddressBookIds.has(book.id)),
+    [books, projectHiddenAddressBookIds],
   );
   const { primarySidebarItems, ownedAddressBooks, sharedAddressBooks } = useContactsSidebarModel({
     labels: L,
