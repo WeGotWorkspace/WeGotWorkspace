@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Dav\Server\WgwCalendarBackendFactory;
+use App\Models\CalendarCollectionMeta;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
@@ -261,7 +262,7 @@ final class UserCalendarCollectionsProvisioner
         }
         $hidden = [];
         if ($ids !== []) {
-            foreach (DB::connection('wgw')->table('calendar_collection_meta')
+            foreach (CalendarCollectionMeta::query()
                 ->whereIn('calendarid', $ids)
                 ->get(['calendarid', 'kind']) as $row) {
                 if (CollectionKind::tryFrom((string) $row->kind)?->davHidden() === true) {
