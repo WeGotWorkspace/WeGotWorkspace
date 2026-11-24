@@ -71,9 +71,11 @@ async function renderCalendarApp(initialPath: string) {
   return { history, router };
 }
 
-/** The range title's menu (period views, then Today). */
+/** The period menu in the header's second row (day, week, month, year). */
 function titleMenuTrigger(): HTMLElement {
-  return within(screen.getByRole("heading", { level: 2 })).getByRole("button");
+  const trigger = document.querySelector<HTMLElement>(".calendar-header-toolbar__period");
+  if (!trigger) throw new Error("period menu not found");
+  return trigger;
 }
 
 /** Opens a header dropdown and picks `name` from it. */
@@ -89,7 +91,7 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     mockDomApis();
   });
 
-  it("changes the router path when the user picks Week in the range title's menu", async () => {
+  it("changes the router path when the user picks Week in the period menu", async () => {
     const { history } = await renderCalendarApp("/calendar/month/2026-08-17");
     expect(history.location.pathname).toBe("/calendar/month/2026-08-17");
 
@@ -100,7 +102,7 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     });
   });
 
-  it("stays interactive after switching from day to week in the range title's menu", async () => {
+  it("stays interactive after switching from day to week in the period menu", async () => {
     const { history } = await renderCalendarApp("/calendar/day/2026-08-17");
     expect(history.location.pathname).toBe("/calendar/day/2026-08-17");
 
@@ -138,7 +140,10 @@ describe("CalendarApp real header click → URL", { timeout: 15_000 }, () => {
     });
 
     // Today sits in the range title's menu.
-    await pickFromMenu(titleMenuTrigger(), "Today");
+    await pickFromMenu(
+      within(screen.getByRole("heading", { level: 2 })).getByRole("button"),
+      "Today",
+    );
     // "Today" anchors on the real current date (local), which may coincide with
     // the 2026-09-01 anchor reached via "Next" — assert the exact target instead.
     const now = new Date();

@@ -1,7 +1,8 @@
 import type { ReactNode, RefObject } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import type { DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
+import { DropdownMenu, type DropdownMenuEntry } from "@/menu-dropdown/src/dropdown-menu";
+import { CollectionGhostButton } from "@/ui/collection-ghost-select";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ViewModeToggle } from "@/view-mode-toggle/src/view-mode-toggle";
 import type { CalendarPresentation, CalendarViewId } from "@/lib/models/calendar-types";
@@ -36,14 +37,14 @@ export type CalendarWorkspaceHeaderProps = {
   onToday: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  /** The grid's invitations inbox (list mode has none). */
+  /** The invitations inbox, in both modes (list mode opens it as a side drawer). */
   invitationsTrigger: ReactNode;
 };
 
 /**
- * The calendar's header, one row in both modes: the range title (its menu holds the
- * period views and Today), then the grid/list menu and previous / next. List mode puts
- * those controls at the end and searches; the grid keeps them by the title, inbox last.
+ * The calendar's header, two rows in both modes. Row one: the range title (its menu holds
+ * Today), the inbox at the end. Row two: the period menu (day, week, month, year) under the
+ * title, then the calendar/list menu and previous / next at the end.
  */
 export function CalendarWorkspaceHeader({
   L,
@@ -75,69 +76,84 @@ export function CalendarWorkspaceHeader({
     day: L.viewDay,
     year: L.viewYear,
   };
+  const periodMenu: DropdownMenuEntry[] = CALENDAR_VIEW_ORDER.map((id) => ({
+    id,
+    label: viewLabels[id],
+    checked: view === id,
+    onClick: () => onSelectView(id),
+  }));
+  // The range title's menu has one entry: back to today.
   const titleMenu: DropdownMenuEntry[] = [
-    ...CALENDAR_VIEW_ORDER.map((id) => ({
-      id,
-      label: viewLabels[id],
-      checked: view === id,
-      onClick: () => onSelectView(id),
-    })),
-    { type: "separator" as const, id: "today-separator" },
     { id: "today", label: L.today, icon: <CalendarDays />, onClick: onToday },
   ];
-  const nav = (
-    <div className="calendar-header-nav">
-      <ViewModeToggle
-        value={presentation}
-        onChange={onPresentationChange}
-        gridLabel={L.showAsCalendar}
-        listLabel={L.showAsList}
+  const toolbar = (
+    <div className="calendar-header-toolbar">
+      <DropdownMenu
+        items={periodMenu}
         disabled={searching}
-        variant="menu"
         onOpenChange={onMenuOpenChange}
+        trigger={
+          <CollectionGhostButton
+            className="calendar-header-toolbar__period"
+            label={viewLabels[view]}
+            disabled={searching}
+          />
+        }
       />
-      <IconButton
-        label={periodNav.previous}
-        icon={<ChevronLeft className="size-4" />}
-        size="md"
-        variant="outline"
-        disabled={searching}
-        onClick={onPrevious}
-      />
-      <IconButton
-        label={periodNav.next}
-        icon={<ChevronRight className="size-4" />}
-        size="md"
-        variant="outline"
-        disabled={searching}
-        onClick={onNext}
-      />
+      <div className="calendar-header-toolbar__end">
+        <ViewModeToggle
+          value={presentation}
+          onChange={onPresentationChange}
+          gridLabel={L.showAsCalendar}
+          listLabel={L.showAsList}
+          disabled={searching}
+          variant="menu"
+          onOpenChange={onMenuOpenChange}
+        />
+        <IconButton
+          label={periodNav.previous}
+          icon={<ChevronLeft className="size-4" />}
+          size="md"
+          variant="ghost"
+          disabled={searching}
+          onClick={onPrevious}
+        />
+        <IconButton
+          label={periodNav.next}
+          icon={<ChevronRight className="size-4" />}
+          size="md"
+          variant="ghost"
+          disabled={searching}
+          onClick={onNext}
+        />
+      </div>
     </div>
   );
   return (
-    <ViewHeader
-      title={searching ? L.searchTitle : title}
-      // Narrow headers (phones, the grid) fall back to the short range.
-      compactTitle={searching || wideList ? undefined : compactTitle}
-      titleMenu={searching ? undefined : titleMenu}
-      onTitleMenuOpenChange={onMenuOpenChange}
-      sidebarOpen={sidebarOpen}
-      onToggleSidebar={onToggleSidebar}
-      {...(listLayout
-        ? {
-            searchPlaceholder: L.searchPlaceholder,
-            searchValue: searchQuery,
-            onSearchInput,
-            searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
-            searchHidden: multiSelected,
-            searchInputRef,
-          }
-        : {})}
-      // List: the range left, its controls at the end. Grid: the controls right after
-      // the range (lined up with list mode's on wide screens, CSS), the inbox last.
-      titleSuffix={listLayout ? undefined : nav}
-      titleTrailing={listLayout ? undefined : invitationsTrigger}
-      actions={listLayout ? nav : undefined}
-    />
+    <>
+      <div className="calendar-header-row">
+        <ViewHeader
+          title={searching ? L.searchTitle : title}
+          // Narrow headers (phones, the grid) fall back to the short range.
+          compactTitle={searching || wideList ? undefined : compactTitle}
+          titleMenu={searching ? undefined : titleMenu}
+          onTitleMenuOpenChange={onMenuOpenChange}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={onToggleSidebar}
+          {...(listLayout
+            ? {
+                searchPlaceholder: L.searchPlaceholder,
+                searchValue: searchQuery,
+                onSearchInput,
+                searchMinLength: CALENDAR_SEARCH_MIN_QUERY_LENGTH,
+                searchHidden: multiSelected,
+                searchInputRef,
+              }
+            : {})}
+          titleTrailing={invitationsTrigger}
+        />
+      </div>
+      {toolbar}
+    </>
   );
 }
