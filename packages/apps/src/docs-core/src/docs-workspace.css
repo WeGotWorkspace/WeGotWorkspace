@@ -216,7 +216,9 @@
   display: none;
 }
 
+/* No room for the counts next to the page setup and Source on a phone. */
 @media (max-width: 767px) {
+  .docs-workspace__stats-footer-tag--words,
   .docs-workspace__stats-footer-tag--characters {
     display: none;
   }
@@ -261,6 +263,16 @@
 
 .docs-workspace .docs-comments-floating-layer {
   --workspace-accent: var(--scheme-ink);
+}
+
+/*
+ * Light theme: the desk behind the pages (and the gap between two pages) gets a tint, so a
+ * white page no longer melts into it. Dark already lifts the letter off the near-black desk.
+ */
+@supports (color: oklch(from red l c h)) {
+  :root:not([data-theme="dark"]) .docs-workspace {
+    --docs-canvas: oklch(from var(--workspace-surface) calc(l - 0.04) c h);
+  }
 }
 
 .docs-workspace .text-editor {
@@ -361,6 +373,13 @@
   .docs-workspace .text-editor {
     --text-editor-shadow-sheet: none;
     --text-editor-sheet-padding-block-start: 1.25rem;
+  }
+
+  /* Pages are separate sheets on the desk: keep a small margin around them. */
+  .docs-workspace__editor .text-editor-sheet--paginated {
+    --docs-sheet-canvas-padding-inline: 0.5rem;
+    --docs-sheet-canvas-padding-block-start: 0.5rem;
+    --docs-sheet-canvas-padding-block-end: 0.5rem;
   }
 
   .docs-workspace__editor
@@ -485,7 +504,6 @@
 /* Transparent like the other bar buttons (the frost shows through); wash on hover/open. */
 .docs-workspace__editor .text-editor-format-bar__heading-trigger {
   border-radius: 0.5rem;
-  min-width: 5rem;
 }
 
 .docs-workspace__editor .text-editor-format-bar__heading-trigger[data-state="open"] {
@@ -563,7 +581,6 @@
 .docs-workspace__editor
   .text-editor-format-bar[data-size="lg"]
   .text-editor-format-bar__heading-trigger {
-  min-width: 5.75rem;
   font-size: 0.875rem;
 }
 

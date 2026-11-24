@@ -128,7 +128,6 @@
 
 .text-editor-format-bar__heading-trigger {
   @apply inline-flex shrink-0 flex-row flex-nowrap items-center justify-start gap-1.5 whitespace-nowrap;
-  min-width: 4.25rem;
   padding-inline: 0.625rem;
 }
 
