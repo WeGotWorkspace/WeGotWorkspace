@@ -92,7 +92,7 @@ function clearVars(el: HTMLElement): boolean {
   return true;
 }
 
-/** Edges of `el` from the top of the page column, in layout px (Fit to screen scales the screen). */
+/** Edges of `el` from the top of the page column, in layout px (Fit to width scales the screen). */
 function edgesFrom(dom: HTMLElement): (el: Element) => { top: number; bottom: number } {
   const domTop = dom.getBoundingClientRect().top;
   const scale = textEditorScreenScale(dom);

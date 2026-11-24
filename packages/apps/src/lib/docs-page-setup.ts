@@ -15,7 +15,7 @@ import { normalizeApiVirtualPath } from "@/lib/files/api-path";
  *
  * Two records: the default (Docs settings), which new documents start with, and an
  * override per document (Page setup in the document's header), keyed by its path.
- * Fit to screen is about this screen, not the document, so it lives in the default only.
+ * Fit to width is about this screen, not the document, so it lives in the default only.
  */
 export const DOCS_PAGE_SETUP_STORAGE_KEY = "wgw.ui.docs.pageSetup";
 export const DOCS_PAGE_SETUP_OVERRIDES_KEY = "wgw.ui.docs.pageSetup.byDoc";

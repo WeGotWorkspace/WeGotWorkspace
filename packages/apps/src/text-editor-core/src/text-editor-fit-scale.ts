@@ -1,5 +1,5 @@
 /**
- * Fit to screen (Docs pages): pages wider than the sheet shrink to fit it. The page column
+ * Fit to width (Docs pages): pages wider than the sheet shrink to fit it. The page column
  * is scaled with a transform, so it keeps its layout size and every page breaks exactly
  * where it does at full size. Screen measurements (`getBoundingClientRect`) inside it are
  * scaled too: page layout code divides them by `textEditorScreenScale`.

@@ -90,7 +90,7 @@ function sameColumns(a: readonly TableColumns[], b: readonly TableColumns[]): bo
 
 /**
  * Content width of `el`, unrounded: for the editor root, the text column inside the margins.
- * In layout px: `el` sits in the page column, which Fit to screen scales on screen.
+ * In layout px: `el` sits in the page column, which Fit to width scales on screen.
  */
 function contentWidth(el: HTMLElement, scale: number): number {
   const style = getComputedStyle(el);
