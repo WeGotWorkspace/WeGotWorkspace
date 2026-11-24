@@ -220,7 +220,7 @@
    */
   --media-surface: oklch(from #16181d l c h);
   --media-ink: oklch(from #eef1f5 l c h);
-  /* Text inset of a detail sheet (Notes note, Contacts card), phones included. */
+  /* Text inset of a detail sheet (Notes note, Contacts card); phones line it up with the back button (below). */
   --workspace-detail-sheet-padding-x: 1.5rem;
   /* Detail page title (note, task, event, selection summary): 28px on phones, 36px from md. */
   --workspace-detail-title-size: 1.75rem;
@@ -589,7 +589,6 @@ select {
   font-size: max(1rem, 100%) !important;
 }
 
-/* Phones: a slightly smaller editor body (15px). */
 /*
  * Phones: a detail sheet's text lines up with the glyph of the back button above it
  * (the action bar's 1rem inset, plus the button's own inset around its 14px glyph),
@@ -603,6 +602,7 @@ select {
   }
 }
 
+/* Phones: a slightly smaller editor body (15px). */
 @media (max-width: 767px) {
   .text-editor,
   .text-editor-prose {
