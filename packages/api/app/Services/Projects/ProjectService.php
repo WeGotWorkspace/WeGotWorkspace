@@ -15,7 +15,6 @@ use App\Services\Teams\TeamRoles;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -195,11 +194,8 @@ final class ProjectService
         if ($nodeId === null) {
             return;
         }
-        try {
-            $this->folders->rename((string) $nodeId, (string) $project->group_slug, (string) $project->name);
-        } catch (\Throwable $exception) {
-            Log::error('project_folder_rename_failed', ['project' => (string) $project->id, 'error' => $exception->getMessage()]);
-        }
+        // A failed rename fails the request: the new name is stored, so the same PATCH again runs the rename again.
+        $this->folders->rename((string) $nodeId, (string) $project->group_slug, (string) $project->name);
     }
 
     /** A Project of one of the caller's Teams, or the 404 an unknown id gets. */

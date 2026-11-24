@@ -34,7 +34,7 @@ final class ProjectArchivePaths
     /** A DAV path (`files/groups/t1/…`, with or without a leading slash) at or under the tree. */
     public static function davIsProtected(string $davPath): bool
     {
-        $path = ltrim(str_replace('\\', '/', $davPath), '/');
+        $path = ltrim((string) preg_replace('#/+#', '/', str_replace('\\', '/', $davPath)), '/');
 
         return str_starts_with($path, 'files/') && self::isUnder(substr($path, strlen('files/')));
     }

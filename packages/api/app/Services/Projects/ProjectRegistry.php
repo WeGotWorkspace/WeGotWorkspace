@@ -43,6 +43,19 @@ final class ProjectRegistry
         return isset($this->archived[$calendarId]);
     }
 
+    /**
+     * The `calendars.id` of every collection of an archived Project, for queries that join
+     * collections themselves (unified search).
+     *
+     * @return list<int>
+     */
+    public function archivedCalendarIds(): array
+    {
+        $this->byCalendarId();
+
+        return array_keys($this->archived);
+    }
+
     public function forget(): void
     {
         $this->byCalendarId = null;

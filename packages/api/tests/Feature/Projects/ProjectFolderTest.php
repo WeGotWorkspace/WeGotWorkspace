@@ -201,6 +201,27 @@ final class ProjectFolderTest extends WgwDatabaseTestCase
         $this->addToAssertionCount(1);
     }
 
+    public function test_doubled_slashes_do_not_get_past_the_dav_guards(): void
+    {
+        $this->createProject('bob', 't1', 'Launch');
+        $guard = app(WebdavWriteGuardPlugin::class);
+        $guard->initialize(new Server([]));
+
+        foreach (['/files/groups/t1///Launch', '/files//groups/t1/Launch', '/files/groups//t1', '/files/users///bob'] as $path) {
+            $delete = new SabreRequest('DELETE', $path);
+            $move = new SabreRequest('MOVE', $path);
+            $move->setHeader('Destination', '/files/groups/t1/Renamed');
+            foreach ([$delete, $move] as $request) {
+                try {
+                    $guard->beforeMethod($request, new SabreResponse);
+                    $this->fail($request->getMethod().' '.$path.' must be refused.');
+                } catch (Forbidden) {
+                    $this->addToAssertionCount(1);
+                }
+            }
+        }
+    }
+
     public function test_a_long_cjk_name_still_gets_a_folder(): void
     {
         $name = str_repeat('漢', 100);

@@ -7,9 +7,11 @@ namespace App\Services\Teams;
 use App\Dav\Server\AccountPrincipalFilter;
 use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
+use App\Models\TeamAdmin;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
 use App\Services\Settings\GroupDirectoryService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
@@ -57,7 +59,9 @@ final class TeamMemberDirectory
         $groupUri = $this->manageableTeamUri($viewer, $groupSlug);
         $username = $this->existingUsername($username);
         if (! $member) {
-            $this->refuseLastTeamAdmin($groupSlug, $username);
+            $this->keepingATeamAdmin($groupSlug, $username, fn () => $this->groups->setMembership($groupUri, $username, $member));
+
+            return;
         }
         $this->groups->setMembership($groupUri, $username, $member);
     }
@@ -67,8 +71,7 @@ final class TeamMemberDirectory
         $groupUri = $this->manageableTeamUri($viewer, $groupSlug);
         $username = $this->existingUsername($username);
         if (! $teamAdmin) {
-            $this->refuseLastTeamAdmin($groupSlug, $username);
-            $this->roles->dismiss($groupSlug, $username);
+            $this->keepingATeamAdmin($groupSlug, $username, fn () => $this->roles->dismiss($groupSlug, $username));
 
             return;
         }
@@ -78,12 +81,20 @@ final class TeamMemberDirectory
         $this->roles->appoint($groupSlug, $username);
     }
 
-    /** A Team that has a team admin keeps one: dismissing or removing the last is refused. */
-    private function refuseLastTeamAdmin(string $groupSlug, string $username): void
+    /**
+     * A Team that has a team admin keeps one: dismissing or removing the last is refused. The
+     * Team's admin rows are locked and read again inside the write's own transaction, so two
+     * admins dismissing or removing each other at once cannot both pass.
+     */
+    private function keepingATeamAdmin(string $groupSlug, string $username, \Closure $write): void
     {
-        if ($this->roles->teamAdminsOf($groupSlug) === [$username]) {
-            throw new ApiHttpException(409, 'A Team needs at least one team admin. Appoint another first.', 'last_team_admin');
-        }
+        DB::connection('wgw')->transaction(function () use ($groupSlug, $username, $write): void {
+            $admins = TeamAdmin::query()->where('group_slug', trim($groupSlug))->lockForUpdate()->pluck('username')->map(strval(...))->all();
+            if ($admins === [TeamMembershipReader::normalise($username)]) {
+                throw new ApiHttpException(409, 'A Team needs at least one team admin. Appoint another first.', 'last_team_admin');
+            }
+            $write();
+        });
     }
 
     /**

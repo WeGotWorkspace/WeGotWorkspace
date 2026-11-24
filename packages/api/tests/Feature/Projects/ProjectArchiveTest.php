@@ -196,6 +196,20 @@ final class ProjectArchiveTest extends WgwDatabaseTestCase
         $this->assertTrue($this->files()->fileExists('groups/t1/.project-archive/launch/plan.md'));
     }
 
+    public function test_a_half_purged_project_cannot_be_unarchived_back_to_empty(): void
+    {
+        $project = $this->createProject('bob', 't1', 'Launch');
+        $this->archive('bob', $project['id'])->assertOk();
+        ProjectResource::query()->where('project_id', $project['id'])->where('kind', ProjectKind::collections()[0]->value)->delete();
+
+        $this->asUser('bob')->postJson('/api/v1/projects/'.$project['id'].'/unarchive')
+            ->assertStatus(409)->assertJsonPath('code', 'purge_in_progress');
+
+        $this->assertNotNull(Project::query()->findOrFail($project['id'])->archived_at, 'It stays archived so the purge can finish.');
+        $this->asUser('bob')->deleteJson('/api/v1/projects/'.$project['id'])->assertOk();
+        $this->assertNull(Project::query()->find($project['id']));
+    }
+
     public function test_a_purge_that_failed_half_way_completes_on_retry(): void
     {
         $created = app(ProjectService::class)->create('bob', ['teamSlug' => 't1', 'name' => 'Launch']);

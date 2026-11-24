@@ -23,7 +23,7 @@ final class ProjectFolderRegistry
 
     public function isProjectFolderKey(string $key): bool
     {
-        $key = trim($key, '/');
+        $key = trim((string) preg_replace('#/+#', '/', $key), '/');
         if (preg_match('#^groups/[^/]+/[^/]+$#', $key) !== 1) {
             return false;
         }

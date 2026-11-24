@@ -271,7 +271,8 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
 
     private static function normalizePath(string $path): string
     {
-        return trim($path, '/');
+        // `a//b` still resolves to `a/b` in the tree, so every check sees the collapsed path.
+        return trim((string) preg_replace('#/+#', '/', $path), '/');
     }
 
     private static function isPrincipalsSubtree(string $path): bool
