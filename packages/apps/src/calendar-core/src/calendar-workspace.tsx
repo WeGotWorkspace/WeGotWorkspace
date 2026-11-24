@@ -592,9 +592,12 @@ export function CalendarWorkspace({
       }
       setEventTimesDraft(null);
       setEventPreview({ model, origin, invitation: true });
+      // List mode shows the inbox as a scrimmed drawer and no popover; clear it off the detail pane.
+      if (presentation === "list") setInvitationsOpen(false);
     },
     [
       L.untitledEvent,
+      presentation,
       closeEditor,
       data.events,
       defaultCalendarId,
@@ -713,7 +716,6 @@ export function CalendarWorkspace({
   });
   /** Wide list mode: the list header has room for the full range title. */
   const wideList = listLayout && !detailOverlay;
-  const invitationsShown = invitationsOpen;
   const listEvents = surfaceEventsForView ?? surface?.events;
   const periodDays = useMemo(
     () =>
@@ -1045,7 +1047,7 @@ export function CalendarWorkspace({
 
   const workspaceClassName = cn(
     "calendar-workspace",
-    invitationsShown && !listLayout && "calendar-workspace--panel-open",
+    invitationsOpen && !listLayout && "calendar-workspace--panel-open",
     listLayout && "calendar-workspace--list note-detail-desk",
     className,
   );
@@ -1124,7 +1126,7 @@ export function CalendarWorkspace({
       )}
       {useInvitationsDrawer ? (
         <SideDrawer
-          open={invitationsShown}
+          open={invitationsOpen}
           onClose={() => setInvitationsOpen(false)}
           title={L.invitationsSection}
           className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} calendar-invitations-panel-drawer`}
