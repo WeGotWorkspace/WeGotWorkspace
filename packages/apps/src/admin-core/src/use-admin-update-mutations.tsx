@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { downloadPlainTextLines } from "@/admin-core/src/admin-update-log-download";
+import {
+  downloadPlainTextLines,
+  openPlainTextLinesInNewWindow,
+} from "@/admin-core/src/admin-update-log-download";
 import {
   applyUpdateSuccessMessage,
   clearedUpdateProgress,
@@ -110,6 +113,22 @@ export function useAdminUpdateMutations({
     }
   };
 
+  const viewUpdateLog = async () => {
+    try {
+      const lines = (await operations?.refreshUpdateLog()) ?? updateLogLines;
+      if (lines.length === 0) {
+        showError("No update logs to view");
+        return;
+      }
+      setUpdateLogLines(lines);
+      if (!openPlainTextLinesInNewWindow(lines)) {
+        showError("Your browser blocked the new window");
+      }
+    } catch (error) {
+      showError(mutationErrorMessage(error, "Could not open the update log"));
+    }
+  };
+
   const applyUpdate = async () => {
     applyRequestPendingRef.current = true;
     try {
@@ -157,6 +176,7 @@ export function useAdminUpdateMutations({
     clearUpdateLog,
     refreshUpdateLog,
     downloadUpdateLog,
+    viewUpdateLog,
     applyUpdate,
     cancelUpdate,
   };

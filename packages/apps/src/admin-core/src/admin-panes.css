@@ -302,3 +302,10 @@
 .admin-workspace .admin-fix-link > svg {
   @apply size-4;
 }
+
+/* The update log: the recent lines as they were written, no table. */
+.admin-workspace .admin-update-log {
+  @apply m-0 whitespace-pre-wrap break-words text-xs;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
+}

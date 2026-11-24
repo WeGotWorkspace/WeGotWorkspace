@@ -44,6 +44,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
       clearUpdateLog: updates.clearUpdateLog,
       refreshUpdateLog: updates.refreshUpdateLog,
       downloadUpdateLog: updates.downloadUpdateLog,
+      viewUpdateLog: updates.viewUpdateLog,
       deleteBackup: backups.deleteBackup,
       createBackup: backups.createBackup,
       downloadBackup: backups.downloadBackup,

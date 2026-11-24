@@ -1,22 +1,18 @@
-import { useMemo, useState } from "react";
-import {
-  Check,
-  Download,
-  Eraser,
-  Loader2,
-  Package,
-  RefreshCw,
-  ScrollText,
-  Terminal,
-} from "lucide-react";
+import { useState } from "react";
+import { Check, Download, EllipsisVertical, Loader2, Package, Terminal } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { useTrackAutosave } from "@/ui/autosave-status";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
-import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
-import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
+import { IconButton } from "@/button/src/icon-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 import { Tag } from "@/tag/src/tag";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
@@ -33,9 +29,7 @@ import { buttonVariants } from "@/button/src/button";
 import {
   formatByteCount,
   formatHumanDateTime,
-  parseUpdateLogLine,
   UPDATE_PROGRESS_STEPS,
-  type UpdateLogRow,
 } from "@/admin-core/src/admin-workspace-utils";
 import type { AdminUpdateChannel } from "@/lib/models/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
@@ -110,11 +104,7 @@ export function AdminUpdatesPane({
     }
     saveChannel(channel);
   };
-  const updateLogRows = useMemo(
-    () =>
-      controller.updateLogLines.map((line, index) => parseUpdateLogLine(line, index)).slice(-25),
-    [controller.updateLogLines],
-  );
+  const updateLogLines = controller.updateLogLines.slice(-25);
 
   const activeProgressStep = UPDATE_PROGRESS_STEPS.findIndex((step) =>
     step.phases.includes(controller.updates.phase ?? ""),
@@ -179,46 +169,15 @@ export function AdminUpdatesPane({
     </div>
   );
 
-  const logColumns: DataTableColumn<UpdateLogRow>[] = useMemo(
-    () => [
-      {
-        key: "time",
-        header: "Date",
-        muted: true,
-        shrink: true,
-        render: (row) => formatHumanDateTime(row.date),
-      },
-      {
-        key: "level",
-        header: "Level",
-        muted: true,
-        shrink: true,
-        render: (row) => row.level,
-      },
-      {
-        key: "message",
-        header: "Message",
-        cellClassName: "whitespace-normal",
-        render: (row) => row.message,
-      },
-    ],
-    [],
-  );
-
   const updates = controller.updates;
   const latestVersion = updates.latest?.version ?? updates.installedVersion ?? "-";
   const checkButton = (
     <Button
-      variant="outline"
-      size="sm"
+      variant="ghost"
+      className="-ms-3"
       onClick={controller.actions.checkUpdates}
       disabled={controller.checkingUpdates || updates.inProgress}
     >
-      {controller.checkingUpdates ? (
-        <Loader2 className="size-4 mr-2 animate-spin" />
-      ) : (
-        <RefreshCw className="size-4 mr-2" />
-      )}
       {controller.checkingUpdates ? "Checking..." : "Check now"}
     </Button>
   );
@@ -274,7 +233,6 @@ export function AdminUpdatesPane({
                 ) : (
                   <Tag label={latestVersion} />
                 )}
-                {checkButton}
               </span>
             </FieldLabelRow>
             <FieldLabelRow
@@ -298,6 +256,7 @@ export function AdminUpdatesPane({
                 </SelectContent>
               </Select>
             </FieldLabelRow>
+            <div className="pt-4">{checkButton}</div>
           </>
         )}
       </WorkspacePageSection>
@@ -329,26 +288,35 @@ export function AdminUpdatesPane({
 
       <WorkspacePageSection
         title="Log"
-        icon={<ScrollText aria-hidden />}
         action={
-          <span className="admin-row-actions admin-row-actions--tight">
-            <IconActionButton
-              label="Download full log"
-              onClick={controller.actions.downloadUpdateLog}
-            >
-              <Download className="size-4" />
-            </IconActionButton>
-            <IconActionButton label="Refresh logs" onClick={controller.actions.refreshUpdateLog}>
-              <RefreshCw className="size-4" />
-            </IconActionButton>
-            <IconActionButton label="Clear logs" onClick={() => setConfirmClearLogsOpen(true)}>
-              <Eraser className="size-4" />
-            </IconActionButton>
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                type="button"
+                variant="ghost"
+                label="Log options"
+                icon={<EllipsisVertical aria-hidden />}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void controller.actions.viewUpdateLog()}>
+                View
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void controller.actions.downloadUpdateLog()}>
+                Download
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="menu-item--severity-danger menu-item--interactive"
+                onSelect={() => setConfirmClearLogsOpen(true)}
+              >
+                Clear
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       >
-        {updateLogRows.length > 0 ? (
-          <DataTable data={updateLogRows} columns={logColumns} rowKey={(row) => row.id} />
+        {updateLogLines.length > 0 ? (
+          <pre className="admin-update-log">{updateLogLines.join("\n")}</pre>
         ) : (
           <p className="workspace-page-section__lead">Nothing logged yet.</p>
         )}
