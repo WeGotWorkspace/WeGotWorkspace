@@ -30,7 +30,7 @@ export function partitionMeetChannels(
       channels: [],
       shared: [],
       meetings: [],
-      projects: collectionsInProject(items, projectIds).sort((a, b) =>
+      projects: collectionsInProject(items.filter(isProjectCollection), projectIds).sort((a, b) =>
         a.name.localeCompare(b.name),
       ),
       teamChats: partitionOwnedAndShared(

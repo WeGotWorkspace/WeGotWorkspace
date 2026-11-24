@@ -65,7 +65,9 @@ export const ShareSettings: Story = {
     await expect(screen.getByLabelText(defaultContactsLabels.addressBookNameLabel)).toHaveAttribute(
       "readonly",
     );
-    await expect(screen.queryByRole("button", { name: "Color" })).toBeNull();
+    await expect(
+      screen.getByRole("button", { name: defaultContactsLabels.addressBookColorLabel }),
+    ).toBeInTheDocument();
     await expect(screen.getByText(defaultContactsLabels.shareAddressBookTitle)).toBeInTheDocument();
     await expect(screen.queryByRole("button", { name: defaultContactsLabels.delete })).toBeNull();
   },

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
+import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsSidebarGroupRows } from "./contacts-sidebar-group-rows";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
@@ -44,7 +45,9 @@ describe("ContactsSidebarGroupRows", () => {
     );
 
     const icon = container.querySelector(".contacts-group-icon") as HTMLElement | null;
-    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("");
+    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe(
+      addressBookDotColor({ id: "default" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Friends" }));
     expect(onSelect).toHaveBeenCalledWith("group-friends");
     expect(onEdit).not.toHaveBeenCalled();

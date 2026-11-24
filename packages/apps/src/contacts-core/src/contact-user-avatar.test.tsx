@@ -1,5 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { ContactUserAvatar } from "@/contacts-core/src/contact-user-avatar";
 import type { ContactCard } from "@/lib/models/contacts-types";
 
@@ -60,12 +61,14 @@ describe("ContactUserAvatar", () => {
     cleanup();
   });
 
-  it("renders an untinted group icon for kind: group cards", () => {
+  it("renders a book-tinted group icon for kind: group cards", () => {
     const { container } = render(<ContactUserAvatar card={groupCard} size="sm" compact />);
     const icon = container.querySelector(".contacts-group-icon") as HTMLElement | null;
     expect(icon).toBeTruthy();
     expect(container.querySelector(".user-avatar")).toBeNull();
-    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe("");
+    expect(icon?.style.getPropertyValue("--collection-row-color")).toBe(
+      addressBookDotColor({ id: "group-eng" }),
+    );
   });
 
   it("keeps the user avatar for people", () => {

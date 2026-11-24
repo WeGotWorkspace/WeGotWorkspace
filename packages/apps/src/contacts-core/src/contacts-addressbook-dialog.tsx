@@ -4,6 +4,9 @@ import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
 import { Input } from "@/ui/input";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { SwatchColorPicker } from "@/ui/swatch-color-picker";
+import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
+import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import {
   AlertDialog,
@@ -18,10 +21,16 @@ import {
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import {
+  ADDRESS_BOOK_DOT_COLORS,
+  addressBookDotColor,
+} from "@/contacts-core/src/contacts-addressbook-color";
+import {
   contactsAddressBookDisplayName,
   type ContactsAddressBookDialogState,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
+import { persistAddressBookColor } from "@/contacts-core/src/contacts-view-prefs";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import "@/share-ui/share-ui.css";
 import { NO_AUTOFILL } from "@/ui/no-autofill";
 
@@ -41,6 +50,7 @@ export type ContactsAddressBookDialogLabels = Pick<
   | "addressBookSettingsTitle"
   | "personalAddressBook"
   | "addressBookNameLabel"
+  | "addressBookColorLabel"
   | "addressBookDialogDone"
   | "cancel"
   | "shareAddressBookTitle"
@@ -62,6 +72,7 @@ export function contactsAddressBookDialogLabelsFrom(
     addressBookSettingsTitle: labels.addressBookSettingsTitle,
     personalAddressBook: labels.personalAddressBook,
     addressBookNameLabel: labels.addressBookNameLabel,
+    addressBookColorLabel: labels.addressBookColorLabel,
     addressBookDialogDone: labels.addressBookDialogDone,
     cancel: labels.cancel,
     shareAddressBookTitle: labels.shareAddressBookTitle,
@@ -95,9 +106,13 @@ export function ContactsAddressBookDialog({
   contentClassName = "contacts-dialog-surface",
 }: ContactsAddressBookDialogProps) {
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const colorOverrides = useAddressBookColorOverrides();
   const open = dialog !== null;
   const showShare = Boolean(dialog?.mayShare) && Boolean(share);
   const canRemoveShared = Boolean(dialog?.isSharee) && Boolean(onRemoveShared);
+  const selectedColor = dialog
+    ? addressBookDotColor({ id: dialog.bookId }, colorOverrides)
+    : ADDRESS_BOOK_DOT_COLORS[0];
 
   return (
     <>
@@ -123,20 +138,35 @@ export function ContactsAddressBookDialog({
                 htmlFor="contacts-addressbook-name"
                 readOnly
               >
-                <Input
-                  id="contacts-addressbook-name"
-                  {...NO_AUTOFILL}
-                  value={contactsAddressBookDisplayName(
-                    {
-                      id: dialog.bookId,
-                      name: dialog.name,
-                      isSharee: dialog.isSharee,
-                      isDefault: dialog.bookId === "default",
-                    },
-                    labels.personalAddressBook,
-                  )}
-                  readOnly
-                />
+                <NameColorRow>
+                  <Input
+                    id="contacts-addressbook-name"
+                    {...NO_AUTOFILL}
+                    className={NAME_COLOR_ROW_INPUT_CLASS}
+                    value={contactsAddressBookDisplayName(
+                      {
+                        id: dialog.bookId,
+                        name: dialog.name,
+                        isSharee: dialog.isSharee,
+                        isDefault: dialog.bookId === "default",
+                      },
+                      labels.personalAddressBook,
+                    )}
+                    readOnly
+                  />
+                  <SwatchColorPicker
+                    value={selectedColor}
+                    onChange={(color) => persistAddressBookColor(dialog.bookId, color)}
+                    colorLabel={labels.addressBookColorLabel}
+                    swatches={ADDRESS_BOOK_DOT_COLORS}
+                  >
+                    <ColorSwatchTrigger
+                      color={selectedColor}
+                      label={labels.addressBookColorLabel}
+                      aria-haspopup="dialog"
+                    />
+                  </SwatchColorPicker>
+                </NameColorRow>
               </FieldLabelRow>
 
               {showShare && share ? (

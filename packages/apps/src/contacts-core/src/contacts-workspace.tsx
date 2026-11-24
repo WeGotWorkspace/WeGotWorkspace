@@ -125,6 +125,7 @@ export function ContactsWorkspace({
     removeActiveGroupTag,
     moveActiveContactToAddressBook,
     hiddenAddressBookIds,
+    toggleAddressBookVisibility,
     handleSelect,
     enterSelectionFor,
     closeMobileDetail,
@@ -369,6 +370,8 @@ export function ContactsWorkspace({
                     editLabel={L.editAddressBook}
                     viewOnlyLabel={L.viewOnly}
                     personalLabel={L.personalAddressBook}
+                    hiddenAddressBookIds={hiddenAddressBookIds}
+                    onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
                   />
@@ -382,6 +385,8 @@ export function ContactsWorkspace({
                     editLabel={L.editAddressBook}
                     viewOnlyLabel={L.viewOnly}
                     personalLabel={L.personalAddressBook}
+                    hiddenAddressBookIds={hiddenAddressBookIds}
+                    onToggleVisibility={toggleAddressBookVisibility}
                     onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
                   />

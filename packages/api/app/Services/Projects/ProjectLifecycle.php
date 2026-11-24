@@ -58,12 +58,6 @@ final class ProjectLifecycle
     public function unarchive(string $viewer, string $id): array
     {
         $project = $this->manageable($viewer, $id, 'unarchived');
-        // A collection is gone only when a purge deleted it: finish that purge, never bring the Project back empty.
-        $kinds = array_map(static fn (ProjectKind $kind): string => $kind->value, ProjectKind::collections());
-        $present = ProjectResource::query()->where('project_id', $project->id)->whereIn('kind', $kinds)->count();
-        if ($project->archived_at !== null && $present < count($kinds)) {
-            throw new ApiHttpException(409, 'A purge of this Project is half-way. Finish deleting it.', 'purge_in_progress');
-        }
         $project = $this->setArchived($project, false);
         $folder = $this->folderNodeId($project);
         if ($folder !== null) {
@@ -143,6 +137,14 @@ final class ProjectLifecycle
             $locked = Project::query()->whereKey($project->id)->lockForUpdate()->first();
             if ($locked === null) {
                 throw new ApiHttpException(404, 'Project not found.', 'not_found');
+            }
+            if (! $archived && $locked->archived_at !== null) {
+                // A collection is gone only when a purge deleted it: finish that purge, never bring the Project back empty.
+                $kinds = array_map(static fn (ProjectKind $kind): string => $kind->value, ProjectKind::collections());
+                $present = ProjectResource::query()->where('project_id', $locked->id)->whereIn('kind', $kinds)->count();
+                if ($present < count($kinds)) {
+                    throw new ApiHttpException(409, 'A purge of this Project is half-way. Finish deleting it.', 'purge_in_progress');
+                }
             }
             if (($locked->archived_at !== null) !== $archived) {
                 $locked->archived_at = $archived ? now() : null;
