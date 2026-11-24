@@ -53,7 +53,7 @@ return [
      * install defaults to the strict `shared` profile. `standard` is the default
      * on the Docker channel (also Kubernetes, which uses the image) and `off`
      * turns pacing off. Each number overrides its profile; all are clamped to
-     * 0-10000 and 0 means unpaced.
+     * 0-10000 and 0 turns pacing off for the per-minute numbers; a burst of 0 is applied as 1.
      *
      * @see docs/realtime-capacity.md
      */

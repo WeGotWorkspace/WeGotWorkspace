@@ -182,6 +182,8 @@ export class RequestGovernor {
     const turn = this.bulkQueue.then(async () => {
       for (;;) {
         throwIfAborted(signal);
+        // A rate of 0 means pacing is off: leave at once, without moving `bulkNextAt`.
+        if (this.options.bulkPerMinute <= 0) return;
         const wait = Math.max(this.bulkNextAt, this.brakeUntil) - this.options.now();
         if (wait <= 0) break;
         await this.sleepUnlessAborted(wait, signal);
@@ -252,15 +254,17 @@ export class RequestGovernor {
   /**
    * Background requests take turns, first come first served: one token each,
    * after any brake. A request that has waited `maxWaitMs` goes anyway, so
-   * under a long brake the browser still lets one probe through per
-   * `maxWaitMs` instead of freezing its polls. The wait is counted from
-   * `started`, when the request arrived, not from when it reaches the front.
+   * a long brake never freezes polls: every request goes out once its own
+   * `maxWaitMs` is up, counted from `started` (when it arrived, not when it
+   * reaches the front), so polls queued together go out together.
    * A request whose caller aborts leaves without spending a token.
    */
   private waitForTurn(signal: AbortSignal, started: number): Promise<void> {
     const turn = this.queue.then(async () => {
       for (;;) {
         throwIfAborted(signal);
+        // A rate of 0 means pacing is off: leave at once, without spending a token.
+        if (this.options.backgroundPerMinute <= 0) return;
         const now = this.options.now();
         const remaining = this.options.maxWaitMs - (now - started);
         if (remaining <= 0) break;

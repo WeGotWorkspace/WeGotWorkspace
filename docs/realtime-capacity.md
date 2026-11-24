@@ -73,7 +73,7 @@ A shared host's firewall may block an IP above about 60 requests a minute, and i
 | `standard` | 120 | 120 | 30 | Docker and Kubernetes (`WGW_INSTALL_CHANNEL=docker`) |
 | `off` | 0 | 0 | 0 | — |
 
-`WGW_TRAFFIC_PROFILE` picks the profile; `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE` and `WGW_TRAFFIC_BURST` override one number each (clamped 0–10000; `0` = unpaced). Until a browser has read the header it holds the `shared` numbers. Without a service worker (first visit, private window) the client's own pacing (pacer, idle cadence) still holds; the governor is the second line. A browser that is idle or has every tab hidden is slowed by the clients' cadence (6 s and 30 s push), not by this budget.
+`WGW_TRAFFIC_PROFILE` picks the profile; `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE` and `WGW_TRAFFIC_BURST` override one number each (clamped 0–10000; `0` turns pacing off for the two per-minute numbers, a burst of `0` is applied as `1`). Until a browser has read the header it holds the `shared` numbers. Without a service worker (first visit, private window) the client's own pacing (pacer, idle cadence) still holds; the governor is the second line. A browser that is idle or has every tab hidden is slowed by the clients' cadence (6 s and 30 s push), not by this budget.
 
 ## JMAP push (event source)
 

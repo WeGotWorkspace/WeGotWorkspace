@@ -412,6 +412,14 @@ describe("traffic budget header", () => {
     expect(now()).toBe(0);
   });
 
+  it("lets bulk requests already queued through when an answer turns pacing off", async () => {
+    const { governor, sent } = harness({
+      headers: { [TRAFFIC_BUDGET_HEADER]: "background=0; bulk=0; burst=0" },
+    });
+    await Promise.all([1, 2, 3].map(() => governor.handle(get("/files/x"), "bulk")));
+    expect(sent).toHaveLength(3);
+  });
+
   it("keeps the strict numbers when the server says nothing", async () => {
     const { governor, now } = harness();
     for (let index = 0; index < 8; index += 1) await governor.handle(get("/changes"), "background");
