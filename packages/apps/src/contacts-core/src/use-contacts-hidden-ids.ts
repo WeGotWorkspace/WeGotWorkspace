@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useHiddenCollectionIds } from "@/collection-sidebar/src/use-hidden-collection-ids";
 import { contactsHiddenAddressBooks } from "@/contacts-core/src/contacts-view-prefs";
 import { isPersonalFilter } from "@/lib/projects/project-filter";
@@ -66,9 +66,18 @@ export function useContactsHiddenIds(books: ReadonlyArray<{ id: string }>) {
         : new Set([...hiddenIds, ...projectHiddenAddressBookIds]),
     [hiddenIds, projectHiddenAddressBookIds],
   );
-  return {
-    hiddenAddressBookIds,
-    projectHiddenAddressBookIds,
-    setHiddenAddressBookIds: setHiddenIds,
-  };
+  return { hiddenAddressBookIds, setHiddenAddressBookIds: setHiddenIds };
+}
+
+/** The hidden set only narrows "all", so leave a book or group view the Project filter hides. */
+export function useLeaveProjectHiddenView(
+  view: string,
+  projectHidden: ReadonlySet<string>,
+  groupBookId: string | undefined,
+  selectView: (view: string) => void,
+): void {
+  const hiddenOpen = viewAfterProjectFilter(view, projectHidden, groupBookId) !== view;
+  useEffect(() => {
+    if (hiddenOpen) selectView("all");
+  }, [hiddenOpen, selectView]);
 }
