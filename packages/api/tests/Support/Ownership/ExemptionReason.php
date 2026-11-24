@@ -12,6 +12,12 @@ enum ExemptionReason: string
     /** Acts on other users, groups, or the instance by design; the role gate is covered by RoleAccessMatrixTest. */
     case AdminTarget = 'admin-target';
 
+    /**
+     * Acts on a Team's members or Projects by design: reads need membership of the Team, writes the
+     * team-admin role for it. Covered by TeamAdminMemberWritesTest and ProjectAccessTest.
+     */
+    case TeamRole = 'team-role';
+
     /** Authorized by a capability token; covered by the public scopes instead of the ownership columns. */
     case PublicToken = 'public-token';
 

@@ -14,6 +14,7 @@ use App\Services\Calendars\CalDavCollections;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Database\Eloquent\Builder;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
@@ -159,9 +160,10 @@ final class CalDavCollectionsTest extends WgwDatabaseTestCase
         $this->assertSame('principals/bob', $this->collections->ownerScopePrincipalUri('bob', null));
     }
 
-    public function test_owner_scope_for_a_member_is_the_provisioned_group(): void
+    public function test_owner_scope_for_a_team_admin_is_the_provisioned_group(): void
     {
         $this->bobJoins('team');
+        app(TeamRoles::class)->appoint('team', 'bob');
 
         $this->assertSame(AdminConstants::GROUP_PREFIX.'team', $this->collections->ownerScopePrincipalUri('bob', 'team'));
         $this->assertSame(1, CalendarInstance::query()

@@ -1,4 +1,4 @@
-import { CalendarDays, Hash } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
 import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
 import type { ChatAuthorPresenceMap } from "@/lib/models/chat-types";
@@ -10,17 +10,22 @@ import {
 } from "@/meet-core/src/meet-calendar-meeting";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetDirectMessagePerson } from "@/lib/meetings/meet-direct-messages";
+import { MeetChannelKindIcon } from "@/meet-core/src/meet-channel-kind-icon";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import type { MeetChannel } from "@/lib/models/meet-types";
+import { meetChannelText } from "@/meet-core/src/meet-channel-label";
 
 function channelDotColor(channel: MeetChannel): string {
   return channel.color?.trim() || DEFAULT_MEET_CHANNEL_COLOR;
 }
 
-/** Sidebar label. The hash mark is an icon, so the name stays the lowercased channel text. */
+/** Sidebar label. The hash mark is an icon; Project and Team channels keep their casing. */
 function sidebarChannelLabel(channel: MeetChannel): string {
-  if (channel.kind === "meeting") return channel.name;
-  return channel.name.toLowerCase();
+  return meetChannelText(channel);
+}
+
+function teamSuffix(teamName: string | null | undefined): string {
+  return teamName ? ` · ${teamName}` : "";
 }
 
 export function MeetSidebarRowMeta({
@@ -135,7 +140,10 @@ export function MeetSidebarRows({
   channelHasLiveCall,
   channelCallAudioOnly,
   startLabelForChannel,
+  teamNameOf,
 }: {
+  /** Team chats: the Team's name to show next to a chat, or null. */
+  teamNameOf?: (channel: MeetChannel) => string | null;
   channels: MeetChannel[];
   selectedId: string | null;
   onSelect: (channelId: string) => void;
@@ -150,15 +158,14 @@ export function MeetSidebarRows({
         return (
           <CollectionSidebarRow
             key={channel.id}
-            name={sidebarChannelLabel(channel)}
+            name={sidebarChannelLabel(channel) + teamSuffix(teamNameOf?.(channel))}
             color={channelDotColor(channel)}
             selected={selectedId === channel.id}
             leading={
-              channel.kind === "meeting" ? (
-                <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
-              ) : (
-                <Hash className="meet-workspace__sidebar-kind-icon" aria-hidden />
-              )
+              <MeetChannelKindIcon
+                channel={channel}
+                className="meet-workspace__sidebar-kind-icon"
+              />
             }
             onSelect={() => onSelect(channel.id)}
             trailing={

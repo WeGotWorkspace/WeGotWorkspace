@@ -1,9 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  CALENDAR_BACKGROUND_POLL_MS,
-  CALENDAR_PUSH_POLL_MS,
-} from "@/calendar-core/src/calendar-refresh";
+import { CALENDAR_BACKGROUND_POLL_MS } from "@/calendar-core/src/calendar-refresh";
 import { useCalendarLiveInbound } from "@/calendar-core/src/use-calendar-live-inbound";
 import { JmapClient, JmapEventsAdapter, type JmapCalendarEvent } from "@/lib/jmap-client";
 import type { JmapInvocation } from "@/lib/jmap-client/core/types";
@@ -176,23 +173,26 @@ describe("useCalendarLiveInbound", () => {
     expect(methods).toEqual([]);
   });
 
-  it("polls every 10 s without push and every 60 s while push is connected", async () => {
+  it("polls every 10 s only while push is not healthy", async () => {
     const { adapter } = await liveAdapter(server);
     const startPolling = vi.spyOn(adapter, "startPolling");
     const stopPolling = vi.spyOn(adapter, "stopPolling");
     const { unmount } = renderHook(() => useCalendarLiveInbound(adapter, null, noRepaint));
     expect(startPolling).toHaveBeenLastCalledWith(CALENDAR_BACKGROUND_POLL_MS);
+    const started = startPolling.mock.calls.length;
 
     act(() => {
       hub.connected = true;
       for (const listener of hub.statusListeners) listener();
     });
-    expect(startPolling).toHaveBeenLastCalledWith(CALENDAR_PUSH_POLL_MS);
+    expect(stopPolling).toHaveBeenCalled();
+    expect(startPolling).toHaveBeenCalledTimes(started);
 
     act(() => {
       hub.connected = false;
       for (const listener of hub.statusListeners) listener();
     });
+    expect(startPolling).toHaveBeenCalledTimes(started + 1);
     expect(startPolling).toHaveBeenLastCalledWith(CALENDAR_BACKGROUND_POLL_MS);
 
     unmount();

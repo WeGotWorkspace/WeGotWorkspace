@@ -1,4 +1,5 @@
 import { preferredCollectionName } from "@/lib/default-collection-prefs";
+import { projectCreateNotebook } from "@/notes-core/src/notes-project-scope";
 import { parseGroupNotebookPath } from "@/notes-core/src/notes-note-utils";
 import { findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
@@ -12,11 +13,26 @@ export type NotesCreateTarget = {
   groupSlug?: string;
 };
 
-/** Resolve notebook (+ optional group scope) for a new note from the active view. */
+function targetOfCollection(collection: NotesNotebookCollection): NotesCreateTarget {
+  const groupSlug = collection.scope === "group" ? collection.groupSlug?.trim() : undefined;
+  return {
+    notebook: collection.name,
+    notebookId: collection.id,
+    ...(groupSlug ? { scope: "group" as const, groupSlug } : {}),
+  };
+}
+
+/**
+ * Resolve notebook (+ optional group scope) for a new note from the active view.
+ * Outside a notebook view, the selected Project's notebook wins over the default
+ * (#818). `projectNotebooks` are the notebooks the Project or Team filter shows
+ * ({@link useNotesProjectScope}); null when no Project is selected.
+ */
 export function resolveNotesCreateTarget(
   view: string,
   personalNotebooks: string[],
   notebookCollections: readonly NotesNotebookCollection[] = [],
+  projectNotebooks: readonly NotesNotebookCollection[] | null = null,
 ): NotesCreateTarget {
   if (view.startsWith("shared-nb:")) {
     const parsed = parseGroupNotebookPath(view.slice("shared-nb:".length));
@@ -29,16 +45,11 @@ export function resolveNotesCreateTarget(
     // a move builds `nb:${id || name}`, and the workspace still matches `nb:${name}`.
     const key = view.slice(3);
     const collection = findNotebookCollection(notebookCollections, key);
-    if (collection) {
-      const groupSlug = collection.scope === "group" ? collection.groupSlug?.trim() : undefined;
-      return {
-        notebook: collection.name,
-        notebookId: collection.id,
-        ...(groupSlug ? { scope: "group" as const, groupSlug } : {}),
-      };
-    }
+    if (collection) return targetOfCollection(collection);
     return { notebook: key };
   }
+  const projectNotebook = projectCreateNotebook(projectNotebooks);
+  if (projectNotebook) return targetOfCollection(projectNotebook);
   return {
     notebook:
       preferredCollectionName("notes", personalNotebooks) ?? personalNotebooks[0] ?? "Drafts",

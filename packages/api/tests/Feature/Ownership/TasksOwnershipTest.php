@@ -114,9 +114,9 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
                 );
             }
 
-            foreach ([Scope::OwnUser, Scope::OwnGroup] as $scope) {
-                $cases[] = OwnershipCase::of('POST /tasks/tasklists', $actor, $scope, Outcome::Allowed);
-            }
+            $cases[] = OwnershipCase::of('POST /tasks/tasklists', $actor, Scope::OwnUser, Outcome::Allowed);
+            // Adding a list to a Team is for its team admins (#2278); neither actor is one in crew.
+            $cases[] = OwnershipCase::of('POST /tasks/tasklists', $actor, Scope::OwnGroup, Outcome::Forbidden)->withCode('team_admin_only');
             // The membership check answers 403 for every slug the caller is not
             // in, existing or not, so it reveals nothing (see unknown-group).
             foreach ([Scope::OtherGroup, Scope::FormerGroup] as $scope) {
@@ -182,8 +182,9 @@ final class TasksOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
         if ($sharee) {
             return OwnershipCase::of($op, $actor, $scope, Outcome::Dismissed);
         }
-        if ($scope === Scope::OwnGroup && $actor === Actor::Member) {
-            return OwnershipCase::of($op, $actor, $scope, Outcome::Forbidden)->withCode('group_delete_admin_only');
+        // Deleting a Team list is for its team admins (#2278): not a plain member, not an organization admin.
+        if ($scope === Scope::OwnGroup) {
+            return OwnershipCase::of($op, $actor, $scope, Outcome::Forbidden)->withCode('team_admin_only');
         }
 
         return OwnershipCase::of($op, $actor, $scope, Outcome::Allowed);

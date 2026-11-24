@@ -216,7 +216,7 @@ describe("DocsHomePane shared indicator", () => {
 
     const row = screen.getByText(FILE.title).closest("tr")!;
     expect(
-      row.querySelector('.drive-shared-indicator[aria-label="Shared with team"]'),
+      row.querySelector('.drive-shared-indicator[aria-label="Shared with Team"]'),
     ).toBeTruthy();
   });
 

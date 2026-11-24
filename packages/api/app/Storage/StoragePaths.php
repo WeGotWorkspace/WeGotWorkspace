@@ -90,6 +90,11 @@ final class StoragePaths
             return true;
         }
 
+        // Archived Project folders are server-owned (#819): no client reaches them.
+        if (ProjectArchivePaths::isUnder($normalized)) {
+            return false;
+        }
+
         $segments = explode('/', ltrim($normalized, '/'));
         $first = $segments[0];
         if ($first === 'users') {

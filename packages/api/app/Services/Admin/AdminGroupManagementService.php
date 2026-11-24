@@ -16,8 +16,11 @@ use App\Services\Contacts\AddressBookShareInvites;
 use App\Services\Drive\DriveShareRevoker;
 use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
+use App\Services\Projects\DefaultProjectProvisioner;
+use App\Services\Projects\ProjectTeamTeardown;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Teams\TeamMembershipReader;
+use App\Services\Teams\TeamRoles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -33,6 +36,8 @@ final class AdminGroupManagementService
         private AddressBookShareInvites $addressBookShares,
         private GroupFilesHomeProvisioner $groupFiles,
         private DriveShareRevoker $driveShares,
+        private DefaultProjectProvisioner $defaultProjects,
+        private ProjectTeamTeardown $projects,
     ) {}
 
     public function create(string $slug, string $displayName): string
@@ -60,6 +65,8 @@ final class AdminGroupManagementService
         // groups that predate the feature or were seeded outside this service.
         $this->chatDefaults->ensureForGroupSlugs([$slug]);
         $this->addressBooks->ensureForGroupPrincipal($uri, $name);
+        // The Team's calendar, task list and notebook plus a new channel: "{Team name} Project" (#817).
+        $this->defaultProjects->ensureForTeams([$slug]);
 
         return $uri;
     }
@@ -86,7 +93,8 @@ final class AdminGroupManagementService
         }
     }
 
-    public function delete(string $groupSlug): void
+    /** Returns how many Projects went with the Team (#819). */
+    public function delete(string $groupSlug): int
     {
         $uri = $this->groupUriFromSlug($groupSlug);
         $principal = Principal::query()->where('uri', $uri)->first();
@@ -101,7 +109,8 @@ final class AdminGroupManagementService
 
         // Shares on the group's folder are revoked with the group, and grants to the group are
         // removed, so a later group with the same slug starts without them, whoever joins it.
-        DB::connection('wgw')->transaction(function () use ($principal, $slug): void {
+        $projects = 0;
+        DB::connection('wgw')->transaction(function () use ($principal, $slug, &$projects): void {
             GroupMember::query()
                 ->where('principal_id', $principal->id)
                 ->orWhere('member_id', $principal->id)
@@ -109,6 +118,10 @@ final class AdminGroupManagementService
             app(TeamMembershipReader::class)->forget();
 
             $principal->delete();
+            app(TeamRoles::class)->removeTeam($slug);
+            // Every Project of the Team, live or archived. Its collections went with the
+            // Team's DAV collections above; its folder goes with the Team's files below.
+            $projects = $this->projects->removeTeam($slug);
 
             $this->driveShares->revokeAllUnderPath('/groups/'.$slug);
             $this->driveShares->removeGrantsToGroup($slug);
@@ -118,6 +131,8 @@ final class AdminGroupManagementService
         if (is_dir($groupFiles)) {
             $this->deleteDirectory($groupFiles);
         }
+
+        return $projects;
     }
 
     public function normalizeSlug(string $raw): string

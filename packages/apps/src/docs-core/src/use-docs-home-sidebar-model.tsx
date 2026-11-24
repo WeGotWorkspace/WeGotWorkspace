@@ -6,12 +6,20 @@ import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsHomeDrive } from "@/docs-core/src/docs-home-drives";
 import type { DocsHomeView } from "@/docs-core/src/docs-home-shared";
+import { docsProjectPathPrefix } from "@/docs-core/src/use-docs-project-scope";
+import { projectsWithFolder } from "@/drive-core/src/drive-project-folder";
+import { ProjectMark } from "@/projects-ui/src/project-mark";
+import type { WorkspaceProject } from "@/lib/projects/projects-store";
 
 type UseDocsHomeSidebarModelArgs = {
   labels: DocsUILabels;
   drives: DocsHomeDrive[];
   view: DocsHomeView;
   selectView: (view: DocsHomeView) => void;
+  /** The suite's Projects; those with a Drive folder get their own section. */
+  projects?: readonly WorkspaceProject[];
+  /** The Project ids the filter keeps; null for "All Teams". */
+  selectedProjectIds?: readonly string[] | null;
 };
 
 export function useDocsHomeSidebarModel({
@@ -19,6 +27,8 @@ export function useDocsHomeSidebarModel({
   drives,
   view,
   selectView,
+  projects = [],
+  selectedProjectIds = null,
 }: UseDocsHomeSidebarModelArgs) {
   const primaryItems = useMemo<MenuItemProps[]>(() => {
     const byId = {
@@ -67,16 +77,46 @@ export function useDocsHomeSidebarModel({
     view.type,
   ]);
 
-  const driveItems = useMemo<MenuItemProps[]>(
+  const projectEntries = useMemo(
     () =>
-      drives.map((drive) => ({
-        label: drive.label,
-        icon: <HardDrive className="size-3.5" />,
-        selected: view.type === "drive" && view.pathPrefix === drive.pathPrefix,
-        onClick: () => selectView({ type: "drive", pathPrefix: drive.pathPrefix }),
-      })),
-    [drives, selectView, view],
+      projectsWithFolder(projects)
+        .filter((project) => !selectedProjectIds || selectedProjectIds.includes(project.id))
+        .flatMap((project) => {
+          const prefix = docsProjectPathPrefix(project);
+          return prefix ? [{ project, prefix }] : [];
+        }),
+    [projects, selectedProjectIds],
   );
 
-  return { primaryItems, driveItems };
+  // A Project folder lives inside its Team drive, which lists only its root: no duplicates.
+  const driveItems = useMemo<MenuItemProps[]>(
+    () =>
+      drives
+        .filter(
+          (drive) =>
+            !projectEntries.some(
+              ({ prefix }) => drive.pathPrefix?.toLowerCase() === prefix.toLowerCase(),
+            ),
+        )
+        .map((drive) => ({
+          label: drive.label,
+          icon: <HardDrive className="size-3.5" />,
+          selected: view.type === "drive" && view.pathPrefix === drive.pathPrefix,
+          onClick: () => selectView({ type: "drive", pathPrefix: drive.pathPrefix }),
+        })),
+    [drives, projectEntries, selectView, view],
+  );
+
+  const projectItems = useMemo<MenuItemProps[]>(
+    () =>
+      projectEntries.map(({ project, prefix }) => ({
+        label: project.name,
+        icon: <ProjectMark color={project.color} />,
+        selected: view.type === "drive" && view.pathPrefix?.toLowerCase() === prefix.toLowerCase(),
+        onClick: () => selectView({ type: "drive", pathPrefix: prefix }),
+      })),
+    [projectEntries, selectView, view],
+  );
+
+  return { primaryItems, driveItems, projectItems };
 }

@@ -199,7 +199,7 @@ async function quickAdd(tab: Tab, title: string) {
 
 function sidebarList(tab: Tab, name: string) {
   return tab
-    .getByRole("region", { name: /My lists|Shared with me/ })
+    .getByRole("region", { name: /Lists|Shared with me/ })
     .getByRole("listitem")
     .filter({ has: tab.getByRole("button", { name, exact: true }) });
 }

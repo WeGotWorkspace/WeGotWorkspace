@@ -269,6 +269,7 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
     public function test_subscribe_to_a_team_directory_exposes_the_calendar_to_group_members(): void
     {
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $this->appointTeamAdmin('team', 'bob');
         $bob = Principal::forUsername('bob');
         $carol = Principal::forUsername('carol');
         $this->assertNotNull($bob);
@@ -391,7 +392,9 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         }
 
         $this->assertSame(0, CalendarSubscription::query()->count());
-        $this->assertNotNull(
+        // Only a team admin can add a Team subscription (#2278), and a team admin may also
+        // delete the calendar, so the clean-up no longer leaves a Team calendar behind.
+        $this->assertNull(
             CalendarInstance::query()
                 ->where('principaluri', 'principals/groups/team')
                 ->where('displayname', 'Too Long Feed')
@@ -497,6 +500,7 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
     private function seedTeamWithBob(): void
     {
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $this->appointTeamAdmin('team', 'bob');
         $bob = Principal::forUsername('bob');
         $this->assertNotNull($bob);
         $this->addPrincipalToGroup($team, $bob);

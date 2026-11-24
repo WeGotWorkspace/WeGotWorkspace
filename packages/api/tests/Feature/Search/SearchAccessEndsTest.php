@@ -136,6 +136,53 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
         }
     }
 
+    #[DataProvider('projectSources')]
+    public function test_an_archived_projects_items_leave_results_and_content(string $source): void
+    {
+        $marker = 'zqarchive'.$source;
+        $this->seedSharedTeam(self::GROUP, self::OWNER);
+        $this->appointTeamAdmin(self::GROUP, self::OWNER);
+        $project = (array) $this->as(self::OWNER, 'POST', '/projects', ['teamSlug' => self::GROUP, 'name' => $marker])->assertCreated()->json();
+        $resources = (array) $project['resources'];
+        match ($source) {
+            'note' => $this->as(self::OWNER, 'POST', '/notes/items', ['notebookId' => (string) $resources['notebookId'], 'title' => $marker.' note', 'body' => $marker.' note body'])->assertCreated(),
+            'task' => $this->as(self::OWNER, 'POST', '/tasks/items', ['taskListIds' => [(string) $resources['taskListId'] => true], 'title' => $marker.' task'])->assertCreated(),
+            default => $this->jmap(self::OWNER, JmapCapabilities::CALENDARS, [
+                ['CalendarEvent/set', ['accountId' => self::OWNER, 'create' => ['e' => [
+                    'calendarIds' => [(string) $resources['calendarId'] => true],
+                    'title' => $marker.' event',
+                    'start' => gmdate('Y-m-d\TH:i:s\Z', strtotime('+2 days 14:00 UTC')),
+                    'end' => gmdate('Y-m-d\TH:i:s\Z', strtotime('+2 days 15:00 UTC')),
+                ]]], 'c0'],
+            ]),
+        };
+        $this->reindex();
+        $before = $this->hits(self::SHAREE, $marker);
+        $this->assertNotSame([], $before, 'A member finds the Project item while it is live.');
+
+        $this->as(self::OWNER, 'POST', '/projects/'.$project['id'].'/archive')->assertOk();
+
+        $this->assertSame([], $this->hits(self::SHAREE, $marker));
+        $this->assertSame([], $this->hits(self::OWNER, $marker));
+        // The download endpoint serves CalDAV and CardDAV rows only.
+        foreach (array_filter($before, static fn (array $hit): bool => $hit['sourceType'] === 'caldav') as $hit) {
+            $this->as(self::SHAREE, 'GET', '/search/results/lookup/content?'.http_build_query([
+                'source_type' => $hit['sourceType'],
+                'source_key' => $hit['sourceKey'],
+            ]))->assertNotFound();
+        }
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    public static function projectSources(): iterable
+    {
+        foreach (['note', 'task', 'event'] as $source) {
+            yield $source => [$source];
+        }
+    }
+
     #[DataProvider('groupShareableSources')]
     public function test_a_revoked_group_share_leaves_every_members_results(string $source): void
     {
@@ -254,6 +301,10 @@ final class SearchAccessEndsTest extends WgwDatabaseTestCase
     {
         $creator ??= self::OWNER;
         $groupPayload = $group === null ? [] : ['groupSlug' => $group];
+        if ($group !== null) {
+            // Adding a collection to a Team is for its team admins (#2278).
+            $this->appointTeamAdmin($group, $creator);
+        }
 
         switch ($source) {
             case 'note':

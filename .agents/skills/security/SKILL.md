@@ -25,6 +25,8 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Is the body streamed with a cap, or buffered fully and then rejected? An application cap does not undo a SAPI buffer (`enable_post_data_reading`, `post_max_size`).
 - Which hosts does `filter_var` or the allowlist still accept? Parse IP literals with `inet_pton`, including expanded IPv4-mapped IPv6. A regex of one or two spellings leaves the others for `filter_var` to treat as "already an IP, so allowed."
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
+- Can a caller use a limit to lock someone else out? A per-user cap across addresses stops a spray, but it also lets anyone block a named account with wrong passwords. Exempt the addresses that user completed a sign-in from (after the last factor, not after the password alone), and test that the owner still gets in.
+- Does a new route group answer cross-origin requests? Without `config/cors.php`, Laravel allows `*` with every header on `api/*`. The REST API is same-origin only; open CORS belongs on the MCP paths alone.
 - Is there a test that tries the bypass, not only the happy path?
 - When a caller may create only one kind of row, do updates and revokes select that same kind? Checking the request and then writing the newest row lets a guest or public share be changed through a member-only tool.
 - Does a hash or allowlist in a response header come from the bytes the client receives? A build artifact a later step replaces is a different document.

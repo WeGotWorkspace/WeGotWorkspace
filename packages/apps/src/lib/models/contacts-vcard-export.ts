@@ -197,6 +197,23 @@ export function vcardFilename(displayName: string): string {
   return `${safe}.vcf`;
 }
 
+/** Trigger a browser download of `.vcf` text under `filename`. */
+export function saveVcfText(vcfText: string, filename: string): void {
+  const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Build a vCard blob and trigger a browser download for the given contact card. */
 export function downloadContactVCard(card: ContactCard): void {
   const vcardText = contactCardToVCard(card);

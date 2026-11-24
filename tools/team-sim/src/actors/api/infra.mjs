@@ -2,11 +2,15 @@ import { slugify } from "../../client/ids.mjs";
 import { davUrl, projectFolder } from "./paths.mjs";
 
 /**
- * Creates one piece of standing structure as its owner (the project's PM).
+ * Creates one piece of standing structure as its owner (the project's PM),
+ * who is made team admin of the Team it belongs to.
  * Team channels already exist: creating a Team provisions its default
  * channel, so the reconciler only looks it up.
  */
-export function createInfra({ world, client, origin }) {
+export function createInfra({ world, client, origin, admin }) {
+  // Adding a channel or a task list to a Team is for its team admins, so the
+  // organization admin appoints the owner first. Appointing twice is a no-op.
+  const appointOwner = (item) => admin.put(`/api/v1/teams/${item.scope}/admins/${item.owner}`, {});
   return async function infraCreate(item) {
     const owner = client(item.owner);
     if (item.type === "channel" && item.key.startsWith("channel:team:")) {
@@ -16,6 +20,7 @@ export function createInfra({ world, client, origin }) {
       return { channelId: ch.id };
     }
     if (item.type === "channel") {
+      await appointOwner(item);
       const res = await owner.request("POST", "/api/v1/chat/channels", { json: { name: slugify(item.name), kind: "channel", groupSlug: item.scope } });
       if (res.ok) return { channelId: res.json.id };
       const { list } = await owner.get("/api/v1/chat/channels");
@@ -27,6 +32,7 @@ export function createInfra({ world, client, origin }) {
       const { list } = await owner.get("/api/v1/tasks/tasklists");
       const found = list.find((l) => l.name === item.name);
       if (found) return { listId: found.id };
+      await appointOwner(item);
       const created = await owner.post("/api/v1/tasks/tasklists", { name: item.name, groupSlug: item.scope });
       return { listId: created.id };
     }

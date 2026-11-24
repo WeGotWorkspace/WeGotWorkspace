@@ -6,8 +6,8 @@ import { workspaceLabels } from "@/lib/workspace/workspace-labels";
  * Tasks, Notes, Meet, Contacts). App label modules reference these instead of copying them.
  */
 export const sharePrincipalCopy = {
-  addPlaceholder: "Add people or teams…",
-  sectionHint: "Grant read or read-and-write access to people or teams.",
+  addPlaceholder: "Add people or Teams…",
+  sectionHint: "Grant read or read-and-write access to people or Teams.",
   removeConfirm: (item: string) =>
     `This person or team will lose access to this ${item}. Continue?`,
 } as const;
@@ -16,7 +16,7 @@ export const sharePrincipalCopy = {
 export const noTeamYetCopy = "You're not in a Team yet. Ask your admin to add you.";
 
 /** A people-and-Teams picker whose search matched nothing. */
-export const noPeopleOrTeamsFoundCopy = "No people or teams found";
+export const noPeopleOrTeamsFoundCopy = "No people or Teams found";
 
 export const shareLabels = {
   publicSectionTitle: "Public link",
@@ -31,7 +31,7 @@ export const shareLabels = {
   publicLevelAddFiles: "Can add files",
   publicDisabledHint: "Public access is off. Turn it on to share a link.",
   teamSectionTitle: workspaceLabels.sharing.teamAccess,
-  teamSectionHint: "Grant access to a whole team, or pick individual teammates.",
+  teamSectionHint: "Grant access to a whole Team, or pick individual teammates.",
   guestSectionTitle: "Invite guests by email",
   guestSectionHint: "Each guest gets their own permission — invite once, control per person.",
   copyLink: workspaceLabels.sharing.copyLink,

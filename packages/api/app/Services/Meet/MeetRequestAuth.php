@@ -93,6 +93,7 @@ final class MeetRequestAuth
 
             return null;
         }
+        $this->limiter->rememberAddress($username, $clientIp);
 
         return $username;
     }

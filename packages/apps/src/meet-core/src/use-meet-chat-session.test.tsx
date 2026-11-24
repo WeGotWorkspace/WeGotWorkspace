@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatMessage, MeetChatOperations } from "@/lib/models/meet-types";
 import { useMeetChatSession } from "@/meet-core/src/use-meet-chat-session";
@@ -89,5 +89,81 @@ describe("useMeetChatSession sendChannel", () => {
     expect(send.echoId).toBeNull();
     expect(await send.saved).toBeNull();
     expect(sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("useMeetChatSession deleteMessage", () => {
+  it("deletes a message that never reached the server at once, without the Undo hold", async () => {
+    const deleteMessage = vi.fn(async () => undefined);
+    const queued: ChatMessage = {
+      ...savedRow("queued-1", "chat-general", "later"),
+      syncState: "pending",
+      sendQueued: true,
+    };
+    const initialMessages = [queued];
+    const { result } = renderHook(() =>
+      useMeetChatSession({
+        initialMessages,
+        operations: { deleteMessage },
+        selectedChannelId: "chat-general",
+        author: { id: "alice", displayName: "Alice" },
+        directory: [],
+      }),
+    );
+
+    act(() => result.current.deleteMessage("queued-1"));
+
+    expect(deleteMessage).toHaveBeenCalledWith("queued-1");
+    expect(result.current.messages[0]?.deletedAt).toBeTruthy();
+  });
+
+  function renderWith(row: ChatMessage, deleteMessage: MeetChatOperations["deleteMessage"]) {
+    const initialMessages = [row];
+    return renderHook(() =>
+      useMeetChatSession({
+        initialMessages,
+        operations: { deleteMessage },
+        selectedChannelId: "chat-general",
+        author: { id: "alice", displayName: "Alice" },
+        directory: [],
+      }),
+    );
+  }
+
+  it("puts the row back when the immediate delete fails", async () => {
+    const deleteMessage = vi.fn(async () => {
+      throw new Error("boom");
+    });
+    const { result } = renderWith(
+      { ...savedRow("queued-2", "chat-general", "later"), syncState: "pending", sendQueued: true },
+      deleteMessage,
+    );
+
+    await act(async () => result.current.deleteMessage("queued-2"));
+
+    expect(deleteMessage).toHaveBeenCalled();
+    expect(result.current.messages[0]?.deletedAt).toBeUndefined();
+    expect(result.current.messages[0]?.body).toBe("later");
+  });
+
+  it("holds the delete of a saved message that only has a pending edit", () => {
+    vi.useFakeTimers();
+    try {
+      const deleteMessage = vi.fn(async () => undefined);
+      const { result } = renderWith(
+        { ...savedRow("saved-1", "chat-general", "edited"), syncState: "pending" },
+        deleteMessage,
+      );
+
+      act(() => result.current.deleteMessage("saved-1"));
+      expect(deleteMessage).not.toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(10_500);
+      });
+      expect(deleteMessage).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

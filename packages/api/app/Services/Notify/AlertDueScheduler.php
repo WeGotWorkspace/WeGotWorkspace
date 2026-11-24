@@ -77,6 +77,7 @@ final class AlertDueScheduler
             $navigate = $domain === 'tasks' ? '/tasks' : '/calendar';
             $uid = (string) $object->uid;
             $summary = $this->summary($parsed);
+            $projectId = app(NotificationProjects::class)->forCollection((int) $object->calendarid);
 
             foreach ($parsed->select('VEVENT') as $vevent) {
                 if (! $vevent instanceof VEvent) {
@@ -89,6 +90,7 @@ final class AlertDueScheduler
                     $uid,
                     $navigate,
                     $summary,
+                    $projectId,
                     $windowStart,
                     $windowEnd,
                     $now,
@@ -105,6 +107,7 @@ final class AlertDueScheduler
                     $uid,
                     $navigate,
                     $summary,
+                    $projectId,
                     $windowStart,
                     $windowEnd,
                     $now,
@@ -154,6 +157,7 @@ final class AlertDueScheduler
         string $uid,
         string $navigate,
         string $summary,
+        ?string $projectId,
         DateTimeImmutable $windowStart,
         DateTimeImmutable $windowEnd,
         DateTimeImmutable $now,
@@ -203,6 +207,7 @@ final class AlertDueScheduler
                         ...$copy,
                         'dedupe_key' => $dedupe,
                         'trigger' => $parsed,
+                        'projectId' => $projectId,
                     ],
                     eventId: $dedupe,
                 );

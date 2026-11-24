@@ -102,10 +102,7 @@ test("an ICS file imports into a new list and reaches a second tab", async ({ br
     await setTabOffline(a, false);
 
     // The same file again, from the list in view: nothing new, each task named.
-    await a
-      .getByRole("region", { name: "My lists" })
-      .getByRole("button", { name: listName })
-      .click();
+    await a.getByRole("region", { name: "Lists" }).getByRole("button", { name: listName }).click();
     await expect(a.getByRole("heading", { level: 2, name: listName })).toBeVisible();
     await chooseFile(a, file);
     await expect(

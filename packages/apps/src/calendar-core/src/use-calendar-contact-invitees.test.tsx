@@ -12,7 +12,10 @@ import {
   readContactsBootstrapFromCache,
   readContactsColdDownload,
 } from "@/lib/offline/contacts/contacts-offline-store";
-import { refreshCachedContacts } from "@/lib/offline/contacts/contacts-hybrid-operations";
+import {
+  ensureContactsDownloaded,
+  refreshCachedContacts,
+} from "@/lib/offline/contacts/contacts-hybrid-operations";
 import { listCards } from "@/lib/api/wgw/contacts";
 import { TooltipProvider } from "@/ui/tooltip";
 import { useContactsLiveInbound } from "@/lib/offline/contacts/use-contacts-live-inbound";
@@ -23,6 +26,7 @@ vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
 }));
 
 vi.mock("@/lib/offline/contacts/contacts-hybrid-operations", () => ({
+  ensureContactsDownloaded: vi.fn(),
   refreshCachedContacts: vi.fn(),
 }));
 
@@ -34,6 +38,7 @@ vi.mock("@/hooks/use-connectivity", () => ({
   useConnectivity: () => ({ online: true }),
 }));
 
+// Calendar must never download the address book itself: every test proves it is not called.
 vi.mock("@/lib/api/wgw/contacts", () => ({
   listCards: vi.fn(),
 }));
@@ -70,6 +75,8 @@ const liveJane = {
 describe("refreshCalendarContactCards", () => {
   beforeEach(() => {
     vi.mocked(readContactsBootstrapFromCache).mockReset();
+    vi.mocked(readContactsColdDownload).mockReset().mockResolvedValue(null);
+    vi.mocked(ensureContactsDownloaded).mockReset().mockResolvedValue(undefined);
     vi.mocked(listCards).mockReset();
   });
 
@@ -78,19 +85,40 @@ describe("refreshCalendarContactCards", () => {
       createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
     );
     await expect(refreshCalendarContactCards("alice")).resolves.toEqual([cachedJane]);
+    expect(ensureContactsDownloaded).not.toHaveBeenCalled();
     expect(listCards).not.toHaveBeenCalled();
   });
 
-  it("asks the server only without any cache", async () => {
-    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
-    vi.mocked(listCards).mockResolvedValue([liveJane]);
+  it("a search without any cache starts the shared Contacts download, never listCards", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValueOnce(null);
+    // The shared download fills the cache once for every app.
+    vi.mocked(ensureContactsDownloaded).mockImplementation(async () => {
+      vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+        createContactsAppBootstrap({ data: { addressBooks: [], cards: [liveJane] } }),
+      );
+    });
+
     await expect(refreshCalendarContactCards("alice")).resolves.toEqual([liveJane]);
+    expect(ensureContactsDownloaded).toHaveBeenCalledTimes(1);
+    expect(listCards).not.toHaveBeenCalled();
   });
 
-  it("returns null when live listCards throws", async () => {
+  it("an unfinished first download is joined, not restarted or doubled", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+      createContactsAppBootstrap({ data: { addressBooks: [], cards: [cachedJane] } }),
+    );
+    vi.mocked(readContactsColdDownload).mockResolvedValue({ remainingCardIds: ["x"] } as never);
+
+    await expect(refreshCalendarContactCards("alice")).resolves.toEqual([cachedJane]);
+    expect(ensureContactsDownloaded).toHaveBeenCalledTimes(1);
+    expect(listCards).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the shared download fails", async () => {
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
-    vi.mocked(listCards).mockRejectedValue(new Error("offline"));
+    vi.mocked(ensureContactsDownloaded).mockRejectedValue(new Error("offline"));
     await expect(refreshCalendarContactCards("alice")).resolves.toBeNull();
+    expect(listCards).not.toHaveBeenCalled();
   });
 });
 
@@ -100,6 +128,7 @@ describe("useCalendarContactInvitees", () => {
     vi.mocked(readContactsColdDownload).mockReset().mockResolvedValue(null);
     vi.mocked(refreshCachedContacts).mockReset().mockResolvedValue(undefined);
     vi.mocked(useContactsLiveInbound).mockClear();
+    vi.mocked(ensureContactsDownloaded).mockReset().mockResolvedValue(undefined);
     vi.mocked(listCards).mockReset();
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -168,15 +197,44 @@ describe("useCalendarContactInvitees", () => {
     expect(listCards).not.toHaveBeenCalled();
   });
 
-  it("falls back to [] when live load throws", async () => {
+  it("opens with no cache without downloading anything", async () => {
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
-    vi.mocked(listCards).mockRejectedValue(new Error("JMAP error"));
 
     const { result } = renderHook(() => useCalendarContactInvitees("alice"));
     await act(async () => {
       await Promise.resolve();
     });
     expect(result.current.cards).toEqual([]);
+    expect(ensureContactsDownloaded).not.toHaveBeenCalled();
+    expect(listCards).not.toHaveBeenCalled();
+  });
+
+  it("a search with no cache fills it through the shared download and starts the live sync", async () => {
+    vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
+    vi.mocked(ensureContactsDownloaded).mockImplementation(async () => {
+      vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(
+        createContactsAppBootstrap({ data: { addressBooks: [], cards: [liveJane] } }),
+      );
+    });
+    const { result } = renderHook(() => useCalendarContactInvitees("alice"));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.refreshCards();
+    });
+
+    await waitFor(() => {
+      expect(result.current.cards).toEqual([liveJane]);
+    });
+    await waitFor(() => {
+      expect(vi.mocked(useContactsLiveInbound)).toHaveBeenLastCalledWith(
+        expect.objectContaining({ enabled: true }),
+      );
+    });
+    expect(ensureContactsDownloaded).toHaveBeenCalledTimes(1);
+    expect(listCards).not.toHaveBeenCalled();
   });
 
   it("refresh re-reads the cache the live sync keeps current, without a download", async () => {
@@ -216,7 +274,7 @@ describe("useCalendarContactInvitees", () => {
       }),
     );
     vi.mocked(readContactsBootstrapFromCache).mockResolvedValue(null);
-    vi.mocked(listCards).mockRejectedValue(new Error("offline"));
+    vi.mocked(ensureContactsDownloaded).mockRejectedValue(new Error("offline"));
 
     const { result } = renderHook(() => useCalendarContactInvitees("alice"));
     await waitFor(() => {

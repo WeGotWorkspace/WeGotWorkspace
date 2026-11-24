@@ -1,12 +1,10 @@
-import { useEffect, useRef } from "react";
-import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useCallback, useEffect, useRef } from "react";
+import { useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
+import { useIntervalPollTarget, usePushBackupPoll } from "@/lib/live/use-push-backup-poll";
 import { useInboundSyncSeat } from "@/lib/api/wgw/use-shared-inbound-sync";
 import { notifyTasksBootstrapUpdated } from "@/lib/offline/tasks/tasks-bootstrap-sync";
 import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks/tasks-inbound-sync";
 import { readTasksChangesState } from "@/lib/offline/tasks/tasks-offline-store";
-
-/** While push is connected the poll only backs it up. */
-export const TASKS_INBOUND_PUSH_POLL_MS = 60_000;
 
 /**
  * How long a tab that does not sync waits for the syncing tab to store a
@@ -92,8 +90,8 @@ type UseTasksLiveInboundArgs = {
 
 /**
  * Live inbound Tasks sync: a push for `Task` or `TaskList` pulls the task
- * list changes right away; the poll backs it up every 10 s, or every 60 s
- * while push is connected.
+ * list changes right away; the poll backs it up every 10 s, only while
+ * push is not healthy.
  *
  * One tab per browser and account does this. The other tabs repaint
  * from the cache notice of the syncing tab and send no requests of their own;
@@ -109,21 +107,17 @@ export function useTasksLiveInbound({
   useEffect(() => {
     latestPatch.current = patchFromCache;
   }, [patchFromCache]);
-  const pushConnected = useJmapPushConnected();
   const owns = useInboundSyncSeat("tasks", enabled ? username : null, () => {
     if (username) void pullTasks(username, () => latestPatch.current());
   });
 
-  useEffect(() => {
-    if (!username || !enabled) return;
-    const timer = setInterval(
-      () => {
-        if (owns()) void pullTasks(username, () => latestPatch.current());
-      },
-      pushConnected ? TASKS_INBOUND_PUSH_POLL_MS : TASKS_INBOUND_POLL_MS,
-    );
-    return () => clearInterval(timer);
-  }, [enabled, owns, pushConnected, username]);
+  const tick = useCallback(() => {
+    if (username && owns()) void pullTasks(username, () => latestPatch.current());
+  }, [owns, username]);
+  usePushBackupPoll(
+    useIntervalPollTarget(enabled && username ? tick : null),
+    TASKS_INBOUND_POLL_MS,
+  );
 
   useJmapStateChange(username && enabled ? PUSH_TYPES : NO_TYPES, (states) =>
     username ? syncTasksIfStale(username, states, () => latestPatch.current(), owns) : true,

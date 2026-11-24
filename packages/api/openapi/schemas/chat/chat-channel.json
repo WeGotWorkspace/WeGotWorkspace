@@ -30,6 +30,7 @@
         "type": "string",
         "enum": ["personal", "group"]
       },
+      "projectId": { "type": ["string", "null"], "description": "The Project this collection belongs to, or null. Always sent by the server; optional so locally built objects need not carry it. A Project collection cannot be deleted, given another owner, renamed or recolored on its own (403 `project_item`): change the Project instead." },
       "groupSlug": {
         "type": ["string", "null"]
       },
@@ -169,7 +170,7 @@
       },
       "groupSlug": {
         "type": ["string", "null"],
-        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`."
+        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only a team admin of that Team; anyone else gets 403 `team_admin_only`."
       },
       "shareWith": {
         "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal. A user who shares no Team with the caller, or a Team the caller is not in, is refused exactly like an unknown principal (400 invalidProperties), admins included. A patch leaves hidden grants (sharees who no longer share a Team with the owner) untouched; shareWith: null revokes every grant, hidden ones included.",

@@ -62,7 +62,6 @@ import type {
 } from "@/lib/models/contacts-types";
 import {
   applyContactAddressBookMoveToCards,
-  canShowContactAddressBookMove,
   contactsViewAfterAddressBookMove,
   groupsToDropOnAddressBookMove,
 } from "@/contacts-core/src/contacts-address-book-move";
@@ -70,16 +69,17 @@ import {
   canCreateGroupInAddressBook,
   contactsAddressBookDisplayName,
   writableGroupAddressBooks,
-  writableMoveAddressBooks,
 } from "@/contacts-core/src/contacts-addressbook-write";
 import { useContactsHiddenIds } from "@/contacts-core/src/use-contacts-hidden-ids";
 import { useContactsEditAutosave } from "@/contacts-core/src/use-contacts-edit-autosave";
 import { useContactsEditPersist } from "@/contacts-core/src/use-contacts-edit-persist";
 import { useContactsDeleteCards } from "@/contacts-core/src/use-contacts-delete-cards";
+import { useContactsEditRights } from "@/contacts-core/src/use-contacts-edit-rights";
 import { useContactDraftRowAdders } from "@/contacts-core/src/contacts-draft-rows";
 import {
   downloadContactVCard,
   downloadMultipleContactsVCard,
+  saveVcfText,
   vcardFilename,
 } from "@/lib/models/contacts-vcard-export";
 import { useContactsVcardImport } from "@/contacts-core/src/use-contacts-vcard-import";
@@ -99,6 +99,8 @@ type UseContactsControllerArgs = {
   listRefreshing?: boolean;
   /** Cold download: show the list, but do not apply create, edit, or delete. */
   mutationsLocked?: boolean;
+  /** Cards still partial (lean first download): read-only until their whole card is fetched. */
+  partialCardIds?: readonly string[];
   operations?: ContactsAPIOperations;
   /** Refetch cards after vCard import so group membership resolves against the full list. */
   onRefreshList?: () => void;
@@ -131,6 +133,7 @@ export function useContactsController({
   listLoading = false,
   listRefreshing = false,
   mutationsLocked = false,
+  partialCardIds,
   operations,
   onRefreshList,
   initialView,
@@ -393,30 +396,15 @@ export function useContactsController({
     [createMode, editDraft],
   );
 
-  const canEdit = useMemo(() => {
-    if (mutationsLocked) return false;
-    if (createMode) return true;
-    if (!active) return false;
-    const bookIds = Object.keys(active.addressBookIds ?? {});
-    if (bookIds.length === 0) return Boolean(operations);
-    return bookIds.some((bookId) => {
-      const book = addressBooks.find((row) => row.id === bookId);
-      return book?.myRights?.mayWrite !== false;
+  const { canEdit, activeIsPartial, writableMoveBooks, canMoveActiveContact } =
+    useContactsEditRights({
+      active,
+      createMode,
+      mutationsLocked,
+      operations,
+      addressBooks,
+      partialCardIds,
     });
-  }, [active, addressBooks, createMode, mutationsLocked, operations]);
-
-  const writableMoveBooks = useMemo(() => writableMoveAddressBooks(addressBooks), [addressBooks]);
-
-  const canMoveActiveContact = useMemo(
-    () =>
-      canShowContactAddressBookMove({
-        createMode,
-        canEdit,
-        card: active,
-        writableBookCount: writableMoveBooks.length,
-      }),
-    [active, canEdit, createMode, writableMoveBooks.length],
-  );
 
   const displayName = useMemo(() => {
     if (editDraft && (editMode || createMode)) return draftDisplayName(editDraft, L.unknownContact);
@@ -704,64 +692,63 @@ export function useContactsController({
 
   const downloadActive = useCallback(async () => {
     if (!active) return;
+    // A partial card is completed by downloadCardVcf; only a lean copy is refused.
+    if (mutationsLocked || (!operations?.downloadCardVcf && partialCardIds?.includes(active.id))) {
+      showError(L.detailsOffline);
+      return;
+    }
     // An edit still waiting for its typing pause is saved first, so the file has it.
     await autosave.flushContact(active.id);
     const card = cardsRef.current.find((row) => row.id === active.id) ?? active;
     if (operations?.downloadCardVcf) {
       const cardId = card.id;
       const filename = vcardFilename(contactDisplayName(card));
-      operations.downloadCardVcf(cardId).then((vcfText) => {
-        const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = url;
-          anchor.download = filename;
-          anchor.style.display = "none";
-          document.body.appendChild(anchor);
-          anchor.click();
-          anchor.remove();
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      });
+      operations.downloadCardVcf(cardId).then(
+        (vcfText) => saveVcfText(vcfText, filename),
+        () => showError(L.detailsOffline),
+      );
     } else {
       downloadContactVCard(card);
     }
-  }, [active, autosave, operations]);
+  }, [L.detailsOffline, active, autosave, mutationsLocked, operations, partialCardIds, showError]);
 
   const downloadSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
+    if (
+      mutationsLocked ||
+      (!operations?.downloadCardVcf && selectedIds.some((id) => partialCardIds?.includes(id)))
+    ) {
+      showError(L.detailsOffline);
+      return;
+    }
     const cardsToDownload = selectedIds
       .map((id) => cards.find((card) => card.id === id))
       .filter((card): card is ContactCard => card !== undefined);
 
     if (operations?.downloadCardVcf && cardsToDownload.length > 0) {
       const downloadVcf = operations.downloadCardVcf;
-      Promise.all(cardsToDownload.map((card) => downloadVcf(card.id))).then((vcfParts) => {
-        const vcfText = vcfParts.join("\r\n");
-        const filename =
-          cardsToDownload.length === 1
-            ? vcardFilename(contactDisplayName(cardsToDownload[0]))
-            : `${cardsToDownload.length}-contacts.vcf`;
-        const blob = new Blob([vcfText], { type: "text/vcard;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = url;
-          anchor.download = filename;
-          anchor.style.display = "none";
-          document.body.appendChild(anchor);
-          anchor.click();
-          anchor.remove();
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      });
+      Promise.all(cardsToDownload.map((card) => downloadVcf(card.id))).then(
+        (vcfParts) =>
+          saveVcfText(
+            vcfParts.join("\r\n"),
+            cardsToDownload.length === 1
+              ? vcardFilename(contactDisplayName(cardsToDownload[0]))
+              : `${cardsToDownload.length}-contacts.vcf`,
+          ),
+        () => showError(L.detailsOffline),
+      );
     } else {
       downloadMultipleContactsVCard(cardsToDownload);
     }
-  }, [cards, operations, selectedIds]);
+  }, [
+    L.detailsOffline,
+    cards,
+    mutationsLocked,
+    operations,
+    partialCardIds,
+    selectedIds,
+    showError,
+  ]);
 
   const requestDeleteSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
@@ -1367,6 +1354,7 @@ export function useContactsController({
     canRenameGroup,
     canDeleteGroup,
     canEdit,
+    activeIsPartial,
     canMoveActiveContact,
     canSaveCreate,
     writableMoveBooks,

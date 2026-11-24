@@ -160,6 +160,45 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
             ->assertJsonPath('username', 'bob');
     }
 
+    public function test_the_owner_still_signs_in_from_a_known_address_when_the_username_is_capped(): void
+    {
+        $this->fromIp('198.51.100.7')
+            ->postCredentials(self::USERNAME, self::PASSWORD)
+            ->assertOk();
+
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $this->fromIp($this->documentationIp($host))
+                ->postCredentials(self::USERNAME, 'wrong')
+                ->assertUnauthorized();
+        }
+
+        $this->fromIp($this->documentationIp(40))
+            ->postCredentials(self::USERNAME, self::PASSWORD)
+            ->assertStatus(429)
+            ->assertJsonPath('code', 'throttled');
+        $this->fromIp('198.51.100.7')
+            ->postCredentials(self::USERNAME, self::PASSWORD)
+            ->assertOk()
+            ->assertJsonPath('username', self::USERNAME);
+    }
+
+    public function test_a_failed_sign_in_does_not_make_an_address_known(): void
+    {
+        $this->fromIp('198.51.100.7')
+            ->postCredentials(self::USERNAME, 'wrong')
+            ->assertUnauthorized();
+
+        for ($host = 1; $host < LoginRateLimiter::USER_LIMIT; $host++) {
+            $this->fromIp($this->documentationIp($host))
+                ->postCredentials(self::USERNAME, 'wrong')
+                ->assertUnauthorized();
+        }
+
+        $this->fromIp('198.51.100.7')
+            ->postCredentials(self::USERNAME, self::PASSWORD)
+            ->assertStatus(429);
+    }
+
     private function postCredentials(string $username, string $password): TestResponse
     {
         return $this->postJson('/api/v1/auth/token', [

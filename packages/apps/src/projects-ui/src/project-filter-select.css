@@ -1,0 +1,123 @@
+@import "../../styles.css" reference;
+
+/*
+ * Project filter at the foot of the sidebar: a full-width row like the account row.
+ * An outline square with a folder mark (tinted with the chosen Project's color), the
+ * name, a small chevron. The footer floats over the scrolling list, so the row gets
+ * the account card's frost.
+ */
+.project-filter-trigger {
+  @apply flex w-full min-w-0 cursor-pointer appearance-none items-center border-0 text-start text-sm outline-none;
+  gap: var(--user-avatar-gap, 0.625rem);
+  min-block-size: var(--control-height-md, 2.25rem);
+  /* The account card's inset, from before it moved to the app rail. */
+  padding: 0.625rem 0.625rem 0.625rem 0.75rem;
+  border-radius: 0.625rem;
+  color: var(--workspace-foreground);
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+  transition: background-color 150ms ease;
+  --user-avatar-fg: var(--project-filter-color, currentColor);
+  --user-avatar-border: color-mix(
+    in oklab,
+    var(--project-filter-color, var(--color-ink)) 40%,
+    transparent
+  );
+}
+
+/*
+ * Same margins as the account card had: the footer wrapper keeps its side padding
+ * without the app rail; beside the rail it gives that up, so the row brings its own.
+ */
+.workspace-sidebar-account-footer .project-filter-trigger {
+  margin-block-start: 0.5rem;
+}
+
+.app-rail ~ .app-sidebar .workspace-sidebar-account-footer .project-filter-trigger {
+  margin: 0.5rem var(--app-sidebar-padding-x, 1rem) 0.75rem;
+  inline-size: calc(100% - 2 * var(--app-sidebar-padding-x, 1rem));
+}
+
+.project-filter-trigger:hover,
+.project-filter-trigger[data-state="open"] {
+  background: color-mix(in oklch, var(--workspace-foreground) 8%, var(--frost-background));
+}
+
+.project-filter-trigger:focus-visible:not([data-state="open"]) {
+  @apply ring-1 ring-ring;
+}
+
+/* Outline only: beat the sidebar footer's identity wash on avatars. */
+.project-filter-trigger .project-filter-trigger__mark {
+  @apply shrink-0;
+  --user-avatar-bg: transparent;
+  --user-avatar-hover-bg: transparent;
+}
+
+.project-filter-trigger__icon {
+  @apply size-4 shrink-0;
+}
+
+.project-filter-trigger__label {
+  @apply min-w-0 flex-1 truncate;
+  line-height: var(--user-avatar-name-leading, 1.1);
+}
+
+.project-filter-trigger__chevron {
+  @apply size-3.5 shrink-0;
+  opacity: 0.6;
+}
+
+.project-filter-select__menu {
+  min-width: max(var(--radix-select-trigger-width), 13rem);
+}
+
+.project-filter-select__dot {
+  /* Same 1rem slot as the icon (size-4), so dots and icons line up. */
+  @apply mx-[0.1875rem] inline-block size-2.5 shrink-0 rounded-full;
+  background-color: var(--collection-row-color, var(--workspace-muted-foreground, currentColor));
+}
+
+.project-filter-select__icon {
+  @apply size-4 shrink-0 opacity-70;
+}
+
+.project-filter-select__item {
+  @apply inline-flex min-w-0 items-center gap-2;
+}
+
+/* A Team: its name, dimmed, flush; its entries indented under it. */
+.project-filter-select__group {
+  @apply pl-2;
+}
+
+.project-filter-select__group > .project-filter-select__team {
+  margin-left: -0.5rem;
+}
+
+.project-filter-select__team {
+  @apply flex items-center justify-between gap-3 px-2 pb-0.5 pt-2 text-sm font-medium;
+}
+
+.project-filter-select__team {
+  color: color-mix(in oklab, currentColor 55%, transparent);
+}
+
+.project-filter-select__all {
+  color: var(--workspace-muted-foreground, currentColor);
+}
+
+.project-filter-select__name {
+  @apply min-w-0 flex-1 truncate;
+}
+
+/* The suite hairline: the default separator is nearly invisible on the dark menu. */
+.project-filter-select__separator {
+  @apply my-1.5;
+  background-color: var(
+    --workspace-divider-color,
+    color-mix(in oklab, currentColor 18%, transparent)
+  );
+}

@@ -61,6 +61,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
     public function test_group_member_joins_group_channel_room_directly(): void
     {
         $group = $this->seedWgwGroup('principals/groups/devs', 'Devs');
+        $this->appointTeamAdmin('devs', 'alice');
         $alice = Principal::query()->where('uri', 'principals/alice')->firstOrFail();
         $dave = Principal::query()->where('uri', 'principals/dave')->firstOrFail();
         $this->addPrincipalToGroup($group, $alice);

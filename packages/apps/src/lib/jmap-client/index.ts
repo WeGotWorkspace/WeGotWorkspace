@@ -36,6 +36,9 @@ export type {
 export {
   CONTACTS_USING,
   CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
+  CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
+  CONTACT_CARD_PROPERTIES_LEAN,
+  CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA,
   JmapContactsClient,
   countPendingContacts,
 } from "./contacts/JmapContactsClient.js";

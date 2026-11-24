@@ -337,6 +337,43 @@ final class FrontRoutingTest extends TestCase
         ])->assertOk()->assertHeaderMissing('Strict-Transport-Security');
     }
 
+    public function test_shell_gets_permissions_opener_and_resource_policies(): void
+    {
+        $this->installedShell();
+
+        $this->call('GET', 'http://localhost/', [], [], [], ['HTTP_ACCEPT' => 'text/html'])
+            ->assertOk()
+            ->assertHeader('Permissions-Policy', SecurityHeaderPolicy::PERMISSIONS_POLICY)
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+        $this->assertStringContainsString('camera=(self)', SecurityHeaderPolicy::PERMISSIONS_POLICY);
+        $this->assertStringContainsString('microphone=(self)', SecurityHeaderPolicy::PERMISSIONS_POLICY);
+        $this->assertStringContainsString('display-capture=(self)', SecurityHeaderPolicy::PERMISSIONS_POLICY);
+    }
+
+    public function test_mcp_oauth_login_step_gets_no_opener_policy(): void
+    {
+        $this->installedShell();
+        $accept = ['HTTP_ACCEPT' => 'text/html'];
+
+        $this->call('GET', 'http://localhost/login', [], [], [], $accept)
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $this->call('GET', 'http://localhost/login?return=%2Foauth%2Fauthorize&intent=abc', [], [], [], $accept)
+            ->assertOk()
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy');
+        $this->call('GET', 'http://localhost/login?return=/oauth/authorize?x=1', [], [], [], $accept)
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy');
+    }
+
+    public function test_api_json_gets_the_resource_policy_only(): void
+    {
+        $this->getJson('http://localhost/api/v1/health')
+            ->assertOk()
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin')
+            ->assertHeaderMissing('Cross-Origin-Opener-Policy')
+            ->assertHeaderMissing('Permissions-Policy');
+    }
+
     public function test_csp_report_accepts_and_rejects_oversize_bypass(): void
     {
         $reports = [];
@@ -417,6 +454,16 @@ final class FrontRoutingTest extends TestCase
                 $name,
             );
             $this->assertStringContainsString(WebRootDeny::managedHeadersBlock(), $htaccess, $name);
+            $this->assertStringContainsString(
+                'Header always set Cross-Origin-Opener-Policy "'.SecurityHeaderPolicy::OPENER_POLICY.'"',
+                $htaccess,
+                $name,
+            );
+            $this->assertMatchesRegularExpression(
+                '/<FilesMatch "[^"]*\(\?!php\$\)[^"]*">\s*Header always set Cross-Origin-Resource-Policy/',
+                $htaccess,
+                $name,
+            );
             $this->assertStringNotContainsString('Content-Security-Policy-Report-Only', $htaccess, $name);
             $this->assertStringNotContainsString('https:', $htaccess, $name);
         }
