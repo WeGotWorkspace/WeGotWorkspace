@@ -117,6 +117,8 @@ export type ContactsUILabels = {
   toastSyncConflict: (name: string) => string;
   toastSyncConflictOpen: string;
   pendingSync: string;
+  detailsLoading: string;
+  detailsOffline: string;
   conflictTitle: string;
   conflictDescription: (name: string) => string;
   conflictRemaining: (count: number) => string;
@@ -277,6 +279,8 @@ export const defaultContactsLabels: ContactsUILabels = {
     `Could not sync changes to “${name}” because it was updated elsewhere.`,
   toastSyncConflictOpen: "Open contact",
   pendingSync: workspaceLabels.sync.pending,
+  detailsLoading: "Loading the rest of this contact…",
+  detailsOffline: "The rest of this contact is not downloaded yet. Go online to see and edit it.",
   conflictTitle: workspaceLabels.sync.conflictTitle,
   conflictDescription: (name) =>
     `“${name}” was changed somewhere else while you had unsynced edits. Which version should win?`,

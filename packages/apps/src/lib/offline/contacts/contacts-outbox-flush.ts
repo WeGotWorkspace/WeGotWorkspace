@@ -103,7 +103,9 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         const settlement = await settleSentOutboxMutation(username, row, {
           rebase: (current) => ({ ...current, ifInState: response.updated[cardId] }),
           cacheTables: (db) => [contactsCardsTable(db)],
-          onRemoved: () => upsertContactCardInCache(username, card, false),
+          // Runs inside the settlement transaction (cards + outbox): it cannot touch the
+          // partial list, and a card that was patched is never partial (writes refuse those).
+          onRemoved: () => upsertContactCardInCache(username, card, false, { keepPartial: true }),
         });
         context.resend(settlement);
         return "handled";

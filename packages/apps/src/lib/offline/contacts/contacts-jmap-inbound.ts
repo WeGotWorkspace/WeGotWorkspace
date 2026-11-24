@@ -129,7 +129,9 @@ export async function ingestRemoteContactCardListedAway(
   if (!card || membership[addressBookId] !== true) return false;
   delete membership[addressBookId];
   if (Object.values(membership).some((included) => included === true)) {
-    await upsertContactCardInCache(username, { ...card, addressBookIds: membership });
+    await upsertContactCardInCache(username, { ...card, addressBookIds: membership }, false, {
+      keepPartial: true,
+    });
   } else {
     await removeContactCardFromCache(username, cardId);
   }

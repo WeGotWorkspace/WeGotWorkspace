@@ -334,7 +334,9 @@ describe("useContactsAPI first visit", () => {
       expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1"]);
     });
     await waitFor(() => {
-      expect(fetchContactCardPages).toHaveBeenCalledWith(["page-2"], expect.any(Function));
+      expect(fetchContactCardPages).toHaveBeenCalledWith(["page-2"], expect.any(Function), {
+        lean: true,
+      });
     });
     expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
     expect(result.current.mutationsLocked).toBe(true);

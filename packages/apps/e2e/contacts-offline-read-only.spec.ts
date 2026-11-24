@@ -133,6 +133,9 @@ test.describe("Contacts edit refused because the book became read-only", () => {
 
       // Offline edit of the shared card.
       await tab.getByText(ORIGINAL, { exact: true }).first().click();
+      // A card the first download left partial opens read-only until its whole card
+      // is fetched: wait for that, online, before the connection goes.
+      await expect(tab.getByLabel("First name")).toBeEditable({ timeout: 30_000 });
       await setTabOffline(tab, true);
       // No Edit button: the open contact is editable as is.
       await tab.getByLabel("First name").fill(OFFLINE_GIVEN);

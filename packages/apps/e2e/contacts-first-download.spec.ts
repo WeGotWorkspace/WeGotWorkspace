@@ -1,8 +1,8 @@
 // Contacts first download on a new device (live app, #1748).
 //
-// The first open of Contacts downloads the cards in photo-less pages of
-// CONTACT_CARD_PHOTOLESS_PAGE_SIZE (200), then the photos in a second pass
-// (#2297). Each page is saved as it arrives. A reload halfway must keep those cards, show them offline, fetch
+// The first open of Contacts downloads the cards in lean pages of
+// CONTACT_CARD_LEAN_PAGE_SIZE (500), then their details and photos in two more
+// passes (#2297, Epic #2284). Each page is saved as it arrives. A reload halfway must keep those cards, show them offline, fetch
 // only the missing ones once online, and replay what changed on the server in
 // between (the sync anchor is the state at query time).
 //
@@ -13,7 +13,7 @@ import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const RUN = Date.now().toString(36);
 /**
- * All in the first 200-card page (their ids sort first); the dev book's other
+ * All in the first page (their ids sort first); the dev book's other
  * cards make the pages after it.
  */
 const SEED_COUNT = 100;
@@ -153,7 +153,8 @@ function headerCount(page: Page) {
 
 /**
  * Ids of a card page request: one ContactCard/get with explicit ids (not the
- * empty state get, and not the photo pass, which asks only for `media`).
+ * empty state get, not the detail pass, which asks for `phones`, and not the
+ * photo pass, which asks only for `media`).
  */
 function cardPageIds(route: Route): string[] | null {
   const body = JSON.parse(route.request().postData() ?? "{}") as {
@@ -162,7 +163,7 @@ function cardPageIds(route: Route): string[] | null {
   const calls = body.methodCalls ?? [];
   if (calls.length !== 1 || calls[0]![0] !== "ContactCard/get") return null;
   const { ids, properties } = calls[0]![1];
-  if (properties && !properties.includes("name")) return null;
+  if (properties && (!properties.includes("name") || properties.includes("phones"))) return null;
   return Array.isArray(ids) && ids.length > 0 ? ids : null;
 }
 
