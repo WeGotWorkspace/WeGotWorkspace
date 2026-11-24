@@ -7,11 +7,13 @@ import { contactListDetail, contactListSubtitle } from "@/contacts-core/src/cont
 import { contactDisplayName } from "@/lib/models/contacts-display";
 import type { ContactsUILabels } from "@/contacts-core/src/contacts-labels";
 import type { ContactsAddressBookSelectBook } from "@/contacts-core/src/contacts-address-book-select";
+import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { contactsAddressBookDisplayName } from "@/contacts-core/src/contacts-addressbook-write";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import { ContactUserAvatar } from "@/contacts-core/src/contact-user-avatar";
-import { ContactsAddressBookIcon } from "@/contacts-core/src/contacts-address-book-icon";
+import { CollectionColorDot } from "@/ui/collection-color-dot";
 
-/** A row's meta line: its address book (icon + name), as Notes rows show the notebook. */
+/** A row's meta line: its address book (dot + name), as Notes rows show the notebook. */
 function ContactsListAddressBook({
   book,
   personalLabel,
@@ -19,9 +21,10 @@ function ContactsListAddressBook({
   book: ContactsAddressBookSelectBook;
   personalLabel: string;
 }) {
+  const overrides = useAddressBookColorOverrides();
   return (
     <span className="contacts-list-panel__book">
-      <ContactsAddressBookIcon />
+      <CollectionColorDot color={addressBookDotColor(book, overrides)} />
       <span className="contacts-list-panel__book-name">
         {contactsAddressBookDisplayName(book, personalLabel)}
       </span>

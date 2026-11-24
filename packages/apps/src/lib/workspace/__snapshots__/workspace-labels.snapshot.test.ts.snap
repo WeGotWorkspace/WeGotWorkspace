@@ -472,6 +472,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: contacts
   "addPhone": "Add phone",
   "addUrl": "Add website",
   "address": "Address",
+  "addressBookColorLabel": "Color",
   "addressBookDialogDone": "Done",
   "addressBookNameLabel": "Name",
   "addressBookSettingsTitle": "Address book",

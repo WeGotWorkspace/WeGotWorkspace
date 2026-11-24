@@ -3,7 +3,8 @@ import {
   CollectionSidebarMark,
   CollectionSidebarRow,
 } from "@/collection-sidebar/src/collection-sidebar-row";
-import { ContactsAddressBookIcon } from "@/contacts-core/src/contacts-address-book-icon";
+import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import {
   canOpenAddressBookSettings,
   contactsAddressBookDisplayName,
@@ -18,13 +19,15 @@ export type ContactsSidebarBookRowsProps = {
   editLabel: string;
   viewOnlyLabel: string;
   personalLabel?: string;
+  hiddenAddressBookIds: ReadonlySet<string>;
+  onToggleVisibility: (bookId: string) => void;
   onSelect: (bookId: string) => void;
   onEdit: (book: ContactsAddressBookRow) => void;
 };
 
 /**
- * The address books of one sidebar section, each with the address book icon. Groups have
- * their own section ({@link ContactsSidebarGroupRows}).
+ * The address books of one sidebar section, each with its colour dot. Groups have
+ * their own section ({@link ContactsSidebarGroupRows}), each icon in its book's colour.
  */
 export function ContactsSidebarBookRows({
   books,
@@ -32,18 +35,22 @@ export function ContactsSidebarBookRows({
   editLabel,
   viewOnlyLabel,
   personalLabel = "Personal",
+  hiddenAddressBookIds,
+  onToggleVisibility,
   onSelect,
   onEdit,
 }: ContactsSidebarBookRowsProps) {
+  const colorOverrides = useAddressBookColorOverrides();
   return (
     <>
       {books.map((book) => (
         <CollectionSidebarRow
           key={book.id}
           name={contactsAddressBookDisplayName(book, personalLabel)}
-          color=""
-          leading={<ContactsAddressBookIcon />}
+          color={addressBookDotColor(book, colorOverrides)}
           selected={view === contactsBookViewKey(book.id)}
+          visible={!hiddenAddressBookIds.has(book.id)}
+          onToggleVisibility={() => onToggleVisibility(book.id)}
           onSelect={() => onSelect(book.id)}
           onEdit={canOpenAddressBookSettings(book) ? () => onEdit(book) : undefined}
           editLabel={editLabel}

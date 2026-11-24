@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useHiddenCollectionIds } from "@/collection-sidebar/src/use-hidden-collection-ids";
+import { contactsHiddenAddressBooks } from "@/contacts-core/src/contacts-view-prefs";
 import { useSelectedProjectTeamSlug } from "@/lib/projects/use-project-filter";
 
 /** The Team address book of a Team: `group-{slug}` (server-set id). */
@@ -20,14 +22,16 @@ export function addressBooksHiddenByProject(
 }
 
 /**
- * Address books the list leaves out: only those the Project filter hides. Address books
- * belong to a Team and have no show/hide switch of their own.
+ * Address books the list leaves out: the ones the user hid on this device (the stored
+ * show/hide switch, same algorithm as Notes/Tasks/Calendar) plus the ones the Project
+ * filter hides.
  */
 export function useContactsHiddenIds(books: ReadonlyArray<{ id: string }>) {
+  const { hiddenIds, setHiddenIds } = useHiddenCollectionIds(books, contactsHiddenAddressBooks);
   const teamSlug = useSelectedProjectTeamSlug();
   const hiddenAddressBookIds = useMemo(
-    () => addressBooksHiddenByProject(books, teamSlug),
-    [books, teamSlug],
+    () => new Set([...hiddenIds, ...addressBooksHiddenByProject(books, teamSlug)]),
+    [hiddenIds, books, teamSlug],
   );
-  return { hiddenAddressBookIds };
+  return { hiddenAddressBookIds, setHiddenAddressBookIds: setHiddenIds };
 }

@@ -1,12 +1,19 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  ADDRESS_BOOK_DOT_COLORS,
+  addressBookDotColor,
+} from "@/contacts-core/src/contacts-addressbook-color";
 import {
   ContactsAddressBookDialog,
   contactsAddressBookDialogLabelsFrom,
 } from "@/contacts-core/src/contacts-addressbook-dialog";
 import { defaultContactsLabels } from "@/contacts-core/src/contacts-labels";
-import { CONTACTS_VIEW_PREFS_STORAGE_KEY } from "@/contacts-core/src/contacts-view-prefs";
+import {
+  CONTACTS_VIEW_PREFS_STORAGE_KEY,
+  contactsViewPrefs,
+} from "@/contacts-core/src/contacts-view-prefs";
 import { noTeamYetCopy } from "@/share-ui/share-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -68,8 +75,38 @@ describe("ContactsAddressBookDialog", () => {
     expect(
       screen.getByRole("button", { name: defaultContactsLabels.addressBookDialogDone }),
     ).toBeTruthy();
-    // Address books belong to a Team: no colour to pick.
-    expect(screen.queryByRole("button", { name: "Color" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: defaultContactsLabels.addressBookColorLabel }),
+    ).toBeTruthy();
+  });
+
+  it("persists a chosen color to viewPrefs and addressBookDotColor", () => {
+    const hashed = addressBookDotColor({ id: "default" });
+    const override = ADDRESS_BOOK_DOT_COLORS.find((color) => color !== hashed) ?? "#ec4899";
+
+    renderDialog(
+      <ContactsAddressBookDialog
+        dialog={{
+          bookId: "default",
+          name: "Ada",
+          mayShare: false,
+          isSharee: false,
+          shareWith: null,
+        }}
+        labels={labels}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: defaultContactsLabels.addressBookColorLabel }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: override }));
+
+    expect(contactsViewPrefs.read()?.addressBookColors?.default).toBe(override);
+    expect(addressBookDotColor({ id: "default" })).toBe(override);
+    expect(addressBookDotColor({ id: "default" })).not.toBe(hashed);
+    expect(addressBookDotColor({ id: "group-eng" })).not.toBe(override);
   });
 
   it("tells a viewer without a Team in the share section", () => {

@@ -9,6 +9,7 @@ import {
   urlsAfterUriChange,
 } from "./contact-channel-commit";
 import { ContactsDetailView } from "./contacts-detail-view";
+import { addressBookDotColor } from "./contacts-addressbook-color";
 import { defaultContactsLabels as L } from "./contacts-labels";
 import { CONTACT_CHANNEL_DEFAULT_CONTEXT, emptyContactEditDraft } from "./contacts-edit-utils";
 import { contactCardToEditDraft, type ContactEditDraft } from "@/lib/models/contacts-edit-draft";
@@ -714,8 +715,9 @@ describe("ContactsDetailView group tags", () => {
     expect(heading?.querySelector(".contacts-detail-view__title")?.nextElementSibling).toBe(tags);
 
     const chip = screen.getByText("Friends").closest(".tag") as HTMLElement | null;
-    expect(chip?.style.getPropertyValue("--tag-bg")).toBe("");
-    expect(chip?.style.getPropertyValue("--tag-fg")).toBe("");
+    const color = addressBookDotColor({ id: "default" });
+    expect(chip?.style.getPropertyValue("--tag-bg")).toContain(color);
+    expect(chip?.style.getPropertyValue("--tag-fg")).toContain(color);
   });
 
   it("adds and removes group membership through the shared TagGroup", () => {

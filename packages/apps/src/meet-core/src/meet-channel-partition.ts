@@ -30,7 +30,8 @@ export function partitionMeetChannels(
       channels: [],
       shared: [],
       meetings: [],
-      projects: collectionsInProject(items, projectIds).sort((a, b) =>
+      // Only real Project channels: a Team filter also scopes in the Team's own collections.
+      projects: collectionsInProject(items.filter(isProjectCollection), projectIds).sort((a, b) =>
         a.name.localeCompare(b.name),
       ),
       teamChats: partitionOwnedAndShared(

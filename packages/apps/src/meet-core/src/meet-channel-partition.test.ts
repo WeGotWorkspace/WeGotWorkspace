@@ -184,7 +184,8 @@ describe("Project channels (#818)", () => {
     expect(
       partitionMeetChannels(
         [web, brand, team, named, other, otherProject, meeting],
-        ["p-web", "p-brand"],
+        // What a Team filter passes: its Projects and `team:<slug>` for its collections in no Project.
+        ["p-web", "p-brand", "team:design"],
         "design",
       ),
     ).toEqual({

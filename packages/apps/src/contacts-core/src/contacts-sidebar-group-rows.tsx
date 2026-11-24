@@ -1,5 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-color";
+import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import { contactDisplayName } from "@/lib/models/contacts-display";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
 import { contactsGroupViewKey } from "@/contacts-core/src/contacts-group-utils";
@@ -26,6 +28,7 @@ export function ContactsSidebarGroupRows({
   onEdit,
   dropZoneProps,
 }: ContactsSidebarGroupRowsProps) {
+  const colorOverrides = useAddressBookColorOverrides();
   return (
     <>
       {groups.map((group) => {
@@ -34,12 +37,12 @@ export function ContactsSidebarGroupRows({
           <CollectionSidebarRow
             key={group.id}
             name={contactDisplayName(group)}
-            color=""
+            color={groupAddressBookColor(group, colorOverrides) ?? ""}
             selected={view === contactsGroupViewKey(group.id)}
             onSelect={() => onSelect(group.id)}
             onEdit={canEditGroup(group) ? () => onEdit(group) : undefined}
             editLabel={editLabel}
-            leading={<ContactsGroupIcon />}
+            leading={<ContactsGroupIcon book={group} />}
             rootProps={{
               ...(dropHandlers as HTMLAttributes<HTMLLIElement>),
               className: isDropTarget ? "collection-sidebar-row--drop-target" : undefined,
