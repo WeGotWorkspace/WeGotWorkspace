@@ -269,17 +269,11 @@
  * Light theme: the desk behind the pages (and the gap between two pages) gets a tint, so a
  * white page no longer melts into it. Dark already lifts the letter off the near-black desk.
  */
-@supports (color: oklch(from red l c h)) {
-  :root:not([data-theme="dark"]) .docs-workspace {
-    --docs-canvas: oklch(from var(--workspace-surface) calc(l - 0.04) c h);
-  }
-}
-
-/* Paper is white: the desk tint is for the screen only (iOS prints the page desk too). */
-@media print {
-  :root:not([data-theme="dark"]) .docs-workspace,
-  :root[data-theme="dark"] .docs-workspace {
-    --docs-canvas: #fff;
+@media screen {
+  @supports (color: oklch(from red l c h)) {
+    :root:not([data-theme="dark"]) .docs-workspace {
+      --docs-canvas: oklch(from var(--workspace-surface) calc(l - 0.04) c h);
+    }
   }
 }
 
