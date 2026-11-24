@@ -25,7 +25,7 @@ const NONE: TextEditorPageSetup = {
 };
 
 describe("docsPageSetupMenuItems", () => {
-  it("lists None first, then the paper sizes, orientation and Fit to screen", () => {
+  it("lists None first, then the paper sizes, orientation and Fit to width", () => {
     expect(rows(A4_LANDSCAPE).map((row) => row.label)).toEqual([
       "None",
       "A4",
@@ -35,7 +35,7 @@ describe("docsPageSetupMenuItems", () => {
       "Legal",
       "Portrait",
       "Landscape",
-      "Fit to screen",
+      "Fit to width",
     ]);
     expect(
       rows(A4_LANDSCAPE)
@@ -44,17 +44,17 @@ describe("docsPageSetupMenuItems", () => {
     ).toEqual(["A4", "Landscape"]);
   });
 
-  it("turns orientation and Fit to screen off without paper", () => {
+  it("turns orientation and Fit to width off without paper", () => {
     const list = rows({ ...NONE, fitToScreen: true });
     expect(list.filter((row) => row.checked).map((row) => row.label)).toEqual(["None"]);
     expect(list.filter((row) => row.disabled).map((row) => row.label)).toEqual([
       "Portrait",
       "Landscape",
-      "Fit to screen",
+      "Fit to width",
     ]);
   });
 
-  it("toggles Fit to screen in its own section", () => {
+  it("toggles Fit to width in its own section", () => {
     const entries = docsPageSetupMenuItems({
       pageSetup: A4_LANDSCAPE,
       setPageSetup: vi.fn(),

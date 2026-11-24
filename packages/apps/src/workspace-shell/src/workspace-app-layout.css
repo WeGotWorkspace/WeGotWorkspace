@@ -4,7 +4,7 @@
   /* Clip, not hidden: a hidden box still scrolls programmatically, so focusing
      into a panel that is still sliding in shoved the whole row (sidebar too)
      sideways, then the scroll snapped back as the panel arrived. */
-  @apply flex h-dvh w-full overflow-clip relative;
+  @apply flex h-dvh min-h-0 w-full overflow-clip relative;
   font-family: var(--font-sans);
   background-color: var(--workspace-root-bg, var(--workspace-surface));
   container: workspace-columns / inline-size;
@@ -16,7 +16,7 @@
    * at z-30) cannot paint above the AppSidebar overlay scrim (also z-30) or the
    * sidebar panel (z-40). Same pattern Calendar/Meet already applied per-product.
    */
-  @apply relative isolate flex min-w-0 flex-1 flex-col;
+  @apply relative isolate flex min-h-0 min-w-0 flex-1 flex-col;
   background-color: var(--workspace-main-bg, var(--workspace-surface));
 }
 

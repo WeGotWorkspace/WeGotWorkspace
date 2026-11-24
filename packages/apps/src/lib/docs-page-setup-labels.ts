@@ -13,7 +13,7 @@ export const docsPageSetupLabels = {
   pagePaperNone: "None",
   pageOrientationPortrait: "Portrait",
   pageOrientationLandscape: "Landscape",
-  pageFitToScreen: "Fit to screen",
+  pageFitToScreen: "Fit to width",
   settingsDescription: "Default paper for new documents",
   settingsPaper: "Default paper size",
   settingsPaperDescription: "Sets the starting sheet format for new docs",

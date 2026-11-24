@@ -42,7 +42,7 @@ describe("parseDocsPageSetupPrefs", () => {
     });
   });
 
-  it("keeps Fit to screen only as a yes or no", () => {
+  it("keeps Fit to width only as a yes or no", () => {
     expect(parseDocsPageSetupPrefs('{"fitToScreen":true}')).toEqual({ fitToScreen: true });
     expect(parseDocsPageSetupPrefs('{"fitToScreen":false}')).toEqual({ fitToScreen: false });
     expect(parseDocsPageSetupPrefs('{"fitToScreen":"yes"}')).toEqual({});
@@ -87,7 +87,7 @@ describe("resolveDocsPageSetup", () => {
   });
 });
 
-describe("Fit to screen", () => {
+describe("Fit to width", () => {
   it("fits pages by default, and only pages: never a document without paper", () => {
     expect(resolveDocsPageSetup({ format: "a4" }).fitToScreen).toBe(true);
     expect(resolveDocsPageSetup({ format: "a4", fitToScreen: true }).fitToScreen).toBe(true);
