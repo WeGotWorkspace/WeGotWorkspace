@@ -41,7 +41,7 @@ The contacts version this copies is open PR #2340 (`contacts-detail-pass.ts`, th
 2. N2 (client lean pass, marker) after N1.
 3. N3 (partial-note rule, UI states) after N2; must land with N2 in one release (see Invariants).
 4. N4 (detail pass) after N2 and N3.
-5. N5 (measurement) last. N2–N4 may ship behind a device default of "lean off" until N3 is in.
+5. N5 (measurement) last, and only after the traffic harness (#2292) is on main. N2–N4 may ship behind a device default of "lean off" until N3 is in.
 
 PR #2340 (contacts) should merge first so N2 and N4 reuse its marker, pass and page-cap code instead of copying it.
 
@@ -66,7 +66,7 @@ PR #2340 (contacts) should merge first so N2 and N4 reuse its marker, pass and p
 - **Skill:** api, security
 - **Inputs:** `NoteGetMethod.php:42` (collects whole records, projects at the end); `NoteJournalConverter.php:211` (`fromIcs`, body and `updatedAt`); `NoteMarkdownCodec.php:100` (`listPreview`); `HandlesGetArguments.php` (`projectProperties`).
 - **Done when:**
-  - `Note` has a `preview` property (plain text, at most 180 characters, same rule as the client excerpt, empty when the note has neither text nor title).
+  - `Note` has a `preview` property (plain text, at most 180 characters, the plain text of the body only, exactly the client's `excerptFromBody` rule: no title fallback, empty when the body is empty; not `NoteMarkdownCodec::listPreview`, which falls back to the title). The client stores it as the partial note's `excerpt`; the list heading stays the `title` field, with the excerpt as heading only when the title is empty, as today.
   - `Note/get` projects each record as it is built and drops `body` at once when `body` is not requested, so a page of lean notes holds no bodies.
   - `Note/get` with `properties: ["body"]` returns `id` and `body` only.
   - The JMAP documentation and OpenAPI/contract text list `preview`.
@@ -80,7 +80,8 @@ PR #2340 (contacts) should merge first so N2 and N4 reuse its marker, pass and p
 - **Inputs:** `JmapNotesClient.ts:67`; `fetch-all.ts:19`; `notes-vjournal.ts:397`; `notes-offline-store.ts`; `notes-jmap-inbound.ts:28`; the contacts marker in `contacts-offline-store.ts` (PR #2340).
 - **Done when:**
   - A device with no Notes copy loads notebooks, then `Note/query` (ids) and `Note/get` with `NOTE_METADATA_PROPERTIES` plus `preview`, in pages. `preview` becomes the note's `excerpt`; `body` is empty; the note id goes in the partial marker (new `meta` key, pass id plus ids, saved in the same transaction as the rows).
-  - Sync state is recorded from the lean gets so the first `Note/changes` works from the lean download.
+  - Sync state is the `Note/get` state taken before the id listing (what `fetchAllByQuery` already records), so a change made during the lean pass is reported by the first `Note/changes`.
+  - While the marker is non-empty, the reconnect and manual refresh path (`syncNotesInboundFromRest`) and the `cannotCalculateChanges` refetch (`getAllNotes`) run lean too: they fetch the lean projection for notes the device has no body for and keep the marker, so they never download every body at once. Notes that already have a body refresh whole.
   - A device with a complete copy still refreshes whole; the marker is never written for it.
   - The list renders from the lean rows; selecting the Notes app on a cold device shows the list after the lean pass.
   - Requests: one `Note/query` per 5000 ids plus `ceil(notes / lean page)` gets for the whole account, independent of notebook count.
@@ -104,17 +105,17 @@ PR #2340 (contacts) should merge first so N2 and N4 reuse its marker, pass and p
 - **Skill:** workspace, testing
 - **Inputs:** the contacts detail pass (PR #2340: `contacts-detail-pass.ts`); `background-sync-pacer.ts:140`; the Web Lock helper used there.
 - **Done when:**
-  - A second pass (`bulk` priority) fetches `body` for the marker ids, newest content first, in detail pages, saving each page with its marker update in one transaction and notifying other tabs; it recomputes `excerpt` and `wordCount` from the body.
+  - A second pass (`bulk` priority) fetches `body` for the marker ids, ordered by `updatedAt` descending from the lean rows (the one timestamp the payload has; `Note/query` cannot sort and `contentUpdatedAt` is not populated by the API, so a body-only edit may not move it and the order is best effort), in detail pages, saving each page with its marker update in one transaction and notifying other tabs; it recomputes `excerpt` and `wordCount` from the body.
   - One tab per browser runs it (Web Lock `wgw.notes.detailPass/<username>`); it stops cleanly on reload or network loss and resumes from the marker; a newer download supersedes it.
   - A note opened or changed live meanwhile leaves the marker without a second fetch.
-  - Notes missing on the server (`notFound`) leave the marker and the cache unless the outbox owns them.
+  - Notes missing on the server (`notFound`) are removed from the marker and the cache, unless the outbox owns them.
   - While the pass runs the browser stays inside the per-minute budget with Contacts and Notes passes both active (harness).
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline/notes src/lib/offline/core`; live specs `notes-first-download.spec.ts`, `notes-detail-pass.spec.ts` (new, shaped like the contacts ones)
 - **Parallel with:** none (after N3)
 
 ### Chunk N5: notes-measure
 - **Skill:** testing, document
-- **Inputs:** the traffic harness (`packages/apps/e2e/traffic-budget.spec.ts`, `helpers/traffic-meter.ts`).
+- **Inputs:** the traffic harness of #2292 (`packages/apps/e2e/traffic-budget.spec.ts`, `helpers/traffic-meter.ts`), which is not on main yet: N5 waits for it.
 - **Done when:** results are written to `docs/realtime-capacity.md` or a note next to this spec, one run per case, before (today's REST bootstrap) and after:
   - Dataset: about 2000 notes including about 500 of 20–50 KB; cold browser, no cache, nothing else open.
   - Per run: time until the list is usable; time until every body is offline; requests per minute for minutes 1, 2 and 3; peak requests in any 10 s; PHP peak memory and server time per request (lean page, detail page, query).
