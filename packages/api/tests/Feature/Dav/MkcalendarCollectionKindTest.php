@@ -110,8 +110,7 @@ final class MkcalendarCollectionKindTest extends WgwDatabaseTestCase
             foreach (['/calendars/groups/t1/team-made/', '/calendars/bob/bob-made/'] as $path) {
                 $body = $method === 'MKCOL' ? $this->mkcolCalendarXml('Nope', 'VEVENT') : $this->mkcalendarXml('Nope', 'VEVENT');
                 $response = $this->dav($method, $path, $body, ['CONTENT_TYPE' => 'application/xml']);
-                // A Team has no calendar home node to create in (409); another user's home is refused (403).
-                $response->assertStatus(str_contains($path, '/groups/') ? 409 : 403);
+                $response->assertStatus(403);
             }
         }
 

@@ -83,8 +83,20 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         }
         // A new calendar, task list or notebook (MKCALENDAR, or MKCOL with a calendar resource type) is personal:
         // a Team's collections are made in the app, where the Project and its roles apply (#819).
-        if (preg_match('#^calendars/(groups/[^/]+|[^/]+)/[^/]+$#', $path, $match) === 1
-            && $match[1] !== DavCurrentUsername::of($this->server)) {
+        $this->refuseForeignCalendarHome($path);
+    }
+
+    /**
+     * Sabre checks the parent before it emits beforeBind, and a Team has no calendar home node, so
+     * {@see beforeMethod} calls this too and the answer is 403 rather than 409.
+     */
+    private function refuseForeignCalendarHome(string $path): void
+    {
+        if (preg_match('#^calendars/(groups/[^/]+|[^/]+)/[^/]+$#', $path, $match) !== 1) {
+            return;
+        }
+        $username = DavCurrentUsername::of($this->server);
+        if ($username === null || strcasecmp($match[1], $username) !== 0) {
             throw new Forbidden('A calendar can only be created in your own calendar home.');
         }
     }
@@ -132,6 +144,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new NotFound('File could not be located');
         }
         $method = $request->getMethod();
+        if ($method === 'MKCALENDAR' || $method === 'MKCOL') {
+            $this->refuseForeignCalendarHome(self::normalizePath($request->getPath()));
+        }
         if (! in_array($method, ['DELETE', 'MKCOL', 'PUT', 'MOVE', 'COPY', 'PROPPATCH', 'PATCH'], true)) {
             return;
         }

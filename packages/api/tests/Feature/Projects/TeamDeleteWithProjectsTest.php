@@ -106,6 +106,7 @@ final class TeamDeleteWithProjectsTest extends WgwDatabaseTestCase
         } catch (Forbidden) {
             $this->addToAssertionCount(1);
         }
+        $guard->initialize(new \Sabre\DAV\Server([]));
         foreach (['MOVE', 'COPY'] as $method) {
             foreach (['files/groups/t1', 'files/users/bob'] as $root) {
                 $overwrite = new SabreRequest($method, '/files/groups/t1/Scratch');
