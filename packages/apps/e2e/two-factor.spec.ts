@@ -194,7 +194,7 @@ test("a calendar app signs in with an app password; the account password is refu
   await expectSignedIn(page);
 
   await openSettings(page, "security");
-  await expect(page.getByText("No app passwords yet.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create app password" })).toBeVisible();
   const dialog = await openDialog(page, "Create app password", "New app password");
   await dialog.getByLabel("Name", { exact: true }).fill("Calendar on the laptop");
   // With two-factor on, creating one asks for a code, not the account password.
