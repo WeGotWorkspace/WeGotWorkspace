@@ -14,6 +14,7 @@ use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Server;
 use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
 use Tests\Support\WgwDatabaseTestCase;
@@ -106,7 +107,7 @@ final class TeamDeleteWithProjectsTest extends WgwDatabaseTestCase
         } catch (Forbidden) {
             $this->addToAssertionCount(1);
         }
-        $guard->initialize(new \Sabre\DAV\Server([]));
+        $guard->initialize(new Server([]));
         foreach (['MOVE', 'COPY'] as $method) {
             foreach (['files/groups/t1', 'files/users/bob'] as $root) {
                 $overwrite = new SabreRequest($method, '/files/groups/t1/Scratch');
