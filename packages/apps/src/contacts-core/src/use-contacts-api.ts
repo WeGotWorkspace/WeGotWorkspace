@@ -158,6 +158,8 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     mutationsLocked: coldDownload,
     /** Non-group cards the cold download has not fetched yet; undefined when none is running or it is unknown. */
     pendingContactCount: coldDownload ? data?.pendingContactCount : undefined,
+    /** Cards still partial (lean first download); each is read-only until its details arrive. */
+    partialCardIds: data?.partialCardIds,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

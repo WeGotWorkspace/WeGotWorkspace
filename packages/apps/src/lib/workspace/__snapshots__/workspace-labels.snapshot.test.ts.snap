@@ -555,6 +555,8 @@ exports[`workspace label snapshot > resolved labels match the snapshot: contacts
     "Delete "Alpha"? The group will be permanently deleted. Its contacts will not be affected.",
   ],
   "deleteGroupTitle": "Delete group?",
+  "detailsLoading": "Loading the rest of this contact…",
+  "detailsOffline": "The rest of this contact is not downloaded yet. Go online to see and edit it.",
   "downloadVCard": "Download vCard",
   "dropImportHint": "Drop vCard files to import",
   "edit": "Edit",

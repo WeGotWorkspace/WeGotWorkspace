@@ -77,6 +77,7 @@ export function ContactsWorkspace({
   listRefreshing: incomingListRefreshing = false,
   mutationsLocked = false,
   pendingContactCount,
+  partialCardIds,
   onRefreshList,
   onLogout,
   className,
@@ -108,6 +109,7 @@ export function ContactsWorkspace({
     canImportVcf,
     canCreateGroup,
     canEdit,
+    activeIsPartial,
     canMoveActiveContact,
     canSaveCreate,
     writableMoveBooks,
@@ -179,6 +181,7 @@ export function ContactsWorkspace({
     listLoading: incomingListLoading,
     listRefreshing: incomingListRefreshing,
     mutationsLocked,
+    partialCardIds,
     operations,
     onRefreshList,
     initialView,
@@ -510,6 +513,9 @@ export function ContactsWorkspace({
               card={active}
               createMode={createMode}
               readOnly={!canEdit}
+              detailsNotice={
+                activeIsPartial ? (online ? L.detailsLoading : L.detailsOffline) : undefined
+              }
               editDraft={editDraft}
               displayName={displayName}
               groupTags={groupTags}

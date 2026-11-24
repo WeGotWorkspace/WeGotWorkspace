@@ -22,6 +22,12 @@ export type ContactsWorkspaceProps = {
    * show its total before they arrive. Undefined when no download is running.
    */
   pendingContactCount?: number;
+  /**
+   * Ids of cards stored from a lean first download that are still partial
+   * (name, emails and what the list needs). Such a card opens read-only while
+   * its whole card is fetched, and is never edited from the partial copy.
+   */
+  partialCardIds?: readonly string[];
   /** Refetch address books and cards without reloading the whole app shell. */
   onRefreshList?: () => void;
   /** Invoked when the user chooses log out; navigation is owned by the app shell. */

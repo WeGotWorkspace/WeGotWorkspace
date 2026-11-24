@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONTACT_CARD_LEAN_PAGE_SIZE,
   CONTACT_CARD_PHOTOLESS_PAGE_SIZE,
+  CONTACT_CARD_PROPERTIES_LEAN,
   CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA,
   JmapContactsClient,
 } from "../contacts/JmapContactsClient.js";
@@ -391,6 +393,113 @@ describe("JmapContactsClient contract batches", () => {
     expect(recorded.map(([[name, args]]) => [name, (args.ids as string[]).length])).toEqual([
       ["ContactCard/get", 200],
       ["ContactCard/get", 50],
+    ]);
+    for (const [[, args]] of recorded) {
+      expect(args.properties).toEqual(CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA);
+    }
+  });
+
+  it("a lean download asks for the lean projection in pages of the server maximum", async () => {
+    const { contacts, recorded } = await makeClient((calls) =>
+      calls.map(([name, args, id]) =>
+        methodResponse(
+          name,
+          {
+            accountId: ACCOUNT,
+            state: "1:",
+            list: ((args.ids as string[]) ?? []).map((cardId) => ({ id: cardId })),
+            notFound: [],
+          },
+          id,
+        ),
+      ),
+    );
+    const ids = Array.from({ length: 700 }, (_, index) => `card-${index}`);
+
+    await contacts.getContactCardPages(ACCOUNT, ids, () => undefined, { lean: true });
+
+    expect(CONTACT_CARD_LEAN_PAGE_SIZE).toBe(500);
+    expect(recorded.map(([[name, args]]) => [name, (args.ids as string[]).length])).toEqual([
+      ["ContactCard/get", 500],
+      ["ContactCard/get", 200],
+    ]);
+    for (const [[, args]] of recorded) {
+      expect(args.properties).toEqual(CONTACT_CARD_PROPERTIES_LEAN);
+    }
+  });
+
+  it("lean pages stay within a smaller maxObjectsInGet (the client trims to the server)", async () => {
+    const sizes: number[] = [];
+    const { contacts } = await makeClient(
+      (calls) =>
+        calls.map(([name, args, id]) => {
+          sizes.push(((args.ids as string[]) ?? []).length);
+          return methodResponse(
+            name,
+            { accountId: ACCOUNT, state: "1:", list: [], notFound: [] },
+            id,
+          );
+        }),
+      { maxObjectsInGet: 300, maxCallsInRequest: 8 },
+    );
+    const ids = Array.from({ length: 650 }, (_, index) => `card-${index}`);
+
+    await contacts.getContactCardPages(ACCOUNT, ids, () => undefined, { lean: true });
+
+    expect(sizes).toEqual([300, 300, 50]);
+  });
+
+  it("the lean projection carries what the list and invitee search read, and no detail", () => {
+    for (const needed of ["name", "emails", "organizations", "uid", "kind", "members", "state"]) {
+      expect(CONTACT_CARD_PROPERTIES_LEAN).toContain(needed);
+    }
+    for (const detail of ["phones", "addresses", "notes", "media", "vCardProps"]) {
+      expect(CONTACT_CARD_PROPERTIES_LEAN).not.toContain(detail);
+    }
+    // Everything lean is part of the whole-card projection: a detail page can only add to it.
+    for (const property of CONTACT_CARD_PROPERTIES_LEAN) {
+      expect(CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA).toContain(property);
+    }
+  });
+
+  it("the detail pass asks for every property but media, one paced page of 200 at a time", async () => {
+    const events: string[] = [];
+    const { contacts, recorded } = await makeClient((calls) =>
+      calls.map(([name, args, id]) => {
+        const pageIds = (args.ids as string[]) ?? [];
+        events.push(`get ${pageIds.length}`);
+        return methodResponse(
+          name,
+          {
+            accountId: ACCOUNT,
+            state: "1:",
+            list: pageIds.map((cardId) => ({ id: cardId })),
+            notFound: [],
+          },
+          id,
+        );
+      }),
+    );
+    const ids = Array.from({ length: 250 }, (_, index) => `card-${index}`);
+
+    await contacts.getContactCardDetailPages(
+      ACCOUNT,
+      ids,
+      ({ remainingIds }) => {
+        events.push(`saved, ${remainingIds.length} left`);
+      },
+      async () => {
+        events.push("slot");
+      },
+    );
+
+    expect(events).toEqual([
+      "slot",
+      "get 200",
+      "saved, 50 left",
+      "slot",
+      "get 50",
+      "saved, 0 left",
     ]);
     for (const [[, args]] of recorded) {
       expect(args.properties).toEqual(CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA);

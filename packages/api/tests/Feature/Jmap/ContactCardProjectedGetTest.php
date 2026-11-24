@@ -70,6 +70,46 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
         $this->assertSame($full['state'], $photos['state']);
     }
 
+    public function test_the_lean_projection_carries_what_the_list_reads_and_nothing_of_the_detail(): void
+    {
+        $memberUid = 'urn:uuid:7f0c2a51-3c55-4d7a-9a4a-1b1c1d1e1f21';
+        $this->seedCardViaPdo('bob', 'member.vcf', $this->sampleVcard('Member Person', $memberUid));
+        $richId = $this->seedCardViaPdo('bob', 'rich.vcf', $this->richVcard());
+        $groupId = $this->seedCardViaPdo('bob', 'group.vcf', implode("\r\n", [
+            'BEGIN:VCARD',
+            'VERSION:4.0',
+            'UID:urn:uuid:5e0c2a51-3c55-4d7a-9a4a-1b1c1d1e1f98',
+            'KIND:group',
+            'FN:Team',
+            'MEMBER:'.$memberUid,
+            'END:VCARD',
+            '',
+        ]));
+        $lean = $this->clientLeanProperties();
+        $this->assertNotContains('media', $lean);
+        $this->assertNotContains('phones', $lean);
+
+        foreach ([$richId, $groupId] as $cardId) {
+            $full = $this->getCards([$cardId])[0];
+            $projected = $this->getCards([$cardId], $lean)[0];
+
+            // Only the asked-for properties (and the id) come back, with the values of the whole card.
+            $this->assertSame([], array_values(array_diff(array_keys($projected), $lean, ['id'])));
+            foreach (array_intersect($lean, array_keys($full)) as $property) {
+                $this->assertSame($full[$property], $projected[$property], $property);
+            }
+        }
+
+        // What the list and the invitee search read: name, emails, and the group fields.
+        $rich = $this->getCards([$richId], $lean)[0];
+        $this->assertArrayHasKey('name', $rich);
+        $this->assertArrayHasKey('emails', $rich);
+        $this->assertArrayNotHasKey('phones', $rich);
+        $group = $this->getCards([$groupId], $lean)[0];
+        $this->assertSame('group', $group['kind']);
+        $this->assertNotEmpty($group['members']);
+    }
+
     public function test_a_projection_without_media_does_no_photo_blob_work(): void
     {
         // Photo bytes no other test stores: the blob store outlives a test.
@@ -142,6 +182,22 @@ final class ContactCardProjectedGetTest extends WgwDatabaseTestCase
         $source = (string) file_get_contents($file);
         if (preg_match('/CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA = \[(.*?)\];/s', $source, $list) !== 1) {
             $this->fail('CONTACT_CARD_PROPERTIES_WITHOUT_MEDIA not found in '.$file);
+        }
+        preg_match_all('/"([^"]+)"/', $list[1], $names);
+        $this->assertNotEmpty($names[1]);
+
+        return $names[1];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function clientLeanProperties(): array
+    {
+        $file = dirname(__DIR__, 5).'/packages/apps/src/lib/jmap-client/contacts/JmapContactsClient.ts';
+        $source = (string) file_get_contents($file);
+        if (preg_match('/CONTACT_CARD_PROPERTIES_LEAN = \[(.*?)\];/s', $source, $list) !== 1) {
+            $this->fail('CONTACT_CARD_PROPERTIES_LEAN not found in '.$file);
         }
         preg_match_all('/"([^"]+)"/', $list[1], $names);
         $this->assertNotEmpty($names[1]);
