@@ -247,13 +247,35 @@ final class UserCalendarCollectionsProvisioner
     /**
      * True when the principal owns (is not just a sharee of) a collection whose component
      * set is exactly the one given: a task list is VTODO only, a notebook VJOURNAL only.
+     * Chat channels, DMs and thread pools are VJOURNAL only too but are not notebooks, so
+     * collections of a DAV-hidden kind never count. A row with no kind still counts.
      *
      * @param  array<int, array<string, mixed>>  $calendars  rows of Sabre getCalendarsForUser()
      */
     private function ownsCollectionOf(array $calendars, string $component): bool
     {
+        $ids = [];
+        foreach ($calendars as $calendar) {
+            $id = $calendar['id'] ?? null;
+            $ids[] = is_array($id) ? (int) ($id[0] ?? 0) : (int) $id;
+        }
+        $hidden = [];
+        if ($ids !== []) {
+            foreach (DB::connection('wgw')->table('calendar_collection_meta')
+                ->whereIn('calendarid', $ids)
+                ->get(['calendarid', 'kind']) as $row) {
+                if (CollectionKind::tryFrom((string) $row->kind)?->davHidden() === true) {
+                    $hidden[(int) $row->calendarid] = true;
+                }
+            }
+        }
+
         foreach ($calendars as $calendar) {
             if ((int) ($calendar['share-access'] ?? SharingPlugin::ACCESS_NOTSHARED) > SharingPlugin::ACCESS_SHAREDOWNER) {
+                continue;
+            }
+            $id = $calendar['id'] ?? null;
+            if (isset($hidden[is_array($id) ? (int) ($id[0] ?? 0) : (int) $id])) {
                 continue;
             }
             $set = $calendar['{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set'] ?? null;

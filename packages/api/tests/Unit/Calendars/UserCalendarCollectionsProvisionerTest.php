@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarColorPalette;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Chat\ChatCollectionUris;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Support\Facades\DB;
@@ -115,6 +118,29 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertSame('Inbox', (string) $byUri['tasks-inbox']['{DAV:}displayname']);
         $this->assertSame('General', (string) $byUri['notes-general']['{DAV:}displayname']);
         $this->assertArrayNotHasKey('tasks-home', $byUri);
+    }
+
+    public function test_an_owned_chat_channel_does_not_count_as_a_notebook(): void
+    {
+        $this->seedWgwUser('chat-first', password: 'longpassword');
+        $principalUri = 'principals/chat-first';
+        app(WgwCalendarBackendFactory::class)->make()->createCollection(
+            CollectionKind::ChatChannel,
+            $principalUri,
+            ChatCollectionUris::PREFIX_CHANNEL.'lunch',
+            [
+                '{DAV:}displayname' => 'Lunch',
+                '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
+            ],
+        );
+
+        app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal($principalUri);
+
+        $byUri = [];
+        foreach ((new CalPDO(DB::connection('wgw')->getPdo()))->getCalendarsForUser($principalUri) as $calendar) {
+            $byUri[(string) ($calendar['uri'] ?? '')] = $calendar;
+        }
+        $this->assertSame('Personal', (string) $byUri['notes-general']['{DAV:}displayname']);
     }
 
     public function test_provisioner_is_idempotent(): void
