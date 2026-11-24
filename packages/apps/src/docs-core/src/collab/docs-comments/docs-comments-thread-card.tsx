@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { IconButton } from "@/button/src/button";
+import { ComposerSendButton } from "@/button/src/composer-send-button";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import type {
   DocsCommentAuthor,
@@ -9,7 +10,6 @@ import type {
 import {
   DocsCollabCardHeader,
   DocsCollabCardShell,
-  DocsCollabHighlightText,
   DocsCollabMessageReply,
   DocsCollabReactions,
   useDocsCollabCardExit,
@@ -99,8 +99,7 @@ export function DocsCommentsThreadCard({
               label={labels.commentsResolve}
               icon={<Check />}
               size="md"
-              variant="outline"
-              severity="success"
+              variant="ghost"
               onClick={(event) => {
                 event.stopPropagation();
                 runExitAnimation(onResolve);
@@ -115,9 +114,7 @@ export function DocsCommentsThreadCard({
           className="docs-comments-thread-card__quote"
           title={active ? undefined : thread.anchorText}
         >
-          <span className="docs-collab-card__clamp">
-            <DocsCollabHighlightText variant="comment">{thread.anchorText}</DocsCollabHighlightText>
-          </span>
+          <span className="docs-collab-card__clamp">{thread.anchorText}</span>
         </blockquote>
       ) : null}
 
@@ -146,13 +143,13 @@ export function DocsCommentsThreadCard({
 
       {active && canMutate ? (
         <div
-          className="docs-comments-thread-card__composer"
+          className="docs-collab-card__footer docs-collab-card__footer--reply"
           onClick={(event) => event.stopPropagation()}
         >
           <input
             ref={composerRef}
             type="text"
-            className="docs-comments-thread-card__composer-input"
+            className="docs-collab-card__reply-input"
             value={composerText}
             placeholder={
               isDraft ? labels.commentsComposePlaceholder : labels.commentsReplyPlaceholder
@@ -172,14 +169,11 @@ export function DocsCommentsThreadCard({
               }
             }}
           />
-          <button
-            type="button"
-            className="docs-comments-thread-card__composer-post"
+          <ComposerSendButton
+            label={isDraft ? labels.commentsAdd : labels.commentsReplyAction}
             disabled={!canPost}
             onClick={submitComposer}
-          >
-            {isDraft ? labels.commentsAdd : labels.commentsReplyAction}
-          </button>
+          />
         </div>
       ) : null}
     </DocsCollabCardShell>

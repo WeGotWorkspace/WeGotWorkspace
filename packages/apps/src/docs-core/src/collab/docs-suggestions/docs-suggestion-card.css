@@ -9,15 +9,35 @@
     var(--docs-collab-card-accent) 28%,
     transparent
   );
-  --docs-suggestion-accent-strong: color-mix(
-    in oklab,
-    var(--docs-collab-card-accent) 38%,
-    oklch(0.42 0.13 145)
-  );
 }
 
+/* The change sits like the comment's quote: a bar on the left, struck old text,
+   new text after the arrow, no chips. */
 .docs-suggestion-card__diff {
-  @apply m-0 mt-3 text-sm leading-relaxed;
+  @apply m-0 mt-3 border-l-[3px] pl-3 text-base leading-relaxed;
+  border-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
+}
+
+/* Four classes so these win over the dark chip rules in docs-collab-highlight.css. */
+.docs-collab-card.docs-suggestion-card
+  .docs-suggestion-card__diff
+  .docs-collab-highlight--insertion,
+.docs-collab-card.docs-suggestion-card
+  .docs-suggestion-card__diff
+  .docs-collab-highlight--deletion {
+  @apply rounded-none border-0 p-0 text-[length:inherit] shadow-none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.docs-collab-card.docs-suggestion-card .docs-collab-highlight--insertion {
+  --docs-collab-highlight-fg: var(--track-ins-fg, oklch(0.5 0.14 150));
+  @apply font-medium;
+}
+
+.docs-collab-card.docs-suggestion-card .docs-collab-highlight--deletion {
+  --docs-collab-highlight-fg: var(--track-del-fg, oklch(0.55 0.16 20));
+  text-decoration-color: var(--track-del-fg, oklch(0.55 0.16 20));
 }
 
 .docs-suggestion-card__diff-arrow {
@@ -25,80 +45,10 @@
 }
 
 .docs-suggestion-card__reactions {
-  @apply mt-2.5;
+  @apply mt-3;
 }
 
 .docs-suggestion-card__replies {
   @apply mt-3 space-y-2.5 border-t pt-3;
   border-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
-}
-
-.docs-suggestion-card__composer {
-  @apply sticky bottom-0 z-[1] mt-3 flex items-center gap-2 rounded-lg border px-3 py-1;
-  border-color: var(
-    --docs-border,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
-  background-color: color-mix(
-    in oklab,
-    var(--docs-surface, var(--workspace-surface)) 92%,
-    transparent
-  );
-}
-
-.docs-suggestion-card__composer-input {
-  @apply min-w-0 flex-1 border-0 bg-transparent text-sm outline-none;
-  color: var(--docs-text, var(--workspace-foreground));
-}
-
-.docs-suggestion-card__composer-input::placeholder {
-  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
-}
-
-.docs-suggestion-card__composer-post {
-  @apply shrink-0 text-sm font-medium transition-opacity;
-  color: var(--docs-suggestion-accent-strong);
-}
-
-.docs-suggestion-card__composer-post:disabled {
-  @apply cursor-not-allowed opacity-40;
-}
-
-.docs-suggestion-card__composer-post:not(:disabled):hover {
-  opacity: 0.85;
-}
-
-/* Decision row under the change — labelled, full width (Accept solid green). */
-.docs-suggestion-card__decision {
-  @apply mt-4 grid grid-cols-2 gap-2.5;
-}
-
-.docs-suggestion-card__accept {
-  /* Dark enough for the white label to reach 4.5:1. */
-  --workspace-accent: var(--docs-accept-bg, oklch(0.52 0.14 150));
-  --workspace-accent-foreground: var(--docs-accept-fg, oklch(0.99 0 0));
-  font-weight: 600;
-}
-
-.docs-suggestion-card__reject {
-  background-color: color-mix(in oklch, var(--workspace-foreground) 7%, transparent);
-}
-
-.docs-suggestion-card .docs-suggestion-card__composer {
-  @apply mt-3 rounded-[0.625rem] py-2;
-  border-color: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-  background-color: color-mix(in oklch, var(--workspace-foreground) 5%, transparent);
-}
-
-.docs-suggestion-card__decision .button {
-  height: var(--control-height-lg);
-}
-
-.docs-suggestion-card__accept {
-  box-shadow: 0 6px 20px -8px color-mix(in oklch, var(--workspace-accent) 70%, transparent);
-}
-
-/* Post appears once there is something to post. */
-.docs-suggestion-card__composer-post:disabled {
-  visibility: hidden;
 }

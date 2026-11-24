@@ -31,12 +31,12 @@ function renderCard(overrides: Partial<Parameters<typeof DocsCommentsThreadCard>
 }
 
 describe("DocsCommentsThreadCard", () => {
-  it("resolves with a success IconButton and tooltip label", () => {
+  it("resolves with a quiet IconButton and tooltip label", () => {
     renderCard();
 
     const resolve = screen.getByRole("button", { name: docsLabels.commentsResolve });
     expect(resolve.className).toContain("icon-button--size-md");
-    expect(resolve.className).toContain("button--severity-success");
+    expect(resolve.className).toContain("button--variant-ghost");
     expect(screen.queryByText("Resolve")).toBeNull();
   });
 

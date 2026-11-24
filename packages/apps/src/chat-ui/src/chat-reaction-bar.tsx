@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import { Smile } from "lucide-react";
 import { REACTION_EMOJIS } from "@/reaction-picker/src/reaction-emojis";
-import { ReactionPicker } from "@/reaction-picker/src/reaction-picker";
+import { ReactionAddPicker, ReactionChip } from "@/reaction-picker/src/reaction-chip";
 import type { ChatReaction } from "@/lib/models/chat-types";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { cn } from "@/lib/utils";
@@ -55,37 +54,22 @@ export function ChatReactionBar({
         const count = reactionCount(reactions, emoji);
         const reacted = userReacted(reactions, emoji, currentUserId);
         return (
-          <button
+          <ReactionChip
             key={emoji}
-            type="button"
-            className="chat-reaction-bar__reaction"
-            data-reacted={reacted ? "true" : "false"}
-            aria-pressed={reacted}
+            emoji={emoji}
+            count={count}
+            reacted={reacted}
             disabled={readOnly}
             onClick={(event) => {
               event.stopPropagation();
               onToggleReaction(emoji);
             }}
-          >
-            <span className="chat-reaction-bar__reaction-emoji" aria-hidden>
-              {emoji}
-            </span>
-            <span className="chat-reaction-bar__reaction-count">{count}</span>
-          </button>
+          />
         );
       })}
       {readOnly ? null : (
-        <ReactionPicker
-          trigger={
-            <button
-              type="button"
-              className="chat-reaction-bar__reaction chat-reaction-bar__reaction--add"
-              aria-label={chatUiLabels.react}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Smile className="chat-reaction-bar__reaction-add-icon" aria-hidden />
-            </button>
-          }
+        <ReactionAddPicker
+          label={chatUiLabels.react}
           isPicked={(emoji) => userReacted(reactions, emoji, currentUserId)}
           onPick={onToggleReaction}
         />

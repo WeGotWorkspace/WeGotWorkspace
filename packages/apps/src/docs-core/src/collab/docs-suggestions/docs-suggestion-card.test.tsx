@@ -303,7 +303,7 @@ describe("DocsSuggestionCard", () => {
     expect(onAddReply).toHaveBeenCalledWith("Follow-up note");
   });
 
-  it("reviews with a labelled accept / reject row", () => {
+  it("reviews with icon buttons in the header, like resolve", () => {
     renderCard(
       <DocsSuggestionCard
         suggestion={insertSuggestion}
@@ -322,12 +322,13 @@ describe("DocsSuggestionCard", () => {
     const reject = screen.getByRole("button", { name: docsLabels.suggestionsReject });
     expect(accept.closest(".segmented-control")).toBeNull();
     expect(reject.closest(".segmented-control")).toBeNull();
-    // Labelled decision row under the change: Accept solid, Reject quiet.
-    expect(accept.closest(".docs-suggestion-card__decision")).not.toBeNull();
-    expect(accept.className).toContain("button--variant-primary");
-    expect(reject.className).toContain("button--variant-outline");
-    expect(screen.getByText(docsLabels.suggestionsAcceptShort)).toBeTruthy();
-    expect(screen.getByText(docsLabels.suggestionsRejectShort)).toBeTruthy();
+    // Quiet icon buttons in the header, where a comment has its resolve.
+    expect(accept.closest(".docs-collab-card__header")).not.toBeNull();
+    expect(reject.closest(".docs-collab-card__header")).not.toBeNull();
+    expect(accept.className).toContain("icon-button--size-md");
+    expect(accept.className).toContain("button--variant-ghost");
+    expect(reject.className).toContain("button--variant-ghost");
+    expect(screen.queryByText(docsLabels.suggestionsAcceptShort)).toBeNull();
   });
 
   it("hides accept, reject, and composer when the suggestion is archived", () => {

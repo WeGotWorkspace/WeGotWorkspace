@@ -1,8 +1,9 @@
 import { useCallback, useRef, type MouseEvent, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
-import { Send, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
+import { ComposerSendButton } from "@/button/src/composer-send-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
@@ -145,7 +146,7 @@ export function ChatComposer({
           <div ref={cardRef} className="chat-composer__card" onMouseDown={onCardMouseDown}>
             <div className="chat-composer__row">
               <div className="chat-composer__sheet">
-                <TextEditorSheet editor={editor} variant="inline" slashMenu={false} />
+                <TextEditorSheet editor={editor} variant="inline" />
               </div>
               {onCancel ? (
                 <IconButton
@@ -176,11 +177,7 @@ export function ChatComposer({
                   ) : null}
                 </Button>
               ) : (
-                <IconButton
-                  label={chatUiLabels.send}
-                  icon={<Send />}
-                  size="md"
-                  variant="ghost"
+                <ComposerSendButton
                   onClick={() => {
                     if (editor) submit(editor);
                   }}

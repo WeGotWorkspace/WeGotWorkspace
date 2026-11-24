@@ -16,9 +16,20 @@ import {
   Text,
 } from "lucide-react";
 
+/** The menu's sections, in display order. */
+export const SLASH_GROUPS = [
+  { id: "text", label: "Text" },
+  { id: "lists", label: "Lists & tasks" },
+  { id: "advanced", label: "Advanced" },
+] as const;
+
+export type SlashGroupId = (typeof SLASH_GROUPS)[number]["id"];
+
 export type SlashCommand = {
   title: string;
-  desc: string;
+  group: SlashGroupId;
+  /** What typing at the start of a line does instead (the editor's input rule), shown as a hint. */
+  shortcut?: string;
   icon: ComponentType<{ className?: string }>;
   keywords: string;
   run: (editor: Editor) => void;
@@ -37,77 +48,87 @@ function getSlashRange(editor: Editor) {
 const BASE_SLASH_COMMANDS: SlashCommand[] = [
   {
     title: "Heading 1",
-    desc: "Big section title",
+    group: "text",
+    shortcut: "#",
     icon: Heading1,
     keywords: "h1 title",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleHeading({ level: 1 }).run(),
   },
   {
     title: "Heading 2",
-    desc: "Medium heading",
+    group: "text",
+    shortcut: "##",
     icon: Heading2,
     keywords: "h2",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleHeading({ level: 2 }).run(),
   },
   {
     title: "Heading 3",
-    desc: "Small heading",
+    group: "text",
+    shortcut: "###",
     icon: Heading3,
     keywords: "h3",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleHeading({ level: 3 }).run(),
   },
   {
     title: "Paragraph",
-    desc: "Plain text",
+    group: "text",
     icon: Text,
     keywords: "p text",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).setParagraph().run(),
   },
   {
     title: "Bulleted list",
-    desc: "Simple bulleted list",
+    group: "lists",
+    shortcut: "-",
     icon: List,
     keywords: "ul bullet",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleBulletList().run(),
   },
   {
     title: "Numbered list",
-    desc: "Ordered list",
+    group: "lists",
+    shortcut: "1.",
     icon: ListOrdered,
     keywords: "ol number",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleOrderedList().run(),
   },
   {
     title: "Task list",
-    desc: "Checkbox to-dos",
+    group: "lists",
+    shortcut: "[ ]",
     icon: ListChecks,
     keywords: "todo task check",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleTaskList().run(),
   },
   {
     title: "Quote",
-    desc: "Capture a quote",
+    group: "text",
+    shortcut: ">",
     icon: Quote,
     keywords: "blockquote",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleBlockquote().run(),
   },
   {
     title: "Divider",
-    desc: "Visual separator",
+    group: "advanced",
+    shortcut: "---",
     icon: Minus,
     keywords: "hr rule line",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).setHorizontalRule().run(),
   },
   {
     title: "Code block",
-    desc: "Syntax-highlighted code",
+    group: "advanced",
+    shortcut: "```",
     icon: Code2,
     keywords: "code pre",
     run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).toggleCodeBlock().run(),
   },
   {
     title: "Table",
-    desc: "3×3 table with header",
+    group: "advanced",
+    shortcut: "3×3",
     icon: TableIcon,
     keywords: "grid",
     run: (e) =>
@@ -122,7 +143,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
 
 const PAGE_BREAK_COMMAND: SlashCommand = {
   title: "Page break",
-  desc: "Start a new page",
+  group: "advanced",
   icon: SeparatorHorizontal,
   keywords: "page break new page",
   // Breaks only go between top-level blocks, not in lists, quotes or tables.
@@ -144,7 +165,7 @@ export function slashCommands({ onInsertImage, pageBreak }: SlashCommandOptions 
   if (onInsertImage) {
     commands.push({
       title: "Image",
-      desc: "Upload or choose from Drive",
+      group: "advanced",
       icon: ImageIcon,
       keywords: "image photo picture media",
       run: (e) => {
@@ -154,4 +175,15 @@ export function slashCommands({ onInsertImage, pageBreak }: SlashCommandOptions 
     });
   }
   return commands;
+}
+
+/**
+ * The commands split into the menu's sections, in section order (a command keeps its
+ * place within its section). Empty sections are left out. Arrow keys walk this order.
+ */
+export function groupSlashCommands(commands: readonly SlashCommand[]) {
+  return SLASH_GROUPS.map((group) => ({
+    ...group,
+    commands: commands.filter((command) => command.group === group.id),
+  })).filter((group) => group.commands.length > 0);
 }

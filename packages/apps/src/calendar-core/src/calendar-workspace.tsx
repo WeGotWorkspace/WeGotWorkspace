@@ -123,6 +123,7 @@ export function CalendarWorkspace({
   onOpenTaskInTasks,
   availabilitySource,
   availabilityPreset,
+  calendarsLoading = false,
 }: CalendarWorkspaceProps) {
   const controller = useCalendarController({
     data,
@@ -227,9 +228,7 @@ export function CalendarWorkspace({
     moveCalendarEvents,
   } = controller;
   const { showError, showSuccess } = useAppToast();
-  const handleInvitationResponded = useCallback(() => {
-    surface?.syncNow();
-  }, [surface]);
+  const handleInvitationResponded = useCallback(() => void surface?.syncNow(), [surface]);
   const handleInvitationError = useCallback(
     (error: unknown) => {
       showError(
@@ -754,6 +753,7 @@ export function CalendarWorkspace({
       rowProps={calendarRowProps}
       onSetVisible={setCalendarsVisible}
       canWrite={canWrite}
+      calendarsLoading={calendarsLoading}
       onCreateEvent={() => {
         closeEventPreview();
         openCreateEvent();

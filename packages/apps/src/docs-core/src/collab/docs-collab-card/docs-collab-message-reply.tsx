@@ -14,6 +14,7 @@ export function DocsCollabMessageReply({ message }: DocsCollabMessageReplyProps)
         displayName={message.author.name}
         compact
         size="md"
+        variant="tint"
         className="docs-collab-message-reply__avatar"
       />
       <div className="docs-collab-message-reply__content">

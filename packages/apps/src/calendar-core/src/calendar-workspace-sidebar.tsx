@@ -34,6 +34,8 @@ export type CalendarWorkspaceSidebarProps = {
   onSetVisible: (calendarIds: readonly string[], visible: boolean) => void;
   /** No writable calendar: the primary button is Today instead of New. */
   canWrite: boolean;
+  /** Placeholder data: New, disabled, rather than Today, until the calendars are known. */
+  calendarsLoading?: boolean;
   onCreateEvent: () => void;
   onCreateCalendar?: () => void;
   onSubscribeCalendar?: () => void;
@@ -57,6 +59,7 @@ export function CalendarWorkspaceSidebar({
   rowProps,
   onSetVisible,
   canWrite,
+  calendarsLoading = false,
   onCreateEvent,
   onCreateCalendar,
   onSubscribeCalendar,
@@ -77,9 +80,10 @@ export function CalendarWorkspaceSidebar({
       open={open}
       onCloseMobile={onClose}
       primaryButton={
-        canWrite ? (
+        canWrite || calendarsLoading ? (
           <CalendarNewMenu
             labels={L}
+            disabled={calendarsLoading}
             onCreateEvent={thenDismiss(onCreateEvent)}
             onCreateCalendar={onCreateCalendar && thenDismiss(onCreateCalendar)}
             onSubscribeCalendar={onSubscribeCalendar && thenDismiss(onSubscribeCalendar)}

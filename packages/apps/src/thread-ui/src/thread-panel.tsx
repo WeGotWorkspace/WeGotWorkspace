@@ -3,7 +3,6 @@ import { Button } from "@/button/src/button";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
 import { continuesChatRun } from "@/chat-ui/src/chat-message-group";
-import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/ui/badge";
 import { threadUiLabels } from "@/thread-ui/src/thread-labels";
@@ -37,8 +36,6 @@ export function ThreadPanel({ client, adapter, presence, className }: ThreadPane
     null,
   );
   const me = adapter.me.id;
-  // Enter sends, as in Chat; Shift+Enter starts a new line.
-  const shortcut = "↵";
   const principals = useMemo(
     () => adapter.people.filter((person) => person.id !== me),
     [adapter.people, me],
@@ -229,8 +226,6 @@ export function ThreadPanel({ client, adapter, presence, className }: ThreadPane
                             className="thread-panel__reply-composer"
                             principals={principals}
                             placeholder={threadUiLabels.replyPlaceholder}
-                            submitLabel={threadUiLabels.reply}
-                            submitShortcut={shortcut}
                             onSend={({ body, mentions }) => {
                               setReplyTo(null);
                               void thread.post(body, mentions, entry.id);
@@ -250,17 +245,6 @@ export function ThreadPanel({ client, adapter, presence, className }: ThreadPane
               className="thread-panel__composer"
               principals={principals}
               placeholder={threadUiLabels.placeholder}
-              submitLabel={threadUiLabels.comment}
-              submitShortcut={shortcut}
-              leading={
-                <UserAvatar
-                  displayName={adapter.me.displayName}
-                  compact
-                  size="md"
-                  variant="tint"
-                  presence={presence?.[me]}
-                />
-              }
               onSend={({ body, mentions }) => void thread.post(body, mentions)}
             />
           ) : (
