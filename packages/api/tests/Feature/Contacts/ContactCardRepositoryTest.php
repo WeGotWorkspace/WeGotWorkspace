@@ -134,6 +134,39 @@ final class ContactCardRepositoryTest extends WgwDatabaseTestCase
         $this->assertSame($id, $this->cards->show('bob', $id.'.vcf')['id']);
     }
 
+    public function test_show_each_resolves_an_id_whose_case_differs_from_the_stored_uri(): void
+    {
+        $id = $this->createJane()['id'];
+        $upper = strtoupper($id);
+
+        $got = iterator_to_array($this->cards->showEach('bob', [$upper]));
+
+        $this->assertSame($id, $got[$upper]['id'] ?? null);
+        $this->assertSame($id, $this->cards->show('bob', $upper)['id']);
+    }
+
+    public function test_show_each_picks_the_lowest_row_when_two_books_share_a_uri(): void
+    {
+        $id = $this->createJane()['id'];
+        $first = Card::query()->where('uri', $id.'.vcf')->firstOrFail();
+        $this->shareCarolsBookWithBob(false);
+        Card::query()->create([
+            'addressbookid' => $this->bookId('carol'),
+            'carddata' => $first->carddata,
+            'uri' => $first->uri,
+            'etag' => $first->etag,
+            'lastmodified' => $first->lastmodified,
+            'size' => $first->size,
+            'uid' => 'other-uid-'.$id,
+        ]);
+
+        $shown = $this->cards->show('bob', $id);
+        $got = iterator_to_array($this->cards->showEach('bob', [$id]));
+
+        $this->assertSame($shown['addressBookIds'], $got[$id]['addressBookIds']);
+        $this->assertSame(['default' => true], $got[$id]['addressBookIds']);
+    }
+
     public function test_show_hides_cards_in_books_the_user_cannot_see(): void
     {
         $id = $this->createJane()['id'];

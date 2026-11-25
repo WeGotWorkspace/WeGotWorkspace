@@ -76,7 +76,14 @@ final class JmapCapabilities
 
     public const MAX_CALLS_IN_REQUEST = 32;
 
-    public const MAX_OBJECTS_IN_GET = 1000;
+    /**
+     * One number for every /get, advertised as maxObjectsInGet. It stays 500
+     * because a full-property worst case does not fit 128 MB at 1000: notes
+     * (bodies up to 2_097_152 bytes) and calendar events (524_288) are kept
+     * whole in the method's list, chat bodies (65_536) are 64 MB of text before
+     * the JSON copy, and ids: null still loads every row of a collection first.
+     */
+    public const MAX_OBJECTS_IN_GET = 500;
 
     public const MAX_OBJECTS_IN_SET = 200;
 

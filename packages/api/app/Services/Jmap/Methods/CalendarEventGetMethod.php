@@ -25,6 +25,9 @@ final class CalendarEventGetMethod implements JmapMethodInterface
 {
     use HandlesGetArguments;
 
+    /** Events loaded per lookup, so a large get never holds every row at once. */
+    private const GET_CHUNK = 100;
+
     public function __construct(
         private readonly CalendarEventRepository $events,
         private readonly JmapCalendarEventStateService $eventStates,
@@ -65,7 +68,7 @@ final class CalendarEventGetMethod implements JmapMethodInterface
             $this->guardGetAllBound($list);
         } else {
             // Chunked, so the located calendar rows (raw iCalendar) of a page are not all held at once.
-            foreach (array_chunk($ids, 100) as $chunk) {
+            foreach (array_chunk($ids, self::GET_CHUNK) as $chunk) {
                 $locate = $this->events->ownedEventLocator($username, $chunk);
                 $states = $this->eventStates->statesFor($username, $chunk);
                 foreach ($chunk as $id) {

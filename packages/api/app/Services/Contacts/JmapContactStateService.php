@@ -142,7 +142,7 @@ final class JmapContactStateService
 
         foreach ($entries as $entry) {
             $cardId = ContactCardMapper::cardIdFromUri((string) $entry['card']->uri);
-            if (! isset($rows[$cardId]) || isset($missing[$cardId])) {
+            if (! isset($rows[$cardId])) {
                 continue;
             }
             $this->rotateIfChanged($rows[$cardId], $entry['card'], $entry['addressBookUri']);

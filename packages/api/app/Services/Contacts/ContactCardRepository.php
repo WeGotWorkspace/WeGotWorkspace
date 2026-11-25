@@ -163,6 +163,7 @@ final class ContactCardRepository
                 ->whereIn('uri', array_values(array_unique([...array_keys($wanted), ...array_values($wanted)])))
                 ->orderBy('id')
                 ->get()
+                ->unique(static fn (Card $card): string => (string) $card->uri)
                 ->keyBy(static fn (Card $card): string => (string) $card->uri);
 
             $light = [];
@@ -172,6 +173,10 @@ final class ContactCardRepository
                 $a = $found[$cardId] ?? null;
                 $b = $found[$cardUri] ?? null;
                 $card = $a !== null && $b !== null ? ((int) $a->id <= (int) $b->id ? $a : $b) : ($a ?? $b);
+                if ($card === null) {
+                    // SQL matches case-insensitively where the map does not: resolve as show() does.
+                    $card = $this->findOwnedCard($username, $cardId)['card'] ?? null;
+                }
                 if ($card === null || ! isset($books[(int) $card->addressbookid])) {
                     continue;
                 }
