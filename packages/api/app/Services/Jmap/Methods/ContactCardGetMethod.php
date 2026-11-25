@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Methods;
 
-use App\Exceptions\ApiHttpException;
 use App\Services\Contacts\AddressBookRepository;
 use App\Services\Contacts\ContactCardRepository;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\Methods\Concerns\HandlesGetArguments;
-use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -53,38 +51,34 @@ final class ContactCardGetMethod implements JmapMethodInterface
         $tokens = $this->books->syncTokens($username);
         $state = JmapAccountStateCodec::compose($tokens);
 
+        $projection = $this->getProjection($args);
         $ids = $this->requestedIds($args);
         $list = [];
         $notFound = [];
         if ($ids === null) {
             foreach (array_keys($tokens) as $bookUri) {
                 foreach ($this->cards->list($username, $bookUri)['list'] as $card) {
-                    $list[] = $card;
+                    $list[] = $projection->apply($card);
                 }
             }
             $this->guardGetAllBound($list);
         } else {
             // A projection without media (the photo-less first download) skips the photo blobs.
-            $properties = $args['properties'] ?? null;
-            $withMedia = ! is_array($properties) || in_array('media', $properties, true);
-            foreach ($ids as $id) {
-                try {
-                    $list[] = $this->cards->show($username, $id, $withMedia);
-                } catch (ApiHttpException $e) {
-                    if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
-                        $notFound[] = $id;
+            $withMedia = $projection->wants('media');
+            foreach ($this->cards->showEach($username, $ids, $withMedia) as $id => $card) {
+                if ($card === null) {
+                    $notFound[] = $id;
 
-                        continue;
-                    }
-                    throw $e;
+                    continue;
                 }
+                $list[] = $projection->apply($card);
             }
         }
 
         return [
             'accountId' => $username,
             'state' => $state,
-            'list' => $this->projectProperties($list, $args),
+            'list' => $list,
             'notFound' => $notFound,
         ];
     }

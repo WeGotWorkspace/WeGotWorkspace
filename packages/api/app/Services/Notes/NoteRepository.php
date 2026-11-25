@@ -27,6 +27,9 @@ use PDOException;
 
 final class NoteRepository
 {
+    /** Notes read per query in {@see showEach()}: bounds the iCalendar bytes held at once. */
+    private const GET_CHUNK = 50;
+
     public function __construct(
         private readonly WgwCalendarBackendFactory $backends,
         private readonly NotebookRepository $notebooks,
@@ -113,6 +116,69 @@ final class NoteRepository
         $note['contentEtag'] = $this->yjsProjection->contentEtag($located['object']);
 
         return $note;
+    }
+
+    /**
+     * Notes by id for Note/get: the notebook access lookup is read once, notes load
+     * in chunks (one query for the rows, one for the stars, one batched state write),
+     * and each note is yielded as it is mapped so the caller can project it and drop
+     * it. The content tag comes from the parsed note, so a note is parsed once.
+     * Yields id => note, or null for a note that is missing or not accessible.
+     *
+     * @param  list<string>  $noteIds
+     * @return \Generator<string, array<string, mixed>|null>
+     */
+    public function showEach(string $username, array $noteIds): \Generator
+    {
+        $instances = $this->notebooks->accessibleInstancesByCalendarId($username);
+        foreach (array_chunk($noteIds, self::GET_CHUNK) as $chunk) {
+            $objects = $instances === [] ? collect() : CalendarObject::query()
+                ->whereIn('uid', $chunk)
+                ->where('componenttype', 'VJOURNAL')
+                ->whereIn('calendarid', array_keys($instances))
+                ->orderBy('id')
+                ->get();
+
+            // The first accessible row of a uid wins, as findAccessibleNote() did.
+            $byUid = $objects->unique(static fn (CalendarObject $o): string => (string) $o->uid)
+                ->keyBy(static fn (CalendarObject $o): string => (string) $o->uid);
+            $objectIds = array_values($byUid->map(static fn (CalendarObject $o): int => (int) $o->id)->all());
+            $starred = $this->starredObjectIds($username, $objectIds);
+
+            $remember = [];
+            $notes = [];
+            foreach ($chunk as $noteId) {
+                $object = $byUid->get($noteId);
+                if ($object === null) {
+                    // A miss may still match through the database's case-insensitive collation.
+                    $object = $this->findAccessibleNote($username, $noteId)['object'] ?? null;
+                    if ($object === null) {
+                        continue;
+                    }
+                    $starred += $this->starredObjectIds($username, [(int) $object->id]);
+                }
+                $instance = $instances[(int) $object->calendarid] ?? null;
+                if ($instance === null) {
+                    continue;
+                }
+                $notebookUri = $this->notebooks->apiIdForInstance($instance);
+                $note = $this->converter->fromObject($object, $notebookUri, isset($starred[(int) $object->id]));
+                $note['contentEtag'] = $this->yjsProjection->contentEtagOfNote($note);
+                $notes[$noteId] = $note;
+                $remember[] = [
+                    'noteId' => (string) ($note['id'] ?? $object->uid),
+                    'notebookUri' => $notebookUri,
+                    'objectUri' => is_string($object->uri) ? (string) $object->uri : null,
+                ];
+            }
+            unset($byUid, $objects);
+            $this->noteStates->rememberMany($username, $remember);
+
+            foreach ($chunk as $noteId) {
+                yield $noteId => $notes[$noteId] ?? null;
+                unset($notes[$noteId]);
+            }
+        }
     }
 
     /**

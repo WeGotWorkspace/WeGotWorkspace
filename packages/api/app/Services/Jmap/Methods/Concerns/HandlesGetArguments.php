@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Methods\Concerns;
 
+use App\Services\Jmap\GetProjection;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
 
@@ -53,36 +54,28 @@ trait HandlesGetArguments
     }
 
     /**
+     * The parsed `properties` argument. Build it before loading anything and
+     * apply it to each record as it is mapped, so a page never holds more than
+     * one full record (see {@see GetProjection}).
+     *
+     * @param  array<string, mixed>  $args
+     */
+    private function getProjection(array $args): GetProjection
+    {
+        return GetProjection::fromArgs($args);
+    }
+
+    /**
+     * Whole-list projection for methods that still map everything first.
+     *
      * @param  list<array<string, mixed>>  $records
      * @param  array<string, mixed>  $args
      * @return list<array<string, mixed>>
      */
     private function projectProperties(array $records, array $args): array
     {
-        $properties = $args['properties'] ?? null;
-        if ($properties === null) {
-            return $records;
-        }
-        if (! is_array($properties) || ! array_is_list($properties)) {
-            throw new JmapMethodException('invalidArguments', 'properties must be null or an array of property names.');
-        }
+        $projection = GetProjection::fromArgs($args);
 
-        // The id property is always returned (RFC 8620 §5.1).
-        $keep = ['id' => true];
-        foreach ($properties as $property) {
-            if (! is_string($property)) {
-                throw new JmapMethodException('invalidArguments', 'properties must contain strings.');
-            }
-            $keep[$property] = true;
-        }
-
-        return array_map(
-            /**
-             * @param  array<string, mixed>  $record
-             * @return array<string, mixed>
-             */
-            static fn (array $record): array => array_intersect_key($record, $keep),
-            $records,
-        );
+        return array_map($projection->apply(...), $records);
     }
 }

@@ -96,6 +96,76 @@ final class JmapContactStateService
     }
 
     /**
+     * State rows for a batch of cards, in one read plus one batched insert for the
+     * cards that have none yet (instead of a firstOrCreate per card). Same rules as
+     * {@see ensureStateRow()}: the token rotates when the etag or the book changed.
+     * Keyed by card id.
+     *
+     * @param  list<array{card: Card, addressBookUri: string}>  $entries
+     * @return array<string, JmapContactState>
+     */
+    public function ensureStateRows(string $username, array $entries): array
+    {
+        if ($entries === []) {
+            return [];
+        }
+
+        $cardIds = [];
+        foreach ($entries as $entry) {
+            $cardIds[] = ContactCardMapper::cardIdFromUri((string) $entry['card']->uri);
+        }
+        $rows = $this->rowsByCardId($username, $cardIds);
+
+        $now = now();
+        $missing = [];
+        foreach ($entries as $entry) {
+            $cardId = ContactCardMapper::cardIdFromUri((string) $entry['card']->uri);
+            if (isset($rows[$cardId]) || isset($missing[$cardId])) {
+                continue;
+            }
+            $missing[$cardId] = [
+                'username' => $username,
+                'card_id' => $cardId,
+                'address_book_uri' => $entry['addressBookUri'],
+                'card_uri' => (string) $entry['card']->uri,
+                'state_token' => $this->generateStateToken(),
+                'etag' => is_string($entry['card']->etag) ? $entry['card']->etag : null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+        if ($missing !== []) {
+            // insertOrIgnore: a concurrent request creating the same row wins and is read back below.
+            JmapContactState::query()->insertOrIgnore(array_values($missing));
+            $rows += $this->rowsByCardId($username, array_keys($missing));
+        }
+
+        foreach ($entries as $entry) {
+            $cardId = ContactCardMapper::cardIdFromUri((string) $entry['card']->uri);
+            if (! isset($rows[$cardId]) || isset($missing[$cardId])) {
+                continue;
+            }
+            $this->rotateIfChanged($rows[$cardId], $entry['card'], $entry['addressBookUri']);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<string>  $cardIds
+     * @return array<string, JmapContactState>
+     */
+    private function rowsByCardId(string $username, array $cardIds): array
+    {
+        $rows = [];
+        foreach (JmapContactState::query()->where('username', $username)->whereIn('card_id', $cardIds)->get() as $row) {
+            $rows[(string) $row->card_id] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
      * Ensures a state row exists and rotates state_token when the CardDAV etag changes (read path).
      *
      * firstOrCreate falls back to createOrFirst, so two requests creating the same
@@ -120,6 +190,12 @@ final class JmapContactStateService
             return $row;
         }
 
+        return $this->rotateIfChanged($row, $card, $addressBookUri);
+    }
+
+    private function rotateIfChanged(JmapContactState $row, Card $card, string $addressBookUri): JmapContactState
+    {
+        $rawEtag = is_string($card->etag) ? $card->etag : null;
         $bookChanged = $row->address_book_uri !== $addressBookUri;
         $etagChanged = $rawEtag !== null && $rawEtag !== '' && $row->etag !== $rawEtag;
         if ($bookChanged || $etagChanged) {

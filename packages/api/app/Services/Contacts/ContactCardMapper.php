@@ -6,6 +6,7 @@ namespace App\Services\Contacts;
 
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\Card;
+use App\Models\JmapContactState;
 use App\Services\Contacts\Conversion\ConversionSupport;
 use App\Services\Contacts\Conversion\VCardJsContactConverter;
 use App\Services\VObject\VCardInPlacePatcher;
@@ -26,7 +27,7 @@ final class ContactCardMapper
      *
      * @return array<string, mixed>
      */
-    public function toContactCard(Card $card, string $addressBookUri, string $username, bool $withMedia = true): array
+    public function toContactCard(Card $card, string $addressBookUri, string $username, bool $withMedia = true, ?JmapContactState $stateRow = null): array
     {
         $raw = is_string($card->carddata) ? $card->carddata : (string) $card->carddata;
         $contact = $this->converter->cardFromVCard($raw, 'debug');
@@ -55,6 +56,13 @@ final class ContactCardMapper
             if (! isset($contact['created']) || ! is_string($contact['created']) || $contact['created'] === '') {
                 $contact['created'] = $timestamp;
             }
+        }
+
+        if ($stateRow !== null) {
+            // A batched read already fetched (and rotated) the row.
+            $contact['state'] = $stateRow->state_token;
+
+            return $contact;
         }
 
         return $this->contactStates->attachStateToken($username, $contact, $card, $addressBookUri);
