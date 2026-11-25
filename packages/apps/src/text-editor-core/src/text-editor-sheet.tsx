@@ -2,6 +2,7 @@ import { EditorContent, type Editor } from "@tiptap/react";
 import { clsx } from "clsx";
 import type { MouseEvent, ReactNode } from "react";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
+import { TextEditorImageBar } from "@/text-editor-core/src/text-editor-image-bar";
 import { TextEditorSlashMenu } from "@/text-editor-core/src/text-editor-slash-menu";
 import { TextEditorTableControls } from "@/text-editor-core/src/text-editor-table-controls";
 import { useTextEditorFitScale } from "@/text-editor-core/src/use-text-editor-fit-scale";
@@ -19,6 +20,8 @@ export type TextEditorSheetProps = {
   slashMenu?: boolean;
   /** Opens the Docs image picker from the slash menu. */
   onInsertImage?: () => void;
+  /** Opens the Docs image picker to swap the picture at this position (image bar > Replace). */
+  onReplaceImage?: (pos: number) => void;
   /** Docs only: slash menu offers Page break. */
   pageBreak?: boolean;
   /** Docs pages on screen: the surface drops its sheet chrome, each page draws its own. */
@@ -39,6 +42,7 @@ export function TextEditorSheet({
   fill = false,
   slashMenu = true,
   onInsertImage,
+  onReplaceImage,
   pageBreak = false,
   paginated = false,
   fitToScreen = false,
@@ -71,6 +75,9 @@ export function TextEditorSheet({
         className={variant === "sheet" ? "text-editor-sheet__surface paper-sheet" : undefined}
       />
       {overlay}
+      {variant === "sheet" ? (
+        <TextEditorImageBar editor={editor} onReplaceImage={onReplaceImage} />
+      ) : null}
       {slashMenu ? (
         <TextEditorSlashMenu editor={editor} onInsertImage={onInsertImage} pageBreak={pageBreak} />
       ) : null}

@@ -4,7 +4,10 @@ import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { fetchGroupRootsFromDrive, type DocsHomeGroupRoot } from "@/docs-core/src/docs-home-drives";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { insertDocsImageFromNodeId } from "@/text-editor-core/src/text-editor-image-commands";
+import {
+  insertDocsImageFromNodeId,
+  replaceDocsImageAt,
+} from "@/text-editor-core/src/text-editor-image-commands";
 import { setDocsImageUploadHandler } from "@/text-editor-core/src/text-editor-image-paste";
 import {
   isDocsImageFile,
@@ -23,6 +26,8 @@ export type UseDocsImageInsertOptions = {
 export type UseDocsImageInsertResult = {
   pickerOpen: boolean;
   openPicker: () => void;
+  /** Same picker, but the pick swaps the picture of the image at `pos` instead of inserting. */
+  openReplacePicker: (pos: number) => void;
   closePicker: () => void;
   onSelectFile: (file: DriveFile) => void;
   onUploadFiles: (files: File[]) => void;
@@ -40,13 +45,26 @@ export function useDocsImageInsert({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [groupRoots, setGroupRoots] = useState<DocsHomeGroupRoot[]>([]);
 
+  const [replacePos, setReplacePos] = useState<number | null>(null);
+
   const openPicker = useCallback(() => {
     if (!enabled) return;
+    setReplacePos(null);
     setPickerOpen(true);
   }, [enabled]);
 
+  const openReplacePicker = useCallback(
+    (pos: number) => {
+      if (!enabled) return;
+      setReplacePos(pos);
+      setPickerOpen(true);
+    },
+    [enabled],
+  );
+
   const closePicker = useCallback(() => {
     setPickerOpen(false);
+    setReplacePos(null);
   }, []);
 
   useEffect(() => {
@@ -61,9 +79,14 @@ export function useDocsImageInsert({
   const insertNode = useCallback(
     (nodeId: string, alt: string) => {
       if (!editor || editor.isDestroyed) return;
+      if (replacePos != null) {
+        replaceDocsImageAt(editor, replacePos, nodeId, alt);
+        setReplacePos(null);
+        return;
+      }
       insertDocsImageFromNodeId(editor, nodeId, alt);
     },
-    [editor],
+    [editor, replacePos],
   );
 
   const onSelectFile = useCallback(
@@ -90,7 +113,8 @@ export function useDocsImageInsert({
   const onUploadFiles = useCallback(
     (files: File[]) => {
       if (!enabled || !docApiPath) return;
-      const images = files.filter(isDocsImageFile);
+      // Replacing swaps one picture: only the first file counts.
+      const images = files.filter(isDocsImageFile).slice(0, replacePos != null ? 1 : undefined);
       if (images.length === 0) return;
       setPickerOpen(false);
       void (async () => {
@@ -104,7 +128,7 @@ export function useDocsImageInsert({
         }
       })();
     },
-    [docApiPath, enabled, insertErrorMessage, insertNode, showError],
+    [docApiPath, enabled, insertErrorMessage, insertNode, replacePos, showError],
   );
 
   useEffect(() => {
@@ -120,6 +144,7 @@ export function useDocsImageInsert({
   return {
     pickerOpen,
     openPicker,
+    openReplacePicker,
     closePicker,
     onSelectFile,
     onUploadFiles,

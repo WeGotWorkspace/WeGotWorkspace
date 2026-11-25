@@ -711,6 +711,7 @@ function DocsCollabWorkspaceInner({
                   }
                   commentControlLabels={labels}
                   onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
+                  onReplaceImage={imageInsertEnabled ? imageInsert.openReplacePicker : undefined}
                   pageSetup={pageSetup.pageSetup}
                 />
               ) : (

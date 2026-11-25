@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import type { DocsImageLayoutAttrs } from "@/text-editor-core/src/text-editor-image-attrs";
 import { toDriveFnSrc } from "@/text-editor-core/src/text-editor-image-src";
 
 export function insertDocsImage(editor: Editor, src: string, alt = ""): boolean {
@@ -47,4 +48,30 @@ export function deselectDocsImage(editor: Editor): boolean {
     .insertContentAt(insertAt, { type: "paragraph" })
     .setTextSelection(insertAt + 1)
     .run();
+}
+
+/** Width, alignment and caption of the image at `pos`; one transaction, one undo step. */
+export function setDocsImageLayoutAt(
+  editor: Editor,
+  pos: number,
+  attrs: Partial<DocsImageLayoutAttrs>,
+): boolean {
+  const node = editor.state.doc.nodeAt(pos);
+  if (!node || node.type.name !== "image") return false;
+  editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs }));
+  return true;
+}
+
+/** Swap the picture of the image at `pos`, keeping its width, alignment and caption. */
+export function replaceDocsImageAt(editor: Editor, pos: number, nodeId: string, alt = ""): boolean {
+  const node = editor.state.doc.nodeAt(pos);
+  if (!node || node.type.name !== "image") return false;
+  editor.view.dispatch(
+    editor.state.tr.setNodeMarkup(pos, undefined, {
+      ...node.attrs,
+      src: toDriveFnSrc(nodeId),
+      alt,
+    }),
+  );
+  return true;
 }

@@ -1,20 +1,36 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Editor, NodeViewRendererProps } from "@tiptap/core";
-import type { Root } from "react-dom/client";
 import type { ViewMutationRecord } from "@tiptap/pm/view";
 import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
-import { deleteDocsImageAt } from "@/text-editor-core/src/text-editor-image-commands";
+import { setDocsImageLayoutAt } from "@/text-editor-core/src/text-editor-image-commands";
 import {
-  DOCS_IMAGE_DELETE_LABEL,
-  mountTextEditorImageDeleteControl,
-} from "@/text-editor-core/src/text-editor-image-delete-control";
+  DOCS_IMAGE_MIN_WIDTH,
+  DOCS_IMAGE_LIVE_WIDTH_EVENT,
+  normalizeDocsImageAlign,
+  normalizeDocsImageCaption,
+  normalizeDocsImageHref,
+  normalizeDocsImageWidth,
+  type DocsImageAlign,
+} from "@/text-editor-core/src/text-editor-image-attrs";
 import { isHttpImageSrc, parseDriveFnSrc } from "@/text-editor-core/src/text-editor-image-src";
 import {
   forgetShownImageBlob,
   rememberShownImageBlob,
 } from "@/text-editor-core/src/text-editor-image-shown-blob";
 
-export { DOCS_IMAGE_DELETE_LABEL };
+/**
+ * Keyboard or pointer last? A selected image only draws its ring after the keyboard (the
+ * `:focus-visible` rule), never after a click. One listener pair for the whole page.
+ */
+let lastInputWasKeyboard = false;
+let modalityTracked = false;
+function trackInputModality(): void {
+  if (modalityTracked || typeof document === "undefined") return;
+  modalityTracked = true;
+  document.addEventListener("keydown", () => (lastInputWasKeyboard = true), true);
+  document.addEventListener("pointerdown", () => (lastInputWasKeyboard = false), true);
+  document.addEventListener("mousedown", () => (lastInputWasKeyboard = false), true);
+}
 
 const INSECURE_IMAGE_BLOCKED_TEXT = "Insecure image blocked";
 const LOAD_EXTERNAL_IMAGE_PREFIX = "Load external image";
@@ -162,17 +178,62 @@ function relabelVisiblePrompt(chrome: ExternalImageChrome, src: string, alt: str
 
 function applyStaticAttrs(dom: HTMLImageElement, node: ProseMirrorNode): void {
   const alt = typeof node.attrs.alt === "string" ? node.attrs.alt : "";
-  const title = typeof node.attrs.title === "string" ? node.attrs.title : "";
   dom.alt = alt;
-  if (title) dom.title = title;
-  else dom.removeAttribute("title");
+  // The title is the caption under the picture, not a tooltip too.
+  dom.removeAttribute("title");
+}
+
+export const DOCS_IMAGE_CAPTION_PLACEHOLDER = "Add a caption";
+
+/** Width and alignment as the page shows them (`null` keeps the picture's own size). */
+function applyLayout(wrapper: HTMLElement, img: HTMLImageElement, node: ProseMirrorNode): void {
+  const width = normalizeDocsImageWidth(node.attrs.width);
+  const align = normalizeDocsImageAlign(node.attrs.align) ?? "start";
+  wrapper.dataset.align = align;
+  wrapper.dataset.linked = normalizeDocsImageHref(node.attrs.href) ? "true" : "false";
+  wrapper.style.width = width == null ? "" : `${width}%`;
+  img.style.width = width == null ? "" : "100%";
+}
+
+/** What a `%` width resolves against: the parent's content box, without its padding. */
+function contentBoxWidth(element: HTMLElement): number {
+  const style = getComputedStyle(element);
+  const padding = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+  return Math.max(1, element.clientWidth - (Number.isFinite(padding) ? padding : 0));
+}
+
+/**
+ * Drag a side handle: the new width as % of the text column. Relative to where the drag
+ * started (the pointer rarely lands exactly on the edge, so nothing jumps). Centered
+ * images grow on both sides, so the edge moves at half the width change; start/end
+ * images keep their own edge still.
+ */
+export function dragWidthPercent(options: {
+  startX: number;
+  clientX: number;
+  /** Which edge's handle: `start` / `end` of the writing direction. */
+  side: "start" | "end";
+  rtl?: boolean;
+  align: DocsImageAlign;
+  /** Width of the picture in px when the drag started. */
+  startWidth: number;
+  columnWidth: number;
+}): number {
+  const { startX, clientX, side, align, startWidth, columnWidth, rtl = false } = options;
+  // The end edge is on the right in LTR and on the left in RTL; outward is away from the centre.
+  const outward = (side === "end") !== rtl ? clientX - startX : startX - clientX;
+  const px = startWidth + outward * (align === "center" ? 2 : 1);
+  const percent = Math.round((px / Math.max(1, columnWidth)) * 100);
+  return Math.min(100, Math.max(DOCS_IMAGE_MIN_WIDTH, percent));
 }
 
 /**
  * DOM `src` is a `blob:` display URL for `drive:fn-`, or https only after the
  * reader opts in. Document attrs stay `drive:fn-` / http(s). Plain http never
  * loads. The opt-in is the host, remembered on the editor in memory only.
- * Hover or NodeSelection shows a Docs-washed trash control; the node is removed from the doc, not Drive GC.
+ * Width, alignment and caption are node attrs. The floating image bar (not this view) offers
+ * size presets, alignment, replace and delete; this view draws them, owns the side drag handles
+ * and the editable caption.
  */
 export function createDocsImageNodeView(
   props: Pick<NodeViewRendererProps, "node" | "editor" | "getPos">,
@@ -193,15 +254,24 @@ export function createDocsImageNodeView(
   blockedNotice.textContent = INSECURE_IMAGE_BLOCKED_TEXT;
   blockedNotice.hidden = true;
   const chrome: ExternalImageChrome = { img, loadButton, blockedNotice };
-  const deleteHost = document.createElement("div");
-  deleteHost.className = "text-editor-image__delete-host";
-  wrapper.append(img, loadButton, blockedNotice, deleteHost);
+  const frame = document.createElement("div");
+  frame.className = "text-editor-image__frame";
+  const handles = (["start", "end"] as const).map((side) => {
+    const handle = document.createElement("div");
+    handle.className = `text-editor-image__handle text-editor-image__handle--${side} no-print`;
+    handle.dataset.side = side;
+    return handle;
+  });
+  frame.append(img, loadButton, blockedNotice, ...handles);
+  const caption = document.createElement("div");
+  caption.className = "text-editor-image__caption";
+  caption.dataset.placeholder = DOCS_IMAGE_CAPTION_PLACEHOLDER;
+  wrapper.append(frame, caption);
 
   let objectUrl: string | undefined;
   let cancelled = false;
   let token = 0;
   let currentNode = props.node;
-  let deleteRoot: Root | null = null;
 
   const revoke = () => {
     if (objectUrl) {
@@ -211,9 +281,122 @@ export function createDocsImageNodeView(
     forgetShownImageBlob(img);
   };
 
-  const syncDeleteAvailability = () => {
-    deleteHost.hidden = !editor.isEditable;
+  trackInputModality();
+  const announceLiveWidth = (width: number | null) =>
+    wrapper.dispatchEvent(
+      new CustomEvent(DOCS_IMAGE_LIVE_WIDTH_EVENT, { bubbles: true, detail: { width } }),
+    );
+  let selected = false;
+  /** Ends the drag in progress (if any): commits the width, or drops it. */
+  let endDrag: ((commit: boolean) => void) | null = null;
+  const syncChrome = () => {
+    wrapper.classList.toggle("ProseMirror-selectednode", selected);
+    wrapper.dataset.focused = selected || document.activeElement === caption ? "true" : "false";
+    if (!selected) wrapper.dataset.focusVisible = "false";
+    wrapper.dataset.editable = editor.isEditable ? "true" : "false";
+    caption.contentEditable = editor.isEditable ? "true" : "false";
   };
+
+  const syncCaption = (node: ProseMirrorNode) => {
+    const text = normalizeDocsImageCaption(node.attrs.title) ?? "";
+    // Never rewrite the line the person is typing in.
+    if (document.activeElement !== caption && caption.textContent !== text) {
+      caption.textContent = text;
+    }
+  };
+
+  const pos = () => {
+    const at = getPos();
+    return typeof at === "number" ? at : null;
+  };
+
+  const commitCaption = () => {
+    const at = pos();
+    if (at == null || !editor.isEditable) return;
+    const next = normalizeDocsImageCaption(caption.textContent);
+    if (next === normalizeDocsImageCaption(currentNode.attrs.title)) return;
+    setDocsImageLayoutAt(editor, at, { title: next });
+  };
+  // A linked picture opens its link for readers; editors click to select it.
+  img.addEventListener("click", () => {
+    const href = normalizeDocsImageHref(currentNode.attrs.href);
+    if (href && !editor.isEditable) window.open(href, "_blank", "noopener,noreferrer");
+  });
+  caption.addEventListener("input", commitCaption);
+  caption.addEventListener("focus", syncChrome);
+  caption.addEventListener("blur", () => {
+    commitCaption();
+    const text = normalizeDocsImageCaption(currentNode.attrs.title) ?? "";
+    if (caption.textContent !== text) caption.textContent = text;
+    syncChrome();
+  });
+  caption.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== "Escape") return;
+    event.preventDefault();
+    const at = pos();
+    caption.blur();
+    if (at != null) editor.chain().setNodeSelection(at).focus().run();
+  });
+  caption.addEventListener("paste", (event) => {
+    event.preventDefault();
+    const text = event.clipboardData?.getData("text/plain") ?? "";
+    document.execCommand("insertText", false, text.replace(/\s+/g, " "));
+  });
+
+  for (const handle of handles) {
+    handle.addEventListener("pointerdown", (event) => {
+      if (!editor.isEditable || event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const side = handle.dataset.side === "start" ? "start" : "end";
+      const rtl = getComputedStyle(wrapper).direction === "rtl";
+      const align = normalizeDocsImageAlign(currentNode.attrs.align) ?? "start";
+      const columnWidth = contentBoxWidth(wrapper.parentElement ?? wrapper);
+      const startWidth = frame.getBoundingClientRect().width;
+      const startX = event.clientX;
+      let width = normalizeDocsImageWidth(currentNode.attrs.width);
+      endDrag?.(false);
+      try {
+        handle.setPointerCapture(event.pointerId);
+      } catch {
+        // Capture is a nicety; the window listeners below carry the drag.
+      }
+      // Window-level, so the drag ends wherever the pointer is released, and also when the
+      // release was never delivered (outside the window, lost capture, a re-render):
+      // any move without a pressed button ends it too.
+      const controller = new AbortController();
+      const { signal } = controller;
+      const move = (moveEvent: PointerEvent) => {
+        if (moveEvent.buttons === 0) return end(true);
+        width = dragWidthPercent({
+          startX,
+          clientX: moveEvent.clientX,
+          side,
+          rtl,
+          align,
+          startWidth,
+          columnWidth,
+        });
+        wrapper.style.width = `${width}%`;
+        img.style.width = "100%";
+        announceLiveWidth(width);
+      };
+      const end = (commit: boolean) => {
+        controller.abort();
+        if (endDrag === end) endDrag = null;
+        const at = pos();
+        if (commit && at != null && width != null) setDocsImageLayoutAt(editor, at, { width });
+        else applyLayout(wrapper, img, currentNode);
+        announceLiveWidth(null);
+      };
+      endDrag = end;
+      window.addEventListener("pointermove", move, { signal });
+      window.addEventListener("pointerup", () => end(true), { signal });
+      window.addEventListener("pointercancel", () => end(false), { signal });
+      window.addEventListener("blur", () => end(true), { signal });
+      handle.addEventListener("lostpointercapture", () => end(true), { signal });
+    });
+  }
 
   const resolveSrc = (next: ProseMirrorNode) => {
     applyStaticAttrs(img, next);
@@ -285,15 +468,12 @@ export function createDocsImageNodeView(
     rememberExternalImageOptIn(editor, prompt.host);
   });
 
-  deleteRoot = mountTextEditorImageDeleteControl(deleteHost, {
-    onDelete: () => {
-      if (!editor.isEditable) return;
-      const pos = getPos();
-      if (typeof pos !== "number") return;
-      deleteDocsImageAt(editor, pos);
-    },
-  });
-  syncDeleteAvailability();
+  applyLayout(wrapper, img, props.node);
+  syncCaption(props.node);
+  syncChrome();
+  // A document opens read-only until it has joined; editability changes after this view exists.
+  editor.on("transaction", syncChrome);
+  editor.on("update", syncChrome);
 
   resolveSrc(props.node);
 
@@ -303,6 +483,8 @@ export function createDocsImageNodeView(
       if (updated.type !== currentNode.type) return false;
       const prevSrc = currentNode.attrs.src;
       currentNode = updated;
+      applyLayout(wrapper, img, updated);
+      syncCaption(updated);
       if (updated.attrs.src !== prevSrc) {
         resolveSrc(updated);
       } else {
@@ -312,32 +494,37 @@ export function createDocsImageNodeView(
       return true;
     },
     selectNode() {
-      wrapper.classList.add("ProseMirror-selectednode");
-      syncDeleteAvailability();
+      selected = true;
+      wrapper.dataset.focusVisible = lastInputWasKeyboard ? "true" : "false";
+      syncChrome();
     },
     deselectNode() {
-      wrapper.classList.remove("ProseMirror-selectednode");
-      syncDeleteAvailability();
+      selected = false;
+      syncChrome();
     },
     stopEvent(event) {
       const target = event.target;
       return (
-        nodeIsWithin(target, deleteHost) ||
+        nodeIsWithin(target, caption) ||
+        handles.some((handle) => nodeIsWithin(target, handle)) ||
         nodeIsWithin(target, loadButton) ||
         nodeIsWithin(target, blockedNotice)
       );
     },
     destroy() {
+      editor.off("transaction", syncChrome);
+      editor.off("update", syncChrome);
+      endDrag?.(false);
       cancelled = true;
       token += 1;
       optIn.refresh.delete(refreshOptIn);
-      deleteRoot?.unmount();
-      deleteRoot = null;
       revoke();
     },
     ignoreMutation(mutation) {
       if (
-        nodeIsWithin(mutation.target, deleteHost) ||
+        nodeIsWithin(mutation.target, caption) ||
+        mutation.target === wrapper ||
+        mutation.target === frame ||
         nodeIsWithin(mutation.target, loadButton) ||
         nodeIsWithin(mutation.target, blockedNotice)
       ) {

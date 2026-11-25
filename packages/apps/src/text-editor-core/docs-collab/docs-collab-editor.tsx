@@ -71,6 +71,8 @@ export type DocsCollabEditorProps = {
   suggestionsOverlay?: ReactNode;
   /** Opens the Docs Drive image picker from slash + toolbar. */
   onInsertImage?: () => void;
+  /** Opens the picker to swap the picture at this position (image bar > Replace). */
+  onReplaceImage?: (pos: number) => void;
   fetchImageContent?: DocsImageContentFetcher;
   /** Docs only: the person's page setup. Turns on pages and the Page break slash item. */
   pageSetup?: TextEditorPageSetup;
@@ -109,6 +111,7 @@ export function DocsCollabEditor({
   commentsOverlay,
   suggestionsOverlay,
   onInsertImage,
+  onReplaceImage,
   fetchImageContent,
   pageSetup,
 }: DocsCollabEditorProps) {
@@ -266,6 +269,7 @@ export function DocsCollabEditor({
       fill={sheetFill}
       slashMenu={format !== "text" && editable}
       onInsertImage={onInsertImage}
+      onReplaceImage={onReplaceImage}
       pageBreak={hasPages}
       paginated={paginated}
       fitToScreen={pageSetup?.fitToScreen === true}

@@ -42,7 +42,7 @@ import {
 
 type EditorChain = ReturnType<Editor["chain"]>;
 
-function FormatBarIconButton({
+export function FormatBarIconButton({
   label,
   onClick,
   active,
@@ -71,7 +71,7 @@ function FormatBarIconButton({
   );
 }
 
-const FormatBarSeparator = () => <div className="text-editor-format-bar__sep" />;
+export const FormatBarSeparator = () => <div className="text-editor-format-bar__sep" />;
 
 export type TextEditorFormatBarProps = {
   editor: Editor | null;

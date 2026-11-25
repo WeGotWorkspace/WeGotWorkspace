@@ -45,6 +45,8 @@ export type TextEditorProps = {
   className?: string;
   /** Opens the Docs image picker from the format bar / slash menu. */
   onInsertImage?: () => void;
+  /** Opens the Docs image picker to swap the picture at this position. */
+  onReplaceImage?: (pos: number) => void;
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
   /** Called when the TipTap instance is created or destroyed (e.g. document outline). */
   onEditorReady?: (editor: Editor | null) => void;
@@ -68,6 +70,7 @@ export function TextEditor({
   viewSource = false,
   className,
   onInsertImage,
+  onReplaceImage,
   onUpdate,
   onEditorReady,
   pageSetup,
@@ -122,6 +125,7 @@ export function TextEditor({
       fill={sheetFill}
       slashMenu={format !== "text"}
       onInsertImage={onInsertImage}
+      onReplaceImage={onReplaceImage}
       pageBreak={pageSetup != null}
       paginated={paginated}
       fitToScreen={pageSetup?.fitToScreen === true}
