@@ -83,6 +83,8 @@ function ChatMarkdownBody({
     ),
     format: "markdown",
     editable: false,
+    // A URL in a message is a link, and a rendered link opens (new tab).
+    links: { linkify: true, openOnClick: true },
   });
   return <TextEditorSheet editor={editor} variant="inline" slashMenu={false} />;
 }

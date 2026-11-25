@@ -144,7 +144,8 @@ export function highlightChatMentionsMarkdown(
 /**
  * Inline HTML in a body shows as text (thread comments, #2173): each `<`
  * outside a code span or fence becomes the markdown escape `\<`, so
- * `<img onerror=…>` is never parsed as a tag. Code already shows `<` as is.
+ * `<img onerror=…>` is never parsed as a tag. Code already shows `<` as is. A `<https://…>`
+ * autolink stays: it is no tag, and older messages stored links that way.
  */
 export function escapeMarkdownHtml(body: string): string {
   return body
@@ -153,7 +154,7 @@ export function escapeMarkdownHtml(body: string): string {
       index % 2 === 1
         ? part
         : // An odd run of backslashes already escapes the `<`; an even run is literal backslashes.
-          part.replace(/(\\*)</g, (match, slashes: string) =>
+          part.replace(/(\\*)<(?!(?:https?:\/\/|mailto:)[^\s<>]+>)/g, (match, slashes: string) =>
             slashes.length % 2 === 0 ? `${slashes}\\<` : match,
           ),
     )

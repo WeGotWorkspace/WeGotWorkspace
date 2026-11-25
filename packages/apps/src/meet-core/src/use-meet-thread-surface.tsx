@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from "react";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
+import { CHAT_COMPOSER_RICH } from "@/chat-ui/src/chat-composer-allow";
 import type {
   ChatAuthorPresenceMap,
   ChatMentionPrincipal,
@@ -64,6 +65,7 @@ export function useMeetThreadSurface({
         parentEditComposer={
           parentEditing ? (
             <ChatComposer
+              allow={CHAT_COMPOSER_RICH}
               principals={mentionPrincipals}
               initialContent={cachedThread.parent.body}
               onSend={(payload) => onSaveEdit(cachedThread.parent.id, payload)}

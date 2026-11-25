@@ -32,6 +32,8 @@ export type SlashCommand = {
   shortcut?: string;
   icon: ComponentType<{ className?: string }>;
   keywords: string;
+  /** The schema node the command makes; a restricted editor without it never offers it. */
+  requires?: string;
   run: (editor: Editor) => void;
   /** Hide the item where its command cannot run (default: always offered). */
   isAvailable?: (editor: Editor) => boolean;
@@ -48,6 +50,7 @@ function getSlashRange(editor: Editor) {
 const BASE_SLASH_COMMANDS: SlashCommand[] = [
   {
     title: "Heading 1",
+    requires: "heading",
     group: "text",
     shortcut: "#",
     icon: Heading1,
@@ -56,6 +59,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Heading 2",
+    requires: "heading",
     group: "text",
     shortcut: "##",
     icon: Heading2,
@@ -64,6 +68,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Heading 3",
+    requires: "heading",
     group: "text",
     shortcut: "###",
     icon: Heading3,
@@ -79,6 +84,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Bulleted list",
+    requires: "bulletList",
     group: "lists",
     shortcut: "-",
     icon: List,
@@ -87,6 +93,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Numbered list",
+    requires: "orderedList",
     group: "lists",
     shortcut: "1.",
     icon: ListOrdered,
@@ -95,6 +102,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Task list",
+    requires: "taskList",
     group: "lists",
     shortcut: "[ ]",
     icon: ListChecks,
@@ -103,6 +111,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Quote",
+    requires: "blockquote",
     group: "text",
     shortcut: ">",
     icon: Quote,
@@ -111,6 +120,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Divider",
+    requires: "horizontalRule",
     group: "advanced",
     shortcut: "---",
     icon: Minus,
@@ -119,6 +129,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Code block",
+    requires: "codeBlock",
     group: "advanced",
     shortcut: "```",
     icon: Code2,
@@ -127,6 +138,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     title: "Table",
+    requires: "table",
     group: "advanced",
     shortcut: "3×3",
     icon: TableIcon,
@@ -143,6 +155,7 @@ const BASE_SLASH_COMMANDS: SlashCommand[] = [
 
 const PAGE_BREAK_COMMAND: SlashCommand = {
   title: "Page break",
+  requires: "pageBreak",
   group: "advanced",
   icon: SeparatorHorizontal,
   keywords: "page break new page",
@@ -165,6 +178,7 @@ export function slashCommands({ onInsertImage, pageBreak }: SlashCommandOptions 
   if (onInsertImage) {
     commands.push({
       title: "Image",
+      requires: "image",
       group: "advanced",
       icon: ImageIcon,
       keywords: "image photo picture media",
@@ -186,4 +200,19 @@ export function groupSlashCommands(commands: readonly SlashCommand[]) {
     ...group,
     commands: commands.filter((command) => command.group === group.id),
   })).filter((group) => group.commands.length > 0);
+}
+
+/**
+ * The commands this editor's schema can make. A restricted editor (a comment or chat
+ * composer) offers only its own blocks; "Paragraph" alone is no reason for a menu.
+ */
+export function slashCommandsForEditor(
+  commands: readonly SlashCommand[],
+  editor: Editor | null,
+): SlashCommand[] {
+  if (!editor) return [...commands];
+  const available = commands.filter(
+    (command) => !command.requires || editor.schema.nodes[command.requires],
+  );
+  return available.some((command) => command.requires) ? available : [];
 }

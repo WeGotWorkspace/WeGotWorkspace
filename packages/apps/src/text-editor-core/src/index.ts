@@ -36,6 +36,7 @@ export {
   CommentMark,
   LegacySuggestionMark,
   type CreateTextEditorExtensionsOptions,
+  type TextEditorFeature,
 } from "@/text-editor-core/src/text-editor-extensions";
 export {
   getCommentMarkIdFromTarget,

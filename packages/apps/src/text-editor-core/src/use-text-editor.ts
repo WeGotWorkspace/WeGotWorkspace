@@ -21,6 +21,9 @@ export type UseTextEditorOptions = {
   /** Docs only: on-screen pages at mount (see `useTextEditorPageSetup` for changes). */
   pagination?: CreateTextEditorExtensionsOptions["pagination"];
   extraExtensions?: CreateTextEditorExtensionsOptions["extraExtensions"];
+  /** Restrict the schema (comment and chat composers); see `TextEditorFeature`. */
+  allow?: CreateTextEditorExtensionsOptions["allow"];
+  links?: CreateTextEditorExtensionsOptions["links"];
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
 } & Pick<UseEditorOptions, "autofocus" | "editorProps">;
 
@@ -34,6 +37,8 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     fetchImageContent,
     pagination,
     extraExtensions,
+    allow,
+    links,
     onUpdate,
     autofocus,
     editorProps,
@@ -45,6 +50,8 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     fetchImageContent,
     pagination,
     extraExtensions,
+    allow,
+    links,
   };
 
   const editor = useEditor(
@@ -66,7 +73,16 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
             })
         : undefined,
     },
-    [format, editable, placeholder, ariaLabel, pagination != null],
+    [
+      format,
+      editable,
+      placeholder,
+      ariaLabel,
+      pagination != null,
+      allow?.join(","),
+      links?.openOnClick,
+      links?.linkify,
+    ],
   );
 
   return editor;
