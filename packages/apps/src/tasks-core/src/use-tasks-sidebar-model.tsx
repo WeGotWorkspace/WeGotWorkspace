@@ -81,15 +81,18 @@ export function useTasksSidebarModel({
   const presence = useAuthorPresence();
   const personIcon = useCallback(
     (person: TaskAssigneePerson) => (
-      <UserAvatar
-        compact
-        size="xs"
-        className="tasks-sidebar-avatar"
-        displayName={person.name}
-        ariaLabel={person.name}
-        color={avatarColorForUserId(`u:${person.username.toLowerCase()}`)}
-        presence={presence ? (presence[person.username] ?? "offline") : undefined}
-      />
+      // Decorative: the row's label is the name; the initials would only repeat it.
+      <span aria-hidden className="contents">
+        <UserAvatar
+          compact
+          size="xs"
+          className="tasks-sidebar-avatar"
+          displayName={person.name}
+          ariaLabel={person.name}
+          color={avatarColorForUserId(`u:${person.username.toLowerCase()}`)}
+          presence={presence ? (presence[person.username] ?? "offline") : undefined}
+        />
+      </span>
     ),
     [presence],
   );

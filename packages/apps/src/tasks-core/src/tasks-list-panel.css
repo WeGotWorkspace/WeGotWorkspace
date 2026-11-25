@@ -225,6 +225,12 @@
 }
 
 /* The sidebar's Assigned-to rows: the assignee chips' avatar, a little smaller, in the icon slot. */
+/* The icon slot dims its icon (65-90%); an avatar keeps full strength, so its initials
+   stay at the contrast the avatar palette is made for. */
+.sidebar-section .menu-item .menu-item__icon-slot:has(.tasks-sidebar-avatar) {
+  opacity: 1 !important;
+}
+
 .tasks-sidebar-avatar {
   /* Room for the presence dot and its ring: the row clips (overflow) at the icon's box. */
   margin: 0.25rem;
