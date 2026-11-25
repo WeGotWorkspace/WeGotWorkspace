@@ -2,6 +2,7 @@ import {
   DropdownMenu as RadixDropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
@@ -11,7 +12,18 @@ import { MenuItem, type MenuItemProps } from "@/menu-item/src/menu-item";
 import { cn } from "@/lib/utils";
 import "@/menu-dropdown/src/dropdown-menu.css";
 
-export type DropdownMenuItemProps = MenuItemProps & { id?: string };
+export type DropdownMenuItemProps = MenuItemProps & {
+  id?: string;
+  /** Choosing the row does not close the menu (a checkable filter row). */
+  keepOpen?: boolean;
+};
+
+/** A quiet title over the rows below it (a segment of a filter menu). */
+export type DropdownMenuHeadingProps = {
+  type: "heading";
+  id?: string;
+  label: React.ReactNode;
+};
 
 export type DropdownMenuSeparatorProps = {
   type: "separator";
@@ -34,7 +46,8 @@ export type DropdownMenuSubmenuProps = {
   contentClassName?: string;
 };
 
-export type DropdownMenuSubmenuEntry = DropdownMenuItemProps | DropdownMenuSeparatorProps;
+export type DropdownMenuSubmenuEntry =
+  DropdownMenuItemProps | DropdownMenuSeparatorProps | DropdownMenuHeadingProps;
 
 export type DropdownMenuEntry = DropdownMenuSubmenuEntry | DropdownMenuSubmenuProps;
 
@@ -59,12 +72,20 @@ function isSeparator(item: DropdownMenuEntry): item is DropdownMenuSeparatorProp
   return "type" in item && item.type === "separator";
 }
 
+function isHeading(item: DropdownMenuEntry): item is DropdownMenuHeadingProps {
+  return "type" in item && item.type === "heading";
+}
+
 function isSubmenu(item: DropdownMenuEntry): item is DropdownMenuSubmenuProps {
   return "type" in item && item.type === "submenu";
 }
 
 /** `id` keys the entry; it must not land on the DOM row MenuItem renders. */
-function menuItemProps({ id: _id, ...props }: DropdownMenuItemProps): MenuItemProps {
+function menuItemProps({
+  id: _id,
+  keepOpen: _keepOpen,
+  ...props
+}: DropdownMenuItemProps): MenuItemProps {
   return props;
 }
 
@@ -149,6 +170,13 @@ function DropdownMenuEntries({
     if (isSeparator(item)) {
       return <DropdownMenuSeparator key={item.id ?? `separator-${index}`} />;
     }
+    if (isHeading(item)) {
+      return (
+        <DropdownMenuLabel key={item.id ?? `heading-${index}`} className="dropdown-menu__heading">
+          {item.label}
+        </DropdownMenuLabel>
+      );
+    }
     if (isSubmenu(item)) {
       const id = item.id;
       return (
@@ -175,6 +203,7 @@ function DropdownMenuEntries({
         asChild
         disabled={item.disabled}
         className="dropdown-menu__item"
+        onSelect={item.keepOpen ? (event) => event.preventDefault() : undefined}
       >
         <MenuItem
           {...menuItemProps(item)}

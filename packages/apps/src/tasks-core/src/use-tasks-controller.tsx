@@ -10,7 +10,7 @@ import { useTasksMutations } from "@/tasks-core/src/use-tasks-mutations";
 import { useTasksProjectMutations } from "@/tasks-core/src/use-tasks-project-mutations";
 import { useTasksShell } from "@/tasks-core/src/use-tasks-shell";
 import { useCloseTaskOutsideProject } from "@/tasks-core/src/use-tasks-project-scope";
-import type { TaskViewer } from "@/tasks-core/src/tasks-task-utils";
+import type { TaskViewer, TaskWorkflowStatus } from "@/tasks-core/src/tasks-task-utils";
 
 type UseTasksControllerArgs = {
   data: TasksUIData;
@@ -122,12 +122,15 @@ export function useTasksController({
     onUndoQueuedAction: list.undoLatest,
   });
 
-  const toggleShowCompletedTasks = useCallback(() => {
-    if (!shell.showCompletedTasks) {
-      clearHiddenTasks();
-    }
-    shell.toggleShowCompletedTasks();
-  }, [clearHiddenTasks, shell]);
+  // Showing completed tasks again brings back the ones that just left the list.
+  const { toggleStatusFilter: shellToggleStatusFilter } = shell;
+  const toggleStatusFilter = useCallback(
+    (status: TaskWorkflowStatus) => {
+      if (status === "completed" && !shell.showCompletedTasks) clearHiddenTasks();
+      shellToggleStatusFilter(status);
+    },
+    [clearHiddenTasks, shell.showCompletedTasks, shellToggleStatusFilter],
+  );
 
   const selectView = useCallback(
     (nextView: string) => {
@@ -160,8 +163,12 @@ export function useTasksController({
     canCreateTask: shell.canCreateTask,
     visibleTasks: shell.visibleTasks,
     showCompletedTasks: shell.showCompletedTasks,
-    showCompletedToggle: shell.showCompletedToggle,
-    toggleShowCompletedTasks,
+    statusFilter: shell.statusFilter,
+    priorityFilter: shell.priorityFilter,
+    statusFilterApplies: shell.statusFilterApplies,
+    assigneePeople: shell.assigneePeople,
+    toggleStatusFilter,
+    togglePriorityFilter: shell.togglePriorityFilter,
     displayTasks,
     workspaceLayoutRef: shell.workspaceLayoutRef,
     searchInputRef,

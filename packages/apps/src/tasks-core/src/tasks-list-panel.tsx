@@ -8,20 +8,21 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { CheckCircle2, CircleDashed } from "lucide-react";
+import { ChevronDown, CircleDashed } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
-import { ICON_BUTTON_ACTIVE_CLASSNAME } from "@/button/src/button.shared";
 import { Input } from "@/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { RefreshSpinIcon } from "@/refresh-spin/src/refresh-spin-icon";
 import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-events";
 import { WorkspaceList } from "@/workspace-list/src/workspace-list";
-import { cn } from "@/lib/utils";
 import type { Task, TaskList } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { canWriteTaskList } from "@/lib/models/task-lists";
+import { canWriteTaskList, taskListDotColor } from "@/lib/models/task-lists";
+import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
 import { TasksListRow } from "@/tasks-core/src/tasks-list-row";
+import { TasksFilterMenu } from "@/tasks-core/src/tasks-filter-menu";
+import type { PriorityFilterSlug } from "@/tasks-core/src/tasks-priority";
+import type { TaskWorkflowStatus } from "@/tasks-core/src/tasks-task-utils";
 import "@/tasks-core/src/tasks-list-panel.css";
 
 const taskKey = (task: Task) => task.id;
@@ -40,7 +41,7 @@ export type TasksListPanelProps = {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   viewLabel: string;
-  /** Rows to show (view, completed toggle and search already applied). */
+  /** Rows to show (view, header filter and search already applied). */
   displayTasks: Task[];
   exitingTaskIds: ReadonlySet<string>;
   taskLists: TaskList[];
@@ -51,14 +52,26 @@ export type TasksListPanelProps = {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
-  showCompletedToggle: boolean;
-  showCompletedTasks: boolean;
-  onToggleShowCompleted: () => void;
+  /** The header filter (status and priority segments). */
+  statusFilter: ReadonlySet<TaskWorkflowStatus>;
+  priorityFilter: ReadonlySet<PriorityFilterSlug>;
+  statusFilterApplies: boolean;
+  onToggleStatusFilter: (status: TaskWorkflowStatus) => void;
+  onTogglePriorityFilter: (slug: PriorityFilterSlug) => void;
   listRefreshing: boolean;
   onRefreshList?: () => void;
   /** A notice above the list (sync failed). */
   notice?: ReactNode;
   canCreate: boolean;
+  /**
+   * The lists a new task can go to, when the view does not say (a colleague's "Assigned to"
+   * view): a menu beside the quick add field. An empty list means none is shared with them.
+   */
+  quickAddLists?: readonly { id: string; name: string; color?: string | null }[];
+  quickAddListId?: string;
+  onQuickAddListChange?: (listId: string) => void;
+  /** Replaces the placeholder (e.g. no list is shared with this person). */
+  quickAddPlaceholder?: string;
   quickAddRef: RefObject<HTMLInputElement | null>;
   onQuickAdd: (title: string) => void;
   /** A click on a row: open it, or with Cmd/Shift (or in selection mode) select it. */
@@ -93,13 +106,19 @@ export function TasksListPanel({
   searchQuery,
   setSearchQuery,
   searchInputRef,
-  showCompletedToggle,
-  showCompletedTasks,
-  onToggleShowCompleted,
+  statusFilter,
+  priorityFilter,
+  statusFilterApplies,
+  onToggleStatusFilter,
+  onTogglePriorityFilter,
   listRefreshing,
   onRefreshList,
   notice,
   canCreate,
+  quickAddLists,
+  quickAddListId,
+  onQuickAddListChange,
+  quickAddPlaceholder,
   quickAddRef,
   onQuickAdd,
   handleSelect,
@@ -127,27 +146,14 @@ export function TasksListPanel({
         }
         actions={
           <div className="tasks-list-panel__header-actions flex items-center gap-2">
-            {showCompletedToggle ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <IconButton
-                    className={cn(
-                      "tasks-list-panel__show-completed",
-                      showCompletedTasks && ICON_BUTTON_ACTIVE_CLASSNAME,
-                    )}
-                    label={showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
-                    onClick={onToggleShowCompleted}
-                    icon={<CheckCircle2 className="size-4" aria-hidden />}
-                    size="md"
-                    variant="outline"
-                    aria-pressed={showCompletedTasks}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  {showCompletedTasks ? L.hideCompletedTasks : L.showCompletedTasks}
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
+            <TasksFilterMenu
+              L={L}
+              statusFilter={statusFilter}
+              priorityFilter={priorityFilter}
+              statusApplies={statusFilterApplies}
+              onToggleStatus={onToggleStatusFilter}
+              onTogglePriority={onTogglePriorityFilter}
+            />
             {onRefreshList ? (
               <IconButton
                 label={L.refreshList}
@@ -170,7 +176,16 @@ export function TasksListPanel({
     listTop: (
       <>
         {notice}
-        <TasksQuickAdd L={L} disabled={!canCreate} inputRef={quickAddRef} onAdd={onQuickAdd} />
+        <TasksQuickAdd
+          L={L}
+          disabled={!canCreate}
+          inputRef={quickAddRef}
+          onAdd={onQuickAdd}
+          lists={quickAddLists}
+          listId={quickAddListId}
+          onListChange={onQuickAddListChange}
+          placeholder={quickAddPlaceholder}
+        />
       </>
     ),
     listContent: (
@@ -204,11 +219,19 @@ function TasksQuickAdd({
   disabled,
   inputRef,
   onAdd,
+  lists,
+  listId,
+  onListChange,
+  placeholder,
 }: {
   L: TasksUILabels;
   disabled: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   onAdd: (title: string) => void;
+  lists?: TasksListPanelProps["quickAddLists"];
+  listId?: string;
+  onListChange?: (listId: string) => void;
+  placeholder?: string;
 }) {
   const [title, setTitle] = useState("");
   const submit = (event: FormEvent) => {
@@ -227,16 +250,70 @@ function TasksQuickAdd({
         className="tasks-list-panel__quick-add-input"
         value={title}
         onChange={(event) => setTitle(event.target.value)}
-        placeholder={L.quickAddPlaceholder}
+        placeholder={placeholder ?? L.quickAddPlaceholder}
         aria-label={L.quickAddLabel}
         disabled={disabled}
         enterKeyHint="done"
       />
+      {lists && lists.length > 0 && onListChange ? (
+        <TasksQuickAddListMenu L={L} lists={lists} listId={listId} onChange={onListChange} />
+      ) : null}
       {/* Enter submits; the button is for screen readers and keeps the form submittable. */}
       <Button type="submit" className="sr-only" disabled={disabled || !title.trim()}>
         {L.addTaskButton}
       </Button>
     </form>
+  );
+}
+
+/** The list a quick-added task goes to: an icon-only menu (the list's dot and a chevron) at the end of the field. */
+function TasksQuickAddListMenu({
+  L,
+  lists,
+  listId,
+  onChange,
+}: {
+  L: TasksUILabels;
+  lists: NonNullable<TasksListPanelProps["quickAddLists"]>;
+  listId?: string;
+  onChange: (listId: string) => void;
+}) {
+  const current = lists.find((list) => list.id === listId) ?? lists[0]!;
+  return (
+    <DropdownMenu
+      align="end"
+      items={lists.map((list) => ({
+        id: list.id,
+        label: list.name,
+        icon: (
+          <span
+            className="tasks-list-panel__quick-add-dot"
+            style={{ backgroundColor: taskListDotColor(list) }}
+            aria-hidden
+          />
+        ),
+        checked: list.id === current.id,
+        onClick: () => onChange(list.id),
+      }))}
+      trigger={
+        <IconButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="tasks-list-panel__quick-add-list"
+          label={`${L.quickAddListLabel}: ${current.name}`}
+          icon={
+            <span className="tasks-list-panel__quick-add-mark" aria-hidden>
+              <span
+                className="tasks-list-panel__quick-add-dot"
+                style={{ backgroundColor: taskListDotColor(current) }}
+              />
+              <ChevronDown className="size-3.5" />
+            </span>
+          }
+        />
+      }
+    />
   );
 }
 

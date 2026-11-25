@@ -1,0 +1,25 @@
+@import "../../styles.css" reference;
+
+/*
+ * The workflow status mark: the status icon on a small wash of its own colour, so the
+ * four read apart at a glance (list rows, the status field, the header filter). Needs
+ * action stays the neutral ink; the others take a status colour.
+ */
+.tasks-status-mark {
+  @apply inline-flex shrink-0 items-center justify-center rounded-md p-0.5;
+  --tasks-status-color: currentColor;
+  color: var(--tasks-status-color);
+  background-color: color-mix(in oklab, var(--tasks-status-color) 16%, transparent);
+}
+
+.tasks-status-mark--in-process {
+  --tasks-status-color: var(--color-info);
+}
+
+.tasks-status-mark--completed {
+  --tasks-status-color: var(--color-success);
+}
+
+.tasks-status-mark--cancelled {
+  --tasks-status-color: var(--color-error);
+}

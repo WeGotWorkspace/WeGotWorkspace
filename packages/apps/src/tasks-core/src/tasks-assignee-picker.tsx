@@ -4,7 +4,11 @@ import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
 import type { TaskListMember } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
-import { memberParticipantId, type TaskAssignee } from "@/tasks-core/src/tasks-assignees";
+import {
+  isViewerParticipant,
+  memberParticipantId,
+  type TaskAssignee,
+} from "@/tasks-core/src/tasks-assignees";
 import { cn } from "@/lib/utils";
 
 /** Where the list audience stands: loading, loaded, or why it is missing. */
@@ -29,6 +33,8 @@ export type TasksAssigneePickerProps = {
   L: TasksUILabels;
   members: TaskAssigneeMembersState;
   assignees: TaskAssignee[];
+  /** The signed-in username: that row reads "(Me)". */
+  viewerUsername?: string;
   onToggleMember: (member: TaskListMember) => void;
   /** Unassigns someone the picker cannot list (no access, an outside address). */
   onRemove: (participantId: string) => void;
@@ -85,6 +91,7 @@ export function TasksAssigneePicker({
   L,
   members,
   assignees,
+  viewerUsername,
   onToggleMember,
   onRemove,
 }: TasksAssigneePickerProps) {
@@ -188,6 +195,11 @@ export function TasksAssigneePicker({
             <UserAvatar
               displayName={row.name}
               subtitle={row.note ?? undefined}
+              nameAccessory={
+                isViewerParticipant(row.id, viewerUsername) ? (
+                  <span className="tasks-assignee-picker__me">{L.assigneeMeTag}</span>
+                ) : undefined
+              }
               size="sm"
               color={avatarColorForUserId(row.id)}
               className="tasks-assignee-picker__person"

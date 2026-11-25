@@ -11,11 +11,12 @@ const listeners = new Set<SettingsSliceSavedListener>();
  * Same-tab writes call {@link notifySettingsSliceSaved}. Other tabs get a
  * `storage` event; this map re-emits those into the bus so hooks subscribe once.
  * Keys match `CALENDAR_DISPLAY_PREFS_STORAGE_KEY` and
- * `DEFAULT_COLLECTION_STORAGE_KEYS` (keep in sync).
+ * `DEFAULT_COLLECTION_STORAGE_KEYS`, `TASKS_NEW_TASK_PREFS_STORAGE_KEY` (keep in sync).
  */
 const STORAGE_SLICE_BY_KEY: Record<string, SettingsSliceSavedEvent> = {
   "wgw.ui.calendar.displayPrefs": { panelId: "calendar", sliceId: "calendar-display" },
   "wgw.ui.tasks.defaultCollection": { panelId: "tasks", sliceId: "tasks-default-collection" },
+  "wgw.ui.tasks.newTaskDefaults": { panelId: "tasks", sliceId: "tasks-new-task-defaults" },
   "wgw.ui.contacts.defaultCollection": {
     panelId: "contacts",
     sliceId: "contacts-default-collection",

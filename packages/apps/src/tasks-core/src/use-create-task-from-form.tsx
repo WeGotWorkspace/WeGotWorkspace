@@ -39,6 +39,7 @@ export function useCreateTaskFromForm({
       showWithoutTime,
       timeZone,
       alerts,
+      participants,
     }: TasksTaskFormValue) => {
       if (!operations || !title.trim()) return;
       const targetList = taskLists.find((list) => list.id === listId);
@@ -69,6 +70,7 @@ export function useCreateTaskFromForm({
         sortOrder: Number.MAX_SAFE_INTEGER,
         categories: [],
         alerts: taskAlerts,
+        ...(participants ? { participants } : {}),
       };
 
       setTasks((prev) => [...prev, optimistic]);
@@ -88,6 +90,7 @@ export function useCreateTaskFromForm({
               }
             : {}),
           alerts: taskAlerts,
+          ...(participants ? { participants } : {}),
         });
         setTasks((prev) =>
           prev.map((task) => (task.id === tempId ? mergeCreatedTask(optimistic, created) : task)),

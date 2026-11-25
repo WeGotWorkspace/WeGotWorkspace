@@ -1,5 +1,5 @@
 import { memo, useEffect } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Trash2, X } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 import { workspaceListRowPropsEqual } from "@/workspace-list/src/workspace-list-row-props";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
@@ -121,6 +121,7 @@ export const TasksListRow = memo(function TasksListRow({
   onExitAnimationEnd,
 }: TasksListRowProps) {
   const completed = isTaskCompleted(task);
+  const cancelled = task.workflowStatus === "cancelled";
 
   useEffect(() => {
     if (!isExiting || !prefersReducedMotion()) return;
@@ -132,6 +133,8 @@ export const TasksListRow = memo(function TasksListRow({
     <Checkbox
       size="md"
       mark
+      icon={cancelled ? X : undefined}
+      data-status={completed ? (cancelled ? "cancelled" : "completed") : undefined}
       className="tasks-list-row__complete"
       checked={completed}
       aria-label={completed ? L.markIncomplete : L.markComplete}

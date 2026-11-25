@@ -195,11 +195,11 @@ describe("useTasksController URL routing", () => {
       useTasksController({ data: bootstrap.data, initialView: "state:all" }),
     );
 
-    expect(result.current.showCompletedToggle).toBe(true);
+    expect(result.current.statusFilterApplies).toBe(true);
     expect(result.current.displayTasks.some((task) => task.id === "task-done")).toBe(false);
 
     act(() => {
-      result.current.toggleShowCompletedTasks();
+      result.current.toggleStatusFilter("completed");
     });
 
     expect(result.current.showCompletedTasks).toBe(true);
@@ -225,7 +225,7 @@ describe("useTasksController URL routing", () => {
     expect(result.current.displayTasks.some((task) => task.id === "task-inbox-demo")).toBe(false);
 
     act(() => {
-      result.current.toggleShowCompletedTasks();
+      result.current.toggleStatusFilter("completed");
     });
 
     expect(result.current.showCompletedTasks).toBe(true);
@@ -240,7 +240,7 @@ describe("useTasksController URL routing", () => {
       }),
     );
 
-    expect(result.current.showCompletedToggle).toBe(false);
+    expect(result.current.statusFilterApplies).toBe(false);
     expect(result.current.displayTasks.some((task) => task.id === "task-done")).toBe(true);
   });
 

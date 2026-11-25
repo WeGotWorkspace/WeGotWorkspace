@@ -65,19 +65,31 @@ describe("TasksWorkspace", () => {
     });
   });
 
-  it("reveals completed rows when the show-completed toggle is pressed", () => {
+  it("reveals completed rows when Completed is checked in the header filter", async () => {
     renderWorkspace();
 
-    const toggle = screen.getByRole("button", { name: defaultTasksLabels.showCompletedTasks });
-    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    const filter = screen.getByRole("button", { name: defaultTasksLabels.filterTasks });
+    // Completed and cancelled start unchecked, so the dot is already on.
+    expect(filter.getAttribute("data-filtered")).toBe("true");
     expect(screen.queryByText("Ship v0.9")).toBeNull();
 
-    fireEvent.click(toggle);
+    fireEvent.pointerDown(filter, { button: 0, ctrlKey: false });
+    const completed = await screen.findByRole("menuitem", {
+      name: defaultTasksLabels.stateCompleted,
+    });
+    fireEvent.click(completed);
 
-    const pressed = screen.getByRole("button", { name: defaultTasksLabels.hideCompletedTasks });
-    expect(pressed.getAttribute("aria-pressed")).toBe("true");
-    expect(pressed.className).toContain("icon-button--active");
     expect(screen.getByText("Ship v0.9")).toBeTruthy();
+    // The menu stays open for the next row. Check the rest and the dot goes away.
+    for (const name of [defaultTasksLabels.stateNeedsAction]) {
+      expect(screen.getByRole("menuitem", { name })).toBeTruthy();
+    }
+    fireEvent.click(screen.getByRole("menuitem", { name: defaultTasksLabels.stateCancelled }));
+    expect(
+      screen
+        .getByRole("button", { name: defaultTasksLabels.filterTasks, hidden: true })
+        .getAttribute("data-filtered"),
+    ).toBeNull();
   });
 
   it("opens a task in the detail pane when its row is clicked", () => {

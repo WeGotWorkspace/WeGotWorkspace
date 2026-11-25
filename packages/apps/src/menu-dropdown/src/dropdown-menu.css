@@ -91,3 +91,9 @@
 .dropdown-menu__submenu-back {
   @apply font-medium;
 }
+
+/* A segment title in a filter menu: small, quiet, above its rows. */
+.dropdown-menu__heading {
+  @apply px-2.5 pb-1 pt-2 text-xs font-medium;
+  color: color-mix(in oklab, var(--workspace-foreground) 64%, transparent);
+}

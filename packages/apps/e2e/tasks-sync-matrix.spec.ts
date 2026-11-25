@@ -245,7 +245,7 @@ type Edit = {
   list?: string;
   description?: string;
   priority?: "None" | "High" | "Medium" | "Low";
-  status?: "Needs action" | "In progress" | "Completed";
+  status?: "Not started" | "In progress" | "Completed";
   due?: Due;
   remind?: Remind;
 };
@@ -500,7 +500,7 @@ const ACTIONS = {
     async run(tab, f) {
       await setShowCompleted(tab, true);
       await editTask(tab, f.task, { status: "In progress" });
-      await editTask(tab, f.task, { status: "Needs action" });
+      await editTask(tab, f.task, { status: "Not started" });
       await setShowCompleted(tab, false);
     },
     landed: (s, f) => taskT(s, f)?.status === "needs-action",

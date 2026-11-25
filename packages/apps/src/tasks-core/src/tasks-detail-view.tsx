@@ -8,6 +8,7 @@ import {
   Trash2,
   Sun,
   User,
+  X,
 } from "lucide-react";
 import { ActionBar } from "@/action-bar/src/action-bar";
 import { DetailFieldList, DetailFieldRow } from "@/detail-field-row/src/detail-field-row";
@@ -54,6 +55,8 @@ type TasksDetailViewProps = {
   footer?: ReactNode;
   /** The list audience for the assignee picker (#2172). */
   loadListMembers?: (taskListId: string) => Promise<TaskListMembersResult>;
+  /** The signed-in username: that person shows as "(Me)" in the assignee field and picker. */
+  viewerUsername?: string;
   /**
    * The live room for the title and description (#2208). While it is open
    * they are typed together and saved by the room; the other fields keep the
@@ -86,6 +89,7 @@ export function TasksDetailView({
   onConfirmMove,
   footer,
   loadListMembers,
+  viewerUsername,
   textCollab,
   textAccessLost = false,
   textLookingUp = false,
@@ -107,6 +111,7 @@ export function TasksDetailView({
       onConfirmMove={onConfirmMove}
       footer={footer}
       loadListMembers={loadListMembers}
+      viewerUsername={viewerUsername}
     />
   );
   return (
@@ -161,6 +166,7 @@ function TasksDetailForm({
   onConfirmMove,
   footer,
   loadListMembers,
+  viewerUsername,
 }: Omit<
   TasksDetailViewProps,
   "textCollab" | "textAccessLost" | "textLookingUp" | "onLiveText" | "onPresence"
@@ -233,6 +239,7 @@ function TasksDetailForm({
   });
 
   const completed = isTaskCompleted(task);
+  const cancelled = task.workflowStatus === "cancelled";
   const completeLabel = completed ? L.markIncomplete : L.markComplete;
   // As in the list row: the tooltip names what a click does, or why it cannot. The
   // trigger is a span, so the tooltip's `data-state` does not replace the box's.
@@ -242,6 +249,8 @@ function TasksDetailForm({
         <span className="tasks-detail-view__complete-hint">
           <Checkbox
             mark
+            icon={cancelled ? X : undefined}
+            data-status={completed ? (cancelled ? "cancelled" : "completed") : undefined}
             className="tasks-detail-view__complete"
             checked={completed}
             aria-label={completeLabel}
@@ -315,7 +324,7 @@ function TasksDetailForm({
         onChange={(description) => update((prev) => ({ ...prev, description }), "later")}
         onBlur={flush}
       />
-      <DetailFieldList className="tasks-detail-view__fields">
+      <DetailFieldList className="tasks-detail-view__fields" phoneLayout="columns">
         <TasksDetailField icon={<User />} title={L.assigneeLabel}>
           <TasksAssigneesField
             L={L}
@@ -323,6 +332,7 @@ function TasksDetailForm({
             participants={form.participants}
             disabled={readOnly}
             loadMembers={loadListMembers}
+            viewerUsername={viewerUsername}
             onChange={(participants) => update((prev) => ({ ...prev, participants }), "now")}
           />
         </TasksDetailField>

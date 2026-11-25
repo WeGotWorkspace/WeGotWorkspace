@@ -17,7 +17,10 @@ import {
   offsetReminderAlert,
   taskAlertsEqual,
   taskAlertsFromList,
+  assigneeView,
+  isAssigneeView,
 } from "./tasks-task-utils";
+import { assigneePeopleOfTasks } from "./tasks-assignees";
 import { INBOX_TASK_LIST_ID } from "@/lib/models/task-lists";
 import { parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
 import type { Task } from "@/lib/models/tasks-types";
@@ -464,11 +467,38 @@ describe("Assigned to me (#2172)", () => {
     { ...base, id: "nobody", uid: "g", taskListId: "groceries", title: "Unassigned" },
   ];
 
-  it("keeps open tasks assigned by id or by attendee email", () => {
+  it("keeps tasks assigned by id or by attendee email, whatever their status", () => {
+    // The header filter, not the view, decides whether completed and cancelled show.
     expect(filterTasksByView(tasks, ASSIGNED_TO_ME_VIEW, me).map((task) => task.id)).toEqual([
       "by-id",
       "by-email",
+      "done",
+      "cancelled",
     ]);
+  });
+
+  it("opens one colleague's tasks in an assignee view", () => {
+    expect(filterTasksByView(tasks, assigneeView("bob")).map((task) => task.id)).toEqual([
+      "someone-else",
+    ]);
+    expect(isAssigneeView(assigneeView("bob"))).toBe(true);
+    expect(isAssigneeView(ASSIGNED_TO_ME_VIEW)).toBe(false);
+  });
+
+  it("lists the colleagues the visible tasks are assigned to, without the viewer", () => {
+    const people = assigneePeopleOfTasks(
+      [
+        ...tasks,
+        {
+          participants: {
+            "u:carol": { "@type": "Participant", name: "Carol", roles: ["attendee"] },
+            "e:guest@elsewhere.test": { "@type": "Participant", roles: ["attendee"] },
+          },
+        },
+      ],
+      "alice",
+    );
+    expect(people.map((person) => person.username)).toEqual(["bob", "carol"]);
   });
 
   it("never matches someone else's account by email", () => {

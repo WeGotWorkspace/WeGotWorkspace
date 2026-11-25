@@ -62,8 +62,8 @@ function setup(patchTask: TasksAPIOperations["patchTask"], tasks: Task[] = boots
   };
   const hook = renderHook(() => useTasksController({ data, operations }));
   // Completed tasks stay in the list, so a done task can be read back.
-  if (hook.result.current.showCompletedToggle && !hook.result.current.showCompletedTasks) {
-    act(() => hook.result.current.toggleShowCompletedTasks());
+  if (hook.result.current.statusFilterApplies && !hook.result.current.showCompletedTasks) {
+    act(() => hook.result.current.toggleStatusFilter("completed"));
   }
   return { operations, ...hook };
 }

@@ -546,6 +546,14 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode, mockRoutes?: WeGotWorkspa
     component: TasksComponent,
   });
 
+  const tasksAssignedRoute = createRoute({
+    getParentRoute: () => wegotworkspaceRootRoute,
+    path: "/tasks/assigned/$username",
+    head: tasksPwaHead,
+    validateSearch: validateTasksRouteSearch,
+    component: TasksComponent,
+  });
+
   const CalendarComponent = isLive ? withWeGotWorkspaceAuth(CalendarApp) : mock.calendar;
 
   // Each calendar path is a root-level route with its own component so `useParams`
@@ -665,6 +673,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode, mockRoutes?: WeGotWorkspa
     tasksTagRoute,
     tasksListRoute,
     tasksPriorityRoute,
+    tasksAssignedRoute,
     calendarRsvpRoute,
     calendarIndexRoute,
     calendarListViewDateRoute,

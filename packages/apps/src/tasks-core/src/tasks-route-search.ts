@@ -6,6 +6,7 @@
  *   /tasks/state/today
  *   /tasks/lists/:listId
  *   /tasks/priority/:prioritySlug
+ *   /tasks/assigned/:username
  */
 
 import { INBOX_TASK_LIST_ID, isInboxTaskList } from "@/lib/models/task-lists";
@@ -16,6 +17,7 @@ export type TasksRouteParams = {
   stateSlug?: string;
   listId?: string;
   prioritySlug?: string;
+  username?: string;
 };
 
 type TaskListRouteEntry = {
@@ -57,6 +59,12 @@ export function tasksViewFromLocation(pathname: string, params: TasksRouteParams
     const prioritySlug = slugFromPath ?? params.prioritySlug;
     if (prioritySlug) {
       return `priority:${decodeURIComponent(prioritySlug)}`;
+    }
+  }
+  if (segment === "assigned") {
+    const username = slugFromPath ?? params.username;
+    if (username) {
+      return `assignee:${decodeURIComponent(username)}`;
     }
   }
   return DEFAULT_TASKS_VIEW;
@@ -103,7 +111,8 @@ export type TasksNavigateTarget = {
     | "/tasks/state/all"
     | "/tasks/state/$stateSlug"
     | "/tasks/lists/$listId"
-    | "/tasks/priority/$prioritySlug";
+    | "/tasks/priority/$prioritySlug"
+    | "/tasks/assigned/$username";
   params: Record<string, string>;
 };
 
@@ -125,6 +134,10 @@ export function tasksNavigateTarget(view: string): TasksNavigateTarget {
   if (view.startsWith("priority:")) {
     const prioritySlug = encodeURIComponent(view.slice(9));
     return { to: "/tasks/priority/$prioritySlug", params: { prioritySlug } };
+  }
+  if (view.startsWith("assignee:")) {
+    const username = encodeURIComponent(view.slice(9));
+    return { to: "/tasks/assigned/$username", params: { username } };
   }
   return { to: "/tasks/state/all", params: {} };
 }

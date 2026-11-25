@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { Check } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,17 +14,19 @@ export type CheckboxProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimit
   size?: CheckboxSize;
   /** The suite selection mark (`.checkbox--mark`): a dimmed ring, checked a solid fill. */
   mark?: boolean;
+  /** The glyph when checked (default: the check). */
+  icon?: LucideIcon;
 };
 
 const Checkbox = React.forwardRef<React.ElementRef<typeof CheckboxPrimitive.Root>, CheckboxProps>(
-  ({ className, size = "md", mark = false, ...props }, ref) => (
+  ({ className, size = "md", mark = false, icon: Icon = Check, ...props }, ref) => (
     <CheckboxPrimitive.Root
       ref={ref}
       className={cn("checkbox", `checkbox--size-${size}`, mark && "checkbox--mark", className)}
       {...props}
     >
       <CheckboxPrimitive.Indicator>
-        <Check className="checkbox__icon" />
+        <Icon className="checkbox__icon" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   ),
