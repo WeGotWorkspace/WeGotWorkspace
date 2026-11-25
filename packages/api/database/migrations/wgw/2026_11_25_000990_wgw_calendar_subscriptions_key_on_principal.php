@@ -112,11 +112,11 @@ return new class extends WgwMigration
             $ownsPersonal = $candidates->contains(fn ($c): bool => $c->principaluri === $personal);
             $principalUri = $personal;
             if ($candidates->count() === 1) {
-                $principalUri = $candidates->first()->principaluri;
+                $principalUri = (string) $candidates->first()?->principaluri;
             } elseif ($candidates->count() > 1) {
                 $named = $candidates->filter(fn ($c): bool => $row->name !== null && $c->displayname === $row->name)->values();
                 if ($named->count() === 1) {
-                    $principalUri = $named->first()->principaluri;
+                    $principalUri = (string) $named->first()?->principaluri;
                 } elseif ($ownsPersonal) {
                     $principalUri = $personal.'#unresolved-'.$row->id;
                 }
