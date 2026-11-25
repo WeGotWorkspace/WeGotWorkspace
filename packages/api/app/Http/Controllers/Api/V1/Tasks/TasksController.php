@@ -28,7 +28,19 @@ final class TasksController
             throw new ApiHttpException(400, 'taskListId is required.', 'bad_request');
         }
 
-        return response()->json($this->tasks->list($principal['username'], $taskListId));
+        $params = $request->validate([
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:'.TaskRepository::LIST_PAGE_MAX],
+            'cursor' => ['sometimes', 'string', 'max:255'],
+            'fields' => ['sometimes', 'string', 'in:list'],
+        ]);
+
+        return response()->json($this->tasks->list(
+            $principal['username'],
+            $taskListId,
+            isset($params['limit']) ? (int) $params['limit'] : null,
+            $params['cursor'] ?? null,
+            ($params['fields'] ?? null) === 'list',
+        ));
     }
 
     public function query(TaskItemQueryRequest $request): JsonResponse

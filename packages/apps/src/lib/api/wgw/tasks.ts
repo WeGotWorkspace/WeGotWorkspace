@@ -117,13 +117,67 @@ export async function listTaskListChanges(
   };
 }
 
+/** Stored tasks asked for per request: what the server serves at most per page. */
+export const TASKS_LIST_PAGE_SIZE = 500;
+/** Pages followed before giving up (a server that never ends the list). */
+const TASKS_LIST_MAX_PAGES = 200;
+
+type TasksPage = { list?: Task[]; nextCursor?: string | null };
+
+/**
+ * One page of a task list (#2361): at most `TASKS_LIST_PAGE_SIZE` stored tasks
+ * after `cursor`, in the server's order, and where the next page starts
+ * (`null` on the last one).
+ */
+export async function listTasksPage(opts: {
+  taskListId: string;
+  cursor?: string | null;
+  signal?: AbortSignal;
+}): Promise<{ tasks: Task[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({
+    taskListId: opts.taskListId,
+    limit: String(TASKS_LIST_PAGE_SIZE),
+  });
+  if (opts.cursor) params.set("cursor", opts.cursor);
+  const json = (await requestTasksJson(
+    `/tasks/items?${params.toString()}`,
+    "GET",
+    undefined,
+    opts,
+  )) as TasksPage | undefined;
+  return {
+    tasks: parseTasks(json),
+    nextCursor: typeof json?.nextCursor === "string" && json.nextCursor ? json.nextCursor : null,
+  };
+}
+
+/**
+ * Every task of a list, read page by page so no single request or answer is
+ * unbounded. A server that does not page answers with the whole list and no
+ * cursor, which ends the loop after one request.
+ */
 export async function listTasks(opts: {
   taskListId: string;
   signal?: AbortSignal;
 }): Promise<Task[]> {
-  const query = `?taskListId=${encodeURIComponent(opts.taskListId)}`;
-  const json = await requestTasksJson(`/tasks/items${query}`, "GET", undefined, opts);
-  return parseTasks(json);
+  const tasks: Task[] = [];
+  const seen = new Set<string>();
+  let cursor: string | null = null;
+  for (let page = 0; page < TASKS_LIST_MAX_PAGES; page += 1) {
+    const result: { tasks: Task[]; nextCursor: string | null } = await listTasksPage({
+      taskListId: opts.taskListId,
+      cursor,
+      signal: opts.signal,
+    });
+    tasks.push(...result.tasks);
+    cursor = result.nextCursor;
+    if (cursor === null) return tasks;
+    // A cursor that comes back would loop for ever; a partial list must not
+    // reach a reconcile, which drops every cached task it does not see.
+    if (seen.has(cursor)) break;
+    seen.add(cursor);
+  }
+  throw new TasksRequestError("GET /tasks/items did not reach the end of the list", 502);
 }
 
 export async function getTask(taskId: string, opts?: { signal?: AbortSignal }): Promise<Task> {
