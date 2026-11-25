@@ -44,6 +44,48 @@ export type UseTasksShellArgs = {
   viewer?: TaskViewer;
 };
 
+type AssigneePerson = { username: string; name: string };
+
+function tasksViewLabel(
+  view: string,
+  L: TasksUILabels,
+  taskLists: TasksUIData["taskLists"],
+  assigneePeople: readonly AssigneePerson[],
+): string {
+  if (view === "state:all") return L.stateAll;
+  if (view === "state:today") return L.stateToday;
+  if (view === "state:upcoming") return L.stateUpcoming;
+  if (view === "state:overdue") return L.stateOverdue;
+  if (view === ASSIGNED_TO_ME_VIEW) return L.stateAssignedToMe;
+  if (view === "state:needs-action") return L.stateNeedsAction;
+  if (view === "state:in-process") return L.stateInProcess;
+  if (view === "state:completed") return L.stateCompleted;
+  if (view === "state:cancelled") return L.stateCancelled;
+  if (view.startsWith("priority:")) {
+    const slug = view.slice(9);
+    if (slug === "high") return L.priorityHigh;
+    if (slug === "medium") return L.priorityMedium;
+    if (slug === "low") return L.priorityLow;
+    if (slug === "none") return L.priorityNone;
+  }
+  if (view.startsWith("list:")) {
+    const listId = view.slice(5);
+    return taskLists.find((list) => list.id === listId)?.name ?? listId;
+  }
+  if (isAssigneeView(view)) {
+    const username = view.slice(ASSIGNEE_VIEW_PREFIX.length);
+    return assigneePeople.find((person) => person.username === username)?.name ?? username;
+  }
+  return L.fallbackViewTitle;
+}
+
+function toggleIn<T>(current: ReadonlySet<T>, value: T): ReadonlySet<T> {
+  const next = new Set(current);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
+
 export function useTasksShell({
   data,
   labels,
@@ -116,33 +158,10 @@ export function useTasksShell({
     return [...people, { username, name: username }].sort((a, b) => a.name.localeCompare(b.name));
   }, [projectLists, tasks, view, viewer?.username]);
 
-  const viewLabel = useMemo(() => {
-    if (view === "state:all") return L.stateAll;
-    if (view === "state:today") return L.stateToday;
-    if (view === "state:upcoming") return L.stateUpcoming;
-    if (view === "state:overdue") return L.stateOverdue;
-    if (view === ASSIGNED_TO_ME_VIEW) return L.stateAssignedToMe;
-    if (view === "state:needs-action") return L.stateNeedsAction;
-    if (view === "state:in-process") return L.stateInProcess;
-    if (view === "state:completed") return L.stateCompleted;
-    if (view === "state:cancelled") return L.stateCancelled;
-    if (view.startsWith("priority:")) {
-      const slug = view.slice(9);
-      if (slug === "high") return L.priorityHigh;
-      if (slug === "medium") return L.priorityMedium;
-      if (slug === "low") return L.priorityLow;
-      if (slug === "none") return L.priorityNone;
-    }
-    if (view.startsWith("list:")) {
-      const listId = view.slice(5);
-      return taskLists.find((list) => list.id === listId)?.name ?? listId;
-    }
-    if (isAssigneeView(view)) {
-      const username = view.slice(ASSIGNEE_VIEW_PREFIX.length);
-      return assigneePeople.find((person) => person.username === username)?.name ?? username;
-    }
-    return L.fallbackViewTitle;
-  }, [L, assigneePeople, taskLists, view]);
+  const viewLabel = useMemo(
+    () => tasksViewLabel(view, L, taskLists, assigneePeople),
+    [L, assigneePeople, taskLists, view],
+  );
 
   const selectedListId = view.startsWith("list:") ? view.slice(5) : null;
   const preferredListId = useDefaultCollectionId("tasks");
@@ -234,12 +253,6 @@ export function useTasksShell({
     viewer,
   ]);
 
-  const toggleIn = <T,>(current: ReadonlySet<T>, value: T): ReadonlySet<T> => {
-    const next = new Set(current);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    return next;
-  };
   const toggleStatusFilter = useCallback(
     (status: TaskWorkflowStatus) => setStatusFilter((current) => toggleIn(current, status)),
     [],
