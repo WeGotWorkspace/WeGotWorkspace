@@ -71,6 +71,18 @@ final class TasksListPagesTest extends WgwDatabaseTestCase
         $this->assertArrayNotHasKey('nextCursor', $response->json());
     }
 
+    public function test_a_cursor_without_limit_still_returns_the_whole_list(): void
+    {
+        $ids = $this->seedTasks(5);
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->getJson(self::ENDPOINT.'&cursor='.urlencode('task-002.ics'))
+            ->assertOk();
+
+        $this->assertSame($ids, array_column($response->json('list'), 'id'));
+        $this->assertArrayNotHasKey('nextCursor', $response->json());
+    }
+
     public function test_list_fields_leave_out_the_heavy_parts(): void
     {
         $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//T//EN\r\nBEGIN:VTODO\r\nUID:lean-1\r\nSUMMARY:Lean task\r\n"

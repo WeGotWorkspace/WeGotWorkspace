@@ -76,7 +76,7 @@ final class TaskRepository
         $read = 0;
         $last = $cursor;
         $more = false;
-        foreach ($this->todoObjectsInUriOrder((int) $instance->calendarid, $cursor) as $object) {
+        foreach ($this->todoObjectsInUriOrder((int) $instance->calendarid, $limit === null ? null : $cursor) as $object) {
             if ($limit !== null && $read >= $limit) {
                 $more = true;
                 break;

@@ -133,7 +133,11 @@
     "type": "object",
     "required": ["list"],
     "properties": {
-      "list": { "type": "array", "items": { "$ref": "#/components/schemas/Task" } }
+      "list": { "type": "array", "items": { "$ref": "#/components/schemas/Task" } },
+      "nextCursor": {
+        "type": ["string", "null"],
+        "description": "Present with `limit`: pass it as `cursor` for the next page; null when this was the last page."
+      }
     },
     "additionalProperties": false
   },

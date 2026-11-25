@@ -13251,6 +13251,8 @@ export interface components {
         };
         TaskListResponse: {
             list: components["schemas"]["Task"][];
+            /** @description Present with `limit`: pass it as `cursor` for the next page; null when this was the last page. */
+            nextCursor?: string | null;
         };
         TaskCreate: {
             taskListIds: {
