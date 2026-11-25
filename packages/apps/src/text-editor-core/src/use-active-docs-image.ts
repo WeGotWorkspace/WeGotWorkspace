@@ -80,7 +80,13 @@ export function useActiveDocsImage(editor: Editor | null): ActiveDocsImage | nul
       if (!hit || !frame || !sheet) return setActive(null);
       const f = frame.getBoundingClientRect();
       const s = sheet.getBoundingClientRect();
-      const rect = { top: f.top - s.top, left: f.left - s.left, width: f.width, height: f.height };
+      // The sheet scrolls and the bar is absolute inside it: count how far it has scrolled.
+      const rect = {
+        top: f.top - s.top + sheet.scrollTop,
+        left: f.left - s.left + sheet.scrollLeft,
+        width: f.width,
+        height: f.height,
+      };
       setActive((prev) =>
         prev &&
         prev.pos === hit.pos &&

@@ -614,6 +614,7 @@ function DocsCollabWorkspaceInner({
           panel={reviewSidebar}
           sidebar={
             <AppSidebar
+              settingsAppId="docs"
               open={sidebarOpen}
               onCloseMobile={() => setSidebarOpen(false)}
               appSwitchSubtitle="Docs"

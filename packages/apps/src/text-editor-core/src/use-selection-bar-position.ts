@@ -63,12 +63,15 @@ function measure(editor: Editor, pointerDown: boolean): TextEditorFloatingBarPos
   const end = editor.view.coordsAtPos(selection.to);
   const sameLine = Math.abs(start.top - end.top) < 2;
   const below = start.top - s.top < ROOM_ABOVE && start.top < ROOM_ABOVE;
-  const middle = (sameLine ? (start.left + end.left) / 2 : start.left) - s.left;
+  const middle = (sameLine ? (start.left + end.left) / 2 : start.left) - s.left + sheet.scrollLeft;
   // Centred on the selection, but never hanging over the sheet's side edges.
   const half = Math.min(sheet.clientWidth / 2 - EDGE_GAP, halfBarWidth(sheet) + EDGE_GAP);
   return {
-    left: Math.min(Math.max(middle, half), sheet.clientWidth - half),
-    top: (below ? end.bottom : start.top) - s.top,
+    left: Math.min(
+      Math.max(middle, half + sheet.scrollLeft),
+      sheet.scrollLeft + sheet.clientWidth - half,
+    ),
+    top: (below ? end.bottom : start.top) - s.top + sheet.scrollTop,
     anchor: "center",
     placement: below ? "below" : "above",
   };

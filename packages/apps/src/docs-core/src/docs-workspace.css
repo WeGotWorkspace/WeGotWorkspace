@@ -631,10 +631,10 @@
   --docs-status-dot: var(--color-warning);
 }
 
-/* Page sheets: rounded. Pages mode draws page ends inside `.breaker`; give that the desk
- * colour and round each page end, so every page reads as its own rounded card. */
+/* Page sheets: paper, so only barely rounded. Pages mode draws page ends inside `.breaker`;
+ * give that the desk colour and round each page end, so every page reads as its own sheet. */
 .docs-workspace {
-  --docs-page-radius: 0.75rem;
+  --docs-page-radius: 2px;
 }
 
 @media screen and (min-width: 768px) {
