@@ -21,15 +21,11 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PDOException;
 
 final class NoteRepository
 {
-    /** Notes read per query in {@see showEach()}: bounds the iCalendar bytes held at once. */
-    private const GET_CHUNK = 50;
-
     public function __construct(
         private readonly WgwCalendarBackendFactory $backends,
         private readonly NotebookRepository $notebooks,
@@ -74,7 +70,7 @@ final class NoteRepository
                 $objectIds[] = $id;
             }
         }
-        $starredIds = $this->starredObjectIds($username, $objectIds);
+        $starredIds = NoteStarLookup::objectIds($username, $objectIds);
         $apiId = $this->notebooks->apiIdForInstance($instance);
         $notes = [];
         foreach ($objects as $object) {
@@ -119,66 +115,16 @@ final class NoteRepository
     }
 
     /**
-     * Notes by id for Note/get: the notebook access lookup is read once, notes load
-     * in chunks (one query for the rows, one for the stars, one batched state write),
-     * and each note is yielded as it is mapped so the caller can project it and drop
-     * it. The content tag comes from the parsed note, so a note is parsed once.
-     * Yields id => note, or null for a note that is missing or not accessible.
-     *
      * @param  list<string>  $noteIds
      * @return \Generator<string, array<string, mixed>|null>
      */
     public function showEach(string $username, array $noteIds): \Generator
     {
-        $instances = $this->notebooks->accessibleInstancesByCalendarId($username);
-        foreach (array_chunk($noteIds, self::GET_CHUNK) as $chunk) {
-            $objects = $instances === [] ? collect() : CalendarObject::query()
-                ->whereIn('uid', $chunk)
-                ->where('componenttype', 'VJOURNAL')
-                ->whereIn('calendarid', array_keys($instances))
-                ->orderBy('id')
-                ->get();
-
-            // The first accessible row of a uid wins, as findAccessibleNote() did.
-            $byUid = $objects->unique(static fn (CalendarObject $o): string => (string) $o->uid)
-                ->keyBy(static fn (CalendarObject $o): string => (string) $o->uid);
-            $objectIds = array_values($byUid->map(static fn (CalendarObject $o): int => (int) $o->id)->all());
-            $starred = $this->starredObjectIds($username, $objectIds);
-
-            $remember = [];
-            $notes = [];
-            foreach ($chunk as $noteId) {
-                $object = $byUid->get($noteId);
-                if ($object === null) {
-                    // A miss may still match through the database's case-insensitive collation.
-                    $object = $this->findAccessibleNote($username, $noteId)['object'] ?? null;
-                    if ($object === null) {
-                        continue;
-                    }
-                    $starred += $this->starredObjectIds($username, [(int) $object->id]);
-                }
-                $instance = $instances[(int) $object->calendarid] ?? null;
-                if ($instance === null) {
-                    continue;
-                }
-                $notebookUri = $this->notebooks->apiIdForInstance($instance);
-                $note = $this->converter->fromObject($object, $notebookUri, isset($starred[(int) $object->id]));
-                $note['contentEtag'] = $this->yjsProjection->contentEtagOfNote($note);
-                $notes[$noteId] = $note;
-                $remember[] = [
-                    'noteId' => (string) ($note['id'] ?? $object->uid),
-                    'notebookUri' => $notebookUri,
-                    'objectUri' => is_string($object->uri) ? (string) $object->uri : null,
-                ];
-            }
-            unset($byUid, $objects);
-            $this->noteStates->rememberMany($username, $remember);
-
-            foreach ($chunk as $noteId) {
-                yield $noteId => $notes[$noteId] ?? null;
-                unset($notes[$noteId]);
-            }
-        }
+        return (new NoteBatchReader($this->notebooks, $this->converter, $this->yjsProjection, $this->noteStates))->each(
+            $username,
+            $noteIds,
+            fn (string $id): ?CalendarObject => $this->findAccessibleNote($username, $id)['object'] ?? null,
+        );
     }
 
     /**
@@ -571,34 +517,6 @@ final class NoteRepository
     }
 
     /**
-     * @param  list<int|string>  $objectIds
-     * @return array<int, true>
-     */
-    private function starredObjectIds(string $username, array $objectIds): array
-    {
-        if ($objectIds === []) {
-            return [];
-        }
-
-        try {
-            $map = [];
-            NoteStar::query()
-                ->where('username', $username)
-                ->whereIn('calendar_object_id', $objectIds)
-                ->pluck('calendar_object_id')
-                ->each(function (mixed $id) use (&$map): void {
-                    $map[(int) $id] = true;
-                });
-
-            return $map;
-        } catch (QueryException $exception) {
-            $this->logAuxiliaryTableFailure('note_stars', $username, $exception);
-
-            return [];
-        }
-    }
-
-    /**
      * @return list<array<string, mixed>>
      */
     private function starredNotes(string $username, ?string $status): array
@@ -610,7 +528,7 @@ final class NoteRepository
                 ->orderBy('id')
                 ->get();
         } catch (QueryException $exception) {
-            $this->logAuxiliaryTableFailure('note_stars', $username, $exception);
+            NoteStarLookup::logFailure($username, $exception);
 
             return [];
         }
@@ -799,19 +717,6 @@ final class NoteRepository
         $home = str_starts_with($principal, 'principals/') ? substr($principal, strlen('principals/')) : $username;
 
         return 'calendars/'.$home.'/'.$instance->uri.'/'.$objectUri;
-    }
-
-    private function logAuxiliaryTableFailure(string $table, string $username, QueryException $exception): void
-    {
-        try {
-            Log::error('notes_auxiliary_table_failed', [
-                'table' => $table,
-                'username' => $username,
-                'message' => $exception->getMessage(),
-            ]);
-        } catch (\Throwable) {
-            // Logging is optional outside the Laravel container (e.g. unit tests).
-        }
     }
 
     /**
