@@ -67,7 +67,7 @@ export function classifyRequest(
   return "foreground";
 }
 
-/** The classes the worker answers itself; the rest only count and go on natively. */
+/** The classes the worker answers itself; the rest go on natively. */
 export function isGovernedClass(kind: GovernorClass): boolean {
   return kind === "coalesce" || kind === "background" || kind === "bulk";
 }
@@ -312,7 +312,7 @@ export class RequestGovernor {
     this.refilledAt = now;
   }
 
-  /** Spends a token. The bucket may go into debt (down to one burst) when others pay at once. */
+  /** Spends a token. The bucket may go into debt (down to one burst) when a request's max wait runs out. */
   private charge(): void {
     this.refill();
     this.tokens = Math.max(-this.options.burst, this.tokens - 1);
