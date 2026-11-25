@@ -27,6 +27,11 @@ import {
 } from "@/text-editor-core/src/use-text-editor-page-setup";
 import { DocsCollabCommentControl } from "./docs-collab-comment-control";
 
+import { TextEditorSelectionBar } from "@/text-editor-core/src/text-editor-selection-bar";
+import {
+  useCanHover,
+  type TextEditorFloatingBarPosition,
+} from "@/text-editor-core/src/use-selection-bar-position";
 import "@/text-editor-core/src/text-editor.css";
 
 export type DocsCollabEditorProps = {
@@ -238,29 +243,34 @@ export function DocsCollabEditor({
     return resolveTextEditorFormatBarConfig(config);
   })();
 
-  const formatBarElement = formatBarConfig ? (
-    <TextEditorFormatBar
-      editor={editor}
-      groups={[...formatBarConfig.groups]}
-      showPrint={formatBarConfig.showPrint}
-      size={formatBarConfig.size}
-      formattingDisabled={formattingDisabled}
-      className={formatBarConfig.className}
-      onInsertImage={onInsertImage}
-      commentControl={
-        !viewSource && commentControlLabels && onAddCommentFromSelection ? (
-          <DocsCollabCommentControl
-            size={formatBarConfig.size}
-            labels={commentControlLabels}
-            canAddFromSelection={canAddCommentFromSelection}
-            commentsDisabled={commentsDisabled}
-            commentsDisabledTitle={commentsDisabledTitle}
-            onAddCommentFromSelection={onAddCommentFromSelection}
-          />
-        ) : undefined
-      }
-    />
-  ) : null;
+  const canHover = useCanHover();
+  const floatOnSelection = formatBarConfig?.placement === "selection" && canHover;
+  const renderFormatBar = (floating?: TextEditorFloatingBarPosition) =>
+    formatBarConfig ? (
+      <TextEditorFormatBar
+        editor={editor}
+        floating={floating}
+        groups={[...formatBarConfig.groups]}
+        showPrint={formatBarConfig.showPrint}
+        size={floating ? "md" : formatBarConfig.size}
+        formattingDisabled={formattingDisabled}
+        className={formatBarConfig.className}
+        onInsertImage={onInsertImage}
+        commentControl={
+          !viewSource && commentControlLabels && onAddCommentFromSelection ? (
+            <DocsCollabCommentControl
+              size={floating ? "md" : formatBarConfig.size}
+              labels={commentControlLabels}
+              canAddFromSelection={canAddCommentFromSelection}
+              commentsDisabled={commentsDisabled}
+              commentsDisabledTitle={commentsDisabledTitle}
+              onAddCommentFromSelection={onAddCommentFromSelection}
+            />
+          ) : undefined
+        }
+      />
+    ) : null;
+  const formatBarElement = floatOnSelection ? null : renderFormatBar();
 
   const sheetElement = (
     <TextEditorSheet
@@ -270,6 +280,11 @@ export function DocsCollabEditor({
       slashMenu={format !== "text" && editable}
       onInsertImage={onInsertImage}
       onReplaceImage={onReplaceImage}
+      selectionBar={
+        floatOnSelection ? (
+          <TextEditorSelectionBar editor={editor} render={renderFormatBar} />
+        ) : undefined
+      }
       pageBreak={hasPages}
       paginated={paginated}
       fitToScreen={pageSetup?.fitToScreen === true}

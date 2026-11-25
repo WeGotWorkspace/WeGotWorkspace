@@ -119,6 +119,15 @@
   transform: translate(-100%, calc(-100% - 0.5rem));
 }
 
+/* The selection bar: centred over the selected text. */
+.text-editor-sheet .text-editor-format-bar--floating[data-anchor="center"] {
+  transform: translate(-50%, calc(-100% - 0.5rem));
+}
+
+.text-editor-sheet .text-editor-format-bar--floating[data-anchor="center"][data-placement="below"] {
+  transform: translate(-50%, 0.5rem);
+}
+
 /* Right-to-left: the bar hangs off the picture's left (end) edge instead. */
 .text-editor-sheet .text-editor-format-bar--floating[data-anchor="start"] {
   transform: translate(0, calc(-100% - 0.5rem));

@@ -28,6 +28,8 @@ export type TextEditorSheetProps = {
   paginated?: boolean;
   /** With pages: pages wider than the sheet shrink to fit it. */
   fitToScreen?: boolean;
+  /** A format bar floating over the selection (placement `selection`). */
+  selectionBar?: ReactNode;
   /** Absolutely positioned overlays (e.g. margin comment cards). */
   overlay?: ReactNode;
   className?: string;
@@ -46,6 +48,7 @@ export function TextEditorSheet({
   pageBreak = false,
   paginated = false,
   fitToScreen = false,
+  selectionBar,
   overlay,
   className,
 }: TextEditorSheetProps) {
@@ -75,6 +78,7 @@ export function TextEditorSheet({
         className={variant === "sheet" ? "text-editor-sheet__surface paper-sheet" : undefined}
       />
       {overlay}
+      {selectionBar}
       {variant === "sheet" ? (
         <TextEditorImageBar editor={editor} onReplaceImage={onReplaceImage} />
       ) : null}
