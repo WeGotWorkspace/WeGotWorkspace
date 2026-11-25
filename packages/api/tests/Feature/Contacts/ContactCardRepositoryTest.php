@@ -139,10 +139,19 @@ final class ContactCardRepositoryTest extends WgwDatabaseTestCase
         $id = $this->createJane()['id'];
         $upper = strtoupper($id);
 
+        // Case-insensitive on MariaDB (utf8mb4_unicode_ci), case-sensitive on SQLite:
+        // showEach must agree with show() on either driver.
+        try {
+            $expected = $this->cards->show('bob', $upper)['id'];
+        } catch (ApiHttpException $e) {
+            $this->assertSame(404, $e->getStatusCode());
+            $expected = null;
+        }
+
         $got = iterator_to_array($this->cards->showEach('bob', [$upper]));
 
-        $this->assertSame($id, $got[$upper]['id'] ?? null);
-        $this->assertSame($id, $this->cards->show('bob', $upper)['id']);
+        $this->assertSame($expected !== null, array_key_exists($upper, $got));
+        $this->assertSame($expected, $got[$upper]['id'] ?? null);
     }
 
     public function test_show_each_picks_the_lowest_row_when_two_books_share_a_uri(): void
