@@ -150,7 +150,7 @@ final class ContactCardRepositoryTest extends WgwDatabaseTestCase
 
         $got = iterator_to_array($this->cards->showEach('bob', [$upper]));
 
-        $this->assertSame($expected !== null, array_key_exists($upper, $got));
+        $this->assertArrayHasKey($upper, $got);
         $this->assertSame($expected, $got[$upper]['id'] ?? null);
     }
 
