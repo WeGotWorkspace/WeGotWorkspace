@@ -127,9 +127,13 @@ return new class extends WgwMigration
             $counts[$picked[$row->id][2]] = ($counts[$picked[$row->id][2]] ?? 0) + 1;
         }
 
-        foreach ($picked as $id => [$principalUri, $parked, $pair]) {
-            $contested = $counts[$pair] > 1 || isset($held[$pair]);
-            $db->table('calendar_subscriptions')->where('id', $id)->update(['principal_uri' => $contested ? $parked : $principalUri]);
-        }
+        // One transaction: a stopped run must not leave some rows of a contested pair written,
+        // or the rerun would see the rest as uncontested.
+        $db->transaction(function () use ($db, $picked, $counts, $held): void {
+            foreach ($picked as $id => [$principalUri, $parked, $pair]) {
+                $contested = $counts[$pair] > 1 || isset($held[$pair]);
+                $db->table('calendar_subscriptions')->where('id', $id)->update(['principal_uri' => $contested ? $parked : $principalUri]);
+            }
+        });
     }
 };
