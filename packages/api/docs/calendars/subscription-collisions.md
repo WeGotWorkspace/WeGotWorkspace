@@ -9,6 +9,13 @@ The key is now `(principal_uri, calendar_uri)`, where `principal_uri` is the pri
 calendar (`principals/<user>` or `principals/groups/<slug>`). `username` stays the member who made the
 subscription. Refresh, delete and failure clean-up address the calendar by principal and uri.
 
+The migration fills `principal_uri` for existing rows: the user's personal principal when they own a
+calendar with that uri, otherwise the Team calendar picked by the user's Team membership, then by
+calendar name, then by the first one no other row claimed. The old key could keep only one row per
+user and uri, so a row the old clean-up already deleted is gone, and a surviving row may point at a
+same-named calendar of another principal when none of those hints settle it. If the migration stopped
+half way it finishes on the next run.
+
 ## Finding affected installs
 
 Run these read-only against the wgw database. Tables are `calendarinstances`, `calendarobjects` and
@@ -43,5 +50,17 @@ LEFT JOIN calendarinstances ci
 WHERE ci.id IS NULL;
 ```
 
-A lost subscription itself leaves no row, so it cannot be listed. Users who report one can subscribe
+Subscriptions that now point at a calendar with a different name (the backfill could not tell two
+same-named calendars apart and picked another one):
+
+```sql
+SELECT cs.id, cs.username, cs.principal_uri, cs.calendar_uri, cs.name AS subscription_name, ci.displayname
+FROM calendar_subscriptions cs
+JOIN calendarinstances ci
+  ON ci.principaluri = cs.principal_uri AND ci.uri = cs.calendar_uri AND ci.access = 1
+WHERE cs.name IS NOT NULL AND cs.name <> ci.displayname;
+```
+
+Rows from the first query whose calendar was lost may also have been backfilled to the user's personal
+principal; they show up there because no owner calendar exists. A lost subscription itself leaves no row, so it cannot be listed. Users who report one can subscribe
 to the feed again; it no longer collides.

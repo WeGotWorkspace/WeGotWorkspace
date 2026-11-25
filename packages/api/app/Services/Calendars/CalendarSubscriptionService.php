@@ -65,11 +65,7 @@ final class CalendarSubscriptionService
             : 'principals/'.$username;
         // Calendar uris are only unique per principal: always address the calendar this
         // request created by principal and uri, never by uri alone.
-        $instance = $this->calendars->findInstanceOfPrincipal($principalUri, $calendarId);
-        if ($instance === null) {
-            throw new ApiHttpException(500, 'Could not load subscription calendar.', 'server_error');
-        }
-
+        $instance = null;
         $row = new CalendarSubscription([
             'id' => (string) Str::uuid(),
             'username' => $username,
@@ -82,9 +78,15 @@ final class CalendarSubscriptionService
         ]);
 
         try {
+            $instance = $this->calendars->findInstanceOfPrincipal($principalUri, $calendarId);
+            if ($instance === null) {
+                throw new ApiHttpException(500, 'Could not load subscription calendar.', 'server_error');
+            }
             try {
                 $row->save();
             } catch (UniqueConstraintViolationException) {
+                // The calendar is new, so a row on this principal and uri is stale. The
+                // clean-up below removes it together with the calendar of this request.
                 throw new ApiHttpException(409, 'This calendar already has a subscription.', 'alreadyExists');
             } catch (\Throwable) {
                 throw new ApiHttpException(500, 'The subscription could not be saved.', 'server_error');
@@ -99,7 +101,11 @@ final class CalendarSubscriptionService
         } catch (ApiHttpException $exception) {
             try {
                 // Only the calendar this request created, and its own subscription row.
-                $this->calendars->deleteCreatedInstance($instance);
+                // A failed lookup above is retried, so the new calendar is not left behind.
+                $instance ??= $this->calendars->findInstanceOfPrincipal($principalUri, $calendarId);
+                if ($instance !== null) {
+                    $this->calendars->deleteCreatedInstance($instance);
+                }
             } catch (\Throwable) {
                 // Best effort. The original failure is what the caller sees.
             }
