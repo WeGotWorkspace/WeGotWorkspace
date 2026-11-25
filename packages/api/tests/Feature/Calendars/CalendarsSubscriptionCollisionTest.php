@@ -88,8 +88,9 @@ final class CalendarsSubscriptionCollisionTest extends WgwDatabaseTestCase
     {
         $personal = $this->subscribe(null);
 
-        CalendarSubscription::creating(static function (CalendarSubscription $row): void {
-            if ($row->principal_uri === 'principals/groups/team-a') {
+        $failSave = true;
+        CalendarSubscription::creating(static function (CalendarSubscription $row) use (&$failSave): void {
+            if ($failSave && $row->principal_uri === 'principals/groups/team-a') {
                 throw new \RuntimeException('save failed');
             }
         });
@@ -101,7 +102,7 @@ final class CalendarsSubscriptionCollisionTest extends WgwDatabaseTestCase
             ])->assertStatus(500)
                 ->assertJsonPath('error', 'The subscription could not be saved.');
         } finally {
-            CalendarSubscription::flushEventListeners();
+            $failSave = false;
         }
 
         $this->assertBothSubscriptionsIntact([[$personal, 'principals/bob']]);

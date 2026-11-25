@@ -61,11 +61,11 @@ return new class extends WgwMigration
     }
 
     /**
-     * Rows whose calendar the user owns personally keep that principal. For the others the
-     * Team calendar is picked by, in order: the user is a member of the Team, the calendar
-     * name equals the row name, and no other row claimed it yet. A row that finds no free
-     * Team calendar (its calendar was lost) falls back to the personal principal; the old key
-     * allowed one row per user and uri, so that never collides.
+     * Candidates are the user's own owner instance and owner instances on Teams the user
+     * belongs to. One candidate gets the row, whatever its name. Several candidates get it only
+     * when exactly one display name equals the row name. Otherwise the row is parked on a
+     * principal no calendar resolves from, so a refresh 404s instead of overwriting a guess.
+     * No candidate at all (the calendar was lost) keeps the personal principal.
      */
     private function backfillPrincipalUri(): void
     {
@@ -76,57 +76,41 @@ return new class extends WgwMigration
             ->orderBy('id')
             ->get(['id', 'username', 'calendar_uri', 'name']);
 
-        /** @var array<string, true> $claimed */
-        $claimed = [];
-        foreach ($db->table('calendar_subscriptions')->where('principal_uri', '!=', '')->get(['principal_uri', 'calendar_uri']) as $existing) {
-            $claimed[$existing->principal_uri.'|'.$existing->calendar_uri] = true;
-        }
-
-        $assign = function (string $id, string $principalUri, string $calendarUri) use ($db, &$claimed): void {
-            $db->table('calendar_subscriptions')->where('id', $id)->update(['principal_uri' => $principalUri]);
-            $claimed[$principalUri.'|'.$calendarUri] = true;
-        };
-
-        $unresolved = [];
         foreach ($rows as $row) {
             $personal = 'principals/'.$row->username;
-            $owned = $db->table('calendarinstances')
-                ->where('principaluri', $personal)
-                ->where('uri', $row->calendar_uri)
-                ->where('access', 1)
-                ->exists();
-            if ($owned) {
-                $assign($row->id, $personal, $row->calendar_uri);
-            } else {
-                $unresolved[] = $row;
-            }
-        }
-
-        foreach ($unresolved as $row) {
-            $candidates = $db->table('calendarinstances')
-                ->where('principaluri', 'like', 'principals/groups/%')
-                ->where('uri', $row->calendar_uri)
-                ->where('access', 1)
-                ->orderBy('id')
-                ->get(['principaluri', 'displayname']);
-
             $members = $db->table('groupmembers')
                 ->join('principals as g', 'g.id', '=', 'groupmembers.principal_id')
                 ->join('principals as m', 'm.id', '=', 'groupmembers.member_id')
-                ->where('m.uri', 'principals/'.$row->username)
+                ->where('m.uri', $personal)
                 ->pluck('g.uri')
                 ->all();
 
-            $narrow = static function ($list, callable $keep) {
-                $kept = $list->filter($keep)->values();
+            $candidates = $db->table('calendarinstances')
+                ->where('uri', $row->calendar_uri)
+                ->where('access', 1)
+                ->where(function ($query) use ($personal, $members): void {
+                    $query->where('principaluri', $personal);
+                    if ($members !== []) {
+                        $query->orWhereIn('principaluri', $members);
+                    }
+                })
+                ->orderBy('id')
+                ->get(['principaluri', 'displayname']);
 
-                return $kept->isEmpty() ? $list : $kept;
-            };
-            $candidates = $narrow($candidates, static fn ($c): bool => in_array($c->principaluri, $members, true));
-            $candidates = $narrow($candidates, static fn ($c): bool => $row->name !== null && $c->displayname === $row->name);
-            $free = $candidates->filter(fn ($c): bool => ! isset($claimed[$c->principaluri.'|'.$row->calendar_uri]))->values();
+            $ownsPersonal = $candidates->contains(fn ($c): bool => $c->principaluri === $personal);
+            $principalUri = $personal;
+            if ($candidates->count() === 1) {
+                $principalUri = $candidates->first()->principaluri;
+            } elseif ($candidates->count() > 1) {
+                $named = $candidates->filter(fn ($c): bool => $row->name !== null && $c->displayname === $row->name)->values();
+                if ($named->count() === 1) {
+                    $principalUri = $named->first()->principaluri;
+                } elseif ($ownsPersonal) {
+                    $principalUri = $personal.'#unresolved-'.$row->id;
+                }
+            }
 
-            $assign($row->id, $free->isEmpty() ? 'principals/'.$row->username : $free->first()->principaluri, $row->calendar_uri);
+            $db->table('calendar_subscriptions')->where('id', $row->id)->update(['principal_uri' => $principalUri]);
         }
     }
 };

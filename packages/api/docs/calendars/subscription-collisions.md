@@ -9,12 +9,15 @@ The key is now `(principal_uri, calendar_uri)`, where `principal_uri` is the pri
 calendar (`principals/<user>` or `principals/groups/<slug>`). `username` stays the member who made the
 subscription. Refresh, delete and failure clean-up address the calendar by principal and uri.
 
-The migration fills `principal_uri` for existing rows: the user's personal principal when they own a
-calendar with that uri, otherwise the Team calendar picked by the user's Team membership, then by
-calendar name, then by the first one no other row claimed. The old key could keep only one row per
-user and uri, so a row the old clean-up already deleted is gone, and a surviving row may point at a
-same-named calendar of another principal when none of those hints settle it. If the migration stopped
-half way it finishes on the next run.
+The migration fills `principal_uri` for existing rows. Candidates are the user's own owner instance
+with that uri and owner instances on Teams the user currently belongs to. One candidate gets the row,
+even when its name differs. With several candidates the row goes to the one whose name equals the
+subscription name, if exactly one does. Otherwise the row is not attached to any of them: it gets
+`principals/<user>#unresolved-<id>` (or `principals/<user>` when the user owns no calendar with that
+uri), which resolves to no calendar, so Refresh answers 404 and never overwrites a guess. With no
+candidate the row keeps `principals/<user>`. The old key could keep only one row per user and uri, so
+a row the old clean-up already deleted is gone. If the migration stopped half way it finishes on the
+next run.
 
 ## Finding affected installs
 
@@ -50,8 +53,8 @@ LEFT JOIN calendarinstances ci
 WHERE ci.id IS NULL;
 ```
 
-Subscriptions that now point at a calendar with a different name (the backfill could not tell two
-same-named calendars apart and picked another one):
+Subscriptions that now point at a calendar with a different name (a single candidate whose name
+differs, for example a renamed calendar):
 
 ```sql
 SELECT cs.id, cs.username, cs.principal_uri, cs.calendar_uri, cs.name AS subscription_name, ci.displayname
@@ -61,6 +64,6 @@ JOIN calendarinstances ci
 WHERE cs.name IS NOT NULL AND cs.name <> ci.displayname;
 ```
 
-Rows from the first query whose calendar was lost may also have been backfilled to the user's personal
-principal; they show up there because no owner calendar exists. A lost subscription itself leaves no row, so it cannot be listed. Users who report one can subscribe
+Rows the backfill could not settle carry `#unresolved-<id>` in `principal_uri` and show up in the second
+query; re-subscribe the feed and delete the row. Rows whose calendar was lost sit on the personal principal and show up there too. A lost subscription itself leaves no row, so it cannot be listed. Users who report one can subscribe
 to the feed again; it no longer collides.

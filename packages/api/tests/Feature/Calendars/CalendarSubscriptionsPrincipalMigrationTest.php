@@ -61,13 +61,47 @@ final class CalendarSubscriptionsPrincipalMigrationTest extends WgwDatabaseTestC
 
         $this->migrate();
 
-        $this->assertEqualsCanonicalizing(
-            ['principals/groups/team-a', 'principals/groups/team-b'],
-            [$this->principalOf('r-bob'), $this->principalOf('r-carol')],
-        );
+        foreach (['r-bob', 'r-carol'] as $id) {
+            $this->assertNotContains($this->principalOf($id), ['principals/groups/team-a', 'principals/groups/team-b']);
+        }
     }
 
-    public function test_the_calendar_name_picks_between_teams_and_a_personal_copy_wins(): void
+    public function test_a_row_with_one_candidate_follows_it_even_when_the_name_differs(): void
+    {
+        $this->teamCalendar('team-a', 'villa', 'Renamed');
+        $this->join('team-a', 'bob');
+        $this->row('r-bob', 'bob', 'villa', 'Villa');
+
+        $this->migrate();
+
+        $this->assertSame('principals/groups/team-a', $this->principalOf('r-bob'));
+    }
+
+    public function test_a_team_row_is_not_attached_to_a_team_the_user_is_not_in(): void
+    {
+        $this->teamCalendar('team-a', 'villa', 'Villa');
+        $this->row('r-bob', 'bob', 'villa', 'Villa');
+
+        $this->migrate();
+
+        $this->assertSame('principals/bob', $this->principalOf('r-bob'));
+    }
+
+    public function test_an_unsettled_row_is_parked_when_the_user_owns_a_personal_calendar_with_the_uri(): void
+    {
+        $this->teamCalendar('team-a', 'villa', 'Alpha');
+        $this->teamCalendar('team-b', 'villa', 'Beta');
+        $this->join('team-a', 'carol');
+        $this->join('team-b', 'carol');
+        $this->seedNamedCalendarFor('carol', 'villa', 'Personal');
+        $this->row('r-carol', 'carol', 'villa', 'Unknown');
+
+        $this->migrate();
+
+        $this->assertSame('principals/carol#unresolved-r-carol', $this->principalOf('r-carol'));
+    }
+
+    public function test_the_calendar_name_picks_between_candidates_including_a_personal_copy(): void
     {
         $this->teamCalendar('team-a', 'villa', 'Alpha');
         $this->teamCalendar('team-b', 'villa', 'Beta');
@@ -82,7 +116,7 @@ final class CalendarSubscriptionsPrincipalMigrationTest extends WgwDatabaseTestC
         $this->migrate();
 
         $this->assertSame('principals/groups/team-b', $this->principalOf('r-bob'));
-        $this->assertSame('principals/carol', $this->principalOf('r-carol'));
+        $this->assertSame('principals/groups/team-a', $this->principalOf('r-carol'));
     }
 
     public function test_a_row_without_a_calendar_falls_back_to_the_personal_principal(): void

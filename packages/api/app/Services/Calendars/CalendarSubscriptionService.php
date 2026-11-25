@@ -66,6 +66,7 @@ final class CalendarSubscriptionService
         // Calendar uris are only unique per principal: always address the calendar this
         // request created by principal and uri, never by uri alone.
         $instance = null;
+        $rowInserted = false;
         $row = new CalendarSubscription([
             'id' => (string) Str::uuid(),
             'username' => $username,
@@ -84,9 +85,9 @@ final class CalendarSubscriptionService
             }
             try {
                 $row->save();
+                $rowInserted = true;
             } catch (UniqueConstraintViolationException) {
-                // The calendar is new, so a row on this principal and uri is stale. The
-                // clean-up below removes it together with the calendar of this request.
+                // A row this request did not insert stays; only the new calendar goes.
                 throw new ApiHttpException(409, 'This calendar already has a subscription.', 'alreadyExists');
             } catch (\Throwable) {
                 throw new ApiHttpException(500, 'The subscription could not be saved.', 'server_error');
@@ -104,7 +105,7 @@ final class CalendarSubscriptionService
                 // A failed lookup above is retried, so the new calendar is not left behind.
                 $instance ??= $this->calendars->findInstanceOfPrincipal($principalUri, $calendarId);
                 if ($instance !== null) {
-                    $this->calendars->deleteCreatedInstance($instance);
+                    $this->calendars->deleteCreatedInstance($instance, $rowInserted);
                 }
             } catch (\Throwable) {
                 // Best effort. The original failure is what the caller sees.

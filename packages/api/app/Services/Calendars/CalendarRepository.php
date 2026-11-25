@@ -282,12 +282,15 @@ final class CalendarRepository
     }
 
     /**
-     * Removes one calendar a request just created, with its objects and its subscription
-     * row, without resolving it by uri again.
+     * Removes one calendar a request just created, with its objects, without resolving it by
+     * uri again. The subscription row goes too, unless it was not inserted by this request.
      */
-    public function deleteCreatedInstance(CalendarInstance $instance): void
+    public function deleteCreatedInstance(CalendarInstance $instance, bool $withSubscriptionRow = true): void
     {
         $this->backends->calBackend()->deleteCalendar($this->collections->backendId($instance));
+        if (! $withSubscriptionRow) {
+            return;
+        }
         $this->forgetCalendarSideTables((string) $instance->principaluri, (string) $instance->uri);
     }
 
@@ -301,9 +304,6 @@ final class CalendarRepository
         if ($instance === null) {
             return false;
         }
-
-        $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId)
-            ?? $this->collections->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
         return $this->subscriptionIdForInstance($instance) !== null;
     }
