@@ -8,9 +8,9 @@ namespace App\Services\Jmap;
  * The `properties` argument of a /get call (RFC 8620 §5.1), parsed once.
  *
  * Every /get method builds one of these before it loads anything, and calls
- * {@see apply()} on each record the moment it is mapped. The method never holds
- * the full records of a page, so peak memory stays flat from 500 to 2000
- * records. {@see wants()} lets a method skip work only a dropped property needs
+ * {@see apply()} on each record the moment it is mapped, so the page keeps only
+ * the requested properties of each record, never a dropped one. {@see wants()}
+ * lets a method skip work only a dropped property needs
  * (FileNode's on-disk type sniff, for one).
  */
 final class GetProjection

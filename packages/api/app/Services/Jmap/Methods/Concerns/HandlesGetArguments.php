@@ -55,8 +55,8 @@ trait HandlesGetArguments
 
     /**
      * The parsed `properties` argument. Build it before loading anything and
-     * apply it to each record as it is mapped, so a page never holds more than
-     * one full record (see {@see GetProjection}).
+     * apply it to each record as it is mapped, so a page keeps only the requested
+     * properties of each record (see {@see GetProjection}).
      *
      * @param  array<string, mixed>  $args
      */
