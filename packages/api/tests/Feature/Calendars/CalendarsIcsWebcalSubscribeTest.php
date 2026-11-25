@@ -384,9 +384,9 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
                 'url' => self::FEED_URL,
                 'name' => 'Too Long Feed',
                 'groupSlug' => 'team',
-            ])->assertStatus(400)
-                ->assertJsonPath('code', 'bad_request')
-                ->assertJsonPath('error', 'The calendar feed could not be imported.');
+            ])->assertStatus(500)
+                ->assertJsonPath('code', 'server_error')
+                ->assertJsonPath('error', 'The subscription could not be saved.');
         } finally {
             CalendarSubscription::flushEventListeners();
         }

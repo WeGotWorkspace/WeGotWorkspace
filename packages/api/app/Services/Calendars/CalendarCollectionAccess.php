@@ -494,11 +494,14 @@ final class CalendarCollectionAccess
             ->orderBy('id')
             ->get();
 
-        $personalSubscriptions = CalendarSubscription::query()->where('username', $username)->pluck('calendar_uri')->all();
+        $personalSubscriptions = CalendarSubscription::query()
+            ->where('principal_uri', $this->principalUri($username))
+            ->pluck('calendar_uri')
+            ->all();
         $personal = $owned([$this->principalUri($username)])
             ->reject(fn (CalendarInstance $instance): bool => in_array((string) $instance->uri, $personalSubscriptions, true));
         $team = $teamUris === [] ? new Collection : $owned($teamUris)
-            ->reject(fn (CalendarInstance $instance): bool => $this->isTeamSubscription((string) $instance->uri));
+            ->reject(fn (CalendarInstance $instance): bool => $this->isTeamSubscription((string) $instance->principaluri, (string) $instance->uri));
 
         return [
             'personal' => array_values($this->withoutArchivedProjects($personal->values())->all()),
@@ -506,23 +509,13 @@ final class CalendarCollectionAccess
         ];
     }
 
-    /**
-     * A subscription made into a Team lives under the Team principal; its row
-     * names the member who added it, who has no personal instance of that uri.
-     */
-    private function isTeamSubscription(string $calendarUri): bool
+    /** A subscription made into a Team is keyed on the Team principal that owns the calendar. */
+    private function isTeamSubscription(string $teamPrincipalUri, string $calendarUri): bool
     {
-        foreach (CalendarSubscription::query()->where('calendar_uri', $calendarUri)->pluck('username') as $subscriber) {
-            $personalCopy = CalendarInstance::query()
-                ->where('principaluri', $this->principalUri((string) $subscriber))
-                ->where('uri', $calendarUri)
-                ->exists();
-            if (! $personalCopy) {
-                return true;
-            }
-        }
-
-        return false;
+        return CalendarSubscription::query()
+            ->where('principal_uri', $teamPrincipalUri)
+            ->where('calendar_uri', $calendarUri)
+            ->exists();
     }
 
     /**

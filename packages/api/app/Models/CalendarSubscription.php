@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  *
  * @property string $id
  * @property string $username
+ * @property string $principal_uri Principal that owns the subscribed calendar: the user's own, or a Team's.
  * @property string $calendar_uri
  * @property string $url
  * @property string|null $name
@@ -35,12 +36,23 @@ final class CalendarSubscription extends Model
     protected $fillable = [
         'id',
         'username',
+        'principal_uri',
         'calendar_uri',
         'url',
         'name',
         'color',
         'last_fetched_at',
     ];
+
+    protected static function booted(): void
+    {
+        // A row without an explicit owner is a subscription on the user's own calendar.
+        self::creating(static function (self $row): void {
+            if (($row->principal_uri ?? '') === '') {
+                $row->principal_uri = 'principals/'.$row->username;
+            }
+        });
+    }
 
     /** @var array<string, string> */
     protected $casts = [
