@@ -7,6 +7,7 @@ import {
   validateCreateUser,
   validatePasswordChange,
 } from "@/admin-core/src/admin-user-directory";
+import { isApiError } from "@/lib/api/api-error";
 import { mutationErrorMessage } from "@/admin-core/src/admin-mutation-feedback";
 import type { AdminMutationSliceArgs } from "@/admin-core/src/admin-mutation-slice";
 
@@ -15,14 +16,19 @@ type UserShell = AdminMutationSliceArgs<"users" | "setUsers" | "currentUser" | "
 export function useAdminUserMutations({ operations, shell, showSuccess, showError }: UserShell) {
   const { users, setUsers, currentUser, applyAdminData } = shell;
 
-  const createUser = async (input: {
-    username: string;
-    displayName: string;
-    email: string;
-    isAdmin: boolean;
-  }) => {
+  const createUser = async (
+    input: {
+      username: string;
+      displayName: string;
+      email: string;
+      isAdmin: boolean;
+    },
+    /** Called with the reason when the username is the problem, so the dialog can show it by the field. */
+    onUsernameError?: (message: string) => void,
+  ) => {
     const decision = validateCreateUser(users, input.username);
     if (!decision.ok) {
+      onUsernameError?.(decision.message);
       showError(decision.message);
       return false;
     }
@@ -40,7 +46,10 @@ export function useAdminUserMutations({ operations, shell, showSuccess, showErro
         showSuccess("User created");
         return true;
       } catch (error) {
-        showError(mutationErrorMessage(error, "Could not create user"));
+        const message = mutationErrorMessage(error, "Could not create user");
+        // 400 is the server rejecting the username (taken or not allowed): the password is generated.
+        if (isApiError(error) && error.status === 400) onUsernameError?.(message);
+        showError(message);
         return false;
       }
     }

@@ -133,3 +133,61 @@ describe("admin writes that can change the admin's own account", () => {
     expect(wgwInvalidateAccountReads).not.toHaveBeenCalled();
   });
 });
+
+describe("admin user writes keep the server's reason", () => {
+  afterEach(() => vi.resetAllMocks());
+
+  function serverError(error: string, status = 400, code = "bad_request"): Response {
+    return new Response(JSON.stringify({ error, code }), { status });
+  }
+
+  it("createUser throws the server error and code", async () => {
+    fetchMock.mockResolvedValue(serverError("That username is already taken."));
+    await expect(
+      createWgwAdminOperations().createUser({ username: "bob", password: "x", displayName: "B" }),
+    ).rejects.toMatchObject({
+      message: "That username is already taken.",
+      status: 400,
+      code: "bad_request",
+    });
+  });
+
+  it("updateUser throws the server error and code", async () => {
+    fetchMock.mockResolvedValue(
+      serverError("You cannot disable your own account.", 403, "forbidden"),
+    );
+    await expect(
+      createWgwAdminOperations().updateUser("bob", { enabled: false }),
+    ).rejects.toMatchObject({
+      message: "You cannot disable your own account.",
+      status: 403,
+      code: "forbidden",
+    });
+  });
+
+  it("deleteUser throws the server error and code", async () => {
+    fetchMock.mockResolvedValue(serverError("You cannot delete your own account.", 400));
+    await expect(createWgwAdminOperations().deleteUser("bob")).rejects.toMatchObject({
+      message: "You cannot delete your own account.",
+      status: 400,
+      code: "bad_request",
+    });
+  });
+
+  it("resetUserMfa throws the server error and code", async () => {
+    fetchMock.mockResolvedValue(serverError("User not found.", 404, "not_found"));
+    await expect(createWgwAdminOperations().resetUserMfa("bob")).rejects.toMatchObject({
+      message: "User not found.",
+      status: 404,
+      code: "not_found",
+    });
+  });
+
+  it("falls back to the request line when the body is not JSON", async () => {
+    fetchMock.mockResolvedValue(new Response("boom", { status: 502 }));
+    await expect(createWgwAdminOperations().deleteUser("bob")).rejects.toMatchObject({
+      message: "DELETE /admin/users/bob failed (502)",
+      status: 502,
+    });
+  });
+});

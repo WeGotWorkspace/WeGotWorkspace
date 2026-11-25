@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { EditTeamDialog } from "@/admin-core/src/admin-edit-team-dialog";
 import { Loader2 } from "lucide-react";
 import {
@@ -63,14 +64,22 @@ export function AdminWorkspaceModals(props: AdminWorkspaceModalsProps) {
     deletingGroup,
   } = props;
 
+  const [newUserError, setNewUserError] = useState<string | null>(null);
+
   return (
     <>
       <UserDialog
         open={newUserOpen}
         title="New user"
-        onOpenChange={setNewUserOpen}
+        usernameError={newUserError}
+        onUsernameEdit={() => setNewUserError(null)}
+        onOpenChange={(next) => {
+          if (!next) setNewUserError(null);
+          setNewUserOpen(next);
+        }}
         onSubmit={async (payload) => {
-          if (await controller.actions.createUser(payload)) {
+          setNewUserError(null);
+          if (await controller.actions.createUser(payload, setNewUserError)) {
             setNewUserOpen(false);
           }
         }}
