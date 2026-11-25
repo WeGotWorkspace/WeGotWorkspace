@@ -189,6 +189,19 @@ Considered: the existing one-tab model (`jmap-push-hub`, `useSharedInboundSync`)
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/jmap-client src/lib/offline/contacts src/contacts-core src/calendar-core`; `vendor/bin/phpunit tests/Feature/Jmap/ContactCardProjectedGetTest.php`; the live specs `contacts-first-download.spec.ts`, `contacts-photo-pass.spec.ts`, `contacts-detail-pass.spec.ts`; harness cold start
 - **Parallel with:** none (after L)
 
+### Chunk O: tasks-list-pages (#2361)
+
+- **Skill:** api, workspace, testing
+- **Inputs:** `path: packages/api/app/Services/Tasks/TaskRepository.php:48` (`list()` read every VTODO row of a list into memory and answered it whole); `path: packages/apps/src/lib/api/wgw/tasks.ts:1` (`listTasks`, called for every list on a cold start and on every changed-list re-list).
+- **Done when:**
+  - `GET /tasks/items` takes optional `limit` (at most 500 stored tasks), `cursor` and `fields=list`. Without them the answer is the whole list, as before. With `limit` the answer carries `nextCursor` (null on the last page).
+  - Stored tasks are read in chunks of 100 and mapped one at a time; with `fields=list` each is projected to the list fields and the participants lookup is skipped. `POST /tasks/items/query` projects the same way (it only needs ids).
+  - The web client's `listTasks` follows the pages, so no single request is unbounded; a repeated cursor or a page that never ends is an error, never a partial list reaching a reconcile.
+  - Before and after on 2000 tasks (PHP peak memory, time, body size, requests), quoted in the PR.
+- **Not in this chunk:** the client's lean first pass and detail pass. A task row shows the notes line, assignee avatars and the reminder bell, so a lean first download is a visible change for the product lead (the rows fill in as the details arrive). It builds on `fields=list`.
+- **Verify with:** `vendor/bin/phpunit tests/Feature/Tasks/TasksListPagesTest.php`; `pnpm --dir packages/apps exec vitest run src/lib/api/wgw src/lib/offline/tasks src/tasks-core`; the live spec `tasks-list-pages.spec.ts`
+- **Parallel with:** none
+
 ### Chunk M: doorbell-rule (#2298)
 
 - **Skill:** document, testing

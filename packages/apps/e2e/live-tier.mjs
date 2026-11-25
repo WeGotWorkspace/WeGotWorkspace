@@ -118,6 +118,7 @@ export const liveTierSpecs = [
   "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",
+  "tasks-list-pages",
   "tasks-list-windowed",
   "tasks-live-text",
   "tasks-push",

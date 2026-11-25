@@ -41,11 +41,29 @@ final class TaskRepository
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
+    /** Stored tasks read from the database per round trip while a list is mapped. */
+    private const LIST_READ_CHUNK = 100;
+
+    /** Largest page `GET /tasks/items` serves (stored objects, not mapped tasks). */
+    public const LIST_PAGE_MAX = 500;
+
     /**
-     * @return array{list: list<array<string, mixed>>}
+     * One task list, in URI order. Without `$limit` the whole list is read (the
+     * original contract); with it, at most `$limit` stored objects after the
+     * `$cursor` and a `nextCursor` to continue from (null on the last page).
+     * Each stored object is mapped (and with `$lean` projected to the list
+     * fields) one at a time, so only the answer is held, never the parsed
+     * objects. Lean also skips the participants lookup.
+     *
+     * @return array{list: list<array<string, mixed>>, nextCursor?: string|null}
      */
-    public function list(string $username, string $taskListId): array
-    {
+    public function list(
+        string $username,
+        string $taskListId,
+        ?int $limit = null,
+        ?string $cursor = null,
+        bool $lean = false,
+    ): array {
         Log::withContext(['principal' => $username]);
 
         $instance = $this->taskLists->findAccessibleTaskList($username, $taskListId);
@@ -53,16 +71,20 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task list not found.', 'not_found');
         }
 
-        $objects = CalendarObject::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('componenttype', 'VTODO')
-            ->orderBy('uri')
-            ->get();
-
+        $mapper = $this->mapper->forViewer($username);
         $tasks = [];
-        foreach ($objects as $object) {
+        $read = 0;
+        $last = $cursor;
+        $more = false;
+        foreach ($this->todoObjectsInUriOrder((int) $instance->calendarid, $cursor) as $object) {
+            if ($limit !== null && $read >= $limit) {
+                $more = true;
+                break;
+            }
+            $read++;
+            $last = (string) $object->uri;
             try {
-                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
+                foreach ($mapper->toTasks($object, $taskListId, $lean) as $task) {
                     $tasks[] = $task;
                 }
             } catch (ApiHttpException $e) {
@@ -73,7 +95,41 @@ final class TaskRepository
             }
         }
 
-        return ['list' => $tasks];
+        if ($limit === null) {
+            return ['list' => $tasks];
+        }
+
+        return ['list' => $tasks, 'nextCursor' => $more ? $last : null];
+    }
+
+    /**
+     * The VTODO objects of a calendar after `$after`, in URI order, read in
+     * chunks so the rows of a big list are never all in memory at once.
+     *
+     * @return \Generator<int, CalendarObject>
+     */
+    private function todoObjectsInUriOrder(int $calendarId, ?string $after): \Generator
+    {
+        $after = $after === '' ? null : $after;
+        while (true) {
+            $query = CalendarObject::query()
+                ->where('calendarid', $calendarId)
+                ->where('componenttype', 'VTODO')
+                ->orderBy('uri')
+                ->limit(self::LIST_READ_CHUNK);
+            if ($after !== null) {
+                $query->where('uri', '>', $after);
+            }
+            $count = 0;
+            foreach ($query->get() as $object) {
+                $count++;
+                $after = (string) $object->uri;
+                yield $object;
+            }
+            if ($count < self::LIST_READ_CHUNK) {
+                return;
+            }
+        }
     }
 
     /**
@@ -93,17 +149,13 @@ final class TaskRepository
         }
 
         $uidFilter = isset($filter['uid']) && is_string($filter['uid']) ? $filter['uid'] : null;
-        $objects = CalendarObject::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('componenttype', 'VTODO')
-            ->orderBy('uri')
-            ->get();
+        $objects = $this->todoObjectsInUriOrder((int) $instance->calendarid, null);
 
         $ids = [];
         $total = 0;
         foreach ($objects as $object) {
             try {
-                foreach ($this->mapper->forViewer($username)->toTasks($object, $taskListId) as $task) {
+                foreach ($this->mapper->toTasks($object, $taskListId, true) as $task) {
                     if ($uidFilter !== null && ($task['uid'] ?? null) !== $uidFilter) {
                         continue;
                     }
