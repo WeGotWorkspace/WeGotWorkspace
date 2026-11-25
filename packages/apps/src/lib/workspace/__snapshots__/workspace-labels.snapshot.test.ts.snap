@@ -956,7 +956,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: docs 1`]
   "offlineAvailable": "Available offline",
   "offlinePendingSync": "Pending sync",
   "outlineEmpty": "No headings in this document yet.",
-  "pageFitToScreen": "Fit to screen",
+  "pageFitToScreen": "Fit to width",
   "pageOrientationLandscape": "Landscape",
   "pageOrientationPortrait": "Portrait",
   "pagePaperNone": "None",
@@ -1091,7 +1091,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: docs 1`]
 
 exports[`workspace label snapshot > resolved labels match the snapshot: docsPageSetup 1`] = `
 {
-  "pageFitToScreen": "Fit to screen",
+  "pageFitToScreen": "Fit to width",
   "pageOrientationLandscape": "Landscape",
   "pageOrientationPortrait": "Portrait",
   "pagePaperNone": "None",

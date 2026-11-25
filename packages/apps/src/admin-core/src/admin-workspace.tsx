@@ -24,7 +24,8 @@ import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
-import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
+import { AdminCalendarPane } from "@/admin-core/src/admin-calendar-pane";
+import { AdminGeneralPane } from "@/admin-core/src/admin-general-pane";
 import { useWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
 import { AdminPageStatus } from "@/admin-core/src/admin-page-status";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
@@ -178,7 +179,10 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
             {controller.section === "collaboration" ? (
               <AdminRealtimeCollaborationPane controller={controller} />
             ) : null}
-            {controller.section === "webdav" ? <AdminWebdavPane controller={controller} /> : null}
+            {controller.section === "calendar" ? (
+              <AdminCalendarPane controller={controller} />
+            ) : null}
+            {controller.section === "general" ? <AdminGeneralPane controller={controller} /> : null}
             {controller.section === "backups" ? <AdminBackupsPane controller={controller} /> : null}
             {controller.section === "updates" ? (
               <AdminUpdatesPane

@@ -258,7 +258,6 @@ export function CalendarWorkspace({
     [invitations.notifications, session.user.email, session.user.username],
   );
   const invitationsLayout = useDocsCommentsLayout();
-  const useInvitationsDrawer = invitationsLayout === "drawer";
   const { directoryGroups, sharePrincipals, searchSharePrincipals, noTeam, attendeePickerNoTeam } =
     useCalendarSharePrincipals({
       data,
@@ -567,12 +566,7 @@ export function CalendarWorkspace({
       if (!model) return;
       // Inbox fallback models only carry the organizer — seed the session invitee for RSVP chrome.
       if (notification && sessionEmail) {
-        const alreadyInvitee = isSessionEventInvitee(
-          model.form.attendees,
-          sessionEmail,
-          invitations.invitees,
-        );
-        if (!alreadyInvitee) {
+        if (!isSessionEventInvitee(model.form.attendees, sessionEmail, invitations.invitees)) {
           model = {
             ...model,
             form: {
@@ -593,9 +587,11 @@ export function CalendarWorkspace({
       }
       setEventTimesDraft(null);
       setEventPreview({ model, origin, invitation: true });
+      if (presentation === "list") setInvitationsOpen(false);
     },
     [
       L.untitledEvent,
+      presentation,
       closeEditor,
       data.events,
       defaultCalendarId,
@@ -679,6 +675,8 @@ export function CalendarWorkspace({
 
   /** List mode is a list + detail workspace (as Tasks, Notes, Contacts); the grid keeps the popover. */
   const listLayout = presentation === "list";
+  /** List mode has no docked column to spare: its inbox is always the side drawer. */
+  const useInvitationsDrawer = invitationsLayout === "drawer" || listLayout;
   const closeEventDetail = eventPreview?.interactiveEdit
     ? closeInteractiveEditor
     : closeEventPreview;
@@ -712,9 +710,6 @@ export function CalendarWorkspace({
   });
   /** Wide list mode: the list header has room for the full range title. */
   const wideList = listLayout && !detailOverlay;
-  /** The invitations inbox is the grid's: list mode has no trigger and hides the panel
-   * (it is back on switching to the grid). */
-  const invitationsShown = invitationsOpen && !listLayout;
   const listEvents = surfaceEventsForView ?? surface?.events;
   const periodDays = useMemo(
     () =>
@@ -1046,7 +1041,7 @@ export function CalendarWorkspace({
 
   const workspaceClassName = cn(
     "calendar-workspace",
-    invitationsShown && "calendar-workspace--panel-open",
+    invitationsOpen && !listLayout && "calendar-workspace--panel-open",
     listLayout && "calendar-workspace--list note-detail-desk",
     className,
   );
@@ -1125,7 +1120,7 @@ export function CalendarWorkspace({
       )}
       {useInvitationsDrawer ? (
         <SideDrawer
-          open={invitationsShown}
+          open={invitationsOpen}
           onClose={() => setInvitationsOpen(false)}
           title={L.invitationsSection}
           className={`${DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS} calendar-invitations-panel-drawer`}

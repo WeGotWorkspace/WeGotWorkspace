@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { downloadPlainTextLines } from "@/admin-core/src/admin-update-log-download";
+import {
+  downloadPlainTextLines,
+  openBlankWindow,
+  showPlainTextLinesInWindow,
+} from "@/admin-core/src/admin-update-log-download";
 import {
   applyUpdateSuccessMessage,
   clearedUpdateProgress,
@@ -110,6 +114,28 @@ export function useAdminUpdateMutations({
     }
   };
 
+  const viewUpdateLog = async () => {
+    // Before any await, so the popup still counts as part of the click.
+    const target = openBlankWindow();
+    if (!target) {
+      showError("Your browser blocked the new window");
+      return;
+    }
+    try {
+      const lines = (await operations?.refreshUpdateLog()) ?? updateLogLines;
+      if (lines.length === 0) {
+        target.close();
+        showError("No update logs to view");
+        return;
+      }
+      setUpdateLogLines(lines);
+      showPlainTextLinesInWindow(target, lines);
+    } catch (error) {
+      target.close();
+      showError(mutationErrorMessage(error, "Could not open the update log"));
+    }
+  };
+
   const applyUpdate = async () => {
     applyRequestPendingRef.current = true;
     try {
@@ -157,6 +183,7 @@ export function useAdminUpdateMutations({
     clearUpdateLog,
     refreshUpdateLog,
     downloadUpdateLog,
+    viewUpdateLog,
     applyUpdate,
     cancelUpdate,
   };

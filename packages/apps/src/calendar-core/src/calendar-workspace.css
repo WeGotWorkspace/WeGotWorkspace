@@ -48,39 +48,68 @@
   --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
-/* List: the grid/list menu + prev/next are the header's actions (end of the row). Grid:
- * they follow the title (titleSuffix), the inbox last. The period views and Today are in
- * the title's menu. One row on every width; narrow headers show the short range. */
-.calendar-workspace .calendar-header-nav {
-  @apply flex shrink-0 items-center gap-1;
+/*
+ * Two header rows, grid and list alike. Row one: the range title (its menu holds Today,
+ * the sidebar toggle before it), the inbox at the end. Row two: the period menu at the start,
+ * then the calendar/list menu and previous / next at the end. Row one is one header strip
+ * high, row two slimmer and frosted; each has its own hairline.
+ */
+.calendar-workspace
+  :is(.workspace-app-layout__main-header, .collection-header):has(> .calendar-header-row) {
+  @apply flex flex-col;
+  padding-block: 0;
+  /* The rows carry the inset, so their hairlines run edge to edge. */
+  padding-inline: 0;
 }
 
-/* Grid: the title fills its column, so the controls after it sit at the column's end. */
-.calendar-workspace .workspace-app-layout__main-header .view-header__title-block {
-  @apply flex-1;
+.calendar-workspace :is(.calendar-header-row, .calendar-header-toolbar) {
+  @apply px-4 md:px-6;
 }
 
-.calendar-workspace .workspace-app-layout__main-header .view-header__title-suffix {
-  margin-inline-start: auto;
+.calendar-workspace .calendar-header-row {
+  @apply flex items-center border-b;
+  box-sizing: border-box;
+  min-block-size: var(--workspace-header-height);
+  padding-block: var(--workspace-header-padding-y);
+  border-color: var(--workspace-divider-color);
+}
+
+.calendar-workspace .calendar-header-row > .view-header {
+  @apply min-w-0 flex-1;
+}
+
+/* The second row is slimmer than the title row, and frosted like the format bar. */
+.calendar-workspace .calendar-header-toolbar {
+  @apply flex items-center gap-1;
+  box-sizing: border-box;
+  padding-block: 0.375rem;
+  background: var(--frost-background);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+}
+
+.calendar-workspace .calendar-header-toolbar__end {
+  @apply ms-auto flex shrink-0 items-center gap-1;
 }
 
 /*
- * Wide grid header: the title column is as wide as list mode's header (list column -
- * its padding - sidebar toggle - gap), so ‹ › land where they do in list mode and
- * switching between grid and list moves nothing. The inbox stays at the far end.
+ * The period menu's label lines up with the grid's day numbers below it: the grid pane's
+ * inset plus the cell's own, less the ghost button's padding (the day numbers sit 1px
+ * inside the button's text at md and above, 1px outside it on phones).
  */
-@media (width >= 48rem) {
-  .calendar-workspace .workspace-app-layout__main-header .view-header__title-row {
-    grid-template-columns:
-      calc(
-        var(--workspace-list-pane-width) - 2 * 1.5rem - var(--workspace-header-control-height) -
-          0.75rem
-      )
-      minmax(0, 1fr);
-  }
+.calendar-workspace .calendar-header-toolbar__period {
+  margin-inline-start: 0.0625rem;
+}
 
-  .calendar-workspace .workspace-app-layout__main-header .view-header__end {
-    justify-self: end;
+/* List mode: the day headings below sit at the list inset (0.5rem + 1.5rem) in the gutter. */
+.calendar-workspace--list .calendar-header-toolbar__period {
+  margin-inline-start: -0.125rem;
+}
+
+/* Below md the gutter is 1rem and the headings sit at 0.5rem + 1.25rem. */
+@media (max-width: calc(48rem - 1px)) {
+  .calendar-workspace--list .calendar-header-toolbar__period {
+    margin-inline-start: 0.125rem;
   }
 }
 
@@ -174,6 +203,24 @@
      one-row header (☰, range, view menu, ‹ ›, inbox) fitting a phone. */
   .calendar-workspace :is(.workspace-app-layout__main-header, .collection-header) {
     @apply px-3;
+  }
+
+  .calendar-workspace
+    :is(.workspace-app-layout__main-header, .collection-header):has(> .calendar-header-row) {
+    padding-inline: 0;
+  }
+
+  .calendar-workspace :is(.calendar-header-row, .calendar-header-toolbar) {
+    @apply px-3;
+  }
+
+  .calendar-workspace .calendar-header-toolbar__period {
+    margin-inline-start: -0.0625rem;
+  }
+
+  /* The list rows start further in on a phone than the grid's day numbers do. */
+  .calendar-workspace--list .calendar-header-toolbar__period {
+    margin-inline-start: 0.375rem;
   }
 
   .calendar-workspace :is(.view-header, .view-header__title-row, .view-header__end) {

@@ -112,6 +112,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof AdminUsersPane>;
 
+/** Opens the row's more-options menu; its items portal into the document body. */
+async function openRowMenu(canvas: ReturnType<typeof within>, displayName: string) {
+  await userEvent.click(canvas.getByRole("button", { name: `More options: ${displayName}` }));
+}
+
 export const Default: Story = {
   tags: ["vitest-ci"],
   render: () => <UsersPaneHarness />,
@@ -122,29 +127,30 @@ export const Default: Story = {
     await expect(canvas.getByText("Bob Example")).toBeInTheDocument();
     await expect(canvas.getByText("Carol Example")).toBeInTheDocument();
     await expect(canvas.getByText("Disabled")).toBeInTheDocument();
-    await expect(canvas.getByRole("switch", { name: "Enable account" })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
-    await expect(
-      canvas.getByRole("switch", { name: "You cannot disable your own account." }),
-    ).toBeDisabled();
-    await expect(canvas.queryByRole("button", { name: /Delete Alice Example/ })).toBeNull();
+    // Carol is disabled: her menu offers Enable. Your own row never offers Disable.
+    await openRowMenu(canvas, "Carol Example");
+    await expect(await body.findByRole("menuitem", { name: "Enable account" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await openRowMenu(canvas, "Alice Example");
+    await expect(await body.findByRole("menuitem", { name: "Set password" })).toBeInTheDocument();
+    await expect(body.queryByRole("menuitem", { name: "Disable account" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
 
-    await userEvent.click(canvas.getByRole("switch", { name: "Disable account" }));
+    await openRowMenu(canvas, "Bob Example");
+    await userEvent.click(await body.findByRole("menuitem", { name: "Disable account" }));
     const disableDialog = await body.findByRole("alertdialog");
     await expect(disableDialog).toHaveTextContent("Disable Bob Example?");
     await expect(disableDialog).toHaveTextContent("They will not be able to sign in");
     await userEvent.click(body.getByRole("button", { name: "Disable" }));
     await waitFor(() => {
-      expect(canvas.getAllByRole("switch", { name: "Enable account" })).toHaveLength(2);
+      expect(canvas.getAllByText("Disabled")).toHaveLength(2);
     });
-    await expect(canvas.getAllByText("Disabled")).toHaveLength(2);
     await waitFor(() => {
       expect(body.getAllByText("User disabled").length).toBeGreaterThan(0);
     });
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
+    await openRowMenu(canvas, "Bob Example");
+    await userEvent.click(await body.findByRole("menuitem", { name: "Edit" }));
     await expect(await body.findByRole("dialog", { name: "Edit user" })).toBeInTheDocument();
     await userEvent.click(body.getByRole("button", { name: "Delete user" }));
     await expect(await body.findByRole("alertdialog")).toHaveTextContent("Delete user?");
@@ -161,16 +167,17 @@ export const Default: Story = {
   },
 };
 
-/** #1925: admin is a role per user, switched on in the user dialog. */
+/** #1925: admin is a role per user, switched on in the user dialog (chip: Org admin). */
 export const AdminRole: Story = {
   tags: ["vitest-ci"],
   render: () => <UsersPaneHarness />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await expect(canvas.getAllByText("Organization admin")).toHaveLength(1);
+    await expect(canvas.getAllByText("Org admin")).toHaveLength(1);
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit Alice Example" }));
+    await openRowMenu(canvas, "Alice Example");
+    await userEvent.click(await body.findByRole("menuitem", { name: "Edit" }));
     const ownDialog = await body.findByRole("dialog", { name: "Edit user" });
     const ownSwitch = within(ownDialog).getByRole("switch", { name: "Organization admin" });
     await expect(ownSwitch).toHaveAttribute("aria-checked", "true");
@@ -183,7 +190,8 @@ export const AdminRole: Story = {
       expect(body.queryByRole("dialog")).toBeNull();
     });
 
-    await userEvent.click(canvas.getByRole("button", { name: "Edit Bob Example" }));
+    await openRowMenu(canvas, "Bob Example");
+    await userEvent.click(await body.findByRole("menuitem", { name: "Edit" }));
     const bobDialog = await body.findByRole("dialog", { name: "Edit user" });
     const bobSwitch = within(bobDialog).getByRole("switch", { name: "Organization admin" });
     await expect(bobSwitch).toHaveAttribute("aria-checked", "false");
@@ -192,7 +200,7 @@ export const AdminRole: Story = {
     await userEvent.click(within(bobDialog).getByRole("button", { name: "Save" }));
     await waitFor(() => {
       expect(body.queryByRole("dialog")).toBeNull();
-      expect(canvas.getAllByText("Organization admin")).toHaveLength(2);
+      expect(canvas.getAllByText("Org admin")).toHaveLength(2);
     });
     toast.dismiss();
   },
@@ -209,13 +217,13 @@ export const ResetTwoFactor: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(canvas.getAllByText("Two-factor")).toHaveLength(2);
-    await expect(
-      canvas.queryByRole("button", { name: "Reset two-factor sign-in for Alice Example" }),
-    ).toBeNull();
+    await openRowMenu(canvas, "Alice Example");
+    await expect(await body.findByRole("menuitem", { name: "Set password" })).toBeInTheDocument();
+    await expect(body.queryByRole("menuitem", { name: "Reset two-factor sign-in" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Reset two-factor sign-in for Bob Example" }),
-    );
+    await openRowMenu(canvas, "Bob Example");
+    await userEvent.click(await body.findByRole("menuitem", { name: "Reset two-factor sign-in" }));
     const confirm = await body.findByRole("alertdialog");
     await expect(confirm).toHaveTextContent("Reset two-factor sign-in for Bob Example?");
     await userEvent.click(within(confirm).getByRole("button", { name: "Reset" }));

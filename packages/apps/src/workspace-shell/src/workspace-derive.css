@@ -98,7 +98,8 @@
   --button-hover-background: var(--button-outline-active-background);
   --button-ghost-hover-background: var(--button-hover-background);
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: var(--workspace-foreground);
+  /* Labels a touch quieter than the values they name (as in dialogs). */
+  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 85%, transparent);
 
   /*
    * Selected (sidebar rows, list rows, tiles, pressed toggles): one flat wash of

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Copy } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { wgwBuildVersion } from "@/lib/diagnostics/build-version";
@@ -17,8 +16,7 @@ import "./settings-diagnostics-pane.css";
 
 export const settingsDiagnosticsLabels = {
   panel: "Diagnostics",
-  panelDescription: "Recent errors on this device, for a bug report",
-  intro: `When something goes wrong in this browser, the last ${ERROR_DIAGNOSTICS_LIMIT} errors are kept on this device. Nothing is sent anywhere. Copy them and paste them into your bug report. Signing out clears them.`,
+  panelDescription: `When something goes wrong in this browser, the last ${ERROR_DIAGNOSTICS_LIMIT} errors are kept on this device. Nothing is sent anywhere. Copy them into your bug report. Signing out clears them.`,
   row: "Recent errors",
   copy: "Copy diagnostics",
   copied: "Diagnostics copied",
@@ -112,7 +110,6 @@ export function SettingsDiagnosticsPane({
   return (
     <SettingsPaneCard>
       <div className="settings-diagnostics-pane">
-        <p className="settings-diagnostics-pane__intro">{settingsDiagnosticsLabels.intro}</p>
         <FieldLabelRow
           layout="inline"
           label={settingsDiagnosticsLabels.row}
@@ -141,7 +138,6 @@ export function SettingsDiagnosticsPane({
           <Button
             type="button"
             variant="outline"
-            icon={<Copy aria-hidden />}
             label={settingsDiagnosticsLabels.copy}
             disabled={!hasEntries}
             onClick={() => {

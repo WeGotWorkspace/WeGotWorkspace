@@ -3,7 +3,8 @@
 // Clear cache drops the file contents background sync saved by itself. Files
 // the user made available offline, and files with a change not sent yet, keep
 // their copy: offline Drive must still open them. The listing keeps every
-// name. "Turn off and clear cache" does the same and leaves content sync off.
+// name. Turning content sync off keeps the saved files until Clear cache runs;
+// after both, sync stays off and the pinned copy stays.
 import { expect, test, type BrowserContext, type Page } from "./helpers/live-test";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 import {
@@ -149,10 +150,13 @@ async function pin(page: Page, files: Files): Promise<void> {
  */
 async function openOfflineSettings(page: Page): Promise<void> {
   await page.goto("/settings/offline");
-  const toggle = page.getByRole("switch", { name: "Offline file contents" });
+  const toggle = page.getByRole("button", { name: /^Turn (on|off)$/ });
   await expect(toggle).toBeVisible({ timeout: 30_000 });
   await page.evaluate(async () => {
-    const find = () => document.querySelector('[role="switch"]');
+    const find = () =>
+      [...document.querySelectorAll("button")].find((b) =>
+        /^Turn (on|off)$/.test(b.textContent ?? ""),
+      );
     let last = find();
     let stableSince = Date.now();
     const started = Date.now();
@@ -170,10 +174,9 @@ async function openOfflineSettings(page: Page): Promise<void> {
 /** Turns content sync on in Settings and waits until the sync has saved the other two files. */
 async function syncAutomatically(page: Page, files: Files): Promise<void> {
   await openOfflineSettings(page);
-  const toggle = page.getByRole("switch", { name: "Offline file contents" });
-  await expect(toggle).not.toBeChecked();
-  await toggle.click();
-  await expect(toggle).toBeChecked();
+  await expect(page.getByRole("button", { name: "Turn on", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Turn on", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Turn off", exact: true })).toBeVisible();
   await page.goto(folderUrl(files));
   await expect(page.getByText(files.auto, { exact: true }).first()).toBeVisible({
     timeout: 30_000,
@@ -328,7 +331,10 @@ test.describe("Settings › Offline › Clear cache (live app)", () => {
     expect(await namesIn(page, clear.folder)).not.toContain(clear.renamed);
   });
 
-  test("Turn off and clear cache keeps sync off and the pinned copy", async ({ page, context }) => {
+  test("Turn off, then Clear cache keeps sync off and the pinned copy", async ({
+    page,
+    context,
+  }) => {
     test.setTimeout(150_000);
     await prepare(context);
 
@@ -340,19 +346,20 @@ test.describe("Settings › Offline › Clear cache (live app)", () => {
     await syncAutomatically(page, turnOff);
 
     await openOfflineSettings(page);
-    const toggle = page.getByRole("switch", { name: "Offline file contents" });
-    await toggle.click();
+    await page.getByRole("button", { name: "Turn off", exact: true }).click();
     const ask = page.getByRole("alertdialog", { name: "Turn off offline file contents?" });
-    await ask.getByRole("button", { name: "Turn off and clear cache" }).click();
+    await ask.getByRole("button", { name: "Turn off", exact: true }).click();
+    await expect(ask).toBeHidden();
+    await page.getByRole("button", { name: "Clear cache", exact: true }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Clear cache?" });
+    await confirm.getByRole("button", { name: "Clear cache", exact: true }).click();
     await expect(page.locator("[data-sonner-toast]").first()).toHaveText(
       /Cleared \d+ offline files?/,
-      {
-        timeout: 15_000,
-      },
+      { timeout: 15_000 },
     );
 
     await page.reload();
-    await expect(page.getByRole("switch", { name: "Offline file contents" })).not.toBeChecked({
+    await expect(page.getByRole("button", { name: "Turn on", exact: true })).toBeVisible({
       timeout: 15_000,
     });
     const left = await copies(page, turnOff.folder);

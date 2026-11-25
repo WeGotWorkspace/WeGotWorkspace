@@ -35,6 +35,7 @@ export const projectsLabels = {
   nameOf: (name: string) => `Name of ${name}`,
   colorOf: (name: string) => `Color of ${name}`,
   archive: "Archive",
+  moreOptions: "More options",
   archiveTitle: (name: string) => `Archive “${name}”?`,
   archiveDescription:
     "Its calendar, task list, notebook, channel and folder disappear for everyone until you restore the Project.",

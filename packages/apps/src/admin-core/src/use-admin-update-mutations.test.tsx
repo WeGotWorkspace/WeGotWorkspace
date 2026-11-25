@@ -3,12 +3,18 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AppToastApi } from "@/hooks/use-app-toast";
 import type { AdminAPIOperations, AdminUpdateState } from "@/lib/models/admin-types";
-import { downloadPlainTextLines } from "@/admin-core/src/admin-update-log-download";
+import {
+  downloadPlainTextLines,
+  openBlankWindow,
+  showPlainTextLinesInWindow,
+} from "@/admin-core/src/admin-update-log-download";
 import { useAdminUpdateMutations } from "@/admin-core/src/use-admin-update-mutations";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 
 vi.mock("@/admin-core/src/admin-update-log-download", () => ({
   downloadPlainTextLines: vi.fn(),
+  openBlankWindow: vi.fn(),
+  showPlainTextLinesInWindow: vi.fn(),
 }));
 
 function deferred<T>() {
@@ -108,6 +114,38 @@ describe("useAdminUpdateMutations", () => {
     });
     expect(empty.showError).toHaveBeenCalledWith("No update logs to download");
     expect(showError).not.toHaveBeenCalled();
+  });
+
+  it("opens the window before fetching the log, then shows the lines in it", async () => {
+    const target = { close: vi.fn() } as unknown as Window;
+    vi.mocked(openBlankWindow).mockReturnValue(target);
+    const refreshUpdateLog = vi.fn().mockResolvedValue(["alpha"]);
+    const { result, showError } = renderUpdates({ refreshUpdateLog });
+    await act(async () => {
+      await result.current.viewUpdateLog();
+    });
+    expect(showPlainTextLinesInWindow).toHaveBeenCalledWith(target, ["alpha"]);
+    expect(showError).not.toHaveBeenCalled();
+
+    vi.mocked(openBlankWindow).mockReturnValue(null);
+    const blocked = renderUpdates({ refreshUpdateLog });
+    await act(async () => {
+      await blocked.result.current.viewUpdateLog();
+    });
+    expect(blocked.showError).toHaveBeenCalledWith("Your browser blocked the new window");
+  });
+
+  it("closes the blank window when the log is empty", async () => {
+    const target = { close: vi.fn() } as unknown as Window;
+    vi.mocked(openBlankWindow).mockReturnValue(target);
+    const { result, showError } = renderUpdates({
+      refreshUpdateLog: vi.fn().mockResolvedValue([]),
+    });
+    await act(async () => {
+      await result.current.viewUpdateLog();
+    });
+    expect(target.close).toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith("No update logs to view");
   });
 
   it("marks an apply as pending, then stores the completed run", async () => {

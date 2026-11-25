@@ -135,6 +135,7 @@ export const uiActions = {
     // Starts the note as soon as New note is there, without waiting for the notebooks (#2055 fixed that loss; this keeps it fixed).
     await b.open("/notes", () => page.getByRole("button", { name: "New note" }).first().waitFor({ state: "attached", timeout: T }));
     await phoneSidebar(b, true);
+    const before = await listedNoteIds(ctx, a.persona, a.params.title);
     await page.getByRole("button", { name: "New note" }).click({ timeout: T });
     const title = page.getByRole("textbox", { name: "Title" });
     await title.waitFor({ timeout: T });
@@ -144,7 +145,7 @@ export const uiActions = {
       await page.keyboard.insertText(a.params.body.split("\n")[0]);
     });
     await settle(page, 4000);
-    const found = await findNote(ctx, a.persona, a.params.title, page.url());
+    const found = await findNote(ctx, a.persona, a.params.title, page, before);
     if (!found) throw new Error(`note "${a.params.title}" typed in the browser is not on the server`);
     return { ids: { noteId: found.id }, extra: { title: a.params.title }, note };
   },
@@ -209,11 +210,11 @@ export const uiActions = {
         typeAtEnd(partner.page, partner.page.locator(".ProseMirror").first(), theirs),
       ]);
       await Promise.all([waitSaved(b, b.page), waitSaved(partner, partner.page)]);
-      await settle(b.page, 3000);
-      for (const p of [b.page, partner.page]) {
-        const text = await p.locator(".ProseMirror").first().innerText();
-        if (!text.includes(mine.slice(0, 25)) || !text.includes(theirs.slice(0, 25))) throw new Error("co-writers do not see each other's text in the editor");
-      }
+      // Playwright's WebKit reaches a peer only through the slower fallback (4-7 s); real Safari shows the
+      // other person's text within a second (checked with safaridriver, 2026-11-23). Wait up to 15 s.
+      const bothShown = (p) => p.locator(".ProseMirror").first().innerText().then((text) => text.includes(mine.slice(0, 25)) && text.includes(theirs.slice(0, 25)));
+      const shown = await b.wait("each sees the other's text", () => pollFor(async () => (await bothShown(b.page)) && (await bothShown(partner.page)), 15000));
+      if (!shown) throw new Error("co-writers do not see each other's text in the editor after 15 s");
       await expectDocContains(ctx, a.persona, doc.ids.path, mine);
       await expectDocContains(ctx, a.persona, doc.ids.path, theirs);
       return { note: `co-wrote with ${a.params.partner}` };
@@ -382,13 +383,33 @@ async function waitForServerFile(ctx, persona, path, bytes, timeoutMs = 180000) 
   throw new Error(`uploaded in the browser, but after ${timeoutMs / 1000} s the server has it ${last}`);
 }
 
-/** The open note's id is the last segment of the Notes route; poll until the server has the title. */
-async function findNote(ctx, persona, title, url) {
-  const id = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() ?? "");
-  if (!id || id === "notes" || id === "all") return null;
-  for (let i = 0; i < 8; i += 1) {
-    const res = await ctx.client(persona).request("GET", `/api/v1/notes/items/${encodeURIComponent(id)}`);
-    if (res.ok && (res.json.title ?? "") === title) return res.json;
+/** Ids of the notes already listed under this title in the notebook, or null when the list can't be read. */
+async function listedNoteIds(ctx, persona, title) {
+  const res = await ctx.client(persona).request("GET", "/api/v1/notes/items?notebookId=notes-general");
+  if (!res.ok) return null;
+  return new Set((res.json?.list ?? []).filter((n) => n.title === title).map((n) => n.id));
+}
+
+/**
+ * The note just created in the browser, on the server. The open note's id is the last segment of the Notes
+ * route; Safari can still show the list URL for a moment, so read the id from the page each try and, without
+ * one, look the title up in the notebook the note went to. A list hit counts only when its id was not listed
+ * before the click (`before`); without that snapshot only the route id is used.
+ */
+async function findNote(ctx, persona, title, page, before) {
+  const c = ctx.client(persona);
+  // Corpus titles repeat across nights: a title match counts only for a note saved during this action.
+  const since = new Date(Date.now() - 120000).toISOString().slice(0, 19);
+  for (let i = 0; i < 10; i += 1) {
+    const id = decodeURIComponent(new URL(page.url()).pathname.split("/").filter(Boolean).pop() ?? "");
+    if (id && id !== "notes" && id !== "all") {
+      const res = await c.request("GET", `/api/v1/notes/items/${encodeURIComponent(id)}`);
+      if (res.ok && (res.json.title ?? "") === title) return res.json;
+    } else if (before) {
+      const res = await c.request("GET", "/api/v1/notes/items?notebookId=notes-general");
+      const hit = (res.json?.list ?? []).filter((n) => n.title === title && !before.has(n.id) && String(n.updatedAt ?? "") >= since).sort((x, y) => String(y.updatedAt).localeCompare(String(x.updatedAt)))[0];
+      if (res.ok && hit) return hit;
+    }
     await new Promise((r) => setTimeout(r, 2000));
   }
   return null;

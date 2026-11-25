@@ -19,7 +19,7 @@ Public (`src/admin-core/src/index.ts`):
 Pane components (import from `@/admin-core/src/…`):
 
 - `AdminUsersPane`, `AdminBackupsPane`, `AdminUpdatesPane`, `AdminEmailDeliveryPane`
-- `AdminWebdavPane`, `AdminSearchPane`, `AdminRealtimeCollaborationPane`
+- `AdminGeneralPane`, `AdminCalendarPane`, `AdminSearchPane`, `AdminRealtimeCollaborationPane`
 - `AdminWorkspaceModals`, `FeatureRow` (`admin-workspace-widgets.tsx`)
 
 ## Provider wiring
@@ -40,7 +40,7 @@ Section and form styling lives under `.admin-workspace` in `admin-workspace.css`
 | `Features/Admin/Panes/Users`         | User and group management                      |
 | `Features/Admin/Panes/Backups`       | Backup configuration                           |
 | `Features/Admin/Panes/Updates`       | Update channel / version state                 |
-| `Features/Admin/Panes/WebDAV`        | WebDAV credentials and paths                   |
+| `Features/Admin/Panes/General`       | The base path of the install                   |
 | `Features/Admin/Panes/Search`        | Unified search indexing                        |
 | `Features/Admin/Panes/Collaboration` | RTC / STUN / TURN settings                     |
 | `Features/Workspace`                 | Full shell (login → home → all apps, mock API) |

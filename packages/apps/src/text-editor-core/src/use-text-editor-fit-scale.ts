@@ -14,6 +14,7 @@ function clearFit(dom: HTMLElement, surface: HTMLElement) {
   dom.style.removeProperty("transform-origin");
   surface.style.removeProperty("width");
   surface.style.removeProperty("height");
+  surface.style.removeProperty("overflow");
 }
 
 function editorDom(editor: Editor): HTMLElement | null {
@@ -56,6 +57,9 @@ export function useTextEditorFitScale(editor: Editor | null, enabled: boolean): 
       // The transform leaves the layout box at full size: the surface takes the scaled one.
       surface.style.width = `${dom.offsetWidth * scale}px`;
       surface.style.height = `${dom.offsetHeight * scale}px`;
+      // Safari still counts the full-size layout box of a scaled child as scrollable
+      // overflow, so a fitted page scrolled as far as the unscaled one: clip it here.
+      surface.style.overflow = "clip";
     };
 
     // Print lays the page out at paper width: drop the screen fit, and bring it back after.

@@ -44,7 +44,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           <FieldLabelRow
             layout="inline"
             label="Delivery"
-            description="This server cannot send email yet. Choose a transport that works here; until then, the sign-in page hides “Forgot password?”."
+            description="Choose a transport that works here. Until then, “Forgot password?” stays hidden."
           >
             <Tag label="Cannot send" tone="warning" dot />
           </FieldLabelRow>
@@ -55,8 +55,8 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           label="From address"
           description={
             usesPlaceholderFrom
-              ? `Empty: mail comes from ${MAIL_DELIVERY_PLACEHOLDER_FROM} and may land in spam. Use an address you control.`
-              : "Password resets and invitations come from this address."
+              ? `Empty: mail comes from ${MAIL_DELIVERY_PLACEHOLDER_FROM} and may land in spam.`
+              : "Used for password resets and invitations."
           }
           htmlFor="admin-mail-delivery-from"
         >
@@ -71,7 +71,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FieldLabelRow
           layout="inline"
           label="Transport"
-          description="Auto uses SMTP when a host is set, otherwise this server's own mail."
+          description="Auto uses SMTP when a host is set."
           htmlFor="admin-mail-delivery-transport"
         >
           <Select
@@ -114,7 +114,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
 
       <WorkspacePageSection title="SMTP" icon={<Server aria-hidden />}>
         <p className="workspace-page-section__lead">
-          Optional. Needed only when you send through a mail provider or your own mail server.
+          Optional. Only for a mail provider or your own mail server.
         </p>
         <FieldLabelRow layout="inline" fill label="Host" htmlFor="admin-mail-delivery-smtp-host">
           <Input
@@ -156,7 +156,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           layout="inline"
           fill
           label="Username"
-          description="Leave empty when the server needs no sign-in (a local relay)."
+          description="Empty for a local relay."
           htmlFor="admin-mail-delivery-smtp-username"
         >
           <Input
@@ -169,9 +169,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
           layout="inline"
           fill
           label="Password"
-          description={
-            delivery.config.smtpPasswordSet ? "Saved. Leave empty to keep it." : undefined
-          }
+          description={delivery.config.smtpPasswordSet ? "Saved. Empty keeps it." : undefined}
           htmlFor="admin-mail-delivery-smtp-password"
         >
           <span className="admin-value-control">
@@ -201,14 +199,14 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
       <WorkspacePageSection title="Invitations" icon={<Mail aria-hidden />}>
         <FeatureRow
           label="Invite people outside this server"
-          desc="Email new calendar invitations to outside addresses. Updates, cancellations and replies always send."
+          desc="Email invitations to outside addresses. Updates and replies always send."
           value={form.imipExternalEnabled}
           onChange={(next) => choose({ imipExternalEnabled: next })}
         />
         <FieldLabelRow
           layout="inline"
           label="Per hour"
-          description="Most invitations one person can send in an hour."
+          description="Per person."
           htmlFor="admin-email-delivery-imip-hourly-limit"
         >
           <Input
@@ -223,7 +221,7 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
         <FieldLabelRow
           layout="inline"
           label="Per day"
-          description="Most invitations one person can send in a day."
+          description="Per person."
           htmlFor="admin-email-delivery-imip-daily-limit"
         >
           <Input

@@ -778,24 +778,28 @@ function expectOneSearchField(root: HTMLElement) {
   expect(calendarSearchField(root).closest(".view-header__search-stack")).toBeTruthy();
 }
 
-/** The grid's header: no search (it lives in list mode), the view menu before ‹ ›. */
+/**
+ * The grid's header: no search (it lives in list mode). Row two: the period menu, then the
+ * calendar/list menu and ‹ ›.
+ */
 function expectGridHeader(root: HTMLElement) {
   expect(within(root).queryByPlaceholderText(defaultCalendarLabels.searchPlaceholder)).toBeNull();
-  const nav = root.querySelector(".calendar-header-nav");
-  if (!(nav instanceof HTMLElement)) throw new Error("header nav not found");
-  const [viewMode, ...arrows] = within(nav).getAllByRole("button");
+  const nav = root.querySelector(".calendar-header-toolbar");
+  if (!(nav instanceof HTMLElement)) throw new Error("header toolbar not found");
+  const [period, viewMode, ...arrows] = within(nav).getAllByRole("button");
+  expect(period?.classList.contains("calendar-header-toolbar__period")).toBe(true);
   expect(viewMode?.getAttribute("aria-label")).toMatch(/^View mode:/);
   expect(arrows).toHaveLength(2);
 }
 
 /**
  * While search shows results the range rests: the title is "Search" without its menu
- * (views, Today), and the view menu and ‹ › are disabled.
+ * (Today), and the second row's menus and ‹ › are disabled.
  */
 function expectRangeControls(root: HTMLElement, enabled: boolean) {
   expect(Boolean(root.querySelector(".view-header__title-menu"))).toBe(enabled);
-  const nav = root.querySelector(".calendar-header-nav");
-  if (!(nav instanceof HTMLElement)) throw new Error("header nav not found");
+  const nav = root.querySelector(".calendar-header-toolbar");
+  if (!(nav instanceof HTMLElement)) throw new Error("header toolbar not found");
   for (const button of within(nav).getAllByRole("button")) {
     expect((button as HTMLButtonElement).disabled).toBe(!enabled);
   }

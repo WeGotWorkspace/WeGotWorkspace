@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { downloadPlainTextLines } from "@/admin-core/src/admin-update-log-download";
+import {
+  downloadPlainTextLines,
+  openBlankWindow,
+  showPlainTextLinesInWindow,
+} from "@/admin-core/src/admin-update-log-download";
 
 describe("downloadPlainTextLines", () => {
   afterEach(() => {
@@ -24,5 +28,42 @@ describe("downloadPlainTextLines", () => {
     expect(clickSpy).toHaveBeenCalled();
     expect(document.body.contains(anchor)).toBe(false);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:update-log");
+  });
+});
+
+describe("openBlankWindow", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the window, without noopener, and clears its opener", () => {
+    const fake = { opener: "parent" } as unknown as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(fake);
+    expect(openBlankWindow()).toBe(fake);
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(fake.opener).toBeNull();
+  });
+
+  it("returns null when the browser blocks the window", () => {
+    vi.spyOn(window, "open").mockReturnValue(null);
+    expect(openBlankWindow()).toBeNull();
+  });
+});
+
+describe("showPlainTextLinesInWindow", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("points the window at a blob and revokes it later", () => {
+    vi.useFakeTimers();
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:log", revokeObjectURL });
+    const target = { location: { href: "" } } as unknown as Window;
+    showPlainTextLinesInWindow(target, ["a"]);
+    expect(target.location.href).toBe("blob:log");
+    vi.advanceTimersByTime(60_000);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:log");
   });
 });

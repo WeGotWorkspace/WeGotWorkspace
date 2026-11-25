@@ -171,7 +171,7 @@ describe("SettingsSecurityPane", () => {
 
   it("shows the empty state without a Revoke all button", async () => {
     renderPane([]);
-    expect(await screen.findByText(labels.empty)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: labels.newButton })).toBeTruthy();
     expect(screen.queryByRole("button", { name: labels.removeAllButton })).toBeNull();
   });
 
@@ -322,7 +322,8 @@ describe("SettingsSecurityPane", () => {
     fireEvent.click(await screen.findByRole("button", { name: labels.removeAllButton }));
     const confirm = await screen.findByRole("alertdialog");
     fireEvent.click(within(confirm).getByRole("button", { name: labels.removeAllConfirm }));
-    expect(await screen.findByText(labels.empty)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: labels.newButton })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: labels.removeAllButton })).toBeNull();
     expect(operations.revokeAll).toHaveBeenCalledTimes(1);
   });
 

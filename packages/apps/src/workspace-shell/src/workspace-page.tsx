@@ -58,7 +58,6 @@ export function WorkspacePageHeader({
 /** A section on the page: no card chrome, only its title (and icon or end action). */
 export function WorkspacePageSection({
   title,
-  icon,
   titleTag,
   action,
   className,
@@ -67,7 +66,7 @@ export function WorkspacePageSection({
   title?: string;
   /** Right after the title, such as a role tag. */
   titleTag?: ReactNode;
-  /** Marks the section, like the section rows in dialogs (Team access, Public link). */
+  /** Accepted, not shown: section headings carry no icon. */
   icon?: ReactNode;
   /** End of the title row, such as a status tag or an add button. */
   action?: ReactNode;
@@ -78,7 +77,6 @@ export function WorkspacePageSection({
     <Card
       className={className ? `workspace-page-section ${className}` : "workspace-page-section"}
       title={title}
-      titleIcon={icon}
       titleTag={titleTag}
       action={action}
     >

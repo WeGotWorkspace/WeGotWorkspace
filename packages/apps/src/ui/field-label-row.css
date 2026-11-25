@@ -104,8 +104,7 @@
  * with caption + description: a two-row grid, the description alone on the second row.
  * Columns of one third (caption) and two thirds (control), so fields get room; the
  * description may reach half the row. Neither side reaches into the other (a long
- * value truncates). Phones keep two
- * columns; the text wraps.
+ * value truncates). Phones fold it to one column (see the end of this file).
  */
 .field-label-row--inline {
   @apply mb-0 grid items-center gap-x-4 gap-y-0.5 space-y-0 py-4;
@@ -267,11 +266,15 @@
 
 /* The end column has one edge: a quiet control at the end of a row (a ghost or outline
  * button, a ghost dropdown, an icon button; all clear at rest) pulls its own padding
- * outward, so its text or icon lines up with tags, switches and fields above and below. */
+ * outward, so its text or icon lines up with tags, switches and fields above and below.
+ * A ghost dropdown inside a form is followed by Radix's hidden native `select`, so it
+ * counts as last when only that follows (`:last-child` missed it). */
 .field-label-row--inline
   .field-label-row__control
   :is(.button--variant-ghost, .button--variant-outline).button--size-sm:last-child,
-.field-label-row--inline .field-label-row__control .collection-ghost-select:last-child {
+.field-label-row--inline
+  .field-label-row__control
+  .collection-ghost-select:not(:has(~ :not(select[aria-hidden]))) {
   margin-inline-end: -0.625rem;
 }
 
@@ -285,4 +288,71 @@
   margin-inline-end: calc(
     (var(--control-height-md, 2.25rem) + var(--icon-button-height-step, 0px) - 1rem) / -2
   );
+}
+
+/*
+ * Phones: one column. The caption, its description and then the control, each on its own
+ * line; a half-width value column leaves a text field a sliver of the screen. The control
+ * starts at the row's start (a switch, a dropdown) and a filled field takes the full width.
+ * The selectors match the two-column rules above, so these win by order.
+ */
+@media (max-width: 767px) {
+  .field-label-row--inline,
+  .field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    row-gap: 0.125rem;
+    align-items: start;
+  }
+
+  .field-label-row--inline .field-label-row__control,
+  .field-label-row--inline:has(.field-label-row__description) .field-label-row__control,
+  .field-label-row--inline:has(> .field-label-row__control .input) > .field-label-row__control,
+  .field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input)
+    > .field-label-row__control {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+    /* Caption and description sit close; the control keeps its distance. */
+    margin-block: 0.375rem 0;
+  }
+
+  .field-label-row--inline:has(> .field-label-row__control .input)
+    > .field-label-row__text
+    > .field-label-row__label,
+  .field-label-row--inline:has(> .field-label-row__control .input)
+    > .field-label-row__text
+    > .field-label-row__caption-row {
+    margin-top: 0;
+  }
+
+  .field-label-row__description,
+  .field-label-row--fill .field-label-row__description {
+    grid-column: 1;
+    max-width: none;
+  }
+
+  .field-label-row__below {
+    grid-row: auto;
+  }
+
+  /* The control starts at the row's start, so a quiet button (clear at rest) pulls its
+   * padding out at the start: its text lines up with the caption above it. */
+  .field-label-row--inline
+    .field-label-row__control
+    :is(.button--variant-ghost, .button--variant-outline).button--size-sm:last-child {
+    margin-inline: -0.625rem 0;
+  }
+
+  .field-label-row--inline
+    .field-label-row__control
+    :is(.button--variant-ghost, .button--variant-outline).button--size-md:last-child {
+    margin-inline: -0.75rem 0;
+  }
+
+  .field-label-row--inline
+    .field-label-row__control
+    .collection-ghost-select:not(:has(~ :not(select[aria-hidden]))) {
+    margin-inline: -0.625rem 0;
+  }
 }

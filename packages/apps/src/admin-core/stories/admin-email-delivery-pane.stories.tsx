@@ -161,7 +161,7 @@ export const CannotSubmit: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Cannot send")).toBeInTheDocument();
-    await expect(canvas.getByText(/sign-in page hides .*forgot password/i)).toBeInTheDocument();
+    await expect(canvas.getByText(/forgot password.*stays hidden/i)).toBeInTheDocument();
   },
 };
 

@@ -60,6 +60,6 @@ describe("AdminStunUrlsField", () => {
 
   it("warns when no STUN server is set", () => {
     render(<Harness initial="" />);
-    expect(screen.getByText(/only work between people on the same network/)).toBeTruthy();
+    expect(screen.getByText(/only work on the same network/)).toBeTruthy();
   });
 });
