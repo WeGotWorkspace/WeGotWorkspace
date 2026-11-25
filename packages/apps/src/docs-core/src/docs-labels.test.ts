@@ -43,10 +43,9 @@ describe("docsLabels Drive SST re-exports", () => {
   it("keeps English insert-image chooser copy", () => {
     expect(docsLabels.insertImageTitle).toBe("Insert image");
     expect(docsLabels.insertImageChooserDescription).toBe(
-      "Upload a file from your computer, or choose an image already in Drive.",
+      "Upload an image from your computer, or pick one already in Drive.",
     );
     expect(docsLabels.insertImageUpload).toBe("Upload");
-    expect(docsLabels.insertImageChooseFromDrive).toBe("Choose from Drive");
     expect(docsLabels.deleteImage).toBe("Delete image");
   });
 

@@ -124,7 +124,6 @@ function InsertBrowseHarness() {
       open={open}
       currentUsername="alice"
       groupRoots={[]}
-      initialStep="browse"
       onClose={() => setOpen(false)}
       onSelectFile={STORY_NOOP}
       onUploadFiles={STORY_NOOP}

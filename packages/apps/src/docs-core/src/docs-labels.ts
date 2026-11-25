@@ -106,9 +106,8 @@ export const docsLabels = {
   insertImageError: "Could not insert the image.",
   insertImageTitle: "Insert image",
   insertImageChooserDescription:
-    "Upload a file from your computer, or choose an image already in Drive.",
+    "Upload an image from your computer, or pick one already in Drive.",
   insertImageUpload: "Upload",
-  insertImageChooseFromDrive: "Choose from Drive",
   deleteImage: "Delete image",
   viewSource: "Edit source",
   /** Source toggle when the document cannot be edited (guest view). */

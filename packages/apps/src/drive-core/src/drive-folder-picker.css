@@ -1,18 +1,6 @@
 @import "../../styles.css" reference;
 @import "../../destination-picker/src/destination-picker.css";
 
-.destination-picker.destination-picker--file-select {
-  --destination-picker-body-height: 22rem;
-}
-
-.destination-picker__breadcrumbs--with-toggle {
-  @apply flex min-w-0 items-center gap-2;
-}
-
-.destination-picker__view-toggle {
-  @apply shrink-0;
-}
-
 /* `.drive-workspace` clips sideways for the app; here the list reaches past the frame. */
 .destination-picker.drive-workspace {
   overflow: visible;

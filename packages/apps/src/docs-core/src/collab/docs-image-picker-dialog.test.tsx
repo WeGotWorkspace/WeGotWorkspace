@@ -19,7 +19,7 @@ const sharedProps = {
 };
 
 describe("DocsImagePickerDialog", () => {
-  it("asks to upload or choose from Drive before opening the browser", () => {
+  it("is Drive's file picker with an Upload action, no separate chooser step", () => {
     render(
       <TooltipProvider delayDuration={0}>
         <DocsImagePickerDialog {...sharedProps} />
@@ -28,19 +28,14 @@ describe("DocsImagePickerDialog", () => {
 
     expect(screen.getByRole("heading", { name: docsLabels.insertImageTitle })).toBeTruthy();
     expect(screen.getByText(docsLabels.insertImageChooserDescription)).toBeTruthy();
-    const dialog = document.querySelector("[role='dialog']");
-    expect(dialog?.className).toContain("docs-dialog-surface");
-    expect(dialog?.className).toContain("ui-modal-surface");
-    const upload = screen.getByRole("button", { name: docsLabels.insertImageUpload });
-    const browse = screen.getByRole("button", { name: docsLabels.insertImageChooseFromDrive });
-    expect(upload.className).toContain("button--variant-primary");
-    expect(browse.className).toContain("button--variant-outline");
-    expect(browse.className).not.toContain("button--variant-primary");
-    expect(document.querySelector(".drive-grid")).toBeNull();
-    expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeTruthy();
+    expect(document.querySelectorAll("[role='dialog']").length).toBe(1);
+    expect(document.querySelector(".docs-dialog-surface")).toBeTruthy();
+    expect(document.querySelector('[data-drive-listing-theme="docs"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: driveLabels.fileSelectDialogInsert })).toBeTruthy();
+    expect(screen.getByRole("button", { name: docsLabels.insertImageUpload })).toBeTruthy();
   });
 
-  it("uploads from the OS picker without opening Drive", () => {
+  it("uploads from the OS picker without leaving the dialog", () => {
     const onUploadFiles = vi.fn();
     render(
       <TooltipProvider delayDuration={0}>
@@ -49,31 +44,10 @@ describe("DocsImagePickerDialog", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: docsLabels.insertImageUpload }));
-    expect(document.querySelector(".drive-grid")).toBeNull();
-    expect(screen.queryByRole("button", { name: driveLabels.fileSelectDialogInsert })).toBeNull();
-
     const input = document.querySelector('input[type="file"][accept="image/*"]');
     expect(input).toBeTruthy();
     const file = new File([new Uint8Array([1, 2, 3])], "photo.png", { type: "image/png" });
     fireEvent.change(input!, { target: { files: [file] } });
     expect(onUploadFiles).toHaveBeenCalledWith([file]);
-  });
-
-  it("opens the Drive browser without an upload control", () => {
-    render(
-      <TooltipProvider delayDuration={0}>
-        <DocsImagePickerDialog {...sharedProps} />
-      </TooltipProvider>,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: docsLabels.insertImageChooseFromDrive }));
-    expect(document.querySelector(".drive-grid")).toBeTruthy();
-    expect(document.querySelector(".docs-dialog-surface")).toBeTruthy();
-    expect(document.querySelector('[data-drive-listing-theme="docs"]')).toBeTruthy();
-    expect(screen.getByRole("button", { name: driveLabels.fileSelectDialogInsert })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: docsLabels.insertImageUpload })).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: docsLabels.insertImageChooseFromDrive }),
-    ).toBeNull();
   });
 });
