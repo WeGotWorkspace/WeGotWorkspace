@@ -416,17 +416,12 @@ final class ChatChannelRepository
 
         $kind = $meta->kind ?? ChatChannelMeta::KIND_CHANNEL;
         $isDefault = $meta?->default_for_group !== null;
-        if ($isDefault) {
-            $rights['mayShare'] = false;
-            $rights['mayDelete'] = false;
-        } elseif (! $this->collectionAccess->mayDeleteGroupOwned($username, $instance, $kind === ChatChannelMeta::KIND_MEETING)) {
+        $rights['mayShare'] = $rights['mayShare'] && ! $isDefault;
+        if ($isDefault || ! $this->collectionAccess->mayDeleteGroupOwned($username, $instance, $kind === ChatChannelMeta::KIND_MEETING)) {
             $rights['mayDelete'] = false;
         }
         $projectFields = $this->collectionAccess->projectFields($instance, $rights);
-        if ($isDefault) {
-            // Its name is the Team's name (see assertNotGroupDefault): the UI offers no rename.
-            $projectFields['myRights']['mayRename'] = false;
-        }
+        $projectFields['myRights']['mayRename'] = $projectFields['myRights']['mayRename'] && ! $isDefault; // named for its Team
         $roster = $this->rosterUsernames($instance, $groupSlug);
         // The channel's readers: the presence mesh sends message previews to them only.
         $members = array_values(array_unique(array_map('strtolower', $roster)));
