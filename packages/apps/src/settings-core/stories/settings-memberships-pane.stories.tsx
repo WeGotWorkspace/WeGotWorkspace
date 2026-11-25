@@ -22,7 +22,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof SettingsMembershipsPane>;
 
-/** The demo user runs Editorial Team: that row has "Manage members". */
+/** The demo user runs Editorial Team: that row's More options menu has Edit. */
 export const Default: Story = {
   args: {
     groups: createMockGroups(),
