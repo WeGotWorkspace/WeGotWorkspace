@@ -45,6 +45,8 @@ export type MeetChannel = {
   projectId?: string | null;
   shareWith?: CollectionShareWith | null;
   isSharee?: boolean;
+  /** A Team's own channel: named after the Team, so never renamed or edited. */
+  isDefault?: boolean;
   myRights?: MeetChannelRights | null;
   /** Meeting kind: guest access is on by default. */
   guestAccess?: boolean;

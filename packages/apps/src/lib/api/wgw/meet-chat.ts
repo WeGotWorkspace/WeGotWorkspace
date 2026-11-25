@@ -105,6 +105,7 @@ export function meetChannelFromWire(row: WgwChatChannel): MeetChannel {
     groupSlug: row.groupSlug,
     shareWith: (row.shareWith ?? null) as CollectionShareWith | null,
     isSharee: row.isSharee,
+    ...(row.isDefault ? { isDefault: true } : {}),
     myRights: rightsFromWire(row.myRights),
     guestRoomCode: row.guestRoomCode ?? null,
     topic: row.topic ?? null,

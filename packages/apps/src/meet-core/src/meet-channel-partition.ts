@@ -88,7 +88,14 @@ export function meetSelectionUnderProject(
   return channels.find(inScope)?.id ?? null;
 }
 
-/** A Project channel's name and lifetime follow the Project: no rename, edit or delete here. */
+/**
+ * A Project channel's name and lifetime follow the Project, and a Team's own channel is named
+ * after the Team: no rename, edit or delete here.
+ */
 export function meetChannelLockedByProject(channel: MeetChannel): boolean {
-  return isProjectCollection(channel) || channel.myRights?.mayRename === false;
+  return (
+    isProjectCollection(channel) ||
+    channel.isDefault === true ||
+    channel.myRights?.mayRename === false
+  );
 }

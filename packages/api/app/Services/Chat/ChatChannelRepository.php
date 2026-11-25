@@ -422,6 +422,11 @@ final class ChatChannelRepository
         } elseif (! $this->collectionAccess->mayDeleteGroupOwned($username, $instance, $kind === ChatChannelMeta::KIND_MEETING)) {
             $rights['mayDelete'] = false;
         }
+        $projectFields = $this->collectionAccess->projectFields($instance, $rights);
+        if ($isDefault) {
+            // Its name is the Team's name (see assertNotGroupDefault): the UI offers no rename.
+            $projectFields['myRights']['mayRename'] = false;
+        }
         $roster = $this->rosterUsernames($instance, $groupSlug);
         // The channel's readers: the presence mesh sends message previews to them only.
         $members = array_values(array_unique(array_map('strtolower', $roster)));
@@ -436,7 +441,7 @@ final class ChatChannelRepository
             'groupSlug' => $groupSlug,
             'shareWith' => $this->shareInvites->shareWithForOwner($instance, $groupSlug),
             'isSharee' => $isSharee,
-            ...$this->collectionAccess->projectFields($instance, $rights),
+            ...$projectFields,
             'isDefault' => $isDefault,
             'topic' => $meta?->topic,
             'guestRoomCode' => $meta?->room_code,

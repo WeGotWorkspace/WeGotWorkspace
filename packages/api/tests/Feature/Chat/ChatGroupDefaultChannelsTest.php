@@ -53,6 +53,7 @@ final class ChatGroupDefaultChannelsTest extends WgwDatabaseTestCase
         $this->assertSame('group', $devs['scope']);
         $this->assertSame('devs', $devs['groupSlug']);
         $this->assertTrue($devs['isDefault']);
+        $this->assertFalse($devs['myRights']['mayRename']);
         $this->assertFalse($devs['isSharee']);
         $this->assertSame(2, $devs['memberCount']);
         // Immutability surfaces in the rights (clients hide the affordances).

@@ -19,5 +19,5 @@ export function MeetChannelKindIcon({
   const Icon = meetChannelIcon(channel);
   if (!isProjectCollection(channel)) return <Icon className={className} aria-hidden />;
   const color = projects.find((project) => project.id === channel.projectId)?.color ?? null;
-  return <ProjectMark color={color} iconClassName={className} />;
+  return <ProjectMark color={color} icon={Icon} />;
 }
