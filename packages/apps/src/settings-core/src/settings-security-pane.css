@@ -1,13 +1,9 @@
 @import "../../styles.css" reference;
 
 /*
- * Settings → Security: quiet section titles (the card's own title variables) with a hairline
- * under them; the rows are inline FieldLabelRows, which draw the hairlines between them.
+ * Settings → Security: section titles (as on every Settings pane) with a hairline under
+ * them; the rows are inline FieldLabelRows, which draw the hairlines between them.
  */
-.settings-security-pane {
-  --card-title-size: var(--input-font-size-md, 0.875rem);
-  --card-title-color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
 
 .settings-security-pane .workspace-page-section > .card__header {
   @apply pb-2;

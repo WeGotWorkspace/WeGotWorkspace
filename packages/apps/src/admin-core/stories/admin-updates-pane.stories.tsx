@@ -77,6 +77,31 @@ export const InProgress: Story = {
   ),
 };
 
+/** Later in a run: the earlier steps are done (accent dots), the database backup is running. */
+export const InProgressBackingUp: Story = {
+  render: () => (
+    <UpdatesPaneHarness
+      dataOverride={{
+        updates: {
+          inProgress: true,
+          phase: "backing_up",
+          phaseProgress: {
+            completed: 3,
+            total: 5,
+            percent: 60,
+            updatedAt: "2024-06-01T10:00:00.000Z",
+          },
+          current: {
+            from: "1.0.0",
+            to: "1.1.0",
+            at: "2024-06-01T10:00:00.000Z",
+          },
+        },
+      }}
+    />
+  ),
+};
+
 export const DockerChannel: Story = {
   render: () => (
     <UpdatesPaneHarness

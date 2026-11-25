@@ -4,7 +4,6 @@ export const appPasswordLabels = {
   panelDescription: "Two-factor sign-in, and app passwords for calendar and contacts apps",
   title: "App passwords",
   lead: "For calendar and contacts apps that can't ask for a two-factor code.",
-  empty: "No app passwords yet.",
   loading: "Loading app passwords…",
   offline: "You are offline. App passwords show when the connection is back.",
   loadFailed: "Could not load your app passwords.",

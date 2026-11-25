@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { HardDrive, RefreshCw } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { Switch } from "@/ui/switch";
+import { Tag } from "@/tag/src/tag";
 import { useTrackAutosave } from "@/ui/autosave-status";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
@@ -127,10 +127,9 @@ export function SettingsOfflinePane() {
       onConfirm: () => void clearCache(),
     });
 
-  const turnOff = (alsoClear: boolean) => {
+  const turnOff = () => {
     persist({ contentSyncEnabled: false });
     setTurnOffOpen(false);
-    if (alsoClear) void clearCache();
   };
 
   return (
@@ -140,17 +139,27 @@ export function SettingsOfflinePane() {
           layout="inline"
           label="Offline file contents"
           description="Automatically save file contents on this device. File and folder names always sync."
-          htmlFor="offline-content-sync"
+          labelAccessory={
+            <Tag
+              label={contentSyncEnabled ? "On" : "Off"}
+              tone={contentSyncEnabled ? "success" : "warning"}
+              dot={contentSyncEnabled}
+            />
+          }
         >
-          <Switch
-            id="offline-content-sync"
-            checked={contentSyncEnabled}
-            onCheckedChange={(checked) => {
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            severity={contentSyncEnabled ? "danger" : undefined}
+            onClick={() => {
               // Turning on needs no question; turning off asks what to do with the saved files.
-              if (checked) persist({ contentSyncEnabled: true });
-              else setTurnOffOpen(true);
+              if (contentSyncEnabled) setTurnOffOpen(true);
+              else persist({ contentSyncEnabled: true });
             }}
-          />
+          >
+            {contentSyncEnabled ? "Turn off" : "Turn on"}
+          </Button>
         </FieldLabelRow>
         {contentSyncEnabled ? (
           <FieldLabelRow
@@ -191,7 +200,13 @@ export function SettingsOfflinePane() {
                 : `${formatBytesCompact(usageBytes)} in use on this device`
             }
           >
-            <Button variant="outline" size="sm" disabled={clearing} onClick={requestClearCache}>
+            <Button
+              variant="outline"
+              severity="danger"
+              size="sm"
+              disabled={clearing}
+              onClick={requestClearCache}
+            >
               Clear cache
             </Button>
           </FieldLabelRow>
@@ -209,12 +224,7 @@ export function SettingsOfflinePane() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            {username ? (
-              <AlertDialogAction asChild onClick={() => turnOff(true)}>
-                <Button variant="outline">Turn off and clear cache</Button>
-              </AlertDialogAction>
-            ) : null}
-            <AlertDialogAction asChild onClick={() => turnOff(false)}>
+            <AlertDialogAction asChild onClick={turnOff}>
               <Button variant="primary">Turn off</Button>
             </AlertDialogAction>
           </AlertDialogFooter>

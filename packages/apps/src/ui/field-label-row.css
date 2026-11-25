@@ -266,11 +266,15 @@
 
 /* The end column has one edge: a quiet control at the end of a row (a ghost or outline
  * button, a ghost dropdown, an icon button; all clear at rest) pulls its own padding
- * outward, so its text or icon lines up with tags, switches and fields above and below. */
+ * outward, so its text or icon lines up with tags, switches and fields above and below.
+ * A ghost dropdown inside a form is followed by Radix's hidden native `select`, so it
+ * counts as last when only that follows (`:last-child` missed it). */
 .field-label-row--inline
   .field-label-row__control
   :is(.button--variant-ghost, .button--variant-outline).button--size-sm:last-child,
-.field-label-row--inline .field-label-row__control .collection-ghost-select:last-child {
+.field-label-row--inline
+  .field-label-row__control
+  .collection-ghost-select:not(:has(~ :not(select[aria-hidden]))) {
   margin-inline-end: -0.625rem;
 }
 
@@ -297,7 +301,7 @@
   .field-label-row--inline.field-label-row--fill:has(> .field-label-row__control .input) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
-    row-gap: 0.5rem;
+    row-gap: 0.125rem;
     align-items: start;
   }
 
@@ -309,7 +313,8 @@
     grid-column: 1;
     grid-row: auto;
     justify-content: flex-start;
-    margin-block: 0;
+    /* Caption and description sit close; the control keeps its distance. */
+    margin-block: 0.375rem 0;
   }
 
   .field-label-row--inline:has(> .field-label-row__control .input)
@@ -329,5 +334,25 @@
 
   .field-label-row__below {
     grid-row: auto;
+  }
+
+  /* The control starts at the row's start, so a quiet button (clear at rest) pulls its
+   * padding out at the start: its text lines up with the caption above it. */
+  .field-label-row--inline
+    .field-label-row__control
+    :is(.button--variant-ghost, .button--variant-outline).button--size-sm:last-child {
+    margin-inline: -0.625rem 0;
+  }
+
+  .field-label-row--inline
+    .field-label-row__control
+    :is(.button--variant-ghost, .button--variant-outline).button--size-md:last-child {
+    margin-inline: -0.75rem 0;
+  }
+
+  .field-label-row--inline
+    .field-label-row__control
+    .collection-ghost-select:not(:has(~ :not(select[aria-hidden]))) {
+    margin-inline: -0.625rem 0;
   }
 }

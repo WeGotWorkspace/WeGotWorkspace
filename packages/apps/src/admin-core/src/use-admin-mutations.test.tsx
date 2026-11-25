@@ -33,6 +33,7 @@ const ACTION_NAMES = [
   "clearUpdateLog",
   "refreshUpdateLog",
   "downloadUpdateLog",
+  "viewUpdateLog",
   "deleteBackup",
   "createBackup",
   "downloadBackup",

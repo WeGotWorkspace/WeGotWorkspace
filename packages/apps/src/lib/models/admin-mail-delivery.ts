@@ -57,10 +57,10 @@ export function defaultMailDeliveryState(
 
 export function lastTestSendLabel(result: AdminMailDeliveryLastTestSend | null): string {
   if (!result) {
-    return "No test send yet. A successful test means the transport accepted the message, not that it reached an inbox.";
+    return "No test sent yet. Accepted means the server took it, not that it arrived.";
   }
   if (result.accepted) {
-    return `Last test send was accepted by the ${result.transport || "selected"} transport. This does not confirm inbox placement.`;
+    return `Accepted by the ${result.transport || "selected"} transport. Not a delivery guarantee.`;
   }
   return `Last test send was not accepted (${result.status}${result.transport ? `, ${result.transport}` : ""}).`;
 }

@@ -226,7 +226,7 @@ function TextRow({
       control={control}
       name={name}
       render={({ field }) => (
-        <FieldLabelRow layout="inline" label={label} description={description} htmlFor={id}>
+        <FieldLabelRow layout="inline" fill label={label} description={description} htmlFor={id}>
           <Input
             id={id}
             {...field}

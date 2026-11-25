@@ -16,19 +16,19 @@ function testSend(fields: Partial<AdminMailDeliveryLastTestSend>): AdminMailDeli
 describe("lastTestSendLabel", () => {
   it("says no test was sent yet", () => {
     expect(lastTestSendLabel(null)).toBe(
-      "No test send yet. A successful test means the transport accepted the message, not that it reached an inbox.",
+      "No test sent yet. Accepted means the server took it, not that it arrived.",
     );
   });
 
   it("names the transport that accepted the test", () => {
     expect(lastTestSendLabel(testSend({ transport: "smtp" }))).toBe(
-      "Last test send was accepted by the smtp transport. This does not confirm inbox placement.",
+      "Accepted by the smtp transport. Not a delivery guarantee.",
     );
   });
 
   it("says the selected transport when the accepted test names none", () => {
     expect(lastTestSendLabel(testSend({ transport: "" }))).toBe(
-      "Last test send was accepted by the selected transport. This does not confirm inbox placement.",
+      "Accepted by the selected transport. Not a delivery guarantee.",
     );
   });
 

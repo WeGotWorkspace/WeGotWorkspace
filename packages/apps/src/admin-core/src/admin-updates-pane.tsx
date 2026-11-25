@@ -1,22 +1,19 @@
-import { useMemo, useState } from "react";
-import {
-  Check,
-  Download,
-  Eraser,
-  Loader2,
-  Package,
-  RefreshCw,
-  ScrollText,
-  Terminal,
-} from "lucide-react";
+import { useState } from "react";
+import { EllipsisVertical, Package, Terminal } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { useTrackAutosave } from "@/ui/autosave-status";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
-import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
-import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
+import { IconButton } from "@/button/src/icon-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
+import { ProgressRing } from "@/ui/progress";
 import { Tag } from "@/tag/src/tag";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/ui/select";
 import {
@@ -33,15 +30,21 @@ import { buttonVariants } from "@/button/src/button";
 import {
   formatByteCount,
   formatHumanDateTime,
-  parseUpdateLogLine,
   UPDATE_PROGRESS_STEPS,
-  type UpdateLogRow,
 } from "@/admin-core/src/admin-workspace-utils";
 import type { AdminUpdateChannel } from "@/lib/models/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 const DOCKER_INSTALL_DOCS_URL =
   "https://github.com/WeGotWorkspace/wegotworkspace/blob/main/docs/install-docker.md";
+
+/** The line under the step that is running. */
+const STEP_DETAILS: Record<string, string> = {
+  Downloading: "Fetching the release package.",
+  Extracting: "Unpacking the new files.",
+  "Backing up database": "Saving a copy of the database first.",
+  "Applying update": "Replacing files and running migrations.",
+};
 
 const UPDATE_CHANNEL_OPTIONS: { value: AdminUpdateChannel; label: string }[] = [
   { value: "stable", label: "Stable" },
@@ -110,11 +113,7 @@ export function AdminUpdatesPane({
     }
     saveChannel(channel);
   };
-  const updateLogRows = useMemo(
-    () =>
-      controller.updateLogLines.map((line, index) => parseUpdateLogLine(line, index)).slice(-25),
-    [controller.updateLogLines],
-  );
+  const updateLogLines = controller.updateLogLines.slice(-25);
 
   const activeProgressStep = UPDATE_PROGRESS_STEPS.findIndex((step) =>
     step.phases.includes(controller.updates.phase ?? ""),
@@ -146,13 +145,26 @@ export function AdminUpdatesPane({
             )
           : 2;
 
+  const progressTarget = controller.updates.current?.to ?? controller.updates.latest?.version;
   const progressCard = (
     <div className="admin-updates-progress-card">
       <div className="admin-updates-progress-head">
-        <div className="admin-updates-stat-label--strong">Update progress</div>
+        <div className="admin-updates-progress-title">
+          <span className="admin-updates-stat-label--strong">Installing update</span>
+          {progressTarget ? (
+            <span className="admin-updates-progress-version">{progressTarget}</span>
+          ) : null}
+        </div>
         <div className="admin-updates-progress-count">{displayProgressCount}</div>
       </div>
-      <div className="admin-updates-progress-track">
+      <div
+        className="admin-updates-progress-track"
+        role="progressbar"
+        aria-label="Update progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progressPercent)}
+      >
         <div className="admin-updates-progress-fill" style={{ width: `${progressPercent}%` }} />
       </div>
       <ol className="admin-updates-step-list">
@@ -161,17 +173,25 @@ export function AdminUpdatesPane({
           const isActive = activeProgressStep === index;
           const stepState = isDone ? "done" : isActive ? "active" : "pending";
           return (
-            <li key={step.label} className="admin-updates-step-row">
-              <span className="admin-updates-step-dot" data-step-state={stepState}>
-                {isDone ? (
-                  <Check className="size-3" />
-                ) : isActive ? (
-                  <Loader2 className="size-3 animate-spin" />
+            <li key={step.label} className="admin-updates-step-row" data-step-state={stepState}>
+              <span className="admin-updates-step-dot">
+                {isActive ? (
+                  <ProgressRing
+                    value={null}
+                    label={step.label}
+                    valueText={`${step.label}, in progress`}
+                    className="admin-updates-step-ring"
+                  />
                 ) : (
-                  <span className="size-1.5 rounded-full bg-current" />
+                  <span className="admin-updates-step-mark" aria-hidden />
                 )}
               </span>
-              <span className="admin-updates-step-label">{step.label}</span>
+              <span className="admin-updates-step-text">
+                <span className="admin-updates-step-label">{step.label}</span>
+                {isActive ? (
+                  <span className="admin-updates-step-detail">{STEP_DETAILS[step.label]}</span>
+                ) : null}
+              </span>
             </li>
           );
         })}
@@ -179,46 +199,15 @@ export function AdminUpdatesPane({
     </div>
   );
 
-  const logColumns: DataTableColumn<UpdateLogRow>[] = useMemo(
-    () => [
-      {
-        key: "time",
-        header: "Date",
-        muted: true,
-        shrink: true,
-        render: (row) => formatHumanDateTime(row.date),
-      },
-      {
-        key: "level",
-        header: "Level",
-        muted: true,
-        shrink: true,
-        render: (row) => row.level,
-      },
-      {
-        key: "message",
-        header: "Message",
-        cellClassName: "whitespace-normal",
-        render: (row) => row.message,
-      },
-    ],
-    [],
-  );
-
   const updates = controller.updates;
   const latestVersion = updates.latest?.version ?? updates.installedVersion ?? "-";
   const checkButton = (
     <Button
-      variant="outline"
-      size="sm"
+      variant="ghost"
+      className="-ms-3"
       onClick={controller.actions.checkUpdates}
       disabled={controller.checkingUpdates || updates.inProgress}
     >
-      {controller.checkingUpdates ? (
-        <Loader2 className="size-4 mr-2 animate-spin" />
-      ) : (
-        <RefreshCw className="size-4 mr-2" />
-      )}
       {controller.checkingUpdates ? "Checking..." : "Check now"}
     </Button>
   );
@@ -236,7 +225,12 @@ export function AdminUpdatesPane({
 
       <WorkspacePageSection title="Version" icon={<Package aria-hidden />}>
         <FieldLabelRow layout="inline" label="Installed">
-          <Tag label={updates.installedVersion || "-"} />
+          <Tag
+            label={updates.installedVersion || "-"}
+            tone={
+              updates.lastCheckedAt ? (updates.updateAvailable ? "warning" : "success") : undefined
+            }
+          />
         </FieldLabelRow>
         {isDockerChannel ? (
           <>
@@ -262,19 +256,7 @@ export function AdminUpdatesPane({
               below={updates.inProgress ? progressCard : undefined}
             >
               <span className="admin-row-actions">
-                {updates.updateAvailable ? (
-                  <Button
-                    size="sm"
-                    onClick={() => setConfirmUpdateOpen(true)}
-                    disabled={!updates.compatible || updatingNow || updates.inProgress}
-                  >
-                    <Download className="size-4 mr-2" />
-                    {`Update to ${latestVersion}`}
-                  </Button>
-                ) : (
-                  <Tag label={latestVersion} />
-                )}
-                {checkButton}
+                <Tag label={latestVersion} />
               </span>
             </FieldLabelRow>
             <FieldLabelRow
@@ -298,6 +280,17 @@ export function AdminUpdatesPane({
                 </SelectContent>
               </Select>
             </FieldLabelRow>
+            <div className="flex items-center gap-2 pt-4">
+              {checkButton}
+              {updates.updateAvailable ? (
+                <Button
+                  label="Update"
+                  aria-label={`Update to ${latestVersion}`}
+                  onClick={() => setConfirmUpdateOpen(true)}
+                  disabled={!updates.compatible || updatingNow || updates.inProgress}
+                />
+              ) : null}
+            </div>
           </>
         )}
       </WorkspacePageSection>
@@ -329,26 +322,35 @@ export function AdminUpdatesPane({
 
       <WorkspacePageSection
         title="Log"
-        icon={<ScrollText aria-hidden />}
         action={
-          <span className="admin-row-actions admin-row-actions--tight">
-            <IconActionButton
-              label="Download full log"
-              onClick={controller.actions.downloadUpdateLog}
-            >
-              <Download className="size-4" />
-            </IconActionButton>
-            <IconActionButton label="Refresh logs" onClick={controller.actions.refreshUpdateLog}>
-              <RefreshCw className="size-4" />
-            </IconActionButton>
-            <IconActionButton label="Clear logs" onClick={() => setConfirmClearLogsOpen(true)}>
-              <Eraser className="size-4" />
-            </IconActionButton>
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                type="button"
+                variant="ghost"
+                label="Log options"
+                icon={<EllipsisVertical aria-hidden />}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void controller.actions.viewUpdateLog()}>
+                View
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void controller.actions.downloadUpdateLog()}>
+                Download
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="menu-item--severity-danger menu-item--interactive"
+                onSelect={() => setConfirmClearLogsOpen(true)}
+              >
+                Clear
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       >
-        {updateLogRows.length > 0 ? (
-          <DataTable data={updateLogRows} columns={logColumns} rowKey={(row) => row.id} />
+        {updateLogLines.length > 0 ? (
+          <pre className="admin-update-log">{updateLogLines.join("\n")}</pre>
         ) : (
           <p className="workspace-page-section__lead">Nothing logged yet.</p>
         )}

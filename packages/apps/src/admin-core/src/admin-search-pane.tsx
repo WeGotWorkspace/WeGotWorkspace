@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { DatabaseZap, Loader2, RefreshCw, ScrollText, StopCircle } from "lucide-react";
+import { DatabaseZap, Loader2, ScrollText, StopCircle } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { WorkspacePageSection } from "@/workspace-shell/src/workspace-page";
-import { IconActionButton } from "@/admin-core/src/admin-workspace-widgets";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import {
   AlertDialog,
@@ -66,12 +65,14 @@ export function AdminSearchPane({ controller }: { controller: AdminControllerSta
         title="Index"
         icon={<DatabaseZap aria-hidden />}
         action={
-          <IconActionButton
-            label="Refresh state"
+          <Button
+            type="button"
+            variant="ghost"
+            className="-me-3"
+            label="Refresh"
+            aria-label="Refresh state"
             onClick={controller.actions.refreshSearchReindexState}
-          >
-            <RefreshCw className="size-4" />
-          </IconActionButton>
+          />
         }
       >
         <FieldLabelRow
@@ -105,6 +106,7 @@ export function AdminSearchPane({ controller }: { controller: AdminControllerSta
           ) : (
             <Button
               variant="outline"
+              severity="danger"
               size="sm"
               onClick={() => setConfirmReindexOpen(true)}
               disabled={runningAction}
@@ -125,34 +127,32 @@ export function AdminSearchPane({ controller }: { controller: AdminControllerSta
       <AlertDialog open={confirmReindexOpen} onOpenChange={setConfirmReindexOpen}>
         <AlertDialogContent className="admin-dialog-surface">
           <AlertDialogHeader>
-            <AlertDialogTitle>Start a full search reindex?</AlertDialogTitle>
+            <AlertDialogTitle>Rebuild the search index?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will rebuild the unified search index for files, calendars, and contacts. It may
-              take a while on larger installations.
+              Rebuilds the index for files, calendars and contacts. It may take a while on larger
+              installs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={runningAction}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={runningAction}
-              onClick={async () => {
-                setRunningAction(true);
-                try {
-                  await controller.actions.startSearchReindex();
-                } finally {
-                  setRunningAction(false);
-                  setConfirmReindexOpen(false);
-                }
-              }}
-            >
-              {runningAction ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                "Start reindex"
-              )}
+            <AlertDialogAction asChild>
+              <Button
+                variant="outline"
+                severity="danger"
+                disabled={runningAction}
+                onClick={async (event) => {
+                  event.preventDefault();
+                  setRunningAction(true);
+                  try {
+                    await controller.actions.startSearchReindex();
+                  } finally {
+                    setRunningAction(false);
+                    setConfirmReindexOpen(false);
+                  }
+                }}
+              >
+                {runningAction ? "Rebuilding..." : "Rebuild"}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

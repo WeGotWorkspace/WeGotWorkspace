@@ -23,7 +23,8 @@
 
 .projects-manage-row__name {
   @apply min-w-0 flex-1 truncate font-medium;
-  font-size: 1rem;
+  /* One step under the body size. */
+  font-size: var(--input-font-size-md, 0.875rem);
   color: var(--workspace-foreground);
 }
 
@@ -62,11 +63,6 @@
   border-top: 1px solid var(--workspace-divider-color);
 }
 
-.projects-manage-new {
-  @apply flex justify-end py-3;
-  border-top: 1px solid var(--workspace-divider-color);
-}
-
 /* Edit and Archive sit back until the row is in use. */
 .projects-manage-row > .button--variant-ghost:not(.button--severity-danger) {
   color: var(--color-muted-foreground, var(--workspace-muted-foreground));
@@ -82,12 +78,7 @@
   color: var(--button-severity-color);
 }
 
-/* The Team is the quiet label, the Projects under it carry the weight. */
-.projects-manage-teams .card__title {
-  @apply text-sm font-normal;
-  font-size: 0.875rem;
-  color: var(
-    --workspace-muted-foreground,
-    color-mix(in oklab, var(--workspace-foreground) 60%, transparent)
-  );
+/* New and the more-options menu on the Team's heading row. */
+.projects-manage-team-actions {
+  @apply inline-flex items-center gap-1;
 }

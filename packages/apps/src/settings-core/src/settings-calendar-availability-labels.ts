@@ -2,7 +2,7 @@
 export const calendarAvailabilityLabels = {
   title: "Availability",
   switch: "Share my availability",
-  offHint: "When this is on, people in your Teams can see when you are busy.",
+  offHint: "Your Teams see when you are busy.",
   sharingOn: "Your Teams can now see when you are busy",
   sharingOff: "Your availability is no longer shared",
   calendarsHeading: "Calendars",

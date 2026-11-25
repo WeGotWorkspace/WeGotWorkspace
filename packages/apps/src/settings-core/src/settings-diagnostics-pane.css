@@ -1,9 +1,5 @@
 @import "../../styles.css" reference;
 
-.settings-diagnostics-pane__intro {
-  @apply mb-4 text-sm text-muted-foreground;
-}
-
 .settings-diagnostics-pane__preview {
   @apply flex flex-col gap-2;
 }

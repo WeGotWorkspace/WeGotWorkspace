@@ -33,7 +33,8 @@ export const Default: Story = {
     await expect(canvas.getByText("Rebuild the index")).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("button", { name: "Rebuild" }));
     // Confirm dialog renders in a portal outside the canvas.
-    await userEvent.click(await screen.findByRole("button", { name: "Start reindex" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Rebuild" }));
     await expect(await canvas.findByRole("button", { name: "Cancel" })).toBeInTheDocument();
   },
 };

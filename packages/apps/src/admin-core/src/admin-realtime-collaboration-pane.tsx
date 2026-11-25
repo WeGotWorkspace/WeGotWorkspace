@@ -56,14 +56,14 @@ export function AdminRealtimeCollaborationPane({
           className="admin-pane-callout"
           severity="warning"
           title="The relay is off"
-          message="This server still has a TURN username and password from an older release. Enter a shared secret below to turn the relay back on; that also removes the old ones."
+          message="This server still has a TURN username and password from an older release. Enter a shared secret to turn the relay back on and remove them."
         />
       ) : null}
 
       <WorkspacePageSection title="Connection servers" icon={<Network aria-hidden />}>
         <p className="workspace-page-section__lead">
-          Calls and live editing connect people directly. STUN helps them find each other; TURN
-          relays the connection when a firewall blocks the direct route. Up to three of each.
+          STUN helps people find each other; TURN relays when a firewall blocks the direct route. Up
+          to three of each.
         </p>
         <AdminStunUrlsField
           value={form.stunUrls}
@@ -75,7 +75,7 @@ export function AdminRealtimeCollaborationPane({
           layout="inline"
           fill
           label="TURN servers"
-          description="Optional relay for people behind strict firewalls."
+          description="Optional relay for strict firewalls."
           htmlFor="admin-realtime-turn-urls-1"
         >
           <AdminIceUrlList
@@ -93,8 +93,8 @@ export function AdminRealtimeCollaborationPane({
           label="TURN shared secret"
           description={
             form.turnSecretSet
-              ? "Saved. It is never shown again; leave empty to keep it."
-              : "The use-auth-secret value of your TURN server."
+              ? "Saved. Empty keeps it."
+              : "The use-auth-secret of your TURN server."
           }
           htmlFor="admin-realtime-turn-secret"
         >
@@ -119,13 +119,12 @@ export function AdminRealtimeCollaborationPane({
 
       <WorkspacePageSection title="Video quality" icon={<Video aria-hidden />}>
         <p className="workspace-page-section__lead">
-          Caps for video only, never audio. Each call still picks a quality for its size, up to
-          these limits.
+          Caps for video only. Each call picks its own quality, up to these.
         </p>
         <FieldLabelRow
           layout="inline"
           label="Highest quality"
-          description="Audio only turns cameras off on this server."
+          description="Audio only turns cameras off."
           htmlFor="admin-realtime-max-video-profile"
         >
           <VideoProfileSelect
@@ -137,7 +136,7 @@ export function AdminRealtimeCollaborationPane({
         <FieldLabelRow
           layout="inline"
           label="Highest quality over the relay"
-          description="Relayed video uses your server's bandwidth. Never above the limit above."
+          description="Relayed video uses your bandwidth."
           htmlFor="admin-realtime-max-video-profile-relay"
         >
           <VideoProfileSelect
@@ -149,16 +148,16 @@ export function AdminRealtimeCollaborationPane({
       </WorkspacePageSection>
 
       <WorkspacePageSection title="Troubleshooting" icon={<Bug aria-hidden />}>
-        <p className="workspace-page-section__lead">Changes apply when people reload the page.</p>
+        <p className="workspace-page-section__lead">Applies when people reload.</p>
         <FeatureRow
           label="Detailed connection logs"
-          desc="Writes connection details to each browser's developer console. Turn it off when you are done."
+          desc="Writes connection details to the browser console. Turn off when done."
           value={form.rtcDebugLogging}
           onChange={(next) => choose({ rtcDebugLogging: next })}
         />
         <FeatureRow
           label="Always use the relay"
-          desc="Sends all traffic through your TURN server, even when a direct route works. Uses more bandwidth."
+          desc="Sends all traffic through TURN. Uses more bandwidth."
           value={relayReady ? form.rtcForceRelay : false}
           disabled={!relayReady}
           labelAccessory={

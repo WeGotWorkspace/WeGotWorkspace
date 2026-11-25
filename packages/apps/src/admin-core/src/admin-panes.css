@@ -71,14 +71,12 @@
   @apply flex flex-wrap items-center gap-6;
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-updates-stat-label {
-  @apply text-[10px] uppercase tracking-[0.18em] mb-1;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
+/* A row caption: the same size, weight and ink as the labels of the field rows. */
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-stat-label--strong {
-  @apply text-[10px] uppercase tracking-[0.18em] font-semibold mb-1;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  @apply font-medium;
+  font-size: var(--input-font-size-md, 0.875rem);
+  line-height: 1.25rem;
+  color: var(--field-label-color, var(--workspace-foreground));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-stat-value {
@@ -87,57 +85,109 @@
   color: var(--workspace-foreground);
 }
 
+/* Update progress: a bordered card, a thin bar, and the steps as a timeline. */
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-card {
-  @apply mt-5 border p-4;
-  border-radius: var(--control-radius);
+  @apply mt-5 border p-5;
+  border-radius: calc(var(--control-radius) * 1.5);
   background-color: var(--button-outline-hover-background);
   border-color: var(--control-border-color);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-head {
-  @apply flex items-center justify-between mb-3;
+  @apply mb-3 flex items-baseline justify-between gap-3;
 }
 
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-title {
+  @apply flex min-w-0 items-baseline gap-2;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-version,
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-count {
   @apply text-xs tabular-nums;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-track {
-  @apply h-1.5 rounded-full overflow-hidden mb-4;
+  @apply mb-5 h-1 overflow-hidden rounded-full;
   background-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-fill {
-  @apply h-full transition-all duration-500 ease-out;
-  background-color: var(--workspace-accent);
+  @apply h-full rounded-full transition-all duration-500 ease-out;
+  /* The on colour of switches. */
+  background-color: var(--switch-on-bg, var(--workspace-accent));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-list {
-  @apply space-y-2;
+  @apply m-0 list-none p-0;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-row {
-  @apply flex items-center gap-3 text-sm;
+  @apply relative flex items-start gap-3 pb-4 text-sm;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-row:last-child {
+  @apply pb-0;
+}
+
+/* The line that joins one step's dot to the next. */
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-row:not(:last-child)::before {
+  content: "";
+  @apply absolute w-px;
+  left: 0.5rem;
+  top: 1.375rem;
+  bottom: 0.125rem;
+  background-color: var(--workspace-divider-color);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot {
-  @apply size-5 rounded-full flex items-center justify-center shrink-0 transition-colors;
+  @apply flex size-4 shrink-0 items-center justify-center;
+  margin-top: 0.125rem;
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="done"],
-:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="active"] {
-  background-color: var(--workspace-accent);
-  color: var(--workspace-accent-foreground);
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-ring {
+  --progress-ring-size: 0.875rem;
+  --progress-ring-color: var(--switch-on-bg, var(--workspace-accent));
 }
 
-:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-dot[data-step-state="pending"] {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-  color: var(--workspace-foreground);
+/* Done: a filled dot in the accent. Waiting: the same dot, hollow. */
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-mark {
+  @apply size-1.5 rounded-full;
+  background-color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface)
+  .admin-updates-step-row[data-step-state="done"]
+  .admin-updates-step-mark {
+  background-color: var(--switch-on-bg, var(--workspace-accent));
+}
+
+:is(.admin-workspace, .admin-dialog-surface)
+  .admin-updates-step-row[data-step-state="pending"]
+  .admin-updates-step-mark {
+  @apply border;
+  background-color: transparent;
+  border-color: color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-text {
+  @apply flex min-w-0 flex-col gap-0.5;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-label {
+  color: color-mix(in oklab, var(--workspace-foreground) 70%, transparent);
+}
+
+:is(.admin-workspace, .admin-dialog-surface)
+  .admin-updates-step-row[data-step-state="active"]
+  .admin-updates-step-label {
+  @apply font-medium;
   color: var(--workspace-foreground);
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-updates-step-detail {
+  @apply text-xs;
+  color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-actions {
@@ -146,7 +196,6 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-docker-commands {
   @apply mt-3 mb-3 overflow-x-auto rounded border px-3 py-2 text-xs leading-relaxed;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   background-color: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
   border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
   color: var(--workspace-foreground);
@@ -154,7 +203,6 @@
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-inline-code {
   @apply rounded px-1 py-0.5 text-xs;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   background-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
 }
 
@@ -272,6 +320,18 @@
   @apply w-full;
 }
 
+/* One column (phones): the button starts at the row's start, its padding pulled out so the
+ * text lines up with the caption above. */
+@media (max-width: 767px) {
+  .admin-workspace .admin-ice-field {
+    @apply items-start;
+  }
+
+  .admin-workspace .admin-ice-field > .button--size-sm:last-child {
+    margin-inline-start: -0.625rem;
+  }
+}
+
 /* Catches blur/Enter from the fields inside (autosave); takes no box. */
 .admin-workspace .admin-settings-autosave {
   display: contents;
@@ -289,4 +349,10 @@
 
 .admin-workspace .admin-fix-link > svg {
   @apply size-4;
+}
+
+/* The update log: the recent lines as they were written, no table. */
+.admin-workspace .admin-update-log {
+  @apply m-0 whitespace-pre-wrap break-words text-xs;
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
 }

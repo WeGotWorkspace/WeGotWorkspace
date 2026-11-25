@@ -71,7 +71,7 @@ export function SettingsSecurityPane({
       <SettingsPaneCard
         title={labels.title}
         action={
-          ready ? (
+          ready && controller.rows.length > 0 ? (
             <span className="settings-security-pane__actions">
               {controller.rows.length > 1 ? (
                 <Button
@@ -119,7 +119,14 @@ function AppPasswordsBody({ controller }: { controller: SettingsAppPasswordsCont
     );
   }
   if (rows.length === 0) {
-    return <p className="settings-security-pane__note">{labels.empty}</p>;
+    // Nothing to list: the create button takes the place of the empty note.
+    return (
+      <div className="mt-3">
+        <Button type="button" variant="outline" className="-ms-3" onClick={controller.openCreate}>
+          {labels.newButton}
+        </Button>
+      </div>
+    );
   }
   return (
     <>

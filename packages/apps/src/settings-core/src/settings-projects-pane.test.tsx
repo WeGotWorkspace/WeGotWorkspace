@@ -47,6 +47,13 @@ async function renderPane(operations: ProjectOperations = createMockProjectOpera
   return { store, operations };
 }
 
+async function chooseMenuItem(trigger: string, item: string | RegExp) {
+  const button = screen.getByRole("button", { name: trigger });
+  fireEvent.pointerDown(button);
+  fireEvent.click(button);
+  fireEvent.click(await screen.findByRole("menuitem", { name: item }));
+}
+
 function rowOf(name: string): HTMLElement {
   return screen.getByText(name).closest("li") as HTMLElement;
 }
@@ -56,13 +63,17 @@ describe("ProjectsManagePane", () => {
     await renderPane();
     expect(screen.getByRole("heading", { name: "Design" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Sales" })).toBeTruthy();
-    expect(screen.getByTitle("3 members")).toBeTruthy();
-    expect(screen.getByText("Admin")).toBeTruthy();
-    expect(screen.getByText("Member")).toBeTruthy();
-    // Only the admin Team has actions: Edit on both rows, Archive on the extra one, New Project.
+    expect(screen.getByText("3 members")).toBeTruthy();
+    // Only the admin Team has actions: Edit on both rows, a menu on the extra one, New Project.
     expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2);
-    expect(screen.getAllByRole("button", { name: "Archive" })).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "New Project" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "More options: Design" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "More options: Sales" })).toBeNull();
+    expect(screen.getByRole("button", { name: "More options: Website relaunch" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "More options: Design Project" })).toBeNull();
+    const trigger = screen.getByRole("button", { name: "More options: Design" });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    expect(await screen.findByRole("menuitem", { name: "New Project" })).toBeTruthy();
     expect(within(rowOf("Sales Project")).queryByRole("button")).toBeNull();
   });
 
@@ -70,7 +81,7 @@ describe("ProjectsManagePane", () => {
     await renderPane();
     const row = rowOf("Design Project");
     expect(within(row).getByRole("button", { name: "Edit" })).toBeTruthy();
-    expect(within(row).queryByRole("button", { name: "Archive" })).toBeNull();
+    expect(within(row).queryByRole("button", { name: "More options: Design Project" })).toBeNull();
   });
 
   it("stores a rename and color only after Save", async () => {
@@ -123,7 +134,7 @@ describe("ProjectsManagePane", () => {
 
   it("asks to confirm an archive, then keeps the Project in its Team with a tag and Restore", async () => {
     const { store } = await renderPane();
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await chooseMenuItem("More options: Website relaunch", "Archive");
     const dialog = await screen.findByRole("alertdialog");
     expect(store.getSnapshot().archived).toEqual([]);
     await act(async () => {
@@ -134,9 +145,12 @@ describe("ProjectsManagePane", () => {
     const row = rowOf("Website relaunch");
     expect(within(row).getByText("Archived")).toBeTruthy();
     // A team admin deletes an archived Project for good, after typing its name.
-    expect(within(row).getByRole("button", { name: /Delete permanently/ })).toBeTruthy();
+    const rowMenu = within(row).getByRole("button", { name: "More options: Website relaunch" });
+    fireEvent.pointerDown(rowMenu);
+    fireEvent.click(rowMenu);
+    expect(await screen.findByRole("menuitem", { name: /Delete permanently/ })).toBeTruthy();
     await act(async () => {
-      fireEvent.click(within(row).getByRole("button", { name: "Restore" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Restore" }));
     });
     await waitFor(() => expect(store.getSnapshot().archived).toEqual([]));
     expect(within(rowOf("Website relaunch")).queryByText("Archived")).toBeNull();
@@ -144,16 +158,14 @@ describe("ProjectsManagePane", () => {
 
   it("deletes an archived Project only after its name is typed", async () => {
     const { store } = await renderPane();
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await chooseMenuItem("More options: Website relaunch", "Archive");
     await act(async () => {
       fireEvent.click(
         within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Archive" }),
       );
     });
     await waitFor(() => expect(store.getSnapshot().archived).toHaveLength(1));
-    fireEvent.click(
-      within(rowOf("Website relaunch")).getByRole("button", { name: /Delete permanently/ }),
-    );
+    await chooseMenuItem("More options: Website relaunch", /Delete permanently/);
     const dialog = await screen.findByRole("alertdialog");
     const confirm = within(dialog).getByRole("button", { name: "Delete permanently" });
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
@@ -175,16 +187,14 @@ describe("ProjectsManagePane", () => {
       throw new WgwRequestError("Only a team admin can change a Project.", 403);
     });
     const { store } = await renderPane({ ...operations, purge });
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await chooseMenuItem("More options: Website relaunch", "Archive");
     await act(async () => {
       fireEvent.click(
         within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Archive" }),
       );
     });
     await waitFor(() => expect(store.getSnapshot().archived).toHaveLength(1));
-    fireEvent.click(
-      within(rowOf("Website relaunch")).getByRole("button", { name: /Delete permanently/ }),
-    );
+    await chooseMenuItem("More options: Website relaunch", /Delete permanently/);
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.change(within(dialog).getByRole("textbox"), {
       target: { value: "Website relaunch" },
@@ -201,7 +211,7 @@ describe("ProjectsManagePane", () => {
 
   it("does not archive when the confirmation is cancelled", async () => {
     const { store } = await renderPane();
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await chooseMenuItem("More options: Website relaunch", "Archive");
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
@@ -214,7 +224,7 @@ describe("ProjectsManagePane", () => {
       throw new WgwRequestError("The default Project cannot be archived.", 409);
     });
     const { store } = await renderPane({ ...operations, archive });
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await chooseMenuItem("More options: Website relaunch", "Archive");
     const dialog = await screen.findByRole("alertdialog");
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Archive" }));

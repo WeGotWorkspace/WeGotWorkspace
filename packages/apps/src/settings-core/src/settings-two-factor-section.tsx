@@ -81,7 +81,7 @@ function TwoFactorRows({ controller }: { controller: SettingsTwoFactorController
         labelAccessory={
           <Tag
             label={state.enabled ? labels.statusOn : labels.statusOff}
-            tone={state.enabled ? "success" : undefined}
+            tone={state.enabled ? "success" : "warning"}
             dot={state.enabled}
           />
         }
