@@ -55,6 +55,25 @@ describe("useAdminUserMutations", () => {
     expect(showError).toHaveBeenCalledWith("Username already exists");
   });
 
+  it("reports a server-rejected username to the field and the toast", async () => {
+    const { ApiError } = await import("@/lib/api/api-error");
+    const createUser = vi
+      .fn()
+      .mockRejectedValue(new ApiError("That username is already taken.", 400, "bad_request"));
+    const { result, showError } = renderUsers({ createUser });
+    const onUsernameError = vi.fn();
+    await act(async () => {
+      expect(
+        await result.current.createUser(
+          { username: "newbie", displayName: "N", email: "n@example.test", isAdmin: false },
+          onUsernameError,
+        ),
+      ).toBe(false);
+    });
+    expect(onUsernameError).toHaveBeenCalledWith("That username is already taken.");
+    expect(showError).toHaveBeenCalledWith("That username is already taken.");
+  });
+
   it("sends a temporary password through the API", async () => {
     vi.spyOn(crypto, "randomUUID").mockReturnValue("11111111-1111-4111-8111-111111111111");
     const data = createAdminAppBootstrap().data;
