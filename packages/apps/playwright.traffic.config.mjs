@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { trafficTierSpecPattern } from "./e2e/live-tier.mjs";
 import liveConfig from "./playwright.live.config.mjs";
 
 // Report the service worker's own fetches, so the meter counts what reaches the server.
@@ -19,7 +20,7 @@ process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
  */
 export default defineConfig({
   ...liveConfig,
-  testMatch: /traffic-budget\.spec\.ts$/,
+  testMatch: trafficTierSpecPattern,
   retries: 0,
   timeout: 30 * 60_000,
 });

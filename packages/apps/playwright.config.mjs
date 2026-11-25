@@ -12,6 +12,7 @@ import {
   pwaTierSpecPattern,
   relayTierSpecPattern,
   tasksSyncMatrixSpecPattern,
+  trafficTierSpecPattern,
 } from "./e2e/live-tier.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -67,6 +68,7 @@ export default defineConfig({
     contactsSyncMatrixSpecPattern,
     calendarSyncMatrixSpecPattern,
     meetChatSyncMatrixSpecPattern,
+    trafficTierSpecPattern,
   ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
