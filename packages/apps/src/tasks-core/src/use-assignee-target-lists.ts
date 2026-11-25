@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskList, TaskListMember, TaskListMembersResult } from "@/lib/models/tasks-types";
 import { canWriteTaskList } from "@/lib/models/task-lists";
 
+const MAX_LOAD_ATTEMPTS = 3;
+
 /** A list a task for this person can be created in: you can write to it and so can they. */
 export type AssigneeTargetList = {
   id: string;
@@ -32,14 +34,25 @@ export function useAssigneeTargetLists({
     () => new Map(),
   );
   const asked = useRef(new Set<string>());
-  const [online, setOnline] = useState(0);
+  // The latest load per list: a completion that is not the latest must change nothing.
+  const tokens = useRef(new Map<string, number>());
+  const failures = useRef(new Map<string, number>());
+  const audiencesRef = useRef(audiences);
+  audiencesRef.current = audiences;
+  const [retry, setRetry] = useState(0);
   const writable = useMemo(() => lists.filter((list) => canWriteTaskList(list)), [lists]);
 
-  // Back online: ask again for the lists that never answered.
+  // Back online: ask again for the lists that never answered, also those still in flight.
   useEffect(() => {
-    const retry = () => setOnline((count) => count + 1);
-    window.addEventListener("online", retry);
-    return () => window.removeEventListener("online", retry);
+    const onOnline = () => {
+      for (const id of [...asked.current]) {
+        if (!audiencesRef.current.has(id)) asked.current.delete(id);
+      }
+      failures.current.clear();
+      setRetry((count) => count + 1);
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
   }, []);
 
   useEffect(() => {
@@ -47,18 +60,32 @@ export function useAssigneeTargetLists({
     for (const list of writable) {
       if (asked.current.has(list.id)) continue;
       asked.current.add(list.id);
+      const token = (tokens.current.get(list.id) ?? 0) + 1;
+      tokens.current.set(list.id, token);
+      const settle = (members: TaskListMember[] | null) => {
+        if (tokens.current.get(list.id) !== token) return;
+        if (members) {
+          setAudiences((previous) => new Map(previous).set(list.id, members));
+          return;
+        }
+        asked.current.delete(list.id);
+        // Offline: the `online` event asks again. Online: retry a few times, then settle on
+        // an empty audience so `loading` ends.
+        if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+        const count = (failures.current.get(list.id) ?? 0) + 1;
+        failures.current.set(list.id, count);
+        if (count >= MAX_LOAD_ATTEMPTS) {
+          asked.current.add(list.id);
+          setAudiences((previous) => new Map(previous).set(list.id, []));
+        } else {
+          setRetry((value) => value + 1);
+        }
+      };
       loadMembers(list.id)
-        .then((result) => {
-          if (result.members) {
-            const members = result.members;
-            setAudiences((previous) => new Map(previous).set(list.id, members));
-          } else {
-            asked.current.delete(list.id);
-          }
-        })
-        .catch(() => asked.current.delete(list.id));
+        .then((result) => settle(result.members))
+        .catch(() => settle(null));
     }
-  }, [loadMembers, username, writable, online]);
+  }, [loadMembers, username, writable, retry]);
 
   const options = useMemo(() => {
     if (username === null) return [];

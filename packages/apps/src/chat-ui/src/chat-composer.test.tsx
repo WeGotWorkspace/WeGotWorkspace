@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { Editor } from "@tiptap/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
+import { CHAT_COMPOSER_BASIC } from "@/chat-ui/src/chat-composer-allow";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import * as chromeFocus from "@/text-editor-core/src/text-editor-chrome-focus";
 
@@ -99,5 +101,34 @@ describe("ChatComposer chrome focus", () => {
     expect(onSend).toHaveBeenCalledWith(
       expect.objectContaining({ mentions: [{ id: "member", displayName: "Sam de Vries" }] }),
     );
+  });
+
+  describe("editing a stored body", () => {
+    const stored = "~~old~~ new\n\n# Agenda\n\n- [ ] item";
+
+    it("keeps formatting the restricted schema cannot write", async () => {
+      const onSend = vi.fn();
+      renderComposer({ initialContent: stored, allow: CHAT_COMPOSER_BASIC, onSend });
+      const prose = await waitForEditor();
+      const editor = (prose as unknown as { editor: Editor }).editor;
+      editor.commands.insertContentAt(editor.state.doc.content.size - 1, "x");
+
+      fireEvent.keyDown(prose, { key: "Enter" });
+
+      const body = onSend.mock.calls[0][0].body as string;
+      expect(body).toContain("~~old~~");
+      expect(body).toContain("# Agenda");
+      expect(body).toMatch(/- \[ \] item/);
+    });
+
+    it("sends the stored body unchanged when nothing was edited", async () => {
+      const onSend = vi.fn();
+      renderComposer({ initialContent: stored, allow: CHAT_COMPOSER_BASIC, onSend });
+      const prose = await waitForEditor();
+
+      fireEvent.keyDown(prose, { key: "Enter" });
+
+      expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ body: stored }));
+    });
   });
 });

@@ -9,7 +9,7 @@ import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-edit
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { getTextEditorContent } from "@/text-editor-core/src/text-editor-content";
 import type { TextEditorFeature } from "@/text-editor-core/src/text-editor-extensions";
-import { CHAT_COMPOSER_BASIC, CHAT_COMPOSER_RICH } from "@/chat-ui/src/chat-composer-allow";
+import { CHAT_COMPOSER_BASIC } from "@/chat-ui/src/chat-composer-allow";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import { ChatMentionMenu } from "@/chat-ui/src/chat-mention-menu";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
@@ -107,9 +107,9 @@ export function ChatComposer({
     content: initialContent,
     format: "markdown",
     extraExtensions: CHAT_COMPOSER_EXTENSIONS,
-    // An existing body loads into the richest schema a composer writes, so a stored list or
-    // quote is not flattened while editing.
-    allow: initialContent.trim() ? [...new Set([...allow, ...CHAT_COMPOSER_RICH])] : allow,
+    // An existing body loads with the schema the reader (`ChatMarkdownBody`) uses, so a stored
+    // heading, table, task list or strikethrough survives an edit. A new message is held to `allow`.
+    ...(initialContent.trim() ? { links: { linkify: true, openOnClick: false } } : { allow }),
     editable: !disabled,
     placeholder,
     onUpdate: ({ content }) => {
