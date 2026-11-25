@@ -15,12 +15,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <!-- Installed window chrome. Hexes match `WORKSPACE_PWA_THEME_COLORS`. -->
+    <!-- Installed window chrome. Colour generated from `src/foundations/scheme-colors.json`. -->
     <meta name="theme-color" content="#f6f7f9" />
     <!--
       Synchronous paint. iOS samples html/body background before module CSS and
       otherwise keeps an opaque status-bar gap. App CSS overrides the color.
     -->
+    <!-- scheme-colors:begin -->
     <style>
       html,
       body {
@@ -31,6 +32,7 @@
         background-color: #0e1216;
       }
     </style>
+    <!-- scheme-colors:end -->
     <!--
       Theme and installed-PWA class before first paint. Runtime HTML loads the same
       file. No inline script: the CSP is `script-src 'self'` without hashes.

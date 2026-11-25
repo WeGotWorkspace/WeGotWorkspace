@@ -10,6 +10,9 @@ import {
 } from "./sync-runtime-app-builds.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const schemeColors = JSON.parse(
+  readFileSync(join(here, "../src/foundations/scheme-colors.json"), "utf8"),
+);
 const indexHtml = readFileSync(join(here, "../index.html"), "utf8");
 
 describe("runtime index.html", () => {
@@ -26,7 +29,9 @@ describe("runtime index.html", () => {
 
   it("carries the dark first-paint background from index.html", () => {
     expect(firstPaintStyle).toMatch(
-      /html\[data-theme="dark"\] body \{\s*background-color: #0e1216;/,
+      new RegExp(
+        `html\\[data-theme="dark"\\] body \\{\\s*background-color: ${schemeColors.dark.surface};`,
+      ),
     );
     expect(html).toContain(firstPaintStyle);
   });

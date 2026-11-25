@@ -131,6 +131,7 @@ Options, none chosen here:
 - **Parallel with:** E, G, H, I
 
 ### Chunk G: Notes
+- **Superseded by** [2284-notes-lean-first](../2284-notes-lean-first/spec.md): Notes bodies can be large, so Notes needs a server `preview`, a partial marker and its own detail pass. The text below is kept for history.
 - **Skill:** workspace
 - **Inputs:** `properties` already supported — `path: packages/apps/src/lib/jmap-client/notes/JmapNotesClient.ts:67`; ids are fetched with `Note/query` then explicit-id gets — `path: packages/apps/src/lib/jmap-client/notes/JmapNotesClient.ts:88`
 - **Done when:** Notes declares lean = every `Note` property except `body` (`packages/apps/src/lib/jmap-client/notes/types.ts:21`), detail = body, policy default `all` at calm pace, opened note fetched at user priority. Notes are small, so the gain is small: the chunk exists mainly so Notes follows the same rule and guard. Editing a note calls `requireFullRecord`; a note whose body is not downloaded is never saved from the list copy. Measured with 500 notes: lean pass is `ceil(500 / page)` requests and no body requests until the detail pass starts.

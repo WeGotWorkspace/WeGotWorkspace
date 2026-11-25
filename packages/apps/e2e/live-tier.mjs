@@ -184,3 +184,10 @@ export const relayTierSpecPattern = /rtc-relay\.spec\.ts/;
  * `playwright.pwa.config.mjs` runs it. Not part of the Storybook or live tier.
  */
 export const pwaTierSpecPattern = /pwa-offline-reload\.spec\.ts/;
+
+/**
+ * Traffic budget measurement (#2292): several minutes per scenario against the
+ * live stack. `playwright.traffic.config.mjs` runs it. Not part of the
+ * Storybook or live tier.
+ */
+export const trafficTierSpecPattern = /traffic-budget\.spec\.ts/;

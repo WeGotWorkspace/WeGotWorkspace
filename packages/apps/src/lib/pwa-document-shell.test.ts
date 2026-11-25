@@ -7,6 +7,7 @@ import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/theme-preference";
 const here = dirname(fileURLToPath(import.meta.url));
 const indexHtml = readFileSync(join(here, "../../index.html"), "utf8");
 const stylesCss = readFileSync(join(here, "../styles.css"), "utf8");
+const schemeCss = readFileSync(join(here, "../foundations/scheme-colors.generated.css"), "utf8");
 const themeBootJs = readFileSync(join(here, "../../public/assets/theme-boot.js"), "utf8");
 
 describe("PWA document shell", () => {
@@ -49,10 +50,11 @@ describe("PWA document shell", () => {
       `<meta name="theme-color" content="${WORKSPACE_PWA_THEME_COLORS.light}" />`,
     );
     expect(themeBootJs).toContain(
-      `dark ? "${WORKSPACE_PWA_THEME_COLORS.dark}" : "${WORKSPACE_PWA_THEME_COLORS.light}"`,
+      `{ light: "${WORKSPACE_PWA_THEME_COLORS.light}", dark: "${WORKSPACE_PWA_THEME_COLORS.dark}" }`,
     );
-    expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.light};`);
-    expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.dark};`);
+    // The scheme CSS is generated from the same JSON (`scripts/sync-scheme-colors.test.mjs` guards that).
+    expect(schemeCss).toContain(`/* ${WORKSPACE_PWA_THEME_COLORS.light} */`);
+    expect(schemeCss).toContain(`/* ${WORKSPACE_PWA_THEME_COLORS.dark} */`);
   });
 
   it("stops the iOS focus zoom in the HTML viewport tag, the one place for the suite", () => {
