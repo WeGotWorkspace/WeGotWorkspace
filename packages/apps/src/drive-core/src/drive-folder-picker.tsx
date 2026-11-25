@@ -494,7 +494,7 @@ export function DriveFolderPicker({
       ) : listItems.length === 0 ? null : (
         <DriveListView
           items={listItems}
-          sort={atPickerRoots && !fileSelect ? undefined : listSort}
+          sort={atPickerRoots ? undefined : listSort}
           onSort={toggleListSort}
           activeId={fileSelect ? (selectedFile?.id ?? null) : null}
           selectedIds={fileSelect && selectedFile ? [selectedFile.id] : selectedDestinationIds}
