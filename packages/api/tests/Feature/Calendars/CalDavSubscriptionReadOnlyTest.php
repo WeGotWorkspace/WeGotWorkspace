@@ -95,12 +95,46 @@ final class CalDavSubscriptionReadOnlyTest extends WgwDatabaseTestCase
             '{DAV:}displayname' => 'Team feed',
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT']),
         ]);
-        $this->subscribe('bob', 'team-feed');
+        $this->subscribe('bob', 'team-feed', AdminConstants::GROUP_PREFIX.'feeds');
 
         $home = $this->dav('carol', 'PROPFIND', '/calendars/carol/team~feeds~team-feed', '', ['Depth' => '0']);
         $this->assertSame(207, $home['status']);
         $put = $this->dav('carol', 'PUT', '/calendars/carol/team~feeds~team-feed/x.ics', $this->sampleIcs('Added'), ['Content-Type' => 'text/calendar']);
         $this->assertSame(403, $put['status']);
+    }
+
+    public function test_only_the_calendar_a_subscription_names_is_read_only_when_a_personal_and_a_team_calendar_share_a_uri(): void
+    {
+        $team = $this->seedWgwGroup('principals/groups/crew', 'Crew');
+        $this->addPrincipalToGroup($team, Principal::forUsername('bob'));
+        $this->seedNamedCalendarFor('bob', 'villa', 'Villa personal');
+        app(WgwCalendarBackendFactory::class)->make()->createCollection(CollectionKind::EventCalendar, AdminConstants::GROUP_PREFIX.'crew', 'villa', [
+            '{DAV:}displayname' => 'Villa team',
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT']),
+        ]);
+        // Bob subscribed the Team's `villa`; his personal `villa` is a normal calendar.
+        $this->subscribe('bob', 'villa', AdminConstants::GROUP_PREFIX.'crew');
+
+        $ics = $this->sampleIcs('Added');
+        $personal = $this->dav('bob', 'PUT', '/calendars/bob/villa/a.ics', $ics, ['Content-Type' => 'text/calendar']);
+        $this->assertSame(201, $personal['status'], $personal['body']);
+        $teamPut = $this->dav('bob', 'PUT', '/calendars/bob/team~crew~villa/a.ics', $ics, ['Content-Type' => 'text/calendar']);
+        $this->assertSame(403, $teamPut['status'], $teamPut['body']);
+    }
+
+    public function test_a_team_calendar_is_not_read_only_because_someone_has_a_personal_subscription_with_its_uri(): void
+    {
+        $team = $this->seedWgwGroup('principals/groups/crew', 'Crew');
+        $this->addPrincipalToGroup($team, Principal::forUsername('bob'));
+        app(WgwCalendarBackendFactory::class)->make()->createCollection(CollectionKind::EventCalendar, AdminConstants::GROUP_PREFIX.'crew', 'villa', [
+            '{DAV:}displayname' => 'Villa team',
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT']),
+        ]);
+        $this->seedNamedCalendarFor('carol', 'villa', 'Villa carol');
+        $this->subscribe('carol', 'villa');
+
+        $put = $this->dav('bob', 'PUT', '/calendars/bob/team~crew~villa/a.ics', $this->sampleIcs('Added'), ['Content-Type' => 'text/calendar']);
+        $this->assertSame(201, $put['status'], $put['body']);
     }
 
     public function test_mkcol_with_cs_subscribed_is_a_clean_client_error(): void
@@ -118,11 +152,12 @@ final class CalDavSubscriptionReadOnlyTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('getHref', $response['body']);
     }
 
-    private function subscribe(string $username, string $calendarUri): void
+    private function subscribe(string $username, string $calendarUri, ?string $principalUri = null): void
     {
         CalendarSubscription::query()->create([
             'id' => (string) Str::uuid(),
             'username' => $username,
+            'principal_uri' => $principalUri ?? 'principals/'.$username,
             'calendar_uri' => $calendarUri,
             'url' => 'https://example.test/'.$calendarUri.'.ics',
             'name' => $calendarUri,

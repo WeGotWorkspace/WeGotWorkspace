@@ -6,7 +6,6 @@ namespace App\Dav\Server;
 
 use App\Models\CalendarInstance;
 use App\Models\CalendarSubscription;
-use App\Services\Admin\AdminConstants;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -14,11 +13,11 @@ use Sabre\DAV\Sharing\Plugin as SharingPlugin;
  * every event in one, so nothing may change it over CalDAV: the next refresh
  * would delete the change as stale.
  *
- * A subscription is the calendar a `calendar_subscriptions` row names, found on
- * the owner's instance: under the subscriber's own principal, or under the Team
- * principal when the subscriber made it into a Team collection (the subscriber
- * then has no personal instance of that uri). Sharee copies resolve through
- * the calendar's owner instance.
+ * A subscription is the calendar a `calendar_subscriptions` row names by its
+ * owning principal and uri (#2367), found on the owner's instance. The owner is
+ * the subscriber, or the Team when the subscriber made it a Team collection.
+ * Sharee copies resolve through the calendar's owner instance. Registered as a
+ * scoped service, so the answers are cached for one request only.
  */
 final class SubscriptionCalendars
 {
@@ -40,18 +39,9 @@ final class SubscriptionCalendars
             return false;
         }
 
-        $ownerUri = (string) $owner->principaluri;
-        $isTeam = str_starts_with($ownerUri, AdminConstants::GROUP_PREFIX);
-        foreach (CalendarSubscription::query()->where('calendar_uri', (string) $owner->uri)->pluck('username') as $subscriber) {
-            $personal = 'principals/'.$subscriber;
-            if ($personal === $ownerUri) {
-                return true;
-            }
-            if ($isTeam && ! CalendarInstance::query()->where('principaluri', $personal)->where('uri', (string) $owner->uri)->exists()) {
-                return true;
-            }
-        }
-
-        return false;
+        return CalendarSubscription::query()
+            ->where('principal_uri', (string) $owner->principaluri)
+            ->where('calendar_uri', (string) $owner->uri)
+            ->exists();
     }
 }
