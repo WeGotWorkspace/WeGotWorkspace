@@ -36,18 +36,21 @@ function renderPane() {
 }
 
 async function openDialog() {
-  fireEvent.click(screen.getByRole("button", { name: "Manage members of Editorial Team" }));
+  const trigger = screen.getByRole("button", { name: "More options: Editorial Team" });
+  fireEvent.pointerDown(trigger);
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
   const dialog = await screen.findByRole("dialog", { name: "Edit Editorial Team" });
   await within(dialog).findByText("Grace Hopper");
   return dialog;
 }
 
 describe("Settings Teams pane for a team admin (#2278)", () => {
-  it("offers Manage members only on the Teams the user runs", () => {
+  it("offers the Team menu only on the Teams the user runs", () => {
     renderPane();
 
-    expect(screen.getByRole("button", { name: "Manage members of Editorial Team" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Manage members of Studio Crew" })).toBeNull();
+    expect(screen.getByRole("button", { name: "More options: Editorial Team" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "More options: Studio Crew" })).toBeNull();
   });
 
   it("adds someone found by the search and updates the member count", async () => {
@@ -61,7 +64,7 @@ describe("Settings Teams pane for a team admin (#2278)", () => {
 
     await within(dialog).findByText("Sophie Wilson");
     expect((await operations.listMembers("editorial")).map((m) => m.username)).toContain("sophie");
-    await waitFor(() => expect(screen.getByTitle("7 members")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("7 members")).toBeTruthy());
   });
 
   it("does not offer someone who is already a member", async () => {
@@ -115,7 +118,7 @@ describe("Settings Teams pane for a team admin (#2278)", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Edit Editorial Team" })).toBeNull(),
     );
-    expect(screen.queryByRole("button", { name: "Manage members of Editorial Team" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More options: Editorial Team" })).toBeNull();
     expect(screen.queryByText("Could not")).toBeNull();
   });
 
