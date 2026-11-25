@@ -710,8 +710,7 @@ function DocsCollabWorkspaceInner({
                       : labels.commentsAddFromSelectionDisabledReadOnly
                   }
                   commentControlLabels={labels}
-                  onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
-                  onReplaceImage={imageInsertEnabled ? imageInsert.openReplacePicker : undefined}
+                  {...imageInsert.editorProps}
                   pageSetup={pageSetup.pageSetup}
                 />
               ) : (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
@@ -32,6 +32,8 @@ export type UseDocsImageInsertResult = {
   onSelectFile: (file: DriveFile) => void;
   onUploadFiles: (files: File[]) => void;
   groupRoots: readonly DocsHomeGroupRoot[];
+  /** Spread onto the editor: the insert and replace pickers, or nothing when not allowed. */
+  editorProps: { onInsertImage?: () => void; onReplaceImage?: (pos: number) => void };
 };
 
 export function useDocsImageInsert({
@@ -141,7 +143,13 @@ export function useDocsImageInsert({
     return () => setDocsImageUploadHandler(editor, null);
   }, [editor, enabled, onUploadFiles]);
 
+  const editorProps = useMemo(
+    () => (enabled ? { onInsertImage: openPicker, onReplaceImage: openReplacePicker } : {}),
+    [enabled, openPicker, openReplacePicker],
+  );
+
   return {
+    editorProps,
     pickerOpen,
     openPicker,
     openReplacePicker,
