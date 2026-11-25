@@ -122,10 +122,12 @@ export type HttpSignalingClientOptions = {
 
 /**
  * One hung request used to wedge the poll loop forever: `pollInFlight` stayed
- * true and nothing rescheduled. Ten seconds is well above the slowest healthy
- * poll and well below the peer timeout, so an aborted poll costs one cycle.
+ * true and nothing rescheduled. 45 s is above the 30 s the service worker's
+ * traffic governor may hold a poll before it goes out (the clock runs from
+ * the call), leaves time for the server, and stays below the peer timeout,
+ * so an aborted poll costs one cycle.
  */
-const POLL_TIMEOUT_MS = 10_000;
+const POLL_TIMEOUT_MS = 45_000;
 
 /** jsdom and older runtimes may not implement it; a missing timeout is not worth a crash. */
 function pollTimeoutSignal(): AbortSignal | undefined {

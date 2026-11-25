@@ -20,6 +20,7 @@ use App\Http\Middleware\ReplayMcpConsentDecision;
 use App\Http\Middleware\RequireGuestSession;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\ResolveCimdClient;
+use App\Http\Middleware\SendTrafficBudget;
 use App\Http\Middleware\WgwSecurityHeaders;
 use App\Http\RateLimiting\GuestUploadRateLimiters;
 use App\Http\RateLimiting\JmapPushRateLimiters;
@@ -92,6 +93,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
             WgwSecurityHeaders::class,
             // Names the users the caller's write notified, for a mesh check-now (#1662).
             ExposeNotifiedRecipients::class,
+            // The browser's request governor paces background traffic to this budget (#2291).
+            SendTrafficBudget::class,
         ]);
         // SDP must keep its trailing CRLF. TrimStrings would strip it on the way in,
         // and Chrome then refuses the Firefox offer (`invalid sdp line`).

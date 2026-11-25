@@ -226,7 +226,7 @@ describe("HttpSignalingClient", () => {
     });
 
     const pending = client.poll({ room: "abcd-efgh-ijkl", peerId: "p1" });
-    expect(timeout).toHaveBeenCalledWith(10_000);
+    expect(timeout).toHaveBeenCalledWith(45_000);
     expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
 
     controller.abort();
