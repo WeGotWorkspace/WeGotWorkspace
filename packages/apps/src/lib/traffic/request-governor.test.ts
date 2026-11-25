@@ -181,21 +181,23 @@ describe("RequestGovernor background budget", () => {
     expect(now()).toBe(before);
   });
 
-  it("makes polls yield to foreground reads and writes without delaying those", async () => {
+  it("never delays foreground reads and writes, and they do not use up the poll budget", async () => {
     const { governor, now } = harness();
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 100; index += 1) {
       governor.observe(index === 0 ? "write" : "foreground");
+      await governor.handle(get("/tasks/items"), "foreground");
     }
-    const before = now();
-    await governor.handle(get("/tasks/items"), "foreground");
-    expect(now()).toBe(before);
-    await governor.handle(get("/rooms/a/events"), "background");
-    expect(now() - before).toBeGreaterThan(0);
+    expect(now()).toBe(0);
+    // A busy download leaves the push doorbell its whole burst.
+    for (let index = 0; index < 3; index += 1) {
+      await governor.handle(get("/jmap/events/*/state/3"), "background");
+    }
+    expect(now()).toBe(0);
   });
 
   it("never makes one poll wait longer than the maximum", async () => {
     const { governor, now } = harness({ burst: 1 });
-    for (let index = 0; index < 100; index += 1) governor.observe("foreground");
+    await governor.handle(get("/changes"), "background");
     const before = now();
     await governor.handle(get("/rooms/a/events"), "background");
     expect(now() - before).toBeLessThanOrEqual(30_000);
@@ -231,7 +233,7 @@ describe("RequestGovernor aborts and waits", () => {
 
   it("does not brake when the page aborts a request that was already queued", async () => {
     const { governor, now } = harness({ burst: 1 });
-    for (let index = 0; index < 5; index += 1) governor.observe("foreground");
+    await governor.handle(get("/changes"), "background");
     const controller = new AbortController();
     const queued = new Request("https://suite.test/api/v1/rooms/a/events", {
       signal: controller.signal,

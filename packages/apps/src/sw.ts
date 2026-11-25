@@ -56,7 +56,7 @@ clientsClaim();
 
 // Shared hosting traffic budget (#2291): every tab's API requests pass one
 // governor. Polls wait their turn, session reads are shared, everything else
-// goes on natively (no respondWith) and is only counted.
+// goes on natively (no respondWith); a write drops the shared answers.
 const governorApiPrefix = new URL(
   serviceWorkerApiBaseUrl(import.meta.env.VITE_WGW_API_BASE_URL as string | undefined),
   self.location.origin,

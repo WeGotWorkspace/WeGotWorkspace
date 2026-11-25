@@ -64,7 +64,7 @@ A shared host's firewall may block an IP above about 60 requests a minute, and i
 - **Background** (the push stream, signaling events, `…/changes`, notification lists, anything marked `X-WGW-Traffic: background`) draws from one token bucket per browser: `background` per minute, `burst` at once, a request waits at most 30 s.
 - **Bulk** (marked `X-WGW-Traffic: bulk`: first downloads, prefetch) goes one at a time, `bulk` per minute.
 - **Session reads** (`settings/state`, `me`, `jmap/session`) of one signed-in session share one answer for 15 s; a write drops it.
-- **Everything else** (foreground reads, writes) is never delayed; it only uses a token, so polls yield to it.
+- **Everything else** (foreground reads, writes) is never delayed; it takes no token, so a busy download cannot starve the push doorbell.
 - A network error, 429 or 503 brakes background and bulk (2 s doubling to 60 s, or `Retry-After`, at most 5 minutes).
 
 | Profile | background / min | bulk / min | burst | Default for |

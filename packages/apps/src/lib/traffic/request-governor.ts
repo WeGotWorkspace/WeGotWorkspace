@@ -14,8 +14,9 @@
  *   at a time at their own pace, never in a burst.
  * - **Shared brake:** a network failure, 429 or 503 holds background and bulk
  *   requests (2 s doubling to 60 s, or the server's `Retry-After`).
- * - **Everything else** (foreground reads, writes) is never delayed. It is only
- *   counted against the bucket, so background work yields to it.
+ * - **Everything else** (foreground reads, writes) is never delayed and never
+ *   uses the background bucket: a busy download must not starve the push
+ *   doorbell, because a silent doorbell makes the apps poll on their own.
  *
  * The numbers come from the server (`X-WGW-Traffic-Budget`, one client build
  * serves every install channel). Until the first answer carrying the header the
@@ -156,13 +157,12 @@ export class RequestGovernor {
   }
 
   /**
-   * A request the worker lets through untouched (a foreground read, a write):
-   * it uses a token, so polls yield to it, but it never waits. A write also
-   * drops every shared answer, so a read after it sees the change.
+   * A request the worker lets through untouched (a foreground read, a write).
+   * It never waits and takes no token. A write drops every shared answer, so a
+   * read after it sees the change.
    */
   observe(kind: "foreground" | "write"): void {
     if (kind === "write") this.coalesced.clear();
-    if (this.options.backgroundPerMinute > 0) this.charge();
   }
 
   async handle(request: Request, kind: GovernorClass): Promise<Response> {
