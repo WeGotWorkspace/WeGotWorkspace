@@ -32,6 +32,9 @@
 })();
 
 /* Theme. Same resolution as `src/lib/theme-preference.ts`. */
+/* scheme-colors:begin */
+var WGW_THEME_COLOR = { light: "#f6f7f9", dark: "#10161b" };
+/* scheme-colors:end */
 (function () {
   var stored = null;
   try {
@@ -42,5 +45,5 @@
     (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   var meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", dark ? "#10161b" : "#f6f7f9");
+  if (meta) meta.setAttribute("content", dark ? WGW_THEME_COLOR.dark : WGW_THEME_COLOR.light);
 })();
