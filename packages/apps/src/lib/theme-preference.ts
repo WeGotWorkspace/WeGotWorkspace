@@ -1,3 +1,5 @@
+import { SCHEME_COLORS } from "@/lib/scheme-colors.generated";
+
 /**
  * Device-level colour theme. Stored on this browser, not on the account.
  * `public/assets/theme-boot.js` runs the same resolution before first paint; keep the
@@ -10,9 +12,12 @@ export type ResolvedTheme = "light" | "dark";
  * Installed window chrome (`theme-color` meta) per scheme: the sidebar surface
  * (`--scheme-sidebar-surface`), so the title bar reads as part of the page.
  * Manifests cannot vary by scheme and carry the light value.
- * `pwa-document-shell.test.ts` guards the copies in `index.html`, `theme-boot.js` and CSS.
+ * The colours live in `foundations/scheme-colors.json`; `scripts/sync-scheme-colors.mjs` writes the copies.
  */
-export const WORKSPACE_PWA_THEME_COLORS = { light: "#f6f7f9", dark: "#10161b" } as const;
+export const WORKSPACE_PWA_THEME_COLORS = {
+  light: SCHEME_COLORS.light.sidebarSurface,
+  dark: SCHEME_COLORS.dark.sidebarSurface,
+} as const;
 
 const STORAGE_KEY = "wgw.theme";
 const CHANGE_EVENT = "wgw-theme";

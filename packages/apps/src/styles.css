@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 @import "../public/fonts/fonts.css";
 @import "./workspace-shell/src/workspace-derive.css";
+@import "./foundations/scheme-colors.generated.css";
 
 @theme inline {
   /* Brand / system face primitives (no role).
@@ -218,8 +219,6 @@
    * that uses it is a derive scope (workspace-derive.css), so its buttons, frost
    * and tags turn dark with it.
    */
-  --media-surface: oklch(from #16181d l c h);
-  --media-ink: oklch(from #eef1f5 l c h);
   /* Text inset of a detail sheet (Notes note, Contacts card); phones line it up with the back button (below). */
   --workspace-detail-sheet-padding-x: 1.5rem;
   /* Detail page title (note, task, event, selection summary): 28px on phones, 36px from md. */
@@ -363,18 +362,11 @@
 :where(:root, :root *) {
   /*
    * Neutral paper: white surface, cool light-grey rail, near-black ink. Brand
-   * Soft / Dark stay in the logo and app icons only. The plain-hex line first
-   * is the value the PWA colour guard reads; the oklch line is what paints.
+   * Soft / Dark stay in the logo and app icons only. The `--scheme-*` colours come from
+   * `foundations/scheme-colors.json` via the generated CSS imported at the top.
    */
-  --scheme-surface: oklch(from #ffffff l c h);
-  --scheme-sidebar-surface: #f6f7f9;
-  --scheme-sidebar-surface: oklch(from #f6f7f9 l c h);
-  --scheme-ink: oklch(from #16181d l c h);
-  --scheme-on-ink: oklch(from #ffffff l c h);
   /* Text on the error red, both themes (dark on-ink #111 is only 3.4:1 there). */
   --scheme-on-danger: #ffffff;
-  /* Docs letter sheet. */
-  --scheme-letter: oklch(1 0 0);
   /*
    * Theme-dependent shape parameters. Tier 3 (`workspace-derive.css`) keeps one
    * recipe per token and reads these, so only this tier swaps for dark.
@@ -431,17 +423,7 @@
 }
 
 :where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
-  /*
-   * Cool blue-black. Written as `oklch(from #hex ...)`: Chrome mixes bare hex
-   * in oklch to `hue: none` with chroma left over, which paints every derived
-   * wash red-brown.
-   */
-  --scheme-surface: oklch(from #0e1216 l c h);
-  --scheme-sidebar-surface: #10161b;
-  --scheme-sidebar-surface: oklch(from #10161b l c h);
-  --scheme-ink: oklch(from #eef1f5 l c h);
-  --scheme-on-ink: oklch(from #0e1216 l c h);
-  --scheme-letter: oklch(from #13181e l c h);
+  /* Dark paper: `--scheme-*` come from `foundations/scheme-colors.json` (generated CSS). */
   /* Track-change chips (editor marks + review-card previews). */
   --track-ins-fg: oklch(0.9 0.09 155);
   --track-ins-bg: oklch(0.72 0.19 150 / 0.16);
