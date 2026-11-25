@@ -134,12 +134,6 @@ export class TrafficMeter {
     this.blocking = false;
   }
 
-  /** Requests counted since `start()` that fall in the last `windowMs` of the run. */
-  countInLast(windowMs: number): number {
-    const from = Date.now() - windowMs;
-    return this.hits.filter((hit) => hit.at >= from).length;
-  }
-
   /** Writes the report and returns it. */
   report(scenario: string, notes: Record<string, unknown> = {}): TrafficReport {
     const end = Date.now();
