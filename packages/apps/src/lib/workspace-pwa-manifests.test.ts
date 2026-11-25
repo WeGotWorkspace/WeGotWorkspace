@@ -78,8 +78,14 @@ describe("workspace PWA manifests", () => {
   });
 
   it("paints every installed window with the light sidebar surface", () => {
-    const styles = readFileSync(join(import.meta.dirname, "../styles.css"), "utf8");
-    expect(styles).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.light};`);
+    const tokens = readFileSync(
+      join(import.meta.dirname, "../foundations/scheme-colors.generated.css"),
+      "utf8",
+    );
+    expect(tokens).toContain(`/* ${WORKSPACE_PWA_THEME_COLORS.light} */`);
+    expect(tokens).toMatch(
+      new RegExp(`--scheme-sidebar-surface: [^;]+; /\\* ${WORKSPACE_PWA_THEME_COLORS.light} \\*/`),
+    );
 
     for (const name of [...WORKSPACE_APP_IDS, "home"]) {
       const manifest = readManifest(name);
