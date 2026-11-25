@@ -52,7 +52,7 @@ describe("PWA document shell", () => {
     expect(themeBootJs).toContain(
       `{ light: "${WORKSPACE_PWA_THEME_COLORS.light}", dark: "${WORKSPACE_PWA_THEME_COLORS.dark}" }`,
     );
-    // The scheme CSS is generated from the same JSON (`scheme-colors.test.ts` guards that).
+    // The scheme CSS is generated from the same JSON (`scripts/sync-scheme-colors.test.mjs` guards that).
     expect(schemeCss).toContain(`/* ${WORKSPACE_PWA_THEME_COLORS.light} */`);
     expect(schemeCss).toContain(`/* ${WORKSPACE_PWA_THEME_COLORS.dark} */`);
   });
