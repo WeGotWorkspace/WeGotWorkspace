@@ -77,7 +77,7 @@ These rules are enforced in product code and covered by unit tests under `sessio
 | Send slots     | Every media link has an audio and a video send slot (`media-send-slots.ts`); a later camera or mic fills it      |
 | Poll order     | `onPollData` runs before RTC signal handling (chat/control before offer/answer)                                  |
 | Poll cursor    | `MeshSignalInbox` acks **every** delivered row — chat, control, and while RTC signals are off                    |
-| Poll timeout   | `AbortSignal.timeout(10_000)`; an aborted poll reschedules like any other poll failure                           |
+| Poll timeout   | `AbortSignal.timeout(45_000)`; an aborted poll reschedules like any other poll failure                           |
 
 Run kernel tests:
 

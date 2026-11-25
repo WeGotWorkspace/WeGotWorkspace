@@ -32,6 +32,10 @@ type UserDialogProps = {
   initial?: { username: string; displayName: string; email: string; isAdmin: boolean };
   /** The signed-in admin edits their own account: the admin switch stays on. */
   isSelf?: boolean;
+  /** The server's (or form's) reason the username is not usable, shown by the field. */
+  usernameError?: string | null;
+  /** The username was edited: the caller drops `usernameError`. */
+  onUsernameEdit?: () => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: UserDialogPayload) => void;
   onDelete?: () => void | Promise<void>;
@@ -48,6 +52,8 @@ export function UserDialog({
   title,
   initial,
   isSelf = false,
+  usernameError,
+  onUsernameEdit,
   onOpenChange,
   onSubmit,
   onDelete,
@@ -57,6 +63,7 @@ export function UserDialog({
   const [email, setEmail] = useState(initial?.email ?? "");
   const [isAdmin, setIsAdmin] = useState(initial?.isAdmin ?? false);
   const usernameId = useId();
+  const usernameErrorId = useId();
   const displayNameId = useId();
   const emailId = useId();
   const adminSwitchId = useId();
@@ -98,12 +105,24 @@ export function UserDialog({
             label="Username"
             htmlFor={usernameId}
             readOnly={Boolean(initial)}
+            description={
+              usernameError ? (
+                <span id={usernameErrorId} role="alert" className="text-destructive">
+                  {usernameError}
+                </span>
+              ) : undefined
+            }
           >
             <Input
               id={usernameId}
               value={username}
               readOnly={Boolean(initial)}
-              onChange={(event) => setUsername(event.currentTarget.value)}
+              aria-invalid={usernameError ? true : undefined}
+              aria-describedby={usernameError ? usernameErrorId : undefined}
+              onChange={(event) => {
+                setUsername(event.currentTarget.value);
+                onUsernameEdit?.();
+              }}
               placeholder="jane.doe"
             />
           </FormField>

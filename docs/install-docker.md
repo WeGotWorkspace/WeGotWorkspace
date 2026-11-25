@@ -199,6 +199,8 @@ Set these in `packages/api/.env` (Docker: the `api.env` file on the `wgw-install
 | `WGW_INSTALL_ENABLE_CALENDARS` | (site defaults) | Optional |
 | `WGW_INSTALL_ENABLE_CONTACTS` | (site defaults) | Optional |
 | `WGW_INSTALL_CHANNEL` | — | `docker` — disables Admin web updater (set in the image, and seeded into `api.env` on Docker) |
+| `WGW_TRAFFIC_PROFILE` | `standard` (`shared` on ZIP installs) | Browser request budget the service worker paces to: `shared`, `standard`, or `off`. See [realtime-capacity.md](realtime-capacity.md#browser-traffic-budget-2291) |
+| `WGW_TRAFFIC_BACKGROUND_PER_MINUTE` / `WGW_TRAFFIC_BULK_PER_MINUTE` / `WGW_TRAFFIC_BURST` | (profile) | Override one number of the profile (0–10000; `0` = unpaced for the two per-minute numbers, a burst of `0` counts as 1) |
 
 **Autofill:** partial `WGW_INSTALL_*` values pre-populate first-run (for example database from env skips the Database screen); the operator still confirms remaining screens.
 
