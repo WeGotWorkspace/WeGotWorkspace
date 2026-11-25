@@ -253,7 +253,7 @@ final class TaskRepository
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
         }
 
-        $taskListId = $this->taskListUriForInstance($instance);
+        $taskListId = $this->taskLists->apiIdForInstance($instance);
         $task = $this->mapper->forViewer($username)->toTask($object, $taskListId);
         if ($task === null) {
             throw new ApiHttpException(500, 'Could not load created task.', 'server_error');
@@ -285,7 +285,7 @@ final class TaskRepository
             ->where('componenttype', 'VTODO')
             ->first();
 
-        return $object === null ? null : $this->mapper->forViewer($username)->toTask($object, $this->taskListUriForInstance($instance));
+        return $object === null ? null : $this->mapper->forViewer($username)->toTask($object, $this->taskLists->apiIdForInstance($instance));
     }
 
     /**
@@ -399,7 +399,7 @@ final class TaskRepository
         $instance = $located['instance'];
         $vtodoUid = $located['vtodoUid'];
         $objectUri = (string) $located['object']->uri;
-        $taskListId = $this->taskListUriForInstance($instance);
+        $taskListId = $this->taskLists->apiIdForInstance($instance);
         /** @var array{0: array<string, mixed>, 1: CalendarInstance, 2: CalendarObject} $written */
         $written = $this->textCore->locked(
             $this->textFields->forComponent($vtodoUid),
@@ -427,7 +427,7 @@ final class TaskRepository
                     $instance,
                 );
                 $taskPayload['id'] = $existingTask['id'];
-                $taskPayload['taskListId'] = $this->taskListUriForInstance($target);
+                $taskPayload['taskListId'] = $this->taskLists->apiIdForInstance($target);
                 $taskPayload['uid'] = $existingTask['uid'];
 
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
@@ -457,7 +457,7 @@ final class TaskRepository
             },
         );
         [$existingTask, $target, $updated] = $written;
-        $targetListUri = $this->taskListUriForInstance($target);
+        $targetListUri = $this->taskLists->apiIdForInstance($target);
 
         if ($target !== $instance) {
             $oldPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
@@ -520,7 +520,7 @@ final class TaskRepository
         string $objectUri,
         ?string $vtodoUid,
     ): CalendarInstance {
-        if ($targetListId === null || $targetListId === $this->taskListUriForInstance($current)) {
+        if ($targetListId === null || $targetListId === $this->taskLists->apiIdForInstance($current)) {
             return $current;
         }
         $target = $this->taskLists->findAccessibleTaskList($username, $targetListId);
@@ -563,7 +563,7 @@ final class TaskRepository
         $objectUri = (string) $located['object']->uri;
         $calendarIdPair = [(int) $instance->calendarid, (int) $instance->id];
         $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
-        $existingTask = $this->mapper->forViewer($username)->toTask($located['object'], $this->taskListUriForInstance($instance), $vtodoUid);
+        $existingTask = $this->mapper->forViewer($username)->toTask($located['object'], $this->taskLists->apiIdForInstance($instance), $vtodoUid);
 
         // Under the live-text core's lock the precondition and the remaining
         // ICS come from the locked row, so a text save that landed after the
@@ -724,11 +724,6 @@ final class TaskRepository
     private function calendarDavPath(string $username, string $calendarUri, string $objectUri): string
     {
         return 'calendars/'.$username.'/'.$calendarUri.'/'.$objectUri;
-    }
-
-    private function taskListUriForInstance(CalendarInstance $instance): string
-    {
-        return $this->taskLists->apiIdForInstance($instance);
     }
 
     private function assertObjectPreconditions(
