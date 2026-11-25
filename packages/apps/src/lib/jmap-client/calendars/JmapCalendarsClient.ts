@@ -182,8 +182,31 @@ export class JmapCalendarsClient {
       ([name, , id]) => id === getCallId && name === "CalendarEvent/get",
     );
     if (!getInvocation) {
-      const errorInvocation = response.methodResponses.find(([name]) => name === "error");
-      const detail = errorInvocation ? JSON.stringify(errorInvocation[1]) : "no response";
+      const errorInvocation = response.methodResponses.find(
+        ([name, , id]) => name === "error" && id === getCallId,
+      );
+      const queryInvocation = response.methodResponses.find(
+        ([name, , id]) => id === queryCallId && name === "CalendarEvent/query",
+      );
+      const queryIds = (queryInvocation?.[1] as QueryResponse | undefined)?.ids;
+      if (
+        errorInvocation &&
+        (errorInvocation[1] as { type?: string }).type === "requestTooLarge" &&
+        queryIds
+      ) {
+        // More events than the announced `maxObjectsInGet` (#2360): fetch the ids the
+        // query already returned in chunks of that limit. Windows within the limit
+        // keep the single round trip above.
+        // The cursor is overwritten like the batched path: `getCalendarEvents` keeps an
+        // existing one, which would leave a rejected `/changes` cursor in place. The state
+        // comes from the first chunk, so an event created between the query and that chunk
+        // is missing from the list yet included in the cursor (narrow window).
+        const chunked = await this.getCalendarEvents(accountId, queryIds);
+        this.client.setState(accountId, CALENDAR_EVENT_TYPE, chunked.state);
+        return chunked;
+      }
+      const anyError = response.methodResponses.find(([name]) => name === "error");
+      const detail = anyError ? JSON.stringify(anyError[1]) : "no response";
       throw new Error(`Windowed CalendarEvent fetch failed: ${detail}`);
     }
     const getResponse = getInvocation[1] as unknown as GetResponse<JmapCalendarEvent>;
