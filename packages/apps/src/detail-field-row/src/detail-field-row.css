@@ -38,27 +38,39 @@
 }
 
 /*
- * Phones: the label sits above its value, not beside it. A side-by-side pair leaves the
- * value a sliver of the screen (a phone number, an address). The value takes its own line
- * under the label, from the label's text to the row's end (2rem = the icon box + the row
- * gap). Rows with no label column, a switch and the "Add" rows keep their layout.
+ * Phones: by default the label sits above its value, not beside it. A side-by-side pair
+ * leaves the value a sliver of the screen (a phone number, an address). The value takes
+ * its own line under the label, from the label's text to the row's end (2rem = the icon
+ * box + the row gap). Rows with no label column, a switch and the "Add" rows keep their
+ * layout. An app that prefers two columns on phones sets `phoneLayout="columns"` on its
+ * `DetailFieldList` (`data-phone-layout`): the label column just gets narrower.
  */
 @media (max-width: 767px) {
+  [data-phone-layout="columns"] .detail-field-row .card__row-main {
+    flex-basis: 6.25rem;
+  }
+
   .detail-field-row.card__row:has(> .card__row-main):not(
       .detail-field-row--center,
-      .detail-field-row--add
+      .detail-field-row--add,
+      [data-phone-layout="columns"] *
     ) {
     @apply flex-wrap gap-y-1;
   }
 
-  .detail-field-row.card__row:not(.detail-field-row--center, .detail-field-row--add)
+  .detail-field-row.card__row:not(
+      .detail-field-row--center,
+      .detail-field-row--add,
+      [data-phone-layout="columns"] *
+    )
     > .card__row-main {
     @apply flex-1;
   }
 
   .detail-field-row.card__row:has(> .card__row-main):not(
       .detail-field-row--center,
-      .detail-field-row--add
+      .detail-field-row--add,
+      [data-phone-layout="columns"] *
     )
     > .card__row-action {
     flex: 1 0 100%;

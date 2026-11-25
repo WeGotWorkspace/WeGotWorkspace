@@ -59,11 +59,22 @@ export function DetailFieldRow({
 export function DetailFieldList({
   children,
   className,
+  phoneLayout = "stacked",
 }: {
   children: ReactNode;
   className?: string;
+  /**
+   * Phones: `stacked` puts each label above its value (the suite default, for narrow
+   * values like a number or address); `columns` keeps label and value side by side. Each app
+   * decides for its own detail sheet.
+   */
+  phoneLayout?: "stacked" | "columns";
 }) {
-  return <div className={cn("detail-field-list", className)}>{children}</div>;
+  return (
+    <div className={cn("detail-field-list", className)} data-phone-layout={phoneLayout}>
+      {children}
+    </div>
+  );
 }
 
 /**
