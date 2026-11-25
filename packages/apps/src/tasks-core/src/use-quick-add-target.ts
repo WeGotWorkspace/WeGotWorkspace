@@ -21,7 +21,7 @@ export type QuickAddList = { id: string; name: string; color?: string | null };
  *    picked), and the task is assigned to them;
  *  - "Assigned to" you: every list you can write to, assigned to you;
  *  - any other view: every list you can write to, your default list picked.
- * The menu beside the field shows these lists and remembers the choice per view.
+ * The menu beside the field shows these lists and keeps the choice until the view changes.
  */
 export function useQuickAddTarget({
   view,
