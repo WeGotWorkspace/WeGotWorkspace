@@ -445,7 +445,12 @@ export function taskListName(
 
 /** Views where the header filter's status segment applies (not the status views themselves). */
 export function shouldApplyCompletedTaskFilter(view: string): boolean {
-  return view !== "state:completed" && view !== "state:cancelled";
+  return !(
+    view === "state:completed" ||
+    view === "state:cancelled" ||
+    view === "state:needs-action" ||
+    view === "state:in-process"
+  );
 }
 
 /** Open work only: completed and cancelled tasks stay out of the list until asked for. */

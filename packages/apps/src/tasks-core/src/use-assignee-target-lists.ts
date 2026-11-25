@@ -26,25 +26,39 @@ export function useAssigneeTargetLists({
   lists: readonly Pick<TaskList, "id" | "name" | "color" | "myRights">[];
   loadMembers?: (taskListId: string) => Promise<TaskListMembersResult>;
 }): { options: AssigneeTargetList[]; loading: boolean } {
-  // list id -> that list's audience (null: asked, no answer).
-  const [audiences, setAudiences] = useState<ReadonlyMap<string, TaskListMember[] | null>>(
+  // list id -> that list's loaded audience. A list with no entry is unknown (not asked yet, or
+  // the load failed or had no answer), which is not the same as "this person is not on it".
+  const [audiences, setAudiences] = useState<ReadonlyMap<string, TaskListMember[]>>(
     () => new Map(),
   );
   const asked = useRef(new Set<string>());
+  const [online, setOnline] = useState(0);
   const writable = useMemo(() => lists.filter((list) => canWriteTaskList(list)), [lists]);
+
+  // Back online: ask again for the lists that never answered.
+  useEffect(() => {
+    const retry = () => setOnline((count) => count + 1);
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, []);
 
   useEffect(() => {
     if (username === null || !loadMembers) return;
     for (const list of writable) {
       if (asked.current.has(list.id)) continue;
       asked.current.add(list.id);
-      const settle = (members: TaskListMember[] | null) =>
-        setAudiences((previous) => new Map(previous).set(list.id, members));
       loadMembers(list.id)
-        .then((result) => settle(result.members))
-        .catch(() => settle(null));
+        .then((result) => {
+          if (result.members) {
+            const members = result.members;
+            setAudiences((previous) => new Map(previous).set(list.id, members));
+          } else {
+            asked.current.delete(list.id);
+          }
+        })
+        .catch(() => asked.current.delete(list.id));
     }
-  }, [loadMembers, username, writable]);
+  }, [loadMembers, username, writable, online]);
 
   const options = useMemo(() => {
     if (username === null) return [];

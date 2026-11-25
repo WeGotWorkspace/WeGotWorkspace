@@ -215,6 +215,29 @@ describe("link markdown in comments", () => {
     );
   });
 
+  it.each([
+    "https://example.com/a*b*c",
+    "https://en.wikipedia.org/wiki/Foo_(bar)",
+    "https://example.com/~user",
+  ])("round-trips %s to the same href and stays stable", (url) => {
+    const hrefOf = (markdown: string) => {
+      const editor = new Editor({
+        extensions: createTextEditorExtensions({ format: "markdown", allow: ["link", "bold"] }),
+        content: markdown,
+      });
+      const hrefs: string[] = [];
+      editor.state.doc.descendants((node) => {
+        for (const mark of node.marks) if (mark.type.name === "link") hrefs.push(mark.attrs.href);
+      });
+      editor.destroy();
+      return hrefs;
+    };
+    const first = roundTrip(url);
+    expect(hrefOf(first)).toEqual(hrefOf(url));
+    expect(hrefOf(first)).toEqual([url]);
+    expect(roundTrip(first)).toBe(first);
+  });
+
   it("keeps a link with its own text as [text](url)", () => {
     expect(roundTrip("[the docs](https://example.com/docs)")).toBe(
       "[the docs](https://example.com/docs)",

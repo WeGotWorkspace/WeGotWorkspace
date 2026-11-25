@@ -194,7 +194,7 @@ export function createTextEditorExtensions(
 }
 
 type MarkdownLinkMark = { attrs: { href: string; title?: string | null } };
-type MarkdownLinkState = { inBareUrl?: boolean };
+type MarkdownLinkState = { inBareUrl?: boolean; esc: (text: string) => string };
 
 /** A link whose text is its own address: written as the bare URL, not as `<url>`. */
 function isPlainUrlLink(
@@ -224,7 +224,9 @@ const BareUrlLink = Link.extend({
       markdown: {
         serialize: {
           open(state: MarkdownLinkState, mark: MarkdownLinkMark, parent: never, index: number) {
-            state.inBareUrl = isPlainUrlLink(mark, parent, index);
+            // The bare form goes through the text escaper, so only a URL it leaves alone is safe.
+            state.inBareUrl =
+              isPlainUrlLink(mark, parent, index) && state.esc(mark.attrs.href) === mark.attrs.href;
             return state.inBareUrl ? "" : "[";
           },
           close(state: MarkdownLinkState, mark: MarkdownLinkMark) {

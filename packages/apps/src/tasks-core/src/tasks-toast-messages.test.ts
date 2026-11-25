@@ -61,6 +61,8 @@ describe("completed task visibility filter", () => {
     expect(shouldApplyCompletedTaskFilter("list:inbox")).toBe(true);
     expect(shouldApplyCompletedTaskFilter("state:completed")).toBe(false);
     expect(shouldApplyCompletedTaskFilter("state:cancelled")).toBe(false);
+    expect(shouldApplyCompletedTaskFilter("state:needs-action")).toBe(false);
+    expect(shouldApplyCompletedTaskFilter("state:in-process")).toBe(false);
   });
 
   it("the default status filter keeps open work and drops completed and cancelled tasks", () => {
