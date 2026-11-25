@@ -12,7 +12,10 @@ subscription. Refresh, delete and failure clean-up address the calendar by princ
 The migration fills `principal_uri` for existing rows. Candidates are the user's own owner instance
 with that uri and owner instances on Teams the user currently belongs to. One candidate gets the row,
 even when its name differs. With several candidates the row goes to the one whose name equals the
-subscription name, if exactly one does. Otherwise the row is not attached to any of them: it gets
+subscription name, if exactly one does. A row is only attached to a calendar when no other row would
+claim the same `(principal_uri, calendar_uri)` (two members with a `villa` row of one Team, or a
+renamed personal calendar next to a Team calendar the name matches), nor an already filled row holds
+it; all the rows contesting it are parked as below. Otherwise the row is not attached to any of them: it gets
 `principals/<user>#unresolved-<id>` (or `principals/<user>` when the user owns no calendar with that
 uri), which resolves to no calendar, so Refresh answers 404 and never overwrites a guess. With no
 candidate the row keeps `principals/<user>`. The old key could keep only one row per user and uri, so
@@ -65,5 +68,5 @@ WHERE cs.name IS NOT NULL AND cs.name <> ci.displayname;
 ```
 
 Rows the backfill could not settle carry `#unresolved-<id>` in `principal_uri` and show up in the second
-query; re-subscribe the feed and delete the row. Rows whose calendar was lost sit on the personal principal and show up there too. A lost subscription itself leaves no row, so it cannot be listed. Users who report one can subscribe
+query; delete the row, then re-subscribe the feed (re-subscribing first makes a calendar with the same uri and is rejected while the row exists). Rows whose calendar was lost sit on the personal principal and show up there too. A lost subscription itself leaves no row, so it cannot be listed. Users who report one can subscribe
 to the feed again; it no longer collides.

@@ -66,6 +66,11 @@ return new class extends WgwMigration
      * when exactly one display name equals the row name. Otherwise the row is parked on a
      * principal no calendar resolves from, so a refresh 404s instead of overwriting a guess.
      * No candidate at all (the calendar was lost) keeps the personal principal.
+     *
+     * Every row is settled first. When several rows pick the same (principal, uri), or a row
+     * filled by an earlier run already holds it, all the new rows of that pair are parked the
+     * same way: a refresh would otherwise overwrite the calendar with the feed of a row that
+     * may not own it, and the unique key could not be added.
      */
     private function backfillPrincipalUri(): void
     {
@@ -76,6 +81,13 @@ return new class extends WgwMigration
             ->orderBy('id')
             ->get(['id', 'username', 'calendar_uri', 'name']);
 
+        $held = [];
+        foreach ($db->table('calendar_subscriptions')->where('principal_uri', '!=', '')->get(['principal_uri', 'calendar_uri']) as $filled) {
+            $held[$filled->principal_uri."\0".$filled->calendar_uri] = 1;
+        }
+
+        $picked = [];
+        $counts = [];
         foreach ($rows as $row) {
             $personal = 'principals/'.$row->username;
             $members = $db->table('groupmembers')
@@ -110,7 +122,14 @@ return new class extends WgwMigration
                 }
             }
 
-            $db->table('calendar_subscriptions')->where('id', $row->id)->update(['principal_uri' => $principalUri]);
+            $parked = $ownsPersonal ? $personal.'#unresolved-'.$row->id : $personal;
+            $picked[$row->id] = [$principalUri, $parked, $principalUri."\0".$row->calendar_uri];
+            $counts[$picked[$row->id][2]] = ($counts[$picked[$row->id][2]] ?? 0) + 1;
+        }
+
+        foreach ($picked as $id => [$principalUri, $parked, $pair]) {
+            $contested = $counts[$pair] > 1 || isset($held[$pair]);
+            $db->table('calendar_subscriptions')->where('id', $id)->update(['principal_uri' => $contested ? $parked : $principalUri]);
         }
     }
 };

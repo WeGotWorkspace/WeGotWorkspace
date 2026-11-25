@@ -66,6 +66,55 @@ final class CalendarSubscriptionsPrincipalMigrationTest extends WgwDatabaseTestC
         }
     }
 
+    public function test_two_members_whose_rows_pick_the_same_calendar_are_both_parked(): void
+    {
+        $this->teamCalendar('team-a', 'villa', 'Villa');
+        $this->teamCalendar('team-b', 'villa', 'Villa');
+        $this->join('team-a', 'bob');
+        $this->join('team-a', 'carol');
+        $this->row('r-bob', 'bob', 'villa', 'Villa');
+        $this->row('r-carol', 'carol', 'villa', 'Villa');
+
+        $this->migrate();
+
+        $this->assertSame('principals/bob', $this->principalOf('r-bob'));
+        $this->assertSame('principals/carol', $this->principalOf('r-carol'));
+        $this->assertTrue(Schema::connection('wgw')->hasIndex('calendar_subscriptions', ['principal_uri', 'calendar_uri'], 'unique'));
+    }
+
+    public function test_a_name_match_is_not_kept_when_another_row_claims_the_same_calendar(): void
+    {
+        $this->teamCalendar('team-a', 'villa', 'Villa');
+        $this->join('team-a', 'bob');
+        $this->join('team-a', 'carol');
+        $this->seedNamedCalendarFor('carol', 'villa', 'My Villa');
+        $this->row('r-bob', 'bob', 'villa', 'Villa');
+        $this->row('r-carol', 'carol', 'villa', 'Villa');
+
+        $this->migrate();
+
+        $this->assertSame('principals/bob', $this->principalOf('r-bob'));
+        $this->assertSame('principals/carol#unresolved-r-carol', $this->principalOf('r-carol'));
+        $this->assertTrue(Schema::connection('wgw')->hasIndex('calendar_subscriptions', ['principal_uri', 'calendar_uri'], 'unique'));
+    }
+
+    public function test_a_row_is_parked_when_a_row_from_an_earlier_run_holds_the_calendar(): void
+    {
+        $this->teamCalendar('team-a', 'villa', 'Villa');
+        $this->join('team-a', 'bob');
+        $this->join('team-a', 'carol');
+        $this->row('r-bob', 'bob', 'villa', 'Villa');
+        $this->migrate();
+        $this->assertSame('principals/groups/team-a', $this->principalOf('r-bob'));
+
+        Schema::connection('wgw')->table('calendar_subscriptions', fn (Blueprint $table) => $table->dropUnique(['principal_uri', 'calendar_uri']));
+        $this->row('r-carol', 'carol', 'villa', 'Villa');
+        $this->migrate();
+
+        $this->assertSame('principals/groups/team-a', $this->principalOf('r-bob'));
+        $this->assertSame('principals/carol', $this->principalOf('r-carol'));
+    }
+
     public function test_a_row_with_one_candidate_follows_it_even_when_the_name_differs(): void
     {
         $this->teamCalendar('team-a', 'villa', 'Renamed');
