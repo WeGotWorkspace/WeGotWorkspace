@@ -32,7 +32,8 @@ final class FileNodeSyncState
 
     /**
      * {@see current()} from the account roots and grant pairs the caller already read
-     * ({@see FileNodeAccountSupport::rootsAndGrantPairs()}).
+     * ({@see FileNodeAccountSupport::accountRootsAndGrantPairs()}, or
+     * {@see FileNodeAccountSupport::rootsAndGrantPairs()} on the push path).
      *
      * @param  list<string>  $accountRoots
      */
