@@ -21,6 +21,7 @@ import {
 import {
   listCachedAddressBookIds,
   listPendingContactCardIds,
+  readCachedContactCard,
   readAddressBooksSyncToken,
   readContactsBootstrapFromCache,
   readSyncToken,
@@ -60,12 +61,15 @@ function contactCardsInbound(
   };
   // Changed cards are fetched a page at a time, not one request each: an
   // import of thousands of cards elsewhere would otherwise cost a request per
-  // card. Each page holds the next ids in the order the run applies them, so
-  // the list still fills up page by page. Every book shares the answers.
+  // card. A page holds the next ids in the order `/changes` listed them, from
+  // the id the run asks for. Every book shares the answers.
   const queued: string[] = [];
   const queuedAt = new Map<string, number>();
   const requested = new Set<string>();
   const fetched = new Map<string, ContactCard>();
+  // A cached card a page left out: the server can still store it but not
+  // return it (over the read size guard). Its row stays as it is.
+  const keepCached = new WeakSet<ContactCard>();
   const queue = (changes: JmapChangesResponse) => {
     for (const id of [...changes.created, ...changes.updated]) {
       if (pending.has(id) || queuedAt.has(id)) continue;
@@ -105,8 +109,19 @@ function contactCardsInbound(
       if (pending.has(id)) return { id } as ContactCard;
       if (!queuedAt.has(id)) return getCard(id, opts);
       if (!requested.has(id)) await fetchPageFrom(id);
-      // Asked for and not returned: deleted since its change was listed.
-      return fetched.get(id) ?? null;
+      const card = fetched.get(id);
+      if (card) {
+        // The engine asks for each id once; free the page as it is applied.
+        fetched.delete(id);
+        return card;
+      }
+      // Asked for and not returned. A card the cache lacks was deleted since its
+      // change was listed. A cached one stays: a real delete is listed as
+      // destroyed on the next run.
+      if (!(await readCachedContactCard(username, id))) return null;
+      const keep = { id } as ContactCard;
+      keepCached.add(keep);
+      return keep;
     },
     readCached: async () => {
       await readPending();
@@ -125,7 +140,10 @@ function contactCardsInbound(
     createApplier: async () => {
       await readPending();
       return {
-        ingest: (card) => ingestRemoteContactCard(username, card),
+        ingest: (card) =>
+          keepCached.has(card)
+            ? Promise.resolve("skipped-pending" as const)
+            : ingestRemoteContactCard(username, card),
         ingestDestroyed: (id) => ingestRemoteContactCardDestroyed(username, id),
         ingestListedAway: (id, bookId) => ingestRemoteContactCardListedAway(username, id, bookId),
         // Every run stores its state, as before: a skipped change of a pending

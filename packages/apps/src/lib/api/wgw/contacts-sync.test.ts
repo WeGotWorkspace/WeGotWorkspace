@@ -441,6 +441,37 @@ describe("syncAllContactBooks", () => {
     expect(await readSyncToken(username, "default")).toBe("card-state-2");
   });
 
+  it("keeps a cached card that a page leaves out, and still advances the token", async () => {
+    const kept = {
+      ...card("kept", ["default"]),
+      name: { "@type": "Name", isOrdered: false, full: "Cached copy" },
+    } as ContactCard;
+    await writeContactsBootstrapToCache(username, {
+      session: { ...mockWorkspaceSession, user: { ...mockWorkspaceSession.user, username } },
+      data: { addressBooks: [defaultBook], cards: [kept] },
+    });
+    await writeSyncToken(username, "default", "card-state-1");
+    contactCardChanges.mockResolvedValue({
+      oldState: "card-state-1",
+      newState: "card-state-2",
+      created: ["fresh"],
+      updated: ["kept"],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+    // The server still stores "kept" but cannot return it (over the read guard).
+    getCards.mockImplementation(async (page: string[]) =>
+      page.filter((id) => id !== "kept").map((id) => card(id, ["default"])),
+    );
+
+    await syncAllContactBooks(username, ["default"]);
+
+    const cached = await readContactsBootstrapFromCache(username);
+    expect(cached?.data.cards.find((row) => row.id === "kept")?.name?.full).toBe("Cached copy");
+    expect(cached?.data.cards.some((row) => row.id === "fresh")).toBe(true);
+    expect(reportContactsSyncConflicts).not.toHaveBeenCalled();
+    expect(await readSyncToken(username, "default")).toBe("card-state-2");
+  });
+
   it("deletes a card that the full lists of both its books lack", async () => {
     await writeContactsBootstrapToCache(username, {
       session: { ...mockWorkspaceSession, user: { ...mockWorkspaceSession.user, username } },
