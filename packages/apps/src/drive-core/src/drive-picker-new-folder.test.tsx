@@ -61,7 +61,12 @@ function fakeOperations(createFolder?: DriveAPIOperations["createFolder"]) {
   };
 }
 
-function renderMove(operations: DriveAPIOperations, onConfirm = vi.fn(), onClose = vi.fn()) {
+function renderMove(
+  operations: DriveAPIOperations,
+  onConfirm = vi.fn(),
+  onClose = vi.fn(),
+  viewPath = "My Drive",
+) {
   render(
     <TooltipProvider delayDuration={0}>
       <DriveMoveToDialog
@@ -70,7 +75,7 @@ function renderMove(operations: DriveAPIOperations, onConfirm = vi.fn(), onClose
         files={[]}
         groupPaths={[]}
         moveIds={[]}
-        view={{ type: "folder", path: "My Drive" }}
+        view={{ type: "folder", path: viewPath }}
         operations={operations}
         currentUsername="alice"
         groupRootNames={NO_GROUPS}
@@ -117,8 +122,47 @@ describe("picker New folder", () => {
     const row = (await screen.findByText("Invoices")).closest("tr");
     expect(row?.className).toContain("drive-list-row--selected");
 
-    fireEvent.click(screen.getByRole("button", { name: driveLabels.moveDialogConfirm }));
+    const confirm = screen.getByRole("button", { name: driveLabels.moveDialogConfirm });
+    await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith("My Drive/Invoices");
+  });
+
+  it("holds the dialog's confirm until the create has resolved", async () => {
+    let finish: () => void = () => {};
+    const { operations } = fakeOperations(
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            finish = () => resolve(undefined);
+          }),
+      ) as unknown as DriveAPIOperations["createFolder"],
+    );
+    const { onConfirm } = renderMove(operations);
+    await screen.findByText("Reports");
+
+    fireEvent.click(newFolderButton());
+    fireEvent.change(nameField(), { target: { value: "Invoices" } });
+    fireEvent.keyDown(nameField(), { key: "Enter" });
+
+    const confirm = screen.getByRole("button", { name: driveLabels.moveDialogConfirm });
+    await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(true));
+    fireEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await act(async () => finish());
+    await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  it("is off when the picker opens inside a folder the viewer cannot add to", async () => {
+    renderMove(fakeOperations().operations, vi.fn(), vi.fn(), "My Drive/Archive");
+
+    await waitFor(() => expect((newFolderButton() as HTMLButtonElement).disabled).toBe(true));
+    await waitFor(() =>
+      expect(newFolderButton().closest("span")?.getAttribute("title")).toBe(
+        driveLabels.pickerNewFolderReadOnly,
+      ),
+    );
   });
 
   it("keeps the new folder selected when the files list refreshes", async () => {
@@ -224,10 +268,12 @@ describe("picker New folder", () => {
     renderMove(fakeOperations().operations);
     fireEvent.doubleClick(await screen.findByText("Archive"));
 
-    await waitFor(() => expect((newFolderButton() as HTMLButtonElement).disabled).toBe(true));
-    expect(newFolderButton().closest("span")?.getAttribute("title")).toBe(
-      driveLabels.pickerNewFolderReadOnly,
+    await waitFor(() =>
+      expect(newFolderButton().closest("span")?.getAttribute("title")).toBe(
+        driveLabels.pickerNewFolderReadOnly,
+      ),
     );
+    expect((newFolderButton() as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("is off above the drives, where no folder is open", async () => {

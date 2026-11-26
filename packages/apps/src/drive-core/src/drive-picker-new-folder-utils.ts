@@ -7,6 +7,8 @@ export type DrivePickerNewFolderControl = {
   disabledReason: string | null;
   /** True while the name field is open in the list. */
   active: boolean;
+  /** True while a folder made here is still being created: do not confirm until it is. */
+  creating: boolean;
   start: () => void;
 };
 

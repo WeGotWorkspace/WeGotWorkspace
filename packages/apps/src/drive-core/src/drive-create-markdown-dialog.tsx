@@ -118,7 +118,10 @@ export function DriveCreateMarkdownDialog({
         confirm: labels.createMarkdownDialogConfirm,
       };
   const canSubmit =
-    (hideName || draftBaseName.trim().length > 0) && !!destinationPath && !isSubmitting;
+    (hideName || draftBaseName.trim().length > 0) &&
+    !!destinationPath &&
+    !isSubmitting &&
+    !newFolder?.creating;
 
   const handleConfirm = () => {
     if (!canSubmit || !destinationPath) return;

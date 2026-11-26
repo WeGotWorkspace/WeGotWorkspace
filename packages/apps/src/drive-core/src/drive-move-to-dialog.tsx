@@ -154,9 +154,9 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
           ) : (
             <Button
               variant="primary"
-              disabled={confirmDisabled}
+              disabled={confirmDisabled || Boolean(newFolder?.creating)}
               onClick={() => {
-                if (!destinationPath) return;
+                if (!destinationPath || newFolder?.creating) return;
                 onConfirm?.(destinationPath);
               }}
             >
