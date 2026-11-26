@@ -92,8 +92,8 @@ None — every choice is made. The product decisions are in spec.md (Decisions, 
 ### Chunk B: server-ics-adapters
 - **Skill:** api
 - **Inputs:** UID group splitting — `path: packages/api/app/Services/VObject/ICalendarUidGroupSplitter.php:22`; current importers — `path: packages/api/app/Services/Calendars/CalendarEventRepository.php:246`, `path: packages/api/app/Services/Tasks/TaskImportService.php:52`
-- **Done when:** kinds `ics-events` and `ics-tasks` index UID groups once and import one group per item with the existing per-object caps; files over 512 KiB import through this path; skipped components (events in a task list, tasks in a calendar) are counted like today.
-- **Verify with:** feature tests for a multi-year calendar fixture (several MB) and a recurring series with overrides spread through the file; `pnpm test:api-done-gate`.
+- **Done when:** kinds `ics-events` and `ics-tasks` index UID groups once as byte ranges (with the VTIMEZONEs each group references), without parsing the whole file in one go, and import one group per item with the existing per-object caps; files over 512 KiB import through this path; skipped components (events in a task list, tasks in a calendar) are counted like today; a UID that already exists in the target is counted as already there, and the step commits the cursor and goes on.
+- **Verify with:** feature tests for a multi-year calendar fixture (several MB) and a recurring series with overrides spread through the file; importing the same file twice adds nothing and counts every group as already there, for events and for tasks; `Import/set` on the multi-year fixture stays within `memory_limit=128M`; `pnpm test:api-done-gate`.
 - **Parallel with:** none (after A)
 
 ### Chunk C: client-import-queue-core
@@ -106,37 +106,37 @@ None — every choice is made. The product decisions are in spec.md (Decisions, 
 ### Chunk D: import-ui-contacts
 - **Skill:** apps-ui, workspace, accessibility
 - **Inputs:** Drive's sidebar rule and badge — `path: packages/apps/src/drive-core/src/use-drive-sidebar-model.tsx:92`; Contacts offline refusal to replace — `path: packages/apps/src/lib/offline/contacts/contacts-hybrid-operations.ts:350`
-- **Done when:** a shared Import sidebar item and Import view (shared by all apps, declared per app) follow decision 2; the view lists jobs with progress and a result per job (imported, already there, too large, failed with reasons); progress is announced to screen readers in steps like Drive; Contacts' import dialog enqueues a job (also offline) instead of posting batches; #2387's batching stays only for API clients outside the app.
-- **Verify with:** RTL tests for the sidebar rule and the result view; browser e2e with the 18,875-card fixture class: reload mid-import and close/reopen the tab, then the book holds every importable card; screenshots for the product lead (UI waits for review).
+- **Done when:** a shared Import sidebar item and Import view (shared by all apps, declared per app) follow decision 2, showing only that app's jobs; the sign-out confirm counts unfinished imports next to queued uploads; the view lists jobs with progress and a result per job (imported, already there, too large, failed with reasons); progress is announced to screen readers in steps like Drive; Contacts' import dialog enqueues a job (also offline) instead of posting batches; #2387's batching stays only for API clients outside the app.
+- **Verify with:** RTL tests for the sidebar rule and the result view; browser e2e with the 18,875-card fixture class: reload mid-import, close/reopen the tab, and go offline mid-import and back online, then the book holds every importable card; a Contacts job does not show the Import item in Calendar; screenshots for the product lead (UI waits for review).
 - **Parallel with:** none (after A and C)
 
 ### Chunk E: calendar-tasks-client
 - **Skill:** workspace
 - **Inputs:** Calendar whole-file call — `path: packages/apps/src/lib/api/wgw/calendar.ts:279`; Tasks import operation — `path: packages/apps/src/lib/models/tasks-types.ts:80`
 - **Done when:** Calendar and Tasks import dialogs enqueue `ics-events` and `ics-tasks` jobs and show them in their Import item and view.
-- **Verify with:** browser e2e importing a calendar file over 512 KiB and a task file through the queue, with a reload mid-import; `pnpm test:apps-done-gate`.
+- **Verify with:** browser e2e importing a calendar file over 512 KiB and a task file through the queue, with a reload mid-import and with going offline mid-import and back online; `pnpm test:apps-done-gate`.
 - **Parallel with:** F (after B and D)
 
 ### Chunk F: notes-on-queue
 - **Skill:** workspace
 - **Inputs:** Notes uid idempotency — `path: packages/apps/src/notes-core/src/notes-markdown-import-wgw.ts:44`
 - **Done when:** the Notes import enqueues one job with one client-step item per file; each step runs today's per-file import (create with uid, upload images, write body); the job's result keeps today's skip reasons, dropped tags and images-not-imported counts.
-- **Verify with:** Vitest: reload mid-job resumes at the next file without a duplicate note; browser e2e with a multi-file import and a reload.
+- **Verify with:** Vitest: reload mid-job resumes at the next file without a duplicate note; a failed image upload still imports the note with its alt text; browser e2e with a multi-file import, a reload, and going offline mid-import and back online.
 - **Parallel with:** E (after C and D)
 
 ### Chunk G: vcard-uid-seed
 - **Skill:** api
 - **Inputs:** vCard importer — `path: packages/api/app/Services/Contacts/ContactCardRepository.php:143`
-- **Done when:** a vCard without `UID` gets a UID from a hash of its text with `PRODID` and `REV` lines removed and line endings normalised; the same card from two exports with different `PRODID` maps to the same UID; cards imported before this change keep their stored UID.
+- **Done when:** a vCard without `UID` gets a UID from a hash of its text with `PRODID` and `REV` lines removed and line endings normalised; the same card from two exports with different `PRODID` maps to the same UID; cards imported before this change keep their stored UID (changing a UID would break DAV clients that synced it). Accepted trade-off: re-importing, once, a file whose UID-less cards were imported before G creates one duplicate of each such card; later re-imports add nothing. Cleaning up those duplicates is out of scope.
 - **Verify with:** unit test with two exports differing only in `PRODID`/`REV`; `ContactsCardImportTest` stays green.
 - **Parallel with:** A, C
 
 ## Test plan
 
 - [ ] API: OpenAPI for `Import/set`, `Import/get`, `Import/step` → failing feature tests (completeness across steps, crash-and-repeat, revoked access, foreign principal, blob reference) → implement → `pnpm test:api-done-gate`.
-- [ ] Memory: a feature test that imports a 20,000-card file with the step budget and asserts peak memory per step stays flat as the file grows.
+- [ ] Memory: a feature test that imports a 20,000-card file with the step budget and asserts peak memory per request (the `Import/set` index and every step) stays flat as the file grows.
 - [ ] UI: mock-tier Storybook stories for the Import item and view (running, paused offline, finished with mixed results), Vitest for the queue core, RTL for the sidebar rule.
-- [ ] Browser e2e per app on a host with `memory_limit=128M` and `max_execution_time=30`: full import, reload mid-import, close and reopen the tab, second tab takes over, re-import adds nothing.
+- [ ] Browser e2e per app on a host with `memory_limit=128M` and `max_execution_time=30`: full import, reload mid-import, close and reopen the tab, go offline mid-import and back online, second tab takes over, re-import adds nothing.
 
 ## Doc updates (only if user wants)
 
