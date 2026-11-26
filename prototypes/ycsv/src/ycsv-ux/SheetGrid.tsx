@@ -142,6 +142,12 @@ function rangeLabel(range: Range, colRef: (c: number) => string): string {
   return `${a}:${colRef(range.c2)}${range.r2 + 1}`;
 }
 
+/** Excel's "General": a computed number in an untyped column shows at most 12 significant digits. */
+function showValue(value: Value, col: Parameters<typeof formatValue>[1]): string {
+  if (typeof value === "number" && (!col.type || col.type === "string")) return String(Number(value.toPrecision(12)));
+  return formatValue(value, col);
+}
+
 function valueToString(value: Value | undefined): string {
   if (value === undefined) return "";
   if (isCellError(value)) return `${value}!`;
@@ -203,6 +209,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const valuesOnlyNext = useRef(false);
   const caretSync = useRef(false);
   const lastTap = useRef<{ t: number; r: number; c: number } | null>(null);
+  /** What the last pointerdown hit. With pointer capture, dblclick targets the scroller. */
+  const lastDown = useRef<{ kind: "handle" } | { kind: "resize"; col: number } | null>(null);
 
   // ---- geometry ---------------------------------------------------------------
   const widths = useMemo(
@@ -619,7 +627,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           const v = valueAt(r, c);
           rv.push(valueToString(v));
           const col = columns[c];
-          rd.push(v === undefined || !col ? "" : formatValue(v, col));
+          rd.push(v === undefined || !col ? "" : showValue(v, col));
         }
         cells.push(rc);
         vals.push(rv);
@@ -786,7 +794,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           for (let r = 0; r < rows.length; r += 1) {
             const v = valueAt(r, c);
             if (v === undefined || v === "") continue;
-            w = Math.max(w, textWidth(formatValue(v, col)) + 18);
+            w = Math.max(w, textWidth(showValue(v, col)) + 18);
           }
           setColumnWidth(doc, col.colId, Math.max(48, Math.min(600, Math.ceil(w))));
         }
@@ -1080,6 +1088,12 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
 
     e.preventDefault();
     el.setPointerCapture(e.pointerId);
+    const resizeEl = target.closest(".sx-resize") as HTMLElement | null;
+    lastDown.current = target.closest(".sx-fill-handle")
+      ? { kind: "handle" }
+      : resizeEl
+        ? { kind: "resize", col: Number(resizeEl.dataset.col) }
+        : null;
 
     if (target.closest(".sx-resize")) {
       const c = Number((target.closest(".sx-resize") as HTMLElement).dataset.col);
@@ -1261,13 +1275,13 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   };
 
   const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.closest(".sx-fill-handle")) {
+    const down = lastDown.current;
+    if (down?.kind === "handle") {
       fillDownToNeighbour();
       return;
     }
-    if (target.closest(".sx-resize")) {
-      const c = Number((target.closest(".sx-resize") as HTMLElement).dataset.col);
+    if (down?.kind === "resize") {
+      const c = down.col;
       const range = lastRange(selRef.current);
       autoFit(isWholeCols(range, bounds) && c >= range.c1 && c <= range.c2 ? Array.from({ length: range.c2 - range.c1 + 1 }, (_, i) => range.c1 + i) : [c]);
       return;
@@ -1345,7 +1359,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           const err = isCellError(value);
           const selected = isSelected(sel, r, c);
           const isActive = r === active.r && c === active.c;
-          const text = value === undefined || value === "" ? "" : formatValue(value, col);
+          const text = value === undefined || value === "" ? "" : showValue(value, col);
           return (
             <div
               key={col.colId}
