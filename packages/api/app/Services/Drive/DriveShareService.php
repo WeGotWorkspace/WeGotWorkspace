@@ -101,6 +101,8 @@ final class DriveShareService
                 $share->updated_at = $now;
                 $share->save();
                 $share->timestamps = true;
+                // recordMove already published the node; bump again now the badge follows the new path.
+                $this->revoker->recordShareChange((string) $share->path);
                 $count++;
             }
 

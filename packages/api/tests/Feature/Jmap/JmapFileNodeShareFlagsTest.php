@@ -181,6 +181,34 @@ final class JmapFileNodeShareFlagsTest extends WgwDatabaseTestCase
         $this->assertSame(self::NONE, $this->getByName(['doc.md'], ['name', 'shareFlags'])['doc.md']['shareFlags']);
     }
 
+    public function test_renaming_a_shared_file_keeps_its_flags_in_changes(): void
+    {
+        $this->seedPrivateFile('bob', 'doc.md');
+        $id = $this->idOf('doc.md');
+        $this->createShare('/users/bob/doc.md', 'public');
+        $state = app(FileNodeSyncState::class)->current('bob');
+
+        $this->renameNode($id, 'renamed.md');
+
+        $this->assertContains($id, $this->changes($state)['updated']);
+        $node = $this->getByName(['renamed.md'], ['name', 'shareFlags'])['renamed.md'];
+        $this->assertTrue($node['shareFlags']['hasPublicShare']);
+    }
+
+    public function test_renaming_a_folder_reports_the_shared_file_inside_it(): void
+    {
+        $this->seedPrivateFile('bob', 'Folder/a.md');
+        $folderId = $this->idOf('Folder');
+        $fileId = $this->idOf('a.md');
+        $this->createShare('/users/bob/Folder/a.md', 'public');
+        $state = app(FileNodeSyncState::class)->current('bob');
+
+        $this->renameNode($folderId, 'Renamed');
+
+        $this->assertContains($fileId, $this->changes($state)['updated']);
+        $this->assertTrue($this->getByName(['a.md'], ['name', 'shareFlags'])['a.md']['shareFlags']['hasPublicShare']);
+    }
+
     public function test_capability_advertises_share_flags(): void
     {
         $session = $this->withBearer($this->userBearerToken())->getJson('/api/v1/jmap/session')->assertOk();
@@ -224,6 +252,12 @@ final class JmapFileNodeShareFlagsTest extends WgwDatabaseTestCase
             'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE, ...$extra],
             'methodCalls' => $calls,
         ]);
+    }
+
+    private function renameNode(string $id, string $name): void
+    {
+        $this->jmap([['FileNode/set', ['accountId' => 'bob', 'update' => [$id => ['name' => $name]]], 's']])
+            ->assertOk()->assertJsonPath('methodResponses.0.1.updated.'.$id, null);
     }
 
     private function aliceToken(): string
