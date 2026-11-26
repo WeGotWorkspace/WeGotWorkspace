@@ -947,8 +947,14 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       const range = lastRange(s);
       select(selectCols(range.c1, range.c2, bounds, s.active.r), null);
     } else if (mod && e.shiftKey && k === "v") {
-      // The paste event that follows carries the data; remember the flavour.
+      // The paste event that follows carries the data; remember the flavour. Some
+      // browsers send no paste event for this chord: then read the clipboard ourselves.
       valuesOnlyNext.current = true;
+      window.setTimeout(() => {
+        if (!valuesOnlyNext.current) return;
+        valuesOnlyNext.current = false;
+        void pasteFromMenu(true);
+      }, 60);
     } else if (mod && e.altKey && (e.key === "=" || e.code === "Equal")) {
       e.preventDefault();
       const range = lastRange(s);

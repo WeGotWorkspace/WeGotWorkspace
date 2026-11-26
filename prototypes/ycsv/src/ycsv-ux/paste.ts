@@ -25,7 +25,7 @@ export type PastePlan = {
  * both read as 1234.5; "2,5" reads as 2.5 only in a comma-decimal locale.
  */
 export function looseNumber(text: string, commaDecimal: boolean): string {
-  const t = text.replace(/[\s €$£%]/g, "");
+  const t = text.replace(/[\s €$£]/g, "");
   if (t === "" || !/^[-+]?[\d.,]+$/.test(t)) return text;
   if (/^[-+]?\d+$/.test(t)) return String(Number(t));
   const lastDot = t.lastIndexOf(".");
@@ -34,10 +34,16 @@ export function looseNumber(text: string, commaDecimal: boolean): string {
   if (lastDot >= 0 && lastComma >= 0) {
     normal = lastComma > lastDot ? t.replaceAll(".", "").replace(",", ".") : t.replaceAll(",", "");
   } else if (lastComma >= 0) {
-    normal = commaDecimal ? t.replace(",", ".") : t.replaceAll(",", "");
-    if ((t.match(/,/g) ?? []).length > 1) normal = t.replaceAll(",", "");
+    const commas = (t.match(/,/g) ?? []).length;
+    const after = t.length - lastComma - 1;
+    // "3,5" is a decimal everywhere; "1,234" depends on the locale; "1,234,567" groups.
+    if (commas > 1) normal = t.replaceAll(",", "");
+    else normal = after !== 3 || commaDecimal ? t.replace(",", ".") : t.replace(",", "");
   } else {
-    normal = (t.match(/\./g) ?? []).length > 1 ? t.replaceAll(".", "") : t;
+    const dots = (t.match(/\./g) ?? []).length;
+    const after = t.length - lastDot - 1;
+    if (dots > 1) normal = t.replaceAll(".", "");
+    else normal = lastDot >= 0 && after === 3 && commaDecimal ? t.replace(".", "") : t;
   }
   const n = Number(normal);
   return Number.isFinite(n) && /^[-+]?\d+(\.\d+)?$/.test(normal) ? String(n) : text;
