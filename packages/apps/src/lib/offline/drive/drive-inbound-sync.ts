@@ -1,14 +1,14 @@
-import type { DriveAppBootstrap } from "@/lib/files/drive-types";
-import { driveJmapSession, fileNodeToDirectoryEntry } from "@/lib/api/wgw/drive-jmap";
+import {
+  driveJmapSession,
+  fileNodeToDirectoryEntry,
+  fileNodeVirtualPath,
+} from "@/lib/api/wgw/drive-jmap";
 import { parentAndName } from "@/lib/files/api-path";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import type { JmapFileNode } from "@/lib/jmap-client";
-import { JmapMethodError } from "@/lib/jmap-client";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
-  migrateDocsAvailabilityPath,
   moveDocsAvailabilityForNode,
   stampDocsAvailabilityNodeIds,
 } from "@/lib/offline/docs/docs-availability-store";
@@ -17,28 +17,39 @@ import {
   applyDocsInboundChanges,
   type DocsInboundChange,
 } from "@/lib/offline/docs/docs-inbound-sync";
-import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
-import { migrateDriveContentBlobPath } from "@/lib/offline/drive/drive-content-sync";
+import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
 import {
-  readDriveBootstrapFromCache,
-  upsertDriveEntry,
-} from "@/lib/offline/drive/drive-directory-offline-store";
+  drainFileNodeChanges,
+  isCannotCalculateChanges,
+  readDriveSyncToken,
+  writeDriveSyncToken,
+} from "@/lib/offline/drive/drive-file-node-changes";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   deleteDriveEntryByPath,
   retainOrDropLocalDocument,
 } from "@/lib/offline/drive/drive-local-document";
-import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
+import {
+  areaForRoot,
+  isHiddenTreePath,
+  isTrashTreePath,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
+import {
+  migrateNodeSidecars,
+  readDriveTreeFirstSyncDone,
+  readDriveTreeRoots,
+  syncDriveTree,
+} from "@/lib/offline/drive/drive-tree-sync";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
 
-/** Meta key for the FileNode/changes `sinceState`. One token per account. */
-export const DRIVE_FILE_NODE_SYNC_TOKEN_KEY = "drive:file-node-sync-state";
-
-/** Safety cap on `hasMoreChanges` follow-ups inside one sync. Same bound as `JmapChatAdapter`. */
-export const DRIVE_INBOUND_MAX_CHANGE_PAGES = 20;
-
-const INITIAL_FILE_NODE_STATE = "0";
+export {
+  DRIVE_FILE_NODE_SYNC_TOKEN_KEY,
+  DRIVE_INBOUND_MAX_CHANGE_PAGES,
+  readDriveSyncToken,
+  writeDriveSyncToken,
+} from "@/lib/offline/drive/drive-file-node-changes";
 
 export type DriveInboundSyncResult = {
   changed: boolean;
@@ -55,23 +66,16 @@ export type DriveInboundSyncResult = {
 
 const inFlight = new Map<string, Promise<DriveInboundSyncResult>>();
 
-export async function readDriveSyncToken(username: string): Promise<string | null> {
-  return readMeta(username, DRIVE_FILE_NODE_SYNC_TOKEN_KEY);
-}
-
-export async function writeDriveSyncToken(username: string, token: string): Promise<void> {
-  await writeMeta(username, DRIVE_FILE_NODE_SYNC_TOKEN_KEY, token);
-}
-
 /**
  * FileNode/changes inbound. Created and updated rows are upserted by `nodeId`.
  * A path change migrates the cache row (and its sidecars) onto the new path.
  * `destroyed` drops the drive row, the pin, and the collab database unless
  * `PENDING_SERVER_SAVE_KEY` is set — then all three stay.
  *
- * `cannotCalculateChanges` (including a device past the 30-day tombstone
- * horizon) falls back to `syncDriveMetadataTree` and then primes the token
- * from `FileNode/get` with an empty id list. It does not call changes from `"0"`.
+ * App open, reconnect and settings change call only this: `FileNode/changes`.
+ * No stored token, or `cannotCalculateChanges` (including a device past the
+ * 30-day tombstone horizon), runs the full tree sync (`syncDriveTree`), which
+ * stores the token itself. It never calls changes from `"0"`.
  */
 export function syncDriveInboundFromFileNodes(
   username: string,
@@ -106,7 +110,8 @@ async function runDriveInbound(
   if (!getConnectivitySnapshot()) {
     return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
   }
-  const since = (await readDriveSyncToken(username)) ?? INITIAL_FILE_NODE_STATE;
+  const since = await readDriveSyncToken(username);
+  if (since === null) return fullResync(username, null, options?.signal);
   const session = await driveJmapSession();
   try {
     const drained = await drainFileNodeChanges(session, since, options?.signal);
@@ -136,66 +141,29 @@ async function runDriveInbound(
     };
   } catch (error) {
     if (!isCannotCalculateChanges(error)) throw error;
-    return fullResync(username, session, options?.signal);
+    return fullResync(username, since, options?.signal);
   }
 }
 
-/**
- * Follows `hasMoreChanges` the way `JmapChatAdapter` does. The token is the
- * last page actually read. Hitting the cap leaves the remainder for the next
- * sync instead of skipping it.
- */
-async function drainFileNodeChanges(
-  session: Awaited<ReturnType<typeof driveJmapSession>>,
-  since: string,
-  signal?: AbortSignal,
-): Promise<{ created: string[]; updated: string[]; destroyed: string[]; newState: string }> {
-  const created = new Set<string>();
-  const updated = new Set<string>();
-  const destroyed = new Set<string>();
-  let sinceState = since;
-  let newState = since;
-  for (let page = 0; page < DRIVE_INBOUND_MAX_CHANGE_PAGES; page += 1) {
-    const changes = await session.fileNodes.fileNodeChanges(session.accountId, sinceState, {
-      signal,
-    });
-    for (const id of changes.created) created.add(id);
-    for (const id of changes.updated) updated.add(id);
-    for (const id of changes.destroyed) destroyed.add(id);
-    newState = changes.newState;
-    sinceState = changes.newState;
-    if (!changes.hasMoreChanges) break;
-    if (page === DRIVE_INBOUND_MAX_CHANGE_PAGES - 1) {
-      console.warn("[drive-inbound] FileNode/changes still has more pages after the safety cap", {
-        pages: DRIVE_INBOUND_MAX_CHANGE_PAGES,
-      });
-    }
-  }
-  return {
-    created: [...created],
-    updated: [...updated],
-    destroyed: [...destroyed],
-    newState,
-  };
-}
-
+/** `staleToken`: the token that failed (null when there was none). */
 async function fullResync(
   username: string,
-  session: Awaited<ReturnType<typeof driveJmapSession>>,
+  staleToken: string | null,
   signal?: AbortSignal,
 ): Promise<DriveInboundSyncResult> {
-  const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
   const before = await cachedPathsByNodeId(username);
-  const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
-  if (signal?.aborted || progress.failed > 0) {
-    return { changed: true, listedChanges: true, usedFullResync: true, keptUnsavedPaths: [] };
+  const tree = await syncDriveTree(username, { signal, ifTokenIs: staleToken });
+  if (!tree.completed) {
+    return {
+      changed: true,
+      listedChanges: true,
+      usedFullResync: true,
+      keptUnsavedPaths: tree.keptUnsavedPaths,
+    };
   }
-  // A full crawl lists, it does not say what moved: the cached Docs views would keep a
-  // renamed Doc at its old name (#1563). Moves only: a node the crawl did not see may
-  // just be out of reach, so nothing is dropped here.
+  // A full sync lists, it does not say what moved: the cached Docs views would keep a
+  // renamed Doc at its old name (#1563). Until C4 removes those views, patch moves only.
   await applyDocsInboundChanges(username, await movesSince(username, before));
-  const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
-  await writeDriveSyncToken(username, state.state);
   return {
     changed: true,
     listedChanges: true,
@@ -223,10 +191,26 @@ async function applyFileNodeChanges(
     const got = await session.fileNodes.getFileNodes(session.accountId, upsertIds, { signal });
     const ordered = parentsBeforeChildren(got.list);
     const cachePaths = await cachedPathsByNodeId(username);
+    const tree = {
+      firstSyncDone: await readDriveTreeFirstSyncDone(username),
+      roots: await readDriveTreeRoots(username),
+    };
     for (const node of ordered) {
-      const path = await resolveNodePath(username, node, ordered, cachePaths, session, signal);
+      const path =
+        fileNodeVirtualPath(node) ??
+        (await resolveNodePath(username, node, ordered, cachePaths, session, signal));
       if (!path) {
         console.warn("[drive-inbound] skipped FileNode with no resolvable path", { id: node.id });
+        continue;
+      }
+      // `.notes`, `.attachments` and their contents are never list rows; one
+      // moved in leaves the tree, before any path rewrite.
+      if (isHiddenTreePath(path)) {
+        const outcome = await dropCachedSubtree(username, cachePaths.get(node.id), docsChanges);
+        keptUnsavedPaths.push(...outcome.kept);
+        changed ||= outcome.dropped;
+        cachePaths.delete(node.id);
+        upserted.add(node.id);
         continue;
       }
       const previous = cachePaths.get(node.id);
@@ -238,7 +222,11 @@ async function applyFileNodeChanges(
       }
       const entry = fileNodeToDirectoryEntry(path, node);
       docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
-      await upsertDriveEntry(username, entry);
+      await upsertDriveEntry(
+        username,
+        entry,
+        await areaOfAppliedNode(username, node, path, cachePaths, tree),
+      );
       await stampDocsAvailabilityNodeIds(username, [{ path, nodeId: node.id }]);
       await moveDocsAvailabilityForNode(username, node.id, path);
       cachePaths.set(node.id, path);
@@ -265,6 +253,52 @@ async function applyFileNodeChanges(
   // Every cached Docs view follows; rows a queued Docs write owns stay (#1563).
   await applyDocsInboundChanges(username, docsChanges);
   return { changed, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
+}
+
+/**
+ * Drop the cached row at `path` and every row below it (a node moved under a
+ * dot folder). A Doc with unsaved work stays, as on a remote delete.
+ */
+async function dropCachedSubtree(
+  username: string,
+  path: string | undefined,
+  docsChanges: DocsInboundChange[],
+): Promise<{ dropped: boolean; kept: string[] }> {
+  if (!path) return { dropped: false, kept: [] };
+  const id = normalizePath(path);
+  const kept: string[] = [];
+  let dropped = false;
+  for (const candidate of [...(await descendantIds(username, id)).reverse(), id]) {
+    if ((await retainOrDropLocalDocument(username, candidate)) === "kept") {
+      kept.push(candidate);
+      continue;
+    }
+    await deleteDriveEntryByPath(username, candidate);
+    docsChanges.push({ kind: "removed", path: candidate });
+    dropped = true;
+  }
+  return { dropped, kept };
+}
+
+/**
+ * `area` of a node the applier places: Trash by path, else its parent row's,
+ * its account root's (roots have no row), or `share` for a node whose parent
+ * is not in a complete tree. Undefined while the first sync has not finished.
+ */
+async function areaOfAppliedNode(
+  username: string,
+  node: JmapFileNode,
+  path: string,
+  cachePaths: ReadonlyMap<string, string>,
+  tree: { firstSyncDone: boolean; roots: ReadonlyMap<string, string> },
+): Promise<DriveEntryArea | undefined> {
+  if (isTrashTreePath(path)) return "trash";
+  if (!node.parentId) return areaForRoot(path, { kind: "account", path });
+  const rootPath = tree.roots.get(node.parentId);
+  if (rootPath) return areaForRoot(path, { kind: "account", path: rootPath });
+  const parentPath = cachePaths.get(node.parentId);
+  if (parentPath) return (await driveRowAt(username, parentPath))?.area;
+  return tree.firstSyncDone ? "share" : undefined;
 }
 
 /** What Docs needs to know about one placed node: moved from `previous`, or upserted. */
@@ -304,25 +338,10 @@ async function moveCachedNodeToPath(
   await applyDriveSidecarPathMigration(username, oldId, destination, from);
   for (const descendant of descendants) {
     const suffix = descendant.slice(oldId.length);
-    await migrateDescendantSidecars(username, descendant, `${nextId}${suffix}`);
+    await migrateNodeSidecars(username, descendant, `${nextId}${suffix}`);
   }
   cachePaths.set(node.id, `/${nextId}`);
   return "moved";
-}
-
-/**
- * Pins and blobs of a descendant follow the new path. The collab database does
- * not move: Docs keys it on the FileNode id, which a rename keeps.
- */
-async function migrateDescendantSidecars(
-  username: string,
-  oldPath: string,
-  newPath: string,
-): Promise<void> {
-  if (normalizePath(oldPath) === normalizePath(newPath)) return;
-  await migrateDocsAvailabilityPath(username, oldPath, newPath);
-  await migrateDriveAvailabilityPath(username, oldPath, newPath);
-  await migrateDriveContentBlobPath(username, oldPath, newPath);
 }
 
 async function resolveNodePath(
@@ -476,19 +495,4 @@ function accountDb(username: string) {
 
 function normalizePath(path: string): string {
   return path.trim().replace(/^\/+/, "");
-}
-
-function isCannotCalculateChanges(error: unknown): boolean {
-  return error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges";
-}
-
-function fallbackBootstrap(username: string): DriveAppBootstrap {
-  return {
-    session: { user: { displayName: username, username } },
-    data: {
-      user: { username, name: username, role: "user", roots: ["/users"] },
-      cwd: `/users/${username}`,
-      directory: { location: `/users/${username}`, files: [] },
-    },
-  };
 }

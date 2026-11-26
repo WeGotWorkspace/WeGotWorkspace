@@ -62,6 +62,7 @@ import {
   DRIVE_INBOUND_MAX_CHANGE_PAGES,
   readDriveSyncToken,
   syncDriveInboundFromFileNodes,
+  writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-inbound-sync";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
@@ -240,6 +241,8 @@ describe("syncDriveInboundFromFileNodes", () => {
     await db.table("drive_upload_batches").clear();
     await db.table("docs_availability").clear();
     await db.meta.clear();
+    // A device that synced before: changes only. No token runs the full tree sync.
+    await writeDriveSyncToken(username, "0");
     getFileNodes.mockImplementation(async (_accountId: string, ids: string[]) => ({
       accountId: "ada",
       state: "9",
@@ -577,7 +580,7 @@ describe("syncDriveInboundFromFileNodes", () => {
     const result = await syncDriveInboundFromFileNodes(username);
 
     expect(result.keptUnsavedPaths).toEqual(["users/ada/taken.md"]);
-    expect(await readDriveSyncToken(username)).toBeNull();
+    expect(await readDriveSyncToken(username)).toBe("0");
     expect(await readCachedDriveNodeId(username, "/users/ada/old.md")).toBe("fn-moving");
     expect(await readCachedDriveNodeId(username, "/users/ada/taken.md")).toBe("fn-occupant");
   });
@@ -659,6 +662,8 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await db.table("drive_content_blobs").clear();
     await db.outbox.clear();
     await db.meta.clear();
+    // A device that synced before: changes only. No token runs the full tree sync.
+    await writeDriveSyncToken(username, "0");
   });
 
   it("applies a FileNode delete, rename and move to every cached Docs view", async () => {

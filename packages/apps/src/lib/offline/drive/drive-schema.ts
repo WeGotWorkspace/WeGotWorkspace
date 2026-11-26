@@ -4,6 +4,11 @@ import {
   type WgwOfflineDatabase,
 } from "@/lib/offline/core/offline-db";
 import { DRIVE_OFFLINE_VERSION } from "@/lib/offline/core/offline-version-allocation";
+import {
+  areaFromCrawledPath,
+  fileExtension,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
 import { DRIVE_UPLOAD_STORES } from "@/lib/offline/drive/upload/drive-upload-schema";
 
 export const DRIVE_DOMAIN = "drive";
@@ -28,6 +33,29 @@ export type OfflineDriveEntryRow = {
    * and on the row of a folder a folder upload creates or adds into (#1620).
    */
   uploadId?: string;
+  /** Lower-case file extension (`""` when none). Absent on folders. Indexed for Docs views. */
+  ext?: string;
+  /**
+   * Which part of the tree the row belongs to. Set by a complete tree pass and
+   * the change applier; rows a first sync has written so far have none yet.
+   */
+  area?: DriveEntryArea;
+};
+
+/**
+ * One node of a tree pass in progress, keyed by FileNode id (#2063). The
+ * persisted walked set: a resume after an abort keeps every page fetched
+ * before it. Dot-path nodes are staged too, so a folder moved out of `.notes`
+ * during the walk still brings its children. Cleared when a pass ends or restarts.
+ */
+export type OfflineDriveTreeStagingRow = {
+  nodeId: string;
+  parentId: string | null;
+  name: string;
+  /** The virtual path `FileNode/get` returned. Stale under an ancestor renamed later. */
+  path: string;
+  /** `WgwDriveDirectoryEntry` JSON as the get built it. */
+  data: string;
 };
 
 /** Binary file body cached for offline open/download. */
@@ -84,6 +112,21 @@ registerOfflineDomainTables({
         ...DRIVE_UPLOAD_STORES,
       },
     },
+    {
+      version: DRIVE_OFFLINE_VERSION.treeSync,
+      stores: {
+        drive_entries: "id, parentPath, type, modifiedAt, nodeId, uploadId, ext, area",
+        drive_tree_staging: "nodeId",
+      },
+      upgrade: (tx) =>
+        tx
+          .table<OfflineDriveEntryRow, string>("drive_entries")
+          .toCollection()
+          .modify((row) => {
+            row.area = areaFromCrawledPath(row.id);
+            if (row.type === "file") row.ext = fileExtension(row.id.split("/").pop() ?? "");
+          }),
+    },
   ],
 });
 
@@ -109,5 +152,14 @@ export function driveAvailabilityTable(
   return db.table<OfflineDriveAvailabilityRow, string>("drive_availability") as EntityTable<
     OfflineDriveAvailabilityRow,
     "id"
+  >;
+}
+
+export function driveTreeStagingTable(
+  db: WgwOfflineDatabase,
+): EntityTable<OfflineDriveTreeStagingRow, "nodeId"> {
+  return db.table<OfflineDriveTreeStagingRow, string>("drive_tree_staging") as EntityTable<
+    OfflineDriveTreeStagingRow,
+    "nodeId"
   >;
 }
