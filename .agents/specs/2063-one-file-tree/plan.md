@@ -33,12 +33,23 @@ Draws from the Pioneer programme chore #2063 (Docs/Drive family of #1641) and fr
 - The Docs list reaches only about 1050 of 2000 documents, because `/search/results` caps `offset` at 1000 (measured in PR #2383). A list built from the tree has no such cap. `path: packages/api/app/Services/Search/UnifiedSearchService.php:21`
 - Stars are a path set in meta key `docs.starredPaths`, shared by both apps; REST `GET /files/starred`. `path: packages/apps/src/lib/offline/docs/docs-stars-store.ts:4`
 - Server, unfiltered `FileNode/query`: `reconcileVisibleTree` (BFS, disk listing per folder, capped at 2,000 folders) then `liveVisible` (one SQL query, full models), sort in PHP, `array_slice` paging. `path: packages/api/app/Services/Jmap/Methods/FileNodeQueryMethod.php:159`, `:99`, `path: packages/api/app/Services/Jmap/FileNodes/FileNodeAccountSupport.php:216`
-- Measured on main `da19686dc` (throwaway PHPUnit bench, 20,440 nodes in 400 folders): query+get page of 500 = 1.93 s and 916 SQL; with reconcile skipped = 1.67 s and 30 SQL. `cmd: BENCH_DIRS=400 BENCH_FILES=50 php vendor/bin/phpunit --filter ZzTreeBenchTest`
+- Measured on main `da19686dc` with a throwaway PHPUnit bench (not committed): 20,440 nodes in 400 folders, one unfiltered `FileNode/query` page of 500 plus `#ids` `FileNode/get`. Output of the two runs:
+
+  ```text
+  nodes=20440 | query+get page(500)=1.929s (916 SQL, got 500)
+  nodes=20440 (reconcile skipped) | query+get page(500)=1.671s (30 SQL, got 500)
+  ```
 - Unfiltered query roots include home, member groups and share roots; share roots keep the owner's parent id. `path: packages/api/app/Services/Jmap/FileNodes/FileNodeAccountSupport.php:71`, `:164`
 - Trash (`.Trash`) is file-indexed, so an unfiltered query returns it. `path: packages/api/app/Storage/StorageKeyClass.php:38`
+- `.notes` and `.attachments` are file-indexed too: every storage class except `Hidden` is. An unfiltered query returns them, while today's client listings drop every dot name. `path: packages/api/app/Storage/StorageKeyClass.php:92`, `path: packages/apps/src/lib/api/wgw/drive-jmap.ts:137`
+- `FileNode/query` sorts by name when `sort` is empty and slices a freshly sorted list on every call; its `queryState` is the global `seq.grantHash`, so a write between two pages shifts positions. `path: packages/api/app/Services/Jmap/Methods/FileNodeQueryMethod.php:97`, `:99`
+- The prune after a listing keeps protected rows: paths of open Docs or Drive outbox mutations (including a rename or trash target), upload placeholders, files with a pending server save, and their ancestor folders. `path: packages/apps/src/lib/offline/drive/drive-fetched-set-prune.ts:373`
+- The full resync takes the token after the crawl, drops nothing, and patches Docs views for moves (`applyDocsInboundChanges(movesSince)`). `path: packages/apps/src/lib/offline/drive/drive-inbound-sync.ts:193`, `:196`
+- Docs keeps its own operations factory (`createHybridDocsDriveOperations`, bound as `docsHybridDomainOperations`) next to Drive's `createHybridDriveOperations`. `path: packages/apps/src/lib/offline/docs/docs-domain-contract.ts:15`, `path: packages/apps/src/lib/offline/docs/docs-hybrid-operations.ts:225`, `path: packages/apps/src/lib/offline/drive/drive-hybrid-operations.ts:158`
 - `FileNode/changes` state is `<seq>.<grantHash>`; the hash covers member grants only. Team membership changes do not change it. `path: packages/api/app/Services/Jmap/FileNodes/FileNodeSyncState.php:10`, `path: packages/api/app/Services/Jmap/FileNodes/FileNodeAccountSupport.php:98`
 - Back-references work; at most 32 calls per request; 500 objects per get. `path: packages/api/app/Services/Jmap/JmapMethodDispatcher.php:257`, `path: packages/api/app/Services/Jmap/JmapCapabilities.php:77`, `:86`
-- Share indicators exist as a batch lookup for REST listings; share writes do not bump the node's change sequence. `path: packages/api/app/Services/Drive/DriveService.php:541`, `path: packages/api/app/Services/Drive/DriveShareService.php:472`
+- Share indicators exist as a batch lookup for REST listings. The share writes (`createShare`, `updateShare`, `revokeShare`) only resolve the node id and do not bump the node's change sequence. `path: packages/api/app/Services/Drive/DriveService.php:541`, `path: packages/api/app/Services/Drive/DriveShareService.php:114`, `:184`, `:238`, `:472`
+- JMAP-built rows copy no share fields into the stored entry. `path: packages/apps/src/lib/api/wgw/drive-jmap.ts:183`
 
 ## Considered
 
@@ -48,6 +59,7 @@ Draws from the Pioneer programme chore #2063 (Docs/Drive family of #1641) and fr
 - **The search index as list source:** rejected for lists. It is a full-text index, updated best-effort, and is the reason Docs and Drive diverged. It stays the source for content search.
 - **Dexie `liveQuery`:** rejected in favour of the existing `cacheChangedTopic`, which every offline domain already uses and which crosses tabs.
 - **Share flags as a separate client cache of the person's shares:** rejected. A FileNode property, filled by the existing batch lookup and propagated by a seq bump, keeps one sync path.
+- **A stable server cursor for the paged walk (`anchor` support or a snapshot table):** rejected. Taking the state before page 1 and catching up with `FileNode/changes` from it after the last page closes the same gap with code that already exists.
 - **Team join/leave as a server-emitted subtree of created/destroyed:** rejected for now. Adding the root set to the state hash reuses the existing `cannotCalculateChanges` → full resync path, which is cheap after chunk S1.
 
 ## Affected packages
@@ -79,9 +91,16 @@ None — every choice is made.
 - Creating or revoking a share bumps the node so `FileNode/changes` reports it, and `FileNode/get` returns its flags. Proof: `path: packages/api/tests/Feature/Jmap/JmapFileNodeShareFlagsTest.php` assertions `test_share_create_is_reported_by_changes`, `test_get_returns_share_flags_for_the_owner`.
 - Opening Drive with a stored token sends no folder listing, only `FileNode/changes`. Proof: `path: packages/apps/src/lib/offline/drive/drive-tree-sync.test.ts` assertion `opens with a token: changes only, no query`.
 - The first sync of 20k nodes takes at most 3 listing requests and resumes after an abort without refetching finished pages. Proof: `path: packages/apps/src/lib/offline/drive/drive-tree-sync.test.ts` assertions `first sync batches 16 pages per request`, `resumes from the cursor`.
+- A node deleted or renamed between two pages of the first sync does not make the sync miss or prune an unchanged node: the pass catches up with `FileNode/changes` from the state taken before page 1, and only then prunes. A wrong change silently drops a live file from the device until the next full resync. Proof: `path: packages/apps/src/lib/offline/drive/drive-tree-sync.test.ts` assertions `a node deleted mid-pass does not prune an unchanged node`, `a node renamed onto an earlier page is caught up`.
+- The tree prune keeps every protected row: outbox paths and their targets, upload placeholders, pending server saves, and their ancestors. A wrong change deletes a queued offline edit. Proof: `path: packages/apps/src/lib/offline/drive/drive-tree-sync.test.ts` assertion `prune keeps protected rows`.
+- A row is marked as a share root only after the complete pass and catch-up. A wrong change marks ordinary files as shared with me when their parent arrives on a later page. Proof: `path: packages/apps/src/lib/offline/drive/drive-tree-sync.test.ts` assertion `child before parent is not a share root`.
+- `.notes` and `.attachments` never appear in a Drive or Docs list; Trash appears only in the Trash view. Proof: `path: packages/apps/src/lib/files/tree-view/tree-view-predicates.test.ts` assertion `dot folders other than Trash are not listed`.
+- Shared badges on tree rows come from the stored entry. Proof: `path: packages/apps/src/lib/offline/drive/drive-tree-sync.test.ts` assertion `share flags from get are stored on the entry`.
+- Until C4 lands, a full resync still patches Docs views for moves. A wrong change leaves a renamed Doc at its old name in Docs home. Proof: `path: packages/apps/src/lib/offline/drive/drive-inbound-sync.test.ts` (existing full-resync move cases stay green).
 - A queued outbox write keeps winning over an inbound row for its path. Proof: `path: packages/apps/src/lib/offline/drive/drive-inbound-sync.test.ts` (existing pending-write cases stay green).
 - After C1, main still works without C2–C6: existing views keep reading the same `drive_entries` rows. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/drive-core src/docs-core`.
 - A view never shows the empty state for a folder that has not synced; it shows "not available offline". Proof: `path: packages/apps/src/lib/files/tree-view/use-file-tree-view.test.tsx` assertion `unsynced folder is not-available, not empty`.
+- Docs file writes go through Drive's hybrid operations; no second operations factory exists. A wrong change lets a Docs rename skip Drive's outbox rules. Proof: `path: packages/apps/src/docs-core/src/docs-home-binding.test.tsx` assertion `docs writes use the drive hybrid operations`.
 - Docs home rows equal the Drive tree filtered by the Docs entry filter, for every Docs view. Proof: `path: packages/apps/src/docs-core/src/docs-home-binding.test.tsx` assertion `docs views are drive views with the docs filter`.
 - Both apps still install as separate PWAs. Proof: `cmd: pnpm --dir packages/apps exec playwright test -c playwright.pwa.config.mjs`.
 
@@ -103,7 +122,7 @@ None — every choice is made.
 
 ### Chunk S3: share flags on FileNode
 - **Skill:** api
-- **Inputs:** batch share indicators — `path: packages/api/app/Services/Drive/DriveService.php:541`; share writes do not bump — `path: packages/api/app/Services/Drive/DriveShareService.php:472`.
+- **Inputs:** batch share indicators — `path: packages/api/app/Services/Drive/DriveService.php:541`; share writes that must bump — `path: packages/api/app/Services/Drive/DriveShareService.php:114`, `:184`, `:238`, plus the grant and access changes they call.
 - **Done when:** `FileNode/get` returns `shareFlags { hasShares, hasPublicShare, hasTeamShare }` for nodes the caller owns, using one batch lookup per get call. Every share create, revoke and access change bumps the node's change sequence. Projection omits the lookup when `shareFlags` is not requested.
 - **Verify with:** S3 invariant tests; `JmapLeanGetTest` stays green.
 - **Parallel with:** S1, S2, C1
@@ -112,18 +131,21 @@ None — every choice is made.
 - **Skill:** workspace, client-transport
 - **Inputs:** crawl — `path: packages/apps/src/lib/offline/drive/drive-metadata-sync.ts:101`; callers — `path: packages/apps/src/drive-core/src/use-drive-api.ts:59`; inbound — `path: packages/apps/src/lib/offline/drive/drive-inbound-sync.ts:182`.
 - **Done when:**
-  - `syncDriveTree` pages `FileNode/query` + `#ids` `FileNode/get` (16 pairs per request), including Trash and share roots, under the Web Lock, with a resumable cursor and a `firstSyncDone` meta flag. It prunes rows the sync did not see only after a complete pass.
+  - `syncDriveTree` pages `FileNode/query` + `#ids` `FileNode/get` (16 pairs per request), including Trash and share roots, under the Web Lock, with a resumable cursor and a `firstSyncDone` meta flag.
+  - **Snapshot rule.** Before page 1 it reads the `FileNode` state (`FileNode/get` with an empty id list) and stores it with the cursor. A resume reuses that state. After the last page it applies `FileNode/changes` from that state, and that result's `newState` becomes the account token. Only then does it prune rows the pass did not see, using the same protected set as `prunerProtectedPaths`.
+  - **Row classes.** `area` (`home | group | share | trash`) is computed after the complete pass and the catch-up, never per page. `.Trash` is stored; `.notes`, `.attachments` and other dot folders are not stored as list rows.
+  - **Share flags.** `FileNode/get` requests `shareFlags` when the server advertises it (S3). `hasShares`, `hasPublicShare` and `hasTeamShare` are stored on the entry, and the badge reads that copy. Without S3 the rows simply have no flags.
   - Every listing request waits for the background-sync pacer at `first` priority, so the first sync never sends unpaced list pages (requirement taken from #2362 / PR #2383).
   - Rows gain indexed `ext` and `area` (`home | group | share | trash`) in a new Dexie version; existing rows are backfilled from `data`.
   - App open, reconnect and settings change call `FileNode/changes` only. The full sync runs on a missing token or `cannotCalculateChanges`.
-  - The BFS crawl is deleted.
+  - The BFS crawl is deleted. The full resync (`fullResync`) uses `syncDriveTree` and keeps calling `applyDocsInboundChanges(movesSince)` until C4 removes the Docs view caches.
 - **Verify with:** `drive-tree-sync.test.ts`, existing `drive-inbound-sync` tests.
 - **Parallel with:** S1, S2, S3
 
 ### Chunk C2: one view hook in lib
 - **Skill:** workspace
 - **Inputs:** cache-changed topic — `path: packages/apps/src/lib/offline/core/cache-changed-topic.ts:27`; stars store — `path: packages/apps/src/lib/offline/docs/docs-stars-store.ts:4`.
-- **Done when:** `lib/files/tree-view/` exports `useFileTreeView(view, entryFilter)` and pure predicates for folder, all, recent, starred, shared, trash and path prefix. It returns `{ rows, status: "first-sync" | "ready" | "not-available" }`, re-queries on the drive cache-changed topic, and filters names locally. Team display labels are cached in meta for offline use.
+- **Done when:** `lib/files/tree-view/` exports `useFileTreeView(view, entryFilter)` and pure predicates for folder, all, recent, starred, shared, trash and path prefix. It returns `{ rows, status: "first-sync" | "ready" | "not-available" }`, re-queries on the drive cache-changed topic, and filters names locally.
 - **Verify with:** `use-file-tree-view.test.tsx`, predicate unit tests.
 - **Parallel with:** none
 
@@ -136,21 +158,29 @@ None — every choice is made.
 
 ### Chunk C4: Docs home as a Drive configuration
 - **Skill:** workspace
-- **Inputs:** Docs listing layer — `path: packages/apps/src/docs-core/src/use-docs-home-listing-load.ts:60`; other readers of `docs_listing_rows` — `path: packages/apps/src/lib/offline/docs/docs-hybrid-operations.ts:168`, `path: packages/apps/src/lib/offline/docs/docs-offline-entries.ts:55`.
-- **Done when:** Docs home is a workspace config (entry filter, views, labels, create actions, open-file) on the Drive workspace. `use-docs-home-list`, `use-docs-home-listing-load`, the Docs starred/shared/trash list hooks and `docs_listing_rows` are removed; trash-undo and offline facts read `drive_entries`. Content search stays a server call. Body sync reads the tree instead of re-running the browse search.
+- **Inputs:** Docs operations factory — `path: packages/apps/src/lib/offline/docs/docs-domain-contract.ts:15`; Docs listing layer — `path: packages/apps/src/docs-core/src/use-docs-home-listing-load.ts:60`; other readers of `docs_listing_rows` — `path: packages/apps/src/lib/offline/docs/docs-hybrid-operations.ts:168`, `path: packages/apps/src/lib/offline/docs/docs-offline-entries.ts:55`.
+- **Done when:**
+  - Docs home is a workspace config (entry filter, views, labels, create actions, open-file) on the Drive workspace. `use-docs-home-list`, `use-docs-home-listing-load`, the Docs starred/shared/trash list hooks and `docs_listing_rows` are removed; trash-undo and offline facts read `drive_entries`.
+  - **One hybrid-operations layer.** Docs file writes go through `createHybridDriveOperations`. `createHybridDocsDriveOperations` and `docsHybridDomainOperations` are removed. Docs-only side effects (collab persistence, page setup, pending server saves) are invoked from the Docs binding or from a hook the Drive factory exposes.
+  - `fullResync` drops its `applyDocsInboundChanges(movesSince)` call, since there are no Docs view caches left to patch.
+  - Content search stays a server call. Body sync reads the tree instead of re-running the browse search.
 - **Verify with:** `docs-home-binding.test.tsx`; existing Docs offline e2e specs.
 - **Parallel with:** C5
 
 ### Chunk C5: indicators, thumbnails, team names
 - **Skill:** apps-ui
 - **Inputs:** #2063 measurements 2, 5, 6.
-- **Done when:** the #2063 criteria for the per-row indicator, stored thumbnails and offline team names are met in both apps.
+- **Done when:** the #2063 criteria for the per-row indicator, stored thumbnails and offline team names are met in both apps. Team display labels are cached in the meta store for offline use (this chunk owns them).
 - **Verify with:** grid-previews and indicator tests; browser check.
 - **Parallel with:** C4
 
 ### Chunk C6: e2e, docs, line counts
 - **Skill:** testing, document
-- **Done when:** the traffic harness of #2292 (`playwright.traffic.config.mjs`) records cold-start listing requests for Drive and for Docs alone, before and after, on the same data set; the after numbers meet the first-sync bound (at most 3 listing requests for 20k nodes) and are written to `docs/realtime-capacity.md`. A Drive offline e2e on the production build covers warm online open without a spinner, cold offline open, Starred, Shared, and a never-synced folder; Docs offline e2e specs stay green; `offline-platform.md` describes the tree; the PR states data-layer line counts before (Docs home 3,876; Drive data hooks 1,318; `lib/offline/docs` 2,615; `lib/offline/drive` without upload 2,814) and after.
+- **Done when:** the traffic harness of #2292 (`playwright.traffic.config.mjs`) records cold-start listing requests for Drive and for Docs alone, before and after, on the same data set; the after numbers meet the first-sync bound (at most 3 listing requests for 20k nodes) and are written to `docs/realtime-capacity.md`. A Drive offline e2e on the production build covers warm online open without a spinner, cold offline open, Starred, Shared, a never-synced folder, and a shared badge on a tree row. Docs offline e2e specs stay green. `offline-platform.md` describes the tree. The PR states non-test line counts before and after for the same file sets, measured on main `da19686dc`:
+  - Docs home: `docs-core/src/docs-home-*` + `docs-core/src/use-docs-home-*`, 3,876.
+  - Drive data layer: `drive-core/src/{use-drive-shell.tsx, use-drive-all-files.ts, use-drive-folder-listing-sync.ts, drive-main-pane.tsx, drive-workspace.tsx, use-drive-starred-list.ts, use-drive-shared-list.ts, use-drive-trash-list.ts}`, 2,125.
+  - `lib/offline/docs/*`, 2,615.
+  - `lib/offline/drive/*` without `upload/`, 2,814.
 - **Verify with:** `pnpm --dir packages/apps exec playwright test -c playwright.config.mjs` (offline project), PWA config.
 - **Parallel with:** none
 
