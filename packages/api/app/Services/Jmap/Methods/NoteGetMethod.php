@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\Methods;
 
-use App\Exceptions\ApiHttpException;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\Methods\Concerns\HandlesGetArguments;
@@ -39,35 +38,32 @@ final class NoteGetMethod implements JmapMethodInterface
         $tokens = $this->notes->notebookSyncTokens($username);
         $state = JmapAccountStateCodec::compose($tokens);
 
+        $projection = $this->getProjection($args);
         $ids = $this->requestedIds($args);
         $list = [];
         $notFound = [];
         if ($ids === null) {
             foreach (array_keys($tokens) as $notebookId) {
                 foreach ($this->notes->list($username, $notebookId, null, null)['list'] as $note) {
-                    $list[] = $note;
+                    $list[] = $projection->apply($note);
                 }
             }
             $this->guardGetAllBound($list);
         } else {
-            foreach ($ids as $id) {
-                try {
-                    $list[] = $this->notes->show($username, $id);
-                } catch (ApiHttpException $e) {
-                    if ($e->getStatusCode() === 404) {
-                        $notFound[] = $id;
+            foreach ($this->notes->showEach($username, $ids) as $id => $note) {
+                if ($note === null) {
+                    $notFound[] = $id;
 
-                        continue;
-                    }
-                    throw $e;
+                    continue;
                 }
+                $list[] = $projection->apply($note);
             }
         }
 
         return [
             'accountId' => $username,
             'state' => $state,
-            'list' => $this->projectProperties($list, $args),
+            'list' => $list,
             'notFound' => $notFound,
         ];
     }

@@ -32,7 +32,18 @@ final class CollabTextState
     /** The quoted tag of the object's current text. Metadata does not change it. */
     public function contentTag(CollabTextFields $app, CalendarObject $object): string
     {
-        return '"'.self::hashFields($app->textFields($object)).'"';
+        return self::contentTagOf($app->textFields($object));
+    }
+
+    /**
+     * The quoted tag of text fields the caller already has, so a read that parsed the
+     * object does not parse it a second time.
+     *
+     * @param  list<string>  $fields
+     */
+    public static function contentTagOf(array $fields): string
+    {
+        return '"'.self::hashFields($fields).'"';
     }
 
     public function objectEtag(CalendarObject $object): string

@@ -21,7 +21,6 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PDOException;
 
@@ -71,7 +70,7 @@ final class NoteRepository
                 $objectIds[] = $id;
             }
         }
-        $starredIds = $this->starredObjectIds($username, $objectIds);
+        $starredIds = NoteStarLookup::objectIds($username, $objectIds);
         $apiId = $this->notebooks->apiIdForInstance($instance);
         $notes = [];
         foreach ($objects as $object) {
@@ -113,6 +112,19 @@ final class NoteRepository
         $note['contentEtag'] = $this->yjsProjection->contentEtag($located['object']);
 
         return $note;
+    }
+
+    /**
+     * @param  list<string>  $noteIds
+     * @return \Generator<string, array<string, mixed>|null>
+     */
+    public function showEach(string $username, array $noteIds): \Generator
+    {
+        return (new NoteBatchReader($this->notebooks, $this->converter, $this->yjsProjection, $this->noteStates))->each(
+            $username,
+            $noteIds,
+            fn (string $id): ?CalendarObject => $this->findAccessibleNote($username, $id)['object'] ?? null,
+        );
     }
 
     /**
@@ -505,34 +517,6 @@ final class NoteRepository
     }
 
     /**
-     * @param  list<int|string>  $objectIds
-     * @return array<int, true>
-     */
-    private function starredObjectIds(string $username, array $objectIds): array
-    {
-        if ($objectIds === []) {
-            return [];
-        }
-
-        try {
-            $map = [];
-            NoteStar::query()
-                ->where('username', $username)
-                ->whereIn('calendar_object_id', $objectIds)
-                ->pluck('calendar_object_id')
-                ->each(function (mixed $id) use (&$map): void {
-                    $map[(int) $id] = true;
-                });
-
-            return $map;
-        } catch (QueryException $exception) {
-            $this->logAuxiliaryTableFailure('note_stars', $username, $exception);
-
-            return [];
-        }
-    }
-
-    /**
      * @return list<array<string, mixed>>
      */
     private function starredNotes(string $username, ?string $status): array
@@ -544,7 +528,7 @@ final class NoteRepository
                 ->orderBy('id')
                 ->get();
         } catch (QueryException $exception) {
-            $this->logAuxiliaryTableFailure('note_stars', $username, $exception);
+            NoteStarLookup::logFailure($username, $exception);
 
             return [];
         }
@@ -733,19 +717,6 @@ final class NoteRepository
         $home = str_starts_with($principal, 'principals/') ? substr($principal, strlen('principals/')) : $username;
 
         return 'calendars/'.$home.'/'.$instance->uri.'/'.$objectUri;
-    }
-
-    private function logAuxiliaryTableFailure(string $table, string $username, QueryException $exception): void
-    {
-        try {
-            Log::error('notes_auxiliary_table_failed', [
-                'table' => $table,
-                'username' => $username,
-                'message' => $exception->getMessage(),
-            ]);
-        } catch (\Throwable) {
-            // Logging is optional outside the Laravel container (e.g. unit tests).
-        }
     }
 
     /**

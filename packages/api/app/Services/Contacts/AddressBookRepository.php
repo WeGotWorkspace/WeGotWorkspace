@@ -171,6 +171,24 @@ final class AddressBookRepository
         );
     }
 
+    /**
+     * Every accessible book with the id this viewer sees it under, from one
+     * listing read. A batched card read uses it instead of asking per card.
+     *
+     * @return array<int, array{book: Addressbook, apiId: string}> keyed by numeric book id
+     */
+    public function accessibleBooksByNumericId(string $username): array
+    {
+        $books = [];
+        foreach ($this->collectionAccess->accessibleListings($username) as $listing) {
+            $bookId = (int) $listing->book->id;
+            // The first listing of a book wins, like viewerApiId().
+            $books[$bookId] ??= ['book' => $listing->book, 'apiId' => $this->collectionAccess->apiIdForListing($listing)];
+        }
+
+        return $books;
+    }
+
     /** @param array<string, mixed> $payload */
     private function assertShareePatchAllowed(array $payload): void
     {

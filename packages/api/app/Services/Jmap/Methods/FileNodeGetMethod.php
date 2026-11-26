@@ -52,6 +52,7 @@ final class FileNodeGetMethod implements JmapMethodInterface
             throw new JmapMethodException('invalidArguments', 'fetchParents must be a boolean.');
         }
 
+        $projection = $this->getProjection($args);
         $principal = $this->accounts->principalFor($username);
         $roots = $this->accounts->ensureAccountIndexed($username);
 
@@ -92,12 +93,12 @@ final class FileNodeGetMethod implements JmapMethodInterface
             }
         }
 
-        $list = $this->mapper->toFileNodes(array_values($nodes), $principal);
+        $list = $this->mapper->toFileNodes(array_values($nodes), $principal, $projection);
 
         return [
             'accountId' => $username,
             'state' => $this->syncState->current($username),
-            'list' => $this->projectProperties($list, $args),
+            'list' => $list,
             'notFound' => $notFound,
         ];
     }
