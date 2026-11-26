@@ -244,7 +244,7 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  const area = await areaAfterMove(table, newId, newParent);
+  const area = await areaAfterMove(table, username, row, newId, newParent);
   await table.put({ ...row, id: newId, parentPath: newParent, area, data: JSON.stringify(entry) });
   await table.delete(oldId);
 
@@ -262,7 +262,7 @@ export async function migrateDriveEntryPath(
       ...descendant,
       id: migratedId,
       parentPath: migratedParent,
-      area: isTrashTreePath(migratedId) ? "trash" : area,
+      area: isTrashTreePath(migratedId) ? "trash" : (area ?? descendant.area),
       data: JSON.stringify(migratedEntry),
     });
     await table.delete(descendant.id);
@@ -270,17 +270,27 @@ export async function migrateDriveEntryPath(
 }
 
 /**
- * `area` of a row a local move puts at `newId`: Trash by path, else its new
- * parent row's (a share keeps `share`), else the account root's from the path.
+ * `area` of a row a local move puts at `newId`: Trash by path; else its new
+ * parent row's; else, under an account root (home or a team drive), the
+ * root's; else the row keeps its own (a renamed share root stays `share`),
+ * unless it comes out of Trash.
  */
 async function areaAfterMove(
   table: ReturnType<typeof driveEntriesTable>,
+  username: string,
+  row: OfflineDriveEntryRow,
   newId: string,
   newParent: string,
-): Promise<DriveEntryArea> {
+): Promise<DriveEntryArea | undefined> {
   if (isTrashTreePath(newId)) return "trash";
   const parentArea = newParent ? (await table.get(newParent))?.area : undefined;
-  return parentArea && parentArea !== "trash" ? parentArea : areaFromCrawledPath(newId);
+  if (parentArea) return parentArea;
+  const parts = newParent.split("/");
+  const underAccountRoot =
+    parts.length === 2 &&
+    ((parts[0] === "users" && parts[1] === username) || parts[0] === "groups");
+  if (underAccountRoot || row.area === "trash") return areaFromCrawledPath(newId);
+  return row.area;
 }
 
 export async function searchDriveEntriesFromCache(

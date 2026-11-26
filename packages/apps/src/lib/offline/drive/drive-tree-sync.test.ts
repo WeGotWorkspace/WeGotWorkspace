@@ -1021,3 +1021,86 @@ describe("review fixes (#2063 C1)", () => {
     expect((await rowPaths()).filter((path) => path.endsWith(".md"))).toHaveLength(5);
   });
 });
+
+describe("moves that land on a path another node is leaving", () => {
+  const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+
+  it.each([
+    ["b → c listed first", ["d-b", "d-a"]],
+    ["a → b listed first", ["d-a", "d-b"]],
+  ])("the chain b → c, a → b in one batch (%s)", async (_label, order) => {
+    const server = standardTree();
+    const names: Record<string, string> = { "d-a": "a", "d-b": "b" };
+    for (const id of order) server.add(id, "r-home", names[id]!);
+    server.add("f-a1", "d-a", "a1.md");
+    server.add("f-b1", "d-b", "b1.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a/a1.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b/b1.md", new Blob(["BB"]));
+
+    server.move("d-b", { name: "c" });
+    server.move("d-a", { name: "b" });
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/b/a1.md")).toMatchObject({ nodeId: "f-a1" });
+    expect(await row("/users/ada/c/b1.md")).toMatchObject({ nodeId: "f-b1" });
+    expect(await row("/users/ada/c/a1.md")).toBeUndefined();
+    expect(await row("/users/ada/b/b1.md")).toBeUndefined();
+    expect(await blobSize("users/ada/b/a1.md")).toBe(1);
+    expect(await blobSize("users/ada/c/b1.md")).toBe(2);
+  });
+
+  it("a folder swap keeps each unlisted readme with its node", async () => {
+    const server = standardTree();
+    server.add("d-fa", "r-home", "FA");
+    server.add("d-fb", "r-home", "FB");
+    server.add("f-ra", "d-fa", "readme.md");
+    server.add("f-rb", "d-fb", "readme.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/FA/readme.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/FB/readme.md", new Blob(["BB"]));
+
+    server.move("d-fa", { name: "FB" });
+    server.move("d-fb", { name: "FA" });
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/FA/readme.md")).toMatchObject({ nodeId: "f-rb" });
+    expect(await row("/users/ada/FB/readme.md")).toMatchObject({ nodeId: "f-ra" });
+    expect(await blobSize("users/ada/FA/readme.md")).toBe(2);
+    expect(await blobSize("users/ada/FB/readme.md")).toBe(1);
+  });
+
+  it("a file swap keeps each document's page setup on the path it landed on", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await connect(server);
+    await syncDriveTree(username);
+    writeDocsPageSetupOverride("/users/ada/a.md", { format: "a4", orientation: "portrait" });
+    writeDocsPageSetupOverride("/users/ada/b.md", { format: "a4", orientation: "landscape" });
+
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    await syncDriveInboundFromFileNodes(username);
+
+    const overrides = readDocsPageSetupOverrides();
+    expect(overrides["/users/ada/b.md"]).toMatchObject({ orientation: "portrait" });
+    expect(overrides["/users/ada/a.md"]).toMatchObject({ orientation: "landscape" });
+  });
+
+  it("a local rename of a shared-with-me root keeps it and its child share", async () => {
+    await upsertDriveEntry(
+      username,
+      { ...staleEntry("/users/bob/Plans", "s-root"), type: "dir" },
+      "share",
+    );
+    await upsertDriveEntry(username, staleEntry("/users/bob/Plans/c.md", "s-c"), "share");
+
+    await migrateDriveEntryPath(username, "/users/bob/Plans", "/users/bob/Plans 2026");
+
+    expect(await row("/users/bob/Plans 2026")).toMatchObject({ area: "share" });
+    expect(await row("/users/bob/Plans 2026/c.md")).toMatchObject({ area: "share" });
+  });
+});
