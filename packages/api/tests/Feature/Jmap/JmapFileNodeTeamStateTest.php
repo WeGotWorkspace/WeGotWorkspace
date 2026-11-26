@@ -90,7 +90,7 @@ final class JmapFileNodeTeamStateTest extends WgwDatabaseTestCase
         $this->names('bob');
         $seq = app(FileNodeIndexService::class)->currentSeq();
         // The grant-only state of #1926, as main issued it before #2063.
-        $grantOnly = $seq.'.'.JmapPushEventId::hash('FileNode', app(FileNodeAccountSupport::class)->memberGrantPairs('bob'));
+        $grantOnly = $seq.'.'.JmapPushEventId::hash('FileNode', app(FileNodeAccountSupport::class)->accountRootsAndGrantPairs('bob')['grantPairs']);
 
         $this->assertCannotCalculateChanges('bob', $grantOnly);
         $this->assertCannotCalculateChanges('bob', (string) $seq);
@@ -203,6 +203,30 @@ final class JmapFileNodeTeamStateTest extends WgwDatabaseTestCase
         $disk->move('users/alice/Plans', 'users/alice/.notes/Plans');
         $index->recordMove('users/alice/Plans', 'users/alice/.notes/Plans');
         $this->assertSame([$folderId], $this->changes('alice', $backState)['updated']);
+    }
+
+    public function test_folder_moved_out_of_notes_beyond_sight_is_destroyed_only(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('groups/team/.notes/Plans/a.md', 'a');
+        $index = app(FileNodeIndexService::class);
+        $index->recordCreate('groups/team/.notes/Plans/a.md');
+        $folderId = (string) $this->nodeAt('groups/team/.notes/Plans')->node_id;
+        $childId = (string) $this->nodeAt('groups/team/.notes/Plans/a.md')->node_id;
+        $this->names('bob');
+        $bobState = $this->state('bob');
+
+        // Out of .notes onto a list path, but into alice's home, which bob cannot see.
+        $disk->move('groups/team/.notes/Plans', 'users/alice/Plans');
+        $index->recordMove('groups/team/.notes/Plans', 'users/alice/Plans');
+
+        $bob = $this->changes('bob', $bobState);
+        $destroyed = $bob['destroyed'];
+        sort($destroyed);
+        $expected = [$folderId, $childId];
+        sort($expected);
+        $this->assertSame($expected, $destroyed);
+        $this->assertSame([], $bob['updated']);
     }
 
     public function test_folder_restored_from_trash_into_a_team_reports_its_descendants(): void
