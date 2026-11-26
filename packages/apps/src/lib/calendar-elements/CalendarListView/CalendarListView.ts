@@ -166,6 +166,7 @@ export class CalendarListView extends CalendarViewBase {
           .location=${event.data.location ?? ""}
           .recurring=${isRecurring}
           .exception=${isException}
+          ?video=${event.data.hasMeeting === true}
           ?past=${isPast}
           .rsvp=${
             event.participationStatus === "needs-action" ||

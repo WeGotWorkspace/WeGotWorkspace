@@ -1097,6 +1097,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?past=${timelineEvent.past}
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
+        ?video=${timelineEvent.hasMeeting}
         .rsvp=${timelineEvent.rsvp}
         .overlay=${timelineEvent.overlayKind ?? ""}
         .summary=${timelineEvent.summary}

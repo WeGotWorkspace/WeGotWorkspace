@@ -35,6 +35,7 @@ export type CalendarTimelineEvent = TimelineEvent & {
   past: boolean;
   recurring: boolean;
   exception: boolean;
+  hasMeeting: boolean;
   rsvp: "" | "needs-action" | "tentative";
   locked?: boolean;
   overlayKind?: "task" | "availability";
@@ -111,6 +112,7 @@ export function mapTimelineOccurrenceEvents(
       past: Temporal.PlainDateTime.compare(displayEnd, args.now) <= 0,
       recurring: isCalendarEventRecurring(event),
       exception: isCalendarEventException(event),
+      hasMeeting: event.data.hasMeeting === true,
       rsvp: timelineRsvp(event),
       locked: isRenderOnlyOverlayEvent(event),
       overlayKind: event.overlayKind,

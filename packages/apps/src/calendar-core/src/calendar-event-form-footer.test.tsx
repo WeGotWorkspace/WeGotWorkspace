@@ -92,4 +92,10 @@ describe("CalendarEventFormFooter", () => {
       true,
     );
   });
+
+  it("shows the given Join button in the start slot next to delete", () => {
+    renderFooter({ meetJoin: <button type="button">Join</button> });
+    expect(screen.getByRole("button", { name: "Join" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: labels.delete })).toBeTruthy();
+  });
 });

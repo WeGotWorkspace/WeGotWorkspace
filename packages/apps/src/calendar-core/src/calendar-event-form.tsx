@@ -17,6 +17,7 @@ import { CalendarEventFormSecondary } from "@/calendar-core/src/calendar-event-f
 import { CalendarMeetChannelEmailDialog } from "@/calendar-core/src/calendar-meet-channel-email-dialog";
 import { useCalendarMeetChannelEmailCollision } from "@/calendar-core/src/use-calendar-meet-channel-email";
 import { calendarRespondStatus } from "@/calendar-core/src/calendar-rsvp-actions";
+import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
 import { CalendarEventFormFooter } from "@/calendar-core/src/calendar-event-form-footer";
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
@@ -199,8 +200,14 @@ export function CalendarEventForm({
   const answersAtOnce = invitationMode || (autosave && inviteeCanRespond);
   const showInvitationRsvp = answersAtOnce && Boolean(onRsvp);
   const showSaveCancel = !autosave && !invitationMode && (!readOnly || showInviteeRsvp);
+  // Same Join button as the read-only popover, in the footer, whenever there is a meeting URL.
+  const showMeetJoin = mode === "edit" && Boolean(form.meetingUrl.trim());
   const showFooter =
-    showSaveCancel || showInvitationRsvp || showInviteeRsvp || (Boolean(onDelete) && !readOnly);
+    showSaveCancel ||
+    showInvitationRsvp ||
+    showInviteeRsvp ||
+    showMeetJoin ||
+    (Boolean(onDelete) && !readOnly);
   const calendarPickerInteractive = invitationMode || inviteeCanRespond;
   const [draftCalendarId, setDraftCalendarId] = useState(form.calendarId);
   const [draftRsvp, setDraftRsvp] = useState<CalendarSchedulingRespondStatus | "">(
@@ -453,6 +460,17 @@ export function CalendarEventForm({
             onRsvp={onRsvp}
             onDelete={onDelete}
             onDismiss={dismiss}
+            meetJoin={
+              showMeetJoin ? (
+                <CalendarMeetJoin
+                  href={form.meetingUrl}
+                  labels={labels}
+                  workspaceOrigin={workspaceOrigin}
+                  meetOperations={meetOperations}
+                  onJoin={onJoinMeeting}
+                />
+              ) : undefined
+            }
           />
         ) : null}
       </form>
