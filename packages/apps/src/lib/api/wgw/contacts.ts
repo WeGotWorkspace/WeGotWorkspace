@@ -177,6 +177,22 @@ export async function getCard(
   return toContactCard(card);
 }
 
+/**
+ * One ContactCard/get page of cards by id. `paced` waits for a background sync
+ * slot first, for every page after a run's first. Ids the server no longer has
+ * are left out.
+ */
+export async function getCards(
+  cardIds: readonly string[],
+  opts?: { signal?: AbortSignal; paced?: boolean },
+): Promise<ContactCard[]> {
+  if (cardIds.length === 0) return [];
+  if (opts?.paced) await backgroundSyncPacer().acquire(opts.signal);
+  const { contacts, accountId } = await connectedContacts();
+  const response = await contacts.getContactCards(accountId, [...cardIds]);
+  return response.list.map(toContactCard);
+}
+
 export async function addressBookChanges(
   sinceState: string,
   _opts?: { signal?: AbortSignal },

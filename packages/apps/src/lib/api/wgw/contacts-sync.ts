@@ -5,6 +5,7 @@ import {
   contactCardChanges,
   getAddressBook,
   getCard,
+  getCards,
   isCannotCalculateChanges,
   isContactsNotFound,
   listAddressBooks,
@@ -27,6 +28,7 @@ import {
   writeSyncToken,
 } from "@/lib/offline/contacts/contacts-offline-store";
 import { runScopedInbound, type ScopedInboundBinding } from "@/lib/offline/core/inbound-sync";
+import { CONTACT_CARD_GET_MAX_IDS_PER_REQUEST } from "@/lib/jmap-client";
 
 /** Envelope empty compose — REST used `"0"`, which cannotCalculateChanges. */
 const INITIAL_JMAP_STATE = "0:";
@@ -56,17 +58,56 @@ function contactCardsInbound(
   const readPending = async () => {
     pending = new Set(await listPendingContactCardIds(username));
   };
+  // Changed cards are fetched a page at a time, not one request each: an
+  // import of thousands of cards elsewhere would otherwise cost a request per
+  // card. Each page holds the next ids in the order the run applies them, so
+  // the list still fills up page by page. Every book shares the answers.
+  const queued: string[] = [];
+  const queuedAt = new Map<string, number>();
+  const requested = new Set<string>();
+  const fetched = new Map<string, ContactCard>();
+  const queue = (changes: JmapChangesResponse) => {
+    for (const id of [...changes.created, ...changes.updated]) {
+      if (pending.has(id) || queuedAt.has(id)) continue;
+      queuedAt.set(id, queued.length);
+      queued.push(id);
+    }
+  };
+  const fetchPageFrom = async (id: string) => {
+    const page: string[] = [];
+    for (let index = queuedAt.get(id) ?? 0; index < queued.length; index += 1) {
+      const next = queued[index]!;
+      if (requested.has(next)) continue;
+      page.push(next);
+      if (page.length === CONTACT_CARD_GET_MAX_IDS_PER_REQUEST) break;
+    }
+    const paced = requested.size > 0;
+    for (const next of page) requested.add(next);
+    for (const card of await getCards(page, { signal: opts?.signal, paced })) {
+      fetched.set(card.id, card);
+    }
+  };
   return {
     // No token yet: changes since the empty state, as before (not a full list).
     readToken: async (bookId) => (await readSyncToken(username, bookId)) ?? INITIAL_JMAP_STATE,
     writeToken: (bookId, token) => writeSyncToken(username, bookId, token),
-    changes: (_bookId, since) => contactCardChanges(since, opts),
+    changes: async (_bookId, since) => {
+      const changes = await contactCardChanges(since, opts);
+      queue(changes);
+      return changes;
+    },
     isCannotCalculateChanges,
     list: (bookId) => listCards({ addressBookId: bookId, signal: opts?.signal }),
     currentState: () => currentTypeState("ContactCard"),
     rowId: (card) => card.id,
     // A pending card is not fetched: its ingest only reports the conflict.
-    fetch: async (id) => (pending.has(id) ? ({ id } as ContactCard) : getCard(id, opts)),
+    fetch: async (id) => {
+      if (pending.has(id)) return { id } as ContactCard;
+      if (!queuedAt.has(id)) return getCard(id, opts);
+      if (!requested.has(id)) await fetchPageFrom(id);
+      // Asked for and not returned: deleted since its change was listed.
+      return fetched.get(id) ?? null;
+    },
     readCached: async () => {
       await readPending();
       const cached = await readContactsBootstrapFromCache(username);
