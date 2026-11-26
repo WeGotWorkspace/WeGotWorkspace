@@ -531,6 +531,17 @@ export async function listFailedContactOutbox(username: string): Promise<Offline
 }
 
 /** Ids of cards with unsynced local changes (drives the pending-sync badge). */
+/**
+ * Whether one card has unsynced local edits. A single read by id: the
+ * `pendingSync` flag is a boolean, which IndexedDB cannot index, so listing
+ * every pending id scans the whole table.
+ */
+export async function isContactCardPending(username: string, cardId: string): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await contactsCardsTable(db).get(cardId);
+  return row?.pendingSync === true;
+}
+
 export async function listPendingContactCardIds(username: string): Promise<string[]> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const rows = await contactsCardsTable(db)

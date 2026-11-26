@@ -8,6 +8,7 @@ import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import {
   enqueueCoalescedContactUpdate,
   enqueueOutboxMutation,
+  isContactCardPending,
   listOutboxMutations,
   readContactsBootstrapFromCache,
   upsertContactCardInCache,
@@ -85,6 +86,15 @@ describe("contacts offline store", () => {
 
     const cached = await readContactsBootstrapFromCache(username);
     expect(cached?.data.cards[0]?.name?.full).toBe("Bob Local");
+  });
+
+  it("tells a card with unsynced local edits apart from a synced or unknown one", async () => {
+    const card = bootstrap.data.cards[0] as ContactCard;
+    await upsertContactCardInCache(username, card, false);
+    expect(await isContactCardPending(username, card.id)).toBe(false);
+    await upsertContactCardInCache(username, card, true);
+    expect(await isContactCardPending(username, card.id)).toBe(true);
+    expect(await isContactCardPending(username, "no-such-card")).toBe(false);
   });
 
   it("coalesces offline update rows for the same cardId", async () => {
