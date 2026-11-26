@@ -51,6 +51,32 @@ final class AvailabilityCalculator
             return null;
         }
 
+        return $this->compute($owner, $weekStarts, $excludeUid, false);
+    }
+
+    /**
+     * The same busy periods for the owner's public availability link (#2405):
+     * the Team switch is not consulted (the caller checks the link), every
+     * period is time only, and the same include, Free and cancelled rules
+     * apply. Never returns a title or location.
+     *
+     * @param  list<int>  $weekStarts  Unix seconds, each a Monday 00:00 UTC
+     *
+     * @throws InvalidArgumentException when a week start is not a Monday 00:00 UTC or there are too many
+     */
+    public function publicBusyPeriods(string $owner, array $weekStarts): AvailabilityResult
+    {
+        $weekStarts = array_values(array_unique($weekStarts));
+        self::assertWeeks($weekStarts);
+
+        return $this->compute($owner, $weekStarts, null, true);
+    }
+
+    /**
+     * @param  list<int>  $weekStarts
+     */
+    private function compute(string $owner, array $weekStarts, ?string $excludeUid, bool $timeOnly): AvailabilityResult
+    {
         $startedAt = hrtime(true);
         $sources = $this->collections->availabilitySourceInstances($owner);
         $fingerprint = $this->cache->fingerprint(self::flatten($sources));
@@ -77,6 +103,7 @@ final class AvailabilityCalculator
             $weeks,
             $this->settings->prefs($owner),
             $excludeUid === null ? null : $this->cache->uidHmac($excludeUid),
+            $timeOnly,
         );
         $this->logIfSlow($startedAt, count(self::flatten($sources)), $objects, count($result->entries));
 

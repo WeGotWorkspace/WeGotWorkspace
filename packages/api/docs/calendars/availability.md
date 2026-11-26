@@ -92,3 +92,17 @@ The outbox free/busy report (`POST` a `VFREEBUSY` `METHOD:REQUEST` to `/calendar
 - Cache: file store `availability` under `storage/framework/cache/availability`, one entry per (owner, week, fingerprint), 5 minutes.
 - `php artisan wgw:availability:prune-cache` deletes expired entries; the scheduler runs it hourly.
 - Logs: `calendar.availability.object_skipped` (an object that could not be read; `reason` `recurrence_limit` for a series over the instance limit), `calendar.availability.slow` (a call over 500 ms).
+
+## Public availability link
+
+Epic #2404. Architecture: [docs/architecture/calendar-availability.md](../../../../docs/architecture/calendar-availability.md#public-availability-link).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/calendars/availability/public-link` | `{ "enabled": false }`, or `{ "enabled": true, "httpsUrl", "webcalUrl" }` |
+| POST | `/calendars/availability/public-link` | Turn on. 201 when created, 200 with the same link when already on |
+| PUT | `/calendars/availability/public-link` | Make a new link; the old one stops. 409 while off |
+| DELETE | `/calendars/availability/public-link` | Turn off. 204, also when already off |
+| GET | `/calendars/availability/feeds/{token}` | Public `text/calendar` feed of busy blocks. No sign-in. Optional `.ics` suffix |
+
+The feed returns 404 for an unknown, revoked, replaced or disabled-owner token, 429 with `Retry-After` over a limit, 503 with `Retry-After` when some busy time could not be worked out, and 304 for a matching `If-None-Match`.

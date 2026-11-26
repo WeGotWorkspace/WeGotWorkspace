@@ -12862,6 +12862,138 @@
         "x-wgw-access": "user"
       }
     },
+    "/calendars/availability/public-link": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Read my public availability link",
+        "description": "Whether the caller's public availability link is on and, when it is, its URLs. Off until turned on.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The link state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarAvailabilityPublicLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "post": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Turn on my public availability link",
+        "description": "Creates the link, or returns the existing one unchanged (200). Never replaces a live token; use PUT for that. Independent of the Team switch.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The link was already on",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarAvailabilityPublicLink"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The link was created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarAvailabilityPublicLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "put": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Make a new public availability link",
+        "description": "Replaces the token in one update; the old URL answers 404 at once. 409 while the link is off.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The new link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarAvailabilityPublicLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/JmapConflict"
+          }
+        },
+        "x-wgw-access": "user"
+      },
+      "delete": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Turn off my public availability link",
+        "description": "Removes the link; its URL answers 404 at once. Idempotent.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The link is off"
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
     "/calendars/{calendarId}/feed": {
       "get": {
         "tags": [
@@ -13043,6 +13175,68 @@
           },
           "429": {
             "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-wgw-access": "guest"
+      }
+    },
+    "/calendars/availability/feeds/{token}": {
+      "get": {
+        "tags": [
+          "Calendars"
+        ],
+        "summary": "Download a public availability feed",
+        "description": "Unauthenticated VCALENDAR of the link owner's busy time: VEVENTs with SUMMARY Busy, UTC start and end, last week to 26 weeks ahead, overlapping blocks merged. No title, place, person, note or event UID. An optional .ics suffix on the token is accepted. Supports ETag and If-None-Match. Rate-limited per address and per link. Unknown, revoked, replaced and disabled-owner tokens all answer the same 404; 503 when some busy time could not be worked out.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque link token. An optional .ics suffix is accepted."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "VCALENDAR of busy blocks",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "403": {
+            "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy time could not be worked out completely",
             "content": {
               "application/json": {
                 "schema": {

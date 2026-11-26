@@ -167,5 +167,16 @@
       "list": { "type": "array", "items": { "$ref": "#/components/schemas/CalendarAvailabilityPerson" } },
       "notFound": { "type": "array", "items": { "type": "string" } }
     }
+  },
+  "CalendarAvailabilityPublicLink": {
+    "type": "object",
+    "required": ["enabled"],
+    "additionalProperties": false,
+    "description": "The caller's public availability link (#2405). `enabled: false` carries no URLs. The link shows only busy start and end.",
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "httpsUrl": { "type": "string", "description": "Public feed URL, secret token included. Anyone holding it can read the person's busy times." },
+      "webcalUrl": { "type": "string", "description": "The same URL with the webcal scheme, for Apple, Google and Outlook subscribe flows." }
+    }
   }
 }

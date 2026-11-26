@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RevokeController;
 use App\Http\Controllers\Api\V1\Auth\TokenController;
+use App\Http\Controllers\Api\V1\Calendars\AvailabilityPublicLinkController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarAvailabilityController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarEventImportController;
 use App\Http\Controllers\Api\V1\Calendars\CalendarFeedsController;
@@ -127,6 +128,8 @@ Route::get('calendar/rsvp/{token}', [CalendarRsvpController::class, 'show'])
 Route::post('calendar/rsvp/{token}', [CalendarRsvpController::class, 'respond'])
     ->where('token', '[A-Za-z0-9]+');
 Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicShow'])
+    ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
+Route::get('calendars/availability/feeds/{token}', [AvailabilityPublicLinkController::class, 'publicShow'])
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
@@ -308,6 +311,10 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
             ->where('id', '[A-Za-z0-9-]+');
         Route::get('calendars/availability', [CalendarAvailabilityController::class, 'show']);
         Route::put('calendars/availability', [CalendarAvailabilityController::class, 'update']);
+        Route::get('calendars/availability/public-link', [AvailabilityPublicLinkController::class, 'show']);
+        Route::post('calendars/availability/public-link', [AvailabilityPublicLinkController::class, 'store']);
+        Route::put('calendars/availability/public-link', [AvailabilityPublicLinkController::class, 'regenerate']);
+        Route::delete('calendars/availability/public-link', [AvailabilityPublicLinkController::class, 'destroy']);
         Route::get('calendars/reply-mailbox', [CalendarReplyMailboxController::class, 'show']);
         Route::put('calendars/reply-mailbox', [CalendarReplyMailboxController::class, 'update']);
         Route::post('calendars/reply-mailbox/test', [CalendarReplyMailboxController::class, 'test']);
