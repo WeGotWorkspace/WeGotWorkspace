@@ -1,5 +1,4 @@
-import { hasLinks } from "@/lib/linkify/linkify-text";
-import { LinkifiedText } from "@/lib/linkify/linkified-text";
+import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import {
   useLayoutEffect,
   useMemo,
@@ -38,7 +37,6 @@ import { DropdownMenu, type DropdownMenuItemProps } from "@/menu-dropdown/src/dr
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { Switch } from "@/ui/switch";
-import { TextareaAutosize } from "@/ui/textarea-autosize";
 import { cn } from "@/lib/utils";
 import { TagGroup, type TagItem } from "@/tag/src/tag";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
@@ -623,25 +621,18 @@ export function ContactsDetailView({
       {locked && !draft.notes.trim() ? null : (
         <DetailFieldList className="contacts-detail-view__fields">
           <DetailFieldRow icon={<StickyNote />} title={labels.sectionNotes} stacked>
-            {locked && hasLinks(draft.notes) ? (
-              <LinkifiedText
-                className="contacts-detail-view__notes contacts-detail-view__notes--read"
-                text={draft.notes}
-              />
-            ) : (
-              <TextareaAutosize
-                id="contact-notes"
-                className="textarea textarea--size-sm textarea--ghost contacts-detail-view__notes"
-                value={draft.notes}
-                onChange={(event) => onDraftChange({ notes: event.target.value })}
-                placeholder={labels.notesPlaceholder}
-                aria-label={labels.sectionNotes}
-                readOnly={locked}
-                minRows={1}
-                // Grows with the notes, however long: the pane scrolls, not the field.
-                maxRows={Number.POSITIVE_INFINITY}
-              />
-            )}
+            <LinkifiedTextarea
+              id="contact-notes"
+              className="textarea textarea--size-sm textarea--ghost contacts-detail-view__notes"
+              value={draft.notes}
+              onChange={(event) => onDraftChange({ notes: event.target.value })}
+              placeholder={labels.notesPlaceholder}
+              aria-label={labels.sectionNotes}
+              readOnly={locked}
+              minRows={1}
+              // Grows with the notes, however long: the pane scrolls, not the field.
+              maxRows={Number.POSITIVE_INFINITY}
+            />
           </DetailFieldRow>
         </DetailFieldList>
       )}
