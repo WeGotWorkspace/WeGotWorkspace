@@ -42,6 +42,7 @@ final class FileNodeIndexService
         private readonly FileNodeRootMarkers $markers,
         private readonly FileNodeSequence $seq,
         private readonly FileNodeDepartures $departures,
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     // ---------------------------------------------------------------
@@ -292,6 +293,21 @@ final class FileNodeIndexService
     }
 
     /**
+     * A change that is not content or location (a tag edit): bumps the node's
+     * change_seq so FileNode/changes and live updates report it.
+     */
+    public function recordMetadataChange(JmapFileNode $node): JmapFileNode
+    {
+        return $this->markers->batch(function () use ($node): JmapFileNode {
+            $node->change_seq = $this->seq->next();
+            $node->save();
+            $this->markers->touch((string) $node->storage_key);
+
+            return $node;
+        });
+    }
+
+    /**
      * DAV COPY: the destination has identical bytes, so the destination rows
      * for the whole subtree are inserted in one bulk statement that maps the
      * source storage_key prefix onto the destination and carries size_bytes
@@ -354,6 +370,7 @@ final class FileNodeIndexService
         foreach (array_chunk($rows, 500) as $chunk) {
             JmapFileNode::query()->insert($chunk);
         }
+        $this->tags->copy($idMap);
         foreach ($pending as $destKey) {
             $node = $this->liveByKey($destKey);
             if ($node !== null) {
@@ -471,6 +488,7 @@ final class FileNodeIndexService
             $node->deleted_at = now();
             $node->change_seq = $this->seq->next();
             $node->save();
+            $this->tags->dropFor([(string) $node->node_id]);
         }
         $this->markers->touch($key, withDescendantShares: true);
         $this->syncSearch($key, deleted: true);
