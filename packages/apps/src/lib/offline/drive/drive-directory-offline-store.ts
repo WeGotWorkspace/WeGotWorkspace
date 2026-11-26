@@ -12,7 +12,13 @@ import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-s
 import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
-import { fileExtension, isDotName, type DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
+import {
+  areaFromCrawledPath,
+  fileExtension,
+  isDotName,
+  isTrashTreePath,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
 
 const DRIVE_BOOTSTRAP_META_KEY = "drive:bootstrap";
 
@@ -238,7 +244,17 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  await table.put({ ...row, id: newId, parentPath: newParent, data: JSON.stringify(entry) });
+  // Trash by path, else the new parent's area (account roots have no row), else the path's.
+  const movedArea: DriveEntryArea = isTrashTreePath(newId)
+    ? "trash"
+    : ((await table.get(newParent))?.area ?? areaFromCrawledPath(newId));
+  await table.put({
+    ...row,
+    id: newId,
+    area: movedArea,
+    parentPath: newParent,
+    data: JSON.stringify(entry),
+  });
   await table.delete(oldId);
 
   const descendants = await table
@@ -254,6 +270,7 @@ export async function migrateDriveEntryPath(
     await table.put({
       ...descendant,
       id: migratedId,
+      area: movedArea,
       parentPath: migratedParent,
       data: JSON.stringify(migratedEntry),
     });

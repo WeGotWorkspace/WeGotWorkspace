@@ -24,6 +24,7 @@ import * as Y from "yjs";
 import { docsCollabIndexedDbKey, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import {
+  migrateDriveEntryPath,
   readDriveEntryFromCache,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
@@ -775,6 +776,71 @@ describe("syncDriveTree", () => {
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());
     spy.mockRestore();
+  });
+
+  it("the crawl takes its token before it runs, so a change made during it is not lost", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async () => {
+      server.add("late", "r-home", "late.md");
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+    });
+
+    await syncDriveTree(username);
+    spy.mockRestore();
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/late.md")).toMatchObject({ nodeId: "late" });
+  });
+});
+
+describe("area of rows below a moved folder", () => {
+  it("a folder moved into .Trash gives its unlisted child trash", async () => {
+    const server = standardTree();
+    server.add("d-dir", "r-home", "Proj");
+    server.add("d-dir-c", "d-dir", "c.md");
+    await connect(server);
+    await syncDriveTree(username);
+    expect(await row("/users/ada/Proj/c.md")).toMatchObject({ area: "home" });
+
+    server.add("t-trash", "r-home", ".Trash");
+    server.move("d-dir", { parentId: "t-trash" });
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/.Trash/Proj")).toMatchObject({ area: "trash" });
+    expect(await row("/users/ada/.Trash/Proj/c.md")).toMatchObject({
+      nodeId: "d-dir-c",
+      area: "trash",
+    });
+  });
+
+  it("a home folder moved into a team drive gives its unlisted child group", async () => {
+    const server = standardTree();
+    server.add("d-dir", "r-home", "Report");
+    server.add("d-dir-c", "d-dir", "data.csv");
+    await connect(server);
+    await syncDriveTree(username);
+
+    server.move("d-dir", { parentId: "r-team" });
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/groups/team/Report")).toMatchObject({ area: "group" });
+    expect(await row("/groups/team/Report/data.csv")).toMatchObject({ area: "group" });
+  });
+
+  it("a local move out of .Trash gives the descendants home again", async () => {
+    await upsertDriveEntry(
+      username,
+      { ...staleEntry("/users/ada/.Trash/Proj", "d-dir"), type: "dir" },
+      "trash",
+    );
+    await upsertDriveEntry(username, staleEntry("/users/ada/.Trash/Proj/c.md", "d-dir-c"), "trash");
+
+    await migrateDriveEntryPath(username, "/users/ada/.Trash/Proj", "/users/ada/Proj");
+
+    expect(await row("/users/ada/Proj")).toMatchObject({ area: "home" });
+    expect(await row("/users/ada/Proj/c.md")).toMatchObject({ area: "home" });
   });
 });
 

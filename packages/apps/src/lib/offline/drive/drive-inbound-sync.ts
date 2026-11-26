@@ -33,6 +33,7 @@ import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/driv
 import {
   areaForRoot,
   isHiddenTreePath,
+  areaFromCrawledPath,
   isTrashTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
@@ -198,7 +199,7 @@ async function applyFileNodeChanges(
     const finalPaths = await finalPathsOf(username, ordered, cachePaths, session, signal);
     const batchIds = new Set(ordered.map((node) => node.id));
     // Each moved node's cached path, so the rows still under it follow afterwards.
-    const moves: Array<{ from: string; to: string }> = [];
+    const moves: Array<{ from: string; to: string; area?: DriveEntryArea }> = [];
     for (const node of ordered) {
       const path = finalPaths.get(node.id);
       if (!path) {
@@ -222,16 +223,13 @@ async function applyFileNodeChanges(
         blocked = true;
         continue;
       }
+      const area = await areaOfAppliedNode(username, node, path, cachePaths, tree);
       if (placement === "moved" && previous) {
-        moves.push({ from: normalizePath(previous), to: normalizePath(path) });
+        moves.push({ from: normalizePath(previous), to: normalizePath(path), area });
       }
       const entry = fileNodeToDirectoryEntry(path, node);
       docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
-      await upsertDriveEntry(
-        username,
-        entry,
-        await areaOfAppliedNode(username, node, path, cachePaths, tree),
-      );
+      await upsertDriveEntry(username, entry, area);
       await stampDocsAvailabilityNodeIds(username, [{ path, nodeId: node.id }]);
       await moveDocsAvailabilityForNode(username, node.id, path);
       cachePaths.set(node.id, path);
@@ -304,7 +302,9 @@ async function areaOfAppliedNode(
   if (rootPath) return areaForRoot(path, { kind: "account", path: rootPath });
   const parentPath = cachePaths.get(node.parentId);
   if (parentPath) return (await driveRowAt(username, parentPath))?.area;
-  return tree.firstSyncDone ? "share" : undefined;
+  if (!tree.firstSyncDone) return undefined;
+  // Without a root map (a pass that never recorded one) a parentless-in-cache node is not known to be a share.
+  return tree.roots.size > 0 ? "share" : areaFromCrawledPath(path);
 }
 
 /** What Docs needs to know about one placed node: moved from `previous`, or upserted. */
@@ -405,7 +405,6 @@ async function placeNodeAtPath(
     await deleteDriveEntryByPath(username, occupant.id);
   }
   await migrateNodeSidecars(username, oldId, nextId);
-  moveDocsPageSetupOverride(`/${oldId}`, `/${nextId}`);
   const table = driveEntriesTable(accountDb(username));
   if ((await table.get(oldId))?.nodeId === node.id) await table.delete(oldId);
   cachePaths.set(node.id, `/${nextId}`);
@@ -416,16 +415,19 @@ async function placeNodeAtPath(
  * After every node of a batch is placed: for each moved node's old path,
  * longest first, every other cached row still under it (descendants the batch
  * did not list, upload placeholders) gets the new prefix, with its blob and
- * pins, and the old row goes.
+ * pins, and the old row goes. A moved row takes `trash` under `.Trash`, else
+ * the area decided for the moved node. Docs page setup follows in the same
+ * order, so a nested rename finds the inner key still at its old path.
  */
 async function moveRowsUnderMovedPaths(
   username: string,
-  moves: readonly { from: string; to: string }[],
+  moves: readonly { from: string; to: string; area?: DriveEntryArea }[],
   batchIds: ReadonlySet<string>,
 ): Promise<void> {
   const table = driveEntriesTable(accountDb(username));
   const ordered = [...moves].sort((a, b) => b.from.length - a.from.length);
-  for (const { from, to } of ordered) {
+  for (const { from, to, area } of ordered) {
+    moveDocsPageSetupOverride(`/${from}`, `/${to}`);
     const under = await table.where("id").startsWith(`${from}/`).toArray();
     for (const row of under) {
       if (row.nodeId && batchIds.has(row.nodeId)) continue;
@@ -435,6 +437,7 @@ async function moveRowsUnderMovedPaths(
       await table.put({
         ...row,
         id,
+        area: isTrashTreePath(id) ? "trash" : (area ?? row.area),
         parentPath,
         data: JSON.stringify({ ...entry, path: `/${id}` }),
       });
