@@ -24,7 +24,9 @@ export type DriveContentFailure = {
 
 export type DriveContentFailures = Readonly<Record<string, DriveContentFailure>>;
 
-type RunState = { queued: Set<string> };
+type RunState = { id: number; queued: Set<string> };
+
+let nextRunId = 0;
 
 const runs = new Map<string, RunState>();
 const listeners = new Set<() => void>();
@@ -45,20 +47,33 @@ export function subscribeDriveContentRunState(listener: () => void): () => void 
   };
 }
 
-/** Starts a run for `paths`; replaces a previous run's queue for this account. */
-export function beginDriveContentRun(username: string, paths: readonly string[]): void {
-  runs.set(username, { queued: new Set(paths.map(key)) });
+/**
+ * Starts a run for `paths`; replaces a previous run's queue for this account.
+ * Returns the run's id: finish and end calls from an older run pass it and do
+ * nothing once a newer run owns the account's queue.
+ */
+export function beginDriveContentRun(username: string, paths: readonly string[]): number {
+  const id = ++nextRunId;
+  runs.set(username, { id, queued: new Set(paths.map(key)) });
   emit();
+  return id;
+}
+
+/** False once a newer run has replaced `runId` (or it ended). */
+export function isCurrentDriveContentRun(username: string, runId: number): boolean {
+  return runs.get(username)?.id === runId;
 }
 
 /** One file is done (stored, failed or skipped): it no longer spins. */
-export function finishDriveContentRunItem(username: string, path: string): void {
+export function finishDriveContentRunItem(username: string, path: string, runId?: number): void {
   const run = runs.get(username);
+  if (runId !== undefined && run?.id !== runId) return;
   if (run?.queued.delete(key(path))) emit();
 }
 
 /** The run ended or was aborted: nothing it left behind still downloads. */
-export function endDriveContentRun(username: string): void {
+export function endDriveContentRun(username: string, runId?: number): void {
+  if (runId !== undefined && runs.get(username)?.id !== runId) return;
   if (runs.delete(username)) emit();
 }
 

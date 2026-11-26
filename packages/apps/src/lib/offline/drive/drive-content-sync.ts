@@ -34,6 +34,7 @@ import {
   beginDriveContentRun,
   clearDriveContentFailure,
   endDriveContentRun,
+  isCurrentDriveContentRun,
   finishDriveContentRunItem,
   readDriveContentFailures,
   recordDriveContentFailure,
@@ -107,6 +108,13 @@ export async function migrateDriveContentBlobPath(
   await table.delete(oldId);
 }
 
+/** The content GET answered with an error status; only this says something about the file. */
+class DriveContentHttpError extends Error {
+  constructor(status: number) {
+    super(`GET /files/content failed (${status})`);
+  }
+}
+
 async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blob> {
   const normalized = normalizeApiVirtualPath(apiPath);
   const res = await wgwFetch(`/files/content?path=${encodeURIComponent(normalized)}`, { signal });
@@ -116,7 +124,7 @@ async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blo
       parseRetryAfterMs(res.headers.get("Retry-After")),
     );
   }
-  if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
+  if (!res.ok) throw new DriveContentHttpError(res.status);
   return res.blob();
 }
 
@@ -201,7 +209,7 @@ export async function syncDriveContentFromCache(
   const signal = options?.signal;
   const pacer = backgroundSyncPacer();
   // Rows spin only for the files in this queue, and only until each one is done.
-  beginDriveContentRun(
+  const runId = beginDriveContentRun(
     username,
     queue.map((item) => item.path),
   );
@@ -223,18 +231,23 @@ export async function syncDriveContentFromCache(
         } catch (error) {
           // A 429 is retried by the runner, so the row keeps spinning.
           if (isRateLimitedError(error)) throw error;
-          // Going offline or an abort says nothing about the file itself.
-          if (!signal?.aborted && getConnectivitySnapshot()) {
+          // Only an error answer from the server counts against the file; going
+          // offline, an abort, or a newer run says nothing about it.
+          if (
+            error instanceof DriveContentHttpError &&
+            !signal?.aborted &&
+            isCurrentDriveContentRun(username, runId)
+          ) {
             await recordDriveContentFailure(username, item.path, item.modifiedAt);
           }
-          finishDriveContentRunItem(username, item.path);
+          finishDriveContentRunItem(username, item.path, runId);
           throw error;
         }
-        finishDriveContentRunItem(username, item.path);
+        finishDriveContentRunItem(username, item.path, runId);
       },
     });
   } finally {
-    endDriveContentRun(username);
+    endDriveContentRun(username, runId);
   }
 }
 

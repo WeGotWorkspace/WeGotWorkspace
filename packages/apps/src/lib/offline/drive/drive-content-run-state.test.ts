@@ -43,6 +43,17 @@ describe("drive content run state", () => {
     expect(isDriveContentQueued("alice", "/b")).toBe(false);
   });
 
+  it("keeps a newer run's queue when an older run finishes or ends late", () => {
+    const a = beginDriveContentRun("alice", ["/a"]);
+    const b = beginDriveContentRun("alice", ["/a", "/b"]);
+    finishDriveContentRunItem("alice", "/a", a);
+    endDriveContentRun("alice", a);
+    expect(isDriveContentQueued("alice", "/a")).toBe(true);
+    expect(isDriveContentQueued("alice", "/b")).toBe(true);
+    endDriveContentRun("alice", b);
+    expect(isDriveContentQueued("alice", "/b")).toBe(false);
+  });
+
   it("tells subscribers when the queue changes", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeDriveContentRunState(listener);
