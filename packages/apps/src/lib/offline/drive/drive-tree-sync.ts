@@ -309,7 +309,8 @@ type ResolvedTreeNode = {
  * parent's resolved path plus its own name (never the parent's stored server
  * path, which is stale under a renamed ancestor); a node whose parent is not
  * staged (account root, share root) keeps its server path. Order-independent.
- * A cycle or a chain longer than the set is skipped instead of hanging.
+ * A repeated id in a chain is a cycle: that row is skipped instead of
+ * hanging. A deep acyclic chain is kept.
  */
 export function resolveTreePaths(
   rows: readonly OfflineDriveTreeStagingRow[],
@@ -326,7 +327,7 @@ export function resolveTreePaths(
     while (current) {
       base = resolved.get(current.nodeId);
       if (base) break;
-      if (onChain.has(current.nodeId) || chain.length > byId.size) {
+      if (onChain.has(current.nodeId)) {
         broken = true;
         break;
       }

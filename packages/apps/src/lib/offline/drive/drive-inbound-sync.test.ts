@@ -629,6 +629,88 @@ describe("syncDriveInboundFromFileNodes", () => {
   });
 });
 
+describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
+  const table = () =>
+    driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const withPath = (item: JmapFileNode, path: string): JmapFileNode => ({ ...item, path });
+
+  beforeEach(async () => {
+    fileNodeChanges.mockReset();
+    getFileNodes.mockReset();
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await driveEntriesTable(db).clear();
+    await db.table("drive_content_blobs").clear();
+    await db.meta.clear();
+    await writeDriveSyncToken(username, "0");
+  });
+
+  it("an inner folder renamed in one changes batch keeps its child at the inner path", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/a", "fn-a", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/a/b", "fn-b", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/a/b/c.md", "fn-c"));
+    await writeDriveContentBlob(username, "/users/ada/a/b/c.md", new Blob(["body"]));
+    installCatalog(
+      new Map([
+        ["fn-b", withPath(node("fn-b", "fn-a", "b2", "directory"), "/users/ada/a2/b2")],
+        ["fn-a", withPath(node("fn-a", "fn-home", "a2", "directory"), "/users/ada/a2")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-b", "fn-a"], newState: "5" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect((await table().toCollection().primaryKeys()).sort()).toEqual([
+      "users/ada/a2",
+      "users/ada/a2/b2",
+      "users/ada/a2/b2/c.md",
+    ]);
+    expect(await readCachedDriveNodeId(username, "/users/ada/a2/b2/c.md")).toBe("fn-c");
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect(await blobs.get("users/ada/a2/b2/c.md")).toBeDefined();
+    expect(await blobs.get("users/ada/a/b/c.md")).toBeUndefined();
+  });
+
+  it("a renamed share root keeps its child under the new path", async () => {
+    await upsertDriveEntry(username, entry("/users/bob/Plans", "fn-share", "dir"), "share");
+    await upsertDriveEntry(username, entry("/users/bob/Plans/c.md", "fn-share-c"), "share");
+    // The owner's parent is out of sight: FileNode/get cannot return it.
+    installCatalog(
+      new Map([
+        [
+          "fn-share",
+          withPath(
+            node("fn-share", "fn-bob-home", "Plans 2026", "directory"),
+            "/users/bob/Plans 2026",
+          ),
+        ],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-share"], newState: "6" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect((await table().toCollection().primaryKeys()).sort()).toEqual([
+      "users/bob/Plans 2026",
+      "users/bob/Plans 2026/c.md",
+    ]);
+    expect(await readCachedDriveNodeId(username, "/users/bob/Plans 2026/c.md")).toBe("fn-share-c");
+    expect(await readDriveSyncToken(username)).toBe("6");
+  });
+
+  it("updated ids are fetched in maxObjectsInGet batches", async () => {
+    const ids = Array.from({ length: 1200 }, (_, index) => `fn-${index}`);
+    installCatalog(new Map());
+    fileNodeChanges.mockResolvedValue(changes({ updated: ids, newState: "7" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const sizes = getFileNodes.mock.calls.map(([, batch]) => (batch as string[]).length);
+    expect(sizes).toEqual([500, 500, 200]);
+  });
+});
+
 describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
   const all = {};
   const mine = { pathPrefix: "users/ada" };

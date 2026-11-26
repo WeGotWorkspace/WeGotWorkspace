@@ -42,7 +42,7 @@ import {
   readDriveTreeRoots,
   syncDriveTree,
 } from "@/lib/offline/drive/drive-tree-sync";
-import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
 
 export {
   DRIVE_FILE_NODE_SYNC_TOKEN_KEY,
@@ -188,17 +188,19 @@ async function applyFileNodeChanges(
   const keptUnsavedPaths: string[] = [];
   const docsChanges: DocsInboundChange[] = [];
   if (upsertIds.length > 0) {
-    const got = await session.fileNodes.getFileNodes(session.accountId, upsertIds, { signal });
-    const ordered = parentsBeforeChildren(got.list);
+    const nodes = await getInBatches(session, upsertIds, signal);
+    const ordered = parentsBeforeChildren(nodes);
     const cachePaths = await cachedPathsByNodeId(username);
     const tree = {
       firstSyncDone: await readDriveTreeFirstSyncDone(username),
       roots: await readDriveTreeRoots(username),
     };
+    const finalPaths = await finalPathsOf(username, ordered, cachePaths, session, signal);
+    const batchIds = new Set(ordered.map((node) => node.id));
+    // Each moved node's cached path, so the rows still under it follow afterwards.
+    const moves: Array<{ from: string; to: string }> = [];
     for (const node of ordered) {
-      const path =
-        fileNodeVirtualPath(node) ??
-        (await resolveNodePath(username, node, ordered, cachePaths, session, signal));
+      const path = finalPaths.get(node.id);
       if (!path) {
         console.warn("[drive-inbound] skipped FileNode with no resolvable path", { id: node.id });
         continue;
@@ -214,11 +216,14 @@ async function applyFileNodeChanges(
         continue;
       }
       const previous = cachePaths.get(node.id);
-      const placement = await moveCachedNodeToPath(username, node, path, cachePaths);
+      const placement = await placeNodeAtPath(username, node, path, cachePaths, batchIds);
       if (placement === "blocked") {
         keptUnsavedPaths.push(normalizePath(path));
         blocked = true;
         continue;
+      }
+      if (placement === "moved" && previous) {
+        moves.push({ from: normalizePath(previous), to: normalizePath(path) });
       }
       const entry = fileNodeToDirectoryEntry(path, node);
       docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
@@ -233,6 +238,7 @@ async function applyFileNodeChanges(
       upserted.add(node.id);
       changed = true;
     }
+    await moveRowsUnderMovedPaths(username, moves, batchIds);
   }
 
   for (const id of changes.destroyed) {
@@ -316,11 +322,75 @@ function docsChangeFor(
     : { kind: "upserted", path: entry.path, node };
 }
 
-async function moveCachedNodeToPath(
+/** `updated` and `created` in `maxObjectsInGet` batches: a large subtree can arrive at once. */
+async function getInBatches(
+  session: Awaited<ReturnType<typeof driveJmapSession>>,
+  ids: readonly string[],
+  signal?: AbortSignal,
+): Promise<JmapFileNode[]> {
+  const size = session.maxObjectsInGet ?? 500;
+  const nodes: JmapFileNode[] = [];
+  for (let index = 0; index < ids.length; index += size) {
+    const got = await session.fileNodes.getFileNodes(
+      session.accountId,
+      ids.slice(index, index + size),
+      { signal },
+    );
+    nodes.push(...got.list);
+  }
+  return nodes;
+}
+
+/**
+ * Final path of every node in the batch, as the tree walk resolves it: a node
+ * whose parent is in the batch gets the parent's final path plus its own name;
+ * otherwise the `path` from `FileNode/get` (share roots included). A server
+ * without `path` falls back to the cached parent chain. A repeated id in a
+ * chain is a cycle: that node is skipped.
+ */
+async function finalPathsOf(
+  username: string,
+  ordered: readonly JmapFileNode[],
+  cachePaths: Map<string, string>,
+  session: Awaited<ReturnType<typeof driveJmapSession>>,
+  signal?: AbortSignal,
+): Promise<Map<string, string>> {
+  const byId = new Map(ordered.map((node) => [node.id, node]));
+  const paths = new Map<string, string>();
+  const resolve = async (node: JmapFileNode, seen: Set<string>): Promise<string | null> => {
+    const known = paths.get(node.id);
+    if (known) return known;
+    if (seen.has(node.id)) return null;
+    seen.add(node.id);
+    const parent = node.parentId ? byId.get(node.parentId) : undefined;
+    let path: string | null;
+    if (parent) {
+      const parentPath = await resolve(parent, seen);
+      path = parentPath ? `${parentPath.replace(/\/$/, "")}/${node.name}` : null;
+    } else {
+      path =
+        fileNodeVirtualPath(node) ??
+        (await resolveNodePath(username, node, ordered, cachePaths, session, signal));
+    }
+    if (path) paths.set(node.id, path);
+    return path;
+  };
+  for (const node of ordered) await resolve(node, new Set());
+  return paths;
+}
+
+/**
+ * Move one node's own cached row, blob and pins to `nextPath`. Rows below its
+ * old path are not touched here: {@link moveRowsUnderMovedPaths} moves them
+ * once every node of the batch is placed, so nested renames in one batch land
+ * at the inner path.
+ */
+async function placeNodeAtPath(
   username: string,
   node: JmapFileNode,
   nextPath: string,
   cachePaths: Map<string, string>,
+  batchIds: ReadonlySet<string>,
 ): Promise<"moved" | "unchanged" | "blocked"> {
   const current = cachePaths.get(node.id);
   const nextId = normalizePath(nextPath);
@@ -328,20 +398,50 @@ async function moveCachedNodeToPath(
   const oldId = normalizePath(current);
   if (oldId === nextId) return "unchanged";
   const occupant = await driveRowAt(username, nextId);
-  if (occupant && occupant.nodeId && occupant.nodeId !== node.id) {
+  // A batch node at this path is moving away itself; its own placement handles it.
+  if (occupant?.nodeId && occupant.nodeId !== node.id && !batchIds.has(occupant.nodeId)) {
     const occupantOutcome = await retainOrDropLocalDocument(username, occupant.id);
     if (occupantOutcome === "kept") return "blocked";
     await deleteDriveEntryByPath(username, occupant.id);
   }
-  const descendants = await descendantIds(username, oldId);
-  const { destination, from } = parentAndName(`/${nextId}`);
-  await applyDriveSidecarPathMigration(username, oldId, destination, from);
-  for (const descendant of descendants) {
-    const suffix = descendant.slice(oldId.length);
-    await migrateNodeSidecars(username, descendant, `${nextId}${suffix}`);
-  }
+  await migrateNodeSidecars(username, oldId, nextId);
+  moveDocsPageSetupOverride(`/${oldId}`, `/${nextId}`);
+  const table = driveEntriesTable(accountDb(username));
+  if ((await table.get(oldId))?.nodeId === node.id) await table.delete(oldId);
   cachePaths.set(node.id, `/${nextId}`);
   return "moved";
+}
+
+/**
+ * After every node of a batch is placed: for each moved node's old path,
+ * longest first, every other cached row still under it (descendants the batch
+ * did not list, upload placeholders) gets the new prefix, with its blob and
+ * pins, and the old row goes.
+ */
+async function moveRowsUnderMovedPaths(
+  username: string,
+  moves: readonly { from: string; to: string }[],
+  batchIds: ReadonlySet<string>,
+): Promise<void> {
+  const table = driveEntriesTable(accountDb(username));
+  const ordered = [...moves].sort((a, b) => b.from.length - a.from.length);
+  for (const { from, to } of ordered) {
+    const under = await table.where("id").startsWith(`${from}/`).toArray();
+    for (const row of under) {
+      if (row.nodeId && batchIds.has(row.nodeId)) continue;
+      const id = `${to}${row.id.slice(from.length)}`;
+      const entry = parseEntry(row.data);
+      const parentPath = normalizePath(parentAndName(`/${id}`).destination);
+      await table.put({
+        ...row,
+        id,
+        parentPath,
+        data: JSON.stringify({ ...entry, path: `/${id}` }),
+      });
+      await table.delete(row.id);
+      await migrateNodeSidecars(username, row.id, id);
+    }
+  }
 }
 
 async function resolveNodePath(
