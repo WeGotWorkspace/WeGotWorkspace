@@ -48,6 +48,8 @@ The device holds the whole file and folder tree the person can see (home, every 
 - A share is revoked: the grant hash changes (existing behaviour) and the full resync prunes the share root.
 - A file is renamed by another client: `FileNode/changes` reports an update. The row moves to its new path and every view re-queries.
 - A folder and a folder inside it are both renamed, or a share root is renamed, between two opens: one `FileNode/changes` batch places every cached descendant under the new paths.
+- A folder is renamed onto another folder's old name in the same batch (`/reports-2024` to `/reports-2024-old`, then `/reports` to `/reports-2024`), or a folder moves into a name another folder just left: both folders and their files end up at their new paths, and nothing is deleted.
+- A folder is moved out of `.notes` or `.attachments` into a list path: `FileNode/changes` reports the folder and its descendants, so it does not show as empty.
 - A file or folder is deleted, renamed, or created while the first sync is between two pages: the keyset does not shift, the catch-up from the pre-page-1 state applies the change, and no unchanged file is pruned. A file created and deleted during the walk is never stored.
 - The first sync is interrupted (refresh, tab closed): the next run resumes from the stored cursor with the same pre-page-1 state and keeps the pages fetched before the abort. If the catch-up then answers `cannotCalculateChanges`, the rows stay, nothing is pruned, and a new pass starts.
 - A shared file has its sharing changed by its owner: the node's change sequence is bumped, `FileNode/changes` reports it, and the badge updates.
