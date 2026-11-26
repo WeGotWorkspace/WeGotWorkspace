@@ -717,7 +717,7 @@ describe("importVcfFilesBatch adapts to server limits", () => {
 
     expect(importOne.mock.calls.length).toBeLessThanOrEqual(8);
     expect(result.failedCardCount).toBe(64);
-    expect(result.fileErrors[0]?.message).toContain(VCARD_IMPORT_STOPPED);
+    expect(result.fileErrors[0]?.message.split(VCARD_IMPORT_STOPPED)).toHaveLength(2);
   });
 
   it("keys a card without a UID on its text, so a resend or a second import adds no copy", async () => {
