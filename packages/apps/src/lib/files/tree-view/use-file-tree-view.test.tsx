@@ -6,6 +6,7 @@ import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { notifyDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntryRowFromEntry } from "@/lib/offline/drive/drive-directory-offline-store";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
@@ -212,6 +213,17 @@ describe("useFileTreeView", () => {
     await put("users/ada/new.md", "home");
     act(() => notifyDriveRemoteChange(username));
     await waitFor(() => expect(paths(result.current.rows)).toEqual(["/users/ada/new.md"]));
+  });
+
+  it("re-queries the starred view when only the star set changes", async () => {
+    await finishFirstSync();
+    await put("users/ada/a.md", "home");
+    const { result } = render({ kind: "starred" });
+    expect((await settled(result)).rows).toEqual([]);
+
+    await writeDocsStarredPaths(username, ["/users/ada/a.md"]);
+    act(() => notifyDocsCachesChanged(username));
+    await waitFor(() => expect(paths(result.current.rows)).toEqual(["/users/ada/a.md"]));
   });
 
   it("re-reads the status when connectivity flips", async () => {
