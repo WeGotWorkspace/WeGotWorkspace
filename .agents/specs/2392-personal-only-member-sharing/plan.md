@@ -15,7 +15,7 @@ Draws from the Teams visibility work (Epic #1915 share gate) and Goal Product#15
 - Drive per-document access, guests, external people, team-admin definition.
 - A viewer role in Teams.
 - Availability settings (stay personal).
-- Notifying revoked people (open, Q6).
+- Notifying revoked people (decided: no, D6).
 
 ## What exists
 
@@ -68,12 +68,7 @@ Considered: the existing `CalendarShareInvites::apply` / `AddressBookShareInvite
 
 ## Open decisions
 
-- [ ] Q1 Team grants in or out of the rule — blocks `api-rule`, `migration`.
-- [ ] Q2 Address books: same rule, no move flow — blocks the Contacts part of `api-rule`, `migration`, `ui-hide-section`.
-- [ ] Q3 Meeting rooms — blocks the chat part of `api-rule`, `migration`.
-- [ ] Q5 What the dialog shows in place of the section, and the personal section title — blocks `ui-hide-section`.
-- [ ] Q6 Notify revoked people on move — blocks `api-move`, `ui-move-confirm` wording.
-- Q4 (item moves) and Q7 (Team to personal) have a proposed default in the spec and block nothing; the per-app check records the outcome.
+None — every choice is made. The product lead accepted all proposals on 2026-11-26 (D1 to D7 in [spec.md](./spec.md#decisions-product-lead-2026-11-26)).
 
 ## Invariants
 
@@ -110,7 +105,7 @@ Considered: the existing `CalendarShareInvites::apply` / `AddressBookShareInvite
 - **id:** `migration`
 - **Skill:** api
 - **Inputs:** grant storage — `path: packages/api/app/Services/Calendars/CalendarShareInvites.php:50` (instance rows), `path: packages/api/database/migrations/wgw/2026_08_31_000330_wgw_create_addressbook_shares.php:13` (address books); latest migration for naming — `path: packages/api/database/migrations/wgw/2026_11_25_000990_wgw_calendar_subscriptions_key_on_principal.php:1`
-- **Done when:** one `WgwMigration` in `database/migrations/wgw/` deletes grantee rows (`calendarinstances` with `access` 2 or 3 and user `principaluri`, including principal-less invalid rows) on every `calendarid` whose owner row is Team-owned, and `addressbook_shares` rows with a user principal on Team-owned books; Team-principal grants follow Q1; also clears matching rows in `calendar_share_dismissals`; skips missing tables; has no `down` effect; test seeds personal and Team collections with grants and asserts only the Team ones lose them and the owner and Team access rows stay.
+- **Done when:** one `WgwMigration` in `database/migrations/wgw/` deletes grantee rows (`calendarinstances` with `access` 2 or 3 and user `principaluri`, including principal-less invalid rows) on every `calendarid` whose owner row is Team-owned, and `addressbook_shares` rows with a user principal on Team-owned books; Team-principal grants are left alone (D1); also clears matching rows in `calendar_share_dismissals`; skips missing tables; has no `down` effect; test seeds personal and Team collections with grants and asserts only the Team ones lose them and the owner and Team access rows stay.
 - **Verify with:** `composer done-gate`; the migration test run twice
 - **Parallel with:** `api-move`
 
@@ -119,7 +114,7 @@ Considered: the existing `CalendarShareInvites::apply` / `AddressBookShareInvite
 - **id:** `ui-hide-section`
 - **Skill:** apps-ui
 - **Inputs:** shared section — `path: packages/apps/src/share-ui/collection-share-section.tsx:1`; callers — `path: packages/apps/src/calendar-core/src/calendar-share-section.tsx:1`, `path: packages/apps/src/project-dialog/src/project-dialog.tsx:244`, `path: packages/apps/src/meet-core/src/meet-channel-dialog.tsx:305`, `path: packages/apps/src/contacts-core/src/contacts-addressbook-dialog.tsx:173`
-- **Done when:** each dialog (Calendar, Tasks, Notes, Meet channel, Project dialog, Contacts address book) renders the section only when the collection is personal (`groupSlug` empty); the Project default collection follows the same rule and `isProjectLocked*` is reconciled with it; the replacement line follows Q5; the section is also hidden while the viewer picks a Team as owner in the same dialog; Storybook story and Vitest per dialog.
+- **Done when:** each dialog (Calendar, Tasks, Notes, Meet channel, Project dialog, Contacts address book) renders the section only when the collection is personal (`groupSlug` empty); the Project default collection follows the same rule and `isProjectLocked*` is reconciled with it; the replacement line and the new personal section title follow D5; the section is also hidden while the viewer picks a Team as owner in the same dialog; Storybook story and Vitest per dialog.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run` on the touched dialogs; `pnpm run ci:quality:apps`
 - **Parallel with:** `api-move`, `migration`
 
@@ -137,7 +132,7 @@ Considered: the existing `CalendarShareInvites::apply` / `AddressBookShareInvite
 - **id:** `per-app-check`
 - **Skill:** testing
 - **Inputs:** acceptance criteria of Epic #2392 — `cmd: gh issue view 2392`
-- **Done when:** for Calendar, Tasks, Notes, Contacts and Meet, a Team-owned collection cannot get a per-person grant through the app UI, REST, JMAP, MCP or DAV, and a personal one still can; a personal collection with grants moved into a Team ends with no grants; live collaboration sessions of a revoked person are checked and the outcome is written on the Epic; per-item move outcome (Q4) recorded.
+- **Done when:** for Calendar, Tasks, Notes, Contacts and Meet, a Team-owned collection cannot get a per-person grant through the app UI, REST, JMAP, MCP or DAV, and a personal one still can; a personal collection with grants moved into a Team ends with no grants; live collaboration sessions of a revoked person are checked and the outcome is written on the Epic; per-item move outcome (D4) recorded; the offline effects in the spec are reproduced on a local stack (a device synced before the removal: collection gone after sync, queued offline edit shown as refused, sidebar selection falls back cleanly).
 - **Verify with:** the per-app feature tests above plus a browser run on a fresh stack; read-only verifier from `developer/multitask-verifier.md`
 - **Parallel with:** none
 
@@ -149,4 +144,4 @@ Considered: the existing `CalendarShareInvites::apply` / `AddressBookShareInvite
 
 ## Doc updates (only if user wants)
 
-- Sharing wording in user docs, once the section title question (Q5) is decided.
+- Sharing wording in user docs, with the new section title (D5).
