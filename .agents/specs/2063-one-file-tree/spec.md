@@ -44,6 +44,7 @@ The device holds the whole file and folder tree the person can see (home, every 
 - A folder that synced with zero entries is known-empty and shows the empty state without a spinner.
 - The person joins a team: the state no longer matches, `FileNode/changes` returns `cannotCalculateChanges`, and the client runs a paged full resync. The team's files appear.
 - The person leaves a team: same path; the full resync prunes the team's rows.
+- Someone drags a folder from their home into a team drive, or restores a team folder from Trash: `FileNode/changes` reports the folder and every descendant to the other members, so the folder does not show as empty.
 - A share is revoked: the grant hash changes (existing behaviour) and the full resync prunes the share root.
 - A file is renamed by another client: `FileNode/changes` reports an update. The row moves to its new path and every view re-queries.
 - A file or folder is deleted, renamed, or created while the first sync is between two pages: the keyset does not shift, the catch-up from the pre-page-1 state applies the change, and no unchanged file is pruned. A file created and deleted during the walk is never stored.

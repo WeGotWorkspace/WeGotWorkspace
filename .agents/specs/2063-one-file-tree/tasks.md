@@ -10,7 +10,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | id | owner / agent | skill | key paths | verify command |
 |----|---------------|-------|-----------|----------------|
 | `S1` | builder (api) | api | `packages/api/app/Services/Jmap/Methods/FileNodeQueryMethod.php`, `packages/api/app/Services/Jmap/FileNodes/FileNodeIndexService.php`, `FileNodeAccountSupport.php` | `php vendor/bin/phpunit --filter JmapFileNodeTreePagingTest` |
-| `S2` | builder (api) | api, security | `packages/api/app/Services/Jmap/FileNodes/FileNodeSyncState.php`, `FileNodeAccountSupport.php`, `app/Services/Jmap/Push/JmapPushStateResolver.php` | `php vendor/bin/phpunit --filter JmapFileNodeTeamStateTest` |
+| `S2` | builder (api) | api, security | `packages/api/app/Services/Jmap/FileNodes/FileNodeSyncState.php`, `FileNodeIndexService.php` (changesSince), `FileNodeAccountSupport.php`, `app/Services/Jmap/Push/JmapPushStateResolver.php` | `php vendor/bin/phpunit --filter JmapFileNodeTeamStateTest` |
 | `S3` | builder (api) | api | `packages/api/app/Services/Jmap/FileNodes/FileNodeMapper.php`, `app/Services/Drive/DriveShareService.php`, `FileNodeIndexService.php` | `php vendor/bin/phpunit --filter JmapFileNodeShareFlagsTest` |
 | `C1` | builder (apps) | workspace, client-transport | `packages/apps/src/lib/offline/drive/drive-tree-sync.ts` (new), `drive-schema.ts`, `drive-inbound-sync.ts`, `drive-fetched-set-prune.ts`, `drive-core/src/use-drive-api.ts`, `lib/api/wgw/drive-jmap.ts` | `pnpm --dir packages/apps exec vitest run src/lib/offline/drive` |
 | `C2` | builder (apps) | workspace | `packages/apps/src/lib/files/tree-view/` (new) | `pnpm --dir packages/apps exec vitest run src/lib/files/tree-view` |
