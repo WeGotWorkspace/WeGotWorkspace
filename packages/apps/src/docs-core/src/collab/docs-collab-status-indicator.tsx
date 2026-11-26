@@ -9,12 +9,13 @@ export type DocsCollabStatusIndicatorProps = {
 /** The one real-time status line in the Docs detail footer. */
 export function DocsCollabStatusIndicator({ indicator }: DocsCollabStatusIndicatorProps) {
   if (!indicator.label) return null;
-  const status = <DocsDocStatus status={indicator.label} kind={indicator.kind} />;
-  if (!indicator.hint) return status;
+  if (!indicator.hint) return <DocsDocStatus status={indicator.label} kind={indicator.kind} />;
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{status}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <DocsDocStatus status={indicator.label} kind={indicator.kind} tabIndex={0} />
+        </TooltipTrigger>
         <TooltipContent>{indicator.hint}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
