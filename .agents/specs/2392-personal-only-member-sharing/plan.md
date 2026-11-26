@@ -47,7 +47,7 @@ Considered: the existing `CalendarShareInvites::apply` / `AddressBookShareInvite
 - One shared rule helper called from both `apply` methods and the DAV plugin — **chosen**: every app and entry point is covered by three call sites, and a new app cannot forget it.
 - A check in each repository's `update()` — rejected: five copies, and JMAP/MCP/DAV bypass some of them.
 - Hide the UI section only — rejected by the product lead: a member could still share through the API, DAV or MCP.
-- Re-use `myRights.mayShare = false` on Team collections to drive the UI — rejected: Team members sit on `SHAREDOWNER` and `mayShare` gates other behaviour; the UI uses `groupSlug` instead.
+- Re-use `myRights.mayShare = false` on Team collections to drive the UI — rejected: Team members sit on `SHAREDOWNER` and `mayShare` gates other behaviour; the UI uses `groupSlug` (Contacts: the `group-<slug>` id) instead.
 - Convert per-person grants into Team membership on a move — rejected: grants could belong to people outside the Team, which is the leak this Epic closes.
 - Keep grants when moving into a Team and only block new ones — rejected: the Epic says the move drops them, and kept grants would survive the person leaving the Team.
 - Soft-hide old grants instead of a deleting migration — rejected: pre-beta, breaking is fine; hidden rows would come back if the rule changed.
@@ -75,8 +75,8 @@ None — every choice is made. The product lead accepted all proposals on 2026-1
 - Personal collections can still be shared with single people in every app. A wrong rule (owner test inverted or too broad) blocks all sharing. Proof: `cmd: cd packages/api && php artisan test --filter=PersonalCollectionShareStillWorks`
 - Revoking a grant on a Team-owned collection still works. A wrong rule that refuses every `shareWith` patch would leave leftovers unremovable. Proof: `cmd: cd packages/api && php artisan test --filter=TeamOwnedShareRevokeAllowed`
 - Team members keep access to Team collections after grants are removed. A wrong delete (by `calendarid` instead of by grantee rows) would remove the owner row. Proof: `cmd: cd packages/api && php artisan test --filter=TeamMigrationKeepsTeamAccess`
-- Chat DMs (personal, share through `apply`) and Project creation (bypasses client guards) still work. A rule placed in the wrong layer would break DM creation or Project creation. Proof: `cmd: cd packages/api && php artisan test --filter=ChatDirectMessage` and `--filter=ProjectCreate`
-- Owner move without grants (Team to Team, Team to personal, personal without grants to Team) is unchanged. A wrong delete in `transferOwner` would error or drop Team rows. Proof: `cmd: cd packages/api && php artisan test --filter=OwnerTransfer`
+- Chat DMs (personal, share through `apply`) and Project creation (bypasses client guards) still work. A rule placed in the wrong layer would break DM creation or Project creation. Proof: `cmd: cd packages/api && php artisan test tests/Feature/Chat/ChatDmsTest.php tests/Feature/Projects/ProjectCreateTest.php`
+- Owner move without grants (Team to Team, Team to personal, personal without grants to Team) is unchanged. A wrong delete in `transferOwner` would error or drop Team rows. Proof: `cmd: cd packages/api && php artisan test tests/Feature/Calendars/CalendarsChangeOwnerTest.php tests/Feature/Chat/ChatChannelOwnerMoveTest.php` tests/Feature/Ownership/TasksTaskListOwnerMoveTest.php tests/Feature/Notes/NotesNotebookOwnerMoveTest.php`
 - After `api-rule` alone, main still works: the UI still shows the section and the API answers a clear 403. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/calendar-core/src/calendar-calendar-dialog.test.tsx`
 - The migration is idempotent: a second run changes nothing. Proof: `cmd: cd packages/api && php artisan test --filter=RemoveTeamMemberSharesMigration`
 
@@ -96,7 +96,7 @@ None — every choice is made. The product lead accepted all proposals on 2026-1
 - **id:** `api-move`
 - **Skill:** api
 - **Inputs:** four `transferOwner` implementations that today leave grants alone — `path: packages/api/app/Services/Calendars/CalendarRepository.php:450`; `path: packages/api/app/Services/Tasks/TaskListRepository.php:304`; `path: packages/api/app/Services/Notes/NotebookRepository.php:389`; `path: packages/api/app/Services/Chat/ChatChannelRepository.php:499`
-- **Done when:** when the new owner is a Team, per-person grants are removed in the same transaction as the owner change (revoke through the same helper so the share dismissals and sync tokens stay consistent); Team-to-Team and to-personal moves are unchanged; the move response no longer returns a `shareWith` for those people; feature test per repository.
+- **Done when:** when the new owner is a Team, per-person grants are removed in the same transaction as the owner change (revoke per user principal through the same helper with a `null` grant each, never `shareWith: null`, so Team grants stay; principal-less invalid rows and a Team grant to the new owner Team go too; share dismissals and sync tokens stay consistent); Team-to-Team and to-personal moves are unchanged; the move response no longer returns a `shareWith` for those people; feature test per repository.
 - **Verify with:** `composer done-gate`
 - **Parallel with:** `migration`
 
@@ -114,7 +114,7 @@ None — every choice is made. The product lead accepted all proposals on 2026-1
 - **id:** `ui-hide-section`
 - **Skill:** apps-ui
 - **Inputs:** shared section — `path: packages/apps/src/share-ui/collection-share-section.tsx:1`; callers — `path: packages/apps/src/calendar-core/src/calendar-share-section.tsx:1`, `path: packages/apps/src/project-dialog/src/project-dialog.tsx:244`, `path: packages/apps/src/meet-core/src/meet-channel-dialog.tsx:305`, `path: packages/apps/src/contacts-core/src/contacts-addressbook-dialog.tsx:173`
-- **Done when:** each dialog (Calendar, Tasks, Notes, Meet channel, Project dialog, Contacts address book) renders the section only when the collection is personal (`groupSlug` empty); the Project default collection follows the same rule and `isProjectLocked*` is reconciled with it; the replacement line and the new personal section title follow D5; the section is also hidden while the viewer picks a Team as owner in the same dialog; Storybook story and Vitest per dialog.
+- **Done when:** each dialog (Calendar, Tasks, Notes, Meet channel, Project dialog, Contacts address book) renders the section only when the collection is personal (`groupSlug` empty; Contacts: id without the `group-` prefix); the Project default collection follows the same rule and `isProjectLocked*` is reconciled with it; the replacement line and the new personal section title follow D5; the section is also hidden while the viewer picks a Team as owner in the same dialog; Storybook story and Vitest per dialog.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run` on the touched dialogs; `pnpm run ci:quality:apps`
 - **Parallel with:** `api-move`, `migration`
 
