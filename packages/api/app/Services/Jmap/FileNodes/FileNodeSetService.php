@@ -351,6 +351,11 @@ final class FileNodeSetService
         if ($tagDelta !== null && ! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayRename']) {
             throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to change the tags of this node.']);
         }
+        if ($tagDelta !== null) {
+            // Before any move, rename or content write: a refused tag change
+            // must leave the node untouched.
+            $this->tags->assertFits((string) $node->node_id, $tagDelta['add'], $tagDelta['remove']);
+        }
         // Destroying a replaced sibling and renaming run together, just
         // before the content changes: an attach that is refused leaves both
         // undone.

@@ -74,6 +74,60 @@ final class JmapFileNodeTagsTest extends WgwDatabaseTestCase
         $this->assertSame([], $this->fileNodeGetAll()[$id]['tags']);
     }
 
+    /** @return list<string> 64 distinct valid tags */
+    private function fullTagSet(): array
+    {
+        $tags = [];
+        foreach (range('a', 'z') as $x) {
+            foreach (['a', 'b'] as $y) {
+                $tags[] = $x.$y;
+            }
+        }
+        foreach (range('a', 'l') as $x) {
+            $tags[] = $x.'-x';
+        }
+
+        return $tags;
+    }
+
+    public function test_over_cap_tag_update_changes_nothing(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/full.txt', 'a');
+        $disk->put('users/bob/dest/.keep', '');
+        $nodes = $this->fileNodeGetAll();
+        $id = $this->fileNodeIdByName($nodes, 'full.txt');
+        $destId = $this->fileNodeIdByName($nodes, 'dest');
+        $full = $this->fullTagSet();
+        $this->assertCount(64, $full);
+        $this->assertArrayHasKey($id, $this->setTags($id, $full)['updated']);
+        $stored = $this->fileNodeGetAll()[$id]['tags'];
+        $this->assertCount(64, $stored);
+
+        // Remove one, add two: 65 projected, so nothing is deleted.
+        $result = $this->setTags($id, ['x-one', 'x-two'], [$full[0]]);
+        $this->assertSame('tooLarge', $result['notUpdated'][$id]['type']);
+        $this->assertSame($stored, $this->fileNodeGetAll()[$id]['tags']);
+
+        // A rename with an over-cap add leaves the name alone.
+        $result = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [$id => ['name' => 'renamed.txt', 'tagsAdd' => ['one-more']]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame('tooLarge', $result['notUpdated'][$id]['type']);
+
+        // A move with an over-cap add leaves the path alone.
+        $result = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'bob', 'update' => [$id => ['parentId' => $destId, 'tagsAdd' => ['one-more']]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame('tooLarge', $result['notUpdated'][$id]['type']);
+
+        $after = $this->fileNodeGetAll()[$id];
+        $this->assertSame('full.txt', $after['name']);
+        $this->assertSame($stored, $after['tags']);
+        $this->assertTrue($disk->exists('users/bob/full.txt'));
+        $this->assertFalse($disk->exists('users/bob/dest/full.txt'));
+    }
+
     public function test_query_has_tag_finds_files_across_folders_and_skips_trash(): void
     {
         $disk = app(WgwStorage::class)->files();

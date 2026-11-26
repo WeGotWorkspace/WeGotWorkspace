@@ -95,22 +95,37 @@ final class FileNodeTags
      */
     public function apply(string $nodeId, array $add, array $remove): array
     {
+        $this->assertFits($nodeId, $add, $remove);
         if ($remove !== []) {
             JmapFileNodeTag::query()->where('node_id', $nodeId)->whereIn('tag', $remove)->delete();
         }
-        $current = $this->forNode($nodeId);
-        $missing = array_values(array_diff($add, $current));
-        if (count($current) + count($missing) > self::MAX_PER_NODE) {
-            throw new FileNodeSetError(['type' => 'tooLarge', 'description' => 'A node can carry at most '.self::MAX_PER_NODE.' tags.']);
-        }
+        $missing = array_values(array_diff($add, $this->forNode($nodeId)));
         if ($missing !== []) {
-            JmapFileNodeTag::query()->insert(array_map(
+            // insertOrIgnore: a concurrent add of the same tag is not an error.
+            JmapFileNodeTag::query()->insertOrIgnore(array_map(
                 static fn (string $tag): array => ['node_id' => $nodeId, 'tag' => $tag],
                 $missing,
             ));
         }
 
         return $this->forNode($nodeId);
+    }
+
+    /**
+     * Checks the tag limit on the projected set (remove, then add) without
+     * changing anything, so callers can refuse before any other mutation.
+     *
+     * @param  list<string>  $add
+     * @param  list<string>  $remove
+     *
+     * @throws FileNodeSetError tooLarge when the node would exceed the tag limit
+     */
+    public function assertFits(string $nodeId, array $add, array $remove): void
+    {
+        $projected = array_unique([...array_diff($this->forNode($nodeId), $remove), ...$add]);
+        if (count($projected) > self::MAX_PER_NODE) {
+            throw new FileNodeSetError(['type' => 'tooLarge', 'description' => 'A node can carry at most '.self::MAX_PER_NODE.' tags.']);
+        }
     }
 
     /**
