@@ -18,7 +18,7 @@ import { FieldLabelRow } from "@/ui/field-label-row";
 import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { joinFileNameForRename } from "@/lib/files/filename-rename";
 import "@/drive-core/src/drive-create-markdown-dialog.css";
 
@@ -42,6 +42,7 @@ export function DriveCreateMarkdownDialog({
   groupPaths,
   view: _view,
   operations,
+  shareOperations,
   currentUsername,
   groupRootNames,
   rootLabels,
@@ -64,6 +65,7 @@ export function DriveCreateMarkdownDialog({
   groupPaths: string[];
   view: ViewKey;
   operations?: DriveAPIOperations;
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   currentUsername: string;
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
@@ -173,6 +175,7 @@ export function DriveCreateMarkdownDialog({
               initialBrowsePath={initialBrowsePath}
               initialSelectedPath={initialSelectedPath}
               operations={operations}
+              shareOperations={shareOperations}
               currentUsername={currentUsername}
               groupRootNames={groupRootNames}
               rootLabels={rootLabels}

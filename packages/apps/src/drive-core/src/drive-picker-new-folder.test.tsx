@@ -10,7 +10,7 @@ import {
 import { DRIVE_FOLDER_PICKER_ROOT } from "@/drive-core/src/drive-breadcrumbs";
 import type { DrivePickerNewFolderControl } from "@/drive-core/src/drive-picker-new-folder-utils";
 import { optimisticDriveFolder } from "@/drive-core/src/drive-file-utils";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
@@ -66,6 +66,7 @@ function renderMove(
   onConfirm = vi.fn(),
   onClose = vi.fn(),
   viewPath = "My Drive",
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">,
 ) {
   render(
     <TooltipProvider delayDuration={0}>
@@ -77,6 +78,7 @@ function renderMove(
         moveIds={[]}
         view={{ type: "folder", path: viewPath }}
         operations={operations}
+        shareOperations={shareOperations}
         currentUsername="alice"
         groupRootNames={NO_GROUPS}
         onClose={onClose}
@@ -163,6 +165,57 @@ describe("picker New folder", () => {
         driveLabels.pickerNewFolderReadOnly,
       ),
     );
+  });
+
+  describe("at the top folder of a share (parent not listable)", () => {
+    const shareAtPath = (mayManageStructure: boolean) => ({
+      getAtPath: vi.fn(async () => ({ myRights: { mayManageStructure } })),
+    });
+    const sharedOperations = () => {
+      const { operations } = fakeOperations();
+      const listDirectory = vi.fn(async (at: string) => {
+        if (at === "/users/bob") throw new Error("403");
+        return {
+          user: { username: "alice", name: "alice", role: "user" as const, roots: [] },
+          cwd: at,
+          directory: { location: at, files: [] },
+        };
+      });
+      return { ...operations, listDirectory } as unknown as DriveAPIOperations;
+    };
+
+    it("is off with the read-only reason when the folder's own rights deny it", async () => {
+      const share = shareAtPath(false);
+      renderMove(
+        sharedOperations(),
+        vi.fn(),
+        vi.fn(),
+        "Users/bob/Shared",
+        share as unknown as DriveShareOperations,
+      );
+
+      await waitFor(() =>
+        expect(newFolderButton().closest("span")?.getAttribute("title")).toBe(
+          driveLabels.pickerNewFolderReadOnly,
+        ),
+      );
+      expect((newFolderButton() as HTMLButtonElement).disabled).toBe(true);
+      expect(share.getAtPath).toHaveBeenCalledWith("/users/bob/Shared", expect.anything());
+    });
+
+    it("stays on when the folder's own rights allow it", async () => {
+      const share = shareAtPath(true);
+      renderMove(
+        sharedOperations(),
+        vi.fn(),
+        vi.fn(),
+        "Users/bob/Shared",
+        share as unknown as DriveShareOperations,
+      );
+
+      await waitFor(() => expect(share.getAtPath).toHaveBeenCalled());
+      await waitFor(() => expect((newFolderButton() as HTMLButtonElement).disabled).toBe(false));
+    });
   });
 
   it("keeps the new folder selected when the files list refreshes", async () => {

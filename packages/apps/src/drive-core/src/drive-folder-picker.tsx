@@ -54,7 +54,7 @@ import { useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { DriveViewIcon, withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DestinationPickerFrame } from "@/destination-picker/src/destination-picker-frame";
 import "@/drive-core/src/drive-folder-picker.css";
@@ -220,6 +220,7 @@ export function DriveFolderPicker({
   initialBrowsePath,
   initialSelectedPath,
   operations,
+  shareOperations,
   currentUsername,
   groupRootNames,
   rootLabels,
@@ -241,6 +242,11 @@ export function DriveFolderPicker({
    */
   initialSelectedPath?: string | null;
   operations?: DriveAPIOperations;
+  /**
+   * Reads the open folder's own rights when its parent cannot be listed (the top folder
+   * of a share the viewer was given).
+   */
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   currentUsername: string;
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
@@ -397,26 +403,47 @@ export function DriveFolderPicker({
   useEffect(() => {
     if (!operations || !parentOfBrowsePath || !rightsLookupPending) return;
     const controller = new AbortController();
+    const { signal } = controller;
     void operations
       .listDirectory(apiPathFromUiPath(parentOfBrowsePath, currentUsername, groupRootNames), {
-        signal: controller.signal,
+        signal,
       })
       .then((data) => {
-        if (controller.signal.aborted) return;
         noteFolderRights(
           data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
         );
       })
-      // Unknown rights: leave the button on; the server still refuses a forbidden create.
       .catch(() => {})
+      .then(async () => {
+        if (signal.aborted || folderRights.current.has(browsePath) || !shareOperations) return;
+        // No grant on the parent (a share's top folder): ask for the folder's own rights.
+        try {
+          const share = await shareOperations.getAtPath(
+            apiPathFromUiPath(browsePath, currentUsername, groupRootNames),
+            { signal },
+          );
+          if (!signal.aborted) {
+            folderRights.current.set(browsePath, share.myRights.mayManageStructure);
+          }
+        } catch {
+          // Unknown rights: leave the button on; the server still refuses a forbidden create.
+        }
+      })
       .finally(() => {
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         rightsResolved.current.add(browsePath);
         setRightsVersion((version) => version + 1);
       });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [browsePath, operations, currentUsername, groupRootNames, rightsLookupPending]);
+  }, [
+    browsePath,
+    operations,
+    shareOperations,
+    currentUsername,
+    groupRootNames,
+    rightsLookupPending,
+  ]);
 
   const rows = useMemo(
     () =>
@@ -625,20 +652,24 @@ export function DriveFolderPicker({
     setCreatingCount((count) => count + 1);
     void operations
       .createFolder({ cwd: apiParent, name })
-      .then(() =>
-        operations
-          .listDirectory(apiParent)
-          .then((data) => {
-            if (browsePathRef.current !== parent) return;
-            listingEpoch.current += 1;
-            const mapped = data.directory.files.map((entry) =>
-              driveFileFromEntry(entry, currentUsername),
-            );
-            setListingFiles(applyPickerListingFilter(mapped, parent, currentUsername, mode));
-          })
-          // Offline or slow: the folder row stays as made.
-          .catch(() => {}),
-      )
+      .then(() => {
+        const refreshEpoch = listingEpoch.current;
+        return (
+          operations
+            .listDirectory(apiParent)
+            .then((data) => {
+              // A later create wrote its own row since this refresh started.
+              if (browsePathRef.current !== parent || refreshEpoch !== listingEpoch.current) return;
+              listingEpoch.current += 1;
+              const mapped = data.directory.files.map((entry) =>
+                driveFileFromEntry(entry, currentUsername),
+              );
+              setListingFiles(applyPickerListingFilter(mapped, parent, currentUsername, mode));
+            })
+            // Offline or slow: the folder row stays as made.
+            .catch(() => {})
+        );
+      })
       .catch(() => {
         if (browsePathRef.current !== parent) return;
         setListingFiles((prev) => prev.filter((file) => file.id !== optimistic.id));

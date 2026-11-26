@@ -17,7 +17,7 @@ import type { DrivePickerNewFolderControl } from "@/drive-core/src/drive-picker-
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 
 type DriveMoveToDialogShared = {
   open: boolean;
@@ -26,6 +26,7 @@ type DriveMoveToDialogShared = {
   groupPaths: string[];
   view: ViewKey;
   operations?: DriveAPIOperations;
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   currentUsername: string;
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
@@ -63,6 +64,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
     groupPaths,
     view,
     operations,
+    shareOperations,
     currentUsername,
     groupRootNames,
     rootLabels,
@@ -120,6 +122,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
             moveIds={moveIds}
             initialBrowsePath={initialBrowsePath}
             operations={operations}
+            shareOperations={shareOperations}
             currentUsername={currentUsername}
             groupRootNames={groupRootNames}
             rootLabels={rootLabels}
