@@ -2529,7 +2529,6 @@ exports[`workspace label snapshot > resolved labels match the snapshot: notes 1`
     "Deleted “Alpha”. Its notes moved to “readOnly”.",
     "Deleted “Alpha”. Its notes moved to “notSaved”.",
   ],
-  "toastNotebookSaveFailed": "Could not save notebook",
   "toastNotebookShareRemoved": "Notebook removed",
   "toastNotebookUpdated": "Notebook updated",
   "toastSaved": "Note saved",

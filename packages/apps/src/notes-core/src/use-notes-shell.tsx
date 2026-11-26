@@ -1,3 +1,4 @@
+import { withRefusalReason } from "@/lib/api/refusal-reason";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -50,6 +51,8 @@ export function collectPersonalNotebookNames(
   return [...new Set([...fromData, ...fromNotes])];
 }
 
+const SYNC_FAILED = "Could not sync this change. Please try again.";
+
 export function useNotesShell({
   data,
   labels,
@@ -91,7 +94,7 @@ export function useNotesShell({
 
   const { show, showError } = useAppToast();
   const showMutationError = useCallback(
-    (fallback = "Could not sync this change. Please try again.") => showError(fallback),
+    (fallback = SYNC_FAILED, error?: unknown) => showError(withRefusalReason(fallback, error)),
     [showError],
   );
   const queueAutoSaveToast = useCallback(() => {

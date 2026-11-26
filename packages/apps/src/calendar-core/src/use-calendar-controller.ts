@@ -52,6 +52,7 @@ import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending
 import { alertsFromWire, freeBusyStatusFromWire } from "@/lib/calendar/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import {
+  calendarDialogFailedToast,
   defaultCalendarLabels,
   mergeCalendarLabels,
   type CalendarUILabels,
@@ -992,14 +993,7 @@ export function useCalendarController({
           setCalendarDialog(null);
           onMutated?.();
         } catch (error) {
-          showError(
-            withRefusalReason(
-              calendarDialog.mode === "subscribe"
-                ? L.toastCalendarSubscribeFailed
-                : L.toastCalendarSaveFailed,
-              error,
-            ),
-          );
+          showError(withRefusalReason(calendarDialogFailedToast(L, calendarDialog.mode), error));
         } finally {
           setCalendarDialogBusy(false);
         }

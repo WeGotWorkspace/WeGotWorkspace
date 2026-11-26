@@ -683,3 +683,13 @@ export function calendarPeriodNavLabels(
       return { previous: labels.previousYear, next: labels.nextYear };
   }
 }
+
+/** The generic toast for a calendar dialog that the server refused or could not save. */
+export function calendarDialogFailedToast(
+  labels: Pick<CalendarUILabels, "toastCalendarSubscribeFailed" | "toastCalendarSaveFailed">,
+  mode: "create" | "edit" | "subscribe",
+): string {
+  return mode === "subscribe"
+    ? labels.toastCalendarSubscribeFailed
+    : labels.toastCalendarSaveFailed;
+}

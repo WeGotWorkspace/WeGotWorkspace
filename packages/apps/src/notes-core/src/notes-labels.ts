@@ -82,7 +82,6 @@ export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   toastSaved: string;
   toastNotebookCreated: string;
   toastNotebookUpdated: string;
-  toastNotebookSaveFailed: string;
   toastNotebookDeleted: (name: string) => string;
   toastNotebookShareRemoved: string;
   toastSynced: string;
@@ -223,7 +222,6 @@ export const defaultNotesLabels: NotesUILabels = {
   toastSaved: "Note saved",
   toastNotebookCreated: "Notebook created",
   toastNotebookUpdated: "Notebook updated",
-  toastNotebookSaveFailed: "Could not save notebook",
   toastNotebookDeleted: (name) => `Notebook “${name}” deleted`,
   toastNotebookShareRemoved: "Notebook removed",
   toastSynced: workspaceLabels.sync.changesSynced,
