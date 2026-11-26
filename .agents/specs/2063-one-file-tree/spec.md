@@ -30,8 +30,8 @@ The device holds the whole file and folder tree the person can see (home, every 
   - without reconcile: 1.67 s and 30 SQL queries.
 - **Change state.** The `FileNode/changes` state must change when the set of roots changes (team join or leave), not only when member grants change. Otherwise a joined team's existing files are never sent and a left team's files stay on the device.
 - **Share roots.** A node shared with the person keeps its owner's `parentId`, which the person cannot see (`FileNodeAccountSupport.php:164-168`). After a complete pass, the client treats a node whose parent is not in the tree, and that is not an account root, as a share root. Pages arrive in name order, so a parent can come after its child; the class is never decided per page.
-- **Paged walk is not a snapshot.** `FileNode/query` re-sorts and slices on every call, so a write between pages shifts positions. The first sync stores the state from before page 1, catches up with `FileNode/changes` from it after the last page, and only then prunes. The prune keeps the protected rows of `prunerProtectedPaths` (outbox paths, upload placeholders, pending server saves, their ancestors).
-- **Dot folders.** `.Trash` is part of the tree. `.notes`, `.attachments` and other dot folders are file-indexed on the server, but they are not stored as list rows and never appear in a view.
+- **Paged walk is not a snapshot.** Position paging on the name sort shifts when a node before the cursor is deleted or renamed, so the walk pages by a `node_id` keyset instead. The first sync stores the state from before page 1 and catches up with `FileNode/changes` from it after the last page. It prunes only when that call succeeds, keeping the walked ids, plus created and updated, minus destroyed, plus the protected rows of `prunerProtectedPaths` (outbox paths, upload placeholders, pending server saves, their ancestors). On `cannotCalculateChanges` it does not prune and starts a new pass.
+- **Dot paths.** `.Trash` is part of the tree. A node with any other path segment that starts with `.` (`.notes`, `.attachments`, and everything inside them) is file-indexed on the server but is not stored as a list row, neither by the walk nor by the change applier, and never appears in a view.
 - **One operations layer.** Docs writes go through Drive's hybrid operations; Docs-only side effects live in the Docs binding.
 - **Row shape.** `drive_entries.data` stays the `WgwDriveDirectoryEntry` JSON. New indexed columns (`ext`, `area`) avoid parsing 20k JSON blobs for a Docs or Trash query.
 - **Lean records (#2338).** Tree rows are list records. No whole-object write may be built from one; writes keep going through the existing operations.
@@ -46,8 +46,8 @@ The device holds the whole file and folder tree the person can see (home, every 
 - The person leaves a team: same path; the full resync prunes the team's rows.
 - A share is revoked: the grant hash changes (existing behaviour) and the full resync prunes the share root.
 - A file is renamed by another client: `FileNode/changes` reports an update. The row moves to its new path and every view re-queries.
-- A file is deleted, or renamed onto an earlier page, while the first sync is between two pages: the catch-up from the pre-page-1 state applies the change, and no unchanged file is pruned.
-- The first sync is interrupted (refresh, tab closed): the next run resumes from the stored cursor with the same pre-page-1 state.
+- A file is deleted, renamed, or created while the first sync is between two pages: the keyset does not shift, the catch-up from the pre-page-1 state applies the change, and no unchanged file is pruned.
+- The first sync is interrupted (refresh, tab closed): the next run resumes from the stored cursor with the same pre-page-1 state. If the catch-up then answers `cannotCalculateChanges`, the rows stay, nothing is pruned, and a new pass starts.
 - A shared file has its sharing changed by its owner: the node's change sequence is bumped, `FileNode/changes` reports it, and the badge updates.
 - A tab sits on a page while another tab finishes the first sync: the cache-changed topic makes the first tab re-query.
 - A write is queued in the outbox for a path: the queued state wins over an inbound row for that path (decision 5 of `1563-docs-inbound-sync`).
