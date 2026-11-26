@@ -236,13 +236,30 @@ final class JmapMethodDispatcher
                 // A write the disk or hosting quota refused fails the whole
                 // request with 507 (JmapApiController), never a serverFail
                 // the client would retry forever.
+                $this->context->endBatch();
                 throw $e;
             } catch (\Throwable $e) {
                 $responses[] = ['error', JmapSetErrors::serverFail($e), $callId];
             }
+            if (! self::isReadOnly($name)) {
+                // A write, even a failed one, may move roots, grants or the sequence (#2063).
+                $this->context->forget();
+            }
         }
+        $this->context->endBatch();
 
         return $responses;
+    }
+
+    private static function isReadOnly(string $name): bool
+    {
+        foreach (['/get', '/query', '/changes', '/queryChanges'] as $suffix) {
+            if (str_ends_with($name, $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

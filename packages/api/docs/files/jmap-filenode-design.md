@@ -69,6 +69,7 @@ The WGW extension `https://wegotworkspace.org/jmap/filenode-tree` (listed in `us
 - Because both arguments are top-level, `#idAfter` references `/ids/{limit-1}` of the previous query and `#asOfState` the `/state` of a `FileNode/get` with `ids: []` at the start of the request. With `maxCallsInRequest` 32 the first request holds that state get plus 15 query+get pairs, later requests 16 pairs.
 - `FileNode/get` returns `path`, the node's virtual path (`/` plus the storage key, the inverse of `StoragePaths::virtualToStorageKey`). A share root keeps its owner's `parentId` and path, so two share roots with the same name stay apart.
 - `fileNodeQuerySortOptions` includes `id`; without the extension an `id` sort orders the usual candidate set in PHP.
+- Within one JMAP request every FileNode call reuses the account's roots, member grants and change sequence from the first call (`JmapRequestContext::remember`). Any call that is not a `/get`, `/query`, `/changes` or `/queryChanges`, and every sequence bump, makes later calls read them again. A first request of state get plus 15 pairs costs about 40 SQL queries instead of 191.
 
 ## Decision 4 — surface scope: what is a FileNode
 

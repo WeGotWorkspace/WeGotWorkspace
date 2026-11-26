@@ -202,34 +202,33 @@ final class JmapFileNodeTreePagingTest extends WgwDatabaseTestCase
         $state = $this->stateOf('bob');
         $index = app(FileNodeIndexService::class);
         $disk = app(WgwStorage::class)->files();
-        $deleted = null;
-        $renamed = null;
+        // The two lowest file ids: both lie before the cursor once a page reaches the second one.
+        $files = [];
+        foreach ($before as $id) {
+            $node = $index->liveByNodeId($id);
+            if ($node !== null && ! $node->is_dir && str_starts_with((string) $node->storage_key, 'users/bob/folder')) {
+                $files[] = $id;
+            }
+        }
+        sort($files, SORT_STRING);
+        [$deleted, $renamed] = [$files[0], $files[1]];
+        $done = false;
 
-        $walked = $this->walk('bob', 4, $state, function (int $pageNo, array $page) use ($index, $disk, &$deleted, &$renamed): void {
-            if ($pageNo !== 0) {
+        $walked = $this->walk('bob', 4, $state, function (int $pageNo, array $page) use ($index, $disk, $deleted, $renamed, &$done): void {
+            if ($done || strcmp((string) end($page), $renamed) < 0) {
                 return;
             }
-            // Delete one node of the first page and rename another: position paging would shift.
-            foreach ($page as $id) {
-                $node = $index->liveByNodeId($id);
-                if ($node === null || $node->is_dir || ! str_starts_with((string) $node->storage_key, 'users/bob/folder')) {
-                    continue;
-                }
-                $key = (string) $node->storage_key;
-                if ($deleted === null) {
-                    $disk->delete($key);
-                    $index->recordDelete($key);
-                    $deleted = $id;
-                } elseif ($renamed === null) {
-                    $disk->move($key, $key.'.renamed');
-                    $index->recordMove($key, $key.'.renamed');
-                    $renamed = $id;
-                }
-            }
+            // Delete one node and rename another behind the cursor: position paging would shift.
+            $key = (string) $index->liveByNodeId($deleted)?->storage_key;
+            $disk->delete($key);
+            $index->recordDelete($key);
+            $key = (string) $index->liveByNodeId($renamed)?->storage_key;
+            $disk->move($key, $key.'.renamed');
+            $index->recordMove($key, $key.'.renamed');
+            $done = true;
         });
 
-        $this->assertNotNull($deleted);
-        $this->assertNotNull($renamed);
+        $this->assertTrue($done);
         $this->assertSame(array_values(array_unique($walked)), $walked, 'No node is returned twice.');
         // Every node that existed for the whole walk is returned exactly once.
         $expected = array_values(array_diff($before, [$deleted]));
@@ -419,6 +418,26 @@ final class JmapFileNodeTreePagingTest extends WgwDatabaseTestCase
                 ->assertJsonPath('methodResponses.0.0', 'error')
                 ->assertJsonPath('methodResponses.0.1.type', $type);
         }
+    }
+
+    public function test_a_write_in_the_batch_moves_the_remembered_state(): void
+    {
+        $this->seedFolders('users/bob', 1, 1);
+        $this->liveVisibleIds('bob');
+        $home = $this->nodeIdAt('users/bob');
+
+        $responses = $this->jmapAs('bob', [
+            ['FileNode/get', ['accountId' => 'bob', 'ids' => []], 's0'],
+            ['FileNode/get', ['accountId' => 'bob', 'ids' => []], 's1'],
+            ['FileNode/set', ['accountId' => 'bob', 'create' => ['n' => ['parentId' => $home, 'name' => 'New']]], 'w'],
+            ['FileNode/get', ['accountId' => 'bob', 'ids' => []], 's2'],
+        ])->assertOk()->json('methodResponses');
+
+        $this->assertSame('FileNode/set', $responses[2][0], (string) json_encode($responses[2]));
+        $this->assertNotEmpty($responses[2][1]['created'] ?? []);
+        $this->assertSame($responses[0][1]['state'], $responses[1][1]['state']);
+        $this->assertNotSame($responses[1][1]['state'], $responses[3][1]['state'], 'A read after a write must not reuse the remembered state.');
+        $this->assertSame($this->stateOf('bob'), $responses[3][1]['state']);
     }
 
     public function test_session_advertises_the_tree_extension(): void

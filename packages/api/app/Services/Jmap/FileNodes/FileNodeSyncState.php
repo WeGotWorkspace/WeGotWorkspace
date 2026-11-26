@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap\FileNodes;
 
 use App\Services\Jmap\JmapMethodException;
+use App\Services\Jmap\JmapRequestContext;
 use App\Services\Jmap\Push\JmapPushEventId;
 
 /**
@@ -21,6 +22,7 @@ final class FileNodeSyncState
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly FileNodeAccountSupport $accounts,
+        private readonly JmapRequestContext $context,
     ) {}
 
     public function current(string $username): string
@@ -34,7 +36,10 @@ final class FileNodeSyncState
      */
     public function forGrantPairs(string $grantPairs): string
     {
-        return $this->index->currentSeq().'.'.JmapPushEventId::hash('FileNode', $grantPairs);
+        // Read once per JMAP batch; a write forgets it (FileNodeSequence::next, the dispatcher).
+        $seq = $this->context->remember(FileNodeSequence::REMEMBER_KEY, fn (): int => $this->index->currentSeq());
+
+        return $seq.'.'.JmapPushEventId::hash('FileNode', $grantPairs);
     }
 
     public function grantHash(string $username): string

@@ -10,6 +10,7 @@ use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareGrantResolver;
 use App\Services\Jmap\Guest\GuestJmapAccounts;
+use App\Services\Jmap\JmapRequestContext;
 use App\Storage\StoragePaths;
 
 /**
@@ -30,6 +31,7 @@ final class FileNodeAccountSupport
         private readonly DriveShareGrantResolver $grants,
         private readonly StoragePaths $paths,
         private readonly GuestJmapAccounts $guests,
+        private readonly JmapRequestContext $context,
     ) {}
 
     /**
@@ -114,7 +116,10 @@ final class FileNodeAccountSupport
      */
     private function liveMemberGrantsOf(string $username): array
     {
-        return $this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username));
+        return $this->context->remember(
+            'filenode.grants:'.$username,
+            fn (): array => $this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username)),
+        );
     }
 
     /**
@@ -146,9 +151,17 @@ final class FileNodeAccountSupport
     }
 
     /**
+     * Once per JMAP batch: later calls in the batch reuse the roots until a write (#2063).
+     *
      * @return list<string> the same roots as {@see rootsFor}
      */
     public function ensureAccountIndexed(string $username): array
+    {
+        return $this->context->remember('filenode.indexed:'.$username, fn (): array => $this->indexAccountRoots($username));
+    }
+
+    /** @return list<string> */
+    private function indexAccountRoots(string $username): array
     {
         $roots = $this->rootsFor($username);
         $guest = $this->guests->find($username);
