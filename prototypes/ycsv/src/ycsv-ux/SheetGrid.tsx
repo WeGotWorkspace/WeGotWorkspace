@@ -209,6 +209,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const valuesOnlyNext = useRef(false);
   const caretSync = useRef(false);
   const lastTap = useRef<{ t: number; r: number; c: number } | null>(null);
+  /** A double-tap opened the editor: swallow the browser's compat mouse events (they would select a word in it). */
+  const suppressCompat = useRef(false);
   /** What the last pointerdown hit. With pointer capture, dblclick targets the scroller. */
   const lastDown = useRef<{ kind: "handle" } | { kind: "resize"; col: number } | null>(null);
 
@@ -1242,6 +1244,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       setSel(single(cell));
       if (prev && now - prev.t < 350 && prev.r === cell.r && prev.c === cell.c) {
         lastTap.current = null;
+        suppressCompat.current = true;
         startEdit("edit");
       } else focusGrid();
       return;
@@ -1546,6 +1549,11 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             setDrop(null);
           }}
           onMouseDown={(e) => e.preventDefault()}
+          onTouchEnd={(e) => {
+            if (!suppressCompat.current) return;
+            suppressCompat.current = false;
+            e.preventDefault();
+          }}
           onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
         >
@@ -1652,6 +1660,11 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             data-testid="autocomplete"
             style={{ left: inputBox.left, top: inputBox.top + rowH + 4 }}
             onMouseDown={(e) => e.preventDefault()}
+          onTouchEnd={(e) => {
+            if (!suppressCompat.current) return;
+            suppressCompat.current = false;
+            e.preventDefault();
+          }}
           >
             {suggestions.items.map((item, i) => (
               <div

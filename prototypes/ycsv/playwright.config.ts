@@ -15,6 +15,9 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1100, height: 700 } }, testIgnore: /touch|safari/ },
     { name: "touch", use: { ...devices["Pixel 7"] }, testMatch: /touch/ },
+    // Cross-browser picture (not in test:e2e): clipboard permissions are Chromium-only.
+    { name: "firefox", use: { ...devices["Desktop Firefox"], viewport: { width: 1100, height: 700 }, permissions: [] }, testIgnore: /touch/ },
+    { name: "webkit", use: { ...devices["Desktop Safari"], viewport: { width: 1100, height: 700 }, permissions: [] }, testIgnore: /touch/ },
   ],
   webServer: {
     command: `pnpm exec storybook dev -p ${PORT} --no-open --ci`,
