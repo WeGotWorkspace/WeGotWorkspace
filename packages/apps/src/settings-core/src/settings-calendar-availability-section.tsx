@@ -4,16 +4,22 @@ import { CalendarClock } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { LoadingSpinner } from "@/loading-spinner/src/loading-spinner";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
+import type { CalendarAvailabilityPublicLinkOperations } from "@/lib/api/wgw/calendar-availability-public-link";
 import type {
   CalendarAvailabilityDetail,
   CalendarAvailabilityFormValues,
 } from "@/settings-core/src/settings-calendar-availability-form";
 import { calendarAvailabilityLabels as labels } from "@/settings-core/src/settings-calendar-availability-labels";
+import { SettingsCalendarPublicLinkRow } from "@/settings-core/src/settings-calendar-public-link-row";
 import { SettingsPaneCard } from "@/settings-core/src/settings-pane-card";
 import {
   useSettingsCalendarAvailability,
   type SettingsCalendarAvailabilityController,
 } from "@/settings-core/src/use-settings-calendar-availability";
+import {
+  useSettingsCalendarPublicLink,
+  type SettingsCalendarPublicLinkController,
+} from "@/settings-core/src/use-settings-calendar-public-link";
 import { Form, FormField } from "@/ui/form";
 import { CollectionColorDot } from "@/ui/collection-color-dot";
 import { CollectionGhostSelectTrigger } from "@/ui/collection-ghost-select";
@@ -29,23 +35,34 @@ const FALLBACK_CALENDAR_COLOR = "#4285f4";
 /**
  * Availability in Settings → Calendar (#1912): whether people in the owner's Teams see when
  * they are busy, and per calendar one choice: "Do not add", time only, or (personal calendars
- * only) title and location. Server-side; changes save themselves.
+ * only) title and location. Server-side; changes save themselves. Below the Team switch sits the
+ * public link (#2406): the same busy times, time only, for people outside the workspace. The
+ * calendar choices apply to both, so they show while either is on.
  */
 export function SettingsCalendarAvailabilitySection({
   operations,
+  publicLinkOperations,
 }: {
   /** Stories and tests; the app uses the live REST resource (mock without an API). */
   operations?: CalendarAvailabilitySettingsOperations;
+  publicLinkOperations?: CalendarAvailabilityPublicLinkOperations;
 }) {
   const controller = useSettingsCalendarAvailability(operations);
+  const publicLink = useSettingsCalendarPublicLink(publicLinkOperations);
   return (
     <SettingsPaneCard title={labels.title} icon={<CalendarClock aria-hidden />}>
-      <AvailabilityBody controller={controller} />
+      <AvailabilityBody controller={controller} publicLink={publicLink} />
     </SettingsPaneCard>
   );
 }
 
-function AvailabilityBody({ controller }: { controller: SettingsCalendarAvailabilityController }) {
+function AvailabilityBody({
+  controller,
+  publicLink,
+}: {
+  controller: SettingsCalendarAvailabilityController;
+  publicLink: SettingsCalendarPublicLinkController;
+}) {
   const { phase, settings, retry } = controller;
   if (phase === "loading") {
     // The switch row as it will be, with a spinner where the switch goes: nothing shifts.
@@ -72,10 +89,16 @@ function AvailabilityBody({ controller }: { controller: SettingsCalendarAvailabi
       </div>
     );
   }
-  return <AvailabilityForm controller={controller} />;
+  return <AvailabilityForm controller={controller} publicLink={publicLink} />;
 }
 
-function AvailabilityForm({ controller }: { controller: SettingsCalendarAvailabilityController }) {
+function AvailabilityForm({
+  controller,
+  publicLink,
+}: {
+  controller: SettingsCalendarAvailabilityController;
+  publicLink: SettingsCalendarPublicLinkController;
+}) {
   const { form, settings } = controller;
   const switchId = useId();
   const enabled = useWatch({ control: form.control, name: "enabled" });
@@ -96,7 +119,8 @@ function AvailabilityForm({ controller }: { controller: SettingsCalendarAvailabi
             </FieldLabelRow>
           )}
         />
-        {enabled ? (
+        <SettingsCalendarPublicLinkRow controller={publicLink} />
+        {enabled || publicLink.link?.enabled ? (
           <AvailabilityCalendars calendars={settings?.calendars ?? []} control={form.control} />
         ) : null}
       </div>
@@ -117,6 +141,7 @@ function AvailabilityCalendars({
       <h3 id={headingId} className="settings-availability__heading">
         {labels.calendarsHeading}
       </h3>
+      <p className="settings-availability__hint">{labels.calendarsHint}</p>
       {calendars.length > 0 ? (
         calendars.map((calendar, index) => (
           <AvailabilityCalendarRow
