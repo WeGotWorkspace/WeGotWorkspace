@@ -206,4 +206,19 @@ describe("useDocsHomeGroupRoots", () => {
     });
     expect(wgwSettingsStateRead.read).not.toHaveBeenCalled();
   });
+
+  it("drops the cached-only team drives again once online", async () => {
+    vi.mocked(readCachedTeamDisplayNames).mockResolvedValue([
+      { id: "principals/groups/left-team", displayName: "Left Team" },
+    ]);
+    const { result, rerender } = renderHook(
+      ({ online }: { online: boolean }) => useHarness({ files: [], online }),
+      { initialProps: { online: false } },
+    );
+    await waitFor(() => {
+      expect(result.current.groupRootSlugs).toEqual(["left-team"]);
+    });
+    rerender({ online: true });
+    expect(result.current.groupRootSlugs).toEqual([]);
+  });
 });

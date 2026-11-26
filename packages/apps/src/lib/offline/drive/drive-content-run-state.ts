@@ -24,9 +24,13 @@ export type DriveContentFailure = {
 
 export type DriveContentFailures = Readonly<Record<string, DriveContentFailure>>;
 
-type RunState = { queued: Set<string> };
+/** One run of the automatic copy; only the account's current run may change its queue. */
+export type DriveContentRunToken = { readonly username: string; readonly id: number };
+
+type RunState = { id: number; queued: Set<string> };
 
 const runs = new Map<string, RunState>();
+let nextRunId = 1;
 const listeners = new Set<() => void>();
 
 function key(path: string): string {
@@ -45,21 +49,39 @@ export function subscribeDriveContentRunState(listener: () => void): () => void 
   };
 }
 
-/** Starts a run for `paths`; replaces a previous run's queue for this account. */
-export function beginDriveContentRun(username: string, paths: readonly string[]): void {
-  runs.set(username, { queued: new Set(paths.map(key)) });
+/**
+ * Starts a run for `paths` and replaces any earlier run's queue for this
+ * account. A run that was replaced keeps going until its abort lands; its
+ * token no longer matches, so it cannot touch the newer run's rows.
+ */
+export function beginDriveContentRun(
+  username: string,
+  paths: readonly string[],
+): DriveContentRunToken {
+  const id = nextRunId;
+  nextRunId += 1;
+  runs.set(username, { id, queued: new Set(paths.map(key)) });
   emit();
+  return { username, id };
+}
+
+/** True while `token` is still the account's current run. */
+export function isCurrentDriveContentRun(token: DriveContentRunToken): boolean {
+  return runs.get(token.username)?.id === token.id;
 }
 
 /** One file is done (stored, failed or skipped): it no longer spins. */
-export function finishDriveContentRunItem(username: string, path: string): void {
-  const run = runs.get(username);
-  if (run?.queued.delete(key(path))) emit();
+export function finishDriveContentRunItem(token: DriveContentRunToken, path: string): void {
+  const run = runs.get(token.username);
+  if (run?.id !== token.id) return;
+  if (run.queued.delete(key(path))) emit();
 }
 
 /** The run ended or was aborted: nothing it left behind still downloads. */
-export function endDriveContentRun(username: string): void {
-  if (runs.delete(username)) emit();
+export function endDriveContentRun(token: DriveContentRunToken): void {
+  if (!isCurrentDriveContentRun(token)) return;
+  runs.delete(token.username);
+  emit();
 }
 
 /** True while this tab's run will still download `path`. */

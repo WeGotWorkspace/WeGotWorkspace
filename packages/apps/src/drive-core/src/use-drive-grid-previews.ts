@@ -80,10 +80,11 @@ export async function loadDrivePreviewBlob(
   operations: DriveAPIOperations,
 ): Promise<Blob> {
   const apiPath = file.apiPath!;
-  const key = previewBlobCacheKey(apiPath, file.modifiedMs);
+  const username = operations.localTree ? readOfflineDriveUsername() : null;
+  // Guests and mocks share one scope; a member's cache is never read by another account.
+  const key = previewBlobCacheKey(username ?? "live", apiPath, file.modifiedMs);
   const cached = readPreviewBlob(key);
   if (cached) return cached;
-  const username = operations.localTree ? readOfflineDriveUsername() : null;
   if (username) {
     const stored = await readStoredDriveFileBlobForPreview(
       username,

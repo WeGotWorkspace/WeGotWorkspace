@@ -15,9 +15,9 @@ function blobOf(bytes: number): Blob {
 describe("preview blob cache", () => {
   beforeEach(() => clearPreviewBlobCache());
 
-  it("keys by path and modified time", () => {
-    expect(previewBlobCacheKey("/users/a/x.png", 5)).toBe("users/a/x.png@5");
-    expect(previewBlobCacheKey("users/a/x.png")).toBe("users/a/x.png@");
+  it("keys by account, path and modified time", () => {
+    expect(previewBlobCacheKey("alice", "/groups/t/x.png", 5)).toBe("alice:groups/t/x.png@5");
+    expect(previewBlobCacheKey("bob", "groups/t/x.png")).toBe("bob:groups/t/x.png@");
   });
 
   it("returns what was written", () => {

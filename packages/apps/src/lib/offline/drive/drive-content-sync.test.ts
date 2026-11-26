@@ -116,6 +116,49 @@ describe("syncDriveContentFromCache", () => {
     });
   });
 
+  it("does not record a fetch that throws, even when the device is online again", async () => {
+    net.fetch.mockRejectedValue(new TypeError("Failed to fetch"));
+    await syncDriveContentFromCache("alice", ["/users/alice/a.png"]);
+    expect(await readDriveContentFailures("alice")).toEqual({});
+  });
+
+  it("keeps a newer run's queue when an older run ends late, and the older run records nothing", async () => {
+    let failOld: (() => void) | null = null;
+    net.fetch.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          failOld = () => resolve(new Response("", { status: 500 }));
+        }),
+    );
+    const older = syncDriveContentFromCache("alice", ["/users/alice/a.png"]);
+    await vi.waitFor(() => expect(failOld).not.toBeNull());
+    // A reconnect starts a second run while the first is still downloading.
+    const newer = beginDriveContentRun("alice", ["/users/alice/a.png"]);
+    failOld!();
+    await older;
+    expect(isDriveContentQueued("alice", "/users/alice/a.png")).toBe(true);
+    expect(await readDriveContentFailures("alice")).toEqual({});
+    expect(newer.username).toBe("alice");
+  });
+
+  it("stops the spinner when the runner gives up on a file after repeated 429s", async () => {
+    const seen: boolean[] = [];
+    net.fetch.mockImplementation(async () => {
+      seen.push(isDriveContentQueued("alice", "/users/alice/a.png"));
+      return new Response("", { status: 429 });
+    });
+    const finished = vi.fn();
+    const unsubscribe = subscribeDriveContentRunState(() => {
+      if (!isDriveContentQueued("alice", "/users/alice/a.png")) finished();
+    });
+    await syncDriveContentFromCache("alice", ["/users/alice/a.png"]);
+    unsubscribe();
+    expect(seen.every(Boolean)).toBe(true);
+    expect(seen.length).toBe(5);
+    expect(finished).toHaveBeenCalled();
+    expect(await readDriveContentFailures("alice")).toEqual({});
+  });
+
   it("does not record a failure caused by going offline", async () => {
     net.fetch.mockImplementation(async () => {
       net.online = false;

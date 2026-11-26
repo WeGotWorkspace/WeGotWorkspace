@@ -47,9 +47,18 @@ export function useDocsHomeGroupRoots({
   // Cached in the meta store, so team drives keep their name offline (#2063).
   const groupDirectory = useTeamDisplayNames(username, online);
 
+  // Offline there is no `/groups` listing: the cached teams keep every team drive
+  // listed. Only while offline, so a team left meanwhile drops out on reconnect.
+  const visibleGroupRoots = useMemo(
+    () =>
+      online
+        ? knownGroupRoots
+        : mergeGroupRoots(knownGroupRoots, driveGroupRootsFromTeamNames(groupDirectory)),
+    [groupDirectory, knownGroupRoots, online],
+  );
   const labeledGroupRoots = useMemo(
-    () => applyDocsHomeGroupDisplayNames(knownGroupRoots, groupDirectory),
-    [groupDirectory, knownGroupRoots],
+    () => applyDocsHomeGroupDisplayNames(visibleGroupRoots, groupDirectory),
+    [groupDirectory, visibleGroupRoots],
   );
   const groupRootSlugs = useMemo(
     () => labeledGroupRoots.map((root) => root.slug),
@@ -67,14 +76,6 @@ export function useDocsHomeGroupRoots({
     // setState bails out — otherwise labeledGroupRoots remaps files forever.
     setKnownGroupRoots((prev) => mergeGroupRoots(prev, discovered));
   }, []);
-
-  // Offline there is no `/groups` listing: the cached teams keep every team drive listed.
-  useEffect(() => {
-    if (online) return;
-    const fromTeams = driveGroupRootsFromTeamNames(groupDirectory);
-    if (fromTeams.length === 0) return;
-    setKnownGroupRoots((prev) => mergeGroupRoots(prev, fromTeams));
-  }, [groupDirectory, online]);
 
   useEffect(() => {
     if (!operations || !online) return;

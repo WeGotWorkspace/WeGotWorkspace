@@ -64,21 +64,21 @@ describe("useDriveOfflineAvailability", () => {
   });
 
   it("clears the spinner once the file is stored, without a list change", async () => {
-    beginDriveContentRun("u", ["/a.md"]);
+    const run = beginDriveContentRun("u", ["/a.md"]);
     const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
     await waitFor(() => expect(result.current.offlinePendingSyncIds.has("a")).toBe(true));
 
     mocks.stored.add("/a.md");
-    act(() => finishDriveContentRunItem("u", "/a.md"));
+    act(() => finishDriveContentRunItem(run, "/a.md"));
     await waitFor(() => expect(result.current.offlineAvailableIds.has("a")).toBe(true));
     expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
   });
 
   it("stops every spinner when the run ends or is aborted", async () => {
-    beginDriveContentRun("u", ["/a.md", "/b.md"]);
+    const run = beginDriveContentRun("u", ["/a.md", "/b.md"]);
     const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
     await waitFor(() => expect(result.current.offlinePendingSyncIds.size).toBe(2));
-    act(() => endDriveContentRun("u"));
+    act(() => endDriveContentRun(run));
     await waitFor(() => expect(result.current.offlinePendingSyncIds.size).toBe(0));
   });
 

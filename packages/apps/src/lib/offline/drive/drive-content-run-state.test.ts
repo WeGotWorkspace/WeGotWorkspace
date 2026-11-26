@@ -13,6 +13,7 @@ import {
   clearDriveContentFailure,
   endDriveContentRun,
   finishDriveContentRunItem,
+  isCurrentDriveContentRun,
   isDriveContentQueued,
   MAX_AUTO_CONTENT_ATTEMPTS,
   readDriveContentFailures,
@@ -29,16 +30,16 @@ describe("drive content run state", () => {
   });
 
   it("queues the run's paths per account, with or without a leading slash", () => {
-    beginDriveContentRun("alice", ["/users/alice/a.png"]);
+    const run = beginDriveContentRun("alice", ["/users/alice/a.png"]);
     expect(isDriveContentQueued("alice", "users/alice/a.png")).toBe(true);
     expect(isDriveContentQueued("bob", "users/alice/a.png")).toBe(false);
-    finishDriveContentRunItem("alice", "/users/alice/a.png");
+    finishDriveContentRunItem(run, "/users/alice/a.png");
     expect(isDriveContentQueued("alice", "/users/alice/a.png")).toBe(false);
   });
 
   it("forgets the whole queue when the run ends", () => {
-    beginDriveContentRun("alice", ["/a", "/b"]);
-    endDriveContentRun("alice");
+    const run = beginDriveContentRun("alice", ["/a", "/b"]);
+    endDriveContentRun(run);
     expect(isDriveContentQueued("alice", "/a")).toBe(false);
     expect(isDriveContentQueued("alice", "/b")).toBe(false);
   });
@@ -46,13 +47,25 @@ describe("drive content run state", () => {
   it("tells subscribers when the queue changes", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeDriveContentRunState(listener);
-    beginDriveContentRun("alice", ["/a"]);
-    finishDriveContentRunItem("alice", "/a");
-    finishDriveContentRunItem("alice", "/a");
-    endDriveContentRun("alice");
+    const run = beginDriveContentRun("alice", ["/a"]);
+    finishDriveContentRunItem(run, "/a");
+    finishDriveContentRunItem(run, "/a");
+    endDriveContentRun(run);
     unsubscribe();
     // begin, one finish, end; the repeated finish changes nothing.
     expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it("a replaced run cannot touch the newer run's queue", () => {
+    const older = beginDriveContentRun("alice", ["/a", "/b"]);
+    const newer = beginDriveContentRun("alice", ["/a", "/b"]);
+    expect(isCurrentDriveContentRun(older)).toBe(false);
+    finishDriveContentRunItem(older, "/a");
+    endDriveContentRun(older);
+    expect(isDriveContentQueued("alice", "/a")).toBe(true);
+    expect(isDriveContentQueued("alice", "/b")).toBe(true);
+    endDriveContentRun(newer);
+    expect(isDriveContentQueued("alice", "/a")).toBe(false);
   });
 
   it("counts failed attempts per version and keeps parallel writes", async () => {

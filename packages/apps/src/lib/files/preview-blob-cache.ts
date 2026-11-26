@@ -1,7 +1,8 @@
 /**
  * File bytes already loaded for a preview in this tab, so going back to a
  * folder or reopening a file does not download them again (#2063 measurement 5).
- * Keyed by path and modified time: a new version of the file misses the cache.
+ * Keyed by account, path and modified time: a new version of the file misses
+ * the cache, and another account signed in to the same tab never reads it.
  * Bounded by bytes; the least recently used entries go first.
  */
 
@@ -13,8 +14,12 @@ export const PREVIEW_BLOB_CACHE_MAX_ENTRY_BYTES = 8 * 1024 * 1024;
 const entries = new Map<string, Blob>();
 let totalBytes = 0;
 
-export function previewBlobCacheKey(apiPath: string, modifiedMs?: number | null): string {
-  return `${apiPath.trim().replace(/^\/+/, "")}@${modifiedMs ?? ""}`;
+export function previewBlobCacheKey(
+  account: string,
+  apiPath: string,
+  modifiedMs?: number | null,
+): string {
+  return `${account}:${apiPath.trim().replace(/^\/+/, "")}@${modifiedMs ?? ""}`;
 }
 
 export function readPreviewBlob(key: string): Blob | null {

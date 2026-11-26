@@ -14,6 +14,7 @@ import {
 } from "@/lib/offline/core/offline-device-settings";
 import {
   emptyProgressiveSyncProgress,
+  MAX_RATE_LIMITED_ATTEMPTS,
   readProgressiveSyncProgress,
   runProgressiveSync,
   type ProgressiveSyncProgress,
@@ -35,6 +36,7 @@ import {
   clearDriveContentFailure,
   endDriveContentRun,
   finishDriveContentRunItem,
+  isCurrentDriveContentRun,
   readDriveContentFailures,
   recordDriveContentFailure,
   shouldAutoRetryDriveContent,
@@ -107,6 +109,18 @@ export async function migrateDriveContentBlobPath(
   await table.delete(oldId);
 }
 
+/**
+ * The server answered the content GET with an error. Only this counts as a
+ * failed download: a `fetch` that throws (offline, aborted) says nothing about
+ * the file itself.
+ */
+export class DriveContentHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`GET /files/content failed (${status})`);
+    this.name = "DriveContentHttpError";
+  }
+}
+
 async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blob> {
   const normalized = normalizeApiVirtualPath(apiPath);
   const res = await wgwFetch(`/files/content?path=${encodeURIComponent(normalized)}`, { signal });
@@ -116,7 +130,7 @@ async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blo
       parseRetryAfterMs(res.headers.get("Retry-After")),
     );
   }
-  if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
+  if (!res.ok) throw new DriveContentHttpError(res.status);
   return res.blob();
 }
 
@@ -201,10 +215,12 @@ export async function syncDriveContentFromCache(
   const signal = options?.signal;
   const pacer = backgroundSyncPacer();
   // Rows spin only for the files in this queue, and only until each one is done.
-  beginDriveContentRun(
+  const run = beginDriveContentRun(
     username,
     queue.map((item) => item.path),
   );
+  /** 429s per path: the runner gives up after MAX_RATE_LIMITED_ATTEMPTS. */
+  const rateLimited = new Map<string, number>();
   try {
     return await runProgressiveSync({
       username,
@@ -221,20 +237,27 @@ export async function syncDriveContentFromCache(
             beforeRequest: () => pacer.acquire(signal),
           });
         } catch (error) {
-          // A 429 is retried by the runner, so the row keeps spinning.
-          if (isRateLimitedError(error)) throw error;
-          // Going offline or an abort says nothing about the file itself.
-          if (!signal?.aborted && getConnectivitySnapshot()) {
+          if (isRateLimitedError(error)) {
+            // The runner retries a 429, so the row keeps spinning until it gives up.
+            const attempts = (rateLimited.get(item.path) ?? 0) + 1;
+            rateLimited.set(item.path, attempts);
+            if (attempts >= MAX_RATE_LIMITED_ATTEMPTS || signal?.aborted) {
+              finishDriveContentRunItem(run, item.path);
+            }
+            throw error;
+          }
+          // Only a server error is about the file; a replaced run records nothing.
+          if (error instanceof DriveContentHttpError && isCurrentDriveContentRun(run)) {
             await recordDriveContentFailure(username, item.path, item.modifiedAt);
           }
-          finishDriveContentRunItem(username, item.path);
+          finishDriveContentRunItem(run, item.path);
           throw error;
         }
-        finishDriveContentRunItem(username, item.path);
+        finishDriveContentRunItem(run, item.path);
       },
     });
   } finally {
-    endDriveContentRun(username);
+    endDriveContentRun(run);
   }
 }
 
