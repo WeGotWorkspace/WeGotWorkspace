@@ -8,13 +8,15 @@ use App\Services\Jmap\JmapMethodException;
 use App\Services\Jmap\Push\JmapPushEventId;
 
 /**
- * The FileNode state every method returns: `<seq>.<grantHash>` (#1926).
+ * The FileNode state every method returns: `<seq>.<scopeHash>` (#1926, #2063).
  *
- * `seq` is the global change sequence. `grantHash` is a 128-bit hash of the sorted
- * `(grant id, access)` pairs of the user's live, visible member grants, so a grant that is
- * hidden (Epic #1915), added, revoked or changed in place gives a new state even when no file
- * changed. A delta is only computed from a state with the current `grantHash`; any other state,
- * including a legacy all-digit one, answers `cannotCalculateChanges` and the client resyncs once.
+ * `seq` is the global change sequence. `scopeHash` is a 128-bit hash of what the user can see
+ * apart from file changes: the sorted account roots (own tree plus member Teams) and the sorted
+ * `(grant id, access)` pairs of the user's live, visible member grants. Joining or leaving a
+ * Team, or a grant that is hidden (Epic #1915), added, revoked or changed in place, gives a new
+ * state even when no file changed. A delta is only computed from a state with the current
+ * `scopeHash`; any other state, including a legacy all-digit one or one with the grant-only
+ * hash of #1926, answers `cannotCalculateChanges` and the client resyncs once.
  */
 final class FileNodeSyncState
 {
@@ -25,36 +27,56 @@ final class FileNodeSyncState
 
     public function current(string $username): string
     {
-        return $this->forGrantPairs($this->accounts->memberGrantPairs($username));
+        return $this->index->currentSeq().'.'.$this->scopeHash($username);
     }
 
     /**
-     * {@see current()} from grant pairs the caller already read
+     * {@see current()} from the account roots and grant pairs the caller already read
      * ({@see FileNodeAccountSupport::rootsAndGrantPairs()}).
+     *
+     * @param  list<string>  $accountRoots
      */
-    public function forGrantPairs(string $grantPairs): string
+    public function forScope(array $accountRoots, string $grantPairs): string
     {
-        return $this->index->currentSeq().'.'.JmapPushEventId::hash('FileNode', $grantPairs);
+        return $this->index->currentSeq().'.'.self::hashScope($accountRoots, $grantPairs);
     }
 
-    public function grantHash(string $username): string
+    public function scopeHash(string $username): string
     {
-        return JmapPushEventId::hash('FileNode', $this->accounts->memberGrantPairs($username));
+        return self::hashScope($this->accounts->accountRootsFor($username), $this->accounts->memberGrantPairs($username));
     }
 
     /**
      * The sequence a delta starts from.
      *
      * @throws JmapMethodException cannotCalculateChanges when the state is malformed, legacy or
-     *                             from another set of grants
+     *                             from another set of roots or grants
      */
     public function sinceSeq(string $username, string $state): int
     {
         if (preg_match('/^(\d+)\.([0-9a-f]{32})$/', $state, $matches) !== 1
-            || ! hash_equals($this->grantHash($username), $matches[2])) {
+            || ! hash_equals($this->scopeHash($username), $matches[2])) {
             throw new JmapMethodException('cannotCalculateChanges', 'Sync state is invalid or expired.');
         }
 
         return (int) $matches[1];
+    }
+
+    /**
+     * Length-prefixed root lines, then the grant pairs. The `roots` header keeps the basis
+     * apart from the grant-only basis of #1926, so an old state never matches a new one.
+     *
+     * @param  list<string>  $accountRoots
+     */
+    private static function hashScope(array $accountRoots, string $grantPairs): string
+    {
+        $roots = array_values(array_unique($accountRoots));
+        sort($roots, SORT_STRING);
+        $basis = "roots\n";
+        foreach ($roots as $root) {
+            $basis .= strlen($root).':'.$root."\n";
+        }
+
+        return JmapPushEventId::hash('FileNode', $basis."grants\n".$grantPairs);
     }
 }

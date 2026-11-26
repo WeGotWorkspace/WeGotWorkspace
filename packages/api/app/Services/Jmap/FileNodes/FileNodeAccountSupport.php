@@ -79,20 +79,24 @@ final class FileNodeAccountSupport
     }
 
     /**
-     * {@see rootsFor()} and {@see memberGrantPairs()} from one read of the member grants, for
-     * the JMAP push check (#2243).
+     * {@see rootsFor()}, {@see accountRootsFor()} and {@see memberGrantPairs()} from one read of
+     * the member grants, for the JMAP push check (#2243) and the FileNode state (#2063).
      *
-     * @return array{roots: list<string>, grantPairs: string}
+     * @return array{roots: list<string>, accountRoots: list<string>, grantPairs: string}
      */
     public function rootsAndGrantPairs(string $username): array
     {
         $guest = $this->guests->find($username);
         if ($guest !== null) {
-            return ['roots' => [$guest->rootKey], 'grantPairs' => ''];
+            return ['roots' => [$guest->rootKey], 'accountRoots' => [$guest->rootKey], 'grantPairs' => ''];
         }
         $grants = $this->liveMemberGrantsOf($username);
 
-        return ['roots' => $this->rootsWith($username, $grants), 'grantPairs' => $this->grantPairsOf($grants)];
+        return [
+            'roots' => $this->rootsWith($username, $grants),
+            'accountRoots' => $this->accountRootsFor($username),
+            'grantPairs' => $this->grantPairsOf($grants),
+        ];
     }
 
     /**
