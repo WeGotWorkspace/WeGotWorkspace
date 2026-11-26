@@ -118,20 +118,23 @@ async function applyStarredPathChanges(
 ): Promise<boolean> {
   const before = await readDocsStarredPaths(username);
   if (before.length === 0) return false;
-  let paths = before;
+  // Moves first, all at once on the paths before the sync: a swap keeps both stars.
+  const moves = changes
+    .flatMap((change) =>
+      change.kind === "moved"
+        ? [{ from: docsSourceKey(change.from), to: docsSourceKey(change.to) }]
+        : [],
+    )
+    .sort((a, b) => b.from.length - a.from.length);
+  let paths = before.map((path) => {
+    const key = docsSourceKey(path);
+    const move = moves.find(({ from }) => key === from || key.startsWith(`${from}/`));
+    return move ? `/${move.to}${key.slice(move.from.length)}` : path;
+  });
   for (const change of changes) {
-    if (change.kind === "removed") {
-      const key = docsSourceKey(change.path);
-      paths = paths.filter((path) => docsSourceKey(path) !== key);
-    } else if (change.kind === "moved") {
-      const from = docsSourceKey(change.from);
-      const to = docsSourceKey(change.to);
-      paths = paths.map((path) => {
-        const key = docsSourceKey(path);
-        if (key !== from && !key.startsWith(`${from}/`)) return path;
-        return `/${to}${key.slice(from.length)}`;
-      });
-    }
+    if (change.kind !== "removed") continue;
+    const key = docsSourceKey(change.path);
+    paths = paths.filter((path) => docsSourceKey(path) !== key);
   }
   if (paths.length === before.length && paths.every((path, at) => path === before[at])) {
     return false;

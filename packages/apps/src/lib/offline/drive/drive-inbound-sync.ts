@@ -257,7 +257,10 @@ async function applyFileNodeChanges(
         moves.push({ from: normalizePath(previous), to: normalizePath(path), area });
       }
       const entry = fileNodeToDirectoryEntry(path, node);
-      docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
+      // Docs gets one `moved` per relocated file; a folder move is not expanded over them.
+      if (placement !== "moved" || entry.type !== "dir") {
+        docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
+      }
       await upsertDriveEntry(username, entry, area);
       destinations.add(normalizePath(path));
       placed.push({ path, nodeId: node.id });
