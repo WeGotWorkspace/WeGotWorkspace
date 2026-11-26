@@ -356,7 +356,7 @@ async function grantAccess(
     await pickOption(tab, access, "Can edit");
     await dialog.getByRole("combobox", { name: "Can edit" }).waitFor({ timeout: 10_000 });
   }
-  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
   await dialog.waitFor({ state: "detached", timeout: 10_000 });
   await sleep(1_000);
 }
@@ -662,7 +662,7 @@ const ACTIONS = {
       await expect(dialog.getByRole("button", { name: "Remove access" })).toHaveCount(0, {
         timeout: 10_000,
       });
-      await dialog.getByRole("button", { name: "Cancel" }).click();
+      await dialog.getByRole("button", { name: "Done" }).click();
       await dialog.waitFor({ state: "detached", timeout: 10_000 });
       await sleep(1_000);
     },
