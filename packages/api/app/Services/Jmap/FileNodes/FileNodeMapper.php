@@ -7,6 +7,7 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Jmap\GetProjection;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapRequestContext;
 use App\Services\Projects\ProjectFolderRegistry;
@@ -39,19 +40,24 @@ final class FileNodeMapper
      * @param  array{username: string, role: string}  $principal
      * @return list<array<string, mixed>>
      */
-    public function toFileNodes(array $nodes, array $principal): array
+    public function toFileNodes(array $nodes, array $principal, ?GetProjection $projection = null): array
     {
+        $projection ??= GetProjection::all();
+
         return array_map(
-            fn (JmapFileNode $node): array => $this->toFileNode($node, $principal),
+            fn (JmapFileNode $node): array => $projection->apply($this->toFileNode($node, $principal, $projection->wants('type'))),
             $nodes,
         );
     }
 
     /**
+     * `$withType` false skips the on-disk MIME sniff (the dominant cost of a list read);
+     * `type` is then null, so only a caller that drops `type` may pass it.
+     *
      * @param  array{username: string, role: string}  $principal
      * @return array<string, mixed>
      */
-    public function toFileNode(JmapFileNode $node, array $principal): array
+    public function toFileNode(JmapFileNode $node, array $principal, bool $withType = true): array
     {
         $key = (string) $node->storage_key;
         $disk = $this->storage->files();
@@ -77,7 +83,7 @@ final class FileNodeMapper
             'target' => null,
             'size' => $isDir ? null : (int) ($node->size_bytes ?? 0),
             'name' => (string) $node->name,
-            'type' => $isDir ? null : $this->mediaType($key),
+            'type' => $isDir || ! $withType ? null : $this->mediaType($key),
             'created' => $node->created_at?->toIso8601ZuluString() ?? $modified,
             'modified' => $modified,
             'accessed' => $modified,

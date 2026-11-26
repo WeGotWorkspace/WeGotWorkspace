@@ -128,6 +128,12 @@ final class ContactCardRepository
         return $this->mapper->toContactCard($located['card'], $located['bookApiId'], $username, $withMedia);
     }
 
+    /** @param  list<string>  $cardIds @return \Generator<string, array<string, mixed>|null> */
+    public function showEach(string $username, array $cardIds, bool $withMedia = true): \Generator
+    {
+        return (new ContactCardBatchReader($this->mapper, $this->books, $this->contactStates))->each($username, $cardIds, $withMedia, fn (string $id): ?Card => $this->findOwnedCard($username, $id)['card'] ?? null);
+    }
+
     /**
      * Import one or more vCard blocks from a file. Contacts are created before groups so
      * member uids from the same file resolve when groups are persisted.

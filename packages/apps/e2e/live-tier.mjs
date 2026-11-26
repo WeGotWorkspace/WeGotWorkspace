@@ -19,6 +19,7 @@ export const liveTierSpecs = [
   "calendar-invitations-push",
   "calendar-late-first-load",
   "calendar-list-autosave-reload",
+  "calendar-many-events-window",
   "calendar-offline-week-event",
   "calendar-push",
   "calendar-shared-caches",
@@ -118,6 +119,7 @@ export const liveTierSpecs = [
   "tasks-create-lost-response",
   "tasks-ics-import",
   "tasks-inbound-sync",
+  "tasks-list-pages",
   "tasks-list-windowed",
   "tasks-live-text",
   "tasks-push",
@@ -184,3 +186,10 @@ export const relayTierSpecPattern = /rtc-relay\.spec\.ts/;
  * `playwright.pwa.config.mjs` runs it. Not part of the Storybook or live tier.
  */
 export const pwaTierSpecPattern = /pwa-offline-reload\.spec\.ts/;
+
+/**
+ * Traffic budget measurement (#2292): several minutes per scenario against the
+ * live stack. `playwright.traffic.config.mjs` runs it. Not part of the
+ * Storybook or live tier.
+ */
+export const trafficTierSpecPattern = /traffic-budget\.spec\.ts/;

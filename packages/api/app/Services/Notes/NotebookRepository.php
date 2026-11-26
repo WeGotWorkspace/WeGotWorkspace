@@ -318,6 +318,22 @@ final class NotebookRepository
     }
 
     /**
+     * Every accessible notebook instance by calendar id, from one read (the
+     * first instance of a calendar wins, like findAccessibleInstanceForCalendar()).
+     *
+     * @return array<int, CalendarInstance>
+     */
+    public function accessibleInstancesByCalendarId(string $username): array
+    {
+        $byCalendar = [];
+        foreach ($this->accessibleNotebookInstances($username) as $instance) {
+            $byCalendar[(int) $instance->calendarid] ??= $instance;
+        }
+
+        return $byCalendar;
+    }
+
+    /**
      * Accessible notebooks. Chat channels and docs thread pools are VJOURNAL-only
      * too, so the stored CollectionKind is the discriminator — never the uri
      * prefix, which sharee instances do not carry (regression:

@@ -57,6 +57,24 @@ The burst is the constraint. It lasts until ICE settles and Meet drops back to a
 
 Confirm the assumption on the host with the k6 script.
 
+## Browser traffic budget (#2291)
+
+A shared host's firewall may block an IP above about 60 requests a minute, and it counts every tab, window and device behind that IP. Every API answer therefore carries `X-WGW-Traffic-Budget: background=N; bulk=N; burst=N`, and the service worker of each browser (the one place all its tabs' requests pass) paces to it:
+
+- **Background** (the push stream, signaling events, `…/changes`, notification lists, anything marked `X-WGW-Traffic: background`) draws from one token bucket per browser: `background` per minute, `burst` at once, a request waits at most 30 s.
+- **Bulk** (marked `X-WGW-Traffic: bulk`: first downloads, prefetch) goes one at a time, `bulk` per minute.
+- **Session reads** (`settings/state`, `me`, `jmap/session`) of one signed-in session share one answer for 15 s; a write drops it.
+- **Everything else** (foreground reads, writes) is never delayed; it takes no token, so a busy download cannot starve the push doorbell.
+- A network error, 429 or 503 brakes background and bulk (2 s doubling to 60 s, or `Retry-After`, at most 5 minutes).
+
+| Profile | background / min | bulk / min | burst | Default for |
+| --- | --- | --- | --- | --- |
+| `shared` | 30 | 20 | 10 | ZIP installs |
+| `standard` | 120 | 120 | 30 | Docker and Kubernetes (`WGW_INSTALL_CHANNEL=docker`) |
+| `off` | 0 | 0 | 0 | — |
+
+`WGW_TRAFFIC_PROFILE` picks the profile; `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE` and `WGW_TRAFFIC_BURST` override one number each (clamped 0–10000; `0` turns pacing off for the two per-minute numbers, a burst of `0` is applied as `1`). Until a browser has read the header it holds the `shared` numbers. Without a service worker (first visit, private window) the client's own pacing (pacer, idle cadence) still holds; the governor is the second line. A browser that is idle or has every tab hidden is slowed by the clients' cadence (6 s and 30 s push), not by this budget.
+
 ## JMAP push (event source)
 
 Open apps learn about changes through short-burst requests to `GET /api/v1/jmap/events/{types}/{closeafter}/{ping}` ([architecture/jmap-push.md](architecture/jmap-push.md)). Each request computes the per-type states, answers at once and closes. The client reconnects after `retry:` (`WGW_JMAP_PUSH_RETRY_MS`, default 3000 ms). A request never holds an FPM child open.
@@ -143,3 +161,78 @@ PHP built-in server with one worker, SQLite, on a MacBook over a home connection
 | 40 | 40 | 40 | 316 ms | 616 ms | 651 ms |
 
 Up to 20 the cost is one round trip plus a little encryption per subscription; above 20 the tail grows (one slow handshake holds the whole batch). **The cutoff stays at 20**: a meeting start holds a worker for about 0.2 s, well inside the 1.5 s deadline, and a recipient with more devices gets the rest on the next cron tick. Not measured yet: a shared host with `pm.max_children = 5` and a slower CPU, where encryption weighs more.
+
+## Requests per browser (#2284)
+
+A shared host counts requests per IP, and a router puts every tab, PWA window and device of an office behind one. A host that flagged "more than 60 requests a minute" blocked a developer's IP; its log showed peaks of 1277 a minute. The suite therefore has a budget per browser, and a harness that measures it.
+
+### Budget
+
+| Situation | Budget |
+| --- | --- |
+| Active (someone touches a tab) | at most 30 a minute |
+| Idle (nobody touched any tab for 2 minutes) | at most 10 a minute |
+| Every tab hidden | at most 4 a minute |
+| Any 10 seconds | at most 30 requests |
+| Cold start: a fresh browser opens five apps, 2000 contacts, 40 docs | fewer than 120 in minute 1, fewer than 40 a minute after |
+| One push request with every type | at most 25 ms on the reference stack |
+
+Browsers add up. Two people with five tabs each can reach 60 a minute on the active budget alone; ten people would need a host limit of 300 or more a minute for their shared IP.
+
+### Measured
+
+Local stack on one Mac (PHP built-in server, SQLite, Vite dev with the service worker on, one run at a time), fresh browser context, 3-minute window per scenario, every `/api` request of the pages and of the service worker counted. One run per row unless stated. "Before" is `main` on 2026-11-19 (`6aa30fc55`, an earlier version of the same scenarios on the small dev data set). "After" is `main` on 2026-11-25 (`4033aa291`) on a book with 2000 contacts and 40 docs in the Team folder, so the first minutes of every "after" row include those offline downloads (paced to 20 a minute). Compare the last minute to judge the steady state, and treat the 3-minute window as too short to show it for the downloads.
+
+| Scenario | Before: per minute (busiest 10 s) | After: per minute (busiest 10 s) |
+| --- | --- | --- |
+| One Docs tab, idle | 80 / 80 / 81 (16) | 37 / 25 / 10 (8) |
+| One Docs tab, clicking every 20 s | not measured | 40 / 32 / 20 (10) |
+| Five tabs, Docs in front, idle | 82 / 69 / 69 (18) | 43 / 34 / 32 (10); in an 8-minute run 43 / 35 / 32 / 24 / 10 / 11 / 11 / 11 |
+| Five tabs, switching every 15 s | 83 / 75 / 75 (34) | 55 / 50 / 48 (16) |
+| Calendar and Contacts, switching every 15 s | 73 / 74 / 74 (28) | 53 / 31 / 28 (14) |
+| Five tabs, connection drops for 60 s, returns | 83 / 88 / 85 (20) | 59 / 98 / 31 (44; 79 attempts failed while blocked) |
+| Cold start, five apps | 397 / 48 / 48 (264; small address book) | 215 / 42 / 32, 204 / 42 / 33, 224 / 41 / 34 (126 to 146) |
+| One push request with every type (16 types), median, p95 | 14 ms for 13 types | 16–17 ms, 19–20 ms (three runs of 200) |
+
+What this meets and does not meet:
+
+- **Met:** the push request stays under 25 ms. One Docs tab idle reaches 10 a minute in its third minute. In the cold-start run whose timeline was read bucket by bucket, about 190 requests went out in the first 20 seconds and no later 10 s window held more than 12.
+- **Not met:** cold start minute 1 (204 to 224, target under 120) and minute 2 (41 to 42, target under 40). Five idle tabs make 32 in the third minute (budget 10), because that minute still holds paced doc bodies and contact pages; in an 8-minute run they settle at 11 a minute from minute 5 (10 push requests and one `TeamMember/get`). Tab switching makes 48 to 55 a minute against 30. A dropped connection followed by recovery sends 44 requests in one 10 s window against 30.
+- With the service-worker governor (PR #2364, head `3d067ed93`, based on `main` of 2026-11-24; the API had no budget header, so the `shared` defaults applied; one run each): cold start 186 / 29 / 28 (busiest 10 s: 85), five idle tabs 40 / 23 / 30 (12), connection drop 40 / 23 / 30 (12; 24 attempts failed while blocked, against 79 without it). In the 8-minute idle run it also settles at 11 a minute. The five-tab and connection-drop runs gave the same per-minute counts although their timelines differ; they are probably the governor's token buckets, which was not checked.
+- Not measured: photos, several Teams, a second user, a window longer than 3 minutes, a production build, a real host.
+
+### Measuring the browser budget
+
+The harness is `packages/apps/e2e/traffic-budget.spec.ts` with `e2e/helpers/traffic-meter.ts` and `playwright.traffic.config.mjs`. It is not part of the live tier and not part of CI: the scenarios take about 25 minutes together. A meter counts requests per tab (`sw` for the service worker's own), per endpoint group and per minute, and writes `test-results/traffic/<scenario>.json` with the busiest 10 s, a timeline and the window in epoch milliseconds.
+
+1. Start an API and the app on ports nothing else uses. Playwright reuses a server that already answers on the default ports, so another checkout's stack would be measured by mistake (`lsof -nP -iTCP:9080 -iTCP:5173 -sTCP:LISTEN`). The defaults are API `127.0.0.1:9080` and app `127.0.0.1:5173`; `WGW_E2E_API_URL`, `WGW_APPS_E2E_BASE_URL` and `WGW_APPS_E2E_NO_SERVER=1` point the harness at stacks you started yourself.
+2. Run it from `packages/apps`:
+
+```bash
+WGW_TRAFFIC_MINUTES=3 pnpm exec playwright test --config playwright.traffic.config.mjs
+```
+
+   `-g "cold start"` runs one scenario. `WGW_TRAFFIC_MINUTES` is the window per scenario (default 3). `WGW_TRAFFIC_ENFORCE=1` fails a scenario that breaks the budget above; without it the run prints `OVER BUDGET` lines and passes. `WGW_TRAFFIC_OUT` moves the reports. `WGW_TRAFFIC_CONTACTS` (default 2000) and `WGW_TRAFFIC_DOCS` (default 40) size the cold-start data; the spec tops them up and never removes them.
+3. The scenarios: one Docs tab idle; one Docs tab with a click every 20 s; five tabs idle; five tabs switching every 15 s; Calendar and Contacts switching; a 60 s connection drop; the cold start; and the cost of a push request with every type (plain requests, no browser).
+4. Cross-check with the API's own log. With the PHP built-in server the log has one `Accepted` line per request:
+
+```bash
+node e2e/traffic-crosscheck.mjs test-results/traffic/suite-cold-start.json api-server.log
+```
+
+   It prints the browser's per-minute counts next to the server's. They agree within a few requests (the log has whole seconds). Use a log of an API that nothing else talks to during the run: in one session a second client on the default port added 15 to 28 requests to a minute that the browser never sent. A browser count above the server's means requests that never arrived (blocked or cached); a count below means requests the meter missed.
+5. To compare a build with and without the service-worker governor (#2291), run the same scenarios against each build's app on the same API and book, one after the other.
+
+### Settings per install channel
+
+| Setting | ZIP / SFTP (`packages/api/.env`) | Docker and Kubernetes (`api.env`, `WGW_INSTALL_CHANNEL=docker`) |
+| --- | --- | --- |
+| `WGW_JMAP_PUSH_RETRY_MS` | 3000. Raise to 5000 on a very small host: push requests drop by about 40%, live updates arrive up to 2 s later. | Same default and meaning. |
+| `WGW_TRAFFIC_PROFILE` (governor, #2291) | `shared` by default: 30 background, 20 bulk a minute, burst 10. | `standard` by default: 120 / 120 / 30. Kubernetes uses the image, so it is `standard` too. |
+| `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE`, `WGW_TRAFFIC_BURST` (governor, #2291) | Optional overrides of one number of the profile. | Same. |
+
+The three `WGW_TRAFFIC_*` settings exist in the release that includes the service-worker governor (#2291). The push route also holds a fixed limit of 60 requests a minute per browser and 300 per account; that is not a setting.
+
+### Offices: ask the host to allow the office IP
+
+Per-browser numbers cannot keep a whole office under a per-IP threshold. If the host limits requests per IP, ask it to allowlist the office's outgoing IP address (and the VPN's, if people connect through one), or to raise the limit for that address. Multiply the active budget by the number of people who work at the same time: 10 people at 30 a minute need a limit of at least 300 a minute, plus margin for their cold starts. Also ask for the exact limit and whether it counts static files, because the budget above counts API requests only. Without an allowlist, a host limit of 60 a minute fits about two people working at the budget.

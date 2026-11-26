@@ -3905,12 +3905,18 @@ export interface paths {
         };
         /**
          * List tasks in a task list
-         * @description Returns { list } only (no total). A stored task over the per-object iCalendar caps (512 KiB serialized, or 64 combined nested VEVENT+VTODO+VALARM excluding VTIMEZONE) is omitted from list; the response stays HTTP 200. Query endpoints that report total still include the id.
+         * @description Returns { list } only (no total). A stored task over the per-object iCalendar caps (512 KiB serialized, or 64 combined nested VEVENT+VTODO+VALARM excluding VTIMEZONE) is omitted from list; the response stays HTTP 200. Query endpoints that report total still include the id. With `limit`, the answer also carries `nextCursor`; a page counts stored objects, so a stored task with recurrence overrides can add more than one entry.
          */
         get: {
             parameters: {
                 query: {
                     taskListId: string;
+                    /** @description Serve at most this many stored tasks, in URI order, plus a `nextCursor` to continue. Without `limit` the whole list is returned. */
+                    limit?: number;
+                    /** @description The `nextCursor` of the previous page. */
+                    cursor?: string;
+                    /** @description `list` returns only what a list row needs (id, uid, title, start, due, completed, status, progress, priority, sort order, categories, privacy, timestamps, etag, recurrence rules). Description, participants, alerts, recurrence overrides and unmapped properties are left out and must be read as unknown, not empty; fetch them without `fields`. */
+                    fields?: "list";
                 };
                 header?: never;
                 path?: never;
@@ -13245,6 +13251,8 @@ export interface components {
         };
         TaskListResponse: {
             list: components["schemas"]["Task"][];
+            /** @description Present with `limit`: pass it as `cursor` for the next page; null when this was the last page. */
+            nextCursor?: string | null;
         };
         TaskCreate: {
             taskListIds: {

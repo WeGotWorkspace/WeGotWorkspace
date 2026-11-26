@@ -175,6 +175,41 @@ export async function createUtcCalendarEventViaApi(title: string, start: string)
   if (!result?.created?.e1) throw new Error(`E2E event not created: ${JSON.stringify(result)}`);
 }
 
+/** Create many UTC events at once, in batches within the server's set limit. */
+export async function createUtcCalendarEventsViaApi(
+  title: string,
+  starts: string[],
+): Promise<void> {
+  const calendars = await e2eJmap([["Calendar/get", { accountId: E2E_USERNAME, ids: null }, "c"]]);
+  const list = (calendars.methodResponses[0]?.[1]?.list ?? []) as {
+    id: string;
+    isDefault?: boolean;
+  }[];
+  const calendar = list.find((entry) => entry.isDefault) ?? list[0];
+  if (!calendar) throw new Error("E2E user has no calendar");
+  const BATCH = 100;
+  for (let at = 0; at < starts.length; at += BATCH) {
+    const create: Record<string, unknown> = {};
+    starts.slice(at, at + BATCH).forEach((start, offset) => {
+      create[`e${at + offset}`] = {
+        "@type": "Event",
+        calendarIds: { [calendar.id]: true },
+        title,
+        start,
+        duration: "PT30M",
+        timeZone: "UTC",
+      };
+    });
+    const created = await e2eJmap([
+      ["CalendarEvent/set", { accountId: E2E_USERNAME, create }, "s"],
+    ]);
+    const result = created.methodResponses[0]?.[1] as { created?: Record<string, unknown> };
+    if (Object.keys(result?.created ?? {}).length !== Object.keys(create).length) {
+      throw new Error(`E2E events not created: ${JSON.stringify(result)}`);
+    }
+  }
+}
+
 /** How many events on the server have this exact title. */
 export async function countCalendarEventsByTitleViaApi(title: string): Promise<number> {
   const query = await e2eJmap([
@@ -190,7 +225,18 @@ export async function deleteCalendarEventsByTitleViaApi(title: string): Promise<
   ]);
   const ids = (query.methodResponses[0]?.[1]?.ids as string[] | undefined) ?? [];
   if (ids.length === 0) return 0;
-  await e2eJmap([["CalendarEvent/set", { accountId: E2E_USERNAME, destroy: ids }, "s"]]);
+  // The server caps one `CalendarEvent/set` at 200 objects.
+  const BATCH = 100;
+  for (let at = 0; at < ids.length; at += BATCH) {
+    const batch = ids.slice(at, at + BATCH);
+    const destroyed = await e2eJmap([
+      ["CalendarEvent/set", { accountId: E2E_USERNAME, destroy: batch }, "s"],
+    ]);
+    const result = destroyed.methodResponses[0]?.[1] as { destroyed?: string[] };
+    if ((result?.destroyed ?? []).length !== batch.length) {
+      throw new Error(`E2E events not destroyed: ${JSON.stringify(result)}`);
+    }
+  }
   return ids.length;
 }
 

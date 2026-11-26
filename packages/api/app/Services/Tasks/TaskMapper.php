@@ -32,25 +32,43 @@ final class TaskMapper
     }
 
     /**
+     * The fields of a list row (the lean first download, Epic #2284): what a
+     * list shows and sorts by, without the heavy parts (description, assignees,
+     * reminders, per-instance overrides, unmapped properties). A client that
+     * leaves a field out treats it as unknown, never as empty.
+     */
+    public const LIST_FIELDS = [
+        '@type', 'id', 'taskListId', 'uid', 'title', 'start', 'due', 'completed',
+        'showWithoutTime', 'timeZone', 'workflowStatus', 'progress', 'priority',
+        'isDraft', 'sortOrder', 'categories', 'privacy', 'created', 'updated', 'etag',
+        'recurrenceRules', 'excludedRecurrenceDates',
+    ];
+
+    /**
+     * @param  bool  $lean  Only {@see self::LIST_FIELDS}, projected per task; the
+     *                      participants are not looked up at all.
      * @return list<array<string, mixed>>
      */
-    public function toTasks(CalendarObject $object, string $taskListUri): array
+    public function toTasks(CalendarObject $object, string $taskListUri, bool $lean = false): array
     {
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
         $calendarId = (int) $object->calendarid;
-        $tasks = array_map(
-            fn (array $task): array => $this->participants->resolveTask($task, $calendarId, $this->viewer),
-            $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri),
-        );
+        $parsed = $this->converter->tasksFromIcs($raw, (string) $object->uri, $taskListUri);
+        $tasks = $lean
+            ? $parsed
+            : array_map(
+                fn (array $task): array => $this->participants->resolveTask($task, $calendarId, $this->viewer),
+                $parsed,
+            );
         $etag = OptimisticConcurrency::formatEtag(is_string($object->etag) ? $object->etag : null);
         $lastModified = (int) ($object->lastmodified ?? 0);
         if ($lastModified <= 0 && $etag === null) {
-            return $tasks;
+            return $lean ? array_map(self::projectListFields(...), $tasks) : $tasks;
         }
 
         $timestamp = $lastModified > 0 ? gmdate('Y-m-d\TH:i:s\Z', $lastModified) : null;
 
-        return array_map(function (array $task) use ($timestamp, $etag): array {
+        return array_map(function (array $task) use ($timestamp, $etag, $lean): array {
             if ($etag !== null) {
                 $task['etag'] = $etag;
             }
@@ -63,8 +81,17 @@ final class TaskMapper
                 }
             }
 
-            return $task;
+            return $lean ? self::projectListFields($task) : $task;
         }, $tasks);
+    }
+
+    /**
+     * @param  array<string, mixed>  $task
+     * @return array<string, mixed>
+     */
+    private static function projectListFields(array $task): array
+    {
+        return array_intersect_key($task, array_flip(self::LIST_FIELDS));
     }
 
     /**

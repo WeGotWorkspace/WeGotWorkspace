@@ -318,6 +318,27 @@ async function fetchAdminUiData(opts?: { signal?: AbortSignal }): Promise<AdminU
   return mapWgwAdminStateToUI(state, logLines, searchReindex);
 }
 
+/**
+ * A failed admin write as a typed error: the server's `{ error, code }` body when it sent one
+ * (so the toast says why), else the request line. Callers classify on `status` and `code`.
+ */
+async function adminRequestError(res: Response, fallback: string): Promise<WgwRequestError> {
+  let message = fallback;
+  let code: string | undefined;
+  try {
+    const payload = (await res.json()) as { error?: unknown; code?: unknown };
+    if (typeof payload.error === "string" && payload.error.trim() !== "") {
+      message = payload.error;
+    }
+    if (typeof payload.code === "string" && payload.code !== "") {
+      code = payload.code;
+    }
+  } catch {
+    // Not a JSON body: keep the request line.
+  }
+  return new WgwRequestError(message, res.status, code);
+}
+
 async function readApiError(res: Response, fallback: string): Promise<string> {
   try {
     const payload = (await wgwReadJson(res)) as { error?: string; message?: string };
@@ -557,8 +578,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         }),
         signal: opts?.signal,
       });
-      if (!res.ok)
-        throw new WgwRequestError(`POST /admin/users failed (${res.status})`, res.status);
+      if (!res.ok) throw await adminRequestError(res, `POST /admin/users failed (${res.status})`);
       await wgwReadJson(res);
       wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
@@ -571,10 +591,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         signal: opts?.signal,
       });
       if (!res.ok)
-        throw new WgwRequestError(
-          `PATCH /admin/users/${username} failed (${res.status})`,
-          res.status,
-        );
+        throw await adminRequestError(res, `PATCH /admin/users/${username} failed (${res.status})`);
       await wgwReadJson(res);
       wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
@@ -585,9 +602,9 @@ export function createWgwAdminOperations(): AdminAPIOperations {
         signal: opts?.signal,
       });
       if (!res.ok)
-        throw new WgwRequestError(
+        throw await adminRequestError(
+          res,
           `DELETE /admin/users/${username} failed (${res.status})`,
-          res.status,
         );
       await wgwReadJson(res);
       wgwInvalidateAccountReads();
@@ -596,7 +613,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
     resetUserMfa: async (username, opts) => {
       const path = `/admin/users/${encodeURIComponent(username)}/mfa-resets`;
       const res = await wgwFetch(path, { method: "POST", signal: opts?.signal });
-      if (!res.ok) throw new WgwRequestError(`POST ${path} failed (${res.status})`, res.status);
+      if (!res.ok) throw await adminRequestError(res, `POST ${path} failed (${res.status})`);
       wgwInvalidateAccountReads();
       return fetchAdminUiData(opts);
     },

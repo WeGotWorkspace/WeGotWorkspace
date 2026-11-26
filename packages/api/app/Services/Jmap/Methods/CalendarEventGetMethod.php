@@ -25,6 +25,9 @@ final class CalendarEventGetMethod implements JmapMethodInterface
 {
     use HandlesGetArguments;
 
+    /** Events loaded per lookup, so a large get never holds every row at once. */
+    private const GET_CHUNK = 100;
+
     public function __construct(
         private readonly CalendarEventRepository $events,
         private readonly JmapCalendarEventStateService $eventStates,
@@ -52,29 +55,33 @@ final class CalendarEventGetMethod implements JmapMethodInterface
         $tokens = $this->events->calendarSyncTokens($username);
         $state = JmapAccountStateCodec::compose($tokens);
 
+        $projection = $this->getProjection($args);
         $ids = $this->requestedIds($args);
         $list = [];
         $notFound = [];
         if ($ids === null) {
             foreach (array_keys($tokens) as $calendarUri) {
                 foreach ($this->events->list($username, $calendarUri)['list'] as $event) {
-                    $list[] = $event;
+                    $list[] = $projection->apply($event);
                 }
             }
             $this->guardGetAllBound($list);
         } else {
-            $locate = $this->events->ownedEventLocator($username, $ids);
-            $states = $this->eventStates->statesFor($username, $ids);
-            foreach ($ids as $id) {
-                try {
-                    $list[] = $this->events->show($username, $id, $locate, $states);
-                } catch (ApiHttpException $e) {
-                    if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
-                        $notFound[] = $id;
+            // Chunked, so the located calendar rows (raw iCalendar) of a page are not all held at once.
+            foreach (array_chunk($ids, self::GET_CHUNK) as $chunk) {
+                $locate = $this->events->ownedEventLocator($username, $chunk);
+                $states = $this->eventStates->statesFor($username, $chunk);
+                foreach ($chunk as $id) {
+                    try {
+                        $list[] = $projection->apply($this->events->show($username, $id, $locate, $states));
+                    } catch (ApiHttpException $e) {
+                        if ($e->getStatusCode() === 404 || VObjectPayloadGuard::isPayloadBoundError($e)) {
+                            $notFound[] = $id;
 
-                        continue;
+                            continue;
+                        }
+                        throw $e;
                     }
-                    throw $e;
                 }
             }
         }
@@ -82,7 +89,7 @@ final class CalendarEventGetMethod implements JmapMethodInterface
         return [
             'accountId' => $username,
             'state' => $state,
-            'list' => $this->projectProperties($list, $args),
+            'list' => $list,
             'notFound' => $notFound,
         ];
     }
