@@ -92,6 +92,27 @@ function rewrite(src: string, mapIdent: (span: Extract<Span, { t: "ident" }>, ca
   return out;
 }
 
+type Marks = { colAbs: boolean; rowAbs: boolean; plain: string };
+
+/** Splits `$` marks off a file-form ident: `$prijs$3` → prijs3 with both marks. */
+function splitFileMarks(v: string): Marks {
+  const colAbs = v.startsWith("$");
+  let body = colAbs ? v.slice(1) : v;
+  const row = /^(.*)\$(\d+)$/.exec(body);
+  const rowAbs = row !== null;
+  if (row) body = `${row[1]}${row[2]}`;
+  return { colAbs, rowAbs, plain: body };
+}
+
+/** Puts `$` marks back on an id-form result (`prijs@r_x` → `$prijs@$r_x`). */
+function withIdMarks(result: string, marks: Marks): string {
+  if (!marks.colAbs && !marks.rowAbs) return result;
+  if (result === "#REF!") return result;
+  const at = result.lastIndexOf("@");
+  if (at < 0) return marks.colAbs ? `$${result}` : result;
+  return `${marks.colAbs ? "$" : ""}${result.slice(0, at)}@${marks.rowAbs ? "$" : ""}${result.slice(at + 1)}`;
+}
+
 export function toIdForm(
   src: string,
   cols: ColInfo[],
@@ -109,13 +130,16 @@ export function toIdForm(
       return `${quoteRef(span.v)}@${rowIds[rowNumber - 1]}`;
     }
     if (span.v.includes(".") || span.v.includes("@")) return span.raw;
+    const marks = splitFileMarks(span.v);
+    const v = marks.plain;
     // Digits inside the column name are not a row suffix. q1 is the column.
-    if (cols.some((col) => col.ref === span.v) || !/\d/.test(span.v)) return span.raw;
-    const byRef = matchLabel(span.v, cols, rowIds, (col) => col.ref);
-    if (byRef) return byRef;
-    const byHeader = matchLabel(span.v, cols, rowIds, (col) => (col.header && col.header !== col.ref ? col.header : ""));
-    if (byHeader) return byHeader;
-    return positionalRef(span.v, cols, rowIds) ?? span.raw;
+    if (cols.some((col) => col.ref === v) || !/\d/.test(v)) return span.raw;
+    const byRef = matchLabel(v, cols, rowIds, (col) => col.ref);
+    if (byRef) return withIdMarks(byRef, marks);
+    const byHeader = matchLabel(v, cols, rowIds, (col) => (col.header && col.header !== col.ref ? col.header : ""));
+    if (byHeader) return withIdMarks(byHeader, marks);
+    const positional = positionalRef(v, cols, rowIds);
+    return positional ? withIdMarks(positional, marks) : span.raw;
   });
 }
 
@@ -131,11 +155,15 @@ export function toFileForm(
     if (call) return span.raw;
     const at = span.v.lastIndexOf("@");
     if (at < 0) return span.raw;
-    const ref = span.v.slice(0, at);
-    const rowId = span.v.slice(at + 1);
+    let ref = span.v.slice(0, at);
+    let rowId = span.v.slice(at + 1);
+    const colAbs = ref.startsWith("$");
+    const rowAbs = rowId.startsWith("$");
+    if (colAbs) ref = ref.slice(1);
+    if (rowAbs) rowId = rowId.slice(1);
     const idx = rowIndex ? rowIndex.get(rowId) : rowIds.indexOf(rowId);
     if (idx === undefined || idx < 0) return "#REF!";
     const emitted = quoted.has(ref) ? quoteRef(ref) : ref;
-    return `${emitted}${idx + 1}`;
+    return `${colAbs ? "$" : ""}${emitted}${rowAbs ? "$" : ""}${idx + 1}`;
   });
 }

@@ -84,9 +84,12 @@ function columnDef(map: Y.Map<unknown>): ColumnDef {
   const def: ColumnDef = { ref };
   if (typeof name === "string") def.name = name;
   if (typeof type === "string") def.type = type as ColumnDef["type"];
+  const width = map.get("width");
   if (rest && typeof rest === "object") {
     for (const [key, value] of Object.entries(rest as Record<string, unknown>)) def[key] = value;
   }
+  // A width set in the grid lives on the column map; it wins over the file's.
+  if (typeof width === "number") def.width = width;
   return def;
 }
 

@@ -16,8 +16,11 @@
     "yjs": "^13.6.27"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@storybook/react-vite": "^9.1.10",
     "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
     "storybook": "9.1.21",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",

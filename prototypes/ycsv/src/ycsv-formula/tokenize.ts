@@ -11,8 +11,10 @@ export type Span =
   | { t: "ident"; v: string; raw: string; quoted?: boolean; suffix?: string }
   | { t: "op"; v: string; raw: string };
 
+// `$` marks an absolute column (`$prijs`) or row (`prijs$3`, id form `prijs@$r_x`).
+// It only matters when a formula is copied or filled; evaluation ignores it.
 const IDENT =
-  /[A-Za-z_\u00C0-\u024F][A-Za-z0-9_\u00C0-\u024F]*(@[A-Za-z0-9_-]+)?(\.[A-Za-z0-9_\u00C0-\u024F]+)?/y;
+  /\$?[A-Za-z_\u00C0-\u024F][A-Za-z0-9_\u00C0-\u024F]*(\$\d+)?(@\$?[A-Za-z0-9_-]+)?(\.[A-Za-z0-9_\u00C0-\u024F]+)?/y;
 
 function isDigit(char: string | undefined): boolean {
   return char !== undefined && char >= "0" && char <= "9";
@@ -50,7 +52,7 @@ function readQuotedIdent(src: string, start: number): { v: string; raw: string; 
       i += 1;
       let suffix = "";
       if (src[i] === "@") {
-        const rest = /^@[A-Za-z0-9_-]+/.exec(src.slice(i));
+        const rest = /^@\$?[A-Za-z0-9_-]+/.exec(src.slice(i));
         if (rest) {
           suffix = rest[0];
           i += rest[0].length;

@@ -87,8 +87,9 @@ export function parseFormula(src: string): Node {
     throw new Error("#SYNTAX");
   };
 
-  const parseIdent = (ident: string): Node => {
+  const parseIdent = (rawIdent: string): Node => {
     const next = peek();
+    const ident = next?.t === "op" && next.v === "(" ? rawIdent : rawIdent.replaceAll("$", "");
     if (next?.t === "op" && next.v === "(") {
       eat();
       const args: Node[] = [];
@@ -111,10 +112,11 @@ export function parseFormula(src: string): Node {
         eat();
         const right = eat();
         if (right.t !== "ident" || !right.v.includes("@")) throw new Error("#REF");
-        const atRight = right.v.indexOf("@");
-        const colRight = right.v.slice(0, atRight);
-        const rowRight = right.v.slice(atRight + 1);
-        if (col !== colRight) throw new Error("#REF");
+        const rightV = right.v.replaceAll("$", "");
+        const atRight = rightV.indexOf("@");
+        const colRight = rightV.slice(0, atRight);
+        const rowRight = rightV.slice(atRight + 1);
+        if (col !== colRight) return { k: "range", col, from: row, to: rowRight, col2: colRight };
         return { k: "range", col, from: row, to: rowRight };
       }
       return { k: "ref", col, row };

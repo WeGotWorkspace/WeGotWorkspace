@@ -10,6 +10,7 @@ export type SheetColumn = {
   type?: ColumnType;
   currency?: string;
   locale?: string;
+  width?: number;
 };
 
 export type SheetRow = {
@@ -60,6 +61,7 @@ function readSheet(doc: Y.Doc): {
       type: typeof type === "string" ? (type as ColumnType) : undefined,
       currency: typeof record.currency === "string" ? record.currency : undefined,
       locale: typeof record.locale === "string" ? record.locale : undefined,
+      width: typeof map.get("width") === "number" ? (map.get("width") as number) : typeof record.width === "number" ? record.width : undefined,
     });
   }
 

@@ -1,5 +1,5 @@
 import type { Node } from "./ast";
-import { evalNode, isCellError, type CellError, type EvalCtx, type Value } from "./eval";
+import { columnsBetween, evalNode, isCellError, type CellError, type EvalCtx, type Value } from "./eval";
 import { parseFormula } from "./parser";
 
 export type RawCells = Map<string, string>;
@@ -74,7 +74,7 @@ function orderedKeys(raw: RawCells, rowOrder: string[]): string[] {
 export type AstDeps = {
   sameRowCols: string[];
   absolute: { col: string; row: string }[];
-  ranges: { col: string; from: string; to: string }[];
+  ranges: { col: string; from: string; to: string; col2?: string }[];
 };
 
 const depCache = new Map<string, { columnsKey: string; deps: AstDeps }>();
@@ -91,7 +91,7 @@ function walkAst(node: Node, isColumn: (path: string) => boolean, out: AstDeps):
       out.absolute.push({ col: node.col, row: node.row });
       break;
     case "range":
-      out.ranges.push({ col: node.col, from: node.from, to: node.to });
+      out.ranges.push({ col: node.col, from: node.from, to: node.to, col2: node.col2 });
       break;
     case "name":
       if (!node.path.includes(".") && node.path !== "#REF!" && isColumn(node.path)) out.sameRowCols.push(node.path);
@@ -116,6 +116,7 @@ export function cellDeps(
   currentRow: string,
   rowOrder: string[],
   rowIndex: ReadonlyMap<string, number>,
+  colOrder?: readonly string[],
 ): string[] {
   const keys: string[] = [];
   for (const col of deps.sameRowCols) keys.push(`${col}@${currentRow}`);
@@ -126,9 +127,11 @@ export function cellDeps(
     if (start === undefined || end === undefined) continue;
     const lo = Math.min(start, end);
     const hi = Math.max(start, end);
+    const cols = columnsBetween(colOrder, range.col, range.col2) ?? [range.col];
     for (let i = lo; i <= hi; i += 1) {
       const row = rowOrder[i];
-      if (row) keys.push(`${range.col}@${row}`);
+      if (!row) continue;
+      for (const col of cols) keys.push(`${col}@${row}`);
     }
   }
   return keys;
@@ -193,6 +196,7 @@ export function evaluateAll(
     rowOrder,
     currentRow: "",
     isColumn,
+    colOrder: columnRefs,
   };
 
   const visit = (key: string, stack: string[]) => {
@@ -202,7 +206,13 @@ export function evaluateAll(
     stack.push(key);
     if (item.ast) {
       const { row } = splitKey(key);
-      const deps = cellDeps(cachedAstDeps(raw.get(key) ?? "", item.ast, isColumn, columnsKey), row, rowOrder, rowIndex);
+      const deps = cellDeps(
+        cachedAstDeps(raw.get(key) ?? "", item.ast, isColumn, columnsKey),
+        row,
+        rowOrder,
+        rowIndex,
+        columnRefs,
+      );
       for (const dep of deps) {
         const state = color.get(dep) ?? "white";
         if (state === "grey") {

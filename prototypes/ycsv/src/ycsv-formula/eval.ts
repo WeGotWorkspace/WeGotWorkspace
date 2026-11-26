@@ -13,7 +13,19 @@ export type EvalCtx = {
   currentRow: string;
   /** Whether `path` is a column ref in this sheet. */
   isColumn: (path: string) => boolean;
+  /** Column refs in sheet order, for rectangular ranges. */
+  colOrder?: readonly string[];
 };
+
+/** Columns covered by a range, left to right; null when an edge column is unknown. */
+export function columnsBetween(colOrder: readonly string[] | undefined, col: string, col2?: string): string[] | null {
+  if (!col2 || col2 === col) return [col];
+  if (!colOrder) return null;
+  const a = colOrder.indexOf(col);
+  const b = colOrder.indexOf(col2);
+  if (a < 0 || b < 0) return null;
+  return colOrder.slice(Math.min(a, b), Math.max(a, b) + 1);
+}
 
 const ERRORS = new Set<string>(["#SYNTAX", "#REF", "#NAME", "#CYCLE", "#VALUE", "#DIV/0"]);
 
@@ -125,12 +137,15 @@ function evalAny(node: Node, ctx: EvalCtx): Result {
       return ctx.def(node.path) ?? "#NAME";
     case "range": {
       const rows = rowsBetween(ctx.rowOrder, ctx.rowIndex, node.from, node.to);
-      if (!rows) return "#REF";
+      const cols = columnsBetween(ctx.colOrder, node.col, node.col2);
+      if (!rows || !cols) return "#REF";
       const values: Value[] = [];
       for (const rowId of rows) {
-        const value = ctx.cell(node.col, rowId);
-        if (isCellError(value)) return value;
-        values.push(value);
+        for (const col of cols) {
+          const value = ctx.cell(col, rowId);
+          if (isCellError(value)) return value;
+          values.push(value);
+        }
       }
       return values;
     }
