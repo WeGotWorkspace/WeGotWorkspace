@@ -29,6 +29,8 @@ Draws from the Pioneer programme chore #2063 (Docs/Drive family of #1641) and fr
 - Docs home already renders Drive's list and grid views. `path: packages/apps/src/docs-core/src/docs-home-pane.tsx:11`
 - Lists are windowed. `path: packages/apps/src/drive-core/src/drive-list-spacer.tsx:8`
 - Cache-changed notifications go through a cross-tab topic; there is no Dexie `liveQuery` in app code. `path: packages/apps/src/lib/offline/core/cache-changed-topic.ts:27`
+- Background sync requests share a browser-wide pacer with `first` and `bulk` priorities. `path: packages/apps/src/lib/offline/core/background-sync-pacer.ts:68`
+- The Docs list reaches only about 1050 of 2000 documents, because `/search/results` caps `offset` at 1000 (measured in PR #2383). A list built from the tree has no such cap. `path: packages/api/app/Services/Search/UnifiedSearchService.php:21`
 - Stars are a path set in meta key `docs.starredPaths`, shared by both apps; REST `GET /files/starred`. `path: packages/apps/src/lib/offline/docs/docs-stars-store.ts:4`
 - Server, unfiltered `FileNode/query`: `reconcileVisibleTree` (BFS, disk listing per folder, capped at 2,000 folders) then `liveVisible` (one SQL query, full models), sort in PHP, `array_slice` paging. `path: packages/api/app/Services/Jmap/Methods/FileNodeQueryMethod.php:159`, `:99`, `path: packages/api/app/Services/Jmap/FileNodes/FileNodeAccountSupport.php:216`
 - Measured on main `da19686dc` (throwaway PHPUnit bench, 20,440 nodes in 400 folders): query+get page of 500 = 1.93 s and 916 SQL; with reconcile skipped = 1.67 s and 30 SQL. `cmd: BENCH_DIRS=400 BENCH_FILES=50 php vendor/bin/phpunit --filter ZzTreeBenchTest`
@@ -40,6 +42,7 @@ Draws from the Pioneer programme chore #2063 (Docs/Drive family of #1641) and fr
 
 ## Considered
 
+- **Docs keeps `GET /search/results` as its list route, made lean with a keyset cursor (option A of #2362 / PR #2383):** rejected for lists. It keeps two server routes, two permission models and a second offline cache. #2383's reasons against the FileNode route (no extension filter, no modified sort, no limit pushdown, no mtime column) assume server-side filtering; here filtering and sorting run on the device, so the server only pages the unfiltered tree. Kept from #2383: every list page goes through the background-sync pacer (chunk C1), and the lean snippet cut for full-text search results stays with #2362.
 - **Per-view caches (the Docs model, the earlier #2063 direction):** rejected. It keeps one copy of the same rows per filter and needs its own refresh per view. One tree makes every view, including never-opened folders, available offline after one sync.
 - **A server-side "tree snapshot" endpoint (one JSON of the whole tree) or a Sabre plugin that writes a tree record on every write:** rejected. `jmap_file_nodes` already is that record, kept current by `FileNodeIndexPlugin` and `DriveService`, with `FileNode/changes` for deltas. A second representation would need its own invalidation.
 - **The search index as list source:** rejected for lists. It is a full-text index, updated best-effort, and is the reason Docs and Drive diverged. It stays the source for content search.
@@ -61,6 +64,7 @@ Draws from the Pioneer programme chore #2063 (Docs/Drive family of #1641) and fr
 4. C3 (Drive binding) needs C2. C4 (Docs binding) needs C2 and C3's workspace config.
 5. C5 (indicators, thumbnails, team labels) needs C3.
 6. C6 (e2e + docs) runs last, on all of the above.
+7. #2362 (PR #2383): its list-route question is answered here (one route, the tree). Its full-text search snippet work does not block and is not blocked by these chunks. C4 removes the last browse-mode caller of `/search/results`.
 
 ## Open decisions
 
@@ -109,6 +113,7 @@ None — every choice is made.
 - **Inputs:** crawl — `path: packages/apps/src/lib/offline/drive/drive-metadata-sync.ts:101`; callers — `path: packages/apps/src/drive-core/src/use-drive-api.ts:59`; inbound — `path: packages/apps/src/lib/offline/drive/drive-inbound-sync.ts:182`.
 - **Done when:**
   - `syncDriveTree` pages `FileNode/query` + `#ids` `FileNode/get` (16 pairs per request), including Trash and share roots, under the Web Lock, with a resumable cursor and a `firstSyncDone` meta flag. It prunes rows the sync did not see only after a complete pass.
+  - Every listing request waits for the background-sync pacer at `first` priority, so the first sync never sends unpaced list pages (requirement taken from #2362 / PR #2383).
   - Rows gain indexed `ext` and `area` (`home | group | share | trash`) in a new Dexie version; existing rows are backfilled from `data`.
   - App open, reconnect and settings change call `FileNode/changes` only. The full sync runs on a missing token or `cannotCalculateChanges`.
   - The BFS crawl is deleted.
@@ -145,7 +150,7 @@ None — every choice is made.
 
 ### Chunk C6: e2e, docs, line counts
 - **Skill:** testing, document
-- **Done when:** a Drive offline e2e on the production build covers warm online open without a spinner, cold offline open, Starred, Shared, and a never-synced folder; Docs offline e2e specs stay green; `offline-platform.md` describes the tree; the PR states data-layer line counts before (Docs home 3,876; Drive data hooks 1,318; `lib/offline/docs` 2,615; `lib/offline/drive` without upload 2,814) and after.
+- **Done when:** the traffic harness of #2292 (`playwright.traffic.config.mjs`) records cold-start listing requests for Drive and for Docs alone, before and after, on the same data set; the after numbers meet the first-sync bound (at most 3 listing requests for 20k nodes) and are written to `docs/realtime-capacity.md`. A Drive offline e2e on the production build covers warm online open without a spinner, cold offline open, Starred, Shared, and a never-synced folder; Docs offline e2e specs stay green; `offline-platform.md` describes the tree; the PR states data-layer line counts before (Docs home 3,876; Drive data hooks 1,318; `lib/offline/docs` 2,615; `lib/offline/drive` without upload 2,814) and after.
 - **Verify with:** `pnpm --dir packages/apps exec playwright test -c playwright.config.mjs` (offline project), PWA config.
 - **Parallel with:** none
 
