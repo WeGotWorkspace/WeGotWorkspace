@@ -57,14 +57,20 @@ final class JmapFileNodeShareFlagsTest extends WgwDatabaseTestCase
         $this->assertSame(self::NONE, $byName['plain.md']['shareFlags']);
     }
 
-    public function test_get_without_properties_includes_share_flags(): void
+    /** The client (C1) asks with `properties: null` and relies on getting the flags. */
+    public function test_get_without_properties_returns_share_flags(): void
     {
         $this->seedPrivateFile('bob', 'public.md');
+        $this->seedPrivateFile('bob', 'plain.md');
         $this->createShare('/users/bob/public.md', 'public');
+        $ids = [$this->idOf('public.md'), $this->idOf('plain.md')];
 
-        $node = $this->getByName(['public.md'], null)['public.md'];
+        $list = $this->jmap([['FileNode/get', ['accountId' => 'bob', 'ids' => $ids, 'properties' => null], 'g']])
+            ->assertOk()->json('methodResponses.0.1.list');
+        $byName = array_column($list, null, 'name');
 
-        $this->assertTrue($node['shareFlags']['hasPublicShare']);
+        $this->assertSame(['hasShares' => true, 'hasPublicShare' => true, 'hasTeamShare' => false], $byName['public.md']['shareFlags']);
+        $this->assertSame(self::NONE, $byName['plain.md']['shareFlags']);
     }
 
     public function test_share_flags_show_only_the_callers_own_shares(): void
