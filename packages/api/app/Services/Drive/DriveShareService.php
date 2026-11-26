@@ -38,6 +38,7 @@ final class DriveShareService
         private DriveShareRevoker $revoker,
         private DriveShareGrantVisibility $grantVisibility,
         private DriveShareIndicators $indicators,
+        private DriveShareChangeRecorder $shareChanges,
     ) {}
 
     /**
@@ -101,8 +102,9 @@ final class DriveShareService
                 $share->updated_at = $now;
                 $share->save();
                 $share->timestamps = true;
-                // recordMove already published the node; bump again now the badge follows the new path.
-                $this->revoker->recordShareChange((string) $share->path);
+                // recordMove bumps only the moved node, and before this row moved: bump the
+                // share's node again now its flags resolve at the new path (#2063).
+                $this->shareChanges->record((string) $share->path);
                 $count++;
             }
 
@@ -163,7 +165,7 @@ final class DriveShareService
             }
 
             $share->refresh();
-            $this->revoker->recordShareChange($path);
+            $this->shareChanges->record($path);
             $serialized = $this->presenter->serializeShareForOwner($share);
             $this->notifier->notifySharees($owner, $share);
 
@@ -232,7 +234,7 @@ final class DriveShareService
             }
 
             // Access, expiry and grants all feed the node's share flags.
-            $this->revoker->recordShareChange((string) $share->path);
+            $this->shareChanges->record((string) $share->path);
 
             if ($addedSharees !== null && $addedSharees !== []) {
                 $this->notifier->notifySharees($username, $share, $addedSharees);
@@ -619,7 +621,7 @@ final class DriveShareService
             $grant->invite_expires_at = null;
             $grant->save();
             // A pending invite shows no badge; the accepted grant does.
-            $this->revoker->recordShareChange((string) $grant->share->path);
+            $this->shareChanges->record((string) $grant->share->path);
 
             return ['shareId' => (string) $grant->share_id, 'accepted' => true];
         });

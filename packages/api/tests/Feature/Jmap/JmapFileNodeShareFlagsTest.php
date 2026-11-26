@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Models\JmapFileNode;
 use App\Services\Drive\DriveShareRevoker;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Facades\DB;
@@ -181,32 +183,75 @@ final class JmapFileNodeShareFlagsTest extends WgwDatabaseTestCase
         $this->assertSame(self::NONE, $this->getByName(['doc.md'], ['name', 'shareFlags'])['doc.md']['shareFlags']);
     }
 
-    public function test_renaming_a_shared_file_keeps_its_flags_in_changes(): void
+    public function test_accepted_invite_is_reported_by_changes(): void
+    {
+        $this->seedPrivateFile('bob', 'doc.md');
+        $id = $this->idOf('doc.md');
+        $share = $this->createShare('/users/bob/doc.md', 'member');
+        $invite = $this->withBearer($this->userBearerToken())->postJson('/api/v1/files/shares/'.$share['id'].'/invites', [
+            'email' => 'alice@example.test',
+            'access' => 'view',
+        ])->assertSuccessful();
+        $this->assertSame(self::NONE, $this->getByName(['doc.md'], ['name', 'shareFlags'])['doc.md']['shareFlags'], 'a pending invite shows no badge');
+        $state = app(FileNodeSyncState::class)->current('bob');
+
+        $this->withBearer($this->aliceToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => (string) $invite->json('data.inviteToken'),
+        ])->assertOk();
+
+        $this->assertSame([$id], $this->changes($state)['updated']);
+        $this->assertTrue($this->getByName(['doc.md'], ['name', 'shareFlags'])['doc.md']['shareFlags']['hasTeamShare']);
+    }
+
+    public function test_removed_team_grants_are_reported_by_changes(): void
+    {
+        $this->seedPrivateFile('bob', 'doc.md');
+        $id = $this->idOf('doc.md');
+        $this->createShare('/users/bob/doc.md', 'member', ['groups/team' => ['access' => 'view']]);
+        $this->assertTrue($this->getByName(['doc.md'], ['name', 'shareFlags'])['doc.md']['shareFlags']['hasTeamShare']);
+        $seq = app(FileNodeIndexService::class)->currentSeq();
+
+        DB::connection('wgw')->transaction(fn () => app(DriveShareRevoker::class)->removeGrantsToGroup('team'));
+
+        // Bob is in the team, so his own grant went too and his state resets (cannotCalculateChanges);
+        // the node bump is what tells every other member's device.
+        $this->assertGreaterThan($seq, (int) JmapFileNode::query()->where('node_id', $id)->value('change_seq'));
+        $this->assertSame(self::NONE, $this->getByName(['doc.md'], ['name', 'shareFlags'])['doc.md']['shareFlags']);
+    }
+
+    public function test_renamed_shared_file_is_reported_with_its_flags(): void
     {
         $this->seedPrivateFile('bob', 'doc.md');
         $id = $this->idOf('doc.md');
         $this->createShare('/users/bob/doc.md', 'public');
         $state = app(FileNodeSyncState::class)->current('bob');
+        $seq = app(FileNodeIndexService::class)->currentSeq();
 
         $this->renameNode($id, 'renamed.md');
 
-        $this->assertContains($id, $this->changes($state)['updated']);
-        $node = $this->getByName(['renamed.md'], ['name', 'shareFlags'])['renamed.md'];
-        $this->assertTrue($node['shareFlags']['hasPublicShare']);
+        $this->assertSame([$id], $this->changes($state)['updated']);
+        $this->assertTrue($this->getIds([$id], ['shareFlags'])[0]['shareFlags']['hasPublicShare']);
+        $this->assertBumpedAfterTheShareRowMoved($id, $seq);
     }
 
-    public function test_renaming_a_folder_reports_the_shared_file_inside_it(): void
+    public function test_shared_file_inside_a_renamed_folder_is_reported_with_its_flags(): void
     {
-        $this->seedPrivateFile('bob', 'Folder/a.md');
-        $folderId = $this->idOf('Folder');
-        $fileId = $this->idOf('a.md');
-        $this->createShare('/users/bob/Folder/a.md', 'public');
+        $this->seedPrivateFile('bob', 'Folder/doc.md');
+        $folder = $this->idOf('Folder');
+        $file = $this->idOf('doc.md');
+        $this->createShare('/users/bob/Folder/doc.md', 'public');
         $state = app(FileNodeSyncState::class)->current('bob');
+        $seq = app(FileNodeIndexService::class)->currentSeq();
 
-        $this->renameNode($folderId, 'Renamed');
+        $this->renameNode($folder, 'Moved');
 
-        $this->assertContains($fileId, $this->changes($state)['updated']);
-        $this->assertTrue($this->getByName(['a.md'], ['name', 'shareFlags'])['a.md']['shareFlags']['hasPublicShare']);
+        $updated = $this->changes($state)['updated'];
+        sort($updated);
+        $expected = [$folder, $file];
+        sort($expected);
+        $this->assertSame($expected, $updated);
+        $this->assertTrue($this->getIds([$file], ['shareFlags'])[0]['shareFlags']['hasPublicShare']);
+        $this->assertBumpedAfterTheShareRowMoved($file, $seq - 1);
     }
 
     public function test_capability_advertises_share_flags(): void
@@ -226,6 +271,16 @@ final class JmapFileNodeShareFlagsTest extends WgwDatabaseTestCase
         $this->assertSame(0, $this->indicatorQueries(fn () => $this->jmap($calls, null, [])->assertOk()));
         $node = $this->jmap($calls, null, [])->assertOk()->json('methodResponses.0.1.list.0');
         $this->assertArrayNotHasKey('shareFlags', $node);
+    }
+
+    /**
+     * The rename bumps the node in recordMove, before the share row follows the new path; a sync
+     * that read the node in between got empty flags. The share rewrite must bump it once more.
+     */
+    private function assertBumpedAfterTheShareRowMoved(string $id, int $seqBeforeRename): void
+    {
+        $seq = (int) JmapFileNode::query()->where('node_id', $id)->value('change_seq');
+        $this->assertGreaterThan($seqBeforeRename + 1, $seq, 'the share rewrite did not bump the node after its row moved');
     }
 
     /**
