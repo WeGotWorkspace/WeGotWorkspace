@@ -279,13 +279,13 @@ test.describe("Drive first sync on a new device", () => {
     page,
   }) => {
     test.setTimeout(150_000);
-    // The tree walk (or, on a server without the keyset, the per-folder crawl)
-    // is `FileNode/query`. Refuse every one of them for a while.
+    // The tree walk is a `FileNode/query` with no filter (by id, in pages).
+    // Refuse it for a while; the app bootstrap's folder listing still goes through.
     let refusing = true;
     let refused = 0;
     await page.route("**/api/v1/jmap", async (route) => {
       const body = route.request().postData() ?? "";
-      if (refusing && body.includes("FileNode/query")) {
+      if (refusing && body.includes("FileNode/query") && body.includes('"filter":null')) {
         refused += 1;
         return route.fulfill({
           status: 429,

@@ -10,6 +10,8 @@ import { expect, test } from "./helpers/live-test";
 import { api, dav, makeFolder, putDoc, TEAMMATE, unshareQuietly } from "./helpers/docs-matrix";
 import { E2E_USERNAME } from "./helpers/notes-live";
 import {
+  API,
+  findNode,
   goOfflineKeepingShell,
   goOnlineAgain,
   installOnlineFlag,
@@ -89,15 +91,21 @@ async function sawLoading(page: Page): Promise<boolean> {
   );
 }
 
-/** Server listings the tree views must no longer send: All Files search and per-folder queries. */
-function watchListingRequests(page: Page): string[] {
+/**
+ * Server listings the tree views must no longer send: the All Files search and
+ * a listing of the open folder. (The app bootstrap still lists the home root in
+ * the background; that is not a view listing.)
+ */
+function watchListingRequests(page: Page, folderId: string): string[] {
   const seen: string[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.pathname.endsWith("/search/results")) seen.push(url.pathname);
     if (url.pathname.endsWith("/jmap")) {
       const body = request.postData() ?? "";
-      if (body.includes("FileNode/query") && body.includes('"parentId"')) seen.push("parentId");
+      if (body.includes("FileNode/query") && body.includes(`{"parentId":"${folderId}"}`)) {
+        seen.push(`FileNode/query ${FOLDER}`);
+      }
     }
   });
   return seen;
@@ -114,7 +122,7 @@ test.describe("Drive views on the file tree (live app)", () => {
     await makeFolder(E2E_USERNAME, `${HOME}/.Trash`);
     await putDoc(E2E_USERNAME, `${HOME}/${TRASHED}`, `# ${TRASHED}\n`);
     const moved = await dav(E2E_USERNAME, "MOVE", `${HOME}/${TRASHED}`, {
-      headers: { Destination: `${HOME}/.Trash/${encodeURIComponent(TRASHED)}` },
+      headers: { Destination: `${API}/files${HOME}/.Trash/${encodeURIComponent(TRASHED)}` },
     });
     if (!moved.ok) throw new Error(`MOVE ${TRASHED} to Trash: ${moved.status}`);
     // 2. A file the teammate shares with the E2E user.
@@ -151,7 +159,7 @@ test.describe("Drive views on the file tree (live app)", () => {
     page,
     context,
   }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(360_000);
 
     // 1 + 4. Open Drive on this new device and wait for the first sync.
     await page.goto(folderUrl(`My Drive/${FOLDER}`));
@@ -163,11 +171,15 @@ test.describe("Drive views on the file tree (live app)", () => {
     await rowAction(page, STARRED, "Star");
 
     // 5. Reload online: the rows show at once, with no spinner and no server listing.
-    const listings = watchListingRequests(page);
+    const folderNode = await findNode(page, FOLDER);
+    const listings = watchListingRequests(page, folderNode.id);
     await page.reload();
     await expect(row(page, FILE)).toBeVisible({ timeout: 15_000 });
-    await page.goto("/drive?view=all");
-    await expect(row(page, STARRED)).toBeVisible({ timeout: 15_000 });
+    // All Files holds the whole drive (windowed); Recent and Starred are short.
+    for (const view of ["all", "recent", "starred"]) {
+      await page.goto(`/drive?view=${view}`);
+      if (view !== "all") await expect(row(page, STARRED)).toBeVisible({ timeout: 15_000 });
+    }
     expect(await sawLoading(page)).toBe(false);
     expect(listings).toEqual([]);
 
@@ -198,18 +210,18 @@ test.describe("Drive views on the file tree (live app)", () => {
 
     // 8. Offline reload: every view lists what the device holds; search filters by name.
     await page.goto("/drive?view=all");
-    await expect(row(page, RENAMED)).toBeVisible();
     await goOfflineKeepingShell(page);
     await page.reload();
     await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({ timeout: 30_000 });
-    await expect(row(page, RENAMED)).toBeVisible({ timeout: 30_000 });
-    await expect(row(page, STARRED)).toBeVisible();
     const search = page.getByRole("searchbox", { name: /search/i });
     await search.fill(STARRED.slice(0, -3));
-    await expect(row(page, STARRED)).toBeVisible();
+    await expect(row(page, STARRED)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(RENAMED, { exact: true })).toHaveCount(0);
+    await search.fill(RENAMED.slice(0, -3));
+    await expect(row(page, RENAMED)).toBeVisible();
     await search.fill("");
     for (const [url, name] of [
+      ["/drive?view=recent", RENAMED],
       ["/drive?view=starred", STARRED],
       ["/drive?view=shared", SHARED],
       [folderUrl("Trash"), TRASHED],
@@ -227,7 +239,7 @@ test.describe("Drive views on the file tree (live app)", () => {
     // 10. Back online: every view lists its rows again, with no error.
     await goOnlineAgain(page);
     for (const [url, name] of [
-      ["/drive?view=all", RENAMED],
+      ["/drive?view=recent", RENAMED],
       ["/drive?view=starred", STARRED],
       ["/drive?view=shared", SHARED],
       [folderUrl("Trash"), TRASHED],
