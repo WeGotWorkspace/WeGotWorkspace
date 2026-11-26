@@ -3,6 +3,7 @@ import { rtcLog } from "@/lib/rtc/log";
 import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
 import type { NetClass } from "@/lib/rtc/net-probe";
 import { netClassForJoin } from "@/lib/rtc/net-probe-session";
+import { signalMeetLane } from "@/lib/traffic/meet-lane-client";
 import type { IceOutbound } from "@/lib/rtc/session/ice-batch";
 import type { IceRecovery } from "@/lib/rtc/session/ice-recovery";
 import {
@@ -616,6 +617,7 @@ export class RtcPeerMesh {
     const epoch = ++this.sessionEpoch;
     this.activeEpoch = epoch;
     this.log("join-request", { room: this.options.room, name: this.myName });
+    if (this.options.channel === "meet") signalMeetLane("join");
     const joined = await this.signalingJoin(input.peerId);
     if (epoch !== this.sessionEpoch) {
       const peerId = joined.peerId ?? input.peerId;

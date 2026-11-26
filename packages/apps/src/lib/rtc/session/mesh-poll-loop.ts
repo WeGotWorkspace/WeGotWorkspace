@@ -6,6 +6,7 @@ import {
 } from "@/lib/rtc/signaling/http-client";
 import {
   hasStableCollabTopology,
+  isAnyPeerConnecting,
   steadyPollDelayMs,
   type MeshPollCadenceSnapshot,
 } from "@/lib/rtc/session/poll-cadence";
@@ -14,6 +15,7 @@ import {
   pushHeartbeatIncludes,
   registerPushHeartbeatPeer,
 } from "@/lib/rtc/session/push-heartbeat-peers";
+import { signalMeetLane } from "@/lib/traffic/meet-lane-client";
 import { pushRoomDoorbell, type RoomDoorbell } from "@/lib/rtc/session/room-doorbell";
 import type { RtcPollIntervals } from "@/lib/rtc/types";
 
@@ -88,6 +90,7 @@ export class MeshPollLoop {
     this.listenToDoorbell();
     const intervals = this.context.pollIntervals();
     const base = this.context.cadence();
+    this.signalMeetLane(base, steady);
     const pushHeartbeat = this.doorbell !== null && this.holdHeartbeat(base.channel);
     const cadence = { ...base, doorbell: this.doorbell?.connected === true, pushHeartbeat };
     const delay = steady ? steadyPollDelayMs(intervals, cadence) : intervals.connectingMs;
@@ -117,7 +120,18 @@ export class MeshPollLoop {
     return kicked;
   }
 
+  /**
+   * Meet call setup lane (#2419): a Meet room tells the worker it is in a call
+   * and, while a peer is still being dialled, that it is negotiating.
+   */
+  private signalMeetLane(base: MeshPollCadenceSnapshot, steady: boolean): void {
+    if (base.channel !== "meet") return;
+    signalMeetLane("call");
+    if (!steady && isAnyPeerConnecting(base)) signalMeetLane("negotiating");
+  }
+
   stop(): void {
+    if (this.running && this.context.cadence().channel === "meet") signalMeetLane("left");
     this.running = false;
     this.clearTimer();
     this.dropHeartbeat();
@@ -153,6 +167,7 @@ export class MeshPollLoop {
 
   /** Drop the in-flight guard, the logged delay and the doorbell so the next join polls cleanly. */
   release(): void {
+    if (this.running && this.context.cadence().channel === "meet") signalMeetLane("left");
     this.running = false;
     this.pollInFlight = false;
     this.pendingKick = false;
@@ -173,6 +188,7 @@ export class MeshPollLoop {
     const unsubscribeRing = doorbell.subscribe(() => {
       if (!this.running) return;
       this.context.log("doorbell-ring");
+      if (this.context.cadence().channel === "meet") signalMeetLane("negotiating");
       this.kick();
     });
     const unsubscribeStatus = doorbell.subscribeStatus(() => {

@@ -14,6 +14,11 @@
  *   at a time at their own pace, never in a burst.
  * - **Shared brake:** a network failure, 429 or 503 holds background and bulk
  *   requests (2 s doubling to 60 s, or the server's `Retry-After`).
+ * - **Meet lane (#2419):** while a Meet call is joining or negotiating, the
+ *   room polls of a Meet room and the push doorbell read skip the background
+ *   queue (see `MEET_LANE`). The page opens the lane with a message; it closes
+ *   by itself, is capped by its own small bucket, charges the background
+ *   bucket (so the average stays at the budget) and never covers other traffic.
  * - **Everything else** (foreground reads, writes) is never delayed and never
  *   uses the background bucket: a busy download must not starve the push
  *   doorbell, because a silent doorbell makes the apps poll on their own.
@@ -45,6 +50,48 @@ export const TRAFFIC_CLASS_HEADER = "X-WGW-Traffic";
 const COALESCE_PATHS = [/\/settings\/state$/, /\/me$/, /\/jmap\/session$/];
 
 const BACKGROUND_PATHS = [/\/rooms\/[^/]+\/events$/, /\/jmap\/events\//, /\/changes$/];
+
+/**
+ * A Meet room's mailbox poll. Collab file rooms (`f_…`) and principal presence
+ * rooms (`p_…`) share the route but never ride the lane (`lib/rtc/room-id.ts`).
+ */
+const MEET_ROOM_POLL = /\/rooms\/(?!p_|f_)[^/]+\/events$/;
+const DOORBELL_READ = /\/jmap\/events\//;
+
+/** Message a page posts to the worker to open, keep or close the Meet lane. */
+export const WGW_MEET_LANE_MESSAGE = "wgw-meet-lane";
+
+/**
+ * `join`: a Meet join starts (opens the window, re-arms the guest burst).
+ * `negotiating`: a peer is being dialled or a ring arrived (extends the window).
+ * `call`: this browser is in a Meet room (the doorbell read may skip the queue, the room polls may not).
+ * `left`: the call ended (closes everything).
+ */
+export type MeetLaneSignal = "join" | "negotiating" | "call" | "left";
+
+export function isMeetLaneSignal(value: unknown): value is MeetLaneSignal {
+  return value === "join" || value === "negotiating" || value === "call" || value === "left";
+}
+
+/**
+ * The Meet signaling lane. Worst case per browser: `burst + perMinute * windowMs`
+ * lane polls per window (10 + 20 × 0.5 = 20, a guest 10 more), each also charged
+ * to the background bucket, so the average stays at the budget.
+ */
+export const MEET_LANE = {
+  /** The lane stays open this long after the last `join` / `negotiating` signal. */
+  windowMs: 30_000,
+  /** … but never longer than this after it opened, however often the page signals. */
+  maxOpenMs: 45_000,
+  /** The doorbell read may skip the queue this long after the last `call` signal (the page re-sends). */
+  callTtlMs: 45_000,
+  /** Lane polls that may go at once. */
+  burst: 10,
+  /** Sustained lane polls per minute. */
+  perMinute: 20,
+  /** Extra polls an unauthenticated guest gets once per join (they have no push stream). */
+  guestBonus: 10,
+} as const;
 
 /** `null` for anything that is not the suite's own API: the governor never touches it. */
 export function classifyRequest(
@@ -140,10 +187,81 @@ export class RequestGovernor {
   private queue: Promise<void> = Promise.resolve();
   private bulkQueue: Promise<void> = Promise.resolve();
   private bulkNextAt = 0;
+  private laneOpenedAt = 0;
+  private laneNegotiatingUntil = 0;
+  private laneCallUntil = 0;
+  private laneTokens: number = MEET_LANE.burst;
+  private laneRefilledAt: number;
+  private laneGuestGranted = true;
 
   constructor(private readonly options: GovernorOptions) {
     this.tokens = options.burst;
     this.refilledAt = options.now();
+    this.laneRefilledAt = this.refilledAt;
+  }
+
+  /** The page's word that a Meet call is joining, negotiating, in progress or over. */
+  signalMeetLane(signal: MeetLaneSignal): void {
+    const now = this.options.now();
+    if (signal === "left") {
+      this.laneNegotiatingUntil = 0;
+      this.laneCallUntil = 0;
+      return;
+    }
+    if (signal === "call") {
+      this.laneCallUntil = now + MEET_LANE.callTtlMs;
+      return;
+    }
+    if (signal === "join" || now >= this.laneNegotiatingUntil) {
+      this.laneOpenedAt = now;
+      if (signal === "join") this.laneGuestGranted = false;
+    }
+    this.laneCallUntil = Math.max(this.laneCallUntil, now + MEET_LANE.callTtlMs);
+    this.laneNegotiatingUntil = Math.min(
+      now + MEET_LANE.windowMs,
+      this.laneOpenedAt + MEET_LANE.maxOpenMs,
+    );
+  }
+
+  /** True while the lane's room-poll window is open. */
+  meetLaneOpen(): boolean {
+    return this.options.now() < this.laneNegotiatingUntil;
+  }
+
+  /**
+   * A background request that may skip the queue: a Meet room poll inside the
+   * negotiation window (while the lane bucket has a token), or the doorbell
+   * read while a call is on. Never during a brake and never for other paths.
+   */
+  private takeMeetLane(request: Request): boolean {
+    if (request.method.toUpperCase() !== "GET") return false;
+    const now = this.options.now();
+    if (this.brakeUntil > now) return false;
+    const path = new URL(request.url).pathname;
+    if (DOORBELL_READ.test(path)) {
+      if (now >= this.laneNegotiatingUntil && now >= this.laneCallUntil) return false;
+      this.charge();
+      return true;
+    }
+    if (!MEET_ROOM_POLL.test(path) || now >= this.laneNegotiatingUntil) return false;
+    const guest = !request.headers.get("Authorization");
+    this.refillLane(now);
+    if (guest && !this.laneGuestGranted) {
+      this.laneGuestGranted = true;
+      this.laneTokens += MEET_LANE.guestBonus;
+    }
+    if (this.laneTokens < 1) return false;
+    this.laneTokens -= 1;
+    if (!guest) this.charge();
+    return true;
+  }
+
+  private refillLane(now: number): void {
+    this.laneTokens = Math.min(
+      MEET_LANE.burst + MEET_LANE.guestBonus,
+      this.laneTokens + (Math.max(0, now - this.laneRefilledAt) * MEET_LANE.perMinute) / 60_000,
+    );
+    this.laneRefilledAt = now;
   }
 
   /** Applies the server's budget. 0 per minute turns pacing off for that class. */
@@ -168,6 +286,7 @@ export class RequestGovernor {
   async handle(request: Request, kind: GovernorClass): Promise<Response> {
     if (kind === "coalesce") return this.coalesce(request);
     if (kind === "background" && this.options.backgroundPerMinute > 0) {
+      if (this.takeMeetLane(request)) return this.send(request);
       await this.waitForTurn(request.signal, this.options.now());
     } else if (kind === "bulk" && this.options.bulkPerMinute > 0) {
       await this.waitForBulkTurn(request.signal);
