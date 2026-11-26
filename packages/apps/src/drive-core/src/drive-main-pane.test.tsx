@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile } from "@/lib/files/drive-models";
-import type { DriveFolderListingError } from "@/drive-core/src/use-drive-folder-listing-sync";
+import type { DriveViewState } from "@/drive-core/src/use-drive-tree-rows";
 
 vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => ({ show: vi.fn(), showError: vi.fn() }),
@@ -33,19 +33,18 @@ const FOLDER = "My Drive/Projects";
 
 function renderPane({
   visibleItems = [],
-  folderListingError = null,
-  folderListingPending = false,
+  viewState = null,
+  searchQuery = "",
 }: {
   visibleItems?: DriveFile[];
-  folderListingError?: DriveFolderListingError | null;
-  folderListingPending?: boolean;
+  viewState?: DriveViewState;
+  searchQuery?: string;
 }) {
-  const retryFolderListing = vi.fn();
   // Only the fields the listing branch reads; the rest of the controller is not under test.
   const controller = {
     labels: driveLabels,
     view: { type: "folder", path: FOLDER },
-    searchQuery: "",
+    searchQuery,
     breadcrumbs: [],
     selectView: vi.fn(),
     visibleItems,
@@ -55,61 +54,50 @@ function renderPane({
     setTilesInView: vi.fn(),
     selectedIds: new Set<string>(),
     starred: {},
-    folderListingPending,
-    folderListingError,
-    retryFolderListing,
-    listLoading: false,
+    viewState,
     uploadEnabled: false,
     selectionBar: null,
   } as unknown as Parameters<typeof DriveMainPane>[0]["controller"];
-  render(<DriveMainPane controller={controller} />);
-  return { retryFolderListing };
+  return render(<DriveMainPane controller={controller} />);
 }
 
-describe("DriveMainPane folder listing states", () => {
+describe("DriveMainPane tree view states (#2063)", () => {
   afterEach(cleanup);
 
-  it("shows an error, not 'This folder is empty', when the folder failed to load", () => {
-    const { retryFolderListing } = renderPane({
-      folderListingError: { path: FOLDER, message: "FileNode query+get failed" },
-    });
+  it("shows the empty state, without a spinner, for a known-empty folder", () => {
+    renderPane({ viewState: null });
 
-    expect(screen.getByRole("alert").textContent).toBe(driveLabels.folderListingFailed);
+    expect(screen.getByText(driveLabels.emptyFolder)).toBeTruthy();
+    expect(screen.queryByText(driveLabels.allFilesLoading)).toBeNull();
+  });
+
+  it("shows the full-pane loading state only during the first sync with no rows", () => {
+    renderPane({ viewState: "first-sync" });
+
+    expect(screen.getByText(driveLabels.allFilesLoading)).toBeTruthy();
     expect(screen.queryByText(driveLabels.emptyFolder)).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: driveLabels.folderListingRetry }));
-    expect(retryFolderListing).toHaveBeenCalledTimes(1);
   });
 
-  it("shows 'This folder is empty' for a folder that loaded with no rows", () => {
-    renderPane({});
+  it("lists rows that arrived during the first sync instead of the loading state", () => {
+    const rows = DRIVE_MOCK_FILES.slice(0, 1);
+    renderPane({ visibleItems: rows, viewState: "first-sync" });
 
-    expect(screen.getByText(driveLabels.emptyFolder)).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText(rows[0]!.title)).toBeTruthy();
+    expect(screen.queryByText(driveLabels.allFilesLoading)).toBeNull();
   });
 
-  it("ignores an error that belongs to another folder", () => {
-    renderPane({ folderListingError: { path: "My Drive/Other", message: "failed" } });
+  it("says 'not available offline yet', never empty, offline before the first sync", () => {
+    renderPane({ viewState: "not-available" });
 
-    expect(screen.getByText(driveLabels.emptyFolder)).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe(driveLabels.notAvailableOffline);
+    expect(screen.queryByText(driveLabels.emptyFolder)).toBeNull();
   });
 
-  it("keeps showing cached rows when the live load failed", () => {
-    const cached = DRIVE_MOCK_FILES.slice(0, 1);
-    renderPane({
-      visibleItems: cached,
-      folderListingError: { path: FOLDER, message: "failed" },
-    });
+  it("shows neither empty nor loading before the first read answers", () => {
+    const { container } = renderPane({ viewState: "pending" });
 
-    expect(screen.getByText(cached[0]!.title)).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("shows the loading state while a retry is pending", () => {
-    renderPane({ folderListingPending: true });
-
-    expect(screen.getByText(driveLabels.folderListingLoading)).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(driveLabels.emptyFolder)).toBeNull();
+    expect(screen.queryByText(driveLabels.allFilesLoading)).toBeNull();
+    expect(container.querySelector(".collection-state")).toBeNull();
   });
 });

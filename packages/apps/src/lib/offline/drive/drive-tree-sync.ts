@@ -44,6 +44,7 @@ import {
 } from "@/lib/offline/drive/drive-schema";
 import {
   areaForRoot,
+  areaFromCrawledPath,
   isHiddenTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
@@ -144,9 +145,29 @@ async function crawlFolders(
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
+  await backfillCrawledTree(username);
   await writeDriveSyncToken(username, state.state);
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
+}
+
+/**
+ * The crawl knows no parent chain, so its rows get the crawl's `area` rule,
+ * and the account roots are home plus every team drive it listed. Their keys
+ * are not node ids, so the change applier never matches them. Without this the
+ * views (#2063 C3) would show the crawled rows as unsynced.
+ */
+async function backfillCrawledTree(username: string): Promise<void> {
+  const home = `/users/${username}`;
+  const roots: Record<string, string> = { [`crawl:${home}`]: home };
+  await driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)))
+    .toCollection()
+    .modify((row) => {
+      if (!row.area) row.area = areaFromCrawledPath(row.id);
+      const [top, slug] = row.id.split("/");
+      if (top === "groups" && slug) roots[`crawl:/groups/${slug}`] = `/groups/${slug}`;
+    });
+  await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
 }
 
 /**

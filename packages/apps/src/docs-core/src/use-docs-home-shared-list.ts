@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveShareOperations } from "@/lib/files/drive-types";
-import { useDriveSharedList } from "@/drive-core/src/use-drive-shared-list";
+import { fetchDriveSharedWithMeListing } from "@/drive-core/src/drive-shared-listing";
+import { useDocsHomeListingFetch } from "@/docs-core/src/use-docs-home-listing-fetch";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import {
@@ -32,7 +33,16 @@ export function useDocsHomeSharedList({
   enabled = true,
   query = "",
 }: UseDocsHomeSharedListOptions): UseDocsHomeSharedListResult {
-  const drive = useDriveSharedList({ username, shareOperations, enabled });
+  const listSharedWithMe = shareOperations?.listSharedWithMe;
+  const load = useCallback(
+    (signal: AbortSignal) =>
+      fetchDriveSharedWithMeListing({ listSharedWithMe: listSharedWithMe! }, username, { signal }),
+    [listSharedWithMe, username],
+  );
+  const drive = useDocsHomeListingFetch(
+    enabled && listSharedWithMe ? load : null,
+    "Failed to load shared items",
+  );
   const { online } = useConnectivity();
   const files = useMemo(
     () => filterDocsHomeSharedByQuery(drive.files.filter(isDocsHomeCompatibleSharedFile), query),

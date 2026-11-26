@@ -59,7 +59,11 @@ import {
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
-import { readDriveTreeFirstSyncDone, syncDriveTree } from "@/lib/offline/drive/drive-tree-sync";
+import {
+  readDriveTreeFirstSyncDone,
+  readDriveTreeRoots,
+  syncDriveTree,
+} from "@/lib/offline/drive/drive-tree-sync";
 
 const username = "ada";
 /** Page size of the stand-in (`maxObjectsInGet`); small so a few nodes span many pages. */
@@ -774,6 +778,27 @@ describe("syncDriveTree", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());
+    spy.mockRestore();
+  });
+
+  it("the crawl fills area and the account roots, so the views see its rows", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async () => {
+      await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "n-a"));
+      await upsertDriveEntry(username, staleEntry("/groups/team/b.md", "n-b"));
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+    });
+
+    await syncDriveTree(username);
+
+    expect((await row("/users/ada/a.md"))?.area).toBe("home");
+    expect((await row("/groups/team/b.md"))?.area).toBe("group");
+    expect([...(await readDriveTreeRoots(username)).values()].sort()).toEqual([
+      "/groups/team",
+      "/users/ada",
+    ]);
     spy.mockRestore();
   });
 });

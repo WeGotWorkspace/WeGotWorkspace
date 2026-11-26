@@ -9,9 +9,7 @@ export function useDriveVisibleItems(shell: DriveShellState) {
   const {
     files,
     liveSearchResults,
-    starredItems,
-    sharedItems,
-    allItems,
+    viewItems,
     starred,
     view,
     searchQuery,
@@ -32,9 +30,7 @@ export function useDriveVisibleItems(shell: DriveShellState) {
       filterDriveVisibleItems({
         files,
         liveSearchResults,
-        starredItems,
-        sharedItems,
-        allItems,
+        viewItems,
         starred,
         view,
         searchQuery,
@@ -43,17 +39,15 @@ export function useDriveVisibleItems(shell: DriveShellState) {
         uploadFiles,
       }),
     [
-      allItems,
       currentUsername,
       files,
       liveSearchResults,
       operations,
       searchQuery,
-      sharedItems,
       starred,
-      starredItems,
       uploadFiles,
       view,
+      viewItems,
     ],
   );
 }

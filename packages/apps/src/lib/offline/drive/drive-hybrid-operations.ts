@@ -224,6 +224,7 @@ export function createHybridDriveOperations(
 
   return {
     ...live,
+    localTree: true,
     refreshState: async (opts) => {
       if (readBrowserOnline()) {
         try {

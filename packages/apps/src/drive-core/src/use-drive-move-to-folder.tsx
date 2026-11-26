@@ -11,7 +11,7 @@ import {
   driveRowsById,
   patchAllFilesRows,
   type DriveAllFilesPatch,
-} from "@/drive-core/src/use-drive-all-files";
+} from "@/drive-core/src/drive-view-rows";
 
 /** A failed folder reload is not a failed batch. The renames already reached the server. */
 export async function refreshOpenFolderAfterBatch(

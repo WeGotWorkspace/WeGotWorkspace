@@ -29,7 +29,7 @@ import {
   driveRowsById,
   patchAllFilesRows,
   type DriveAllFilesPatch,
-} from "@/drive-core/src/use-drive-all-files";
+} from "@/drive-core/src/drive-view-rows";
 
 async function finishDriveRestore(input: {
   operations: DriveAPIOperations;

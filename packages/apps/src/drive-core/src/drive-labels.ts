@@ -36,11 +36,10 @@ export const driveLabels = {
   emptyFolder: "This folder is empty",
   allFilesEmpty: "No files yet",
   allFilesLoading: filesBrowserSidebarLabels.listLoading,
-  listLoadingMore: filesBrowserSidebarLabels.loadingMore,
   folderListingLoading: "Loading folder…",
-  /** Folder view when the live listing failed and no rows are shown — never "empty". */
-  folderListingFailed: "This folder could not be loaded",
-  folderListingRetry: "Try again",
+  /** Offline before this view synced to the device (#2063): never "empty". */
+  notAvailableOffline: "Not available offline yet",
+  notAvailableOfflineHint: "Open Drive once while you're online. After that it works offline too.",
   dropUploadHint: "Drop files to upload to",
   newButton: "New",
   /** Chevron menu on the sidebar segmented New control. */
