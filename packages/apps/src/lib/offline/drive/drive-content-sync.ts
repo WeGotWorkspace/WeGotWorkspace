@@ -30,6 +30,9 @@ import {
 } from "@/lib/offline/drive/drive-schema";
 import { listingModifiedAtMs } from "@/lib/offline/docs/docs-body-sync";
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
+import { readDocsAvailability } from "@/lib/offline/docs/docs-availability-store";
+import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 import { readDriveEntryFromCache } from "@/lib/offline/drive/drive-directory-offline-store";
 import {
   beginDriveContentRun,
@@ -134,11 +137,38 @@ async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blo
   return res.blob();
 }
 
+/**
+ * A collab text file is current when Docs synced it at or after the listing's
+ * mtime and its local Y.Doc has content. Docs keeps such a copy as it is, so
+ * queueing it would only spin the row.
+ */
+async function isCollabCopyCurrent(
+  username: string,
+  apiPath: string,
+  entryModifiedAt: number,
+): Promise<boolean> {
+  const room = normalizeApiVirtualPath(apiPath).replace(/^\/+/, "");
+  const modifiedAtMs = listingModifiedAtMs(entryModifiedAt);
+  const lastSyncedAt = (await readDocsAvailability(username, room))?.lastSyncedAt ?? null;
+  if (lastSyncedAt == null || modifiedAtMs == null || lastSyncedAt < modifiedAtMs) return false;
+  return hasDocsCollabOfflinePersistence(room);
+}
+
+/** The server refused the file itself (not a 429, not a dropped connection). */
+function isFileHttpFailure(error: unknown): boolean {
+  if (error instanceof DriveContentHttpError) return true;
+  return error instanceof CollabHttpError && error.status !== 429;
+}
+
 async function needsContentResync(
   username: string,
   apiPath: string,
   entryModifiedAt: number,
 ): Promise<boolean> {
+  const room = normalizeApiVirtualPath(apiPath).replace(/^\/+/, "");
+  if (isDocsCollabEditablePath(room)) {
+    return !(await isCollabCopyCurrent(username, apiPath, entryModifiedAt));
+  }
   const cached = await readCachedBlob(username, apiPath);
   if (!cached) return true;
   const availability = await readDriveEntryFromCache(username, apiPath);
@@ -247,7 +277,7 @@ export async function syncDriveContentFromCache(
             throw error;
           }
           // Only a server error is about the file; a replaced run records nothing.
-          if (error instanceof DriveContentHttpError && isCurrentDriveContentRun(run)) {
+          if (isFileHttpFailure(error) && isCurrentDriveContentRun(run)) {
             await recordDriveContentFailure(username, item.path, item.modifiedAt);
           }
           finishDriveContentRunItem(run, item.path);

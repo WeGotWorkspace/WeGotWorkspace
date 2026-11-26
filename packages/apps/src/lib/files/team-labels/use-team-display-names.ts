@@ -25,6 +25,9 @@ export function useTeamDisplayNames(
   const liveLoadedRef = useRef(false);
 
   useEffect(() => {
+    // Another account never sees the previous account's teams.
+    liveLoadedRef.current = false;
+    setNames(NO_NAMES);
     if (!account) return;
     let cancelled = false;
     void readCachedTeamDisplayNames(account).then((cached) => {

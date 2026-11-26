@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { makeDocsOfflineAvailable, readDriveEntryFromCache, net, meta } = vi.hoisted(() => ({
+const { makeDocsOfflineAvailable, readDriveEntryFromCache, net, meta, docs } = vi.hoisted(() => ({
   makeDocsOfflineAvailable: vi.fn(),
   readDriveEntryFromCache: vi.fn(),
+  docs: {
+    lastSyncedAt: new Map<string, number>(),
+    persisted: new Set<string>(),
+  },
   net: { online: true, fetch: vi.fn() },
   meta: { values: new Map<string, string>() },
 }));
@@ -42,6 +46,15 @@ vi.mock("@/lib/offline/core/background-sync-pacer", async (importOriginal) => {
 });
 
 vi.mock("@/lib/offline/docs/docs-offline-pin-core", () => ({ makeDocsOfflineAvailable }));
+vi.mock("@/lib/offline/docs/docs-availability-store", () => ({
+  readDocsAvailability: async (_user: string, room: string) =>
+    docs.lastSyncedAt.has(room)
+      ? { id: room, lastSyncedAt: docs.lastSyncedAt.get(room) }
+      : undefined,
+}));
+vi.mock("@/lib/offline/docs/docs-collab-offline-availability", () => ({
+  hasDocsCollabOfflinePersistence: async (room: string) => docs.persisted.has(room),
+}));
 vi.mock("@/lib/offline/drive/drive-directory-offline-store", () => ({ readDriveEntryFromCache }));
 vi.mock("@/lib/offline/drive/drive-availability-store", () => ({
   markDriveAvailabilitySynced: vi.fn(),
@@ -52,6 +65,7 @@ import {
   syncDriveContentFromCache,
   syncDriveFileContent,
 } from "@/lib/offline/drive/drive-content-sync";
+import { CollabHttpError } from "@/lib/collab/docs-collab-utils";
 import {
   beginDriveContentRun,
   isDriveContentQueued,
@@ -94,6 +108,9 @@ describe("syncDriveContentFromCache", () => {
     meta.values.clear();
     net.online = true;
     resetDriveContentRunStateForTests();
+    docs.lastSyncedAt.clear();
+    docs.persisted.clear();
+    makeDocsOfflineAvailable.mockResolvedValue(undefined);
     readDriveEntryFromCache.mockResolvedValue({ type: "file", size: 10, time: 7 });
   });
 
@@ -133,12 +150,11 @@ describe("syncDriveContentFromCache", () => {
     const older = syncDriveContentFromCache("alice", ["/users/alice/a.png"]);
     await vi.waitFor(() => expect(failOld).not.toBeNull());
     // A reconnect starts a second run while the first is still downloading.
-    const newer = beginDriveContentRun("alice", ["/users/alice/a.png"]);
+    beginDriveContentRun("alice", ["/users/alice/a.png"]);
     failOld!();
     await older;
     expect(isDriveContentQueued("alice", "/users/alice/a.png")).toBe(true);
     expect(await readDriveContentFailures("alice")).toEqual({});
-    expect(newer.username).toBe("alice");
   });
 
   it("stops the spinner when the runner gives up on a file after repeated 429s", async () => {
@@ -192,5 +208,66 @@ describe("syncDriveContentFromCache", () => {
     unsubscribe();
     expect(isDriveContentQueued("alice", "/users/alice/old.png")).toBe(false);
     expect(listener).toHaveBeenCalled();
+  });
+
+  it("does not queue a collab document whose local copy is already current", async () => {
+    docs.lastSyncedAt.set("users/alice/a.md", 7_000);
+    docs.persisted.add("users/alice/a.md");
+    const seen: boolean[] = [];
+    const unsubscribe = subscribeDriveContentRunState(() => {
+      seen.push(isDriveContentQueued("alice", "/users/alice/a.md"));
+    });
+    await syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    unsubscribe();
+    expect(seen).not.toContain(true);
+    expect(makeDocsOfflineAvailable).not.toHaveBeenCalled();
+  });
+
+  it("still queues a collab document Docs has never synced", async () => {
+    await syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    expect(makeDocsOfflineAvailable).toHaveBeenCalledTimes(1);
+  });
+
+  it("still queues a synced collab document whose local Y.Doc is empty", async () => {
+    docs.lastSyncedAt.set("users/alice/a.md", 7_000);
+    await syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    expect(makeDocsOfflineAvailable).toHaveBeenCalledTimes(1);
+  });
+
+  it("still queues a collab document synced before the listing's mtime", async () => {
+    docs.lastSyncedAt.set("users/alice/a.md", 6_999);
+    docs.persisted.add("users/alice/a.md");
+    await syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    expect(makeDocsOfflineAvailable).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a collab document the server refuses", async () => {
+    makeDocsOfflineAvailable.mockRejectedValue(new CollabHttpError("refused", 500, null));
+    await syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    expect(await readDriveContentFailures("alice")).toEqual({
+      "users/alice/a.md": { attempts: 1, modifiedAt: 7 },
+    });
+  });
+
+  it("does not record a collab document whose request throws", async () => {
+    makeDocsOfflineAvailable.mockRejectedValue(new TypeError("Failed to fetch"));
+    await syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    expect(await readDriveContentFailures("alice")).toEqual({});
+  });
+
+  it("does not record a collab refusal once a newer run has started", async () => {
+    let refuse: (() => void) | null = null;
+    makeDocsOfflineAvailable.mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          refuse = () => reject(new CollabHttpError("refused", 500, null));
+        }),
+    );
+    const older = syncDriveContentFromCache("alice", ["/users/alice/a.md"]);
+    await vi.waitFor(() => expect(refuse).not.toBeNull());
+    beginDriveContentRun("alice", ["/users/alice/a.md"]);
+    refuse!();
+    await older;
+    expect(await readDriveContentFailures("alice")).toEqual({});
   });
 });

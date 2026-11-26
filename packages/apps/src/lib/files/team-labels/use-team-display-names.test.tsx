@@ -90,4 +90,15 @@ describe("useTeamDisplayNames", () => {
     await waitFor(() => expect(result.current).toEqual([NOTES]));
     expect(env.meta.size).toBe(0);
   });
+
+  it("drops the previous account's names when the account changes", async () => {
+    await writeCachedTeamDisplayNames("alice", [NOTES]);
+    env.live = false;
+    const { result, rerender } = renderHook(({ user }) => useTeamDisplayNames(user, false), {
+      initialProps: { user: "alice" },
+    });
+    await waitFor(() => expect(result.current).toEqual([NOTES]));
+    rerender({ user: "bob" });
+    await waitFor(() => expect(result.current).toEqual([]));
+  });
 });
