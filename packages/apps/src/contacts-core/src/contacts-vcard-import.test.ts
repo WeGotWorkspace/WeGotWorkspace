@@ -12,7 +12,9 @@ import {
   summarizeVcfImportOutcome,
   utf8ByteLength,
   VCARD_IMPORT_BATCH_MAX_BYTES,
+  VCARD_IMPORT_BATCH_MAX_CARDS,
   VCARD_IMPORT_CARD_TOO_LARGE,
+  VCARD_IMPORT_STOPPED,
 } from "@/contacts-core/src/contacts-vcard-import";
 
 describe("isVcfFile", () => {
@@ -337,7 +339,7 @@ END:VCARD`;
 
 function card(name: string, pad = 0): string {
   const note = pad > 0 ? `\nNOTE:${"x".repeat(pad)}` : "";
-  return `BEGIN:VCARD\nFN:${name}${note}\nEND:VCARD`;
+  return `BEGIN:VCARD\nFN:${name}\nUID:${name}${note}\nEND:VCARD`;
 }
 
 /** RFC 6350 fold: 75-octet lines, continuation begins with a space. */
@@ -416,17 +418,20 @@ describe("planVcardFileBatches", () => {
     expect(plan.oversizedCount).toBe(0);
   });
 
-  it("defaults under live 8M PHP so an 11MB file becomes multiple POSTs", () => {
-    expect(VCARD_IMPORT_BATCH_MAX_BYTES).toBe(6 * 1024 * 1024);
-    const cards = Array.from({ length: 12 }, (_, index) => card(`N${index}`, 1_000_000));
-    const text = cards.join("\n");
-    expect(utf8ByteLength(text)).toBeGreaterThan(11 * 1024 * 1024);
-    const plan = planVcardFileBatches(text);
-    expect(plan.batches.length).toBeGreaterThan(1);
-    for (const batch of plan.batches) {
+  it("defaults to small requests: at most 1 MiB and 500 cards each", () => {
+    expect(VCARD_IMPORT_BATCH_MAX_BYTES).toBe(1024 * 1024);
+    expect(VCARD_IMPORT_BATCH_MAX_CARDS).toBe(500);
+    const big = Array.from({ length: 12 }, (_, index) => card(`N${index}`, 400_000));
+    const bigPlan = planVcardFileBatches(big.join("\n"));
+    expect(bigPlan.batches.length).toBeGreaterThan(1);
+    for (const batch of bigPlan.batches) {
       expect(utf8ByteLength(batch.text)).toBeLessThanOrEqual(VCARD_IMPORT_BATCH_MAX_BYTES);
     }
-    expect(plan.oversizedCount).toBe(0);
+
+    const many = Array.from({ length: 1_201 }, (_, index) => card(`M${index}`));
+    const manyPlan = planVcardFileBatches(many.join("\n"));
+    expect(manyPlan.batches.map((batch) => batch.cardCount)).toEqual([500, 500, 201]);
+    expect(manyPlan.oversizedCount).toBe(0);
   });
 
   it("flags a single card larger than the cap", () => {
@@ -586,5 +591,259 @@ describe("importVcfFilesBatch chunking", () => {
     expect(result.fileErrors).toEqual([
       { fileName: "photo.vcf", message: VCARD_IMPORT_CARD_TOO_LARGE },
     ]);
+  });
+});
+
+/** HTTP-style failure as the API client throws it. */
+function statusError(status: number, message = "Internal server error"): Error {
+  return Object.assign(new Error(message), { status });
+}
+
+/**
+ * A server whose memory runs out on requests over `maxCards`: it creates the
+ * first `maxCards` cards, then dies with a 500. Cards it already holds come
+ * back as `alreadyExists`, like the UID guard does.
+ */
+function fakeBook(maxCards: number, existing: string[] = []) {
+  const book = new Set(existing);
+  const sizes: number[] = [];
+  const importOne = vi.fn(async (text: string) => {
+    const names = splitVcardBlocks(text).map((block) => /FN:(.*)/.exec(block)![1]!);
+    sizes.push(names.length);
+    const list: Array<{ id: string }> = [];
+    const errors: Array<{ index: number; message: string; code?: string }> = [];
+    for (const [index, name] of names.entries()) {
+      if (index >= maxCards) throw statusError(500);
+      if (book.has(name)) {
+        errors.push({ index, message: "Already exists.", code: "alreadyExists" });
+        continue;
+      }
+      book.add(name);
+      list.push({ id: name });
+    }
+    return { list, errors };
+  });
+  return { book, sizes, importOne };
+}
+
+const noWait = () => Promise.resolve();
+
+describe("importVcfFilesBatch adapts to server limits", () => {
+  it("halves a batch that dies at the memory limit, counts its landed cards, and keeps later batches small", async () => {
+    const names = Array.from({ length: 40 }, (_, index) => `P${index}`);
+    const server = fakeBook(7);
+    const progress: Array<{ batchIndex: number; batchCount: number }> = [];
+
+    const result = await importVcfFilesBatch(
+      [new File([names.map((name) => card(name)).join("\n")], "big.vcf")],
+      server.importOne,
+      { maxBatchCards: 20, wait: noWait, onProgress: (p) => progress.push(p) },
+    );
+
+    expect(server.book.size).toBe(40);
+    expect(result.list.length + result.recoveredCount).toBe(40);
+    expect(result.recoveredCount).toBeGreaterThan(0);
+    expect(result.alreadyExistingCount).toBe(0);
+    expect(result.failedCardCount).toBe(0);
+    expect(result.fileErrors).toEqual([]);
+    // First request is full size; once halved, no request goes back up.
+    expect(server.sizes[0]).toBe(20);
+    const firstSmall = server.sizes.findIndex((size) => size < 20);
+    expect(Math.max(...server.sizes.slice(firstSmall))).toBeLessThanOrEqual(10);
+    for (const step of progress) {
+      expect(step.batchIndex).toBeLessThanOrEqual(step.batchCount);
+    }
+    expect(
+      summarizeVcfImportOutcome(result.list.length + result.recoveredCount, [], [], "x", {
+        alreadyExisting: result.alreadyExistingCount,
+      }),
+    ).toEqual({ failed: false, message: null });
+  });
+
+  it("counts a card already in the book as existing when its batch is resent after a 413", async () => {
+    const server = fakeBook(100, ["A"]);
+    let first = true;
+    const importOne = vi.fn(async (text: string) => {
+      if (first) {
+        first = false;
+        throw statusError(413, "Payload too large");
+      }
+      return server.importOne(text);
+    });
+
+    const result = await importVcfFilesBatch(
+      [new File([["A", "B", "C", "D"].map((name) => card(name)).join("\n")], "big.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+
+    expect(result.list).toHaveLength(3);
+    expect(result.recoveredCount).toBe(0);
+    expect(result.alreadyExistingCount).toBe(1);
+  });
+
+  it("re-importing the same file skips cards already in the book and says so", async () => {
+    const names = ["A", "B", "C", "D"];
+    const server = fakeBook(100, ["A", "B", "C"]);
+
+    const result = await importVcfFilesBatch(
+      [new File([names.map((name) => card(name)).join("\n")], "again.vcf")],
+      server.importOne,
+      { wait: noWait },
+    );
+
+    expect(result.list).toHaveLength(1);
+    expect(result.alreadyExistingCount).toBe(3);
+    expect(result.recoveredCount).toBe(0);
+    expect(result.fileErrors).toEqual([]);
+    expect(
+      summarizeVcfImportOutcome(1, result.fileErrors, result.blockErrorMessages, "x", {
+        alreadyExisting: 3,
+      }),
+    ).toEqual({
+      failed: false,
+      message: "Imported 1 contact. 3 were already in this address book.",
+    });
+  });
+
+  it("counts cards the server refuses as too large without failing their siblings", async () => {
+    const importOne = vi.fn().mockResolvedValue({
+      list: [{ id: "one" }],
+      errors: [{ index: 1, message: "vCard payload exceeds…", code: "payload_too_large" }],
+    });
+
+    const result = await importVcfFilesBatch(
+      [new File([`${card("One")}\n${card("Huge")}`], "c.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+
+    expect(result.tooLargeCount).toBe(1);
+    expect(result.blockErrorMessages).toEqual([]);
+    expect(
+      summarizeVcfImportOutcome(1, result.fileErrors, result.blockErrorMessages, "x", {
+        tooLarge: result.tooLargeCount,
+      }),
+    ).toEqual({ failed: true, message: "Imported 1 contact. 1 contact is too large to import." });
+  });
+
+  it("stops after repeated server failures instead of flooding the server", async () => {
+    const importOne = vi.fn().mockRejectedValue(statusError(503, "Service unavailable"));
+    const names = Array.from({ length: 64 }, (_, index) => `S${index}`);
+
+    const result = await importVcfFilesBatch(
+      [new File([names.map((name) => card(name)).join("\n")], "s.vcf")],
+      importOne,
+      { maxBatchCards: 64, wait: noWait },
+    );
+
+    expect(importOne.mock.calls.length).toBeLessThanOrEqual(8);
+    expect(result.failedCardCount).toBe(64);
+    expect(result.fileErrors[0]?.message.split(VCARD_IMPORT_STOPPED)).toHaveLength(2);
+  });
+
+  it("keys a card without a UID on its text, so a resend or a second import adds no copy", async () => {
+    const byUid = new Set<string>();
+    const sentUids: string[] = [];
+    let first = true;
+    const importOne = vi.fn(async (text: string) => {
+      const list: Array<{ id: string }> = [];
+      const errors: Array<{ index: number; message: string; code?: string }> = [];
+      for (const [index, block] of splitVcardBlocks(text).entries()) {
+        expect(block).not.toMatch(/^UID/m);
+        const uid = block;
+        sentUids.push(uid);
+        if (byUid.has(uid)) {
+          errors.push({ index, message: "Already exists.", code: "alreadyExists" });
+        } else {
+          byUid.add(uid);
+          list.push({ id: uid });
+        }
+      }
+      if (first) {
+        first = false;
+        throw statusError(503, "Service unavailable");
+      }
+      return { list, errors };
+    });
+
+    const result = await importVcfFilesBatch(
+      [new File(["BEGIN:VCARD\nFN:NoUid\nEND:VCARD"], "g.vcf")],
+      importOne,
+      {
+        wait: noWait,
+      },
+    );
+
+    expect(byUid.size).toBe(1);
+    expect(new Set(sentUids).size).toBe(1);
+    expect(sentUids).toHaveLength(2);
+    expect(result.list.length + result.recoveredCount).toBe(1);
+    expect(result.failedCardCount).toBe(0);
+    expect(result.fileErrors).toEqual([]);
+
+    await importVcfFilesBatch(
+      [new File(["BEGIN:VCARD\nFN:NoUid\nEND:VCARD"], "g.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+    expect(byUid.size).toBe(1);
+  });
+
+  it("keeps a UID the card already has", async () => {
+    const importOne = vi.fn().mockResolvedValue({ list: [{ id: "a" }], errors: [] });
+    await importVcfFilesBatch(
+      [new File(["BEGIN:VCARD\nFN:A\nUID:keep-me\nEND:VCARD"], "u.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+    const sent = importOne.mock.calls[0]![0] as string;
+    expect(sent.match(/^UID/gm)).toHaveLength(1);
+    expect(sent).toContain("UID:keep-me");
+  });
+
+  it("names the stop on every file it skipped", async () => {
+    const importOne = vi.fn().mockRejectedValue(statusError(503, "Service unavailable"));
+
+    const result = await importVcfFilesBatch(
+      Array.from({ length: 6 }, (_, i) => new File([card(`F${i}`)], `f${i}.vcf`)),
+      importOne,
+      { wait: noWait },
+    );
+
+    expect(result.fileErrors).toHaveLength(6);
+    expect(result.fileErrors.at(-1)?.fileName).toBe("f5.vcf");
+    expect(result.fileErrors.at(-1)?.message).toBe(VCARD_IMPORT_STOPPED);
+    expect(result.fileErrors.map((error) => error.message).join(" ")).not.toContain(
+      "No vCard data found.",
+    );
+  });
+
+  it("does not halve when the browser is offline", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      const importOne = vi.fn().mockRejectedValue(statusError(0, "Failed to fetch"));
+      const result = await importVcfFilesBatch(
+        [new File([[card("A"), card("B")].join("\n")], "o.vcf")],
+        importOne,
+        { wait: noWait },
+      );
+      expect(importOne).toHaveBeenCalledTimes(1);
+      expect(result.failedCardCount).toBe(2);
+      expect(result.fileErrors[0]?.message).toBe("Failed to fetch");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not retry a refusal that a smaller request cannot fix", async () => {
+    const importOne = vi.fn().mockRejectedValue(statusError(403, "Forbidden."));
+    const result = await importVcfFilesBatch(
+      [new File([[card("A"), card("B")].join("\n")], "f.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+    expect(importOne).toHaveBeenCalledTimes(1);
+    expect(result.fileErrors).toEqual([{ fileName: "f.vcf", message: "Forbidden." }]);
   });
 });

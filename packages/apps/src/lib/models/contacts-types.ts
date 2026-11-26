@@ -15,6 +15,8 @@ export type ContactsUIData = {
 export type ContactCardImportError = {
   index: number;
   message: string;
+  /** `alreadyExists` (UID already in the book) or `payload_too_large`; absent for parse failures. */
+  code?: string;
 };
 
 export type ContactCardImportResponse = {
