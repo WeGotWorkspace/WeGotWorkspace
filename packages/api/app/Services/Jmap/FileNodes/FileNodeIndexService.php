@@ -576,6 +576,27 @@ final class FileNodeIndexService
         return $this->markers->batch(fn (): array => $this->reconcileChildren($dirNode));
     }
 
+    /**
+     * {@see reconcileDirectory()} against preloaded live `$children`: no SQL unless the disk differs.
+     *
+     * @param  list<JmapFileNode>  $children
+     * @return list<JmapFileNode>
+     */
+    public function reconcileDirectoryAgainst(JmapFileNode $dir, array $children): array
+    {
+        $known = array_fill_keys(array_map(static fn (JmapFileNode $c): string => (string) $c->storage_key, $children), true);
+        $seen = 0;
+        foreach ($this->storage->files()->listContents((string) $dir->storage_key) as $entry) {
+            if (isset($known[$entry->path()])) {
+                $seen++;
+            } elseif (! $this->isHiddenKey($entry->path())) {
+                return $this->reconcileDirectory($dir);
+            }
+        }
+
+        return $seen === count($known) ? $children : $this->reconcileDirectory($dir);
+    }
+
     /** @return list<JmapFileNode> */
     private function reconcileChildren(JmapFileNode $dir): array
     {

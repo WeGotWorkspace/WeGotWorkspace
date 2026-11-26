@@ -215,9 +215,18 @@ final class FileNodeAccountSupport
      */
     public function reconcileVisibleTree(array $roots): void
     {
+        // One query for the whole tree; a folder costs SQL only when its disk listing differs (#2063).
+        $rows = JmapFileNode::query()->whereNull('deleted_at');
+        FileNodeTreeScope::underRoots($rows, $roots);
+        $byKey = [];
+        $childrenOf = [];
+        foreach ($rows->orderBy('storage_key')->get(['node_id', 'parent_node_id', 'storage_key', 'is_dir']) as $row) {
+            $byKey[(string) $row->storage_key] = $row;
+            $childrenOf[(string) $row->parent_node_id][] = $row;
+        }
         $queue = [];
         foreach ($roots as $root) {
-            $node = $this->index->liveByKey($root);
+            $node = $byKey[$root] ?? null;
             if ($node !== null) {
                 $queue[] = $node;
             }
@@ -226,7 +235,7 @@ final class FileNodeAccountSupport
         while ($queue !== [] && $guard < 2_000) {
             $dir = array_shift($queue);
             $guard++;
-            foreach ($this->index->reconcileDirectory($dir) as $child) {
+            foreach ($this->index->reconcileDirectoryAgainst($dir, $childrenOf[(string) $dir->node_id] ?? []) as $child) {
                 if ($child->is_dir) {
                     $queue[] = $child;
                 }
