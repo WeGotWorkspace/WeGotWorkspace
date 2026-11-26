@@ -67,6 +67,8 @@ export class SheetEngine {
   trackDirty = false;
   /** Native loop for whole-range SUM/COUNT/MIN/MAX/AVERAGE (spike 4 §4). */
   fastAggregates = true;
+  /** Incremental mode: first evaluation via `evaluateAll` (recursive) or the engine's own iterative pass. */
+  initialEval: "evaluateAll" | "propagate" = "propagate";
   lastDirtyKeys: string[] = [];
   stats: EngineStats = { lastChangeMs: 0, lastEvaluated: 0, readMs: 0, graphMs: 0, evalMs: 0 };
 
@@ -84,9 +86,10 @@ export class SheetEngine {
   private rangeOwnersByCol = new Map<string, Set<string>>();
   private readonly ctx: EvalCtx;
 
-  constructor(doc: Y.Doc, mode: EngineMode) {
+  constructor(doc: Y.Doc, mode: EngineMode, options: { initialEval?: "evaluateAll" | "propagate" } = {}) {
     this.doc = doc;
     this.mode = mode;
+    if (options.initialEval) this.initialEval = options.initialEval;
     this.rowsArr = doc.getArray<Y.Map<unknown>>("rows");
     this.colsArr = doc.getArray<Y.Map<unknown>>("columns");
     this.ctx = {
@@ -219,6 +222,15 @@ export class SheetEngine {
 
   private evaluateEverything(): void {
     const started = performance.now();
+    if (this.mode === "incremental" && this.initialEval === "propagate") {
+      // Own iterative evaluation of every cell: no recursion depth limit, no key-string value map.
+      this.values = new Map();
+      this.colVals.clear();
+      for (const column of this.columns) this.colVals.set(column.ref, new Array(this.rowIds.length).fill(""));
+      this.stats.lastEvaluated = this.propagate(this.raw.keys(), false);
+      this.stats.evalMs = performance.now() - started;
+      return;
+    }
     this.values = evaluateAll(this.raw, this.rowIds, this.defs, [...this.columnRefSet]);
     if (this.mode === "incremental") {
       this.colVals.clear();
@@ -425,9 +437,9 @@ export class SheetEngine {
   }
 
   /** Re-evaluate `seeds` and everything downstream of them. Returns the number of cells evaluated. */
-  private propagate(seeds: Iterable<string>): number {
-    const dirty = new Set<string>();
-    const pending = [...seeds];
+  private propagate(seeds: Iterable<string>, expand = true): number {
+    const dirty = new Set<string>(expand ? [] : seeds);
+    const pending = expand ? [...seeds] : [];
     while (pending.length > 0) {
       const key = pending.pop() as string;
       if (dirty.has(key)) continue;
