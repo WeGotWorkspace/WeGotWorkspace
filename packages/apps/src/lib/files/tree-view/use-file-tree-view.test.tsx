@@ -110,6 +110,15 @@ describe("useFileTreeView", () => {
     expect((await settled(after.result)).status).toBe("not-available");
   });
 
+  it("a deep link to a folder the finished tree does not hold is not-available online", async () => {
+    await finishFirstSync();
+    const { result } = render({ kind: "folder", path: "users/ada/Never" });
+    expect(await settled(result)).toEqual({ rows: [], status: "not-available", settled: true });
+
+    const prefix = render({ kind: "prefix", path: "groups/gone" });
+    expect((await settled(prefix.result)).status).toBe("not-available");
+  });
+
   it("first sync with no rows online is the full-pane first-sync state", async () => {
     const { result } = render({ kind: "folder", path: "users/ada" });
     expect(await settled(result)).toMatchObject({ rows: [], status: "first-sync" });
