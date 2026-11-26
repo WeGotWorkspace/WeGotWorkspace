@@ -31,7 +31,7 @@ export function tagsAfterToggle(tags: readonly string[], rawTag: string): string
   return [...tags, normalized];
 }
 
-/** Add result. Null when the tag is invalid or already on the note, any case. */
+/** Add result. Null when the tag is invalid or already in the list, any case. */
 export function tagsAfterAdd(tags: readonly string[], rawTag: string): string[] | null {
   const trimmed = rawTag.trim();
   if (!isValidNewTag(trimmed)) return null;
