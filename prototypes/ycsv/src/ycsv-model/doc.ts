@@ -57,6 +57,9 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc, options: FileToDocOptions 
       header: file.header[index] ?? "",
     }));
 
+    // One push per array: pushing item by item inside a transaction is
+    // quadratic in Yjs (20k rows: 16.6 s vs 0.7 s batched, spike 5).
+    const columnMaps: Y.Map<unknown>[] = [];
     file.columns.forEach((column, index) => {
       const { ref, name, type, ...rest } = column;
       const map = new Y.Map<unknown>();
@@ -65,9 +68,11 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc, options: FileToDocOptions 
       if (name !== undefined) map.set("name", name);
       if (type !== undefined) map.set("type", type);
       map.set("rest", rest);
-      columns.push([map]);
+      columnMaps.push(map);
     });
+    columns.push(columnMaps);
 
+    const rowMaps: Y.Map<unknown>[] = [];
     file.rows.forEach((data, index) => {
       const cells = new Y.Map<string>();
       for (let colIndex = 0; colIndex < colInfos.length; colIndex += 1) {
@@ -78,8 +83,9 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc, options: FileToDocOptions 
       const map = new Y.Map<unknown>();
       map.set("rowId", rowIds[index]);
       map.set("cells", cells);
-      rows.push([map]);
+      rowMaps.push(map);
     });
+    rows.push(rowMaps);
   }, options.origin ?? "local");
 }
 
@@ -102,8 +108,9 @@ export function docToFile(doc: Y.Doc): YcsvFile {
   const rows = rowsOf(doc);
   const colDefs: ColumnDef[] = [];
   const colInfos: ColInfo[] = [];
-  for (let i = 0; i < columns.length; i += 1) {
-    const map = columns.get(i);
+  // toArray(), not get(i): indexed reads on a large edited Y.Array are
+  // superlinear (50k rows after 200 edits: 18.9 s, spike 5).
+  for (const map of columns.toArray()) {
     const def = columnDef(map);
     colDefs.push(def);
     colInfos.push({ colId: String(map.get("colId") ?? ""), ref: def.ref ?? "" });
@@ -111,8 +118,7 @@ export function docToFile(doc: Y.Doc): YcsvFile {
 
   const rowIds: string[] = [];
   const rowMaps: Y.Map<unknown>[] = [];
-  for (let i = 0; i < rows.length; i += 1) {
-    const map = rows.get(i);
+  for (const map of rows.toArray()) {
     rowMaps.push(map);
     rowIds.push(String(map.get("rowId") ?? ""));
   }

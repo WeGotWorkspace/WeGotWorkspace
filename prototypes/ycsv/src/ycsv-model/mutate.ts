@@ -14,22 +14,39 @@ function snapshot(doc: Y.Doc): { cols: ColInfo[]; rowIds: string[] } {
   const columns = columnsOf(doc);
   const rows = rowsOf(doc);
   const cols: ColInfo[] = [];
-  for (let i = 0; i < columns.length; i += 1) {
-    const map = columns.get(i);
+  for (const map of columns.toArray()) {
     cols.push({ colId: String(map.get("colId") ?? ""), ref: String(map.get("ref") ?? "") });
   }
   const rowIds: string[] = [];
-  for (let i = 0; i < rows.length; i += 1) rowIds.push(String(rows.get(i).get("rowId") ?? ""));
+  for (const row of rows.toArray()) rowIds.push(String(row.get("rowId") ?? ""));
   return { cols, rowIds };
 }
 
-export function setCell(doc: Y.Doc, rowId: string, colId: string, fileFormValue: string): void {
+/** The row order a file-form text was written against (taken when the cell editor opened). */
+export type EditBase = { rowIds: string[] };
+
+export function editBase(doc: Y.Doc): EditBase {
+  return { rowIds: snapshot(doc).rowIds };
+}
+
+/**
+ * Set a cell from file-form text. `base`: resolve `aantal3` against the rows
+ * as they were when the person started typing, not as they are now. A peer's
+ * row insert that lands while the editor is open must not retarget the
+ * reference (spike 5 e2e found this).
+ */
+export function setCell(
+  doc: Y.Doc,
+  rowId: string,
+  colId: string,
+  fileFormValue: string,
+  base?: EditBase,
+): void {
   doc.transact(() => {
-    const { cols, rowIds } = snapshot(doc);
+    const { cols, rowIds: current } = snapshot(doc);
+    const rowIds = base?.rowIds ?? current;
     const idForm = toIdForm(fileFormValue, cols, rowIds);
-    const rows = rowsOf(doc);
-    for (let i = 0; i < rows.length; i += 1) {
-      const row = rows.get(i);
+    for (const row of rowsOf(doc).toArray()) {
       if (row.get("rowId") !== rowId) continue;
       const cells = row.get("cells") as Y.Map<string>;
       cells.set(colId, idForm);

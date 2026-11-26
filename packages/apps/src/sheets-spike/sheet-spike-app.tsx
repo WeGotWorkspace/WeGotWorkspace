@@ -5,7 +5,7 @@
  *
  * Open: /sheets-spike.html?file=users/admin/x.ycsv&user=Ann
  */
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import {
@@ -19,7 +19,12 @@ import {
   type SheetPresence,
 } from "../../../../prototypes/ycsv/src/ycsv-collab";
 import { evaluateAll, type RawCells } from "../../../../prototypes/ycsv/src/ycsv-formula";
-import { insertRowAfter, setCell, toFileForm } from "../../../../prototypes/ycsv/src/ycsv-model";
+import {
+  insertRowAfter,
+  setCell,
+  toFileForm,
+  type EditBase,
+} from "../../../../prototypes/ycsv/src/ycsv-model";
 import { buildDocsEditorUrls } from "@/docs-core/src/docs-collab-urls";
 import { wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { useDocsCollab, type DocsCollabUrls } from "@/text-editor-core/docs-collab";
@@ -120,6 +125,8 @@ function SheetSession({ urls, user }: { urls: DocsCollabUrls; user: string }) {
   const [active, setActive] = useState<CellRef | null>(null);
   const [anchor, setAnchor] = useState<CellRef | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  // Row order when the editor opened: references typed in it resolve against this.
+  const [base, setBase] = useState<EditBase | null>(null);
 
   const { onMarkdownChange } = collab;
   const edited = useCallback(() => {
@@ -146,7 +153,9 @@ function SheetSession({ urls, user }: { urls: DocsCollabUrls; user: string }) {
 
   const peerRanges = peers
     .map((peer) => ({ peer, box: peer.range ? resolveRange(doc, peer.range) : null }))
-    .filter((p): p is { peer: PeerSheetPresence; box: NonNullable<typeof p.box> } => p.box !== null);
+    .filter(
+      (p): p is { peer: PeerSheetPresence; box: NonNullable<typeof p.box> } => p.box !== null,
+    );
 
   const select = (ref: CellRef, extend: boolean) => {
     setActive(ref);
@@ -154,7 +163,9 @@ function SheetSession({ urls, user }: { urls: DocsCollabUrls; user: string }) {
   };
 
   const commit = (ref: CellRef, text: string) => {
-    setCell(doc, ref.rowId, ref.colId, text);
+    setCell(doc, ref.rowId, ref.colId, text, base ?? undefined);
+    // One undo step per committed edit, whatever the timing (not the 500 ms capture window).
+    undo?.stopCapturing();
     setEditing(null);
     edited();
   };
@@ -172,14 +183,34 @@ function SheetSession({ urls, user }: { urls: DocsCollabUrls; user: string }) {
           onClick={() => {
             const at = active ? (rowIndex.get(active.rowId) ?? grid.rows.length - 1) : -1;
             insertRowAfter(doc, at);
+            undo?.stopCapturing();
             edited();
           }}
         >
           Insert row below
         </button>
-        <button data-testid="undo" onClick={() => { undo?.undo(); edited(); }}>Undo</button>
-        <button data-testid="redo" onClick={() => { undo?.redo(); edited(); }}>Redo</button>
-        <button data-testid="save-now" onClick={() => void collab.saveNow()}>Save now</button>
+        <button
+          data-testid="undo"
+          data-depth={undo?.undoStack.length ?? 0}
+          onClick={() => {
+            undo?.undo();
+            edited();
+          }}
+        >
+          Undo
+        </button>
+        <button
+          data-testid="redo"
+          onClick={() => {
+            undo?.redo();
+            edited();
+          }}
+        >
+          Redo
+        </button>
+        <button data-testid="save-now" onClick={() => void collab.saveNow()}>
+          Save now
+        </button>
       </div>
       <table style={{ borderCollapse: "collapse" }} data-testid="sheet-grid">
         <thead>
@@ -214,11 +245,17 @@ function SheetSession({ urls, user }: { urls: DocsCollabUrls; user: string }) {
                     key={col.colId}
                     data-testid={`cell-${r + 1}-${col.ref}`}
                     data-raw={fileForm}
+                    data-value={value === undefined ? "" : String(value)}
                     data-peer-active={peerHere?.name ?? ""}
                     data-peer-editing={peerHere?.editing ? "true" : "false"}
                     data-peer-range={inRange?.peer.name ?? ""}
                     onMouseDown={(e) => select(ref, e.shiftKey)}
-                    onDoubleClick={() => setEditing(fileForm)}
+                    onDoubleClick={() => {
+                      // The rows as rendered, not as the doc holds them now: a peer's
+                      // insert may already be in the doc but not yet on screen.
+                      setBase({ rowIds });
+                      setEditing(fileForm);
+                    }}
                     style={{
                       position: "relative",
                       border: "1px solid #ddd",

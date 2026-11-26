@@ -9,10 +9,7 @@ import {
 } from "@/lib/collab/docs-collab-server-io";
 import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import {
-  collabDocumentShapeById,
-  markCollabShapeDoc,
-} from "@/lib/collab/collab-document-shape";
+import { collabDocumentShapeById, markCollabShapeDoc } from "@/lib/collab/collab-document-shape";
 import { SEED_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import {
   markTextFieldsDoc,

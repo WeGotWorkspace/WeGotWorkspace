@@ -21,7 +21,14 @@ import {
   seedYcsv,
   setLocalSheetPresence,
 } from "../src/ycsv-collab";
-import { deleteColumn, deleteRow, insertColumn, insertRowAfter, setCell } from "../src/ycsv-model";
+import {
+  deleteColumn,
+  deleteRow,
+  editBase,
+  insertColumn,
+  insertRowAfter,
+  setCell,
+} from "../src/ycsv-model";
 
 function sync(...docs: Y.Doc[]) {
   for (const from of docs) {
@@ -223,6 +230,23 @@ describe("conflicts", () => {
     expect(sum as number).toBeGreaterThan(100);
     // The column the formula did not name changed nothing.
     expect(a.getArray("columns").length).toBe(5);
+  });
+
+  test("a row insert that lands while my cell editor is open does not retarget my reference", () => {
+    const a = seeded(SEED, 1);
+    const b = new Y.Doc();
+    sync(a, b);
+    const kaas = rowId(a, 2);
+    const base = editBase(a); // Ann opens the editor on Kaas (row 3) and types =aantal3*prijs3
+    insertRowAfter(b, 0);
+    sync(a, b); // Bob's insert arrives before Ann presses Enter
+    setCell(a, kaas, colId(a, "totaal"), "=aantal3*prijs3", base);
+    sync(a, b);
+    expect(cell(b, 3, "product")).toBe("Kaas");
+    expect(readYcsv(b)).toContain("Kaas,1,4.50,=aantal4*prijs4");
+    // Without the base the reference would point at Brood (now row 3).
+    setCell(a, kaas, colId(a, "totaal"), "=aantal3*prijs3");
+    expect(readYcsv(a)).toContain("Kaas,1,4.50,=aantal3*prijs3");
   });
 
   test("two people add a column with the same ref: both columns exist, refs collide (documented)", () => {
