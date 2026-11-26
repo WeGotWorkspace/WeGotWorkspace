@@ -233,7 +233,9 @@ const BareUrlLink = Link.extend({
             const bare = state.inBareUrl;
             state.inBareUrl = undefined;
             if (bare) return "";
-            const title = mark.attrs.title ? ` "${mark.attrs.title.replace(/[\\"]/g, "\\$&")}"` : "";
+            const title = mark.attrs.title
+              ? ` "${mark.attrs.title.replace(/[\\"]/g, "\\$&")}"`
+              : "";
             return `](${mark.attrs.href.replace(/[()"\n\\]/g, "\\$&")}${title})`;
           },
           mixable: true,
