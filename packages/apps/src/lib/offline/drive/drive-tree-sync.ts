@@ -44,6 +44,7 @@ import {
 } from "@/lib/offline/drive/drive-schema";
 import {
   areaForRoot,
+  areaFromCrawledPath,
   isHiddenTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
@@ -150,9 +151,24 @@ async function crawlFolders(
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   await writeCrawledRoots(username);
+  await stampCrawledAreas(username);
   await writeDriveSyncToken(username, before.state);
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
+}
+
+/**
+ * The crawl writes rows through `upsertDriveEntry`, which takes a parent row's
+ * area, and account roots have no row, so crawled rows have none. The crawl
+ * never stores share roots, so the path decides the area, as in the Dexie
+ * backfill. Area-indexed views (All files, Recent, Trash) need it.
+ */
+async function stampCrawledAreas(username: string): Promise<void> {
+  await driveEntriesTable(accountDb(username))
+    .filter((row) => row.area === undefined)
+    .modify((row) => {
+      row.area = areaFromCrawledPath(row.id);
+    });
 }
 
 /**

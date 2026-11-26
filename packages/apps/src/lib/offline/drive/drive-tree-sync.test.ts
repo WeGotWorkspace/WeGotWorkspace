@@ -761,17 +761,18 @@ describe("syncDriveTree", () => {
     const server = standardTree();
     await connect(server, { keyset: false });
     const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
-    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockResolvedValue({
-      running: false,
-      total: 1,
-      synced: 1,
-      failed: 0,
-      updatedAt: 1,
+    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async () => {
+      // As the crawl writes: no area, since account roots have no row to take it from.
+      await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "n-a"));
+      await upsertDriveEntry(username, staleEntry("/groups/team/b.md", "n-b"));
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
     });
 
     const result = await syncDriveTree(username);
 
     expect(result.completed).toBe(true);
+    expect(await row("/users/ada/a.md")).toMatchObject({ area: "home" });
+    expect(await row("/groups/team/b.md")).toMatchObject({ area: "group" });
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());

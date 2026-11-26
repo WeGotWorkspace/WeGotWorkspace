@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   isKnownTreeFolder,
   isShareRootRow,
-  isTrashItemPath,
   matchesEntryFilter,
   rowInView,
   type FileTreeRowColumns,
   type FileTreeView,
 } from "@/lib/files/tree-view/tree-view-predicates";
+import { isTrashItemPath } from "@/lib/offline/drive/drive-tree-rows";
 
 function row(
   id: string,
