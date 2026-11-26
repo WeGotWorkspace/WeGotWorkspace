@@ -1,0 +1,26 @@
+{
+  "name": "ycsv-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6007 --no-open"
+  },
+  "dependencies": {
+    "@formulajs/formulajs": "^4.5.1",
+    "nanoid": "^5.1.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "y-protocols": "^1.0.6",
+    "yaml": "^2.8.1",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "^9.1.10",
+    "@testing-library/react": "^16.3.0",
+    "storybook": "9.1.21",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  }
+}
