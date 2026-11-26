@@ -1919,8 +1919,6 @@ exports[`workspace label snapshot > resolved labels match the snapshot: meet 1`]
   "noticeBarLabel": "Needs your attention",
   "openPip": "Open picture-in-picture",
   "openSystemPip": "Open system Picture-in-Picture",
-  "optimizeForText": "Optimize for text",
-  "optimizeForVideo": "Optimize for video",
   "participantJoined": [
     "0 joined the call",
     "1 joined the call",

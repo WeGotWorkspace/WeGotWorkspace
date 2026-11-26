@@ -28,6 +28,86 @@ function fakeStream(...tracks: FakeTrack[]): MediaStream {
   } as unknown as MediaStream;
 }
 
+describe("useMeetLocalMedia screen share", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubDisplay(getDisplayMedia: () => Promise<MediaStream>) {
+    vi.stubGlobal("navigator", {
+      mediaDevices: {
+        getUserMedia: vi.fn(async () => fakeStream()),
+        getDisplayMedia: vi.fn(getDisplayMedia),
+        enumerateDevices: vi.fn(async () => []),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+    });
+    return (navigator.mediaDevices as unknown as { getDisplayMedia: Mock }).getDisplayMedia;
+  }
+
+  it("opens one picker and keeps one stream when start is called twice at once", async () => {
+    const picker = deferred<MediaStream>();
+    const screen = fakeTrack("video", "screen");
+    const getDisplayMedia = stubDisplay(() => picker.promise);
+    const mediaHolders = holders(fakeStream(fakeTrack("audio", "mic")));
+    const { result } = renderHook(() => useHarness({ mic: true, video: false }, mediaHolders));
+
+    await act(async () => {
+      const first = result.current.media.startScreenShare();
+      const second = result.current.media.startScreenShare();
+      picker.resolve(fakeStream(screen));
+      await Promise.all([first, second]);
+    });
+
+    expect(getDisplayMedia).toHaveBeenCalledTimes(1);
+    expect(mediaHolders.screenStream.current?.getVideoTracks()).toEqual([screen]);
+    expect(screen.contentHint).toBe("detail");
+  });
+
+  it("does not open a picker while a share is already live", async () => {
+    const getDisplayMedia = stubDisplay(async () => fakeStream(fakeTrack("video", "second")));
+    const mediaHolders = holders(fakeStream(fakeTrack("audio", "mic")));
+    mediaHolders.screenStream.current = fakeStream(fakeTrack("video", "live"));
+    const { result } = renderHook(() => useHarness({ mic: true, video: false }, mediaHolders));
+
+    await act(async () => {
+      await result.current.media.startScreenShare();
+    });
+
+    expect(getDisplayMedia).not.toHaveBeenCalled();
+  });
+
+  it("stops every track of the share on stop", async () => {
+    stubDisplay(async () => fakeStream());
+    const audio = fakeTrack("audio", "screen-audio");
+    const video = fakeTrack("video", "screen");
+    const mediaHolders = holders(fakeStream(fakeTrack("audio", "mic")));
+    mediaHolders.screenStream.current = fakeStream(video, audio);
+    const { result } = renderHook(() => useHarness({ mic: true, video: false }, mediaHolders));
+
+    await act(async () => {
+      await result.current.media.stopScreenShare();
+    });
+
+    expect(video.stop).toHaveBeenCalled();
+    expect(audio.stop).toHaveBeenCalled();
+    expect(mediaHolders.screenStream.current).toBeNull();
+  });
+
+  it("sets the camera track to motion", async () => {
+    const camera = fakeTrack("video", "cam");
+    stubMediaDevices(async () => fakeStream(fakeTrack("audio", "mic"), camera));
+    const { result } = renderHook(() => useHarness({ mic: true, video: true }, holders(null)));
+
+    await act(async () => {
+      await result.current.media.ensureLocalMedia();
+    });
+
+    expect(camera.contentHint).toBe("motion");
+  });
+});
+
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
   const promise = new Promise<T>((done) => (resolve = done));
