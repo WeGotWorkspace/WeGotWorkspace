@@ -177,22 +177,22 @@ final class JmapFileNodeTreePagingTest extends WgwDatabaseTestCase
         $this->assertSame($few, $many, 'A keyset page must not reconcile or read per folder.');
     }
 
-    public function test_first_page_reconciles_out_of_band_files(): void
+    public function test_keyset_walk_reads_the_index_and_the_open_folder_heals(): void
     {
         $this->seedFolders('users/bob', 1, 1);
         $this->liveVisibleIds('bob');
-        $disk = app(WgwStorage::class)->files();
+        $folder = $this->nodeIdAt('users/bob/folder00');
 
-        // Written past the index (SFTP, a restore): only the first page heals it.
-        $disk->put('users/bob/folder00/late-first.md', 'x');
-        $first = $this->page('bob', ['limit' => 500, 'idAfter' => null]);
-        $lateFirst = $this->nodeIdAt('users/bob/folder00/late-first.md');
-        $this->assertContains($lateFirst, $first['ids']);
+        // Written past the app (SFTP, a restore): the walk does not list the disk for it.
+        app(WgwStorage::class)->files()->put('users/bob/folder00/late.md', 'x');
+        $this->page('bob', ['limit' => 500, 'idAfter' => null]);
+        $this->assertNull(app(FileNodeIndexService::class)->liveByKey('users/bob/folder00/late.md'));
 
-        $disk->put('users/bob/folder00/late-later.md', 'x');
-        $later = $this->page('bob', ['limit' => 500, 'idAfter' => 'fn-']);
-        $this->assertContains($lateFirst, $later['ids']);
-        $this->assertNull(app(FileNodeIndexService::class)->liveByKey('users/bob/folder00/late-later.md'));
+        // Listing that folder (the client opens it) reconciles it.
+        $listed = $this->jmapAs('bob', [
+            ['FileNode/query', ['accountId' => 'bob', 'filter' => ['parentId' => $folder]], 'q'],
+        ])->assertOk()->json('methodResponses.0.1.ids');
+        $this->assertContains($this->nodeIdAt('users/bob/folder00/late.md'), $listed);
     }
 
     public function test_keyset_walk_survives_a_delete_before_the_cursor(): void

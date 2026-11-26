@@ -170,10 +170,10 @@ final class FileNodeQueryMethod implements JmapMethodInterface
     }
 
     /**
-     * One keyset page of the visible tree, in `node_id` order. Only the first page
-     * (no `idAfter`) reconciles the tree against disk; later pages read one SQL query
-     * of ids. A node the reconcile finds is newer than `asOfState`, so the walk leaves
-     * it to the client's FileNode/changes catch-up.
+     * One keyset page of the visible tree, in `node_id` order: one SQL query of ids
+     * from the index, never a disk walk. Every write through the app already updates
+     * the index; drift from writes past the app heals when that folder is listed
+     * (a `parentId` query) or with `wgw:jmap:filenodes-reindex` (#2063).
      *
      * @param  list<string>  $roots
      * @param  array{idAfter: ?string, asOfSeq: ?int}  $keyset
@@ -181,9 +181,6 @@ final class FileNodeQueryMethod implements JmapMethodInterface
      */
     private function keysetPage(string $username, array $roots, array $keyset, ?int $limit, bool $calculateTotal): array
     {
-        if ($keyset['idAfter'] === null) {
-            $this->accounts->reconcileVisibleTree($roots);
-        }
         $response = [
             'accountId' => $username,
             'queryState' => $this->syncState->current($username),
