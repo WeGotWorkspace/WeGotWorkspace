@@ -68,12 +68,10 @@ export function useDocsImageInsert({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [groupRoots, setGroupRoots] = useState<DocsHomeGroupRoot[]>([]);
 
-  const [replaceTarget, setReplaceTargetState] = useState<ReplaceTarget | null>(null);
-  // The upload path reads the target after an await, so it needs the latest value.
+  // Taken by the pick or upload that starts next, so it is a ref and not state.
   const replaceTargetRef = useRef<ReplaceTarget | null>(null);
   const setReplaceTarget = useCallback((target: ReplaceTarget | null) => {
     replaceTargetRef.current = target;
-    setReplaceTargetState(target);
   }, []);
 
   const openPicker = useCallback(() => {
@@ -107,26 +105,32 @@ export function useDocsImageInsert({
   }, [operations, pickerOpen]);
 
   const insertNode = useCallback(
-    (nodeId: string, alt: string) => {
+    (nodeId: string, alt: string, target: ReplaceTarget | null) => {
       if (!editor || editor.isDestroyed) return;
-      const target = replaceTargetRef.current;
       if (target) {
         const pos = findDocsImageToReplace(editor, target);
         if (pos == null || !replaceDocsImageAt(editor, pos, nodeId, alt)) {
           showError(insertErrorMessage);
         }
-        setReplaceTarget(null);
         return;
       }
       insertDocsImageFromNodeId(editor, nodeId, alt);
     },
-    [editor, insertErrorMessage, setReplaceTarget, showError],
+    [editor, insertErrorMessage, showError],
   );
+
+  /** Hands the pending target to the pick or upload that starts now, so nothing else can reuse it. */
+  const takeReplaceTarget = useCallback(() => {
+    const target = replaceTargetRef.current;
+    setReplaceTarget(null);
+    return target;
+  }, [setReplaceTarget]);
 
   const onSelectFile = useCallback(
     (file: DriveFile) => {
       if (!enabled) return;
       setPickerOpen(false);
+      const target = takeReplaceTarget();
       const apiPath = file.apiPath;
       if (!apiPath) {
         showError(insertErrorMessage);
@@ -135,34 +139,36 @@ export function useDocsImageInsert({
       void (async () => {
         try {
           const nodeId = await resolveDriveFileNodeId(apiPath);
-          insertNode(nodeId, file.title || "");
+          insertNode(nodeId, file.title || "", target);
         } catch {
           showError(insertErrorMessage);
         }
       })();
     },
-    [enabled, insertErrorMessage, insertNode, showError],
+    [enabled, insertErrorMessage, insertNode, showError, takeReplaceTarget],
   );
 
   const onUploadFiles = useCallback(
     (files: File[]) => {
       if (!enabled || !docApiPath) return;
       // Replacing swaps one picture: only the first file counts.
-      const images = files.filter(isDocsImageFile).slice(0, replaceTarget != null ? 1 : undefined);
-      if (images.length === 0) return;
+      const all = files.filter(isDocsImageFile);
+      if (all.length === 0) return;
       setPickerOpen(false);
+      const target = takeReplaceTarget();
+      const images = target ? all.slice(0, 1) : all;
       void (async () => {
         try {
           for (const file of images) {
             const uploaded = await uploadDocAttachmentImage(docApiPath, file);
-            insertNode(uploaded.nodeId, uploaded.alt);
+            insertNode(uploaded.nodeId, uploaded.alt, target);
           }
         } catch {
           showError(insertErrorMessage);
         }
       })();
     },
-    [docApiPath, enabled, insertErrorMessage, insertNode, replaceTarget, showError],
+    [docApiPath, enabled, insertErrorMessage, insertNode, showError, takeReplaceTarget],
   );
 
   useEffect(() => {

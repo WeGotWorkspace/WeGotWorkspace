@@ -62,15 +62,15 @@ export function splitImageFragment(raw: string | null | undefined): {
   if (!raw) return { src: null, width: null, align: null };
   const hash = raw.indexOf("#");
   if (hash < 0) return { src: raw, width: null, align: null };
-  const params = new URLSearchParams(raw.slice(hash + 1));
-  if (!params.has(WIDTH_KEY) && !params.has(ALIGN_KEY)) {
-    return { src: raw, width: null, align: null };
-  }
-  const width = normalizeDocsImageWidth(params.get(WIDTH_KEY));
-  const align = normalizeDocsImageAlign(params.get(ALIGN_KEY));
-  params.delete(WIDTH_KEY);
-  params.delete(ALIGN_KEY);
-  const rest = params.toString();
+  const parts = raw.slice(hash + 1).split("&");
+  const keyOf = (part: string) => part.split("=")[0];
+  const isOurs = (part: string) => keyOf(part) === WIDTH_KEY || keyOf(part) === ALIGN_KEY;
+  if (!parts.some(isOurs)) return { src: raw, width: null, align: null };
+  const own = new URLSearchParams(parts.filter(isOurs).join("&"));
+  const width = normalizeDocsImageWidth(own.get(WIDTH_KEY));
+  const align = normalizeDocsImageAlign(own.get(ALIGN_KEY));
+  // The rest stays byte for byte; it is never re-encoded.
+  const rest = parts.filter((part) => !isOurs(part)).join("&");
   return { src: raw.slice(0, hash) + (rest ? `#${rest}` : ""), width, align };
 }
 

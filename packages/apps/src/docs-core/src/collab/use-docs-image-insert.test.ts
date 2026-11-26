@@ -1,8 +1,19 @@
 /** @vitest-environment jsdom */
 import { Editor } from "@tiptap/core";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
-import { findDocsImageToReplace } from "./use-docs-image-insert";
+import { uploadDocAttachmentImage } from "@/text-editor-core/docs-collab/docs-image-upload";
+import { findDocsImageToReplace, useDocsImageInsert } from "./use-docs-image-insert";
+
+vi.mock("@/hooks/use-app-toast", () => ({ useAppToast: () => ({ showError: vi.fn() }) }));
+vi.mock("@/docs-core/src/docs-home-drives", () => ({
+  fetchGroupRootsFromDrive: vi.fn(async () => []),
+}));
+vi.mock("@/text-editor-core/docs-collab/docs-image-upload", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  uploadDocAttachmentImage: vi.fn(),
+}));
 
 const A = "fn-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const B = "fn-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -51,6 +62,35 @@ describe("findDocsImageToReplace", () => {
     expect(findDocsImageToReplace(editor, target)).toBe(imagePos(editor, `drive:${B}`));
     editor.commands.setContent("<p>Nothing left</p>");
     expect(findDocsImageToReplace(editor, target)).toBeNull();
+    editor.destroy();
+  });
+});
+
+describe("useDocsImageInsert replace target", () => {
+  it("is spent by a failed replace, so the next upload inserts", async () => {
+    const editor = mount(`Intro\n\n![A](drive:${A})`);
+    const src = `drive:${A}`;
+    const upload = vi.mocked(uploadDocAttachmentImage);
+    upload.mockRejectedValueOnce(new Error("offline"));
+    upload.mockResolvedValueOnce({ nodeId: B, alt: "B" } as never);
+    const { result } = renderHook(() =>
+      useDocsImageInsert({
+        editor,
+        docApiPath: "/doc",
+        enabled: true,
+        insertErrorMessage: "failed",
+      }),
+    );
+    const png = new File([new Uint8Array([1])], "a.png", { type: "image/png" });
+    act(() => result.current.openReplacePicker(imagePos(editor, src)));
+    await act(async () => result.current.onUploadFiles([png]));
+    await act(async () => result.current.onUploadFiles([png]));
+    const srcs: string[] = [];
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === "image") srcs.push(node.attrs.src);
+    });
+    expect(srcs).toContain(src);
+    expect(srcs).toHaveLength(2);
     editor.destroy();
   });
 });
