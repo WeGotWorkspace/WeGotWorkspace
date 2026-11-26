@@ -1,3 +1,5 @@
+import { hasLinks } from "@/lib/linkify/linkify-text";
+import { LinkifiedText } from "@/lib/linkify/linkified-text";
 import {
   useLayoutEffect,
   useMemo,
@@ -621,18 +623,25 @@ export function ContactsDetailView({
       {locked && !draft.notes.trim() ? null : (
         <DetailFieldList className="contacts-detail-view__fields">
           <DetailFieldRow icon={<StickyNote />} title={labels.sectionNotes} stacked>
-            <TextareaAutosize
-              id="contact-notes"
-              className="textarea textarea--size-sm textarea--ghost contacts-detail-view__notes"
-              value={draft.notes}
-              onChange={(event) => onDraftChange({ notes: event.target.value })}
-              placeholder={labels.notesPlaceholder}
-              aria-label={labels.sectionNotes}
-              readOnly={locked}
-              minRows={1}
-              // Grows with the notes, however long: the pane scrolls, not the field.
-              maxRows={Number.POSITIVE_INFINITY}
-            />
+            {locked && hasLinks(draft.notes) ? (
+              <LinkifiedText
+                className="contacts-detail-view__notes contacts-detail-view__notes--read"
+                text={draft.notes}
+              />
+            ) : (
+              <TextareaAutosize
+                id="contact-notes"
+                className="textarea textarea--size-sm textarea--ghost contacts-detail-view__notes"
+                value={draft.notes}
+                onChange={(event) => onDraftChange({ notes: event.target.value })}
+                placeholder={labels.notesPlaceholder}
+                aria-label={labels.sectionNotes}
+                readOnly={locked}
+                minRows={1}
+                // Grows with the notes, however long: the pane scrolls, not the field.
+                maxRows={Number.POSITIVE_INFINITY}
+              />
+            )}
           </DetailFieldRow>
         </DetailFieldList>
       )}

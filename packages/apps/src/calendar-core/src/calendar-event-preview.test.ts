@@ -412,3 +412,13 @@ describe("detailsPopoverAnchorOrigin", () => {
     expect(detailsPopoverAnchorOrigin(origin, dir)).toEqual(expected);
   });
 });
+
+describe("eventPreviewNotesExcerpt links", () => {
+  it("never cuts inside a URL", () => {
+    const url = `https://example.test/${"a".repeat(60)}`;
+    const text = `${"x".repeat(140)} ${url} tail ${"y".repeat(50)}`;
+    const excerpt = eventPreviewNotesExcerpt(text) ?? "";
+    expect(excerpt).toContain(url);
+    expect(excerpt.endsWith("…")).toBe(true);
+  });
+});

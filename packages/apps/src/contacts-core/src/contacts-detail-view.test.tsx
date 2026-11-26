@@ -622,6 +622,17 @@ describe("ContactsDetailView read-only", () => {
     expect(screen.queryByRole("button", { name: L.addPhone })).toBeNull();
   });
 
+  it("makes a URL in read-only notes a link", () => {
+    const withNotes = {
+      ...janeWithBirthday,
+      notes: { "note-1": { "@type": "Note", note: "Site https://example.test/a" } },
+    } as unknown as ContactCard;
+    renderReadOnly({ card: withNotes, displayName: "Jane Doe" });
+    const link = screen.getByRole("link", { name: "https://example.test/a" });
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link.getAttribute("target")).toBe("_blank");
+  });
+
   it("shows notes and birthday read-only when they have a value", () => {
     const withNotes = {
       ...janeWithBirthday,

@@ -38,6 +38,7 @@ import {
   CalendarEventForm,
   type CalendarEventFormProps,
 } from "@/calendar-core/src/calendar-event-form";
+import { LinkifiedText } from "@/lib/linkify/linkified-text";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
@@ -74,7 +75,7 @@ export type CalendarEventDetailsPopoverProps = {
   onJoinMeeting?: (href: string) => void;
 };
 
-function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (
     <div className="calendar-event-details-popover__row">
       <span className="calendar-event-details-popover__icon" aria-hidden>
@@ -181,7 +182,7 @@ export function CalendarEventDetailsPopover({
         key="notes"
         icon={<StickyNote className="size-3.5" />}
         label={labels.eventNotesLabel}
-        value={notes}
+        value={<LinkifiedText text={notes} />}
       />,
     );
   }

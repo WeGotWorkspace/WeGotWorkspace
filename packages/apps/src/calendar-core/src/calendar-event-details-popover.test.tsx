@@ -776,3 +776,23 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 });
+
+describe("CalendarEventDetailsPopover notes links", () => {
+  function previewWithNotes(description: string) {
+    const base = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(base).not.toBeNull();
+    return { ...base!, form: { ...base!.form, description } };
+  }
+
+  it("renders URLs in notes as safe links and leaves javascript: as text", () => {
+    cleanup();
+    renderPopover({
+      preview: previewWithNotes("Call https://meet.test/abc or javascript:alert(1)"),
+    });
+    const link = screen.getByRole("link", { name: "https://meet.test/abc" });
+    expect(link.getAttribute("href")).toBe("https://meet.test/abc");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
+  });
+});
