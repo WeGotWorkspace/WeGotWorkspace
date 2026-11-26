@@ -55,7 +55,7 @@ ResultReferences (§3.7): every `#key` argument is resolved against the matching
 | `FileNode/changes` | global change sequence + tombstones | State = bare sequence number (not the Sabre codec); pruned tombstones → `cannotCalculateChanges` |
 | `FileNode/set` | `FileNodeSetService` (disk + index) | Top-level `ifInState`; `onExists` null/`replace`/`rename`/`newest`; `onDestroyRemoveChildren` → `nodeHasChildren` when refused; `alreadyExists` carries `existingId`; content via uploaded `jb-` blobs (copy-on-consume) |
 | `FileNode/copy` | — | Single account per principal: same-account → `invalidArguments` (RFC 8620 §5.4), other → `fromAccountNotFound` |
-| `FileNode/query` | node index | Supported filters `isTopLevel`/`parentId`/`ancestorId`/`nodeType`/`name`/`nameMatch` + `depth` recursion; sorts `name`/`nodeType`; rest → `unsupportedFilter`/`unsupportedSort` |
+| `FileNode/query` | node index | Supported filters `isTopLevel`/`parentId`/`ancestorId`/`nodeType`/`name`/`nameMatch` + `depth` recursion; sorts `name`/`nodeType`/`id`; rest → `unsupportedFilter`/`unsupportedSort`. With `https://wegotworkspace.org/jmap/filenode-tree` in `using`: top-level `idAfter` (node id keyset) and `asOfState` page the unfiltered tree in `node_id` order (#2063, [design](../files/jmap-filenode-design.md#paging-the-whole-tree-2063)) |
 | `FileNode/queryChanges` | — | Always `cannotCalculateChanges`, same rationale |
 | `Notebook/get` | `NotebookRepository::list()` | Vendor `urn:wgw:jmap:notes`; envelope-codec state over VJOURNAL notebooks |
 | `Notebook/changes` | `NoteRepository::notebookSyncTokens()` | Existence/token diff via the envelope codec |

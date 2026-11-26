@@ -57,4 +57,20 @@ final class FileNodeSyncState
 
         return (int) $matches[1];
     }
+
+    /**
+     * The sequence of a state this server issued, whatever set of grants it was taken under. A
+     * FileNode/query `asOfState` is honoured by sequence alone (#2063): the client's catch-up from
+     * that state is what notices a grant change, through `cannotCalculateChanges`.
+     *
+     * @throws JmapMethodException invalidArguments when the string is not a FileNode state
+     */
+    public function seqOf(string $state): int
+    {
+        if (preg_match('/^(\d{1,19})\.[0-9a-f]{32}(?:\.|$)/', $state, $matches) !== 1) {
+            throw new JmapMethodException('invalidArguments', 'asOfState must be a FileNode state.');
+        }
+
+        return (int) $matches[1];
+    }
 }

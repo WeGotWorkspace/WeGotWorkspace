@@ -99,6 +99,12 @@ final class FileNodeMapper
             // *Replace* for a file whose true hash is still pending.
             $shape['contentHashPending'] = (bool) $node->hash_pending;
         }
+        if ($this->context->uses(JmapCapabilities::FILENODE_TREE)) {
+            // WGW tree extension (#2063): the virtual path, the inverse of
+            // StoragePaths::virtualToStorageKey. A share root keeps its owner's path,
+            // so two share roots with the same name stay apart.
+            $shape['path'] = '/'.$key;
+        }
 
         return $shape;
     }
