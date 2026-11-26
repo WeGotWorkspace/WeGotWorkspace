@@ -19,7 +19,7 @@ Draws from the Pioneer programme budget for the Drive/Docs family; displaces not
 - Path-keyed extras (stars, shares, threads) are rewritten on move. `path: packages/api/app/Services/Drive/DrivePathBookkeeping.php:44`
 - Visible roots for a principal (personal and Team roots). `path: packages/api/app/Services/Jmap/FileNodes/FileNodeVisibility.php:25`
 - The shared chip component. `path: packages/apps/src/tag/src/tag.tsx:1`
-- Docs and Drive are converging on one shared file workspace. `cmd: gh issue view 2063`
+- Docs home already imports rows, selection and share code from drive-core; #2063 merges the data layers. `path: packages/apps/src/drive-core/src/drive-visible-items.test.ts:1`
 - Offline Drive stores nodes in Dexie and flushes an outbox. `path: packages/apps/src/lib/offline/drive/drive-outbox-flush.ts:1`
 
 ## Considered
@@ -37,8 +37,8 @@ A before C. B before C, D and E (B can land first, no visible change). D and E a
 
 ## Invariants
 - Notes tags behave as before after B. A wrong move of the model breaks note tag toggles. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/lib/models/note-tag.test.ts src/notes-core`
-- A person never sees a tag of a node they cannot see. Proof: API feature test `FileNodeTagsVisibilityTest` (added in A).
-- A move or rename keeps tags. Proof: API feature test `FileNodeTagsMoveTest` (added in A).
+- A person never sees a tag of a node they cannot see. Proof: `cmd: php artisan test --filter=FileNodeTagsVisibilityTest` (test added in A).
+- A move or rename keeps tags. Proof: `cmd: php artisan test --filter=FileNodeTagsMoveTest` (test added in A).
 - After chunk A, main still works without the next chunk: no client sends `tags` yet and the projection field is additive. Proof: `cmd: php scripts/done-gate.php`
 
 ## Chunks
