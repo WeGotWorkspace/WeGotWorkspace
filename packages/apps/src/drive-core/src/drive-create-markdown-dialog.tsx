@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { splitMarkdownDialogDefaultName } from "@/drive-core/src/drive-create-markdown-dialog-utils";
+import { DrivePickerNewFolderButton } from "@/drive-core/src/drive-picker-new-folder";
+import type { DrivePickerNewFolderControl } from "@/drive-core/src/drive-picker-new-folder-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import { drivePickerListingTheme } from "@/drive-core/src/drive-folder-picker-utils";
 import { FieldLabelRow } from "@/ui/field-label-row";
@@ -81,6 +83,7 @@ export function DriveCreateMarkdownDialog({
   const [draftBaseName, setDraftBaseName] = useState("");
   const [focusSession, setFocusSession] = useState<string | null>(null);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
+  const [newFolder, setNewFolder] = useState<DrivePickerNewFolderControl | null>(null);
   const nextFocusSession = open ? `${kind}:${defaultName}` : null;
   const pickerRemountKey = `${initialBrowsePath}::${initialSelectedPath ?? ""}`;
 
@@ -126,6 +129,10 @@ export function DriveCreateMarkdownDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
         className={dialogSurfaceClassName}
+        // Escape in the folder-name field drops that row, not the dialog.
+        onEscapeKeyDown={(event) => {
+          if (newFolder?.active) event.preventDefault();
+        }}
         {...(copy.description ? {} : { "aria-describedby": undefined })}
       >
         <DialogHeader>
@@ -168,6 +175,7 @@ export function DriveCreateMarkdownDialog({
               rootLabels={rootLabels}
               listingTheme={drivePickerListingTheme(dialogSurfaceClassName)}
               onDestinationChange={handleDestinationChange}
+              onNewFolderChange={setNewFolder}
             />
           ) : null}
           {errorMessage ? (
@@ -178,6 +186,11 @@ export function DriveCreateMarkdownDialog({
         </div>
 
         <DialogFooter>
+          {isFolder ? null : (
+            <div className="mr-auto">
+              <DrivePickerNewFolderButton labels={labels} control={newFolder} />
+            </div>
+          )}
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             {labels.createMarkdownDialogCancel}
           </Button>

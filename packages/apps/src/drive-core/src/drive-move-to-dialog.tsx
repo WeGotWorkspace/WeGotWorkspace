@@ -12,6 +12,8 @@ import {
   drivePickerListingTheme,
   resolveDriveFolderPickerStartPath,
 } from "@/drive-core/src/drive-folder-picker-utils";
+import { DrivePickerNewFolderButton } from "@/drive-core/src/drive-picker-new-folder";
+import type { DrivePickerNewFolderControl } from "@/drive-core/src/drive-picker-new-folder-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
@@ -78,6 +80,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
   const initialBrowsePath = resolveDriveFolderPickerStartPath(view, singleItemParent);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
+  const [newFolder, setNewFolder] = useState<DrivePickerNewFolderControl | null>(null);
 
   const handleDestinationChange = useCallback((path: string | null) => {
     setDestinationPath(path);
@@ -95,7 +98,13 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={dialogSurfaceClassName}>
+      <DialogContent
+        className={dialogSurfaceClassName}
+        // Escape in the folder-name field drops that row, not the dialog.
+        onEscapeKeyDown={(event) => {
+          if (newFolder?.active) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -117,11 +126,17 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
             listingTheme={docsListingTheme}
             onDestinationChange={handleDestinationChange}
             onSelectedFileChange={handleSelectedFileChange}
+            onNewFolderChange={setNewFolder}
           />
         ) : null}
 
         <DialogFooter>
           {footerStart ? <div className="mr-auto">{footerStart}</div> : null}
+          {fileSelect ? null : (
+            <div className="mr-auto">
+              <DrivePickerNewFolderButton labels={labels} control={newFolder} />
+            </div>
+          )}
           <Button variant="outline" onClick={onClose}>
             {labels.moveDialogCancel}
           </Button>
