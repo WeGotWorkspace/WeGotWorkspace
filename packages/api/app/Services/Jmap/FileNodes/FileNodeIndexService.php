@@ -443,6 +443,25 @@ final class FileNodeIndexService
         return $row;
     }
 
+    /**
+     * A share on $key was created, changed or revoked: the node takes the
+     * next change_seq, so FileNode/changes reports it and the client refetches
+     * its `shareFlags` (#2063). Nothing on disk changed; a key without a live
+     * node is a no-op.
+     */
+    public function recordShareChange(string $key): void
+    {
+        $this->markers->batch(function () use ($key): void {
+            $row = $this->liveByKey($key);
+            if ($row === null) {
+                return;
+            }
+            $row->change_seq = $this->seq->next();
+            $row->save();
+            $this->markers->touch($key);
+        });
+    }
+
     public function recordDelete(string $key): void
     {
         $this->markers->batch(fn () => $this->deleteNode($key));

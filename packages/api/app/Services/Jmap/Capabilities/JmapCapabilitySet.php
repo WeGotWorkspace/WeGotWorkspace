@@ -42,6 +42,7 @@ final class JmapCapabilitySet
         BlobAssemblyCapabilityProvider::class,
         QuotaCapabilityProvider::class,
         FileNodeVersionCheckCapabilityProvider::class,
+        FileNodeShareFlagsCapabilityProvider::class,
     ];
 
     /** @var list<JmapCapabilityProviderInterface> */

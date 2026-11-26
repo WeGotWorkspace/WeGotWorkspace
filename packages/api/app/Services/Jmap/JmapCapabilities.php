@@ -39,6 +39,13 @@ final class JmapCapabilities
     public const FILENODE_VERSION_CHECK = 'https://wegotworkspace.org/jmap/filenode-version-check';
 
     /**
+     * WGW extension to draft-ietf-jmap-filenode-14 (#2063): the FileNode
+     * property `shareFlags` { hasShares, hasPublicShare, hasTeamShare } with
+     * the caller's own shares on the node.
+     */
+    public const FILENODE_SHARE_FLAGS = 'https://wegotworkspace.org/jmap/filenode-share-flags';
+
+    /**
      * Vendor Notes envelope over CalDAV VJOURNAL. There is no IETF Notes
      * datatype — do not advertise urn:ietf:params:jmap:notes.
      */

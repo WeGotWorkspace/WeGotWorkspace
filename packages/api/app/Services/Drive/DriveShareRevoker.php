@@ -7,6 +7,9 @@ namespace App\Services\Drive;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\DriveShareSession;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Storage\StoragePaths;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -20,7 +23,11 @@ use Illuminate\Support\Collection;
  */
 final class DriveShareRevoker
 {
-    public function __construct(private DriveSharePathScope $scope) {}
+    public function __construct(
+        private DriveSharePathScope $scope,
+        private FileNodeIndexService $fileNodes,
+        private StoragePaths $paths,
+    ) {}
 
     public function revoke(DriveShare $share): void
     {
@@ -32,6 +39,17 @@ final class DriveShareRevoker
             ->where('share_id', $share->id)
             ->whereNull('revoked_at')
             ->update(['revoked_at' => $now]);
+
+        $this->recordShareChange((string) $share->path);
+    }
+
+    /**
+     * The node at $virtualPath takes a new change_seq, so FileNode/changes
+     * reports its new share flags (#2063).
+     */
+    public function recordShareChange(string $virtualPath): void
+    {
+        $this->fileNodes->recordShareChange($this->paths->virtualToStorageKey($virtualPath));
     }
 
     /**
@@ -102,10 +120,16 @@ final class DriveShareRevoker
             return 0;
         }
 
-        return DriveShareGrant::query()
+        $query = DriveShareGrant::query()
             ->where('grantee_type', 'user')
-            ->where('grantee_user', $username)
-            ->delete();
+            ->where('grantee_user', $username);
+        $sharePaths = $this->sharePathsOf($query);
+        $removed = $query->delete();
+        foreach ($sharePaths as $path) {
+            $this->recordShareChange($path);
+        }
+
+        return $removed;
     }
 
     /**
@@ -118,9 +142,29 @@ final class DriveShareRevoker
             return 0;
         }
 
-        return DriveShareGrant::query()
+        $query = DriveShareGrant::query()
             ->where('grantee_type', 'group')
-            ->where('grantee_group', $slug)
-            ->delete();
+            ->where('grantee_group', $slug);
+        $sharePaths = $this->sharePathsOf($query);
+        $removed = $query->delete();
+        foreach ($sharePaths as $path) {
+            $this->recordShareChange($path);
+        }
+
+        return $removed;
+    }
+
+    /**
+     * @param  Builder<DriveShareGrant>  $grants
+     * @return list<string> distinct paths of the shares those grants belong to
+     */
+    private function sharePathsOf(Builder $grants): array
+    {
+        return array_values(DriveShare::query()
+            ->whereIn('id', (clone $grants)->select('share_id'))
+            ->distinct()
+            ->pluck('path')
+            ->map(static fn (mixed $path): string => (string) $path)
+            ->all());
     }
 }
