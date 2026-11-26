@@ -720,7 +720,7 @@ describe("importVcfFilesBatch adapts to server limits", () => {
     expect(result.fileErrors[0]?.message).toContain(VCARD_IMPORT_STOPPED);
   });
 
-  it("resends a card without a UID under the same UID, so the server does not create it twice", async () => {
+  it("keys a card without a UID on its text, so a resend or a second import adds no copy", async () => {
     const byUid = new Set<string>();
     const sentUids: string[] = [];
     let first = true;
@@ -728,8 +728,8 @@ describe("importVcfFilesBatch adapts to server limits", () => {
       const list: Array<{ id: string }> = [];
       const errors: Array<{ index: number; message: string; code?: string }> = [];
       for (const [index, block] of splitVcardBlocks(text).entries()) {
-        const uid = /^UID:(.*)$/m.exec(block)?.[1];
-        if (!uid) throw new Error("card sent without a UID");
+        expect(block).not.toMatch(/^UID/m);
+        const uid = block;
         sentUids.push(uid);
         if (byUid.has(uid)) {
           errors.push({ index, message: "Already exists.", code: "alreadyExists" });
@@ -759,6 +759,13 @@ describe("importVcfFilesBatch adapts to server limits", () => {
     expect(result.list.length + result.recoveredCount).toBe(1);
     expect(result.failedCardCount).toBe(0);
     expect(result.fileErrors).toEqual([]);
+
+    await importVcfFilesBatch(
+      [new File(["BEGIN:VCARD\nFN:NoUid\nEND:VCARD"], "g.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+    expect(byUid.size).toBe(1);
   });
 
   it("keeps a UID the card already has", async () => {

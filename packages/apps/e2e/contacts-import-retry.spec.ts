@@ -1,6 +1,6 @@
 // A vCard import whose first request is created by the server but answered 503
-// (a proxy timeout while PHP finishes) is resent in halves. Cards with no UID get
-// one before the first send, so the resend finds them instead of creating them twice.
+// (a proxy timeout while PHP finishes) is resent in halves. Cards with no UID are keyed
+// by the server on their text, so the resend finds them instead of creating them twice.
 import { expect, test } from "./helpers/live-test";
 import { contactsJmap, destroyContactCards } from "./helpers/contacts-jmap";
 import { OWNER } from "./helpers/live-matrix";
@@ -53,11 +53,17 @@ test("an import resent after a lost response does not duplicate cards without a 
   try {
     await page.goto("/contacts/all");
     await expect(page.locator("[data-list-item-id]").first()).toBeVisible();
-    await page.locator('input[type="file"]').setInputFiles({
-      name: "retry.vcf",
-      mimeType: "text/vcard",
-      buffer: Buffer.from(vcf()),
-    });
+    // The API operations attach after the first sync; an earlier pick only toasts an error.
+    await expect(async () => {
+      await page.locator('input[type="file"]').setInputFiles({
+        name: "retry.vcf",
+        mimeType: "text/vcard",
+        buffer: Buffer.from(vcf()),
+      });
+      await expect(page.getByRole("button", { name: "Import", exact: true })).toBeVisible({
+        timeout: 2_000,
+      });
+    }).toPass({ timeout: 30_000 });
     await page.getByRole("button", { name: "Import", exact: true }).click();
 
     await expect(page.getByText(`Imported ${CARD_COUNT} contacts`)).toBeVisible({
