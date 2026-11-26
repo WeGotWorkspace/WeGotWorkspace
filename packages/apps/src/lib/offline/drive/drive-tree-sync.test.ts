@@ -58,8 +58,10 @@ import {
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
+import { writeMeta } from "@/lib/offline/core/meta-store";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
 import {
+  DRIVE_TREE_FIRST_SYNC_DONE_KEY,
   readDriveTreeFirstSyncDone,
   readDriveTreeRoots,
   syncDriveTree,
@@ -383,6 +385,7 @@ describe("syncDriveTree", () => {
     server.add("a1", "r-home", "notes.md");
     await connect(server);
     await writeDriveSyncToken(username, server.state());
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     server.add("a2", "r-home", "new.md");
 
     await syncDriveInboundFromFileNodes(username);
@@ -391,6 +394,20 @@ describe("syncDriveTree", () => {
     expect(methods).not.toContain("FileNode/query");
     expect(methods[0]).toBe("FileNode/changes");
     expect(await row("/users/ada/new.md")).toBeDefined();
+  });
+
+  it("walks the tree once on a device that has a token from before the walk existed", async () => {
+    const server = standardTree();
+    server.add("a1", "r-home", "notes.md");
+    await connect(server);
+    await writeDriveSyncToken(username, server.state());
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const methods = server.requests.flatMap((r) => r.methodCalls.map(([name]) => name));
+    expect(methods).toContain("FileNode/query");
+    expect(await readDriveTreeFirstSyncDone(username)).toBe(true);
+    expect(await row("/users/ada/notes.md")).toBeDefined();
   });
 
   it("first sync batches the state get plus 15 pages, then 16 pages per request", async () => {

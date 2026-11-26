@@ -64,6 +64,8 @@ import {
   syncDriveInboundFromFileNodes,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-inbound-sync";
+import { DRIVE_TREE_FIRST_SYNC_DONE_KEY } from "@/lib/offline/drive/drive-tree-sync";
+import { writeMeta } from "@/lib/offline/core/meta-store";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   readDriveAvailability,
@@ -243,6 +245,7 @@ describe("syncDriveInboundFromFileNodes", () => {
     await db.meta.clear();
     // A device that synced before: changes only. No token runs the full tree sync.
     await writeDriveSyncToken(username, "0");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     getFileNodes.mockImplementation(async (_accountId: string, ids: string[]) => ({
       accountId: "ada",
       state: "9",
@@ -642,6 +645,7 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
     await db.table("drive_content_blobs").clear();
     await db.meta.clear();
     await writeDriveSyncToken(username, "0");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   });
 
   it("an inner folder renamed in one changes batch keeps its child at the inner path", async () => {
@@ -746,6 +750,7 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await db.meta.clear();
     // A device that synced before: changes only. No token runs the full tree sync.
     await writeDriveSyncToken(username, "0");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   });
 
   it("applies a FileNode delete, rename and move to every cached Docs view", async () => {

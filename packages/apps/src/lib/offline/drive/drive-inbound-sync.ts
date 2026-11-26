@@ -73,8 +73,9 @@ const inFlight = new Map<string, Promise<DriveInboundSyncResult>>();
  * `PENDING_SERVER_SAVE_KEY` is set — then all three stay.
  *
  * App open, reconnect and settings change call only this: `FileNode/changes`.
- * No stored token, or `cannotCalculateChanges` (including a device past the
- * 30-day tombstone horizon), runs the full tree sync (`syncDriveTree`), which
+ * No stored token, no finished tree walk, or `cannotCalculateChanges`
+ * (including a device past the 30-day tombstone horizon), runs the full tree
+ * sync (`syncDriveTree`), which
  * stores the token itself. It never calls changes from `"0"`.
  */
 export function syncDriveInboundFromFileNodes(
@@ -112,6 +113,11 @@ async function runDriveInbound(
   }
   const since = await readDriveSyncToken(username);
   if (since === null) return fullResync(username, null, options?.signal);
+  // A device that synced before the tree walk existed has a token but no
+  // finished walk: its views would wait for the first sync forever (#2063 C3).
+  if (!(await readDriveTreeFirstSyncDone(username))) {
+    return fullResync(username, since, options?.signal);
+  }
   const session = await driveJmapSession();
   try {
     const drained = await drainFileNodeChanges(session, since, options?.signal);
