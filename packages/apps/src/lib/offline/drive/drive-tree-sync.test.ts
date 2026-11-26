@@ -24,6 +24,7 @@ import * as Y from "yjs";
 import { docsCollabIndexedDbKey, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import {
+  driveEntryRowFromEntry,
   readDriveEntryFromCache,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
@@ -59,7 +60,11 @@ import {
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
-import { readDriveTreeFirstSyncDone, syncDriveTree } from "@/lib/offline/drive/drive-tree-sync";
+import {
+  readDriveTreeFirstSyncDone,
+  readDriveTreeRoots,
+  syncDriveTree,
+} from "@/lib/offline/drive/drive-tree-sync";
 
 const username = "ada";
 /** Page size of the stand-in (`maxObjectsInGet`); small so a few nodes span many pages. */
@@ -314,6 +319,7 @@ async function connect(server: TreeServer, options?: { keyset?: boolean }): Prom
     fileNodes: new JmapFileNodesClient(client),
     accountId: "ada",
     treeKeyset: keyset,
+    cache: { nodeIdForPath: () => undefined },
     shareFlags: true,
     maxCallsInRequest: 32,
     maxObjectsInGet: LIMIT,
@@ -760,17 +766,35 @@ describe("syncDriveTree", () => {
     const server = standardTree();
     await connect(server, { keyset: false });
     const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
-    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockResolvedValue({
-      running: false,
-      total: 1,
-      synced: 1,
-      failed: 0,
-      updatedAt: 1,
+    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async (_u, _b, o) => {
+      o?.onRoots?.(["/users/ada", "/groups/team"]);
+      const entry = (path: string, type: "file" | "dir") => ({
+        type,
+        path: `/${path}`,
+        name: path.split("/").pop()!,
+        size: 1,
+        time: 1,
+        permissions: 0,
+        myRights: fullDriveMyRights,
+      });
+      await driveEntriesTable(db()).bulkPut([
+        driveEntryRowFromEntry(entry("users/ada/a.md", "file")),
+        driveEntryRowFromEntry(entry("groups/team/b.md", "file")),
+        driveEntryRowFromEntry(entry("users/ada/.Trash/c.md", "file")),
+      ]);
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
     });
 
     const result = await syncDriveTree(username);
 
     expect(result.completed).toBe(true);
+    expect((await row("/users/ada/a.md"))?.area).toBe("home");
+    expect((await row("/groups/team/b.md"))?.area).toBe("group");
+    expect((await row("/users/ada/.Trash/c.md"))?.area).toBe("trash");
+    expect([...(await readDriveTreeRoots(username)).values()].sort()).toEqual([
+      "/groups/team",
+      "/users/ada",
+    ]);
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());

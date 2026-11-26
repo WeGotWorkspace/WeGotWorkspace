@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
+import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import type { FileTreeEntryFilter, FileTreeView } from "@/lib/files/tree-view/tree-view-predicates";
 import { queryFileTreeView, type FileTreeViewResult } from "@/lib/files/tree-view/tree-view-query";
@@ -37,7 +38,14 @@ export function useFileTreeView(
 
   useEffect(() => {
     if (!username) return undefined;
-    return subscribeDriveRemoteChanges(username, () => setVersion((value) => value + 1));
+    const reread = () => setVersion((value) => value + 1);
+    const stopDrive = subscribeDriveRemoteChanges(username, reread);
+    // Stars live in the Docs cache; a toggle there publishes only on this topic.
+    const stopDocs = subscribeDocsCachesChanged(username, reread);
+    return () => {
+      stopDrive();
+      stopDocs();
+    };
   }, [username]);
 
   useEffect(() => {
@@ -48,13 +56,14 @@ export function useFileTreeView(
         if (current) setResult({ key, state: { ...next, settled: true } });
       },
       () => {
-        // An unreadable cache shows like an unsynced one: never as empty.
-        if (current) {
-          setResult({
-            key,
-            state: { rows: [], status: online ? "first-sync" : "not-available", settled: true },
-          });
-        }
+        // An unreadable cache is never empty and never a spinner no sync ends;
+        // a list already settled for this key stays as it is.
+        if (!current) return;
+        setResult((previous) =>
+          previous?.key === key
+            ? previous
+            : { key, state: { rows: [], status: "not-available", settled: true } },
+        );
       },
     );
     return () => {

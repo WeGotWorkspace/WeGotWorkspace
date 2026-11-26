@@ -44,6 +44,7 @@ import {
 } from "@/lib/offline/drive/drive-schema";
 import {
   areaForRoot,
+  areaFromCrawledPath,
   isHiddenTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
@@ -139,14 +140,36 @@ async function crawlFolders(
   signal?: AbortSignal,
 ): Promise<DriveTreeSyncResult> {
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
-  const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
+  let crawlRoots: readonly string[] = [];
+  const progress = await syncDriveMetadataTree(username, bootstrap, {
+    signal,
+    onRoots: (roots) => {
+      crawlRoots = roots;
+    },
+  });
   if (signal?.aborted || progress.failed > 0) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   await writeDriveSyncToken(username, state.state);
+  await stampCrawledAreas(username);
+  const roots: Record<string, string> = {};
+  for (const root of crawlRoots) {
+    roots[session.cache.nodeIdForPath(root) ?? root] = normalizePath(root);
+  }
+  await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
+}
+
+/**
+ * The crawl writes rows without `area`. Give each the area its own path
+ * decides, so the area-indexed views (All files, Recent) find them.
+ */
+async function stampCrawledAreas(username: string): Promise<void> {
+  const table = driveEntriesTable(accountDb(username));
+  const rows = await table.filter((row) => !row.area).toArray();
+  await table.bulkPut(rows.map((row) => ({ ...row, area: areaFromCrawledPath(row.id) })));
 }
 
 /**
