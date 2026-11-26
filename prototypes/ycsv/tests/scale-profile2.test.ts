@@ -1,4 +1,6 @@
 import { it } from "vitest";
+
+declare const process: { env: Record<string, string | undefined> };
 import * as Y from "yjs";
 import { fileToDoc } from "../src/ycsv-model";
 import { buildScaleFile } from "../src/scale/generate";

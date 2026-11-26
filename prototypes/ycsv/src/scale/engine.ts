@@ -78,7 +78,9 @@ export class SheetEngine {
   private defs: Record<string, unknown> = {};
   private colRefById = new Map<string, string>();
   private columnRefSet = new Set<string>();
-  private depCache = new Map<string, AstDeps>();
+  /** Parsed formula + its deps per cell. Not the shared text-keyed cache: with absolute refs every
+   * cell's text is unique and that cache (10k entries) thrashes from ~3,400 rows × 3 formulas. */
+  private cellAst = new Map<string, { text: string; ast: Node | string; deps: AstDeps | null }>();
   // Dependency graph (incremental mode only).
   private precedents = new Map<string, string[]>();
   private dependents = new Map<string, Set<string>>();
@@ -194,7 +196,7 @@ export class SheetEngine {
     this.columns = columns;
     this.colRefById = new Map(columns.map((column) => [column.colId, column.ref]));
     this.columnRefSet = new Set(columns.map((column) => column.ref));
-    this.depCache.clear();
+    this.cellAst.clear();
     const defs = this.doc.getMap("raw").get("defs");
     this.defs = defs && typeof defs === "object" ? (defs as Record<string, unknown>) : {};
   }
@@ -278,19 +280,22 @@ export class SheetEngine {
     }
   }
 
-  private depsFor(text: string, ast: Node): AstDeps {
-    let deps = this.depCache.get(text);
-    if (!deps) {
-      deps = astDeps(ast, (path) => this.columnRefSet.has(path));
-      this.depCache.set(text, deps);
-    }
-    return deps;
+  private parsed(key: string, text: string): { text: string; ast: Node | string; deps: AstDeps | null } {
+    const hit = this.cellAst.get(key);
+    if (hit && hit.text === text) return hit;
+    const ast = astFor(text);
+    const entry = {
+      text,
+      ast,
+      deps: typeof ast === "string" ? null : astDeps(ast, (path) => this.columnRefSet.has(path)),
+    };
+    this.cellAst.set(key, entry);
+    return entry;
   }
 
   private addEdges(key: string, text: string): void {
-    const ast = astFor(text);
-    if (typeof ast === "string") return;
-    const deps = this.depsFor(text, ast);
+    const { deps } = this.parsed(key, text);
+    if (!deps) return;
     const row = key.slice(key.indexOf("@") + 1);
     const points: string[] = [];
     for (const col of deps.sameRowCols) points.push(`${col}@${row}`);
@@ -426,7 +431,7 @@ export class SheetEngine {
     const text = this.raw.get(key);
     if (text === undefined) return undefined;
     if (!text.startsWith("=")) return literal(text);
-    const ast = astFor(text);
+    const { ast } = this.parsed(key, text);
     if (typeof ast === "string") return ast;
     if (this.fastAggregates) {
       const fast = this.fastAggregate(ast);
@@ -547,6 +552,7 @@ export class SheetEngine {
         const key = `${column.ref}@${rowId}`;
         this.removeEdges(key);
         this.raw.delete(key);
+        this.cellAst.delete(key);
         // Dependents of the removed cell must re-evaluate (they become #REF or shrink).
         seeds.add(key);
       }

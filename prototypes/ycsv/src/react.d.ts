@@ -22,6 +22,7 @@ type DomProps = {
     preventDefault(): void;
   }) => void;
   onMouseDown?: (event: { target: EventTarget; preventDefault(): void }) => void;
+  onScroll?: (event: { currentTarget: HTMLElement }) => void;
 };
 
 declare namespace JSX {
@@ -50,6 +51,7 @@ declare module "react" {
   export function useLayoutEffect(effect: () => void | (() => void), deps?: readonly unknown[]): void;
   export function useMemo<T>(factory: () => T, deps: readonly unknown[]): T;
   export function useRef<T>(initial: T): { current: T };
+  export function useSyncExternalStore<T>(subscribe: (listener: () => void) => () => void, getSnapshot: () => T): T;
 
   export interface KeyboardEvent<T = Element> {
     key: string;
