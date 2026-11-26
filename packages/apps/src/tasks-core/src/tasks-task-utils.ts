@@ -1,16 +1,18 @@
 import { formatRelativeDay } from "@/lib/datetime/format-list-date";
 import { isProjectCollection } from "@/lib/projects/project-match";
 import type { Task, TaskAlert } from "@/lib/models/tasks-types";
-import { isTaskCompleted, parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
+import { parseDueDateValue, taskDueIsDateOnly } from "@/lib/models/task-fields";
 import {
   INBOX_TASK_LIST_ID,
   isInboxTaskList,
   type TaskListIdentity,
 } from "@/lib/models/task-lists";
 import {
+  PRIORITY_FILTER_SLUGS,
   isTaskPriorityNone,
   normalizeTaskPriority,
   priorityFromFilterSlug,
+  type PriorityFilterSlug,
 } from "@/tasks-core/src/tasks-priority";
 
 export const TASK_WORKFLOW_STATUSES = [
@@ -162,6 +164,17 @@ function isCompleted(task: Task): boolean {
 
 export const ASSIGNED_TO_ME_VIEW = "state:assigned-to-me";
 
+/** One colleague's tasks: `assignee:<username>` (the sidebar's "Assigned to" section). */
+export const ASSIGNEE_VIEW_PREFIX = "assignee:";
+
+export function assigneeView(username: string): string {
+  return `${ASSIGNEE_VIEW_PREFIX}${username}`;
+}
+
+export function isAssigneeView(view: string): boolean {
+  return view.startsWith(ASSIGNEE_VIEW_PREFIX);
+}
+
 /** Who is looking: the "Assigned to me" view matches tasks on these (#2172). */
 export type TaskViewer = {
   username?: string | null;
@@ -193,15 +206,20 @@ export function isTaskAssignedTo(task: Task, viewer: TaskViewer | undefined): bo
 
 /**
  * Aggregate views hide tasks from lists the user unchecked. A list view stays
- * unfiltered, and so does "Assigned to me": it shows every open task assigned
- * to the viewer in every list they can see (#2172).
+ * unfiltered, and so do the "Assigned to" views: they show every task assigned to
+ * that person in every list the viewer can see (#2172).
  */
 export function filterTasksByHiddenLists(
   tasks: Task[],
   view: string,
   hiddenListIds: ReadonlySet<string>,
 ): Task[] {
-  if (hiddenListIds.size === 0 || view.startsWith("list:") || view === ASSIGNED_TO_ME_VIEW)
+  if (
+    hiddenListIds.size === 0 ||
+    view.startsWith("list:") ||
+    view === ASSIGNED_TO_ME_VIEW ||
+    isAssigneeView(view)
+  )
     return tasks;
   return tasks.filter((task) => !hiddenListIds.has(task.taskListId));
 }
@@ -225,6 +243,11 @@ export function filterTasksByView(tasks: Task[], view: string, viewer?: TaskView
     const priority = priorityFromFilterSlug(slug);
     if (priority === null) return tasks;
     return tasks.filter((task) => normalizeTaskPriority(task.priority) === priority);
+  }
+
+  if (isAssigneeView(view)) {
+    const username = view.slice(ASSIGNEE_VIEW_PREFIX.length);
+    return tasks.filter((task) => isTaskAssignedTo(task, { username }));
   }
 
   if (!view.startsWith("state:")) {
@@ -272,7 +295,8 @@ export function filterTasksByView(tasks: Task[], view: string, viewer?: TaskView
   }
 
   if (view === ASSIGNED_TO_ME_VIEW) {
-    return tasks.filter((task) => !isCompleted(task) && isTaskAssignedTo(task, viewer));
+    // Every status: the header filter says which ones show (open work by default).
+    return tasks.filter((task) => isTaskAssignedTo(task, viewer));
   }
 
   if (state === "overdue") {
@@ -419,19 +443,58 @@ export function taskListName(
   return taskLists.find((list) => list.id === listId)?.name ?? listId;
 }
 
-/** Views where the header toggle can hide completed tasks from the list. */
+/** Views where the header filter's status segment applies (not the status views themselves). */
 export function shouldApplyCompletedTaskFilter(view: string): boolean {
-  return view !== "state:completed" && view !== "state:cancelled";
+  return !(
+    view === "state:completed" ||
+    view === "state:cancelled" ||
+    view === "state:needs-action" ||
+    view === "state:in-process"
+  );
 }
 
-export function filterHiddenCompletedTasks(tasks: Task[]): Task[] {
-  return tasks.filter((task) => !isTaskCompleted(task));
+/** Open work only: completed and cancelled tasks stay out of the list until asked for. */
+export const DEFAULT_TASK_STATUS_FILTER: ReadonlySet<TaskWorkflowStatus> = new Set([
+  "needs-action",
+  "in-process",
+]);
+
+/** Every priority shows by default. */
+export const DEFAULT_TASK_PRIORITY_FILTER: ReadonlySet<PriorityFilterSlug> = new Set(
+  PRIORITY_FILTER_SLUGS,
+);
+
+export function filterTasksByStatus(
+  tasks: Task[],
+  allowed: ReadonlySet<TaskWorkflowStatus>,
+): Task[] {
+  return tasks.filter((task) =>
+    allowed.has((task.workflowStatus ?? "needs-action") as TaskWorkflowStatus),
+  );
+}
+
+export function filterTasksByPriorityFilter(
+  tasks: Task[],
+  allowed: ReadonlySet<PriorityFilterSlug>,
+): Task[] {
+  return tasks.filter((task) => {
+    const priority = normalizeTaskPriority(task.priority);
+    if (priority === null) return allowed.has("none");
+    return PRIORITY_FILTER_SLUGS.some(
+      (slug) => allowed.has(slug) && priorityFromFilterSlug(slug) === priority,
+    );
+  });
 }
 
 /** Views where a completed task would remain visible until explicitly hidden. */
 export function shouldHideCompletedTaskAfterExit(view: string): boolean {
   if (view === "state:all") return true;
-  if (view.startsWith("tag:") || view.startsWith("list:") || view.startsWith("priority:"))
+  if (
+    view.startsWith("tag:") ||
+    view.startsWith("list:") ||
+    view.startsWith("priority:") ||
+    isAssigneeView(view)
+  )
     return true;
   return false;
 }

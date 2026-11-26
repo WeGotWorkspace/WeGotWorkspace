@@ -85,7 +85,35 @@ const SafeTextAlign = TextAlign.extend({
   },
 });
 
+/**
+ * What a restricted editor (a comment or chat composer) may contain. Text, line breaks and
+ * the app's own nodes (`extraExtensions`, e.g. mentions) are always there. Anything not
+ * listed is absent from the schema: no input rule makes it, and a paste or pasted markdown
+ * that holds it keeps its text and drops the formatting (a heading becomes a paragraph, a
+ * table its cell text, an image nothing).
+ */
+export type TextEditorFeature =
+  | "bold"
+  | "italic"
+  | "strike"
+  | "code"
+  | "link"
+  | "bulletList"
+  | "orderedList"
+  | "blockquote"
+  | "codeBlock";
+
 export type CreateTextEditorExtensionsOptions = {
+  /**
+   * Restrict the schema to these features (and drop Docs-only nodes: tables, tasks, images,
+   * headings, highlight, alignment, page breaks). Omit for the full Docs schema.
+   */
+  allow?: readonly TextEditorFeature[];
+  /**
+   * Links in comments and chat: `linkify` turns a bare URL in markdown into a link,
+   * `openOnClick` makes a rendered (read-only) link follow its href in a new tab.
+   */
+  links?: { linkify?: boolean; openOnClick?: boolean };
   placeholder?: string;
   format?: TextEditorContentFormat;
   /** Override authenticated image fetch (Storybook / tests). */
@@ -106,11 +134,13 @@ export function createTextEditorExtensions(
   const placeholder =
     options.placeholder ?? (format === "text" ? "Start typing…" : "Press '/' for commands…");
 
+  if (options.allow) return createRestrictedExtensions(options, format, placeholder);
+
   const extensions: Extensions = [
     // Keep Link/Underline explicitly configured below without duplicating StarterKit marks.
     StarterKit.configure({ link: false, underline: false }),
     Underline,
-    Link.configure({ openOnClick: false }),
+    linkExtension(options),
     Placeholder.configure({ placeholder }),
     Highlight.configure({ multicolor: false }),
     TaskList,
@@ -149,6 +179,7 @@ export function createTextEditorExtensions(
     extensions.push(
       Markdown.configure({
         html: true,
+        linkify: options.links?.linkify ?? false,
         transformPastedText: true,
         transformCopiedText: true,
       }),
@@ -159,6 +190,111 @@ export function createTextEditorExtensions(
     extensions.push(PlainTextPaste);
   }
 
+  return extensions;
+}
+
+type MarkdownLinkMark = { attrs: { href: string; title?: string | null } };
+type MarkdownLinkState = { inBareUrl?: boolean; esc: (text: string) => string };
+
+/** A link whose text is its own address: written as the bare URL, not as `<url>`. */
+function isPlainUrlLink(
+  mark: MarkdownLinkMark,
+  parent: {
+    childCount: number;
+    child: (index: number) => { isText: boolean; text?: string | null; marks: readonly unknown[] };
+  },
+  index: number,
+): boolean {
+  if (mark.attrs.title || !/^\w+:/.test(mark.attrs.href)) return false;
+  const content = parent.child(index);
+  if (!content.isText || content.text !== mark.attrs.href) return false;
+  if (content.marks[content.marks.length - 1] !== mark) return false;
+  if (index === parent.childCount - 1) return true;
+  return !(parent.child(index + 1).marks as unknown[]).includes(mark);
+}
+
+/**
+ * Links where a bare URL is a link too (`links.linkify`): the markdown keeps a URL link as
+ * the bare URL, so it reads back as a link and carries no `<` `>`; other links stay
+ * `[text](url)`. Other editors keep prosemirror-markdown's `<url>` form.
+ */
+const BareUrlLink = Link.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize: {
+          open(state: MarkdownLinkState, mark: MarkdownLinkMark, parent: never, index: number) {
+            // The bare form goes through the text escaper, so only a URL it leaves alone is safe.
+            state.inBareUrl =
+              isPlainUrlLink(mark, parent, index) && state.esc(mark.attrs.href) === mark.attrs.href;
+            return state.inBareUrl ? "" : "[";
+          },
+          close(state: MarkdownLinkState, mark: MarkdownLinkMark) {
+            const bare = state.inBareUrl;
+            state.inBareUrl = undefined;
+            if (bare) return "";
+            const title = mark.attrs.title
+              ? ` "${mark.attrs.title.replace(/[\\"]/g, "\\$&")}"`
+              : "";
+            return `](${mark.attrs.href.replace(/[()"\n\\]/g, "\\$&")}${title})`;
+          },
+          mixable: true,
+        },
+      },
+    };
+  },
+});
+
+function linkExtension(options: CreateTextEditorExtensionsOptions) {
+  const configured = {
+    openOnClick: options.links?.openOnClick ?? false,
+    HTMLAttributes: { target: "_blank", rel: "noopener noreferrer nofollow" },
+  };
+  const linkify = options.links?.linkify ?? options.allow !== undefined;
+  return (linkify ? BareUrlLink : Link).configure(configured);
+}
+
+function createRestrictedExtensions(
+  options: CreateTextEditorExtensionsOptions,
+  format: TextEditorContentFormat,
+  placeholder: string,
+): Extensions {
+  const allowed = new Set(options.allow);
+  const on = (feature: TextEditorFeature) => allowed.has(feature);
+  const list = on("bulletList") || on("orderedList");
+  const extensions: Extensions = [
+    StarterKit.configure({
+      link: false,
+      underline: false,
+      heading: false,
+      horizontalRule: false,
+      bold: on("bold") ? {} : false,
+      italic: on("italic") ? {} : false,
+      strike: on("strike") ? {} : false,
+      code: on("code") ? {} : false,
+      bulletList: on("bulletList") ? {} : false,
+      orderedList: on("orderedList") ? {} : false,
+      listItem: list ? {} : false,
+      listKeymap: list ? {} : false,
+      blockquote: on("blockquote") ? {} : false,
+      codeBlock: on("codeBlock") ? {} : false,
+    }),
+    Placeholder.configure({ placeholder }),
+  ];
+  if (on("link")) extensions.push(linkExtension(options));
+  if (options.extraExtensions) extensions.push(...options.extraExtensions);
+  if (format === "markdown") {
+    extensions.push(
+      Markdown.configure({
+        // No raw HTML: pasted markdown cannot smuggle in anything the allow-list excludes.
+        html: false,
+        linkify: options.links?.linkify ?? true,
+        transformPastedText: true,
+        transformCopiedText: true,
+      }),
+    );
+  }
+  if (format === "text") extensions.push(PlainTextPaste);
   return extensions;
 }
 

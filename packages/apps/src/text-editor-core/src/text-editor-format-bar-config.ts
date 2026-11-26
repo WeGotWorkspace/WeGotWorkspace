@@ -20,6 +20,11 @@ export type TextEditorFormatBarConfig = {
   showPrint?: boolean;
   size?: TextEditorFormatBarSize;
   className?: string;
+  /**
+   * `top` (default): the bar above the page. `selection`: it floats over selected text,
+   * on devices with a hovering pointer; touch keeps the bar on top.
+   */
+  placement?: "top" | "selection";
 };
 
 /** Full toolbar. */
@@ -38,6 +43,7 @@ export function resolveTextEditorFormatBarConfig(formatBar?: boolean | TextEdito
   showPrint: boolean;
   size: TextEditorFormatBarSize;
   className?: string;
+  placement: "top" | "selection";
 } | null {
   if (formatBar === false) return null;
   const config = typeof formatBar === "object" ? formatBar : {};
@@ -46,5 +52,6 @@ export function resolveTextEditorFormatBarConfig(formatBar?: boolean | TextEdito
     showPrint: config.showPrint ?? true,
     size: config.size ?? "md",
     className: config.className,
+    placement: config.placement ?? "top",
   };
 }

@@ -11,6 +11,10 @@ import { formatTaskDueRelative } from "@/tasks-core/src/tasks-task-utils";
 import type { Task } from "@/lib/models/tasks-types";
 import { TooltipProvider } from "@/ui/tooltip";
 import {
+  DEFAULT_TASK_PRIORITY_FILTER,
+  DEFAULT_TASK_STATUS_FILTER,
+} from "@/tasks-core/src/tasks-task-utils";
+import {
   TEST_VIEWPORT_ATTR,
   installListLayoutStubs,
 } from "@/workspace-list/src/workspace-list-test-layout";
@@ -71,9 +75,11 @@ function panelFor(props: Partial<TasksListPanelProps>) {
     searchQuery: "",
     setSearchQuery: vi.fn(),
     searchInputRef: createRef(),
-    showCompletedToggle: true,
-    showCompletedTasks: false,
-    onToggleShowCompleted: vi.fn(),
+    statusFilter: DEFAULT_TASK_STATUS_FILTER,
+    priorityFilter: DEFAULT_TASK_PRIORITY_FILTER,
+    statusFilterApplies: true,
+    onToggleStatusFilter: vi.fn(),
+    onTogglePriorityFilter: vi.fn(),
     listRefreshing: false,
     canCreate: true,
     quickAddRef: createRef(),

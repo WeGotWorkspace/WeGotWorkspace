@@ -5,7 +5,6 @@ import {
   buildDriveFolderPickerBreadcrumbs,
   DRIVE_FOLDER_PICKER_ROOT,
 } from "@/drive-core/src/drive-breadcrumbs";
-import { DriveGridView } from "@/drive-core/src/drive-browser";
 import { DriveListView } from "@/drive-core/src/drive-list-view";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
@@ -24,7 +23,6 @@ import {
   isDriveTrashApiPath,
   isDriveTrashFolderName,
 } from "@/lib/files/drive-path-utils";
-import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
 import {
   adjacentListItem,
   listItemFocusTarget,
@@ -42,10 +40,8 @@ import { DriveViewIcon, withDriveRootIcons } from "@/drive-core/src/drive-view-i
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
-import { cn } from "@/lib/utils";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DestinationPickerFrame } from "@/destination-picker/src/destination-picker-frame";
-import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
 import "@/drive-core/src/drive-folder-picker.css";
 
 const PICKER_NOOP = () => {};
@@ -235,7 +231,7 @@ export function DriveFolderPicker({
   rootLabels?: Readonly<Record<string, string>>;
   /** Docs dialogs: Docs chrome on the Drive list. Omit for Drive's own picker. */
   listingTheme?: "docs";
-  /** `file-select` picks a file (grid or list); the default picks a folder (list). */
+  /** `file-select` picks a file (list); the default picks a folder (list). */
   mode?: DrivePickerMode;
   onDestinationChange?: (path: string | null) => void;
   onSelectedFileChange?: (file: DriveFile | null) => void;
@@ -244,7 +240,6 @@ export function DriveFolderPicker({
   const [browsePath, setBrowsePath] = useState(initialBrowsePath);
   const [listingFiles, setListingFiles] = useState<DriveFile[]>([]);
   const [listingLoading, setListingLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [highlightedPath, setHighlightedPath] = useState<string | null>(() => {
     if (fileSelect) return null;
@@ -344,12 +339,6 @@ export function DriveFolderPicker({
     [rows],
   );
 
-  const { filePreviews } = useDriveGridPreviews({
-    items: fileSelectItems,
-    operations,
-    enabled: fileSelect && viewMode === "grid",
-  });
-
   const destinationPath =
     highlightedPath ?? (browsePath !== DRIVE_FOLDER_PICKER_ROOT ? browsePath : null);
 
@@ -392,12 +381,8 @@ export function DriveFolderPicker({
   const handleFileSelectItem = (id: string) => {
     const item = fileSelectItems.find((file) => file.id === id);
     if (!item) return;
-    const folderPath = browsePathForDrivePickerFile(item);
-    if (item.kind === "folder" && folderPath != null) {
-      openRow(folderPath);
-      return;
-    }
-    setSelectedFile(item);
+    // Like the folder picker: click selects, double-click (or Enter) opens a folder.
+    setSelectedFile(item.kind === "folder" ? null : item);
   };
 
   const handleFileSelectOpen = (file: DriveFile) => {
@@ -482,8 +467,7 @@ export function DriveFolderPicker({
 
   const breadcrumb = (
     <PathBreadcrumb
-      size={fileSelect ? "sm" : "default"}
-      className={fileSelect ? "min-w-0 flex-1" : "destination-picker__breadcrumbs"}
+      className="destination-picker__breadcrumbs"
       leadingIcon={<DriveViewIcon view={breadcrumbView} className="size-3.5" />}
       items={breadcrumbItems}
       currentPath={browsePath}
@@ -495,26 +479,11 @@ export function DriveFolderPicker({
   return (
     <DestinationPickerFrame
       label={labels.pickerLocationLabel}
-      className={cn("drive-workspace", fileSelect && "destination-picker--file-select")}
+      className="drive-workspace"
       listingTheme={listingTheme}
       bodyRef={bodyRef}
       onBodyKeyDown={handleListKeyDown}
-      breadcrumbs={
-        fileSelect ? (
-          <div className="destination-picker__breadcrumbs destination-picker__breadcrumbs--with-toggle">
-            {breadcrumb}
-            <ViewModeToggle
-              className="destination-picker__view-toggle"
-              value={viewMode}
-              onChange={setViewMode}
-              gridLabel={labels.gridView}
-              listLabel={labels.listView}
-            />
-          </div>
-        ) : (
-          breadcrumb
-        )
-      }
+      breadcrumbs={breadcrumb}
     >
       {showListingLoading ? (
         <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
@@ -522,65 +491,15 @@ export function DriveFolderPicker({
         <CollectionState icon={<Cloud className="size-12" />}>
           {fileSelect ? labels.fileSelectEmpty : labels.emptyFolder}
         </CollectionState>
-      ) : fileSelect ? (
-        viewMode === "grid" ? (
-          <DriveGridView
-            items={fileSelectItems}
-            filePreviews={filePreviews}
-            selectedIds={selectedFile ? [selectedFile.id] : []}
-            starred={{}}
-            labels={labels}
-            inTrash={false}
-            selectionMode={false}
-            isTouch={false}
-            isItemDragging={pickerIsItemDragging}
-            itemDragHandlers={pickerItemDragHandlers}
-            folderDropZoneProps={pickerFolderDropZoneProps}
-            onSelect={(id) => handleFileSelectItem(id)}
-            onOpen={handleFileSelectOpen}
-            onLongPress={PICKER_NOOP}
-            onStar={PICKER_NOOP}
-            onDownload={PICKER_NOOP}
-            onRename={PICKER_NOOP}
-            onMove={PICKER_NOOP}
-            onTrash={PICKER_NOOP}
-            itemChrome="picker"
-          />
-        ) : (
-          <DriveListView
-            items={fileSelectItems}
-            sort={listSort}
-            onSort={toggleListSort}
-            activeId={selectedFile?.id ?? null}
-            selectedIds={selectedFile ? [selectedFile.id] : []}
-            starred={{}}
-            labels={labels}
-            inTrash={false}
-            selectionMode={false}
-            isTouch={false}
-            isItemDragging={pickerIsItemDragging}
-            itemDragHandlers={pickerItemDragHandlers}
-            folderDropZoneProps={pickerFolderDropZoneProps}
-            onSelect={(id) => handleFileSelectItem(id)}
-            onOpen={handleFileSelectOpen}
-            onLongPress={PICKER_NOOP}
-            onStar={PICKER_NOOP}
-            onDownload={PICKER_NOOP}
-            onRename={PICKER_NOOP}
-            onMove={PICKER_NOOP}
-            onTrash={PICKER_NOOP}
-            itemChrome="picker"
-          />
-        )
-      ) : rows.length === 0 ? null : (
+      ) : listItems.length === 0 ? null : (
         <DriveListView
           items={listItems}
           sort={atPickerRoots ? undefined : listSort}
           onSort={toggleListSort}
-          activeId={null}
-          selectedIds={selectedDestinationIds}
-          showKindColumn={false}
-          showSizeColumn={false}
+          activeId={fileSelect ? (selectedFile?.id ?? null) : null}
+          selectedIds={fileSelect && selectedFile ? [selectedFile.id] : selectedDestinationIds}
+          showKindColumn={fileSelect}
+          showSizeColumn={fileSelect}
           starred={{}}
           labels={labels}
           inTrash={false}
@@ -589,15 +508,27 @@ export function DriveFolderPicker({
           isItemDragging={pickerIsItemDragging}
           itemDragHandlers={pickerItemDragHandlers}
           folderDropZoneProps={pickerFolderDropZoneProps}
-          isItemDisabled={(file) => {
-            const row = rowById.get(file.id);
-            return !row || (!row.selectable && row.kind === "file");
-          }}
+          isItemDisabled={
+            fileSelect
+              ? undefined
+              : (file) => {
+                  const row = rowById.get(file.id);
+                  return !row || (!row.selectable && row.kind === "file");
+                }
+          }
           onSelect={(id) => {
+            if (fileSelect) {
+              handleFileSelectItem(id);
+              return;
+            }
             const row = rowById.get(id);
             if (row?.selectable) setHighlightedPath(row.path);
           }}
           onOpen={(file) => {
+            if (fileSelect) {
+              handleFileSelectOpen(file);
+              return;
+            }
             const row = rowById.get(file.id);
             if (row && row.kind !== "file") openRow(row.path);
           }}

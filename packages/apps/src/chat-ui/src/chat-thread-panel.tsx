@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
+import { CHAT_COMPOSER_RICH } from "@/chat-ui/src/chat-composer-allow";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import { omitChatNestedThreadActions } from "@/chat-ui/src/chat-thread-actions";
@@ -126,6 +127,7 @@ export function ChatThreadPanel({
       {onSend ? (
         <div ref={dockRef} className="chat-thread-panel__composer">
           <ChatComposer
+            allow={CHAT_COMPOSER_RICH}
             principals={mentionPrincipals}
             initialContent={composerInitialContent}
             placeholder={composerPlaceholder}

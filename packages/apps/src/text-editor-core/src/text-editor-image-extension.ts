@@ -9,6 +9,12 @@ import {
   deleteSelectedDocsImage,
   deselectDocsImage,
 } from "@/text-editor-core/src/text-editor-image-commands";
+import {
+  normalizeDocsImageAlign,
+  normalizeDocsImageCaption,
+  normalizeDocsImageHref,
+  normalizeDocsImageWidth,
+} from "@/text-editor-core/src/text-editor-image-attrs";
 import { createDocsImageNodeView } from "@/text-editor-core/src/text-editor-image-node-view";
 import {
   createDocsImagePastePlugin,
@@ -17,6 +23,7 @@ import {
 import {
   docsImageMarkdown,
   serializeDocsImageSrc,
+  splitImageFragment,
 } from "@/text-editor-core/src/text-editor-image-src";
 
 declare module "@tiptap/extension-image" {
@@ -56,7 +63,8 @@ export const DocsImage = Image.extend({
     return {
       src: {
         default: null,
-        parseHTML: (element) => serializeDocsImageSrc(element.getAttribute("src")),
+        parseHTML: (element) =>
+          serializeDocsImageSrc(splitImageFragment(element.getAttribute("src")).src),
         renderHTML: (attributes) => {
           const src = serializeDocsImageSrc(attributes.src as string | null);
           return src ? { src } : {};
@@ -67,6 +75,39 @@ export const DocsImage = Image.extend({
       },
       title: {
         default: null,
+      },
+      width: {
+        default: null,
+        // `data-*` from our own HTML (copy / paste); markdown carries it in the src fragment.
+        parseHTML: (element) =>
+          normalizeDocsImageWidth(element.getAttribute("data-width")) ??
+          splitImageFragment(element.getAttribute("src")).width,
+        renderHTML: (attributes) => {
+          const width = normalizeDocsImageWidth(attributes.width);
+          return width == null ? {} : { "data-width": String(width) };
+        },
+      },
+      align: {
+        default: null,
+        parseHTML: (element) =>
+          normalizeDocsImageAlign(element.getAttribute("data-align")) ??
+          splitImageFragment(element.getAttribute("src")).align,
+        renderHTML: (attributes) => {
+          const align = normalizeDocsImageAlign(attributes.align);
+          return align ? { "data-align": align } : {};
+        },
+      },
+      // `[![alt](src)](url)`: the link around the picture, kept so a save does not drop it.
+      href: {
+        default: null,
+        parseHTML: (element) =>
+          normalizeDocsImageHref(
+            element.getAttribute("data-href") ?? element.closest("a")?.getAttribute("href"),
+          ),
+        renderHTML: (attributes) => {
+          const href = normalizeDocsImageHref(attributes.href);
+          return href ? { "data-href": href } : {};
+        },
       },
     };
   },
@@ -98,7 +139,14 @@ export const DocsImage = Image.extend({
         ) {
           const alt = typeof node.attrs.alt === "string" ? node.attrs.alt : "";
           const src = typeof node.attrs.src === "string" ? node.attrs.src : null;
-          state.write(docsImageMarkdown(alt, src));
+          state.write(
+            docsImageMarkdown(alt, src, {
+              width: normalizeDocsImageWidth(node.attrs.width),
+              align: normalizeDocsImageAlign(node.attrs.align),
+              title: normalizeDocsImageCaption(node.attrs.title),
+              href: normalizeDocsImageHref(node.attrs.href),
+            }),
+          );
           state.closeBlock(node);
         },
       },
