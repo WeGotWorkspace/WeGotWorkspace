@@ -339,7 +339,7 @@ END:VCARD`;
 
 function card(name: string, pad = 0): string {
   const note = pad > 0 ? `\nNOTE:${"x".repeat(pad)}` : "";
-  return `BEGIN:VCARD\nFN:${name}${note}\nEND:VCARD`;
+  return `BEGIN:VCARD\nFN:${name}\nUID:${name}${note}\nEND:VCARD`;
 }
 
 /** RFC 6350 fold: 75-octet lines, continuation begins with a space. */
@@ -718,6 +718,76 @@ describe("importVcfFilesBatch adapts to server limits", () => {
     expect(importOne.mock.calls.length).toBeLessThanOrEqual(8);
     expect(result.failedCardCount).toBe(64);
     expect(result.fileErrors[0]?.message).toContain(VCARD_IMPORT_STOPPED);
+  });
+
+  it("resends a card without a UID under the same UID, so the server does not create it twice", async () => {
+    const byUid = new Set<string>();
+    const sentUids: string[] = [];
+    let first = true;
+    const importOne = vi.fn(async (text: string) => {
+      const list: Array<{ id: string }> = [];
+      const errors: Array<{ index: number; message: string; code?: string }> = [];
+      for (const [index, block] of splitVcardBlocks(text).entries()) {
+        const uid = /^UID:(.*)$/m.exec(block)?.[1];
+        if (!uid) throw new Error("card sent without a UID");
+        sentUids.push(uid);
+        if (byUid.has(uid)) {
+          errors.push({ index, message: "Already exists.", code: "alreadyExists" });
+        } else {
+          byUid.add(uid);
+          list.push({ id: uid });
+        }
+      }
+      if (first) {
+        first = false;
+        throw statusError(503, "Service unavailable");
+      }
+      return { list, errors };
+    });
+
+    const result = await importVcfFilesBatch(
+      [new File(["BEGIN:VCARD\nFN:NoUid\nEND:VCARD"], "g.vcf")],
+      importOne,
+      {
+        wait: noWait,
+      },
+    );
+
+    expect(byUid.size).toBe(1);
+    expect(new Set(sentUids).size).toBe(1);
+    expect(sentUids).toHaveLength(2);
+    expect(result.list.length + result.recoveredCount).toBe(1);
+    expect(result.failedCardCount).toBe(0);
+    expect(result.fileErrors).toEqual([]);
+  });
+
+  it("keeps a UID the card already has", async () => {
+    const importOne = vi.fn().mockResolvedValue({ list: [{ id: "a" }], errors: [] });
+    await importVcfFilesBatch(
+      [new File(["BEGIN:VCARD\nFN:A\nUID:keep-me\nEND:VCARD"], "u.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+    const sent = importOne.mock.calls[0]![0] as string;
+    expect(sent.match(/^UID/gm)).toHaveLength(1);
+    expect(sent).toContain("UID:keep-me");
+  });
+
+  it("names the stop on every file it skipped", async () => {
+    const importOne = vi.fn().mockRejectedValue(statusError(503, "Service unavailable"));
+
+    const result = await importVcfFilesBatch(
+      Array.from({ length: 6 }, (_, i) => new File([card(`F${i}`)], `f${i}.vcf`)),
+      importOne,
+      { wait: noWait },
+    );
+
+    expect(result.fileErrors).toHaveLength(6);
+    expect(result.fileErrors.at(-1)?.fileName).toBe("f5.vcf");
+    expect(result.fileErrors.at(-1)?.message).toBe(VCARD_IMPORT_STOPPED);
+    expect(result.fileErrors.map((error) => error.message).join(" ")).not.toContain(
+      "No vCard data found.",
+    );
   });
 
   it("does not halve when the browser is offline", async () => {

@@ -238,12 +238,25 @@ export function planVcardFileBatches(
   text: string,
   maxBytes: number = VCARD_IMPORT_BATCH_MAX_BYTES,
   maxCards: number = VCARD_IMPORT_BATCH_MAX_CARDS,
+  stampUids = false,
 ): { batches: VcardBatchPayload[]; oversizedCount: number } {
   const blocks = splitVcardBlocks(text);
   if (blocks.length === 0) {
     return { batches: [], oversizedCount: 0 };
   }
-  return packVcardBlocks(blocks, maxBytes, maxCards);
+  return packVcardBlocks(stampUids ? blocks.map(withStableUid) : blocks, maxBytes, maxCards);
+}
+
+const CARD_UID = /^UID[:;]/im;
+
+/**
+ * The server gives a card without a UID a fresh one on every create, so a resent
+ * batch would duplicate it. A UID fixed at plan time makes the resend `alreadyExists`.
+ */
+function withStableUid(block: string): string {
+  if (CARD_UID.test(block)) return block;
+  const end = block.lastIndexOf("\n");
+  return `${block.slice(0, end)}\nUID:urn:uuid:${crypto.randomUUID()}${block.slice(end)}`;
 }
 
 /** Prefer Error.message (API/client reason); keep a short fallback when nothing useful was sent. */
@@ -405,7 +418,7 @@ export async function importVcfFilesBatch<TCard>(
           empty: true,
         };
       }
-      const plan = planVcardFileBatches(text, maxBatchBytes, maxBatchCards);
+      const plan = planVcardFileBatches(text, maxBatchBytes, maxBatchCards, true);
       return {
         fileName: file.name,
         batches: plan.batches,
@@ -491,6 +504,10 @@ export async function importVcfFilesBatch<TCard>(
       if (stopped) {
         pendingBatches -= 1;
         failedCardCount += batch.blocks.length;
+        if (!seenReasons.has(VCARD_IMPORT_STOPPED)) {
+          seenReasons.add(VCARD_IMPORT_STOPPED);
+          fileThrowReasons.push(VCARD_IMPORT_STOPPED);
+        }
         continue;
       }
       if (batch.blocks.length > cardCap) {

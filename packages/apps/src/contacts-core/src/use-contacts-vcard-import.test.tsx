@@ -48,7 +48,7 @@ describe("useContactsVcardImport", () => {
       }),
     );
 
-    const file = new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf");
+    const file = new File(["BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD"], "one.vcf");
     act(() => {
       result.current.beginImport(fileListOf(file));
     });
@@ -61,7 +61,7 @@ describe("useContactsVcardImport", () => {
       result.current.submitImportDialog(result.current.importFiles!, "group-admin");
     });
 
-    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nEND:VCARD", {
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD", {
       addressBookId: "group-admin",
     });
     expect(onImported).toHaveBeenCalled();
@@ -101,7 +101,10 @@ describe("useContactsVcardImport", () => {
       }),
     );
 
-    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Two\nEND:VCARD"].join("\n");
+    const text = [
+      "BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD",
+      "BEGIN:VCARD\nFN:Two\nUID:Two\nEND:VCARD",
+    ].join("\n");
     const file = new File([text], "contacts.vcf");
     act(() => {
       result.current.beginImport(fileListOf(file));
@@ -127,7 +130,7 @@ describe("useContactsVcardImport", () => {
       }),
     );
 
-    const huge = `BEGIN:VCARD\nFN:Huge\nNOTE:${"x".repeat(80)}\nEND:VCARD`;
+    const huge = `BEGIN:VCARD\nFN:Huge\nUID:Huge\nNOTE:${"x".repeat(80)}\nEND:VCARD`;
     act(() => {
       result.current.beginImport(fileListOf(new File([huge], "photo.vcf")));
     });
@@ -155,7 +158,7 @@ describe("useContactsVcardImport", () => {
 
     act(() => {
       result.current.beginImport(
-        fileListOf(new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf")),
+        fileListOf(new File(["BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD"], "one.vcf")),
       );
     });
 
@@ -199,8 +202,8 @@ describe("useContactsVcardImport", () => {
     );
 
     const text = [
-      "BEGIN:VCARD\nFN:One\nEND:VCARD",
-      "BEGIN:VCARD\nFN:Two\nEND:VCARD",
+      "BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD",
+      "BEGIN:VCARD\nFN:Two\nUID:Two\nEND:VCARD",
       "END:VCARD",
       "# footer",
       "BEGIN:VCARD",
@@ -243,7 +246,10 @@ describe("useContactsVcardImport", () => {
       }),
     );
 
-    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Two\nEND:VCARD"].join("\n");
+    const text = [
+      "BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD",
+      "BEGIN:VCARD\nFN:Two\nUID:Two\nEND:VCARD",
+    ].join("\n");
     act(() => {
       result.current.beginImport(fileListOf(new File([text], "contacts.vcf")));
     });
@@ -274,7 +280,10 @@ describe("useContactsVcardImport", () => {
       }),
     );
 
-    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Two\nEND:VCARD"].join("\n");
+    const text = [
+      "BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD",
+      "BEGIN:VCARD\nFN:Two\nUID:Two\nEND:VCARD",
+    ].join("\n");
     act(() => {
       result.current.beginImport(fileListOf(new File([text], "again.vcf")));
     });
@@ -305,7 +314,10 @@ describe("useContactsVcardImport", () => {
       }),
     );
 
-    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Huge\nEND:VCARD"].join("\n");
+    const text = [
+      "BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD",
+      "BEGIN:VCARD\nFN:Huge\nUID:Huge\nEND:VCARD",
+    ].join("\n");
     act(() => {
       result.current.beginImport(fileListOf(new File([text], "again.vcf")));
     });
