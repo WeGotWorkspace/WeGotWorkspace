@@ -57,6 +57,7 @@ export const liveTierSpecs = [
   "docs-suggestion-reaction-author",
   "drive-file-node-push",
   "drive-first-sync",
+  "drive-first-sync-concurrent-write",
   "drive-folder-download",
   "drive-guest-large-download",
   "drive-guest-upload",

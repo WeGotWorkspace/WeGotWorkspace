@@ -47,7 +47,10 @@ import {
   isHiddenTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
-import { rememberDriveFolderNodeId } from "@/lib/offline/drive/upload/drive-upload-target";
+import {
+  readFolderIds,
+  rememberDriveFolderNodeId,
+} from "@/lib/offline/drive/upload/drive-upload-target";
 
 /** Meta key of the walk in progress: its starting state and `node_id` cursor. */
 export const DRIVE_TREE_CURSOR_KEY = "drive:tree-sync:cursor";
@@ -139,14 +142,33 @@ async function crawlFolders(
   signal?: AbortSignal,
 ): Promise<DriveTreeSyncResult> {
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
+  // The state before the crawl: a change made while it runs is reported by the next
+  // `FileNode/changes`, as with the keyset walk's pre-page-1 state.
+  const before = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
   if (signal?.aborted || progress.failed > 0) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
-  const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
-  await writeDriveSyncToken(username, state.state);
+  await writeCrawledRoots(username);
+  await writeDriveSyncToken(username, before.state);
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
+}
+
+/**
+ * The crawl's roots (home, team drives) as the root map, so the change applier
+ * tells them from share roots. The crawl remembered their ids by path.
+ */
+async function writeCrawledRoots(username: string): Promise<void> {
+  const home = `users/${username}`.toLowerCase();
+  const roots: Record<string, string> = {};
+  for (const [key, id] of Object.entries(await readFolderIds(username))) {
+    const path = key.replace(/^\/+/, "");
+    const parts = path.split("/");
+    const isRoot = (parts.length === 2 && parts[0] === "groups") || path.toLowerCase() === home;
+    if (isRoot && typeof id === "string") roots[id] = `/${path}`;
+  }
+  await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
 }
 
 /**
