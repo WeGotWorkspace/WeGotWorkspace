@@ -8,10 +8,10 @@ import { formatValue } from "./format";
 import { useSheet } from "./useSheet";
 
 type User = { id: string; name: string; color: string };
-type Props = { doc: Y.Doc; awareness: Awareness; user: User };
+type Props = { doc: Y.Doc; awareness: Awareness; user: User; onRendered?: () => void };
 type Peer = { clientId: number; user: User; cursor: { rowId: string; colId: string } | null };
 
-export function Grid({ doc, awareness, user }: Props) {
+export function Grid({ doc, awareness, user, onRendered }: Props) {
   const { columns, rows, values } = useSheet(doc);
   const [rowIndex, setRowIndex] = useState(0);
   const [anchorId, setAnchorId] = useState<string | null>(null);
@@ -55,6 +55,11 @@ export function Grid({ doc, awareness, user }: Props) {
       selectedRow && selectedCol ? { rowId: selectedRow.rowId, colId: selectedCol.colId } : null;
     awareness.setLocalState({ user, cursor });
   }, [awareness, user, selectedRow, selectedCol]);
+
+  // Spike 4 harness: signal every committed render.
+  useLayoutEffect(() => {
+    onRendered?.();
+  });
 
   useLayoutEffect(() => {
     if (performance.getEntriesByName("commit").length === 0) return;

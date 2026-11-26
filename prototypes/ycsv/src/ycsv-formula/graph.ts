@@ -9,7 +9,7 @@ const AST_CACHE_LIMIT = 10_000;
 const astCache = new Map<string, Node | CellError>();
 let astMisses = 0;
 
-function astFor(src: string): Node | CellError {
+export function astFor(src: string): Node | CellError {
   const hit = astCache.get(src);
   if (hit !== undefined) return hit;
   if (astCache.size >= AST_CACHE_LIMIT) astCache.clear();
