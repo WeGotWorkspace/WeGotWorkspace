@@ -15,6 +15,8 @@ export const DOCS_COLLAB_TEXT_EXTENSIONS = new Set([
   "xml",
   "yaml",
   "yml",
+  // Sheets spike 5: a YCSV room on the shared session (shape `ycsv`).
+  "ycsv",
 ]);
 
 function fileNameFromApiPath(path: string): string {

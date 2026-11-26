@@ -78,7 +78,7 @@ export type DocsCollabUrls = {
    * with no editor schema (Tasks). The session asks the shape for the seed,
    * emptiness, save body and re-read. Without it the Docs/Notes shape applies.
    */
-  documentShape?: "text-fields";
+  documentShape?: "text-fields" | (string & {});
   /** The title a text-fields document seeds with offline, before the server answers. */
   seedTitle?: string;
   /**

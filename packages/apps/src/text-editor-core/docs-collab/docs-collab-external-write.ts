@@ -4,8 +4,25 @@ import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor
 import { adoptServerSnapshot } from "@/lib/collab/docs-collab-bootstrap";
 import { writeNoteTitle } from "@/lib/collab/docs-collab-document-title";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
+import { collabShapeOf } from "@/lib/collab/collab-document-shape";
+
+/** The rebuild seed: through the document's registered shape (Sheets spike: YCSV), else the editor codec. */
+function seedReplacement(
+  ydoc: Yjs.Doc,
+  seeded: Yjs.Doc,
+  markdown: string,
+  format: TextEditorContentFormat,
+  salt: string,
+): void {
+  const shape = collabShapeOf(ydoc);
+  if (shape) {
+    shape.seed(seeded, markdown, { origin: SEED_ORIGIN, salt });
+    return;
+  }
+  applyContentSeedToYDoc(seeded, markdown, format, salt);
+}
 import { seedClientId } from "./docs-collab-seed";
-import { SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
+import { SEED_ORIGIN, SERVER_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import { isTextFieldsDoc } from "@/lib/collab/docs-collab-text-fields-shape";
 import { replaceTextFields } from "./docs-collab-text-fields";
 
@@ -95,7 +112,7 @@ export function replaceDocumentWithExternalText(
   // work deletes the seeded items again, so the salt moves on while this
   // document already holds either seed id (Yjs never recreates deleted items).
   const salt = dropLocalWork ? freeSalt(ydoc, markdown, title, format, baseSalt) : baseSalt;
-  applyContentSeedToYDoc(seeded, markdown, format, salt);
+  seedReplacement(ydoc, seeded, markdown, format, salt);
   writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(
     ydoc,
@@ -144,7 +161,7 @@ function reseedOverUnreadableState(
   // text blank, so the salt moves on until the id is new to this document.
   const salt = freeSalt(ydoc, markdown, title, format, `unreadable:${serverState.length}:${hash}`);
   const seeded = new Yjs.Doc();
-  applyContentSeedToYDoc(seeded, markdown, format, salt);
+  seedReplacement(ydoc, seeded, markdown, format, salt);
   writeSeedTitle(seeded, title, salt, markdown);
   adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), EXTERNAL_REBUILD_ORIGIN);
   seeded.destroy();

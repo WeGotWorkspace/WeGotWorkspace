@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { readNoteTitle } from "@/lib/collab/docs-collab-document-title";
+import { collabShapeOf } from "@/lib/collab/collab-document-shape";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { loadCollabText, type CollabText } from "@/lib/collab/docs-collab-server-io";
 import {
@@ -43,7 +44,8 @@ export function checkSnapshotText(
   const scratch = new Y.Doc();
   try {
     Y.applyUpdate(scratch, update);
-    const markdown = readContentFromYDoc(scratch, format);
+    const shape = collabShapeOf(scratch);
+    const markdown = shape ? shape.read(scratch) : readContentFromYDoc(scratch, format);
     // A doc without a title type leaves the server title alone on save; a
     // note with no SUMMARY serves `null` and its state holds no title.
     const served = text.title ?? "";

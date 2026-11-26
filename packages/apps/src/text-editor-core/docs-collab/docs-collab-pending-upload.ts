@@ -4,6 +4,7 @@ import { wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { collabDatabaseHasPendingSave } from "@/lib/offline/core/offline-wipe";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
+import { collabDocumentShapeById, collabShapeOf } from "@/lib/collab/collab-document-shape";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { isTextFieldsDoc, readTextFields, TEXT_FIELDS_SHAPE } from "./docs-collab-text-fields";
 import { rememberSidecarEtag } from "@/lib/collab/docs-collab-etag";
@@ -70,8 +71,14 @@ async function uploadPendingCollabRoom({
       // A text-fields room (#2208) keeps its body in `plain-body`, not in the
       // editor fragment: reading the fragment would save empty notes.
       const textFields = urls.documentShape === TEXT_FIELDS_SHAPE || isTextFieldsDoc(ydoc);
+      // A registered shape (Sheets spike: YCSV) reads its own file text.
+      const shape = collabDocumentShapeById(urls.documentShape) ?? collabShapeOf(ydoc);
       const read = () =>
-        textFields ? readTextFields(ydoc).description : readContentFromYDoc(ydoc, format);
+        textFields
+          ? readTextFields(ydoc).description
+          : shape
+            ? shape.read(ydoc)
+            : readContentFromYDoc(ydoc, format);
       const saved = await persistCollabSave({
         urls,
         room,
