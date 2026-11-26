@@ -162,6 +162,49 @@ final class JmapFileNodeTeamStateTest extends WgwDatabaseTestCase
         $this->assertSame([], $carol['destroyed']);
     }
 
+    public function test_folder_moved_out_of_notes_reports_its_descendants(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/alice/.notes/Plans/a.md', 'a');
+        $disk->put('users/alice/.notes/Plans/Q3/b.md', 'b');
+        $index = app(FileNodeIndexService::class);
+        $index->recordCreate('users/alice/.notes/Plans/Q3/b.md');
+        $index->recordCreate('users/alice/.notes/Plans/a.md');
+        $folderId = (string) $this->nodeAt('users/alice/.notes/Plans')->node_id;
+        $expected = [
+            $folderId,
+            (string) $this->nodeAt('users/alice/.notes/Plans/a.md')->node_id,
+            (string) $this->nodeAt('users/alice/.notes/Plans/Q3')->node_id,
+            (string) $this->nodeAt('users/alice/.notes/Plans/Q3/b.md')->node_id,
+        ];
+        sort($expected);
+        $this->names('alice');
+        $aliceState = $this->state('alice');
+        $bobState = $this->state('bob');
+
+        $disk->move('users/alice/.notes/Plans', 'users/alice/Plans');
+        $index->recordMove('users/alice/.notes/Plans', 'users/alice/Plans');
+
+        // Visible before and after, but only now on a list path: the client never stored the
+        // children, so they arrive with the folder.
+        $alice = $this->changes('alice', $aliceState);
+        $updated = $alice['updated'];
+        sort($updated);
+        $this->assertSame($expected, $updated);
+        $this->assertSame([], $alice['destroyed']);
+
+        // bob sees neither path.
+        $bob = $this->changes('bob', $bobState);
+        $this->assertSame([], $bob['updated']);
+        $this->assertSame([], $bob['destroyed']);
+
+        // Moving it back under .notes is no arrival: only the moved folder is updated.
+        $backState = $this->state('alice');
+        $disk->move('users/alice/Plans', 'users/alice/.notes/Plans');
+        $index->recordMove('users/alice/Plans', 'users/alice/.notes/Plans');
+        $this->assertSame([$folderId], $this->changes('alice', $backState)['updated']);
+    }
+
     public function test_folder_restored_from_trash_into_a_team_reports_its_descendants(): void
     {
         $disk = app(WgwStorage::class)->files();
