@@ -1468,6 +1468,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
 
   const segClass = (seg: Segment) => {
     if (seg.kind === "name") {
+      // Still typing this one: not an error yet.
+      if (edit && seg.end === edit.caret) return "sx-t-name";
       const known = seg.text.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), defs) !== undefined;
       return known ? "sx-t-name" : "sx-t-name-unknown";
     }

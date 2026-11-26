@@ -7,7 +7,8 @@ import type { Range } from "./selection";
  */
 
 /** Token colours; the same colour outlines the range on the grid. */
-export const REF_COLORS = ["#0045ff", "#d6336c", "#2b8a3e", "#e8590c", "#7048e8", "#0c8599", "#a61e4d", "#5c940d"];
+// Brand blue is the selection colour, so formula refs start elsewhere.
+export const REF_COLORS = ["#7048e8", "#d6336c", "#2b8a3e", "#e8590c", "#0c8599", "#a61e4d", "#5c940d", "#1c7ed6"];
 
 export type Segment =
   | { kind: "ref"; text: string; start: number; end: number; color: number; target: Range | null }
