@@ -14,7 +14,8 @@ describe("deriveDocsCollabIndicator", () => {
   it("shows the offline state and keeps the device promise", () => {
     expect(deriveDocsCollabIndicator({ ...base, online: false })).toEqual({
       kind: "offline",
-      label: "Offline – changes are kept on this device",
+      label: "Offline",
+      hint: "Changes are kept on this device",
     });
   });
 

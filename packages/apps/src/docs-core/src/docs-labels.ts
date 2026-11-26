@@ -189,7 +189,9 @@ export const docsLabels = {
    * last-edited tag, so neither becomes a sentence.
    */
   statusSaving: "Saving…",
-  statusOffline: "Offline – changes are kept on this device",
+  statusOffline: "Offline",
+  /** Tooltip on `statusOffline`: the device promise lives here, not in the label. */
+  statusOfflineHint: "Changes are kept on this device",
   /** Stands in for `statusSyncingViaServer` until an HTTP fallback exists. */
   statusChangesSyncWhenSaved: "Changes sync when saved",
   /** Transient phases, only ever shown after a 1.5 s hold (`statusConnecting` is in `docsCollabLabels`). */

@@ -44,6 +44,6 @@ describe("user-visible label vocabulary", () => {
     expect("Connecting to 2 peer(s)").toMatch(JARGON);
     expect("ICE failed").toMatch(JARGON);
     expect("Relaying via TURN").toMatch(JARGON);
-    expect("Offline – changes are kept on this device").not.toMatch(JARGON);
+    expect("Offline. Changes are kept on this device").not.toMatch(JARGON);
   });
 });

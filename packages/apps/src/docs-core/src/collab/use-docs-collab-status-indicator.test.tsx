@@ -36,7 +36,8 @@ describe("useDocsCollabStatusIndicator", () => {
     const { result } = renderIndicator({ online: false });
     expect(result.current).toEqual({
       kind: "offline",
-      label: "Offline – changes are kept on this device",
+      label: "Offline",
+      hint: "Changes are kept on this device",
     });
   });
 
