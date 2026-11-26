@@ -40,6 +40,12 @@ export const driveLabels = {
   /** Offline before this view synced to the device (#2063): never "empty". */
   notAvailableOffline: "Not available offline yet",
   notAvailableOfflineHint: "Open Drive once while you're online. After that it works offline too.",
+  /** Online after the first sync: the tree does not hold this folder (moved, deleted, or a stale link). */
+  folderMissing: "This folder isn't here any more",
+  folderMissingHint: "It may have been moved or deleted.",
+  /** A share-link guest's folder listing failed: never shown as empty. */
+  folderListingFailed: "This folder could not be loaded",
+  folderListingRetry: "Try again",
   dropUploadHint: "Drop files to upload to",
   newButton: "New",
   /** Chevron menu on the sidebar segmented New control. */

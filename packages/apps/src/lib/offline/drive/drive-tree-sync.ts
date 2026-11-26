@@ -5,6 +5,7 @@ import {
   type DriveJmapSession,
 } from "@/lib/api/wgw/drive-jmap";
 import { fetchFileNodeTreeBatch, type FileNodeTreePage } from "@/lib/api/wgw/drive-jmap-tree";
+import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
@@ -142,6 +143,17 @@ async function crawlFolders(
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
   const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
   if (signal?.aborted || progress.failed > 0) {
+    return { completed: false, changed: true, keptUnsavedPaths: [] };
+  }
+  // The crawl lists the person's own drives; the share roots come from the
+  // shared-with-me list, so Shared with me reads the tree there too.
+  try {
+    const shared = await fetchDriveSharedWithMe({ signal });
+    await upsertDriveEntriesInBulk(
+      username,
+      shared.map((item) => ({ entry: item.entry as WgwDriveDirectoryEntry, area: "share" })),
+    );
+  } catch {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });

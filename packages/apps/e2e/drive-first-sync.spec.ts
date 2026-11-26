@@ -3,7 +3,7 @@
 // Opening Drive on a fresh browser copies the drive for offline use in the
 // background. That copy shares the account's request budget with every other
 // app, so it must stay paced, leave room for a Tasks tab, never show a folder
-// whose listing failed as empty, and not start over after a reload.
+// it has not reached yet as empty, and not start over after a reload.
 //
 // Every test runs in a fresh browser context: nothing cached, like a new device.
 import { expect, test, type Page, type Request } from "./helpers/live-test";
@@ -16,7 +16,9 @@ const FOLDER_URL = `/drive?view=folder&path=${encodeURIComponent(`My Drive/${FOL
 const TEXT_FILES = Array.from({ length: 24 }, (_, i) => `Note ${RUN} ${pad(i + 1)}.md`);
 const IMAGE_FILES = Array.from({ length: 8 }, (_, i) => `Photo ${RUN} ${pad(i + 1)}.png`);
 const SEEDED = [...TEXT_FILES, ...IMAGE_FILES];
-const LISTING_FAILED = /This folder could not be loaded/;
+/** The full-pane state while the first sync on this device has not reached a view. */
+const LOADING = "Loading…";
+const NOT_AVAILABLE = "Not available offline yet";
 
 /**
  * The background pacer starts one request every 3 s (20 per minute): a 10 s
@@ -76,34 +78,6 @@ async function seedFolder(): Promise<void> {
   for (const name of IMAGE_FILES) {
     await dav("PUT", `${folder}/${encodeURIComponent(name)}`, PNG, "image/png");
   }
-}
-
-/** The FileNode id of the seeded folder: its listing filters on it. */
-async function folderNodeId(): Promise<string> {
-  const token = (await (
-    await fetch(`${API}/api/v1/auth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: E2E_USERNAME, password: E2E_PASSWORD }),
-    })
-  ).json()) as { access_token: string };
-  const auth = { Authorization: `Bearer ${token.access_token}` };
-  const session = (await (await fetch(`${API}/api/v1/jmap/session`, { headers: auth })).json()) as {
-    primaryAccounts: Record<string, string>;
-  };
-  const accountId = session.primaryAccounts["urn:ietf:params:jmap:filenode"];
-  const res = await fetch(`${API}/api/v1/jmap`, {
-    method: "POST",
-    headers: { ...auth, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      using: ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:filenode"],
-      methodCalls: [["FileNode/query", { accountId, filter: { name: FOLDER } }, "q"]],
-    }),
-  });
-  const body = (await res.json()) as { methodResponses: Array<[string, { ids?: string[] }]> };
-  const id = body.methodResponses[0]?.[1].ids?.[0];
-  if (!id) throw new Error(`No FileNode for ${FOLDER} (${res.status})`);
-  return id;
 }
 
 /** Background sync requests: one file body each (content or collaboration snapshot). */
@@ -301,13 +275,17 @@ test.describe("Drive first sync on a new device", () => {
     expect(refetched).toEqual([]);
   });
 
-  test("a folder whose listing fails shows an error and recovers by itself", async ({ page }) => {
-    const parentId = await folderNodeId();
+  test("a first sync the server refuses keeps loading, never empty, and fills in by itself", async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+    // The tree walk (or, on a server without the keyset, the per-folder crawl)
+    // is `FileNode/query`. Refuse every one of them for a while.
     let refusing = true;
     let refused = 0;
     await page.route("**/api/v1/jmap", async (route) => {
       const body = route.request().postData() ?? "";
-      if (refusing && body.includes(`"parentId":"${parentId}"`)) {
+      if (refusing && body.includes("FileNode/query")) {
         refused += 1;
         return route.fulfill({
           status: 429,
@@ -319,49 +297,17 @@ test.describe("Drive first sync on a new device", () => {
     });
 
     await page.goto(FOLDER_URL);
-    await expect(page.getByText(LISTING_FAILED)).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => refused, { timeout: 30_000 }).toBeGreaterThan(0);
+    await expect(page.getByText(LOADING, { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("This folder is empty")).toHaveCount(0);
-    expect(refused).toBeGreaterThan(0);
+    await expect(page.getByText(NOT_AVAILABLE)).toHaveCount(0);
 
-    // The server recovers; the listing retries on its own.
+    // The server recovers; the first sync runs again on its own, with no reload.
     refusing = false;
     await expect(page.getByText(TEXT_FILES[0]!, { exact: true }).first()).toBeVisible({
-      timeout: 20_000,
+      timeout: 90_000,
     });
-    await expect(page.getByText(LISTING_FAILED)).toHaveCount(0);
-  });
-
-  test("Try again loads a folder whose listing failed", async ({ page }) => {
-    const parentId = await folderNodeId();
-    let refusing = true;
-    let refused = 0;
-    await page.route("**/api/v1/jmap", async (route) => {
-      const body = route.request().postData() ?? "";
-      if (refusing && body.includes(`"parentId":"${parentId}"`)) {
-        refused += 1;
-        return route.fulfill({
-          status: 429,
-          headers: { "Retry-After": "1", "Content-Type": "application/problem+json" },
-          body: JSON.stringify({ type: "about:blank", status: 429, detail: "Too many requests." }),
-        });
-      }
-      return route.continue();
-    });
-
-    await page.goto(FOLDER_URL);
-    await expect(page.getByText(LISTING_FAILED)).toBeVisible({ timeout: 30_000 });
-    // The first automatic retry fails too; the next one is seconds away.
-    const refusedAtError = refused;
-    await expect.poll(() => refused, { timeout: 10_000 }).toBeGreaterThan(refusedAtError);
-    await expect(page.getByText(LISTING_FAILED)).toBeVisible();
-    await expect(page.getByText("This folder is empty")).toHaveCount(0);
-
-    refusing = false;
-    await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByText(TEXT_FILES[0]!, { exact: true }).first()).toBeVisible({
-      timeout: 2_500,
-    });
-    await expect(page.getByText(LISTING_FAILED)).toHaveCount(0);
+    await expect(page.getByText(LOADING, { exact: true })).toHaveCount(0);
   });
 
   test("row spinners follow the first copy: only files still to copy spin", async ({ browser }) => {

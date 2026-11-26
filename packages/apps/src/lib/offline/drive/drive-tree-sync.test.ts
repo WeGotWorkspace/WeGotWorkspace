@@ -45,6 +45,10 @@ const pacer = vi.hoisted(() => ({
 const current = vi.hoisted(() => ({ session: null as unknown }));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({ getConnectivitySnapshot: () => true }));
+const shares = vi.hoisted(() => ({ list: [] as { entry: unknown }[] }));
+vi.mock("@/lib/api/wgw/drive-shares", () => ({
+  fetchDriveSharedWithMe: async () => shares.list,
+}));
 vi.mock("@/lib/offline/core/background-sync-pacer", async () => ({
   ...(await vi.importActual<object>("@/lib/offline/core/background-sync-pacer")),
   backgroundSyncPacer: () => pacer,
@@ -371,6 +375,7 @@ async function seedPendingSave(apiPath: string): Promise<void> {
 
 beforeEach(async () => {
   pacer.acquire.mockClear();
+  shares.list = [];
   await driveEntriesTable(db()).clear();
   await driveTreeStagingTable(db()).clear();
   await db().table("drive_upload_items").clear();
@@ -807,11 +812,13 @@ describe("syncDriveTree", () => {
       await upsertDriveEntry(username, staleEntry("/groups/team/b.md", "n-b"));
       return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
     });
+    shares.list = [{ entry: staleEntry("/users/bob/deck.md", "n-deck") }];
 
     await syncDriveTree(username);
 
     expect((await row("/users/ada/a.md"))?.area).toBe("home");
     expect((await row("/groups/team/b.md"))?.area).toBe("group");
+    expect((await row("/users/bob/deck.md"))?.area).toBe("share");
     expect([...(await readDriveTreeRoots(username)).values()].sort()).toEqual([
       "/groups/team",
       "/users/ada",

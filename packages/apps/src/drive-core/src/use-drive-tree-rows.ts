@@ -14,7 +14,9 @@ import {
 } from "@/drive-core/src/drive-view-rows";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { FileTreeView } from "@/lib/files/tree-view/tree-view-predicates";
-import { useFileTreeView } from "@/lib/files/tree-view/use-file-tree-view";
+import type { FileTreeViewStatus } from "@/lib/files/tree-view/tree-view-query";
+import { useFileTreeView, type FileTreeViewState } from "@/lib/files/tree-view/use-file-tree-view";
+import { readDriveTreeFirstSyncDone } from "@/lib/offline/drive/drive-tree-sync";
 
 /** What the pane shows instead of rows. `null`: the rows (or the empty state). */
 export type DriveViewState =
@@ -22,11 +24,37 @@ export type DriveViewState =
   | "pending"
   /** First sync on this device, nothing arrived for this view yet: full-pane loading. */
   | "first-sync"
-  /** Offline before this view synced: "not available offline yet", never empty. */
+  /** Offline before the first sync: "not available offline yet", with how to fix it. Never empty. */
   | "not-available"
+  /** Offline after the first sync, a folder the tree does not hold: "not available offline yet". */
+  | "not-synced"
+  /** Online after the first sync, a folder the tree does not hold: it is not here (any more). */
+  | "missing"
+  /** A server folder listing failed (sessions without a local tree): error with Try again. */
+  | "error"
   | null;
 
+/**
+ * The pane state of a tree read with no rows that is not `ready`. `firstSyncDone`
+ * is null until it has been read; the pane shows nothing until then.
+ */
+function emptyReadState(
+  status: FileTreeViewStatus,
+  firstSyncDone: boolean | null,
+  online: boolean,
+): DriveViewState {
+  if (status === "first-sync") return "first-sync";
+  if (firstSyncDone === null) return "pending";
+  if (!firstSyncDone) return "not-available";
+  return online ? "missing" : "not-synced";
+}
+
 const IDLE_VIEW: FileTreeView = { kind: "all" };
+const NO_ROWS: DriveFile[] = [];
+
+function isNotAvailable(read: FileTreeViewState): boolean {
+  return read.settled && read.rows.length === 0 && read.status === "not-available";
+}
 /** Offline search: every file of the tree, narrowed by name on the device. */
 const OFFLINE_SEARCH_VIEW: FileTreeView = { kind: "prefix", path: "" };
 
@@ -39,6 +67,7 @@ export type UseDriveTreeRowsArgs = {
   rootLabels: Readonly<Record<string, string>>;
   /** Offline search query; empty online (online search stays a server call). */
   offlineSearchQuery: string;
+  online: boolean;
   setFiles: Dispatch<SetStateAction<DriveFile[]>>;
 };
 
@@ -56,6 +85,7 @@ export function useDriveTreeRows({
   groupRootNames,
   rootLabels,
   offlineSearchQuery,
+  online,
   setFiles,
 }: UseDriveTreeRowsArgs) {
   const username = enabled ? currentUsername.trim() : "";
@@ -98,7 +128,8 @@ export function useDriveTreeRows({
   const [patched, setPatched] = useState<{ source: DriveFile[]; rows: DriveFile[] } | null>(null);
   const treeFilesRef = useRef(treeFiles);
   treeFilesRef.current = treeFiles;
-  const flatRows = !isFolderTree ? treeFiles : null;
+  // A flat view lists only its own rows: none while its read is pending, never another view's.
+  const flatRows = tree && !isFolderTree ? (treeFiles ?? NO_ROWS) : null;
   const viewItems = flatRows && patched?.source === flatRows ? patched.rows : flatRows;
   const patchViewItems = useCallback<DriveAllFilesPatch>((update) => {
     setPatched((previous) => {
@@ -117,19 +148,38 @@ export function useDriveTreeRows({
     [offlineSearchQuery, rootLabels, search.rows, search.settled, username],
   );
 
-  let viewState: DriveViewState = null;
-  if (tree) {
-    if (!state.settled) viewState = "pending";
-    else if (state.rows.length === 0 && state.status !== "ready") viewState = state.status;
-  }
+  // "Not available" reads differently before and after the first sync on this device.
+  const searching = Boolean(username && offlineSearchQuery);
+  const askFirstSync =
+    (tree !== null && isNotAvailable(state)) || (searching && isNotAvailable(search));
+  const [firstSync, setFirstSync] = useState<{ username: string; done: boolean } | null>(null);
+  useEffect(() => {
+    if (!askFirstSync) return undefined;
+    let current = true;
+    void readDriveTreeFirstSyncDone(username).then((done) => {
+      if (current) setFirstSync({ username, done });
+    });
+    return () => {
+      current = false;
+    };
+  }, [askFirstSync, username, state, search]);
+  const firstSyncDone = firstSync?.username === username ? firstSync.done : null;
+
+  const readState = (read: FileTreeViewState): DriveViewState => {
+    if (!read.settled) return "pending";
+    if (read.rows.length > 0 || read.status === "ready") return null;
+    return emptyReadState(read.status, firstSyncDone, online);
+  };
 
   return {
     /** The open view reads the local tree. */
     treeActive: tree !== null,
     viewItems,
     patchViewItems,
-    viewState,
+    viewState: tree ? readState(state) : null,
     /** Offline search hits from the tree; null online or without a query. */
     offlineSearchResults: searchResults,
+    /** The pane state of the offline search: not ready is never "no hits". */
+    offlineSearchState: searching ? readState(search) : null,
   };
 }

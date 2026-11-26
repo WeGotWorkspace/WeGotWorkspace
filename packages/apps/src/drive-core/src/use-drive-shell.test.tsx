@@ -186,6 +186,25 @@ describe("useDriveShell server folders (guests and mocks, no local tree)", () =>
     expect(result.current.files.map((file) => file.title)).toEqual(["plan.md"]);
   });
 
+  it("keeps a failed folder listing an error with Try again, never an empty folder", async () => {
+    const changeDir = vi.fn().mockRejectedValueOnce(new Error("Server error"));
+    const operations = createOperations(changeDir);
+    const bootstrap = driveData(["old.txt"]);
+    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+
+    act(() => {
+      result.current.selectView({ type: "folder", path: "My Drive/Projects" });
+    });
+    await waitFor(() => expect(result.current.viewState).toBe("error"));
+
+    changeDir.mockResolvedValueOnce(folderData(PROJECTS_CWD, ["plan.md"]));
+    act(() => result.current.retryFolder());
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+    expect(changeDir).toHaveBeenCalledTimes(2);
+    expect(result.current.files.map((file) => file.title)).toEqual(["plan.md"]);
+  });
+
   it("does not load starred paths for guest share sessions", async () => {
     const changeDir = vi.fn().mockResolvedValue(driveData(["inside.md"]));
     const listStars = vi.fn().mockRejectedValue(new Error("GET /files/starred failed (403)"));

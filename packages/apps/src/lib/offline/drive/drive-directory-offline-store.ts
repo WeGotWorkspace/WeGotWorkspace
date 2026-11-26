@@ -12,7 +12,12 @@ import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-s
 import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
-import { fileExtension, isDotName, type DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
+import {
+  areaFromCrawledPath,
+  fileExtension,
+  isDotName,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
 
 const DRIVE_BOOTSTRAP_META_KEY = "drive:bootstrap";
 
@@ -223,6 +228,22 @@ export async function removeDriveEntriesUnderPrefix(
   await driveEntriesTable(db).bulkDelete(toDelete.map((row) => row.id));
 }
 
+/**
+ * The view indexes of a row at its new path (#2063 C3): a move into or out of
+ * Trash changes `area`, a rename can change `ext`. A shared row stays shared
+ * unless it goes to Trash.
+ */
+function movedRowIndexes(
+  row: { type: string; area?: DriveEntryArea },
+  newId: string,
+): { area?: DriveEntryArea; ext?: string } {
+  const crawled = areaFromCrawledPath(newId);
+  const area = row.area === "share" && crawled !== "trash" ? "share" : crawled;
+  return row.type === "file"
+    ? { area, ext: fileExtension(newId.split("/").pop() ?? "") }
+    : { area };
+}
+
 export async function migrateDriveEntryPath(
   username: string,
   oldPath: string,
@@ -238,7 +259,13 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  await table.put({ ...row, id: newId, parentPath: newParent, data: JSON.stringify(entry) });
+  await table.put({
+    ...row,
+    ...movedRowIndexes(row, newId),
+    id: newId,
+    parentPath: newParent,
+    data: JSON.stringify(entry),
+  });
   await table.delete(oldId);
 
   const descendants = await table
@@ -253,6 +280,7 @@ export async function migrateDriveEntryPath(
     // Spread the row so `nodeId` and an upload placeholder's `uploadId` move along.
     await table.put({
       ...descendant,
+      ...movedRowIndexes(descendant, migratedId),
       id: migratedId,
       parentPath: migratedParent,
       data: JSON.stringify(migratedEntry),

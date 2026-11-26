@@ -16,8 +16,8 @@ function matchesLocalSearch(file: DriveFile, query: string): boolean {
   return hay.includes(query);
 }
 
-function foldersFirst(items: DriveFile[]): DriveFile[] {
-  return items.sort((a, b) => {
+function foldersFirst(items: readonly DriveFile[]): DriveFile[] {
+  return [...items].sort((a, b) => {
     if (a.kind === "folder" && b.kind !== "folder") return -1;
     if (b.kind === "folder" && a.kind !== "folder") return 1;
     return 0;
@@ -38,7 +38,6 @@ export function filterDriveVisibleItems({
   view,
   searchQuery,
   currentUsername,
-  operations,
   uploadFiles,
 }: {
   files: DriveFile[];
@@ -49,7 +48,6 @@ export function filterDriveVisibleItems({
   view: ViewKey;
   searchQuery: string;
   currentUsername: string;
-  operations: unknown;
   /** Rows of the Uploads view (every queued, uploading, and failed file). */
   uploadFiles?: readonly DriveFile[] | null;
 }): DriveFile[] {
@@ -80,10 +78,8 @@ export function filterDriveVisibleItems({
     else if (view.type === "recent" || view.type === "all")
       inView = !isDriveUnderTrash(f.parent) && f.kind !== "folder";
     else if (view.type === "starred") {
-      if (operations) return false;
       inView = !!starred[f.id] && !isDriveUnderTrash(f.parent);
     } else if (view.type === "shared") {
-      if (operations) return false;
       inView =
         f.parent === SHARED_WITH_ME_UI_ROOT || f.parent.startsWith(`${SHARED_WITH_ME_UI_ROOT}/`);
     }

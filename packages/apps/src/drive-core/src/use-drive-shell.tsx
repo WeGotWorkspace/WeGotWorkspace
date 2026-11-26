@@ -13,7 +13,7 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { useDriveServerFolder } from "@/drive-core/src/use-drive-server-folder";
-import { useDriveTreeRows } from "@/drive-core/src/use-drive-tree-rows";
+import { useDriveTreeRows, type DriveViewState } from "@/drive-core/src/use-drive-tree-rows";
 import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 import {
   DRIVE_TRASH_UI_PATH,
@@ -26,7 +26,6 @@ import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import { driveStarredPathMap } from "@/drive-core/src/drive-starred-listing";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import type {
   DriveAPIOperations,
   DriveShareOperations,
@@ -170,7 +169,7 @@ export function useDriveShell({
     }
   }, [bootFolderPath, currentUsername, data, operations, treeEnabled]);
 
-  const serverFolderPending = useDriveServerFolder({
+  const serverFolder = useDriveServerFolder({
     enabled: !treeEnabled,
     operations,
     folderViewPath,
@@ -199,6 +198,7 @@ export function useDriveShell({
     groupRootNames,
     rootLabels: folderPickerRootLabels,
     offlineSearchQuery: online ? "" : searchText,
+    online,
     setFiles,
   });
 
@@ -221,14 +221,13 @@ export function useDriveShell({
       .then((paths) => {
         if (requestVersion !== starredLoadVersionRef.current) return;
         setStarred(driveStarredPathMap(paths));
-        if (treeEnabled) notifyDriveRemoteChange(currentUsername);
       })
       .catch((error: unknown) => {
         if (requestVersion !== starredLoadVersionRef.current) return;
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
-  }, [operations, currentUsername, showError, treeEnabled]);
+  }, [operations, currentUsername, showError]);
 
   // Online search stays a server call (content search); offline the tree filters names.
   const serverSearch = Boolean(operations) && !(treeEnabled && !online);
@@ -281,11 +280,18 @@ export function useDriveShell({
   /**
    * What the pane shows instead of rows: nothing until the first read answers,
    * loading during the first sync, "not available offline yet" offline before
-   * it. A known-empty view is `null` and shows the empty state.
+   * it, "not here" for a folder the finished tree does not hold. A known-empty
+   * view is `null` and shows the empty state. While searching, the search's own
+   * read decides: a search that is not ready never reads as "no hits".
    */
-  const viewState =
-    treeRows.viewState ??
-    ((listLoading && view.type === "folder") || serverFolderPending ? "first-sync" : null);
+  const serverFolderState: DriveViewState = serverFolder.failed
+    ? "error"
+    : (listLoading && view.type === "folder") || serverFolder.pending
+      ? "first-sync"
+      : null;
+  const viewState: DriveViewState = searchText
+    ? treeRows.offlineSearchState
+    : (treeRows.viewState ?? serverFolderState);
 
   const breadcrumbs = useMemo(
     () => buildDriveViewBreadcrumbs(view, driveLabels, folderPickerRootLabels),
@@ -319,7 +325,7 @@ export function useDriveShell({
     setStarred,
     /** Rows of the flat views (All Files, Recent, Starred, Shared) from the tree; null otherwise. */
     viewItems: treeRows.viewItems,
-    /** A write shows on All Files at once; the next read of the tree replaces it. */
+    /** A write shows on the flat views at once; the next read of the tree replaces it. */
     patchAllFiles: treeRows.patchViewItems,
     treeActive: treeRows.treeActive,
     knownGroupRoots,
@@ -331,6 +337,8 @@ export function useDriveShell({
     viewLabel,
     viewResetKey,
     viewState,
+    /** Try the failed server folder listing again (sessions without a local tree). */
+    retryFolder: serverFolder.retry,
     inTrashView,
     isUnderTrash,
     listLoading,
