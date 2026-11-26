@@ -72,7 +72,7 @@ final class InboxTaskListProvisioner
         ];
     }
 
-    public function ensureForPrincipal(string $principalUri): bool
+    public function ensureForPrincipal(string $principalUri, string $displayName = self::DISPLAY_NAME): bool
     {
         if (! Schema::connection('wgw')->hasTable('calendars')) {
             return false;
@@ -85,7 +85,7 @@ final class InboxTaskListProvisioner
         }
 
         $this->backends->make()->createCollection(CollectionKind::TaskList, $principalUri, self::URI, [
-            '{DAV:}displayname' => self::DISPLAY_NAME,
+            '{DAV:}displayname' => $displayName,
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
             CalendarColorPalette::PROPERTY => CalendarColorPalette::forUri(self::URI),
         ]);

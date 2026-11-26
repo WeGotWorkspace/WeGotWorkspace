@@ -83,7 +83,7 @@ final class JmapNotesMethodsTest extends WgwDatabaseTestCase
 
         $general = collect($args['list'])->firstWhere('id', CalendarCollectionUris::NOTE_GENERAL);
         $this->assertNotNull($general);
-        $this->assertSame('General', $general['name']);
+        $this->assertSame(UserCalendarCollectionsProvisioner::PERSONAL_DISPLAY_NAME, $general['name']);
         $this->assertSame([], $args['notFound']);
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Dav\Server\WgwCalendarBackendFactory;
+use App\Models\CalendarCollectionMeta;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
@@ -14,12 +15,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
  * Provisions default VEVENT calendars and VTODO task lists for users and group principals.
  */
 final class UserCalendarCollectionsProvisioner
 {
+    /** Name of the one task list and notebook a new individual starts with. */
+    public const PERSONAL_DISPLAY_NAME = 'Personal';
+
     public function __construct(
         private readonly InboxTaskListProvisioner $inboxProvisioner,
         private readonly WgwCalendarBackendFactory $backends,
@@ -69,7 +74,8 @@ final class UserCalendarCollectionsProvisioner
 
         $created = 0;
         $caldav = new CalPDO(DB::connection('wgw')->getPdo());
-        $existingUris = $this->calendarUrisForPrincipal($caldav, $principalUri);
+        $calendars = $caldav->getCalendarsForUser($principalUri);
+        $existingUris = $this->urisOf($calendars);
 
         $eventCollections = [
             [CalendarCollectionUris::EVENT_DEFAULT, 'Calendar'],
@@ -83,29 +89,28 @@ final class UserCalendarCollectionsProvisioner
             }
         }
 
-        if ($this->inboxProvisioner->ensureForPrincipal($principalUri)) {
+        // An individual starts with one task list and one notebook, both named "Personal"
+        // (#2349). They are the undeletable Inbox and General collections under their old
+        // uris, so DAV clients, ICS import and the journal mover keep working. A principal
+        // that already owns a collection of the kind keeps its names: nothing is renamed and
+        // no second "Personal" appears next to Home, Work or General. Home and Work task
+        // lists are no longer created for anyone.
+        $ownsTaskList = $this->ownsCollectionOf($calendars, 'VTODO');
+        $ownsNotebook = $this->ownsCollectionOf($calendars, 'VJOURNAL');
+
+        if ($this->inboxProvisioner->ensureForPrincipal(
+            $principalUri,
+            $ownsTaskList ? InboxTaskListProvisioner::DISPLAY_NAME : self::PERSONAL_DISPLAY_NAME,
+        )) {
             $created++;
-            $existingUris[InboxTaskListProvisioner::URI] = true;
-        } else {
-            $existingUris[InboxTaskListProvisioner::URI] = true;
         }
-
-        $taskCollections = [
-            [CalendarCollectionUris::TASK_HOME, 'Home'],
-            [CalendarCollectionUris::TASK_WORK, 'Work'],
-        ];
-
-        foreach ($taskCollections as [$uri, $displayName]) {
-            if ($this->ensureCalendar(CollectionKind::TaskList, $principalUri, $uri, $displayName, ['VTODO'], $existingUris)) {
-                $created++;
-            }
-        }
+        $existingUris[InboxTaskListProvisioner::URI] = true;
 
         if ($this->ensureCalendar(
             CollectionKind::Notebook,
             $principalUri,
             CalendarCollectionUris::NOTE_GENERAL,
-            'General',
+            $ownsNotebook ? 'General' : self::PERSONAL_DISPLAY_NAME,
             ['VJOURNAL'],
             $existingUris,
         )) {
@@ -224,12 +229,13 @@ final class UserCalendarCollectionsProvisioner
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $calendars  rows of Sabre getCalendarsForUser()
      * @return array<string, true>
      */
-    private function calendarUrisForPrincipal(CalPDO $caldav, string $principalUri): array
+    private function urisOf(array $calendars): array
     {
         $map = [];
-        foreach ($caldav->getCalendarsForUser($principalUri) as $calendar) {
+        foreach ($calendars as $calendar) {
             $uri = (string) ($calendar['uri'] ?? '');
             if ($uri !== '') {
                 $map[$uri] = true;
@@ -237,6 +243,49 @@ final class UserCalendarCollectionsProvisioner
         }
 
         return $map;
+    }
+
+    /**
+     * True when the principal owns (is not just a sharee of) a collection whose component
+     * set is exactly the one given: a task list is VTODO only, a notebook VJOURNAL only.
+     * Chat channels, DMs and thread pools are VJOURNAL only too but are not notebooks, so
+     * collections of a DAV-hidden kind never count. A row with no kind still counts.
+     *
+     * @param  array<int, array<string, mixed>>  $calendars  rows of Sabre getCalendarsForUser()
+     */
+    private function ownsCollectionOf(array $calendars, string $component): bool
+    {
+        $ids = [];
+        foreach ($calendars as $calendar) {
+            $id = $calendar['id'] ?? null;
+            $ids[] = is_array($id) ? (int) ($id[0] ?? 0) : (int) $id;
+        }
+        $hidden = [];
+        if ($ids !== []) {
+            foreach (CalendarCollectionMeta::query()
+                ->whereIn('calendarid', $ids)
+                ->get(['calendarid', 'kind']) as $row) {
+                if (CollectionKind::tryFrom((string) $row->kind)?->davHidden() === true) {
+                    $hidden[(int) $row->calendarid] = true;
+                }
+            }
+        }
+
+        foreach ($calendars as $calendar) {
+            if ((int) ($calendar['share-access'] ?? SharingPlugin::ACCESS_NOTSHARED) > SharingPlugin::ACCESS_SHAREDOWNER) {
+                continue;
+            }
+            $id = $calendar['id'] ?? null;
+            if (isset($hidden[is_array($id) ? (int) ($id[0] ?? 0) : (int) $id])) {
+                continue;
+            }
+            $set = $calendar['{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set'] ?? null;
+            if ($set instanceof SupportedCalendarComponentSet && $set->getValue() === [$component]) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

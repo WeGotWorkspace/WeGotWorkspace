@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarColorPalette;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Chat\ChatCollectionUris;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use Illuminate\Support\Facades\DB;
@@ -40,16 +43,17 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey(CalendarCollectionUris::EVENT_HOME, $byUri);
         $this->assertArrayHasKey(CalendarCollectionUris::EVENT_WORK, $byUri);
         $this->assertArrayHasKey(InboxTaskListProvisioner::URI, $byUri);
-        $this->assertArrayHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
-        $this->assertArrayHasKey(CalendarCollectionUris::TASK_WORK, $byUri);
+        $this->assertArrayNotHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
+        $this->assertArrayNotHasKey(CalendarCollectionUris::TASK_WORK, $byUri);
 
         $this->assertArrayHasKey(CalendarCollectionUris::NOTE_GENERAL, $byUri);
         $this->assertSame(['VEVENT'], $this->componentSetFor($byUri[CalendarCollectionUris::EVENT_HOME]));
-        $this->assertSame(['VTODO'], $this->componentSetFor($byUri[CalendarCollectionUris::TASK_HOME]));
+        $this->assertSame(['VTODO'], $this->componentSetFor($byUri[InboxTaskListProvisioner::URI]));
         $this->assertSame(['VJOURNAL'], $this->componentSetFor($byUri[CalendarCollectionUris::NOTE_GENERAL]));
-        $this->assertSame('General', (string) ($byUri[CalendarCollectionUris::NOTE_GENERAL]['{DAV:}displayname'] ?? ''));
+        $this->assertSame('Personal', (string) ($byUri[CalendarCollectionUris::NOTE_GENERAL]['{DAV:}displayname'] ?? ''));
         $this->assertSame('Home', (string) ($byUri[CalendarCollectionUris::EVENT_HOME]['{DAV:}displayname'] ?? ''));
-        $this->assertSame('Home', (string) ($byUri[CalendarCollectionUris::TASK_HOME]['{DAV:}displayname'] ?? ''));
+        $this->assertSame('Personal', (string) ($byUri[InboxTaskListProvisioner::URI]['{DAV:}displayname'] ?? ''));
+        $this->assertSame(['Calendar', 'Home', 'Personal', 'Personal', 'Work'], $this->sortedNames($byUri));
 
         $eventColors = [
             $this->colorFor($byUri[CalendarCollectionUris::EVENT_DEFAULT]),
@@ -60,6 +64,83 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
         $this->assertSame(CalendarColorPalette::forUri(CalendarCollectionUris::EVENT_HOME), $eventColors[1]);
         $this->assertSame(CalendarColorPalette::forUri(CalendarCollectionUris::EVENT_WORK), $eventColors[2]);
         $this->assertCount(3, array_unique($eventColors));
+    }
+
+    public function test_existing_user_keeps_their_collections_and_gets_no_second_personal(): void
+    {
+        $this->seedWgwUser('old-user', password: 'longpassword');
+        $principalUri = 'principals/old-user';
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        foreach ([
+            ['tasks-inbox', 'Inbox', 'VTODO'],
+            ['tasks-home', 'Home', 'VTODO'],
+            ['tasks-work', 'Work', 'VTODO'],
+            ['notes-general', 'General', 'VJOURNAL'],
+        ] as [$uri, $name, $component]) {
+            $caldav->createCalendar($principalUri, $uri, [
+                '{DAV:}displayname' => $name,
+                '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet([$component]),
+            ]);
+        }
+
+        app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal($principalUri);
+
+        $byUri = [];
+        foreach ($caldav->getCalendarsForUser($principalUri) as $calendar) {
+            $byUri[(string) ($calendar['uri'] ?? '')] = $calendar;
+        }
+        $this->assertSame('Inbox', (string) $byUri['tasks-inbox']['{DAV:}displayname']);
+        $this->assertSame('Home', (string) $byUri['tasks-home']['{DAV:}displayname']);
+        $this->assertSame('General', (string) $byUri['notes-general']['{DAV:}displayname']);
+        $this->assertNotContains('Personal', $this->sortedNames($byUri));
+    }
+
+    public function test_user_with_only_custom_lists_keeps_names_and_gets_the_undeletable_landing_collections(): void
+    {
+        $this->seedWgwUser('custom-user', password: 'longpassword');
+        $principalUri = 'principals/custom-user';
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $caldav->createCalendar($principalUri, 'groceries', [
+            '{DAV:}displayname' => 'Groceries',
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
+        ]);
+        $caldav->createCalendar($principalUri, 'ideas', [
+            '{DAV:}displayname' => 'Ideas',
+            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
+        ]);
+
+        app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal($principalUri);
+
+        $byUri = [];
+        foreach ($caldav->getCalendarsForUser($principalUri) as $calendar) {
+            $byUri[(string) ($calendar['uri'] ?? '')] = $calendar;
+        }
+        $this->assertSame('Inbox', (string) $byUri['tasks-inbox']['{DAV:}displayname']);
+        $this->assertSame('General', (string) $byUri['notes-general']['{DAV:}displayname']);
+        $this->assertArrayNotHasKey('tasks-home', $byUri);
+    }
+
+    public function test_an_owned_chat_channel_does_not_count_as_a_notebook(): void
+    {
+        $this->seedWgwUser('chat-first', password: 'longpassword');
+        $principalUri = 'principals/chat-first';
+        app(WgwCalendarBackendFactory::class)->make()->createCollection(
+            CollectionKind::ChatChannel,
+            $principalUri,
+            ChatCollectionUris::PREFIX_CHANNEL.'lunch',
+            [
+                '{DAV:}displayname' => 'Lunch',
+                '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
+            ],
+        );
+
+        app(UserCalendarCollectionsProvisioner::class)->ensureForPrincipal($principalUri);
+
+        $byUri = [];
+        foreach ((new CalPDO(DB::connection('wgw')->getPdo()))->getCalendarsForUser($principalUri) as $calendar) {
+            $byUri[(string) ($calendar['uri'] ?? '')] = $calendar;
+        }
+        $this->assertSame('Personal', (string) $byUri['notes-general']['{DAV:}displayname']);
     }
 
     public function test_provisioner_is_idempotent(): void
@@ -101,6 +182,18 @@ final class UserCalendarCollectionsProvisionerTest extends WgwDatabaseTestCase
             CalendarColorPalette::forUri(CalendarCollectionUris::groupTaskListCalDavUri('engineering')),
             $this->colorFor($byUri['tasks-engineering']),
         );
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $byUri
+     * @return list<string>
+     */
+    private function sortedNames(array $byUri): array
+    {
+        $names = array_map(static fn (array $calendar): string => (string) ($calendar['{DAV:}displayname'] ?? ''), array_values($byUri));
+        sort($names);
+
+        return $names;
     }
 
     /**

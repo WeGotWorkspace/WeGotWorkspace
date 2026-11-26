@@ -39,7 +39,7 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->assertContains(CalendarCollectionUris::NOTE_GENERAL, $ids);
         $general = collect($list)->firstWhere('id', CalendarCollectionUris::NOTE_GENERAL);
         $this->assertTrue($general['isDefault']);
-        $this->assertSame('General', $general['name']);
+        $this->assertSame(UserCalendarCollectionsProvisioner::PERSONAL_DISPLAY_NAME, $general['name']);
     }
 
     public function test_create_notebook_named_starred_does_not_use_reserved_uri(): void

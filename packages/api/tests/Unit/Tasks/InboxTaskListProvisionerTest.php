@@ -42,7 +42,7 @@ final class InboxTaskListProvisionerTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey(InboxTaskListProvisioner::URI, $byUri);
         $this->assertSame('tasks-inbox', InboxTaskListProvisioner::URI);
         $this->assertArrayNotHasKey(InboxTaskListProvisioner::LEGACY_URI, $byUri);
-        $this->assertArrayHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
+        $this->assertArrayNotHasKey(CalendarCollectionUris::TASK_HOME, $byUri);
         $this->assertArrayHasKey(CalendarCollectionUris::NOTE_GENERAL, $byUri);
         $this->assertSame(
             ['VEVENT'],
@@ -53,9 +53,8 @@ final class InboxTaskListProvisionerTest extends WgwDatabaseTestCase
             $this->componentSetFor($byUri[CalendarCollectionUris::NOTE_GENERAL]),
         );
         $this->assertSame(['VTODO'], $this->componentSetFor($byUri[InboxTaskListProvisioner::URI]));
-        $this->assertSame(['VTODO'], $this->componentSetFor($byUri[CalendarCollectionUris::TASK_HOME]));
         $this->assertSame(
-            InboxTaskListProvisioner::DISPLAY_NAME,
+            'Personal',
             (string) ($byUri[InboxTaskListProvisioner::URI]['{DAV:}displayname'] ?? ''),
         );
     }

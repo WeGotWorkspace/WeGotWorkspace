@@ -12,7 +12,7 @@ export const TEAM_SLUG = "e2e-notes-team";
 export const TEAM_NOTEBOOK = `group-${TEAM_SLUG}`;
 export const TEAM_NOTEBOOK_NAME = "E2E Notes Team";
 export const PRIVATE_NOTEBOOK = "notes-general";
-export const PRIVATE_NOTEBOOK_NAME = "General";
+export const PRIVATE_NOTEBOOK_NAME = "Personal";
 
 /** The shared notebook: a group with both users (idempotent). */
 export async function ensureTeamNotebook(): Promise<void> {

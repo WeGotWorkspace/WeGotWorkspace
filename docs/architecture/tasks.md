@@ -425,7 +425,7 @@ Full matrix: [`packages/api/docs/tasks/ics-jmap-task-conversion-matrix.md`](../p
 - **ACL:** `calendarinstances.access` (1=owner, 2=read, 3=read-write); CalDAV sharing plugin.
 - **REST paths (canonical):** `/api/v1/tasks/tasklists`, `/api/v1/tasks/items` ([#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134) — not `/tasks/tasks`).
 
-**Installer note:** Fresh installs seed VEVENT calendars (`default`, `home`, `work`) plus VTODO-only task lists (`inbox`, `tasks-home`, `tasks-work`). Upgrade path:
+**Installer note:** Fresh installs seed VEVENT calendars (`default`, `home`, `work`) plus one VTODO-only task list, `inbox`, named "Personal" (an existing task list keeps its name, and no `tasks-home` or `tasks-work` is created). Upgrade path:
 
 - `2026_07_07_000130_wgw_provision_inbox_task_lists` — Inbox for existing users
 - `2026_07_07_000140_wgw_migrate_default_mixed_calendar_vtodos` — move VTODOs from mixed `default` → `inbox`, strip VTODO from `default`
