@@ -136,6 +136,34 @@ describe("public availability link in Settings → Calendar", () => {
     expect(toast.success).toHaveBeenLastCalledWith(labels.publicLinkRegenerated);
   });
 
+  it("keeps the address when the regenerate confirm is cancelled", async () => {
+    const operations = createMockCalendarAvailabilityPublicLinkOperations();
+    const regenerate = vi.spyOn(operations, "regenerate");
+    renderSection(operations);
+    fireEvent.click(await toggle());
+    await waitFor(() => address());
+    const before = address().value;
+
+    fireEvent.click(screen.getByRole("button", { name: labels.publicLinkNew }));
+    expect(await screen.findByText(labels.newLinkDescription)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: labels.cancel }));
+
+    await waitFor(() => expect(screen.queryByText(labels.newLinkTitle)).toBeNull());
+    expect(regenerate).not.toHaveBeenCalled();
+    expect(address().value).toBe(before);
+  });
+
+  it("puts the public link below the calendar list", async () => {
+    renderSection(createMockCalendarAvailabilityPublicLinkOperations());
+    fireEvent.click(await toggle());
+    await waitFor(() => address());
+    const calendars = screen.getByRole("heading", { name: labels.calendarsHeading });
+    const publicLink = screen.getByRole("switch", { name: labels.publicLink });
+    expect(
+      calendars.compareDocumentPosition(publicLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("shows an error toast and keeps the state when the server refuses", async () => {
     const operations = createMockCalendarAvailabilityPublicLinkOperations();
     vi.spyOn(operations, "turnOn").mockRejectedValue(new WgwRequestError("boom", 500));

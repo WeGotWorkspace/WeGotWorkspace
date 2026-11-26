@@ -9,12 +9,12 @@ export const calendarAvailabilityLabels = {
   publicLinkHint: "Anyone with the link sees when you are busy, never what you do.",
   publicLinkAddress: "Public link address",
   publicLinkCopy: "Copy link",
-  publicLinkNew: "Make a new link",
+  publicLinkNew: "Regenerate URL",
   publicLinkTurnOn: "Turn on the public link",
   publicLinkTurnOff: "Turn off the public link",
   publicLinkOn: "Your public link is on",
   publicLinkOff: "Your public link is off",
-  publicLinkRegenerated: "New link made. The old link no longer works.",
+  publicLinkRegenerated: "URL regenerated. The old URL no longer works.",
   publicLinkCopied: "Link copied",
   publicLinkLoadError: "Could not load the public link.",
   publicLinkOffline: "The public link needs a connection.",
@@ -24,10 +24,10 @@ export const calendarAvailabilityLabels = {
   turnOffDescription:
     "The link stops working for everyone who has it. You can turn it on again later with a new link.",
   turnOffConfirm: "Turn off",
-  newLinkTitle: "Make a new link?",
+  newLinkTitle: "Regenerate the URL?",
   newLinkDescription:
-    "The current link stops working at once. People who subscribed to it need the new link.",
-  newLinkConfirm: "Make a new link",
+    "Everyone who subscribed to the current URL loses access at once and needs the new URL to see your availability again.",
+  newLinkConfirm: "Regenerate URL",
   cancel: "Cancel",
   calendarsHeading: "Calendars",
   calendarsHint:

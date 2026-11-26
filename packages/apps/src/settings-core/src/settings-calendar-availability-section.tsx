@@ -35,7 +35,7 @@ const FALLBACK_CALENDAR_COLOR = "#4285f4";
 /**
  * Availability in Settings → Calendar (#1912): whether people in the owner's Teams see when
  * they are busy, and per calendar one choice: "Do not add", time only, or (personal calendars
- * only) title and location. Server-side; changes save themselves. Below the Team switch sits the
+ * only) title and location. Server-side; changes save themselves. Below the calendar list sits the
  * public link (#2406): the same busy times, time only, for people outside the workspace. The
  * calendar choices apply to both, so they show while either is on.
  */
@@ -119,10 +119,10 @@ function AvailabilityForm({
             </FieldLabelRow>
           )}
         />
-        <SettingsCalendarPublicLinkRow controller={publicLink} />
         {enabled || publicLink.link?.enabled ? (
           <AvailabilityCalendars calendars={settings?.calendars ?? []} control={form.control} />
         ) : null}
+        <SettingsCalendarPublicLinkRow controller={publicLink} />
       </div>
     </Form>
   );
