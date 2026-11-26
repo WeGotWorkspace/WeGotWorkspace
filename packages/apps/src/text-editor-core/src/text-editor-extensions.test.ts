@@ -243,4 +243,10 @@ describe("link markdown in comments", () => {
       "[the docs](https://example.com/docs)",
     );
   });
+
+  it("escapes backslashes and quotes in a link title, and keeps it across a second save", () => {
+    const once = roundTrip('[docs](https://example.com/a "C:\\\\dir \\"x\\"")');
+    expect(once).toBe('[docs](https://example.com/a "C:\\\\dir \\"x\\"")');
+    expect(roundTrip(once)).toBe(once);
+  });
 });
