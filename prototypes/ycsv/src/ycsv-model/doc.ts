@@ -23,7 +23,14 @@ function rowsOf(doc: Y.Doc): Y.Array<Y.Map<unknown>> {
   return doc.getArray<Y.Map<unknown>>("rows");
 }
 
-export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
+export type FileToDocOptions = {
+  /** Row id for data row `index`. Default: random. The collab seed passes a deterministic one. */
+  rowId?: (index: number) => string;
+  colId?: (index: number) => string;
+  origin?: unknown;
+};
+
+export function fileToDoc(file: YcsvFile, doc: Y.Doc, options: FileToDocOptions = {}): void {
   const meta = doc.getMap("meta");
   const raw = doc.getMap("raw");
   const columns = columnsOf(doc);
@@ -42,8 +49,8 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
       else meta.set(key, value);
     }
 
-    const colIds = file.columns.map(() => newColId());
-    const rowIds = file.rows.map(() => newRowId());
+    const colIds = file.columns.map((_, index) => options.colId?.(index) ?? newColId());
+    const rowIds = file.rows.map((_, index) => options.rowId?.(index) ?? newRowId());
     const colInfos: ColInfo[] = file.columns.map((column, index) => ({
       colId: colIds[index] ?? "",
       ref: column.ref ?? "",
@@ -73,7 +80,7 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
       map.set("cells", cells);
       rows.push([map]);
     });
-  }, "local");
+  }, options.origin ?? "local");
 }
 
 function columnDef(map: Y.Map<unknown>): ColumnDef {

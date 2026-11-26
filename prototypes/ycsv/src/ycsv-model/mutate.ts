@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { newRowId } from "./ids";
+import { newColId, newRowId } from "./ids";
 import { toIdForm, type ColInfo } from "./refs";
 
 function columnsOf(doc: Y.Doc): Y.Array<Y.Map<unknown>> {
@@ -62,6 +62,35 @@ export function deleteRow(doc: Y.Doc, rowId: string): void {
         rows.delete(i, 1);
         return;
       }
+    }
+  }, "local");
+}
+
+/** Insert a column at `index` with `ref`. Existing rows get no cell: a missing cell reads "". */
+export function insertColumn(doc: Y.Doc, index: number, ref: string, colId: string = newColId()): string {
+  doc.transact(() => {
+    const columns = columnsOf(doc);
+    const map = new Y.Map<unknown>();
+    map.set("colId", colId);
+    map.set("ref", ref);
+    map.set("rest", {});
+    columns.insert(Math.max(0, Math.min(columns.length, index)), [map]);
+  }, "local");
+  return colId;
+}
+
+export function deleteColumn(doc: Y.Doc, colId: string): void {
+  doc.transact(() => {
+    const columns = columnsOf(doc);
+    for (let i = 0; i < columns.length; i += 1) {
+      if (columns.get(i).get("colId") === colId) {
+        columns.delete(i, 1);
+        break;
+      }
+    }
+    const rows = rowsOf(doc);
+    for (let i = 0; i < rows.length; i += 1) {
+      (rows.get(i).get("cells") as Y.Map<string>).delete(colId);
     }
   }, "local");
 }
