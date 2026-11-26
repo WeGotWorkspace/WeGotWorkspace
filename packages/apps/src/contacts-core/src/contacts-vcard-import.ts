@@ -1,11 +1,27 @@
 export const VCF_FILE_ACCEPT = ".vcf,.vcard,text/vcard,text/x-vcard,application/vcard";
 
 /**
- * Conservative live cap: PHP's historic 8M `post_max_size` minus headroom.
- * Intended Docker/php -S limit is 32M, but the running `:9080` process often
- * still has 8M until that PHP is restarted with `-d post_max_size=32M`.
+ * Bytes per import POST. The server builds every created card in memory for
+ * its answer, so a request's memory and time grow with its card count: 5,000
+ * cards (~6 MB) took ~90 MB and ~16 s and died at a 128 MB `memory_limit`.
+ * Small requests stay well inside shared-host limits.
  */
-export const VCARD_IMPORT_BATCH_MAX_BYTES = 6 * 1024 * 1024;
+export const VCARD_IMPORT_BATCH_MAX_BYTES = 1024 * 1024;
+
+/** Cards per import POST (~25 MB server memory, ~1 s locally). */
+export const VCARD_IMPORT_BATCH_MAX_CARDS = 500;
+
+/** Statuses where a smaller request may succeed: memory, time, or size limits and dropped connections. */
+const RETRYABLE_IMPORT_STATUSES = new Set([0, 408, 413, 500, 502, 503, 504]);
+
+/** Tries for a single card that keeps hitting a retryable failure. */
+const SINGLE_CARD_ATTEMPTS = 3;
+
+/** Failed requests in a row before the import stops, so a broken server is not flooded. */
+const MAX_CONSECUTIVE_IMPORT_FAILURES = 8;
+
+const IMPORT_RETRY_BASE_MS = 1_000;
+const IMPORT_RETRY_MAX_MS = 15_000;
 
 const CARD_SEPARATOR = "\n";
 
@@ -52,7 +68,7 @@ export type VcfFileImportError = {
 
 export type VcfImportResponseLike<TCard> = {
   list: TCard[];
-  errors?: Array<{ index: number; message: string }>;
+  errors?: Array<{ index: number; message: string; code?: string }>;
 };
 
 export type VcfFilesImportAggregate<TCard> = {
@@ -61,6 +77,14 @@ export type VcfFilesImportAggregate<TCard> = {
   blockErrors: number;
   blockErrorMessages: string[];
   importedFileCount: number;
+  /** Cards a failed request created before it broke off; a retry found them in the book. */
+  recoveredCount: number;
+  /** Cards whose UID was already in the address book before this import. */
+  alreadyExistingCount: number;
+  /** Cards the server refused as too large. */
+  tooLargeCount: number;
+  /** Cards that were not imported: a request failed for good, or the import stopped. */
+  failedCardCount: number;
 };
 
 export type VcardImportProgress = {
@@ -73,11 +97,15 @@ export type VcardImportProgress = {
 export type VcardBatchPayload = {
   text: string;
   cardCount: number;
+  blocks: string[];
 };
 
 export type ImportVcfFilesBatchOptions = {
   maxBatchBytes?: number;
+  maxBatchCards?: number;
   onProgress?: (progress: VcardImportProgress) => void;
+  /** Pause before a retry. Tests pass a no-op. */
+  wait?: (ms: number) => Promise<void>;
 };
 
 export const VCARD_IMPORT_CARD_TOO_LARGE =
@@ -161,10 +189,11 @@ export function splitVcardBlocks(input: string): string[] {
   return blocks;
 }
 
-/** Pack vCard blocks into payloads that stay under `maxBytes`. */
+/** Pack vCard blocks into payloads that stay under `maxBytes` and `maxCards`. */
 export function packVcardBlocks(
   blocks: string[],
   maxBytes: number,
+  maxCards: number = Number.POSITIVE_INFINITY,
 ): { batches: VcardBatchPayload[]; oversizedCount: number } {
   const batches: VcardBatchPayload[] = [];
   let current: string[] = [];
@@ -173,7 +202,11 @@ export function packVcardBlocks(
 
   const flush = (): void => {
     if (current.length === 0) return;
-    batches.push({ text: current.join(CARD_SEPARATOR), cardCount: current.length });
+    batches.push({
+      text: current.join(CARD_SEPARATOR),
+      cardCount: current.length,
+      blocks: current,
+    });
     current = [];
     currentBytes = 0;
   };
@@ -185,7 +218,10 @@ export function packVcardBlocks(
       continue;
     }
     const extra = current.length === 0 ? 0 : utf8ByteLength(CARD_SEPARATOR);
-    if (current.length > 0 && currentBytes + extra + bytes > maxBytes) {
+    if (
+      current.length > 0 &&
+      (currentBytes + extra + bytes > maxBytes || current.length >= maxCards)
+    ) {
       flush();
     }
     const sep = current.length === 0 ? 0 : utf8ByteLength(CARD_SEPARATOR);
@@ -201,12 +237,13 @@ export function packVcardBlocks(
 export function planVcardFileBatches(
   text: string,
   maxBytes: number = VCARD_IMPORT_BATCH_MAX_BYTES,
+  maxCards: number = VCARD_IMPORT_BATCH_MAX_CARDS,
 ): { batches: VcardBatchPayload[]; oversizedCount: number } {
   const blocks = splitVcardBlocks(text);
   if (blocks.length === 0) {
     return { batches: [], oversizedCount: 0 };
   }
-  return packVcardBlocks(blocks, maxBytes);
+  return packVcardBlocks(blocks, maxBytes, maxCards);
 }
 
 /** Prefer Error.message (API/client reason); keep a short fallback when nothing useful was sent. */
@@ -239,27 +276,113 @@ export function summarizeVcfImportErrors(
   return parts.join(" ").trim() || fallback;
 }
 
-/** Single import outcome: success, leftover-ignored success, or one combined failure message. */
+export type VcfImportOutcomeCounts = {
+  alreadyExisting?: number;
+  tooLarge?: number;
+  failedCards?: number;
+};
+
+const contactsNoun = (count: number): string => (count === 1 ? "contact" : "contacts");
+
+/**
+ * Single import outcome: success, success with a note (cards already in the
+ * book), or one combined failure message. Counts every card, so the message
+ * never reports fewer imports than the book holds.
+ */
 export function summarizeVcfImportOutcome(
   importedCount: number,
   fileErrors: VcfFileImportError[],
   blockMessages: string[],
   fallback: string,
+  counts: VcfImportOutcomeCounts = {},
 ): { failed: boolean; message: string | null } {
-  if (fileErrors.length === 0 && blockMessages.length === 0) {
+  const alreadyExisting = counts.alreadyExisting ?? 0;
+  const tooLarge = counts.tooLarge ?? 0;
+  const failedCards = counts.failedCards ?? 0;
+  const hasErrors = fileErrors.length > 0 || blockMessages.length > 0;
+  const failed = hasErrors || tooLarge > 0 || failedCards > 0;
+  if (!failed && alreadyExisting === 0) {
     return { failed: false, message: null };
   }
-  const summary = summarizeVcfImportErrors(fileErrors, blockMessages, fallback);
+
+  const parts: string[] = [];
   if (importedCount > 0) {
-    const noun = importedCount === 1 ? "contact" : "contacts";
-    return { failed: true, message: `Imported ${importedCount} ${noun}. ${summary}` };
+    parts.push(`Imported ${importedCount} ${contactsNoun(importedCount)}.`);
   }
-  return { failed: true, message: summary };
+  if (alreadyExisting > 0) {
+    parts.push(
+      `${alreadyExisting} ${alreadyExisting === 1 ? "was" : "were"} already in this address book.`,
+    );
+  }
+  if (tooLarge > 0) {
+    parts.push(
+      `${tooLarge} ${tooLarge === 1 ? "contact is" : "contacts are"} too large to import.`,
+    );
+  }
+  // The count only helps next to what did go in; on a total failure the reason says it.
+  if (failedCards > 0 && parts.length > 0) {
+    parts.push(`${failedCards} ${contactsNoun(failedCards)} could not be imported.`);
+  }
+  if (hasErrors) {
+    parts.push(summarizeVcfImportErrors(fileErrors, blockMessages, fallback));
+  }
+  return { failed, message: parts.join(" ").trim() || fallback };
 }
 
+type QueuedVcardBatch = {
+  blocks: string[];
+  /** Resent after a failed request, so cards it finds "already existing" are its own. */
+  retry: boolean;
+  attempts: number;
+};
+
+function importFailureStatus(error: unknown): number | undefined {
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? status : undefined;
+}
+
+function browserIsOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/** A smaller or later request may succeed: server limits, timeouts, or a dropped connection while online. */
+function isRetryableImportFailure(error: unknown): boolean {
+  const status = importFailureStatus(error);
+  if (status === undefined || !RETRYABLE_IMPORT_STATUSES.has(status)) return false;
+  return !(status === 0 && browserIsOffline());
+}
+
+function importRetryDelayMs(consecutiveFailures: number): number {
+  return Math.min(
+    IMPORT_RETRY_BASE_MS * 2 ** Math.max(0, consecutiveFailures - 1),
+    IMPORT_RETRY_MAX_MS,
+  );
+}
+
+const waitMs = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+function splitIntoChunks(blocks: string[], size: number): string[][] {
+  const chunks: string[][] = [];
+  for (let start = 0; start < blocks.length; start += size) {
+    chunks.push(blocks.slice(start, start + size));
+  }
+  return chunks;
+}
+
+export const VCARD_IMPORT_STOPPED =
+  "The import stopped because the server kept failing. Import the same file again to add the rest; contacts already imported are skipped.";
+
 /**
- * Import each vCard file (chunked under the POST cap) and aggregate results.
- * Keeps successful imports when one file or batch in a multi-select fails.
+ * Import each vCard file in small batches and aggregate results.
+ * A batch that hits a server limit (memory, time, size) or a dropped
+ * connection is halved and resent, and later batches stay at that size.
+ * Cards a broken request already created come back as `alreadyExists` on the
+ * resend and count as imported. After repeated failures the import stops
+ * rather than flooding the server. Keeps successful imports when one file or
+ * batch in a multi-select fails.
  */
 export async function importVcfFilesBatch<TCard>(
   files: File[],
@@ -267,7 +390,9 @@ export async function importVcfFilesBatch<TCard>(
   options?: ImportVcfFilesBatchOptions,
 ): Promise<VcfFilesImportAggregate<TCard>> {
   const maxBatchBytes = options?.maxBatchBytes ?? VCARD_IMPORT_BATCH_MAX_BYTES;
+  const maxBatchCards = options?.maxBatchCards ?? VCARD_IMPORT_BATCH_MAX_CARDS;
   const onProgress = options?.onProgress;
+  const wait = options?.wait ?? waitMs;
 
   const planned = await Promise.all(
     files.map(async (file) => {
@@ -280,7 +405,7 @@ export async function importVcfFilesBatch<TCard>(
           empty: true,
         };
       }
-      const plan = planVcardFileBatches(text, maxBatchBytes);
+      const plan = planVcardFileBatches(text, maxBatchBytes, maxBatchCards);
       return {
         fileName: file.name,
         batches: plan.batches,
@@ -294,7 +419,7 @@ export async function importVcfFilesBatch<TCard>(
     (sum, item) => sum + item.batches.reduce((inner, batch) => inner + batch.cardCount, 0),
     0,
   );
-  const batchCount = planned.reduce((sum, item) => sum + item.batches.length, 0);
+  let pendingBatches = planned.reduce((sum, item) => sum + item.batches.length, 0);
 
   const list: TCard[] = [];
   const fileErrors: VcfFileImportError[] = [];
@@ -303,17 +428,26 @@ export async function importVcfFilesBatch<TCard>(
   let importedFileCount = 0;
   let importedCards = 0;
   let completedBatches = 0;
+  let recoveredCount = 0;
+  let alreadyExistingCount = 0;
+  let tooLargeCount = 0;
+  let failedCardCount = 0;
+  let consecutiveFailures = 0;
+  let stopped = false;
+  let cardCap = maxBatchCards;
 
+  const batchCount = (): number => completedBatches + pendingBatches;
   const report = (nextBatchIndex: number): void => {
+    const count = batchCount();
     onProgress?.({
       importedCards,
       totalCards,
-      batchIndex: batchCount === 0 ? 0 : nextBatchIndex,
-      batchCount,
+      batchIndex: count === 0 ? 0 : Math.min(nextBatchIndex, count),
+      batchCount: count,
     });
   };
 
-  if (batchCount > 0) {
+  if (pendingBatches > 0) {
     report(1);
   }
 
@@ -333,31 +467,79 @@ export async function importVcfFilesBatch<TCard>(
     }
 
     let fileImported = false;
-    let fileThrowReason: string | null = null;
+    const fileThrowReasons: string[] = [];
+    const seenReasons = new Set<string>();
     let fileApiBlockErrors = 0;
+    let fileCardOutcomes = 0;
+    const queue: QueuedVcardBatch[] = item.batches.map((batch) => ({
+      blocks: batch.blocks,
+      retry: false,
+      attempts: 0,
+    }));
 
-    for (const batch of item.batches) {
-      if (batch.cardCount === 0 || !isCompleteVcardDocument(batch.text)) {
+    const failFile = (reason: string, batchIndex: number): void => {
+      if (seenReasons.has(reason)) return;
+      seenReasons.add(reason);
+      fileThrowReasons.push(
+        batchCount() > 1 ? `Batch ${batchIndex} of ${batchCount()}: ${reason}` : reason,
+      );
+    };
+
+    while (queue.length > 0) {
+      // The batch in hand still counts as pending until it settles.
+      const batch = queue.shift()!;
+      if (stopped) {
+        pendingBatches -= 1;
+        failedCardCount += batch.blocks.length;
+        continue;
+      }
+      if (batch.blocks.length > cardCap) {
+        const chunks = splitIntoChunks(batch.blocks, cardCap);
+        queue.unshift(...chunks.map((blocks) => ({ blocks, retry: batch.retry, attempts: 0 })));
+        pendingBatches += chunks.length - 1;
+        continue;
+      }
+      const text = batch.blocks.join(CARD_SEPARATOR);
+      if (batch.blocks.length === 0 || !isCompleteVcardDocument(text)) {
+        pendingBatches -= 1;
         continue;
       }
       const batchIndex = completedBatches + 1;
       report(batchIndex);
       try {
-        const result = await importOne(batch.text);
+        const result = await importOne(text);
+        consecutiveFailures = 0;
         const batchBlockErrors = result.errors ?? [];
         const leftoverOnly =
           batchBlockErrors.length > 0 &&
           batchBlockErrors.every((block) => isLeftoverImportErrorMessage(block.message));
-        const ignoreLeftover = leftoverOnly && result.list.length >= batch.cardCount;
+        const ignoreLeftover = leftoverOnly && result.list.length >= batch.blocks.length;
+        let batchRecovered = 0;
         if (!ignoreLeftover) {
-          fileApiBlockErrors += batchBlockErrors.length;
           for (const block of batchBlockErrors) {
+            if (block.code === "alreadyExists") {
+              fileCardOutcomes += 1;
+              if (batch.retry) {
+                batchRecovered += 1;
+              } else {
+                alreadyExistingCount += 1;
+              }
+              continue;
+            }
+            if (block.code === "payload_too_large") {
+              fileCardOutcomes += 1;
+              tooLargeCount += 1;
+              continue;
+            }
+            fileApiBlockErrors += 1;
             if (block.message.trim()) {
               blockErrorMessages.push(block.message.trim());
             }
           }
         }
-        if (result.list.length > 0) {
+        recoveredCount += batchRecovered;
+        importedCards += batchRecovered;
+        if (result.list.length > 0 || batchRecovered > 0) {
           fileImported = true;
           list.push(...result.list);
           importedCards += result.list.length;
@@ -366,25 +548,63 @@ export async function importVcfFilesBatch<TCard>(
           fileImported = true;
         }
       } catch (error) {
+        consecutiveFailures += 1;
         const reason = importErrorMessageFromUnknown(error, VCARD_IMPORT_FAILED_FALLBACK);
-        if (!(importedCards > 0 && isLeftoverImportErrorMessage(reason))) {
-          const labeled =
-            batchCount > 1 ? `Batch ${batchIndex} of ${batchCount}: ${reason}` : reason;
-          fileThrowReason = fileThrowReason ? `${fileThrowReason} ${labeled}` : labeled;
+        const retryable = isRetryableImportFailure(error);
+        if (retryable && consecutiveFailures < MAX_CONSECUTIVE_IMPORT_FAILURES) {
+          if (batch.blocks.length > 1) {
+            const half = Math.ceil(batch.blocks.length / 2);
+            cardCap = Math.min(cardCap, half);
+            queue.unshift(
+              { blocks: batch.blocks.slice(0, half), retry: true, attempts: 0 },
+              { blocks: batch.blocks.slice(half), retry: true, attempts: 0 },
+            );
+            pendingBatches += 1;
+            await wait(importRetryDelayMs(consecutiveFailures));
+            continue;
+          }
+          if (batch.attempts + 1 < SINGLE_CARD_ATTEMPTS) {
+            queue.unshift({ blocks: batch.blocks, retry: true, attempts: batch.attempts + 1 });
+            await wait(importRetryDelayMs(consecutiveFailures));
+            continue;
+          }
+        }
+        failedCardCount += batch.blocks.length;
+        if (retryable && consecutiveFailures >= MAX_CONSECUTIVE_IMPORT_FAILURES) {
+          stopped = true;
+          failFile(`${reason} ${VCARD_IMPORT_STOPPED}`, batchIndex);
+        } else if (!(importedCards > 0 && isLeftoverImportErrorMessage(reason))) {
+          failFile(reason, batchIndex);
         }
       }
+      pendingBatches -= 1;
       completedBatches += 1;
-      report(Math.min(completedBatches + 1, batchCount));
+      report(completedBatches + 1);
     }
 
     if (fileImported) importedFileCount += 1;
     blockErrors += fileApiBlockErrors;
-    if (fileThrowReason) {
-      fileErrors.push({ fileName: item.fileName, message: fileThrowReason });
-    } else if (!fileImported && item.oversizedCount === 0 && fileApiBlockErrors === 0) {
+    if (fileThrowReasons.length > 0) {
+      fileErrors.push({ fileName: item.fileName, message: fileThrowReasons.join(" ") });
+    } else if (
+      !fileImported &&
+      item.oversizedCount === 0 &&
+      fileApiBlockErrors === 0 &&
+      fileCardOutcomes === 0
+    ) {
       fileErrors.push({ fileName: item.fileName, message: "No vCard data found." });
     }
   }
 
-  return { list, fileErrors, blockErrors, blockErrorMessages, importedFileCount };
+  return {
+    list,
+    fileErrors,
+    blockErrors,
+    blockErrorMessages,
+    importedFileCount,
+    recoveredCount,
+    alreadyExistingCount,
+    tooLargeCount,
+    failedCardCount,
+  };
 }

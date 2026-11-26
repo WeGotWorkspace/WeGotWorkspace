@@ -258,4 +258,65 @@ describe("useContactsVcardImport", () => {
     expect(toastApi.showError.mock.calls[0]?.[0]).toMatch(/Forbidden\./);
     expect(toastApi.showError).not.toHaveBeenCalledWith("Invalid vCard block.");
   });
+
+  it("closes with a plain note when every card was already in the book", async () => {
+    const importVcards = vi.fn().mockResolvedValue({
+      list: [],
+      errors: [
+        { index: 0, message: "Already exists.", code: "alreadyExists" },
+        { index: 1, message: "Already exists.", code: "alreadyExists" },
+      ],
+    });
+    const { result } = renderHook(() =>
+      useContactsVcardImport({
+        labels: defaultContactsLabels,
+        operations: { importVcards } as unknown as ContactsAPIOperations,
+      }),
+    );
+
+    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Two\nEND:VCARD"].join("\n");
+    act(() => {
+      result.current.beginImport(fileListOf(new File([text], "again.vcf")));
+    });
+    await act(async () => {
+      result.current.submitImportDialog(result.current.importFiles!, "default");
+    });
+
+    expect(result.current.importDialogOpen).toBe(false);
+    expect(toastApi.showError).not.toHaveBeenCalled();
+    expect(toastApi.show).toHaveBeenCalledWith(
+      "2 were already in this address book.",
+      expect.anything(),
+    );
+  });
+
+  it("closes after a re-import where the rest is already there and one card is too large", async () => {
+    const importVcards = vi.fn().mockResolvedValue({
+      list: [],
+      errors: [
+        { index: 0, message: "Already exists.", code: "alreadyExists" },
+        { index: 1, message: "Too large.", code: "payload_too_large" },
+      ],
+    });
+    const { result } = renderHook(() =>
+      useContactsVcardImport({
+        labels: defaultContactsLabels,
+        operations: { importVcards } as unknown as ContactsAPIOperations,
+      }),
+    );
+
+    const text = ["BEGIN:VCARD\nFN:One\nEND:VCARD", "BEGIN:VCARD\nFN:Huge\nEND:VCARD"].join("\n");
+    act(() => {
+      result.current.beginImport(fileListOf(new File([text], "again.vcf")));
+    });
+    await act(async () => {
+      result.current.submitImportDialog(result.current.importFiles!, "default");
+    });
+
+    expect(result.current.importDialogOpen).toBe(false);
+    expect(result.current.importDialogError).toBeNull();
+    expect(toastApi.showError).toHaveBeenCalledWith(
+      "1 was already in this address book. 1 contact is too large to import.",
+    );
+  });
 });

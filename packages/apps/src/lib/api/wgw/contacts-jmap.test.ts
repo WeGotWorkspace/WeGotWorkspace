@@ -150,6 +150,27 @@ describe("contacts JMAP cutover leftovers", () => {
     ).resolves.toEqual({ list: [{ id: "card-1" }], errors: [] });
   });
 
+  it("importVcards reads a 400 that created nothing as per-card results", async () => {
+    const errors = [
+      { index: 0, message: "A contact with this UID already exists.", code: "alreadyExists" },
+    ];
+    wgwFetch.mockResolvedValue(
+      jsonResponse(400, { list: [], errors }, { statusText: "Bad Request" }),
+    );
+    await expect(
+      importVcards("BEGIN:VCARD\r\nEND:VCARD", { addressBookId: "default" }),
+    ).resolves.toEqual({ list: [], errors });
+  });
+
+  it("importVcards still throws on another status with a list body", async () => {
+    wgwFetch.mockResolvedValue(
+      jsonResponse(403, { list: [], errors: [] }, { statusText: "Forbidden" }),
+    );
+    await expect(
+      importVcards("BEGIN:VCARD\r\nEND:VCARD", { addressBookId: "default" }),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
   it("importVcards surfaces post_too_large when PHP prepended an HTML warning on 200", async () => {
     const body =
       "<br />\n<b>Warning</b>:  PHP Request Startup: POST Content-Length of 9437184 bytes exceeds the limit of 8388608 bytes in <b>Unknown</b> on line <b>0</b><br />\n" +
