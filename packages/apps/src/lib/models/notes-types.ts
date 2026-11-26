@@ -1,3 +1,4 @@
+import type { TeamOwnerOption } from "@/lib/sharing/team-owner-options";
 import type { Note } from "@/lib/models/note";
 import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 
@@ -35,10 +36,7 @@ export type NotesNotebookCollection = {
   } | null;
 };
 
-export type NotesDirectoryGroup = {
-  slug: string;
-  displayName: string;
-};
+export type NotesDirectoryGroup = TeamOwnerOption;
 
 export type NotesUIData = {
   notes: Note[];

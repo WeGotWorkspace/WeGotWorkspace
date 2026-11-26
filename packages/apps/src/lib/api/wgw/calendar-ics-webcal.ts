@@ -1,5 +1,10 @@
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
-import { wgwErrorMessageFromBody, wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  parseApiErrorJson,
+  wgwErrorMessageFromBody,
+  wgwFetch,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import type {
   CalendarFeed,
   CalendarSubscription,
@@ -12,8 +17,15 @@ export const CALENDAR_SUBSCRIPTION_STALE_MS = 60 * 60 * 1000;
 
 async function throwUnlessOk(res: Response, method: string, path: string): Promise<void> {
   if (res.ok || res.status === 204) return;
-  const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-  throw new WgwRequestError(`${method} ${path} failed (${res.status}): ${detail}`, res.status);
+  const body = await res.text();
+  const detail = wgwErrorMessageFromBody(body, res.status, res.statusText);
+  const code = parseApiErrorJson(body)?.code;
+  throw new WgwRequestError(
+    `${method} ${path} failed (${res.status}): ${detail}`,
+    res.status,
+    typeof code === "string" ? code : undefined,
+    detail,
+  );
 }
 
 async function readOkJson<T>(res: Response, method: string, path: string): Promise<T> {

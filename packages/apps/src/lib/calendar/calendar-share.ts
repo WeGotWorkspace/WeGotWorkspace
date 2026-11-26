@@ -1,3 +1,4 @@
+import { mapSettingsGroupsToTeamOptions } from "@/lib/sharing/team-owner-options";
 import type { CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type {
   CalendarDirectoryGroup,
@@ -111,14 +112,7 @@ export function calendarInfoFromJmap(calendar: JmapCalendar): CalendarInfo {
 }
 
 export function mapCalendarDirectoryGroups(
-  groups: { id: string; displayName: string }[],
+  groups: { id: string; displayName: string; isTeamAdmin?: boolean }[],
 ): CalendarDirectoryGroup[] {
-  return groups.map((group) => {
-    const prefix = "principals/groups/";
-    const slug = group.id.startsWith(prefix) ? group.id.slice(prefix.length) : group.id;
-    return {
-      slug,
-      displayName: group.displayName?.trim() || slug,
-    };
-  });
+  return mapSettingsGroupsToTeamOptions(groups);
 }

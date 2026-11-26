@@ -401,7 +401,7 @@ export async function fetchNotesVjournalBootstrap(): Promise<NotesAppBootstrap> 
   const settingsRead = await wgwSettingsStateRead.read();
   if (settingsRead.ok) {
     const settings = settingsRead.json as {
-      groups?: { id: string; displayName: string }[];
+      groups?: { id: string; displayName: string; isTeamAdmin?: boolean }[];
     };
     if (Array.isArray(settings.groups)) {
       groups = mapTaskProjectGroups(settings.groups);

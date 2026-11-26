@@ -1,3 +1,4 @@
+import { withRefusalReason } from "@/lib/api/refusal-reason";
 import { useCallback, useState } from "react";
 import { Tag } from "lucide-react";
 import type { CollectionShareWith } from "@/lib/sharing/collection-share";
@@ -50,8 +51,8 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
         selectView(`list:${created.id}`);
         show(L.toastProjectCreated);
         setProjectDialog(null);
-      } catch {
-        showMutationError(L.toastProjectSaveFailed);
+      } catch (error) {
+        showMutationError(withRefusalReason(L.toastProjectSaveFailed, error));
       }
     },
     [L, operations, selectView, setTaskLists, show, showMutationError],
@@ -91,8 +92,8 @@ export function useTasksProjectMutations({ shell }: UseTasksProjectMutationsArgs
         setTaskLists((prev) => prev.map((entry) => (entry.id === listId ? updated : entry)));
         show(L.toastProjectRenamed(trimmed), { icon: <Tag className="size-4" /> });
         setProjectDialog(null);
-      } catch {
-        showMutationError(L.toastProjectSaveFailed);
+      } catch (error) {
+        showMutationError(withRefusalReason(L.toastProjectSaveFailed, error));
       }
     },
     [L, operations, setTaskLists, show, showMutationError, taskLists],

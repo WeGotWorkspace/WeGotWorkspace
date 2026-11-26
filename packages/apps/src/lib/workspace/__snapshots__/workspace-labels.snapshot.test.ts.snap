@@ -2529,6 +2529,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: notes 1`
     "Deleted “Alpha”. Its notes moved to “readOnly”.",
     "Deleted “Alpha”. Its notes moved to “notSaved”.",
   ],
+  "toastNotebookSaveFailed": "Could not save notebook",
   "toastNotebookShareRemoved": "Notebook removed",
   "toastNotebookUpdated": "Notebook updated",
   "toastSaved": "Note saved",
@@ -2553,6 +2554,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: ownerSco
     "Alpha (Team)",
   ],
   "label": "Owner",
+  "noTeamAdminHint": "Only a team admin can add to a Team, and you are not one. Ask a team admin.",
   "personal": [
     "Only Me",
     "Only Me",

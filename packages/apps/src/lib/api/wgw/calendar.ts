@@ -147,7 +147,7 @@ export async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGr
     const settingsRead = await wgwSettingsStateRead.read();
     if (!settingsRead.ok) return undefined;
     const settings = settingsRead.json as {
-      groups?: { id: string; displayName: string }[];
+      groups?: { id: string; displayName: string; isTeamAdmin?: boolean }[];
     };
     return Array.isArray(settings.groups) ? mapCalendarDirectoryGroups(settings.groups) : undefined;
   } catch {

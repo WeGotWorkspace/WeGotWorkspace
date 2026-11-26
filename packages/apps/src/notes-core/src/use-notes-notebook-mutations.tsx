@@ -1,3 +1,4 @@
+import { withRefusalReason } from "@/lib/api/refusal-reason";
 import { useCallback, useState } from "react";
 import type { CollectionShareWith } from "@/lib/sharing/collection-share";
 import type {
@@ -110,13 +111,14 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         setNotebookDialog(null);
         acceptCreatedNotebook(collection);
         return collection;
-      } catch {
-        showMutationError();
+      } catch (error) {
+        showMutationError(withRefusalReason(L.toastNotebookSaveFailed, error));
         return undefined;
       }
     },
     [
       L.toastNotebookCreated,
+      L.toastNotebookSaveFailed,
       acceptCreatedNotebook,
       operations,
       selectView,
@@ -171,12 +173,13 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         }
         show(L.toastNotebookUpdated);
         setNotebookDialog(null);
-      } catch {
-        showMutationError();
+      } catch (error) {
+        showMutationError(withRefusalReason(L.toastNotebookSaveFailed, error));
       }
     },
     [
       L.toastNotebookUpdated,
+      L.toastNotebookSaveFailed,
       notebookCollections,
       operations,
       setNotebookCollections,

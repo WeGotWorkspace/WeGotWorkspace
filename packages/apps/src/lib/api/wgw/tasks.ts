@@ -1,3 +1,4 @@
+import { mapSettingsGroupsToTeamOptions } from "@/lib/sharing/team-owner-options";
 import { WgwAppDisabledError } from "@/lib/api/wgw/app-disabled-error";
 import { ApiError } from "@/lib/api/api-error";
 import type {
@@ -327,16 +328,9 @@ export async function deleteTaskList(
 }
 
 export function mapTaskProjectGroups(
-  groups: { id: string; displayName: string }[],
+  groups: { id: string; displayName: string; isTeamAdmin?: boolean }[],
 ): TaskProjectGroupOption[] {
-  return groups.map((group) => {
-    const prefix = "principals/groups/";
-    const slug = group.id.startsWith(prefix) ? group.id.slice(prefix.length) : group.id;
-    return {
-      slug,
-      displayName: group.displayName?.trim() || slug,
-    };
-  });
+  return mapSettingsGroupsToTeamOptions(groups);
 }
 
 export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
@@ -348,7 +342,7 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
   if (settingsRead.ok) {
     const settings = settingsRead.json as {
       apps?: { tasks?: boolean };
-      groups?: { id: string; displayName: string }[];
+      groups?: { id: string; displayName: string; isTeamAdmin?: boolean }[];
     };
     if (settings.apps?.tasks === false) {
       throw new WgwAppDisabledError("TASKS_SETTINGS_MISSING");

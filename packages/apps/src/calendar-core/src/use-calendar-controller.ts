@@ -1,3 +1,4 @@
+import { withRefusalReason } from "@/lib/api/refusal-reason";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -990,11 +991,14 @@ export function useCalendarController({
           show(L.toastCalendarUpdated);
           setCalendarDialog(null);
           onMutated?.();
-        } catch {
+        } catch (error) {
           showError(
-            calendarDialog.mode === "subscribe"
-              ? L.toastCalendarSubscribeFailed
-              : L.toastCalendarSaveFailed,
+            withRefusalReason(
+              calendarDialog.mode === "subscribe"
+                ? L.toastCalendarSubscribeFailed
+                : L.toastCalendarSaveFailed,
+              error,
+            ),
           );
         } finally {
           setCalendarDialogBusy(false);
