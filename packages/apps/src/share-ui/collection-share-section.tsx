@@ -125,6 +125,8 @@ export function CollectionShareSection({
         confirmation,
         recordPending ? { description: shareLabels.accessSavedRecordPending } : undefined,
       );
+    } catch {
+      // The caller reports the failure; no confirmation toast and no unhandled rejection.
     } finally {
       setBusy(false);
     }

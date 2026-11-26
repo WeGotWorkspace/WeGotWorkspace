@@ -2531,6 +2531,34 @@ exports[`workspace label snapshot > resolved labels match the snapshot: ownerSco
 
 exports[`workspace label snapshot > resolved labels match the snapshot: share 1`] = `
 {
+  "accessChanged": [
+    "Access updated for 0.",
+    "Access updated for 1.",
+    "Access updated for 2.",
+    "Access updated for Alpha.",
+    "Access updated for Alpha.",
+    "Access updated for Alpha.",
+    "Access updated for Alpha.",
+  ],
+  "accessGranted": [
+    "0 now has access.",
+    "1 now has access.",
+    "2 now has access.",
+    "Alpha now has access.",
+    "Alpha now has access.",
+    "Alpha now has access.",
+    "Alpha now has access.",
+  ],
+  "accessRemoved": [
+    "0 no longer has access.",
+    "1 no longer has access.",
+    "2 no longer has access.",
+    "Alpha no longer has access.",
+    "Alpha no longer has access.",
+    "Alpha no longer has access.",
+    "Alpha no longer has access.",
+  ],
+  "accessSavedRecordPending": "Access is saved. Your other changes still need Save.",
   "addTeamGrantPlaceholder": "Add people or Teams…",
   "confirmCancel": "Cancel",
   "confirmContinue": "Continue",

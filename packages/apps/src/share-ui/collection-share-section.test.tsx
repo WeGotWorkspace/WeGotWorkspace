@@ -151,13 +151,10 @@ describe("CollectionShareSection", () => {
           onPatchShareWith={onPatchShareWith}
         />,
       );
-      const swallow = (event: PromiseRejectionEvent) => event.preventDefault();
-      window.addEventListener("unhandledrejection", swallow);
       fireEvent.click(screen.getByRole("button", { name: shareLabels.removeGrant }));
       fireEvent.click(screen.getByRole("button", { name: shareLabels.confirmContinue }));
       await waitFor(() => expect(onPatchShareWith).toHaveBeenCalled());
       expect(showSuccess).not.toHaveBeenCalled();
-      window.removeEventListener("unhandledrejection", swallow);
     });
   });
 });
