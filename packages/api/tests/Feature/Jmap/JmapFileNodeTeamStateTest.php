@@ -219,8 +219,11 @@ final class JmapFileNodeTeamStateTest extends WgwDatabaseTestCase
         $disk->delete('groups/team/Plans/a.md');
         $index->recordDelete('groups/team/Plans/a.md');
 
+        // Arrivals require a live node: the tombstone is destroyed only, never in both lists.
         $bob = $this->changes('bob', $bobState);
         $this->assertNotContains($childId, $bob['updated']);
+        $this->assertContains($childId, $bob['destroyed']);
+        $this->assertSame([], array_intersect($bob['updated'], $bob['destroyed']));
     }
 
     /**
