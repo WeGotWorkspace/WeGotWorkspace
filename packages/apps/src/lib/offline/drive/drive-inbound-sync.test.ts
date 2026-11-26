@@ -798,6 +798,50 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
     expect(await readCachedDriveNodeId(username, "/users/ada/Out/c.md")).toBe("fn-out-c");
   });
 
+  it("a renamed file keeps its offline blob", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/draft.md", "fn-draft"));
+    await writeDriveContentBlob(username, "/users/ada/draft.md", new Blob(["body"]));
+    installCatalog(
+      new Map([
+        ["fn-draft", withPath(node("fn-draft", "fn-home", "final.md"), "/users/ada/final.md")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-draft"], newState: "11" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect((await blobs.get("users/ada/final.md"))?.size).toBe(4);
+    expect(await blobs.get("users/ada/draft.md")).toBeUndefined();
+    expect((await table().toCollection().primaryKeys()).sort()).toEqual(["users/ada/final.md"]);
+  });
+
+  it("two files that swap paths keep their own blobs", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
+    await upsertDriveEntry(username, entry("/users/ada/b.md", "fn-b"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    installCatalog(
+      new Map([
+        ["fn-a", withPath(node("fn-a", "fn-home", "b.md"), "/users/ada/b.md")],
+        ["fn-b", withPath(node("fn-b", "fn-home", "a.md"), "/users/ada/a.md")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-a", "fn-b"], newState: "12" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await readCachedDriveNodeId(username, "/users/ada/a.md")).toBe("fn-b");
+    expect(await readCachedDriveNodeId(username, "/users/ada/b.md")).toBe("fn-a");
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect((await blobs.get("users/ada/a.md"))?.size).toBe(2);
+    expect((await blobs.get("users/ada/b.md"))?.size).toBe(1);
+  });
+
   it("updated ids are fetched in maxObjectsInGet batches", async () => {
     const ids = Array.from({ length: 1200 }, (_, index) => `fn-${index}`);
     installCatalog(new Map());
@@ -880,6 +924,66 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     ]);
     expect(await listed(mine)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
     expect(await readDriveSyncToken(username)).toBe("6");
+  });
+
+  it("a folder renamed onto another folder's old path keeps a doc under each", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/reports-2024", "fn-r24", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/reports-2024/old.md", "fn-old"));
+    await upsertDriveEntry(username, entry("/users/ada/reports", "fn-r", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/reports/new.md", "fn-new"));
+    const docs = [doc("users/ada/reports-2024/old.md", 1), doc("users/ada/reports/new.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        [
+          "fn-r",
+          {
+            ...node("fn-r", "fn-home", "reports-2024", "directory"),
+            path: "/users/ada/reports-2024",
+          },
+        ],
+        [
+          "fn-r24",
+          {
+            ...node("fn-r24", "fn-home", "reports-2024-old", "directory"),
+            path: "/users/ada/reports-2024-old",
+          },
+        ],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-r", "fn-r24"], newState: "7" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const cached = await readDocsListingFromCache(username, all);
+    const byKey = new Map(cached?.results.map((row) => [row.sourceKey, row.id]));
+    expect([...byKey.keys()].sort()).toEqual([
+      "users/ada/reports-2024-old/old.md",
+      "users/ada/reports-2024/new.md",
+    ]);
+    expect(byKey.get("users/ada/reports-2024-old/old.md")).toBe(1);
+    expect(byKey.get("users/ada/reports-2024/new.md")).toBe(2);
+  });
+
+  it("two docs that swap paths keep their own rows in the Docs views", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
+    await upsertDriveEntry(username, entry("/users/ada/b.md", "fn-b"));
+    const docs = [doc("users/ada/a.md", 1), doc("users/ada/b.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        ["fn-a", { ...node("fn-a", "fn-home", "b.md"), path: "/users/ada/b.md" }],
+        ["fn-b", { ...node("fn-b", "fn-home", "a.md"), path: "/users/ada/a.md" }],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-a", "fn-b"], newState: "8" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const cached = await readDocsListingFromCache(username, all);
+    const byKey = new Map(cached?.results.map((row) => [row.sourceKey, row.id]));
+    expect(byKey.get("users/ada/b.md")).toBe(1);
+    expect(byKey.get("users/ada/a.md")).toBe(2);
   });
 
   it("moves a Doc renamed elsewhere in every view when the full crawl finds it", async () => {

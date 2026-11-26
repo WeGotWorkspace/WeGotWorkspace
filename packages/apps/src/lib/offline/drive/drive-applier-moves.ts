@@ -84,6 +84,18 @@ export async function moveRowsUnderMovedPaths(
   }
   for (const { row, id, area } of planned) {
     const entry = parseEntry(row.data);
+    if (row.type !== "dir") {
+      docsChanges.push({
+        kind: "moved",
+        from: `/${row.id}`,
+        to: `/${id}`,
+        node: {
+          directory: false,
+          size: typeof entry.size === "number" ? entry.size : 0,
+          modifiedAt: typeof entry.time === "number" ? entry.time : 0,
+        },
+      });
+    }
     await table.put({
       ...row,
       id,
