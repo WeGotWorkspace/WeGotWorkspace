@@ -79,6 +79,8 @@ function ListHarness({
     toggleStar: () => {},
     toggleArchive: () => {},
     selectionBar: null,
+    listSort: { key: "modified", direction: "desc" },
+    onListSortChange: () => {},
   });
   const content =
     slot === "both" ? (
@@ -122,6 +124,15 @@ describe("NotesListPanel refresh vs initial load", () => {
 });
 
 describe("NotesListPanel header chrome", () => {
+  it("shows the sort control in every view header", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness notes={[baseNote]} view="starred" viewLabel="Starred" slot="header" />
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole("button", { name: defaultNotesLabels.sortMenu })).toBeTruthy();
+  });
+
   it("does not show edit or delete notebook controls on the view header", () => {
     render(
       <TooltipProvider>

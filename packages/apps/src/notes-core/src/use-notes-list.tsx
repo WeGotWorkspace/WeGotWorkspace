@@ -5,7 +5,14 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { afterViewTransition } from "@/lib/view-transition";
+import { useListSort } from "@/hooks/use-list-sort";
 import { filterNotesByHiddenNotebooks, filterVisibleNotes } from "./notes-note-utils";
+import {
+  NOTES_DEFAULT_SORT,
+  NOTES_SORT_FIRST_DIRECTION,
+  NOTES_SORT_STORAGE_KEY,
+  sortNotes,
+} from "./notes-list-sort";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import type { NotesShellState } from "./use-notes-shell";
 
@@ -92,22 +99,32 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     [notebookCollections],
   );
 
+  const { sort: listSort, chooseSort: setListSort } = useListSort({
+    columns: NOTES_SORT_FIRST_DIRECTION,
+    defaultSort: NOTES_DEFAULT_SORT,
+    storageKey: NOTES_SORT_STORAGE_KEY,
+  });
+
   const visibleNotes = useMemo(
     () =>
-      filterNotesByHiddenNotebooks(
-        filterVisibleNotes(notes, {
+      sortNotes(
+        filterNotesByHiddenNotebooks(
+          filterVisibleNotes(notes, {
+            view,
+            archived,
+            starred,
+            searchQuery,
+            sharedNotebookKeys,
+            notebookCollections,
+          }),
           view,
-          archived,
-          starred,
-          searchQuery,
-          sharedNotebookKeys,
-          notebookCollections,
-        }),
-        view,
-        hiddenNotebookIds,
+          hiddenNotebookIds,
+        ),
+        listSort,
       ),
     [
       archived,
+      listSort,
       hiddenNotebookIds,
       notebookCollections,
       notes,
@@ -228,6 +245,8 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     setActiveId,
     active,
     visibleNotes,
+    listSort,
+    setListSort,
     selectedIds,
     setSelectedIds,
     selectionMode,

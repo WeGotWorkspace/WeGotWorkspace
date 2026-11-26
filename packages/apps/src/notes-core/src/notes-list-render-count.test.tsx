@@ -84,6 +84,8 @@ function NotesListHarness({
     toggleStar: () => {},
     toggleArchive: () => {},
     selectionBar: null,
+    listSort: { key: "modified", direction: "desc" },
+    onListSortChange: () => {},
   });
   return <TooltipProvider>{panel.listContent}</TooltipProvider>;
 }

@@ -137,6 +137,8 @@ export function useNotesController({
     editDialog: mutations.editDialog,
     deleteDialog: mutations.deleteDialog,
     visibleNotes: list.visibleNotes,
+    listSort: list.listSort,
+    setListSort: list.setListSort,
     workspaceLayoutRef: shell.workspaceLayoutRef,
     isTouch: list.isTouch,
     confirmDialog: mutations.confirmDialog,
