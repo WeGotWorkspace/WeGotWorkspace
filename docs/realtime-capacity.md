@@ -75,6 +75,15 @@ A shared host's firewall may block an IP above about 60 requests a minute, and i
 
 `WGW_TRAFFIC_PROFILE` picks the profile; `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE` and `WGW_TRAFFIC_BURST` override one number each (clamped 0–10000; `0` turns pacing off for the two per-minute numbers, a burst of `0` is applied as `1`). Until a browser has read the header it holds the `shared` numbers. Without a service worker (first visit, private window) the client's own pacing (pacer, idle cadence) still holds; the governor is the second line. A browser that is idle or has every tab hidden is slowed by the clients' cadence (6 s and 30 s push), not by this budget.
 
+### Meet call setup lane (#2419)
+
+While a Meet call is joining or negotiating, the page tells the service worker (`wgw-meet-lane` message: `join`, `negotiating`, `call`, `left`) and the governor lets Meet room polls (not presence `p_…` or collab `f_…` rooms) skip the background queue, and the push doorbell read skip it for as long as a call is on. Nothing else is touched: `/changes`, notifications and other rooms stay governed, writes were never delayed, and a 429/503 brake still holds the lane back.
+
+- The poll lane closes 30 s after the last `join` or `negotiating` signal, at most 45 s after it opened. It has its own bucket: 10 polls at once, 20 a minute, so one opening is at most 25 lane polls (about 13 in any 10 s).
+- A member's lane polls are also charged to the background bucket and stop at half a burst of debt (5), so the governed total in any minute stays under 30 + 10 + 5 = 45 on `shared`, plus the join and signaling writes (about 10) and unmetered doorbell reads, which stay on the clients' own 3 s / 6 s cadence. The idle rate is unchanged: no signal, no lane.
+- An unauthenticated guest (no push stream) gets 10 more lane polls per join, not charged to any bucket: at most 35 per opening, and a guest browser sends nothing else.
+- Server side nothing counts the lane: the budget header only tells the client its numbers, and the room routes' own limits (300 a minute per actor and room) are far above this. An office behind one IP still needs the host to allow it, as before.
+
 ## JMAP push (event source)
 
 Open apps learn about changes through short-burst requests to `GET /api/v1/jmap/events/{types}/{closeafter}/{ping}` ([architecture/jmap-push.md](architecture/jmap-push.md)). Each request computes the per-type states, answers at once and closes. The client reconnects after `retry:` (`WGW_JMAP_PUSH_RETRY_MS`, default 3000 ms). A request never holds an FPM child open.

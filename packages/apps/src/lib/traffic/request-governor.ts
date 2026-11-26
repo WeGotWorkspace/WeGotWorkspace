@@ -74,9 +74,10 @@ export function isMeetLaneSignal(value: unknown): value is MeetLaneSignal {
 }
 
 /**
- * The Meet signaling lane. Worst case per browser: `burst + perMinute * windowMs`
- * lane polls per window (10 + 20 × 0.5 = 20, a guest 10 more), each also charged
- * to the background bucket, so the average stays at the budget.
+ * The Meet signaling lane. Worst case per browser and opening: `burst` plus
+ * `perMinute` over `maxOpenMs` = 10 + 20 × 0.75 = 25 lane polls (a guest 10 more).
+ * A member's are charged to the background bucket and stop at half a burst of
+ * debt, so the governed total in any minute stays under 30 + 10 + 5 = 45.
  */
 export const MEET_LANE = {
   /** The lane stays open this long after the last `join` / `negotiating` signal. */
@@ -251,6 +252,12 @@ export class RequestGovernor {
       this.laneTokens += MEET_LANE.guestBonus;
     }
     if (this.laneTokens < 1) return false;
+    // A member's lane polls are charged to the background bucket; past half a
+    // burst of debt they queue again, so the governed total stays near the budget.
+    if (!guest) {
+      this.refill();
+      if (this.tokens <= -this.options.burst / 2) return false;
+    }
     this.laneTokens -= 1;
     if (!guest) this.charge();
     return true;

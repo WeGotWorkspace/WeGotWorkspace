@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { MEET_LANE, RequestGovernor } from "./request-governor";
 
-function harness(options: { status?: number } = {}) {
+function harness(options: { status?: number; burst?: number } = {}) {
+  const burst = options.burst ?? 3;
   let clock = 1_000_000;
   const sent: string[] = [];
   const governor = new RequestGovernor({
     backgroundPerMinute: 30,
-    burst: 3,
+    burst,
     bulkPerMinute: 20,
     coalesceTtlMs: 15_000,
     maxWaitMs: 30_000,
@@ -19,7 +20,7 @@ function harness(options: { status?: number } = {}) {
       return new Response("{}", { status: options.status ?? 200 });
     },
   });
-  return { governor, sent, advance: (ms: number) => (clock += ms), now: () => clock };
+  return { governor, sent, burst, advance: (ms: number) => (clock += ms), now: () => clock };
 }
 
 const get = (path: string, headers: Record<string, string> = {}) =>
@@ -28,7 +29,8 @@ const member = (path: string) => get(path, { Authorization: "Bearer a" });
 
 /** Drains the burst so the next governed request has to wait for a token. */
 async function emptyBucket(h: ReturnType<typeof harness>) {
-  for (let i = 0; i < 3; i += 1) await h.governor.handle(get("/files/x/changes"), "background");
+  for (let i = 0; i < h.burst; i += 1)
+    await h.governor.handle(get("/files/x/changes"), "background");
 }
 
 /** How long (fake clock) a governed request waited before it was sent. */
@@ -114,7 +116,7 @@ describe("Meet signaling lane (#2419)", () => {
   });
 
   it("bounds the lane: past its bucket a poll waits in the queue again", async () => {
-    const h = harness();
+    const h = harness({ burst: 40 });
     await emptyBucket(h);
     h.governor.signalMeetLane("join");
     let free = 0;
@@ -126,12 +128,34 @@ describe("Meet signaling lane (#2419)", () => {
   });
 
   it("charges the lane to the background bucket so the average stays at the budget", async () => {
-    const h = harness();
+    const h = harness({ burst: 10 });
+    await emptyBucket(h);
     h.governor.signalMeetLane("join");
-    for (let i = 0; i < 6; i += 1) await h.governor.handle(member(MEET_POLL), "background");
+    for (let i = 0; i < 5; i += 1) await h.governor.handle(member(MEET_POLL), "background");
     h.governor.signalMeetLane("left");
     // The bucket is in debt: the next background poll waits for it to recover.
     expect(await waited(h, member("/files/x/changes"))).toBeGreaterThan(5_000);
+  });
+
+  it("stops a member's lane at half a burst of debt", async () => {
+    const h = harness({ burst: 10 });
+    h.governor.signalMeetLane("join");
+    let free = 0;
+    for (let i = 0; i < 12; i += 1) {
+      if ((await waited(h, member(MEET_POLL))) !== 0) break;
+      free += 1;
+    }
+    // 10 tokens, floor -5: 15 charged polls at most, the lane bucket (10) ends it first.
+    expect(free).toBe(MEET_LANE.burst);
+    const tight = harness({ burst: 4 });
+    tight.governor.signalMeetLane("join");
+    let tightFree = 0;
+    for (let i = 0; i < 12; i += 1) {
+      if ((await waited(tight, member(MEET_POLL))) !== 0) break;
+      tightFree += 1;
+    }
+    // 4 tokens, floor -2: six charged polls, then the queue.
+    expect(tightFree).toBe(6);
   });
 
   it("gives an unauthenticated guest one extra burst per join, exempt from the bucket", async () => {
