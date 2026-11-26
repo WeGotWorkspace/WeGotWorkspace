@@ -76,6 +76,11 @@ export const shareLabels = {
   viaGroup: (groupLabel: string) => `via ${groupLabel}`,
   loadError: "Could not load sharing settings.",
   mutationError: "Could not update sharing settings.",
+  accessGranted: (name: string) => `${name} now has access.`,
+  accessChanged: (name: string) => `Access updated for ${name}.`,
+  accessRemoved: (name: string) => `${name} no longer has access.`,
+  /** Toast detail when access saved at once but the name, colour or owner is still unsaved. */
+  accessSavedRecordPending: "Access is saved. Your other changes still need Save.",
   guestAlreadyHasAccess: "This guest already has access.",
   copiedLink: "Link copied.",
   publicLinkOpeningTitle: "Opening shared link…",

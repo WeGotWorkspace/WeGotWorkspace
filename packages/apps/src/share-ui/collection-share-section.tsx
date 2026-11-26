@@ -10,6 +10,7 @@ import {
   type CollectionShareWith,
 } from "@/lib/sharing/collection-share";
 import { NOTES_SHARE_UI_PERMISSIONS } from "@/lib/sharing/share-access-map";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { ShareAccessCard } from "@/share-ui/share-access-card";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { noTeamYetCopy, shareLabels } from "@/share-ui/share-labels";
@@ -54,6 +55,11 @@ export type CollectionShareSectionProps = {
   accessSelect?: boolean;
   /** The viewer is in no Team: say so instead of the hint and the no-match text. */
   noTeam?: boolean;
+  /**
+   * The dialog also has unsaved name, colour or owner edits. Access still saves at once;
+   * the confirmation toast says the other edits wait for Save.
+   */
+  recordPending?: boolean;
   onSearchPrincipals: (query: string) => Promise<CollectionSharePrincipal[]>;
   onPatchShareWith: (collectionId: string, shareWith: CollectionShareWith) => Promise<void>;
 };
@@ -68,6 +74,7 @@ export function CollectionShareSection({
   dialogClassName,
   accessSelect = true,
   noTeam = false,
+  recordPending = false,
   onSearchPrincipals,
   onPatchShareWith,
 }: CollectionShareSectionProps) {
@@ -78,6 +85,7 @@ export function CollectionShareSection({
   const [searching, setSearching] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { showSuccess } = useAppToast();
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -104,12 +112,19 @@ export function CollectionShareSection({
     meta: entry.memberCount != null ? shareLabels.membersSuffix(entry.memberCount) : undefined,
   }));
 
-  const patchShare = async (nextShareWith: CollectionShareWith): Promise<void> => {
+  const patchShare = async (
+    nextShareWith: CollectionShareWith,
+    confirmation: string,
+  ): Promise<void> => {
     if (locked || busy) return;
     setBusy(true);
     try {
       await onPatchShareWith(collectionId, nextShareWith);
       setQuery("");
+      showSuccess(
+        confirmation,
+        recordPending ? { description: shareLabels.accessSavedRecordPending } : undefined,
+      );
     } finally {
       setBusy(false);
     }
@@ -133,9 +148,10 @@ export function CollectionShareSection({
             onSelect={(option) => {
               const entry = selectableResults.find((row) => row.id === option.id);
               if (!entry) return;
-              void patchShare({
-                [entry.id]: shareRightsForPermission(accessSelect ? "view" : "edit"),
-              });
+              void patchShare(
+                { [entry.id]: shareRightsForPermission(accessSelect ? "view" : "edit") },
+                shareLabels.accessGranted(entry.displayName),
+              );
             }}
           >
             <ShareDialogInput
@@ -168,9 +184,10 @@ export function CollectionShareSection({
               onAccessChange={
                 accessSelect
                   ? (next) => {
-                      void patchShare({
-                        [grant.id]: shareRightsForPermission(next),
-                      });
+                      void patchShare(
+                        { [grant.id]: shareRightsForPermission(next) },
+                        shareLabels.accessChanged(title),
+                      );
                     }
                   : undefined
               }
@@ -199,7 +216,10 @@ export function CollectionShareSection({
                 if (!pendingRemoval) return;
                 const id = pendingRemoval;
                 setPendingRemoval(null);
-                void patchShare({ [id]: null });
+                void patchShare(
+                  { [id]: null },
+                  shareLabels.accessRemoved(displayNameForSharePrincipal(id, knownPrincipals)),
+                );
               }}
             >
               {shareLabels.confirmContinue}

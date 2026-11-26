@@ -6,6 +6,7 @@ import { taskProjectDialogLabelsFrom } from "@/tasks-core/src/tasks-project-dial
 import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASK_LIST_COLOR, taskListDotColor } from "@/lib/models/task-lists";
 import { TooltipProvider } from "@/ui/tooltip";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 const dialogLabels = taskProjectDialogLabelsFrom(defaultTasksLabels);
 
@@ -336,6 +337,46 @@ describe("ProjectDialog", () => {
     expect(screen.getByText(defaultTasksLabels.shareListSectionTitle)).toBeTruthy();
     expect(screen.getByText(defaultTasksLabels.shareListSectionHint)).toBeTruthy();
     expect(screen.queryByText("calendar")).toBeNull();
+  });
+
+  it("shows Done alone while only access can change, Save and Cancel once the name is edited", () => {
+    const onClose = vi.fn();
+    render(
+      <ProjectDialog
+        dialog={{
+          mode: "edit",
+          listId: "inbox",
+          name: "Inbox",
+          color: "#6366f1",
+          scope: "personal",
+          groupSlug: null,
+          mayShare: true,
+          shareWith: null,
+        }}
+        groups={groups}
+        personalOwnerLabel="Demo User"
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        labels={dialogLabels}
+        share={{
+          online: true,
+          onSearchPrincipals: async () => [],
+          onPatchShareWith: async () => undefined,
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.cancel })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultTasksLabels.saveProjectButton })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: workspaceLabels.dialog.done }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByLabelText(defaultTasksLabels.projectNameLabel), {
+      target: { value: "Inbox 2" },
+    });
+    expect(screen.queryByRole("button", { name: workspaceLabels.dialog.done })).toBeNull();
+    expect(screen.getByRole("button", { name: defaultTasksLabels.cancel })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultTasksLabels.saveProjectButton })).toBeTruthy();
   });
 
   it("lets a sharee rename and offers Remove list", () => {
