@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { signalMeetLane } from "@/lib/traffic/meet-lane-client";
 import { MeshPollLoop, type MeshPollLoopContext } from "@/lib/rtc/session/mesh-poll-loop";
 import {
   DOORBELL_HEARTBEAT_POLL_INTERVAL_MS,
@@ -22,6 +23,8 @@ function stableMeetCadence(): MeshPollCadenceSnapshot {
     peerConnectionCount: 1,
   };
 }
+
+const postMessage = vi.fn();
 
 async function flushMicrotasks(): Promise<void> {
   for (let i = 0; i < 8; i++) await Promise.resolve();
@@ -258,5 +261,54 @@ describe("MeshPollLoop behind the push doorbell (#2294)", () => {
 
     loop.release();
     expect(bell.rings.size).toBe(0);
+  });
+});
+
+describe("MeshPollLoop Meet call lane signals (#2419)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("navigator", { serviceWorker: { controller: { postMessage } } });
+    postMessage.mockClear();
+    signalMeetLane("left", 0);
+    postMessage.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const signals = () => postMessage.mock.calls.map(([message]) => message.signal as string);
+
+  it("tells the worker a Meet room is in a call and re-sends it while quiet", () => {
+    const { loop } = createLoop();
+    loop.schedule(true);
+    expect(signals()).toEqual(["call"]);
+    vi.setSystemTime(Date.now() + 20_000);
+    vi.advanceTimersByTime(15_000);
+    expect(signals().filter((signal) => signal === "call").length).toBeGreaterThan(1);
+    loop.stop();
+    expect(signals().at(-1)).toBe("left");
+  });
+
+  it("opens the negotiation window only while a peer is being dialled", () => {
+    const connected = createLoop();
+    connected.loop.schedule(false);
+    expect(signals()).not.toContain("negotiating");
+    connected.loop.stop();
+    postMessage.mockClear();
+    const dialling = createLoop({
+      cadence: () => ({ ...stableMeetCadence(), linkStateOf: () => null }),
+    });
+    dialling.loop.schedule(false);
+    expect(signals()).toContain("negotiating");
+    dialling.loop.stop();
+  });
+
+  it("stays silent for other channels", () => {
+    const { loop } = createLoop({ cadence: () => ({ ...stableMeetCadence(), channel: "collab" }) });
+    loop.schedule(false);
+    loop.stop();
+    expect(postMessage).not.toHaveBeenCalled();
   });
 });
