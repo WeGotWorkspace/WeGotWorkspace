@@ -555,20 +555,23 @@ export async function importVcfFilesBatch<TCard>(
         consecutiveFailures += 1;
         const reason = importErrorMessageFromUnknown(error, VCARD_IMPORT_FAILED_FALLBACK);
         const retryable = isRetryableImportFailure(error);
+        // A 413 is refused before any card is written, so "already exists" on its resend
+        // means the card was there before this import, not that the lost request wrote it.
+        const retry = batch.retry || importFailureStatus(error) !== 413;
         if (retryable && consecutiveFailures < MAX_CONSECUTIVE_IMPORT_FAILURES) {
           if (batch.blocks.length > 1) {
             const half = Math.ceil(batch.blocks.length / 2);
             cardCap = Math.min(cardCap, half);
             queue.unshift(
-              { blocks: batch.blocks.slice(0, half), retry: true, attempts: 0 },
-              { blocks: batch.blocks.slice(half), retry: true, attempts: 0 },
+              { blocks: batch.blocks.slice(0, half), retry, attempts: 0 },
+              { blocks: batch.blocks.slice(half), retry, attempts: 0 },
             );
             pendingBatches += 1;
             await wait(importRetryDelayMs(consecutiveFailures));
             continue;
           }
           if (batch.attempts + 1 < SINGLE_CARD_ATTEMPTS) {
-            queue.unshift({ blocks: batch.blocks, retry: true, attempts: batch.attempts + 1 });
+            queue.unshift({ blocks: batch.blocks, retry, attempts: batch.attempts + 1 });
             await wait(importRetryDelayMs(consecutiveFailures));
             continue;
           }

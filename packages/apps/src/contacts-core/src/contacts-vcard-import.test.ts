@@ -660,6 +660,28 @@ describe("importVcfFilesBatch adapts to server limits", () => {
     ).toEqual({ failed: false, message: null });
   });
 
+  it("counts a card already in the book as existing when its batch is resent after a 413", async () => {
+    const server = fakeBook(100, ["A"]);
+    let first = true;
+    const importOne = vi.fn(async (text: string) => {
+      if (first) {
+        first = false;
+        throw statusError(413, "Payload too large");
+      }
+      return server.importOne(text);
+    });
+
+    const result = await importVcfFilesBatch(
+      [new File([["A", "B", "C", "D"].map((name) => card(name)).join("\n")], "big.vcf")],
+      importOne,
+      { wait: noWait },
+    );
+
+    expect(result.list).toHaveLength(3);
+    expect(result.recoveredCount).toBe(0);
+    expect(result.alreadyExistingCount).toBe(1);
+  });
+
   it("re-importing the same file skips cards already in the book and says so", async () => {
     const names = ["A", "B", "C", "D"];
     const server = fakeBook(100, ["A", "B", "C"]);
