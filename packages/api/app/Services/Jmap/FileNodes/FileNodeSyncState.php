@@ -43,7 +43,9 @@ final class FileNodeSyncState
 
     public function scopeHash(string $username): string
     {
-        return self::hashScope($this->accounts->accountRootsFor($username), $this->accounts->memberGrantPairs($username));
+        ['accountRoots' => $accountRoots, 'grantPairs' => $grantPairs] = $this->accounts->accountRootsAndGrantPairs($username);
+
+        return self::hashScope($accountRoots, $grantPairs);
     }
 
     /**

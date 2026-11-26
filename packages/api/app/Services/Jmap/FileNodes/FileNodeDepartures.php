@@ -45,7 +45,9 @@ final class FileNodeDepartures
      * - `arrived` (#2063): out of sight at $since, live and visible now, and created at or
      *   before $since. `recordMove` bumps only the moved node, so without this a folder dragged
      *   from someone's home into a Team drive reaches the other members without its children.
-     *   A node created after $since is in the main loop's `created` already.
+     *   A node created after $since is in the main loop's `created` already. A node that was
+     *   visible but under a dot folder (`.notes`, `.attachments`; not a list path) and is on a
+     *   list path now arrives the same way, so a folder moved out of `.notes` brings its subtree.
      *
      * @param  Closure(string): bool  $isVisible
      * @return array{destroyed: list<string>, arrived: list<string>}
@@ -82,10 +84,12 @@ final class FileNodeDepartures
                 if ((int) $node->created_seq > $since) {
                     continue;
                 }
-                $isVisibleNow = $isVisible((string) $node->storage_key);
+                $currentKey = (string) $node->storage_key;
+                $isVisibleNow = $isVisible($currentKey);
                 if ($wasVisible && ! $isVisibleNow) {
                     $destroyed[] = $nodeId;
-                } elseif (! $wasVisible && $isVisibleNow && $node->deleted_at === null) {
+                } elseif ($isVisibleNow && $node->deleted_at === null && (! $wasVisible
+                    || (! FileNodeVisibility::isListKey($keyAtSince[$nodeId]) && FileNodeVisibility::isListKey($currentKey)))) {
                     $arrived[] = $nodeId;
                 }
             }

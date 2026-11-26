@@ -100,6 +100,26 @@ final class FileNodeAccountSupport
     }
 
     /**
+     * {@see accountRootsFor()} and {@see memberGrantPairs()} from one read of the member Teams,
+     * for the FileNode state hash (#2063).
+     *
+     * @return array{accountRoots: list<string>, grantPairs: string}
+     */
+    public function accountRootsAndGrantPairs(string $username): array
+    {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            return ['accountRoots' => [$guest->rootKey], 'grantPairs' => ''];
+        }
+        $slugs = $this->groups->allowedGroupSlugs($username);
+
+        return [
+            'accountRoots' => FileNodeVisibility::roots($username, $slugs),
+            'grantPairs' => $this->grantPairsOf($this->grants->liveMemberGrants($username, $slugs)),
+        ];
+    }
+
+    /**
      * Sorted `grantId:access` lines of the user's live, visible member grants. The FileNode
      * state and push basis carry their hash, because hiding a grant or changing its access in
      * place moves neither the global change sequence nor the root markers (#1926).
