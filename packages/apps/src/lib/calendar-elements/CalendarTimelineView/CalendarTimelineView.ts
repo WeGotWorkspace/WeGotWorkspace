@@ -1082,6 +1082,7 @@ export class CalendarTimelineView extends CalendarViewBase {
     const timelineEvent = event as CalendarTimelineEvent;
     const selected = this.selectedEventKey === timelineEvent.key;
     const timeLabel = this.#timelineEventTimeLabel(variant, timelineEvent, preview);
+    // Inside <time-line>'s shadow root; selection shows via aria-pressed and the selected part.
     return html`
       <event-card
         layout="flow"
@@ -1095,7 +1096,6 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?past=${timelineEvent.past}
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
-        ?video=${timelineEvent.hasMeeting}
         ?video=${timelineEvent.hasMeeting}
         .rsvp=${timelineEvent.rsvp}
         .overlay=${timelineEvent.overlayKind ?? ""}
