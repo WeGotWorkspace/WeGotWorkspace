@@ -699,6 +699,105 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
     expect(await readDriveSyncToken(username)).toBe("6");
   });
 
+  it("a folder renamed onto another folder's old path keeps both folders", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/reports-2024", "fn-r24", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/reports-2024/old.md", "fn-old"));
+    await upsertDriveEntry(username, entry("/users/ada/reports", "fn-r", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/reports/new.md", "fn-new"));
+    await writeDriveContentBlob(username, "/users/ada/reports-2024/old.md", new Blob(["O"]));
+    await writeDriveContentBlob(username, "/users/ada/reports/new.md", new Blob(["NN"]));
+    // The new name first: it lands on a path the other folder is still leaving.
+    installCatalog(
+      new Map([
+        [
+          "fn-r",
+          withPath(node("fn-r", "fn-home", "reports-2024", "directory"), "/users/ada/reports-2024"),
+        ],
+        [
+          "fn-r24",
+          withPath(
+            node("fn-r24", "fn-home", "reports-2024-old", "directory"),
+            "/users/ada/reports-2024-old",
+          ),
+        ],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-r", "fn-r24"], newState: "8" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect((await table().toCollection().primaryKeys()).sort()).toEqual([
+      "users/ada/reports-2024",
+      "users/ada/reports-2024-old",
+      "users/ada/reports-2024-old/old.md",
+      "users/ada/reports-2024/new.md",
+    ]);
+    expect(await readCachedDriveNodeId(username, "/users/ada/reports-2024")).toBe("fn-r");
+    expect(await readCachedDriveNodeId(username, "/users/ada/reports-2024/new.md")).toBe("fn-new");
+    expect(await readCachedDriveNodeId(username, "/users/ada/reports-2024-old/old.md")).toBe(
+      "fn-old",
+    );
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect((await blobs.get("users/ada/reports-2024/new.md"))?.size).toBe(2);
+    expect((await blobs.get("users/ada/reports-2024-old/old.md"))?.size).toBe(1);
+  });
+
+  it("a folder moved into a vacated name stays there", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/a", "fn-a", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/a/b", "fn-old-b", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/a/b/z.md", "fn-z"));
+    await upsertDriveEntry(username, entry("/users/ada/x", "fn-x", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/x/inner.md", "fn-inner"));
+    // `/a` → `/a2`, a new folder takes the name `/a`, and `/x` moves into it as `b`.
+    installCatalog(
+      new Map([
+        ["fn-x", withPath(node("fn-x", "fn-a-new", "b", "directory"), "/users/ada/a/b")],
+        ["fn-a-new", withPath(node("fn-a-new", "fn-home", "a", "directory"), "/users/ada/a")],
+        ["fn-a", withPath(node("fn-a", "fn-home", "a2", "directory"), "/users/ada/a2")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ created: ["fn-a-new"], updated: ["fn-x", "fn-a"], newState: "9" }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect((await table().toCollection().primaryKeys()).sort()).toEqual([
+      "users/ada/a",
+      "users/ada/a/b",
+      "users/ada/a/b/inner.md",
+      "users/ada/a2",
+      "users/ada/a2/b",
+      "users/ada/a2/b/z.md",
+    ]);
+    expect(await readCachedDriveNodeId(username, "/users/ada/a")).toBe("fn-a-new");
+    expect(await readCachedDriveNodeId(username, "/users/ada/a/b")).toBe("fn-x");
+    expect(await readCachedDriveNodeId(username, "/users/ada/a/b/inner.md")).toBe("fn-inner");
+    expect(await readCachedDriveNodeId(username, "/users/ada/a2/b")).toBe("fn-old-b");
+    expect(await readCachedDriveNodeId(username, "/users/ada/a2/b/z.md")).toBe("fn-z");
+  });
+
+  it("a folder moved out of .notes in one changes batch brings its child", async () => {
+    // Nothing under `.notes` is cached; the server reports the arrival with its child.
+    installCatalog(
+      new Map([
+        ["fn-out-c", withPath(node("fn-out-c", "fn-out", "c.md"), "/users/ada/Out/c.md")],
+        ["fn-out", withPath(node("fn-out", "fn-home", "Out", "directory"), "/users/ada/Out")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-out-c", "fn-out"], newState: "10" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect((await table().toCollection().primaryKeys()).sort()).toEqual([
+      "users/ada/Out",
+      "users/ada/Out/c.md",
+    ]);
+    expect(await readCachedDriveNodeId(username, "/users/ada/Out/c.md")).toBe("fn-out-c");
+  });
+
   it("updated ids are fetched in maxObjectsInGet batches", async () => {
     const ids = Array.from({ length: 1200 }, (_, index) => `fn-${index}`);
     installCatalog(new Map());

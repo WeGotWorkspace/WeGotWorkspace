@@ -59,7 +59,14 @@ import {
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
-import { readDriveTreeFirstSyncDone, syncDriveTree } from "@/lib/offline/drive/drive-tree-sync";
+import {
+  DRIVE_TREE_LAST_PASS_KEY,
+  readDriveTreeFirstSyncDone,
+  syncDriveTree,
+} from "@/lib/offline/drive/drive-tree-sync";
+import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
+import { migrateDriveEntryPath } from "@/lib/offline/drive/drive-directory-offline-store";
+import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
 
 const username = "ada";
 /** Page size of the stand-in (`maxObjectsInGet`); small so a few nodes span many pages. */
@@ -97,6 +104,8 @@ class TreeServer {
   /** Fail the `nth` (0-based) `FileNode/get` of listing request `request` (1-based). */
   failGet: { request: number; nth: number } | null = null;
   cannotCalculate = 0;
+  /** A server that caps the query `limit` below the client's and says so in the answer. */
+  capLimit: number | null = null;
 
   state(): string {
     return `${this.seq}.h`;
@@ -251,8 +260,13 @@ class TreeServer {
         .filter((n) => this.live(n) && n.createdSeq <= asOf && n.id > after)
         .map((n) => n.id)
         .sort()
-        .slice(0, Number(args.limit));
-      return [name, { accountId: "ada", queryState: this.state(), ids, position: 0 }, id];
+        .slice(0, this.capLimit ?? Number(args.limit));
+      const capped = this.capLimit === null ? {} : { limit: this.capLimit };
+      return [
+        name,
+        { accountId: "ada", queryState: this.state(), ids, position: 0, ...capped },
+        id,
+      ];
     }
     if (name === "FileNode/changes") {
       if (this.cannotCalculate > 0) {
@@ -379,6 +393,7 @@ describe("syncDriveTree", () => {
     server.add("a1", "r-home", "notes.md");
     await connect(server);
     await writeDriveSyncToken(username, server.state());
+    await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
     server.add("a2", "r-home", "new.md");
 
     await syncDriveInboundFromFileNodes(username);
@@ -828,5 +843,181 @@ describe("FileNode/changes applier and the tree", () => {
 
       expect(await row("/groups/team/Report/data.csv")).toMatchObject({ nodeId: "b-dir-c" });
     });
+  });
+});
+
+describe("review fixes (#2063 C1)", () => {
+  async function mockCrawl(during?: () => void) {
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    return vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async () => {
+      during?.();
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+    });
+  }
+
+  it("a file written while the per-folder crawl runs arrives on the next sync", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const spy = await mockCrawl(() => server.add("a-during", "r-home", "during.md"));
+
+    await syncDriveInboundFromFileNodes(username);
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/during.md")).toMatchObject({ nodeId: "a-during" });
+    spy.mockRestore();
+  });
+
+  it("after the crawl a new file directly under home is home, not share", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const spy = await mockCrawl();
+    await syncDriveInboundFromFileNodes(username);
+
+    server.add("a-home", "r-home", "home.md");
+    server.add("a-team", "r-team", "team.md");
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/home.md")).toMatchObject({ area: "home" });
+    expect(await row("/groups/team/team.md")).toMatchObject({ area: "group" });
+    spy.mockRestore();
+  });
+
+  it("a device that only crawled walks the tree once the server offers the keyset", async () => {
+    const server = standardTree();
+    server.add("a1", "r-home", "a.md");
+    await connect(server, { keyset: false });
+    const spy = await mockCrawl();
+    await syncDriveInboundFromFileNodes(username);
+    spy.mockRestore();
+    expect(await readMeta(username, DRIVE_TREE_LAST_PASS_KEY)).toBe("crawl");
+
+    await connect(server);
+    await syncDriveInboundFromFileNodes(username);
+    expect(server.listingRequests()).toHaveLength(1);
+    expect(await readMeta(username, DRIVE_TREE_LAST_PASS_KEY)).toBe("tree");
+    expect(await row("/users/ada/a.md")).toMatchObject({ area: "home" });
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(server.listingRequests()).toHaveLength(1);
+  });
+
+  it("a folder moved into .Trash gives its unlisted child the trash area", async () => {
+    const server = standardTree();
+    server.add("t-trash", "r-home", ".Trash");
+    server.add("d-proj", "r-home", "Proj");
+    server.add("d-proj-a", "d-proj", "a.md");
+    await connect(server);
+    await syncDriveTree(username);
+    expect(await row("/users/ada/Proj/a.md")).toMatchObject({ area: "home" });
+
+    server.move("d-proj", { parentId: "t-trash" });
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/.Trash/Proj")).toMatchObject({ area: "trash" });
+    expect(await row("/users/ada/.Trash/Proj/a.md")).toMatchObject({ area: "trash" });
+  });
+
+  it("a home folder moved into a team drive gives its unlisted child the group area", async () => {
+    const server = standardTree();
+    server.add("d-proj", "r-home", "Proj");
+    server.add("d-proj-a", "d-proj", "a.md");
+    await connect(server);
+    await syncDriveTree(username);
+
+    server.move("d-proj", { parentId: "r-team" });
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/groups/team/Proj/a.md")).toMatchObject({ area: "group" });
+    expect(await row("/users/ada/Proj/a.md")).toBeUndefined();
+  });
+
+  it("a local move out of .Trash gives the folder and its descendants home back", async () => {
+    await upsertDriveEntry(
+      username,
+      { ...staleEntry("/users/ada/.Trash/Proj", "d-proj"), type: "dir" },
+      "trash",
+    );
+    await upsertDriveEntry(username, staleEntry("/users/ada/.Trash/Proj/a.md", "d-a"), "trash");
+
+    await migrateDriveEntryPath(username, "/users/ada/.Trash/Proj", "/users/ada/Proj");
+
+    expect(await row("/users/ada/Proj")).toMatchObject({ area: "home" });
+    expect(await row("/users/ada/Proj/a.md")).toMatchObject({ area: "home" });
+  });
+
+  it("two files that swap names in one changes batch keep their own blobs", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    await syncDriveInboundFromFileNodes(username);
+
+    // Sizes tell the bodies apart: "A" is 1 byte, "BB" 2.
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+
+  it("two files that swap names before a tree pass keep their own blobs", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-a"));
+    await upsertDriveEntry(username, staleEntry("/users/ada/b.md", "f-b"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    await connect(server);
+
+    await syncDriveTree(username);
+
+    // Sizes tell the bodies apart: "A" is 1 byte, "BB" 2.
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+
+  it("a nested rename in one changes batch keeps the page setup at the inner path", async () => {
+    const server = standardTree();
+    server.add("d-outer", "r-home", "Outer");
+    server.add("d-inner", "d-outer", "Inner");
+    server.add("f-doc", "d-inner", "doc.md");
+    await connect(server);
+    await syncDriveTree(username);
+    writeDocsPageSetupOverride("/users/ada/Outer/Inner/doc.md", {
+      format: "a4",
+      orientation: "landscape",
+    });
+
+    server.move("d-outer", { name: "Outer2" });
+    server.move("d-inner", { name: "Inner2" });
+    await syncDriveInboundFromFileNodes(username);
+
+    const overrides = readDocsPageSetupOverrides();
+    expect(overrides["/users/ada/Outer2/Inner2/doc.md"]).toMatchObject({ format: "a4" });
+    expect(overrides["/users/ada/Outer2/Inner/doc.md"]).toBeUndefined();
+  });
+
+  it("a server that caps the page size does not end the walk early", async () => {
+    const server = standardTree();
+    for (let i = 0; i < 5; i += 1) server.add(`n${i}`, "r-home", `f${i}.md`);
+    server.capLimit = 1;
+    await connect(server);
+
+    let result = await syncDriveTree(username);
+    for (let round = 0; !result.completed && round < 20; round += 1) {
+      result = await syncDriveTree(username);
+    }
+
+    expect(result.completed).toBe(true);
+    expect((await rowPaths()).filter((path) => path.endsWith(".md"))).toHaveLength(5);
   });
 });

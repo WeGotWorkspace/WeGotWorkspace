@@ -12,7 +12,13 @@ import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-s
 import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
-import { fileExtension, isDotName, type DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
+import {
+  areaFromCrawledPath,
+  fileExtension,
+  isDotName,
+  isTrashTreePath,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
 
 const DRIVE_BOOTSTRAP_META_KEY = "drive:bootstrap";
 
@@ -238,7 +244,8 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  await table.put({ ...row, id: newId, parentPath: newParent, data: JSON.stringify(entry) });
+  const area = await areaAfterMove(table, newId, newParent);
+  await table.put({ ...row, id: newId, parentPath: newParent, area, data: JSON.stringify(entry) });
   await table.delete(oldId);
 
   const descendants = await table
@@ -255,10 +262,25 @@ export async function migrateDriveEntryPath(
       ...descendant,
       id: migratedId,
       parentPath: migratedParent,
+      area: isTrashTreePath(migratedId) ? "trash" : area,
       data: JSON.stringify(migratedEntry),
     });
     await table.delete(descendant.id);
   }
+}
+
+/**
+ * `area` of a row a local move puts at `newId`: Trash by path, else its new
+ * parent row's (a share keeps `share`), else the account root's from the path.
+ */
+async function areaAfterMove(
+  table: ReturnType<typeof driveEntriesTable>,
+  newId: string,
+  newParent: string,
+): Promise<DriveEntryArea> {
+  if (isTrashTreePath(newId)) return "trash";
+  const parentArea = newParent ? (await table.get(newParent))?.area : undefined;
+  return parentArea && parentArea !== "trash" ? parentArea : areaFromCrawledPath(newId);
 }
 
 export async function searchDriveEntriesFromCache(
