@@ -62,6 +62,7 @@ export const liveTierSpecs = [
   "drive-guest-large-download",
   "drive-guest-upload",
   "drive-inbound-many-files",
+  "drive-inbound-swap",
   "drive-list-windowed",
   "drive-offline-home",
   "drive-selection-download",

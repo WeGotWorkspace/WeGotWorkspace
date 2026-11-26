@@ -119,6 +119,16 @@ describe("useFileTreeView", () => {
     expect((await settled(prefix.result)).status).toBe("not-available");
   });
 
+  it("after a per-folder crawl (no roots map), empty account roots are known-empty", async () => {
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
+    for (const path of [`users/${username}`, "groups/team"]) {
+      const { result } = render({ kind: "folder", path });
+      expect(await settled(result), path).toEqual({ rows: [], status: "ready", settled: true });
+    }
+    const unknown = render({ kind: "folder", path: `users/${username}/Never` });
+    expect((await settled(unknown.result)).status).toBe("not-available");
+  });
+
   it("first sync with no rows online is the full-pane first-sync state", async () => {
     const { result } = render({ kind: "folder", path: "users/ada" });
     expect(await settled(result)).toMatchObject({ rows: [], status: "first-sync" });

@@ -109,7 +109,18 @@ async function viewKnowledge(username: string, view: FileTreeView): Promise<File
     path ? table(username).get(path) : Promise.resolve(undefined),
     readDriveTreeRoots(username),
   ]);
-  return isKnownTreeFolder(path, folderRow, roots.values()) ? "complete" : "unknown";
+  const rootPaths = roots ? [...roots.values()] : crawledRootPaths(username, path);
+  return isKnownTreeFolder(path, folderRow, rootPaths) ? "complete" : "unknown";
+}
+
+/**
+ * Account roots after a per-folder crawl, which stores no roots map: the
+ * person's home, and a team drive by its path shape (`groups/<slug>`).
+ */
+function crawledRootPaths(username: string, path: string): string[] {
+  const parts = path.split("/");
+  const teamDrive = parts.length === 2 && parts[0] === "groups" ? [path] : [];
+  return [`users/${username}`, ...teamDrive];
 }
 
 /**

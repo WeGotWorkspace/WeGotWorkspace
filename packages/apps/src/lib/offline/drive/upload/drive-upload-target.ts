@@ -21,7 +21,7 @@ export class DriveUploadTargetUnavailableError extends Error {
   }
 }
 
-export async function readFolderIds(username: string): Promise<Record<string, string>> {
+async function readFolderIds(username: string): Promise<Record<string, string>> {
   const raw = await readMeta(username, FOLDER_NODE_IDS_META_KEY);
   if (!raw) return {};
   try {
