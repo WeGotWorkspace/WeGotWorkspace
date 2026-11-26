@@ -190,6 +190,39 @@ describe("pullAddressBookChanges", () => {
     expect(await readAddressBooksSyncToken(username)).toBe("3:default:1,new-book:1");
   });
 
+  it("syncs the cards of every changed book in one run, fetching a moved card once", async () => {
+    await upsertAddressBookInCache(username, extraBook);
+    await writeSyncToken(username, "default", "cards-1");
+    await writeSyncToken(username, "extra-book", "cards-1");
+    addressBookChanges.mockResolvedValueOnce({
+      oldState: "books-1",
+      newState: "books-2",
+      created: [],
+      updated: ["default", "extra-book"],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+    getAddressBook.mockImplementation(async (id: string) =>
+      id === "default" ? defaultBook : extraBook,
+    );
+    getCards.mockResolvedValue([
+      { id: "moved", addressBookIds: { "extra-book": true } } as unknown as ContactCard,
+    ]);
+    contactCardChanges.mockResolvedValue({
+      oldState: "cards-1",
+      newState: "cards-2",
+      created: ["moved"],
+      updated: [],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+
+    await pullAddressBookChanges(username);
+
+    expect(getCards).toHaveBeenCalledOnce();
+    expect(getCards).toHaveBeenCalledWith(["moved"], { signal: undefined, paced: false });
+    expect(await readSyncToken(username, "default")).toBe("cards-2");
+    expect(await readSyncToken(username, "extra-book")).toBe("cards-2");
+  });
+
   it("full-resyncs address books when changes cannot be calculated", async () => {
     addressBookChanges.mockRejectedValueOnce(
       new JmapMethodError("AddressBook/changes", "c0", { type: "cannotCalculateChanges" }),

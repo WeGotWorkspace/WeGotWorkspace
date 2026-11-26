@@ -200,16 +200,14 @@ async function applyAddressBookChanges(
   for (const bookId of changes.destroyed) {
     await ingestRemoteAddressBookDestroyed(username, bookId);
   }
-  for (const bookId of changes.created) {
+  const changedBookIds = [...changes.created, ...changes.updated];
+  for (const bookId of changedBookIds) {
     const book = await getAddressBook(bookId, opts);
     await ingestRemoteAddressBook(username, book);
-    await pullContactCardChangesForBook(username, bookId, opts);
   }
-  for (const bookId of changes.updated) {
-    const book = await getAddressBook(bookId, opts);
-    await ingestRemoteAddressBook(username, book);
-    await pullContactCardChangesForBook(username, bookId, opts);
-  }
+  // One run for every changed book: a card that moved between two books is
+  // named by both, and is fetched once instead of once per book.
+  if (changedBookIds.length > 0) await syncContactCardScopes(username, changedBookIds, opts);
 }
 
 export async function syncAllContactBooks(
