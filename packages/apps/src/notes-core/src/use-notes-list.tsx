@@ -5,15 +5,7 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { afterViewTransition } from "@/lib/view-transition";
-import { useListSort } from "@/hooks/use-list-sort";
-import { filterNotesByHiddenNotebooks, filterVisibleNotes } from "./notes-note-utils";
-import {
-  NOTES_DEFAULT_SORT,
-  NOTES_SORT_FIRST_DIRECTION,
-  NOTES_SORT_STORAGE_KEY,
-  sortNotes,
-} from "./notes-list-sort";
-import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
+import { useNotesVisibleList } from "./use-notes-visible-list";
 import type { NotesShellState } from "./use-notes-shell";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
@@ -25,20 +17,7 @@ export type UseNotesListArgs = {
 };
 
 export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesListArgs) {
-  const {
-    notes,
-    setNotes,
-    view,
-    searchQuery,
-    workspaceLayoutRef,
-    starred,
-    archived,
-    hiddenNotebookIds,
-    notebookCollections,
-    listLoading,
-    data,
-    showMutationError,
-  } = shell;
+  const { notes, setNotes, view, workspaceLayoutRef, listLoading, data, showMutationError } = shell;
 
   const [activeId, setActiveId] = useState<string>(() => initialNoteId ?? "");
   const isTouch = useIsTouch();
@@ -94,46 +73,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     notifyNoteChange(activeId);
   }, [activeId, notifyNoteChange]);
 
-  const sharedNotebookKeys = useMemo(
-    () => sharedNotebookFilterKeys(notebookCollections),
-    [notebookCollections],
-  );
-
-  const { sort: listSort, chooseSort: setListSort } = useListSort({
-    columns: NOTES_SORT_FIRST_DIRECTION,
-    defaultSort: NOTES_DEFAULT_SORT,
-    storageKey: NOTES_SORT_STORAGE_KEY,
-  });
-
-  const visibleNotes = useMemo(
-    () =>
-      sortNotes(
-        filterNotesByHiddenNotebooks(
-          filterVisibleNotes(notes, {
-            view,
-            archived,
-            starred,
-            searchQuery,
-            sharedNotebookKeys,
-            notebookCollections,
-          }),
-          view,
-          hiddenNotebookIds,
-        ),
-        listSort,
-      ),
-    [
-      archived,
-      listSort,
-      hiddenNotebookIds,
-      notebookCollections,
-      notes,
-      searchQuery,
-      sharedNotebookKeys,
-      starred,
-      view,
-    ],
-  );
+  const { visibleNotes, listSort, setListSort } = useNotesVisibleList(shell);
 
   const visibleIds = useMemo(() => visibleNotes.map((n) => n.id), [visibleNotes]);
 
