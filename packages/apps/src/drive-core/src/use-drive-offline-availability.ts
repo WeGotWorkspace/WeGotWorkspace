@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import {
-  isEligibleForAutoContentSync,
   readOfflineDeviceContentSettings,
   subscribeOfflineDeviceContentSettings,
   type OfflineDeviceContentSettings,
@@ -9,7 +8,11 @@ import {
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { driveOutboxApiPath } from "@/lib/offline/drive/drive-outbox-flush";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
-import { readDriveContentSyncProgress } from "@/lib/offline/drive/drive-content-sync";
+import {
+  isDriveContentQueued,
+  readDriveContentFailures,
+  subscribeDriveContentRunState,
+} from "@/lib/offline/drive/drive-content-run-state";
 import { hasOfflineFileContent } from "@/lib/offline/shared/content-availability";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { parseFileSizeBytes } from "@/lib/files/file-name-utils";
@@ -20,27 +23,33 @@ function fileApiPath(file: DriveFile): string | null {
   return path ? normalizeDriveAvailabilityPath(path) : null;
 }
 
-const SYNC_POLL_INTERVAL_MS = 1500;
+/** Row refreshes while the copy runs: at most one per this many ms. */
+const RUN_STATE_REFRESH_MS = 750;
 
-export type DriveRowOfflineState = "available" | "syncing" | "too-large" | "none";
+export type DriveRowOfflineState = "available" | "syncing" | "failed" | "too-large" | "none";
 
 /**
- * Offline state of one row. A running background sync only marks the files it
- * will copy itself: not yet on the device and within the automatic size limit.
+ * Offline state of one row (#2063 measurement 2):
+ * - a row spins only while the current run will still download that file,
+ *   and never while the device is offline;
+ * - a file whose automatic download failed shows as failed, also while a
+ *   later run retries it, until a copy is stored.
  * Folders, files above the limit and files already stored keep their own state.
  */
 export function driveRowOfflineState(input: {
   hasLocal: boolean;
   isFolder: boolean;
   sizeBytes: number | null;
-  syncRunning: boolean;
+  queued: boolean;
+  failed: boolean;
   online: boolean;
   settings: OfflineDeviceContentSettings;
 }): DriveRowOfflineState {
   if (input.hasLocal) return "available";
   if (input.isFolder) return "none";
   const { settings, sizeBytes } = input;
-  if (input.syncRunning && isEligibleForAutoContentSync(sizeBytes, settings)) return "syncing";
+  if (input.failed) return "failed";
+  if (input.queued && input.online) return "syncing";
   if (
     input.online &&
     settings.contentSyncEnabled &&
@@ -52,6 +61,16 @@ export function driveRowOfflineState(input: {
   return "none";
 }
 
+/** A failure counts only for the version it was recorded for; a newer upload starts over. */
+function isCurrentVersionFailure(
+  failure: { modifiedAt: number } | undefined,
+  file: DriveFile,
+): boolean {
+  if (!failure) return false;
+  if (file.modifiedMs == null) return true;
+  return Math.abs(failure.modifiedAt - file.modifiedMs / 1000) < 1;
+}
+
 export function useDriveOfflineAvailability(
   files: readonly DriveFile[],
   enabled: boolean,
@@ -60,6 +79,7 @@ export function useDriveOfflineAvailability(
   offlineAvailableIds: ReadonlySet<string>;
   offlinePinnedIds: ReadonlySet<string>;
   offlinePendingSyncIds: ReadonlySet<string>;
+  offlineFailedIds: ReadonlySet<string>;
   isResolving: boolean;
   refresh: () => void;
 } {
@@ -71,6 +91,7 @@ export function useDriveOfflineAvailability(
   const [offlinePendingSyncIds, setOfflinePendingSyncIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  const [offlineFailedIds, setOfflineFailedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [isResolving, setIsResolving] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -95,6 +116,7 @@ export function useDriveOfflineAvailability(
       setOfflineAvailableIds(new Set());
       setOfflinePinnedIds(new Set());
       setOfflinePendingSyncIds(new Set());
+      setOfflineFailedIds(new Set());
       setIsResolving(false);
       return;
     }
@@ -104,7 +126,7 @@ export function useDriveOfflineAvailability(
 
     void (async () => {
       const settings = readOfflineDeviceContentSettings();
-      const contentProgress = await readDriveContentSyncProgress(username);
+      const failures = await readDriveContentFailures(username);
       const outboxRows = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
       const outboxPendingPaths = new Set<string>();
       for (const row of outboxRows) {
@@ -115,9 +137,7 @@ export function useDriveOfflineAvailability(
       const available = new Set<string>();
       const pinned = new Set<string>();
       const pending = new Set<string>();
-
-      // Only the content sync copies file bodies; the metadata crawl writes listings.
-      const syncRunning = contentProgress.running;
+      const failed = new Set<string>();
 
       await Promise.all(
         files.map(async (file) => {
@@ -128,16 +148,19 @@ export function useDriveOfflineAvailability(
             pending.add(file.id);
           }
 
+          const failure = failures[apiPath.replace(/^\/+/, "")];
           const state = driveRowOfflineState({
             hasLocal: await hasOfflineFileContent(username, apiPath),
             isFolder: file.kind === "folder",
             sizeBytes: parseFileSizeBytes(file),
-            syncRunning,
+            queued: isDriveContentQueued(username, apiPath),
+            failed: isCurrentVersionFailure(failure, file),
             online,
             settings,
           });
           if (state === "available") available.add(file.id);
           else if (state === "syncing") pending.add(file.id);
+          else if (state === "failed") failed.add(file.id);
           else if (state === "too-large") pinned.add(file.id);
         }),
       );
@@ -146,6 +169,7 @@ export function useDriveOfflineAvailability(
       setOfflineAvailableIds(available);
       setOfflinePinnedIds(pinned);
       setOfflinePendingSyncIds(pending);
+      setOfflineFailedIds(failed);
       setIsResolving(false);
     })();
 
@@ -154,31 +178,29 @@ export function useDriveOfflineAvailability(
     };
   }, [enabled, fileKeys, files, online, refreshToken, settingsVersion, username]);
 
-  // Stored blobs do not change the file list, so watch the content sync on a
-  // fixed interval. Sampling continues while both flags are false: the content
-  // flag is only set after the metadata crawl and the cache scan. A pass runs
-  // while content runs and once after it ends, which clears the last spinners.
+  // Stored blobs do not change the file list: re-read when the copy's queue
+  // or failures change, throttled so a fast run does not re-render every file.
   useEffect(() => {
-    if (!enabled || !username || files.length === 0) return;
-    let cancelled = false;
-    let wasRunning = false;
-    const timer = setInterval(() => {
-      void readDriveContentSyncProgress(username).then(({ running }) => {
-        if (cancelled) return;
-        if (running || wasRunning) setRefreshToken((value) => value + 1);
-        wasRunning = running;
-      });
-    }, SYNC_POLL_INTERVAL_MS);
+    if (!enabled || !username) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeDriveContentRunState(() => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        setRefreshToken((value) => value + 1);
+      }, RUN_STATE_REFRESH_MS);
+    });
     return () => {
-      cancelled = true;
-      clearInterval(timer);
+      unsubscribe();
+      if (timer) clearTimeout(timer);
     };
-  }, [enabled, files.length, username]);
+  }, [enabled, username]);
 
   return {
     offlineAvailableIds,
     offlinePinnedIds,
     offlinePendingSyncIds,
+    offlineFailedIds,
     isResolving,
     refresh,
   };

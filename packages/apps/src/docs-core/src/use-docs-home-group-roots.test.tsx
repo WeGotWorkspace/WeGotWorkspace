@@ -14,7 +14,20 @@ vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/files/team-labels/team-label-store", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/files/team-labels/team-label-store")>();
+  return {
+    ...actual,
+    readCachedTeamDisplayNames: vi.fn(async () => []),
+    writeCachedTeamDisplayNames: vi.fn(async () => {}),
+  };
+});
+
 import { wgwLiveApiEnabled, wgwSettingsStateRead } from "@/lib/api/wgw/http";
+import {
+  readCachedTeamDisplayNames,
+  writeCachedTeamDisplayNames,
+} from "@/lib/files/team-labels/team-label-store";
 
 function doc(id: string, apiPath: string): DriveFile {
   return {
@@ -59,6 +72,8 @@ describe("useDocsHomeGroupRoots", () => {
     cleanup();
     vi.mocked(wgwLiveApiEnabled).mockReturnValue(false);
     vi.mocked(wgwSettingsStateRead.read).mockReset();
+    vi.mocked(readCachedTeamDisplayNames).mockResolvedValue([]);
+    vi.mocked(writeCachedTeamDisplayNames).mockClear();
   });
 
   afterEach(() => {
@@ -154,5 +169,41 @@ describe("useDocsHomeGroupRoots", () => {
     expect(result.current.drives.find((drive) => drive.pathPrefix === "groups/eng")?.label).toBe(
       "eng",
     );
+  });
+
+  it("caches the settings display names for this account", async () => {
+    vi.mocked(wgwLiveApiEnabled).mockReturnValue(true);
+    const groups = [{ id: "principals/groups/eng", displayName: "Engineering" }];
+    vi.mocked(wgwSettingsStateRead.read).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: { groups },
+    });
+
+    renderHook(() => useHarness({ files: [], online: true }));
+
+    await waitFor(() => {
+      expect(writeCachedTeamDisplayNames).toHaveBeenCalledWith("alice", groups);
+    });
+  });
+
+  it("offline, lists every cached team drive with its display name (#2063)", async () => {
+    vi.mocked(readCachedTeamDisplayNames).mockResolvedValue([
+      { id: "principals/groups/e2e-notes-team", displayName: "E2E Notes Team" },
+      { id: "principals/groups/eng", displayName: "Engineering" },
+    ]);
+
+    const { result } = renderHook(() =>
+      useHarness({ files: [doc("1", "/groups/eng/a.md")], online: false }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.drives.map((drive) => [drive.pathPrefix, drive.label])).toEqual([
+        ["users/alice", "Personal"],
+        ["groups/e2e-notes-team", "E2E Notes Team"],
+        ["groups/eng", "Engineering"],
+      ]);
+    });
+    expect(wgwSettingsStateRead.read).not.toHaveBeenCalled();
   });
 });

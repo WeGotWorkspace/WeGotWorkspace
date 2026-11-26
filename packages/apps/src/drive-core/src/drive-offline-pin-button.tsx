@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { DriveItemIconButton } from "@/drive-core/src/drive-item-icon-button";
 import {
   DriveOfflineAvailableIcon,
+  DriveOfflineFailedIcon,
   DriveOfflinePinningIcon,
 } from "@/drive-core/src/drive-offline-icons";
 
@@ -10,6 +11,8 @@ type DriveOfflinePinButtonProps = {
   labels: DriveUILabels;
   isAvailable: boolean;
   isPending: boolean;
+  /** The automatic copy failed; the button retries as a manual pin. */
+  isFailed?: boolean;
   isPinning: boolean;
   canPin: boolean;
   onPin?: () => void;
@@ -20,11 +23,23 @@ export function DriveOfflinePinButton({
   labels,
   isAvailable,
   isPending,
+  isFailed = false,
   isPinning,
   canPin,
   onPin,
 }: DriveOfflinePinButtonProps) {
   if (isAvailable) return null;
+
+  if (isFailed && !isPinning) {
+    return (
+      <DriveItemIconButton
+        label={labels.offlineDownloadFailed}
+        icon={<DriveOfflineFailedIcon className="drive-offline-failed-icon" />}
+        disabled={!canPin || !onPin}
+        onClick={() => onPin?.()}
+      />
+    );
+  }
 
   if (isPending || isPinning) {
     return (

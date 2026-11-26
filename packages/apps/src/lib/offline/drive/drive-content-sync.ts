@@ -4,6 +4,7 @@ import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import {
   backgroundSyncPacer,
   BackgroundSyncRateLimitedError,
+  isRateLimitedError,
   parseRetryAfterMs,
 } from "@/lib/offline/core/background-sync-pacer";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
@@ -29,6 +30,15 @@ import {
 import { listingModifiedAtMs } from "@/lib/offline/docs/docs-body-sync";
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
 import { readDriveEntryFromCache } from "@/lib/offline/drive/drive-directory-offline-store";
+import {
+  beginDriveContentRun,
+  clearDriveContentFailure,
+  endDriveContentRun,
+  finishDriveContentRunItem,
+  readDriveContentFailures,
+  recordDriveContentFailure,
+  shouldAutoRetryDriveContent,
+} from "@/lib/offline/drive/drive-content-run-state";
 
 const DRIVE_CONTENT_SYNC_META_KEY = "drive:auto-sync:content-progress";
 /** Low on purpose: the pacer sets the rate; this keeps browser connections free for the user. */
@@ -150,6 +160,7 @@ export async function syncDriveFileContent(
       entryModifiedAt,
     });
     await markDriveAvailabilitySynced(username, room, entryModifiedAt);
+    await clearDriveContentFailure(username, room);
     return;
   }
 
@@ -159,6 +170,7 @@ export async function syncDriveFileContent(
   if (options?.source === "manual") {
     await writeDriveAvailability(username, { id: room, source: "manual", entryModifiedAt });
   }
+  await clearDriveContentFailure(username, room);
 }
 
 export async function syncDriveContentFromCache(
@@ -170,35 +182,60 @@ export async function syncDriveContentFromCache(
   const settings = readOfflineDeviceContentSettings();
   if (!settings.contentSyncEnabled) return emptyProgress();
 
+  const failures = await readDriveContentFailures(username);
   const queue: Array<{ path: string; modifiedAt: number; size: number }> = [];
   for (const path of filePaths) {
     const entry = await readDriveEntryFromCache(username, path);
     if (!entry || entry.type !== "file") continue;
     const size = entry.size ?? 0;
     if (!isEligibleForAutoContentSync(size, settings)) continue;
-    if (!(await needsContentResync(username, path, entry.time ?? 0))) continue;
-    queue.push({ path, modifiedAt: entry.time ?? 0, size });
+    const modifiedAt = entry.time ?? 0;
+    // A file that keeps failing waits for a new version or a manual pin.
+    if (!shouldAutoRetryDriveContent(failures[path.replace(/^\/+/, "")], modifiedAt)) continue;
+    if (!(await needsContentResync(username, path, modifiedAt))) continue;
+    queue.push({ path, modifiedAt, size });
   }
 
   queue.sort((a, b) => b.modifiedAt - a.modifiedAt);
 
   const signal = options?.signal;
   const pacer = backgroundSyncPacer();
-  return runProgressiveSync({
+  // Rows spin only for the files in this queue, and only until each one is done.
+  beginDriveContentRun(
     username,
-    metaKey: DRIVE_CONTENT_SYNC_META_KEY,
-    items: queue,
-    concurrency: DRIVE_CONTENT_SYNC_CONCURRENCY,
-    signal,
-    pacer,
-    syncOne: async (item) => {
-      await syncDriveFileContent(username, item.path, {
-        source: "auto",
-        signal,
-        beforeRequest: () => pacer.acquire(signal),
-      });
-    },
-  });
+    queue.map((item) => item.path),
+  );
+  try {
+    return await runProgressiveSync({
+      username,
+      metaKey: DRIVE_CONTENT_SYNC_META_KEY,
+      items: queue,
+      concurrency: DRIVE_CONTENT_SYNC_CONCURRENCY,
+      signal,
+      pacer,
+      syncOne: async (item) => {
+        try {
+          await syncDriveFileContent(username, item.path, {
+            source: "auto",
+            signal,
+            beforeRequest: () => pacer.acquire(signal),
+          });
+        } catch (error) {
+          // A 429 is retried by the runner, so the row keeps spinning.
+          if (isRateLimitedError(error)) throw error;
+          // Going offline or an abort says nothing about the file itself.
+          if (!signal?.aborted && getConnectivitySnapshot()) {
+            await recordDriveContentFailure(username, item.path, item.modifiedAt);
+          }
+          finishDriveContentRunItem(username, item.path);
+          throw error;
+        }
+        finishDriveContentRunItem(username, item.path);
+      },
+    });
+  } finally {
+    endDriveContentRun(username);
+  }
 }
 
 export async function syncAllDriveContentFromCache(
