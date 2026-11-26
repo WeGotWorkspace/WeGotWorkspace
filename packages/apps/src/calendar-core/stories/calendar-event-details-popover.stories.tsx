@@ -72,6 +72,20 @@ export const NotesWithLinks: Story = {
   },
 };
 
+export const MeetingUrlAndNotesLink: Story = {
+  args: {
+    preview: {
+      eventId: "lunch",
+      form: {
+        ...lunchForm,
+        meetingUrl: "https://meet.example.test/room-abc",
+        description:
+          "Agenda at https://docs.example.test/agenda. Call: https://meet.example.test/room-abc",
+      },
+    },
+  },
+};
+
 export const InteractiveEdit: Story = {
   tags: ["vitest-ci"],
   args: {

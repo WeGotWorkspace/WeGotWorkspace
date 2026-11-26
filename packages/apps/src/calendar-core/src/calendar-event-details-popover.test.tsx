@@ -795,4 +795,20 @@ describe("CalendarEventDetailsPopover notes links", () => {
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
     expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
   });
+
+  it("shows the meeting URL field as the Join button, not a link, while notes URLs stay links", () => {
+    cleanup();
+    renderPopover({
+      preview: {
+        ...previewWithNotes("Agenda https://docs.test/a"),
+        form: {
+          ...previewWithNotes("Agenda https://docs.test/a").form,
+          meetingUrl: "https://meet.test/room-abc",
+        },
+      },
+    });
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeTruthy();
+    const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(links).toEqual(["https://docs.test/a"]);
+  });
 });
