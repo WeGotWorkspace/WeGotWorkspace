@@ -97,8 +97,8 @@ final class JmapEventSourceDriveTest extends WgwDatabaseTestCase
 
         $this->shareFolder('/users/alice/Empty', 'bob');
 
-        // No write ever touched the share root: its marker row does not exist and counts as 0.
-        $this->assertSame(['users/alice/Empty' => 0], app(FileNodeRootMarkers::class)->markersFor(['users/alice/Empty']));
+        // No file write touched the share root; only creating the share bumped it once (#2063 share flags).
+        $this->assertSame(['users/alice/Empty' => 1], app(FileNodeRootMarkers::class)->markersFor(['users/alice/Empty']));
         $this->assertSame(
             ['FileNode'],
             array_keys($this->changedStates($this->readEventSource($this->userBearerToken(), 'FileNode', $bob['id']), 'bob')),
