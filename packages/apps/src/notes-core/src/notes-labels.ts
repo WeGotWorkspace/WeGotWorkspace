@@ -174,7 +174,7 @@ export const defaultNotesLabels: NotesUILabels = {
   sortMenu: "Sort notes",
   sortBy: "Sort by",
   sortOrder: "Order",
-  sortModified: "Date last changed",
+  sortModified: "Date modified",
   sortTitle: "Title",
   sortNewestFirst: "Newest first",
   sortOldestFirst: "Oldest first",
