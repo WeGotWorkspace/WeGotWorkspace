@@ -4,6 +4,7 @@ import {
   isFileNodeId,
   parseDriveFnSrc,
   serializeDocsImageSrc,
+  splitImageFragment,
   toDriveFnSrc,
 } from "./text-editor-image-src";
 
@@ -23,5 +24,13 @@ describe("docs image src protocol", () => {
     expect(serializeDocsImageSrc("blob:https://app/uuid")).toBeNull();
     expect(serializeDocsImageSrc("data:image/png;base64,AAAA")).toBeNull();
     expect(docsImageMarkdown("Cat", `drive:${NODE_ID}`)).toBe(`![Cat](drive:${NODE_ID})`);
+  });
+
+  it("leaves fragments it does not own untouched", () => {
+    for (const url of ["https://x.test/sprite.svg#icon", "https://x.test/a.png#xywh=1,2,3,4"]) {
+      expect(splitImageFragment(url)).toEqual({ src: url, width: null, align: null });
+      expect(docsImageMarkdown("A", url)).toBe(`![A](${url})`);
+    }
+    expect(splitImageFragment(`drive:${NODE_ID}#width=50&icon`)).toMatchObject({ width: 50 });
   });
 });

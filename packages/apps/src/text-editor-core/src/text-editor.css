@@ -855,8 +855,8 @@
   width: 3px;
   height: 28px;
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 0 0 1px color-mix(in oklab, #000 28%, transparent);
+  background: oklch(1 0 0);
+  box-shadow: 0 0 0 1px color-mix(in oklab, oklch(0 0 0) 28%, transparent);
   opacity: 0.88;
   transition: opacity 160ms ease-in-out;
 }

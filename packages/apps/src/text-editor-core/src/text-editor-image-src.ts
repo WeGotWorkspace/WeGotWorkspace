@@ -63,6 +63,9 @@ export function splitImageFragment(raw: string | null | undefined): {
   const hash = raw.indexOf("#");
   if (hash < 0) return { src: raw, width: null, align: null };
   const params = new URLSearchParams(raw.slice(hash + 1));
+  if (!params.has(WIDTH_KEY) && !params.has(ALIGN_KEY)) {
+    return { src: raw, width: null, align: null };
+  }
   const width = normalizeDocsImageWidth(params.get(WIDTH_KEY));
   const align = normalizeDocsImageAlign(params.get(ALIGN_KEY));
   params.delete(WIDTH_KEY);
@@ -72,13 +75,17 @@ export function splitImageFragment(raw: string | null | undefined): {
 }
 
 function withImageFragment(src: string, width: number | null, align: DocsImageAlign | null) {
-  const { src: base } = splitImageFragment(src);
-  const params = new URLSearchParams(base?.includes("#") ? base.slice(base.indexOf("#") + 1) : "");
-  if (width != null) params.set(WIDTH_KEY, String(width));
+  const { src: base, width: ownWidth, align: ownAlign } = splitImageFragment(src);
+  // A fragment that is not ours stays verbatim.
+  if (width == null && align == null && ownWidth == null && ownAlign == null) return src;
+  const hash = base?.indexOf("#") ?? -1;
+  const foreign = base && hash >= 0 ? base.slice(hash + 1) : "";
+  const own = new URLSearchParams();
+  if (width != null) own.set(WIDTH_KEY, String(width));
   // `start` is the default and stays out of the markdown.
-  if (align && align !== "start") params.set(ALIGN_KEY, align);
-  const fragment = params.toString();
-  const path = base?.includes("#") ? base.slice(0, base.indexOf("#")) : (base ?? "");
+  if (align && align !== "start") own.set(ALIGN_KEY, align);
+  const fragment = [foreign, own.toString()].filter(Boolean).join("&");
+  const path = base && hash >= 0 ? base.slice(0, hash) : (base ?? "");
   return fragment ? `${path}#${fragment}` : path;
 }
 

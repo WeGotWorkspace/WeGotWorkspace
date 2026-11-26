@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
@@ -36,6 +36,27 @@ export type UseDocsImageInsertResult = {
   editorProps: { onInsertImage?: () => void; onReplaceImage?: (pos: number) => void };
 };
 
+type ReplaceTarget = { pos: number; src: string | null };
+
+/**
+ * Where the image to replace sits now. Remote edits replace the document, so the position saved
+ * at open is trusted only while it still holds an image with the same `src`; otherwise the image
+ * is looked up again by `src`. Null when it is gone.
+ */
+export function findDocsImageToReplace(editor: Editor, target: ReplaceTarget): number | null {
+  const { doc } = editor.state;
+  const at = target.pos <= doc.content.size ? doc.nodeAt(target.pos) : null;
+  if (at?.type.name === "image" && (at.attrs.src ?? null) === target.src) return target.pos;
+  if (target.src == null) return null;
+  let found: number | null = null;
+  doc.descendants((node, pos) => {
+    if (found != null) return false;
+    if (node.type.name === "image" && node.attrs.src === target.src) found = pos;
+    return true;
+  });
+  return found;
+}
+
 export function useDocsImageInsert({
   editor,
   docApiPath,
@@ -47,27 +68,34 @@ export function useDocsImageInsert({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [groupRoots, setGroupRoots] = useState<DocsHomeGroupRoot[]>([]);
 
-  const [replacePos, setReplacePos] = useState<number | null>(null);
+  const [replaceTarget, setReplaceTargetState] = useState<ReplaceTarget | null>(null);
+  // The upload path reads the target after an await, so it needs the latest value.
+  const replaceTargetRef = useRef<ReplaceTarget | null>(null);
+  const setReplaceTarget = useCallback((target: ReplaceTarget | null) => {
+    replaceTargetRef.current = target;
+    setReplaceTargetState(target);
+  }, []);
 
   const openPicker = useCallback(() => {
     if (!enabled) return;
-    setReplacePos(null);
+    setReplaceTarget(null);
     setPickerOpen(true);
-  }, [enabled]);
+  }, [enabled, setReplaceTarget]);
 
   const openReplacePicker = useCallback(
     (pos: number) => {
       if (!enabled) return;
-      setReplacePos(pos);
+      const node = editor && !editor.isDestroyed ? editor.state.doc.nodeAt(pos) : null;
+      setReplaceTarget({ pos, src: node?.type.name === "image" ? (node.attrs.src ?? null) : null });
       setPickerOpen(true);
     },
-    [enabled],
+    [editor, enabled, setReplaceTarget],
   );
 
   const closePicker = useCallback(() => {
     setPickerOpen(false);
-    setReplacePos(null);
-  }, []);
+    setReplaceTarget(null);
+  }, [setReplaceTarget]);
 
   useEffect(() => {
     if (!pickerOpen || !operations) return;
@@ -81,14 +109,18 @@ export function useDocsImageInsert({
   const insertNode = useCallback(
     (nodeId: string, alt: string) => {
       if (!editor || editor.isDestroyed) return;
-      if (replacePos != null) {
-        replaceDocsImageAt(editor, replacePos, nodeId, alt);
-        setReplacePos(null);
+      const target = replaceTargetRef.current;
+      if (target) {
+        const pos = findDocsImageToReplace(editor, target);
+        if (pos == null || !replaceDocsImageAt(editor, pos, nodeId, alt)) {
+          showError(insertErrorMessage);
+        }
+        setReplaceTarget(null);
         return;
       }
       insertDocsImageFromNodeId(editor, nodeId, alt);
     },
-    [editor, replacePos],
+    [editor, insertErrorMessage, setReplaceTarget, showError],
   );
 
   const onSelectFile = useCallback(
@@ -116,7 +148,7 @@ export function useDocsImageInsert({
     (files: File[]) => {
       if (!enabled || !docApiPath) return;
       // Replacing swaps one picture: only the first file counts.
-      const images = files.filter(isDocsImageFile).slice(0, replacePos != null ? 1 : undefined);
+      const images = files.filter(isDocsImageFile).slice(0, replaceTarget != null ? 1 : undefined);
       if (images.length === 0) return;
       setPickerOpen(false);
       void (async () => {
@@ -130,7 +162,7 @@ export function useDocsImageInsert({
         }
       })();
     },
-    [docApiPath, enabled, insertErrorMessage, insertNode, replacePos, showError],
+    [docApiPath, enabled, insertErrorMessage, insertNode, replaceTarget, showError],
   );
 
   useEffect(() => {
