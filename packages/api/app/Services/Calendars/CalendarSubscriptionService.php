@@ -79,7 +79,7 @@ final class CalendarSubscriptionService
         ]);
 
         try {
-            $instance = $this->calendars->findInstanceOfPrincipal($principalUri, $calendarId);
+            $instance = $this->calendars->findCalendarInstance($principalUri, $calendarId);
             if ($instance === null) {
                 throw new ApiHttpException(500, 'Could not load subscription calendar.', 'server_error');
             }
@@ -103,7 +103,7 @@ final class CalendarSubscriptionService
             try {
                 // Only the calendar this request created, and its own subscription row.
                 // A failed lookup above is retried, so the new calendar is not left behind.
-                $instance ??= $this->calendars->findInstanceOfPrincipal($principalUri, $calendarId);
+                $instance ??= $this->calendars->findCalendarInstance($principalUri, $calendarId);
                 if ($instance !== null) {
                     $this->calendars->deleteCreatedInstance($instance, $rowInserted);
                 }
