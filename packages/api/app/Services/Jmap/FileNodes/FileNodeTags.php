@@ -228,4 +228,29 @@ final class FileNodeTags
     {
         return self::spaceOf($fromKey) === self::spaceOf($toKey);
     }
+
+    /**
+     * A copy keeps the source's tags inside one space; into another space it gets none.
+     *
+     * @param  array<string, string>  $idMap  source node id => new node id
+     */
+    public function copyWithinSpace(string $fromKey, string $toKey, array $idMap): void
+    {
+        if (self::sameSpace($fromKey, $toKey)) {
+            $this->copy($idMap);
+        }
+    }
+
+    /**
+     * A personal tag must not travel into a Team, nor the other way round: a move
+     * across spaces removes the tags of the moved nodes.
+     *
+     * @param  list<string>  $nodeIds
+     */
+    public function dropOnSpaceChange(string $fromKey, string $toKey, array $nodeIds): void
+    {
+        if (! self::sameSpace($fromKey, $toKey)) {
+            $this->dropFor($nodeIds);
+        }
+    }
 }

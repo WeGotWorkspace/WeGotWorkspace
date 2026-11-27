@@ -369,9 +369,7 @@ final class FileNodeIndexService
         foreach (array_chunk($rows, 500) as $chunk) {
             JmapFileNode::query()->insert($chunk);
         }
-        if (FileNodeTags::sameSpace($fromKey, $toKey)) {
-            $this->tags->copy($idMap);
-        }
+        $this->tags->copyWithinSpace($fromKey, $toKey, $idMap);
         foreach ($pending as $destKey) {
             $node = $this->liveByKey($destKey);
             if ($node !== null) {
@@ -433,11 +431,7 @@ final class FileNodeIndexService
             $descendant->save();
         }
 
-        if (! FileNodeTags::sameSpace($fromKey, $toKey)) {
-            // A personal tag must not travel into a Team, nor the other way round.
-            $this->tags->dropFor(array_column($moved, 'node_id'));
-        }
-
+        $this->tags->dropOnSpaceChange($fromKey, $toKey, array_column($moved, 'node_id'));
         $isDir = (bool) $row->is_dir;
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
