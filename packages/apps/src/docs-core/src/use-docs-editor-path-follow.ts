@@ -6,7 +6,7 @@ import {
   readDocsPendingWrites,
   subscribeDocsCachesChanged,
 } from "@/lib/offline/docs/docs-inbound-sync";
-import { docsPathAfterMove, subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
+import { docsPathAfterMoves, subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useDriveFileNodeInbound } from "@/drive-core/src/use-drive-file-node-inbound";
 
@@ -115,8 +115,10 @@ export function useDocsEditorPathFollow({
 
   useEffect(() => {
     if (!editorUsername || !filePath) return;
-    return subscribeDocsPathMoved(editorUsername, (from, to) => {
-      const next = docsPathAfterMove(filePath, from, to);
+    // One batch is one sync's final map: the editor follows it once (a swap
+    // must not take it to the other Doc and back).
+    return subscribeDocsPathMoved(editorUsername, (moves) => {
+      const next = docsPathAfterMoves(filePath, moves);
       if (!next) return;
       setFollowPending(true);
       const target = `/${next}`;

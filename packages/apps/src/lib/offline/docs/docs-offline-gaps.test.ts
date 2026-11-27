@@ -5,7 +5,9 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import { retargetDocsOutboxPayload } from "@/lib/offline/docs/docs-create-kept-both";
 import {
   docsPathAfterMove,
+  docsPathAfterMoves,
   moveDocsPath,
+  moveDocsPaths,
   subscribeDocsPathMoved,
 } from "@/lib/offline/docs/docs-path-moves";
 import {
@@ -90,7 +92,7 @@ describe("moveDocsPath", () => {
   it("moves the text first, then tells every tab", async () => {
     await writeText(docsCollabIndexedDbKey("users/alice/Before.md"), "kept");
     const heard: Array<[string, string, string]> = [];
-    const unsubscribe = subscribeDocsPathMoved(username, (from, to) => {
+    const unsubscribe = subscribeDocsPathMoved(username, ([{ from, to }]) => {
       heard.push([from, to, ""]);
       void readText(docsCollabIndexedDbKey(to)).then((text) => {
         heard[heard.length - 1]![2] = text;
@@ -106,10 +108,49 @@ describe("moveDocsPath", () => {
 
   it("does nothing for the same path", async () => {
     const heard: string[] = [];
-    const unsubscribe = subscribeDocsPathMoved(username, (from) => heard.push(from));
+    const unsubscribe = subscribeDocsPathMoved(username, (moves) =>
+      moves.forEach(({ from }) => heard.push(from)),
+    );
     await moveDocsPath(username, "users/alice/Same.md", "/users/alice/Same.md/");
     unsubscribe();
     expect(heard).toEqual([]);
+  });
+});
+
+describe("moveDocsPaths", () => {
+  it("swaps the text of two Docs without mixing them, and tells every tab once", async () => {
+    await writeText(docsCollabIndexedDbKey("users/alice/a.md"), "text of a");
+    await writeText(docsCollabIndexedDbKey("users/alice/b.md"), "text of b");
+    const batches: number[] = [];
+    const unsubscribe = subscribeDocsPathMoved(username, (moves) => batches.push(moves.length));
+
+    await moveDocsPaths(username, [
+      { from: "/users/alice/a.md", to: "/users/alice/b.md" },
+      { from: "/users/alice/b.md", to: "/users/alice/a.md" },
+    ]);
+    unsubscribe();
+
+    expect(await readText(docsCollabIndexedDbKey("users/alice/b.md"))).toBe("text of a");
+    expect(await readText(docsCollabIndexedDbKey("users/alice/a.md"))).toBe("text of b");
+    expect(batches).toEqual([2]);
+  });
+});
+
+describe("docsPathAfterMoves", () => {
+  it("applies a batch once, the longest matching path first", () => {
+    const swap = [
+      { from: "users/a/a.md", to: "users/a/b.md" },
+      { from: "users/a/b.md", to: "users/a/a.md" },
+    ];
+    expect(docsPathAfterMoves("/users/a/a.md", swap)).toBe("users/a/b.md");
+    expect(docsPathAfterMoves("users/a/b.md", swap)).toBe("users/a/a.md");
+    const nested = [
+      { from: "users/a/F", to: "users/a/G" },
+      { from: "users/a/F/x.md", to: "users/a/elsewhere/x.md" },
+    ];
+    expect(docsPathAfterMoves("users/a/F/x.md", nested)).toBe("users/a/elsewhere/x.md");
+    expect(docsPathAfterMoves("users/a/F/y.md", nested)).toBe("users/a/G/y.md");
+    expect(docsPathAfterMoves("users/a/other.md", nested)).toBeNull();
   });
 });
 

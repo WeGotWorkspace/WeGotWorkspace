@@ -20,7 +20,11 @@ import {
   type DocsInboundChange,
   type DocsNodeFacts,
 } from "@/lib/offline/docs/docs-inbound-sync";
-import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
+import {
+  docsPathAfterMoves,
+  subscribeDocsPathMoved,
+  type DocsPathMove,
+} from "@/lib/offline/docs/docs-path-moves";
 
 const username = "alice";
 const FILE: DocsNodeFacts = { directory: false, size: 7, modifiedAt: 900 };
@@ -81,7 +85,9 @@ describe("applyDocsInboundChanges", () => {
       "Service Unavailable",
     );
     const heard: Array<[string, string]> = [];
-    const stop = subscribeDocsPathMoved(username, (from, to) => heard.push([from, to]));
+    const stop = subscribeDocsPathMoved(username, (moves) =>
+      moves.forEach(({ from, to }) => heard.push([from, to])),
+    );
 
     await applyDocsInboundChanges(username, [
       moved("/users/alice/open.md", "/users/alice/moved.md"),
@@ -90,6 +96,25 @@ describe("applyDocsInboundChanges", () => {
 
     await expect.poll(() => heard).toEqual([["users/alice/open.md", "users/alice/moved.md"]]);
     stop();
+  });
+
+  it("sends a swap as one batch, so an open editor follows it once (#2063 C4)", async () => {
+    const batches: (readonly DocsPathMove[])[] = [];
+    const stop = subscribeDocsPathMoved(username, (moves) => batches.push(moves));
+
+    await applyDocsInboundChanges(username, [
+      moved("/users/alice/a.md", "/users/alice/b.md"),
+      moved("/users/alice/b.md", "/users/alice/a.md"),
+    ]);
+
+    await expect.poll(() => batches.length).toBe(1);
+    stop();
+    expect(batches[0]).toEqual([
+      { from: "users/alice/a.md", to: "users/alice/b.md" },
+      { from: "users/alice/b.md", to: "users/alice/a.md" },
+    ]);
+    // The editor on a.md ends on b.md: the map is applied once, not a→b→a.
+    expect(docsPathAfterMoves("users/alice/a.md", batches[0]!)).toBe("users/alice/b.md");
   });
 
   it("tells every tab, this one included, only when the stars changed", async () => {

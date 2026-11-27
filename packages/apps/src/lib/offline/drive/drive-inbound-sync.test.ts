@@ -981,7 +981,9 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     getFileNodes.mockResolvedValue({ accountId: "ada", state: "8", list: [], notFound: [] });
 
     const heard: Array<[string, string]> = [];
-    const stop = subscribeDocsPathMoved(username, (from, to) => heard.push([from, to]));
+    const stop = subscribeDocsPathMoved(username, (moves) =>
+      moves.forEach(({ from, to }) => heard.push([from, to])),
+    );
     const result = await syncDriveInboundFromFileNodes(username);
     stop();
 

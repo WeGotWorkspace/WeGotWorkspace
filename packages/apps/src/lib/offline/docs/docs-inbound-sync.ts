@@ -14,7 +14,7 @@ import {
   parseFileOutboxPayload,
   type DocsOutboxPayload,
 } from "@/lib/offline/docs/docs-outbox-flush";
-import { docsPathAfterMove, moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
+import { docsPathAfterMove, moveDocsPaths } from "@/lib/offline/docs/docs-path-moves";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { nextPathAfterRename } from "@/lib/offline/shared/drive-sidecar-mutations";
@@ -146,19 +146,23 @@ export async function applyDocsInboundChanges(
  * An editor that has a Doc open at a path that moved elsewhere follows it, and
  * its local text moves along, so unsaved text is saved to the file, not to a
  * new file at the old path. A path a queued local write owns keeps the local
- * name (decision 5).
+ * name (decision 5). A swap moves each editor once, to its own Doc.
  */
 async function followRemoteMoves(
   username: string,
   changes: readonly DocsInboundChange[],
   pending: DocsPendingWrites,
 ): Promise<void> {
+  const moves: { from: string; to: string }[] = [];
   for (const change of changes) {
     if (change.kind !== "moved") continue;
     const from = docsSourceKey(change.from);
     if (docsRowOwnedByQueuedWrite(pending, from) || docsRowHiddenByQueuedWrite(pending, from)) {
       continue;
     }
-    await moveDocsPath(username, from, change.to);
+    moves.push({ from, to: change.to });
   }
+  // The changes are the sync's final map (one move per relocated file, read
+  // against the paths before it): moved together, and heard once.
+  await moveDocsPaths(username, moves);
 }
