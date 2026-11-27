@@ -386,7 +386,11 @@ final class JmapFileNodeShareFlagsTest extends WgwDatabaseTestCase
 
         return count(array_filter(
             $queries,
-            static fn (array $q): bool => preg_match('/from\s+"?drive_shares"?\s+where\s+"?owner_username"?\s*=\s*\?\s+and\s+"?revoked_at"?\s+is\s+null\s+and\s+"?path"?\s+in/i', (string) $q['query']) === 1,
+            // SQLite quotes identifiers with "…", MySQL with `…`: compare without either.
+            static fn (array $q): bool => preg_match(
+                '/from\s+drive_shares\s+where\s+owner_username\s*=\s*\?\s+and\s+revoked_at\s+is\s+null\s+and\s+path\s+in/i',
+                str_replace(['"', '`'], '', (string) $q['query']),
+            ) === 1,
         ));
     }
 }
