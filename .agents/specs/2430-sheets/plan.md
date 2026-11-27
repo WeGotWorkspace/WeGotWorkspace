@@ -14,7 +14,7 @@ Draws from the Docs collab engine (lifted to `src/lib/collab`, not copied) and t
 
 - Incremental collab saves and epoch compaction (#2446).
 - Awareness over the HTTP mailbox fallback (#2447).
-- Subdocuments for sheets beyond ~250k cells.
+- Sheets beyond ~250k cells. Sheets above ~250k cells go through #2446 (incremental saves and epoch compaction, under WeGotWorkspace/Product#153): its per-request cap plus a soft per-document cap that triggers compaction replace the hard caps that bind v1. Subdocuments for still larger sheets are untested and not planned.
 - Charts, pivot tables, conditional formatting, macros, per-row height, wrapped text, ODS / Numbers export.
 
 ## What exists

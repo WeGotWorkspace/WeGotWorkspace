@@ -24,7 +24,7 @@ A Sheets app in the suite that edits YCSV and CSV files live with others on the 
 
 - Incremental collab saves and epoch compaction: suite project #2446. Sheets v1 ships on today's whole-state save with per-shape caps (decision 11).
 - Awareness over the HTTP mailbox fallback: bug #2447 (also on Docs today).
-- Subdocuments for sheets beyond ~250k cells.
+- Sheets beyond ~250k cells. Sheets above ~250k cells go through #2446 (incremental saves and epoch compaction, under WeGotWorkspace/Product#153): its per-request cap plus a soft per-document cap that triggers compaction replace the hard caps that bind v1. Subdocuments for still larger sheets are untested and not planned.
 - Charts, pivot tables, conditional formatting, macros, per-row height, wrapped text, ODS / Numbers export.
 - An "overwritten by" marker for concurrent same-cell edits (decision 9).
 
@@ -83,7 +83,7 @@ book:       Y.Map{ycsv_version, defs, …}
 
 - **Format:** YCSV as committed in `docs/architecture/ycsv-spec.md` (`ycsv_version: 1`; a `.csv` holds no formulas, `=` is text there, §2.4). Row 1 = first data row, header = row 0 and unnumbered in the grid; grid number = formula number. Empty rows keep their number; no blank-line skipping. `header: true|false` explicit, detected for plain CSV. `---` splits sheets only outside quoted fields. A `.csv` stays CSV until a YCSV-only feature is used (then the editor asks). Writers emit block-style YAML.
 - **Collab:** the shared engine moves to `src/lib/collab` with a document-shape registry before Sheets plugs in. One collab file registry replaces `DOCS_COLLAB_TEXT_EXTENSIONS` (client) and `CollabDocFormats` (API).
-- **Size:** ~250k cells: gzip the Yjs sidecar and raise the text cap for the `ycsv` shape; Docs caps stay. Warn from ~150k cells.
+- **Size:** ~250k cells: gzip the Yjs sidecar and raise the text cap for the `ycsv` shape; Docs caps stay. Warn from ~150k cells. Beyond ~250k cells the route is #2446, not a further cap raise.
 - **Performance:** row + column windowing reusing `workspace-list-window.ts`; the window moves in steps; memoised rows; incremental engine in a worker on a replica `Y.Doc`; save serialisation off the main thread. A typical edit paints within one frame (16.7 ms) at 25k × 10.
 - **Accessibility:** roving focus on the active gridcell; the editor input exists only while editing; one column list for every row; active row and column always rendered; `aria-rowindex` / `aria-colindex` everywhere; one polite live region; decisions 12–14.
 - **Touch (decision 5: variant B):** a finger on a cell or header always pans natively; tap selects, double-tap edits, long-press (500 ms) opens the menu; range handles are the only selection drag (start knob's hit box clipped to the cell side, as it overlaps row header 1); rows and columns move through the header menu; fill through the callout/menu; formula bar docked above the keyboard on phones; grid-only pinch zoom (0.6×–1.8×); stepped row window plus memoised rows. No hold-drag on headers in v1. A shared gesture helper in `src/lib` takes a hold time per surface (Calendar's 160 ms is unsafe on a grid).
