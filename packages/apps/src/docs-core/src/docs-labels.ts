@@ -79,6 +79,8 @@ export const docsLabels = {
   /** Same two sidebar sections as Drive: Team Drives and Project Folders. */
   homeDrivesSection: driveLabels.sidebarSharedDrives,
   homeProjectsSection: driveLabels.sidebarProjects,
+  /** Sidebar section listing the tags in use (#2402). */
+  homeTagsSection: driveLabels.sidebarTags,
   /** Personal-drive display label (SST). Drive UI path key remains `"My Drive"`. */
   homeMyDrive: filesBrowserSidebarLabels.personalDrive,
   /** Docs home confirm copy (Drive hardcodes a slightly different permanent-delete body). */

@@ -933,6 +933,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: docs 1`]
   "homeSharedWithMe": "Shared with me",
   "homeStarred": "Starred",
   "homeStarredEmpty": "No starred documents yet.",
+  "homeTagsSection": "Tags",
   "homeTitle": "Documents",
   "homeTrash": "Trash",
   "homeTrashEmpty": "Trash is empty.",

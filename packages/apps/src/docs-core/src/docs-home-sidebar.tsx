@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { SidebarSegmentedNewMenu } from "@/sidebar-segmented-new-menu/src/sidebar-segmented-new-menu";
 import { useItemsWithAppSettingsRow } from "@/app-sidebar/src/app-sidebar-primary";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
@@ -25,6 +26,8 @@ export type DocsHomeSidebarProps = {
   /** Project folders, in a section of their own. */
   projectItems?: MenuItemProps[];
   projectsSectionLabel?: string;
+  /** The Tags section (#2402), under the Projects. */
+  tagsSection?: ReactNode;
 };
 
 /** New-document button, view sections, drives, and the signed-in user. */
@@ -43,6 +46,7 @@ export function DocsHomeSidebar({
   drivesSectionLabel,
   projectItems = [],
   projectsSectionLabel = "",
+  tagsSection = null,
 }: DocsHomeSidebarProps) {
   // Without a primary button there is no menu for Settings: it is the first section's last row.
   const firstItems = useItemsWithAppSettingsRow("docs", primaryItems, !showNewDocument);
@@ -72,6 +76,7 @@ export function DocsHomeSidebar({
       {projectItems.length > 0 ? (
         <SidebarSection title={projectsSectionLabel} items={projectItems} />
       ) : null}
+      {tagsSection}
     </AppSidebar>
   );
 }

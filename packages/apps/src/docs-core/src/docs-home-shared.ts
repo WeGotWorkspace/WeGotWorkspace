@@ -16,6 +16,8 @@ export type DocsHomeView =
   | { type: "recent" }
   | { type: "starred" }
   | { type: "trash" }
+  /** Every doc with one tag, across drives (#2402). */
+  | { type: "tag"; tag: string }
   | { type: "drive"; pathPrefix: string };
 
 /** True when a file title/path has a Docs-home list extension (md / markdown / txt, plus docx / gdoc for Save as Markdown). */
