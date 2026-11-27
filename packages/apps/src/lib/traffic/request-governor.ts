@@ -75,9 +75,11 @@ export function isMeetLaneSignal(value: unknown): value is MeetLaneSignal {
 
 /**
  * The Meet signaling lane. Worst case per browser and opening: `burst` plus
- * `perMinute` over `maxOpenMs` = 10 + 20 × 0.75 = 25 lane polls (a guest 10 more).
- * A member's are charged to the background bucket and stop at half a burst of
- * debt, so the governed total in any minute stays under 30 + 10 + 5 = 45.
+ * `perMinute` over `maxOpenMs` = 10 + 20 × 0.75 = 25 lane polls. Every lane poll
+ * is charged to the background bucket and stops at half a burst of debt, so the
+ * governed total in any minute stays under the budget plus a burst; only a
+ * guest's `guestBonus` polls per `join` are free. The window reopens while the
+ * page keeps signalling `negotiating`, so the bucket, not `maxOpenMs`, is the cap.
  */
 export const MEET_LANE = {
   /** The lane stays open this long after the last `join` / `negotiating` signal. */
@@ -193,7 +195,7 @@ export class RequestGovernor {
   private laneCallUntil = 0;
   private laneTokens: number = MEET_LANE.burst;
   private laneRefilledAt: number;
-  private laneGuestGranted = true;
+  private laneGuestBonus = 0;
 
   constructor(private readonly options: GovernorOptions) {
     this.tokens = options.burst;
@@ -215,7 +217,7 @@ export class RequestGovernor {
     }
     if (signal === "join" || now >= this.laneNegotiatingUntil) {
       this.laneOpenedAt = now;
-      if (signal === "join") this.laneGuestGranted = false;
+      if (signal === "join") this.laneGuestBonus = MEET_LANE.guestBonus;
     }
     this.laneCallUntil = Math.max(this.laneCallUntil, now + MEET_LANE.callTtlMs);
     this.laneNegotiatingUntil = Math.min(
@@ -246,26 +248,25 @@ export class RequestGovernor {
     }
     if (!MEET_ROOM_POLL.test(path) || now >= this.laneNegotiatingUntil) return false;
     const guest = !request.headers.get("Authorization");
+    // A guest has no push stream: its first polls after a join are not charged.
+    if (guest && this.laneGuestBonus > 0) {
+      this.laneGuestBonus -= 1;
+      return true;
+    }
     this.refillLane(now);
-    if (guest && !this.laneGuestGranted) {
-      this.laneGuestGranted = true;
-      this.laneTokens += MEET_LANE.guestBonus;
-    }
     if (this.laneTokens < 1) return false;
-    // A member's lane polls are charged to the background bucket; past half a
-    // burst of debt they queue again, so the governed total stays near the budget.
-    if (!guest) {
-      this.refill();
-      if (this.tokens <= -this.options.burst / 2) return false;
-    }
+    // Lane polls are charged to the background bucket; past half a burst of
+    // debt they queue again, so the governed total stays near the budget.
+    this.refill();
+    if (this.tokens <= -this.options.burst / 2) return false;
     this.laneTokens -= 1;
-    if (!guest) this.charge();
+    this.charge();
     return true;
   }
 
   private refillLane(now: number): void {
     this.laneTokens = Math.min(
-      MEET_LANE.burst + MEET_LANE.guestBonus,
+      MEET_LANE.burst,
       this.laneTokens + (Math.max(0, now - this.laneRefilledAt) * MEET_LANE.perMinute) / 60_000,
     );
     this.laneRefilledAt = now;

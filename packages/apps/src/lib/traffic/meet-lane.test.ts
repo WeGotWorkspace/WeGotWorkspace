@@ -70,12 +70,12 @@ describe("Meet signaling lane (#2419)", () => {
   });
 
   it("extends on negotiating signals but never beyond maxOpenMs", () => {
-    const h2 = harness();
-    h2.governor.signalMeetLane("join");
-    h2.advance(20_000);
-    h2.governor.signalMeetLane("negotiating");
-    h2.advance(MEET_LANE.maxOpenMs - 20_000 + 1);
-    expect(h2.governor.meetLaneOpen()).toBe(false);
+    const h = harness();
+    h.governor.signalMeetLane("join");
+    h.advance(20_000);
+    h.governor.signalMeetLane("negotiating");
+    h.advance(MEET_LANE.maxOpenMs - 20_000 + 1);
+    expect(h.governor.meetLaneOpen()).toBe(false);
   });
 
   it("closes at once on left", async () => {
@@ -158,8 +158,9 @@ describe("Meet signaling lane (#2419)", () => {
     expect(tightFree).toBe(6);
   });
 
-  it("gives an unauthenticated guest one extra burst per join, exempt from the bucket", async () => {
-    const h = harness();
+  it("gives an unauthenticated guest one uncharged bonus per join, then charges like a member", async () => {
+    const h = harness({ burst: 10 });
+    await emptyBucket(h);
     await emptyBucket(h);
     h.governor.signalMeetLane("join");
     let free = 0;
@@ -167,11 +168,49 @@ describe("Meet signaling lane (#2419)", () => {
       if ((await waited(h, get(MEET_POLL))) === 0) free += 1;
       else break;
     }
-    expect(free).toBe(MEET_LANE.burst + MEET_LANE.guestBonus);
-    // Guest polls took nothing from the background bucket.
+    // The bonus first, then the lane bucket (10) down to the debt floor.
+    expect(free).toBeLessThanOrEqual(MEET_LANE.guestBonus + MEET_LANE.burst);
+    expect(free).toBeGreaterThanOrEqual(MEET_LANE.guestBonus);
+    // Only the bonus was free: the lane polls after it went on the background bucket.
     h.governor.signalMeetLane("left");
-    h.advance(120_000);
-    expect(await waited(h, member("/files/x/changes"))).toBe(0);
+    expect(await waited(h, member("/files/x/changes"))).toBeGreaterThan(0);
+  });
+
+  describe("a guest polling every 400 ms while a peer is dialled", () => {
+    async function run(idleMs: number) {
+      const h = harness({ burst: 10 });
+      h.advance(idleMs);
+      h.governor.signalMeetLane("join");
+      const start = h.now();
+      const perMinute: number[] = [0, 0, 0];
+      let nextSignal = start;
+      while (h.now() < start + 180_000) {
+        if (h.now() >= nextSignal) {
+          h.governor.signalMeetLane("negotiating");
+          nextSignal += 2_000;
+        }
+        await h.governor.handle(get(MEET_POLL), "background");
+        const minute = Math.floor((h.now() - start) / 60_000);
+        if (minute < 3) perMinute[minute] += 1;
+        h.advance(400);
+      }
+      return perMinute;
+    }
+    const budget = 30;
+
+    it("stays within the budget plus one burst and the bonus, then within the budget", async () => {
+      const [first, second, third] = await run(0);
+      expect(first).toBeLessThanOrEqual(budget + 10 + MEET_LANE.guestBonus);
+      expect(second).toBeLessThanOrEqual(budget);
+      expect(third).toBeLessThanOrEqual(budget);
+    });
+
+    it("holds the same bounds after two idle minutes", async () => {
+      const [first, second, third] = await run(120_000);
+      expect(first).toBeLessThanOrEqual(budget + 10 + MEET_LANE.guestBonus);
+      expect(second).toBeLessThanOrEqual(budget);
+      expect(third).toBeLessThanOrEqual(budget);
+    });
   });
 
   it("respects the shared brake: a 503 sends lane polls back to the queue", async () => {
