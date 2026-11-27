@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap\FileNodes;
 
 use App\Services\Jmap\JmapMethodException;
+use App\Services\Jmap\JmapRequestContext;
 use App\Services\Jmap\Push\JmapPushEventId;
 
 /**
@@ -23,11 +24,12 @@ final class FileNodeSyncState
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly FileNodeAccountSupport $accounts,
+        private readonly JmapRequestContext $context,
     ) {}
 
     public function current(string $username): string
     {
-        return $this->index->currentSeq().'.'.$this->scopeHash($username);
+        return $this->seq().'.'.$this->scopeHash($username);
     }
 
     /**
@@ -39,7 +41,13 @@ final class FileNodeSyncState
      */
     public function forScope(array $accountRoots, string $grantPairs): string
     {
-        return $this->index->currentSeq().'.'.self::hashScope($accountRoots, $grantPairs);
+        return $this->seq().'.'.self::hashScope($accountRoots, $grantPairs);
+    }
+
+    /** The change sequence, read once per JMAP batch; a write forgets it (FileNodeSequence::next, the dispatcher). */
+    private function seq(): int
+    {
+        return $this->context->remember(FileNodeSequence::REMEMBER_KEY, fn (): int => $this->index->currentSeq());
     }
 
     public function scopeHash(string $username): string
@@ -60,6 +68,22 @@ final class FileNodeSyncState
         if (preg_match('/^(\d+)\.([0-9a-f]{32})$/', $state, $matches) !== 1
             || ! hash_equals($this->scopeHash($username), $matches[2])) {
             throw new JmapMethodException('cannotCalculateChanges', 'Sync state is invalid or expired.');
+        }
+
+        return (int) $matches[1];
+    }
+
+    /**
+     * The sequence of a state this server issued, whatever scope (roots and grants) it was taken under. A
+     * FileNode/query `asOfState` is honoured by sequence alone (#2063): the client's catch-up from
+     * that state is what notices a scope change, through `cannotCalculateChanges`.
+     *
+     * @throws JmapMethodException invalidArguments when the string is not a FileNode state
+     */
+    public function seqOf(string $state): int
+    {
+        if (preg_match('/^(\d{1,19})\.[0-9a-f]{32}(?:\.|$)/', $state, $matches) !== 1) {
+            throw new JmapMethodException('invalidArguments', 'asOfState must be a FileNode state.');
         }
 
         return (int) $matches[1];
