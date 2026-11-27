@@ -61,6 +61,9 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
       columns.push([map]);
     });
 
+    // One push for all rows: pushing row by row inside one transaction is quadratic in Yjs
+    // (spike 4: 20k rows 2.6 s per row vs 97 ms batched).
+    const rowMaps: Y.Map<unknown>[] = [];
     file.rows.forEach((data, index) => {
       const cells = new Y.Map<string>();
       for (let colIndex = 0; colIndex < colInfos.length; colIndex += 1) {
@@ -71,8 +74,9 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
       const map = new Y.Map<unknown>();
       map.set("rowId", rowIds[index]);
       map.set("cells", cells);
-      rows.push([map]);
+      rowMaps.push(map);
     });
+    rows.push(rowMaps);
   }, "local");
 }
 
