@@ -10,6 +10,8 @@ import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { normalizeApiVirtualPath as normalizePath, parentAndName } from "@/lib/files/api-path";
 
 const DRIVE_METADATA_SYNC_META_KEY = "drive:metadata-sync:progress";
+/** Meta key: JSON array of the paths the last crawl queued as roots (home, team drives). */
+export const DRIVE_CRAWLED_ROOTS_KEY = "drive:metadata-sync:roots";
 
 export type DriveMetadataSyncProgress = {
   running: boolean;
@@ -108,6 +110,11 @@ export async function syncDriveMetadataTree(
   await writeDriveBootstrapToCache(username, bootstrap);
 
   const roots = await collectMetadataRoots(username);
+  await writeMeta(
+    username,
+    DRIVE_CRAWLED_ROOTS_KEY,
+    JSON.stringify(roots.map(normalizeDriveEntryKey)),
+  );
   const rootKeys = new Set(roots.map(normalizeDriveEntryKey));
   const visited = new Set<string>();
   const queue: string[] = [...roots];

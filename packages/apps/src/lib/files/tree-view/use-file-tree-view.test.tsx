@@ -9,6 +9,7 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { applyDocsStarToggle, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntryRowFromEntry } from "@/lib/offline/drive/drive-directory-offline-store";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
+import { DRIVE_CRAWLED_ROOTS_KEY } from "@/lib/offline/drive/drive-metadata-sync";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import type { DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
 import {
@@ -121,10 +122,22 @@ describe("useFileTreeView", () => {
 
   it("after a per-folder crawl (no roots map), empty account roots are known-empty", async () => {
     await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
+    await writeMeta(
+      username,
+      DRIVE_CRAWLED_ROOTS_KEY,
+      JSON.stringify([`users/${username}`, "groups/team"]),
+    );
     for (const path of [`users/${username}`, "groups/team"]) {
       const { result } = render({ kind: "folder", path });
       expect(await settled(result), path).toEqual({ rows: [], status: "ready", settled: true });
     }
+    // A team drive `/groups` did not list is not a known root.
+    const notListed = render({ kind: "folder", path: "groups/other" });
+    expect(await settled(notListed.result)).toEqual({
+      rows: [],
+      status: "not-available",
+      settled: true,
+    });
     const unknown = render({ kind: "folder", path: `users/${username}/Never` });
     expect((await settled(unknown.result)).status).toBe("not-available");
   });

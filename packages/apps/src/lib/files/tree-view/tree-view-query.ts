@@ -10,6 +10,7 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { readDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
 import {
+  readDriveCrawledRootPaths,
   readDriveTreeFirstSyncDone,
   readDriveTreeRoots,
 } from "@/lib/offline/drive/drive-tree-sync";
@@ -105,22 +106,13 @@ async function viewKnowledge(username: string, view: FileTreeView): Promise<File
   if (!(await readDriveTreeFirstSyncDone(username))) return "syncing";
   if (view.kind !== "folder" && view.kind !== "prefix") return "complete";
   const path = treeRowPath(view.path);
-  const [folderRow, roots] = await Promise.all([
+  const [folderRow, roots, crawledRoots] = await Promise.all([
     path ? table(username).get(path) : Promise.resolve(undefined),
     readDriveTreeRoots(username),
+    readDriveCrawledRootPaths(username),
   ]);
-  const rootPaths = roots ? [...roots.values()] : crawledRootPaths(username, path);
+  const rootPaths = roots ? [...roots.values()] : (crawledRoots ?? []);
   return isKnownTreeFolder(path, folderRow, rootPaths) ? "complete" : "unknown";
-}
-
-/**
- * Account roots after a per-folder crawl, which stores no roots map: the
- * person's home, and a team drive by its path shape (`groups/<slug>`).
- */
-function crawledRootPaths(username: string, path: string): string[] {
-  const parts = path.split("/");
-  const teamDrive = parts.length === 2 && parts[0] === "groups" ? [path] : [];
-  return [`users/${username}`, ...teamDrive];
 }
 
 /**

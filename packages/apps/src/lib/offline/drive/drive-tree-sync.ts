@@ -31,7 +31,10 @@ import {
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
-import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
+import {
+  DRIVE_CRAWLED_ROOTS_KEY,
+  syncDriveMetadataTree,
+} from "@/lib/offline/drive/drive-metadata-sync";
 import { SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
   driveEntriesTable,
@@ -94,6 +97,23 @@ export async function readDriveTreeRoots(username: string): Promise<Map<string, 
         (pair): pair is [string, string] => typeof pair[1] === "string",
       ),
     );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Account root paths the last per-folder crawl listed (home, and each team
+ * drive `/groups` returned), without a leading slash. Null before any crawl.
+ */
+export async function readDriveCrawledRootPaths(username: string): Promise<string[] | null> {
+  const raw = await readMeta(username, DRIVE_CRAWLED_ROOTS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((path): path is string => typeof path === "string")
+      : null;
   } catch {
     return null;
   }
