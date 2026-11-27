@@ -11,7 +11,6 @@ import {
   screenCaptureConstraints,
 } from "@/meet-core/src/meet-screen-optimize";
 import { screenContentHint, type ScreenOptimize } from "@/meet-core/src/meet-video-sender";
-
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import {
   buildMeetAudioConstraints,
