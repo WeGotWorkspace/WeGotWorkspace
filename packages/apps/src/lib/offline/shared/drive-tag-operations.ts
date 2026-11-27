@@ -13,24 +13,10 @@ import {
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { DRIVE_DOMAIN, driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
-import { hasTagDelta, mergeTagDeltas, type TagDelta } from "@/lib/tags/tag-delta";
-import { normalizeTag } from "@/lib/tags/tag-rules";
+import { hasTagDelta, mergeTagDeltas, tagsAfterDelta, type TagDelta } from "@/lib/tags/tag-delta";
 
 /** A tag edit waiting in the Drive or Docs outbox (#2402): one row per path, merged. */
 export type DriveTagsOutboxPayload = { op: "tags"; path: string } & TagDelta;
-
-/** The tags after a delta: removes first, then adds, each normalised and without repeats. */
-export function tagsAfterDelta(tags: readonly string[], delta: TagDelta): string[] {
-  const removed = new Set((delta.tagsRemove ?? []).map(normalizeTag));
-  const next = tags.filter((tag) => !removed.has(normalizeTag(tag)));
-  for (const tag of delta.tagsAdd ?? []) {
-    const normalized = normalizeTag(tag);
-    if (normalized && !next.some((current) => normalizeTag(current) === normalized)) {
-      next.push(normalized);
-    }
-  }
-  return next;
-}
 
 /** The domains whose outbox can hold a tag row: Drive and Docs share the one tree. */
 const TAG_DOMAINS: readonly string[] = [DRIVE_DOMAIN, DOCS_DOMAIN];

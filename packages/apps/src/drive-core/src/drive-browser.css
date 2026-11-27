@@ -482,3 +482,18 @@
 .drive-workspace [data-multi-select="true"] .drive-list-row--selected > td:first-child::before {
   inset-block: var(--list-row-radius, 0.625rem);
 }
+
+/* The name keeps its width first: the chips shrink (and clip) before the title truncates. */
+.drive-row-tags {
+  @apply flex min-w-0 items-center gap-1 overflow-hidden;
+  flex: 0 100 auto;
+}
+
+.drive-row-tags > * {
+  @apply shrink-0;
+}
+
+.drive-row-tags__more {
+  @apply text-xs;
+  color: var(--workspace-muted-foreground, inherit);
+}

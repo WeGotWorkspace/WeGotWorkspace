@@ -8,7 +8,11 @@ import type { Collection, InsertType } from "dexie";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
-import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
+import {
+  backfillDriveEntryTags,
+  driveEntriesTable,
+  type OfflineDriveEntryRow,
+} from "@/lib/offline/drive/drive-schema";
 import {
   readDriveTreeCrawlRoots,
   readDriveTreeFirstSyncDone,
@@ -18,6 +22,7 @@ import {
 import {
   FILE_TREE_RECENT_LIMIT,
   isKnownTreeFolder,
+  isListableTreeRow,
   isShareRootRow,
   matchesEntryFilter,
   rowInView,
@@ -25,6 +30,7 @@ import {
   type FileTreeEntryFilter,
   type FileTreeView,
 } from "@/lib/files/tree-view/tree-view-predicates";
+import { isTrashTreePath } from "@/lib/offline/drive/drive-tree-rows";
 
 export type FileTreeViewStatus = "first-sync" | "ready" | "not-available";
 
@@ -39,8 +45,12 @@ type EntryCollection = Collection<
   InsertType<OfflineDriveEntryRow, "id">
 >;
 
+function database(username: string) {
+  return offlineDbForAccount(offlineAccountKeyFromUsername(username));
+}
+
 function table(username: string) {
-  return driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  return driveEntriesTable(database(username));
 }
 
 /** The view's starting collection: always an index range, never the whole table. */
@@ -63,6 +73,8 @@ function viewCollection(
       return entries.where("area").equals("share");
     case "trash":
       return entries.where("area").equals("trash");
+    case "tag":
+      return entries.where("tags").equals(view.tag.trim().toLowerCase());
     case "prefix": {
       const prefix = treeRowPath(view.path);
       if (prefix) return entries.where("id").startsWith(`${prefix}/`);
@@ -91,6 +103,7 @@ async function readViewRows(
     const sharePaths = new Set(shared.map((row) => row.id));
     return shared.filter((row) => isShareRootRow(row, sharePaths) && keep(row));
   }
+  if (view.kind === "tag") await backfillDriveEntryTags(database(username));
   const collection = viewCollection(username, view, filter).filter(keep);
   if (view.kind === "recent")
     return collection.limit(view.limit ?? FILE_TREE_RECENT_LIMIT).toArray();
@@ -164,4 +177,21 @@ export async function queryFileTreeView(
     rows: rows.map((row) => JSON.parse(row.data) as WgwDriveDirectoryEntry),
     status: fileTreeViewStatus(knowledge, rows.length, online),
   };
+}
+
+/**
+ * The tags in use on the device's file tree (#2402), sorted: every tag of a listable item
+ * outside Trash. Reads the `tags` index, so it touches only tagged rows.
+ */
+export async function queryFileTreeTags(username: string): Promise<string[]> {
+  const found = new Set<string>();
+  await backfillDriveEntryTags(database(username));
+  await table(username)
+    .where("tags")
+    .startsWith("")
+    .each((row) => {
+      if (!isListableTreeRow(row) || row.area === "trash" || isTrashTreePath(row.id)) return;
+      for (const tag of row.tags ?? []) found.add(tag);
+    });
+  return [...found].sort((a, b) => a.localeCompare(b));
 }

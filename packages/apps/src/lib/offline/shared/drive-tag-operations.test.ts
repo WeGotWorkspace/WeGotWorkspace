@@ -16,7 +16,7 @@ import {
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { DRIVE_DOMAIN, driveEntriesTable } from "@/lib/offline/drive/drive-schema";
-import { createHybridSetTags, tagsAfterDelta } from "@/lib/offline/shared/drive-tag-operations";
+import { createHybridSetTags } from "@/lib/offline/shared/drive-tag-operations";
 
 vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/offline/core/browser-online")>();
@@ -38,15 +38,6 @@ function entry(tags?: string[]): WgwDriveDirectoryEntry {
     ...(tags ? { tags } : {}),
   };
 }
-
-describe("tagsAfterDelta", () => {
-  it("removes first, then adds, normalised and without repeats", () => {
-    expect(tagsAfterDelta(["a", "b"], { tagsRemove: ["B"], tagsAdd: ["C", "a", "c"] })).toEqual([
-      "a",
-      "c",
-    ]);
-  });
-});
 
 describe("createHybridSetTags", () => {
   const db = () => offlineDbForAccount(offlineAccountKeyFromUsername(username));

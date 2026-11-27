@@ -1,0 +1,44 @@
+@import "../../styles.css" reference;
+
+/* Wrapping Tag chips (not full-width MenuItem rows), the same `lg` chips as the detail.
+ * Match the section heading / MenuItem inset. */
+.tag-sidebar .sidebar-section__list {
+  @apply flex flex-wrap gap-2 space-y-0;
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
+}
+
+/* Cap the flex item so a long tag ellipsizes instead of overflowing the sidebar. */
+.tag-sidebar__row {
+  @apply min-w-0 max-w-full;
+}
+
+.tag-sidebar__item {
+  @apply inline-flex max-w-full appearance-none border-0 bg-transparent p-0;
+  @apply cursor-pointer outline-none;
+  /* Focus ring follows the capsule chip. */
+  border-radius: var(--control-radius-pill);
+}
+
+.tag-sidebar__item:focus-visible {
+  @apply ring-2 ring-offset-1 ring-offset-transparent;
+  --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
+}
+
+.tag-sidebar__item .tag {
+  @apply max-w-full;
+}
+
+.tag-sidebar__item:hover .tag {
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 11%, transparent);
+}
+
+.tag-sidebar__item--selected .tag,
+.tag-sidebar__item--selected:hover .tag {
+  --tag-bg: var(--tag-active-bg);
+  --tag-fg: var(--tag-active-fg);
+}
+
+.tag-sidebar__item--drop-target .tag {
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
+}

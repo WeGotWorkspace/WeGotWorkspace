@@ -25,6 +25,8 @@ export type FileTreeView =
   | { kind: "starred" }
   /** The roots shared with the person. */
   | { kind: "shared" }
+  /** Every item with one tag, across folders and drives, outside Trash (#2402). */
+  | { kind: "tag"; tag: string }
   /** The items in Trash (direct children of a `.Trash` folder). */
   | { kind: "trash" }
   /** Every file under one path, flat (Docs home per drive, project or team). */
@@ -46,7 +48,7 @@ export type FileTreeEntryFilter = {
 /** The columns the predicates read. */
 export type FileTreeRowColumns = Pick<
   OfflineDriveEntryRow,
-  "id" | "parentPath" | "type" | "ext" | "area"
+  "id" | "parentPath" | "type" | "ext" | "area" | "tags"
 >;
 
 /** Default length of the recent view. */
@@ -113,6 +115,10 @@ export function rowInView(row: FileTreeRowColumns, view: FileTreeView): boolean 
       return !inTrash;
     case "shared":
       return row.area === "share";
+    case "tag": {
+      const wanted = view.tag.trim().toLowerCase();
+      return !inTrash && (row.tags ?? []).some((tag) => tag.toLowerCase() === wanted);
+    }
     case "trash":
       return inTrash && isTrashItemPath(row.id);
     case "prefix": {

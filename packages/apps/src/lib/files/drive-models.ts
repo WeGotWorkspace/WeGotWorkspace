@@ -44,6 +44,8 @@ export type ViewKey =
   | { type: "recent" }
   | { type: "starred" }
   | { type: "shared" }
+  /** Every item with one tag, across folders (#2402). */
+  | { type: "tag"; tag: string }
   /** Every queued, uploading, and failed file across folders (#1502). */
   | { type: "uploads" }
   | { type: "access"; scopePath?: string };

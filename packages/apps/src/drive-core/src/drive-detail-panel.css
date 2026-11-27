@@ -72,10 +72,6 @@
   height: 4rem;
 }
 
-.drive-detail-panel__path {
-  @apply mb-3;
-}
-
 .drive-detail-panel__title {
   @apply text-base md:text-lg leading-tight mb-4 tracking-tight break-words font-semibold font-sans;
   font-family: var(--font-sans);
@@ -109,4 +105,8 @@
 .drive-detail-panel__meta-value {
   @apply min-w-0 truncate text-right tabular-nums;
   color: var(--workspace-item-color, var(--workspace-foreground));
+}
+
+.drive-detail-panel__tags {
+  @apply mb-4;
 }

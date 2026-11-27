@@ -68,6 +68,7 @@ export const liveTierSpecs = [
   "drive-offline-home",
   "drive-offline-indicator",
   "drive-selection-download",
+  "drive-tags",
   "drive-upload-batch-dialog",
   "drive-upload-errors",
   "drive-upload-folder",

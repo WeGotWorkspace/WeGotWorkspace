@@ -25,6 +25,8 @@ export function driveViewFromSearch(search: DriveRouteSearch): ViewKey {
   if (viewType === "starred") return { type: "starred" };
   if (viewType === "shared") return { type: "shared" };
   if (viewType === "uploads") return { type: "uploads" };
+  // A tag view carries its tag in `path`: /drive?view=tag&path=client-a (#2402).
+  if (viewType === "tag" && search.path?.trim()) return { type: "tag", tag: search.path.trim() };
   // Access manager is Storybook-only until product-ready; ignore deep links.
   if (viewType === "access") {
     return { type: "folder", path: "My Drive" };
@@ -61,5 +63,6 @@ export function driveSearchFromView(view: ViewKey): DriveRouteSearch {
   }
   if (view.type === "all") return {};
   if (view.type === "folder") return { view: "folder", path: view.path };
+  if (view.type === "tag") return { view: "tag", path: view.tag };
   return { view: view.type };
 }

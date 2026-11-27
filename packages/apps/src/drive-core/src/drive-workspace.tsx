@@ -10,6 +10,7 @@ import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
+import { DriveSidebarTags } from "@/drive-core/src/drive-sidebar-tags";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import {
   workspaceUserFooterDetailLine,
@@ -287,6 +288,7 @@ export function DriveWorkspace({
   const detailLayout = useDocsCommentsLayout();
   const useDetailDrawer = detailLayout === "drawer";
   const {
+    tags,
     labels,
     active,
     detailOpen,
@@ -366,6 +368,17 @@ export function DriveWorkspace({
             activeMayManageStructure,
           })
         }
+        onAddTag={
+          tags.canEditTags(active) && activeMayManageStructure !== false
+            ? (label) => tags.changeTags([active.id], { tagsAdd: [label] })
+            : undefined
+        }
+        onRemoveTag={
+          tags.canEditTags(active) && activeMayManageStructure !== false
+            ? (label) => tags.changeTags([active.id], { tagsRemove: [label] })
+            : undefined
+        }
+        tagSuggestions={tags.tagSuggestions}
         onShare={
           shareEnabled && active.apiPath
             ? () => handleOpenShareForFile(active.apiPath!, active.title)
@@ -396,6 +409,7 @@ export function DriveWorkspace({
     showError,
     starred,
     structureEnabled,
+    tags,
     toggleStar,
   ]);
 
@@ -572,6 +586,14 @@ function DriveSidebar({
       {projectSidebarItems.length > 0 ? (
         <SidebarSection title={labels.sidebarProjects} items={projectSidebarItems} />
       ) : null}
+      {wgwIsGuestSession() ? null : (
+        <DriveSidebarTags
+          username={controller.currentUsername}
+          labels={labels}
+          view={controller.view}
+          selectView={controller.selectView}
+        />
+      )}
     </AppSidebar>
   );
 }

@@ -44,7 +44,9 @@ export function buildDriveViewBreadcrumbs(
   rootLabels?: Readonly<Record<string, string>>,
 ): PathBreadcrumbItem[] {
   if (view.type === "folder") return buildDriveFolderBreadcrumbs(view.path, labels, rootLabels);
-  const titles: Record<Exclude<ViewKey["type"], "folder">, string> = {
+  // A tag view is titled by its tag.
+  if (view.type === "tag") return [{ label: view.tag, path: null }];
+  const titles: Record<Exclude<ViewKey["type"], "folder" | "tag">, string> = {
     all: labels.sidebarHome,
     access: labels.accessTitle,
     recent: labels.sidebarRecent,

@@ -80,3 +80,17 @@ describe("drive-route-search All Files home", () => {
     });
   });
 });
+
+describe("tag view route (#2402)", () => {
+  it("round-trips a tag through the view and path params", () => {
+    expect(driveSearchFromView({ type: "tag", tag: "client-a" })).toEqual({
+      view: "tag",
+      path: "client-a",
+    });
+    expect(driveViewFromSearch({ view: "tag", path: "client-a" })).toEqual({
+      type: "tag",
+      tag: "client-a",
+    });
+    expect(driveViewFromSearch({ view: "tag" })).toEqual({ type: "all" });
+  });
+});
