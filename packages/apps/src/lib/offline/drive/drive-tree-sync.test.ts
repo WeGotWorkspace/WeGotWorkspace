@@ -1172,3 +1172,30 @@ describe("a sync stopped between the two phases of a blob move", () => {
     expect(await blobSize("users/ada/b.md")).toBe(1);
   });
 });
+
+describe("the walk catch-up relocates in two phases", () => {
+  it("two files that swap paths during the walk keep their own blobs", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    for (let i = 0; i < 40; i += 1)
+      server.add(`n${String(i).padStart(3, "0")}`, "r-home", `f${i}.md`);
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    // A new pass; the swap lands after its first listing request.
+    server.after.set(server.requests.length + 1, () => {
+      server.move("f-a", { name: "b.md" });
+      server.move("f-b", { name: "a.md" });
+    });
+
+    await syncDriveTree(username);
+
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await row("/users/ada/b.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+});

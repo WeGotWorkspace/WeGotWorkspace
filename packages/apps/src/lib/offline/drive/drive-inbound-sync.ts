@@ -195,6 +195,9 @@ async function applyFileNodeChanges(
     (id) => !destroyed.has(id),
   );
   const upserted = new Set<string>();
+  // Final paths of the rows this batch keeps: a deleted node's old path that
+  // another node now holds is not cleared.
+  const landed = new Set<string>();
   let changed = false;
   let blocked = false;
   const keptUnsavedPaths: string[] = [];
@@ -271,10 +274,11 @@ async function applyFileNodeChanges(
       placements.push({ node, path, previous: from, move });
     }
     const prefix = planPrefixMoves(under, moves, batchIds);
-    const destinations = new Set([
+    const destinations: Set<string> = new Set([
       ...placements.map(({ path }) => normalizePath(path)),
       ...prefix.moved.map(({ id }) => id),
     ]);
+    for (const path of destinations) landed.add(path);
     const kept = await keepUnsaved(username, [...leftTree, ...prefix.hidden]);
     keptUnsavedPaths.push(...kept);
     leftTree = [...leftTree, ...prefix.hidden].filter((path) => !kept.includes(path));
@@ -329,6 +333,7 @@ async function applyFileNodeChanges(
     const paths = await pathsForNodeId(username, id);
     if (paths.length === 0) continue;
     for (const path of paths) {
+      if (landed.has(normalizePath(path))) continue;
       const outcome = await retainOrDropLocalDocument(username, path);
       if (outcome === "kept") {
         keptUnsavedPaths.push(normalizePath(path));
