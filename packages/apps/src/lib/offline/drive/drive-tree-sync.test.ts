@@ -953,6 +953,12 @@ describe("syncDriveTree", () => {
         return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
       });
 
+    // Neither root has a `.Trash` yet.
+    const jmap = await import("@/lib/api/wgw/drive-jmap");
+    const list = vi.spyOn(jmap, "listFileNodeEntries").mockImplementation(async (_s, dir) => {
+      throw new jmap.FileNodeNotFoundError(dir);
+    });
+
     const result = await syncDriveTree(username);
 
     expect(result.completed).toBe(true);
@@ -964,6 +970,7 @@ describe("syncDriveTree", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());
+    list.mockRestore();
     spy.mockRestore();
   });
 
@@ -982,7 +989,7 @@ describe("syncDriveTree", () => {
     const listed: string[] = [];
     const list = vi.spyOn(jmap, "listFileNodeEntries").mockImplementation(async (_s, dir) => {
       listed.push(dir);
-      if (dir === "/groups/team/.Trash") throw new Error("no Trash");
+      if (dir === "/groups/team/.Trash") throw new jmap.FileNodeNotFoundError(dir);
       return [staleEntry("/users/ada/.Trash/gone.md", "n-gone")];
     });
 
@@ -992,6 +999,33 @@ describe("syncDriveTree", () => {
     expect(listed).toEqual(["/users/ada/.Trash", "/groups/team/.Trash"]);
     expect(await row("/users/ada/.Trash/gone.md")).toMatchObject({ area: "trash" });
     expect(await row("/users/ada/.Trash/purged.md")).toBeUndefined();
+    list.mockRestore();
+    spy.mockRestore();
+  });
+
+  it("a failing Trash listing leaves the crawl unfinished; the next crawl stores it", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi
+      .spyOn(crawl, "syncDriveMetadataTree")
+      .mockImplementation(async (_u, _b, options) => {
+        options?.onRoots?.(["/users/ada"]);
+        return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+      });
+    const jmap = await import("@/lib/api/wgw/drive-jmap");
+    const list = vi
+      .spyOn(jmap, "listFileNodeEntries")
+      .mockRejectedValueOnce(new Error("429"))
+      .mockResolvedValue([staleEntry("/users/ada/.Trash/gone.md", "n-gone")]);
+
+    expect((await syncDriveTree(username)).completed).toBe(false);
+    expect(await readDriveTreeLastPass(username)).toBeNull();
+    expect(await readDriveSyncToken(username)).toBeNull();
+
+    expect((await syncDriveTree(username)).completed).toBe(true);
+    expect(await row("/users/ada/.Trash/gone.md")).toMatchObject({ area: "trash" });
+    expect(await readDriveTreeLastPass(username)).toBe("crawl");
     list.mockRestore();
     spy.mockRestore();
   });

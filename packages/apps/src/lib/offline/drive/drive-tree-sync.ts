@@ -1,6 +1,7 @@
 import {
   driveJmapSession,
   fileNodeToDirectoryEntry,
+  FileNodeNotFoundError,
   fileNodeVirtualPath,
   listFileNodeEntries,
   type DriveJmapSession,
@@ -222,8 +223,9 @@ async function crawlFolders(
   } catch {
     if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
-  await crawlTrash(username, session, queued.roots ?? [], signal);
-  if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
+  if (!(await crawlTrash(username, session, queued.roots ?? [], signal))) {
+    return { completed: false, changed: true, keptUnsavedPaths: [] };
+  }
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
@@ -242,28 +244,32 @@ async function crawlFolders(
 /**
  * The crawl skips dot folders, so Trash would hold only what this device
  * trashed. List each root's `.Trash` (its top level: what the Trash view
- * shows) and store it, pruning what is gone. A root with no `.Trash`, or a
- * failing listing, keeps the rows it had.
+ * shows) and store it, pruning what is gone. A root with no `.Trash` has an
+ * empty Trash. Any other failure returns false: the crawl then stays
+ * unfinished (no token, no last pass), so the first-sync retry runs it again.
  */
 async function crawlTrash(
   username: string,
   session: DriveJmapSession,
   roots: readonly string[],
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
   for (const root of roots) {
-    if (signal?.aborted) return;
+    if (signal?.aborted) return false;
     const trash = `${normalizePath(root)}/.Trash`;
+    let entries: WgwDriveDirectoryEntry[];
     try {
-      const entries = await listFileNodeEntries(session, trash, username, {
+      entries = await listFileNodeEntries(session, trash, username, {
         includeHidden: true,
         signal,
       });
-      await applyFetchedDirectorySnapshot(username, trash, entries);
-    } catch {
-      // No `.Trash` yet, or the listing failed: the next crawl tries again.
+    } catch (error) {
+      if (!(error instanceof FileNodeNotFoundError)) return false;
+      entries = [];
     }
+    await applyFetchedDirectorySnapshot(username, trash, entries);
   }
+  return true;
 }
 
 /**

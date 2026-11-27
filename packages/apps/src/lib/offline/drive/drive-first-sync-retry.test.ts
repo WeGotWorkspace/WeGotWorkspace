@@ -71,6 +71,17 @@ describe("syncUntilFirstSyncDone (#2063 C3)", () => {
     expect(sync).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps running after a walk cut off between its last pass and firstSyncDone", async () => {
+    state.lastPass = "tree";
+    const sync = vi.fn().mockResolvedValue(undefined);
+    syncUntilFirstSyncDone("ada", sync, {
+      signal: new AbortController().signal,
+      isCurrent: () => true,
+    });
+    await vi.advanceTimersByTimeAsync(FIRST_SYNC_RETRY_BASE_MS);
+    expect(sync).toHaveBeenCalledTimes(2);
+  });
+
   it("stops offline, on abort, and when a newer trigger owns the retries", async () => {
     const sync = vi.fn().mockResolvedValue(undefined);
 

@@ -18,7 +18,9 @@ export async function readDriveFirstPassDone(username: string): Promise<boolean>
     readDriveTreeFirstSyncDone(username),
     readDriveTreeLastPass(username),
   ]);
-  return firstSyncDone || lastPass !== null;
+  // Only a crawl counts without `firstSyncDone`: a walk writes last pass "tree"
+  // just before it, so "tree" alone is a walk cut off between the two writes.
+  return firstSyncDone || lastPass === "crawl";
 }
 
 /**
