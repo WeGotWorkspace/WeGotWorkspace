@@ -207,12 +207,20 @@ final class FileNodeTags
 
     /**
      * @param  list<string>  $nodeIds
+     * @return list<string> the node ids that had tag rows deleted
      */
-    public function dropFor(array $nodeIds): void
+    public function dropFor(array $nodeIds): array
     {
+        $dropped = [];
         foreach (array_chunk($nodeIds, 500) as $chunk) {
-            JmapFileNodeTag::query()->whereIn('node_id', $chunk)->delete();
+            $query = JmapFileNodeTag::query()->whereIn('node_id', $chunk);
+            foreach ($query->distinct()->pluck('node_id') as $id) {
+                $dropped[] = (string) $id;
+            }
+            $query->delete();
         }
+
+        return $dropped;
     }
 
     /**

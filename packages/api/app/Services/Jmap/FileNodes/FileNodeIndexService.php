@@ -433,16 +433,21 @@ final class FileNodeIndexService
             $descendant->save();
         }
 
+        $seq = $this->seq->next();
         if (! FileNodeTags::sameSpace($fromKey, $toKey)) {
             // A personal tag must not travel into a Team, nor the other way round.
-            $this->tags->dropFor(array_column($moved, 'node_id'));
+            $dropped = $this->tags->dropFor(array_column($moved, 'node_id'));
+            // Descendants that lost tags changed, so FileNode/changes must report them.
+            $droppedDescendants = array_values(array_diff($dropped, [(string) $row->node_id]));
+            foreach (array_chunk($droppedDescendants, 500) as $chunk) {
+                JmapFileNode::query()->whereIn('node_id', $chunk)->update(['change_seq' => $seq]);
+            }
         }
 
         $isDir = (bool) $row->is_dir;
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
-        $seq = $this->seq->next();
         $row->change_seq = $seq;
         $row->save();
         if ($fromKey !== $toKey) {
