@@ -15,6 +15,7 @@
 // where it can get lost, Restore and Delete act on the owner's own Trash, and
 // sharing needs a second person. The fixed offline gaps each have a case:
 //   gap 1  createTaken  an offline create whose name was taken meanwhile keeps both
+//   gap 1  createTakenRename, createTakenTrash  the same, then A renames or trashes the new Doc offline
 //   gap 2  renameOpen   a rename while another tab or person has the Doc open offline
 //   gap 3  star, unstar, trash, restore offline; delete and share say they need a connection
 //   gap 4  every offline case: "Changes synced" never shows while the tab is offline
@@ -372,6 +373,50 @@ const ACTIONS = {
     },
     editorText: (c) => [token(c, "a")],
   },
+  /** Gap 1: the offline-created Doc is renamed or trashed from its row before the create lands. */
+  createTakenRename: {
+    nets: { one: ["off"] },
+    seed: async () => undefined,
+    run: async (a, _b, c) => {
+      await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
+      await createDoc(a, c, token(c, "a"));
+      await a.goBack();
+      await waitForHome(a);
+      await renameFromRow(a, `${c.name}.md`, `${c.name} v2`);
+      await expect(row(a, `${c.name} v2.md`)).toBeVisible();
+    },
+    landed: async (s, _m, c) => {
+      const renamed = docPath(c.dir, `${c.name} v2`);
+      if (s.active.join("|") !== [startPath(c), renamed].sort().join("|")) return false;
+      const server = (await readDoc(OWNER, startPath(c))) ?? "";
+      const local = (await readDoc(OWNER, renamed)) ?? "";
+      return (
+        server.includes(`server ${c.id}`) &&
+        !server.includes(token(c, "a")) &&
+        local.includes(token(c, "a"))
+      );
+    },
+  },
+  createTakenTrash: {
+    nets: { one: ["off"] },
+    seed: async () => undefined,
+    run: async (a, _b, c) => {
+      await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
+      await createDoc(a, c, token(c, "a"));
+      await a.goBack();
+      await waitForHome(a);
+      await trashFromRow(a, `${c.name}.md`);
+    },
+    landed: async (s, _m, c) => {
+      if (!isOnly(s.active, startPath(c))) return false;
+      const server = (await readDoc(OWNER, startPath(c))) ?? "";
+      return (
+        isOnly(s.trash, `${trashOf(home(OWNER))}/${c.name}.md`) &&
+        server.includes(`server ${c.id}`) &&
+        !server.includes(token(c, "a"))
+      );
+    },
+  },
   rename: {
     nets: FULL,
     run: async (a, _b, c) => {
@@ -694,7 +739,13 @@ async function openTabs(browser: Browser, c: Case): Promise<Session> {
 
 /** Where the case's Doc is before the action (none before a create). */
 function startOf(c: Case): string | null {
-  if (c.action === "create" || c.action === "createTaken") return null;
+  if (
+    c.action === "create" ||
+    c.action === "createTaken" ||
+    c.action === "createTakenRename" ||
+    c.action === "createTakenTrash"
+  )
+    return null;
   if (c.action === "restore" || c.action === "delete")
     return `${trashOf(home(OWNER))}/${c.name}.md`;
   return startPath(c);

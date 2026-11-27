@@ -11,6 +11,8 @@ import "@/lib/offline/drive/drive-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
+import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import {
   flushDocsOutbox,
   removeOutboxMutationsForDocsPath,
@@ -197,6 +199,32 @@ describe("flushDocsOutbox", () => {
     );
     expect(setStar).toHaveBeenCalledWith({ path: "/users/alice/Plan (1).md", starred: true });
     expect(uploadFiles).not.toHaveBeenCalled();
+  });
+
+  it("aims queued Drive rows of a kept-both create at its new name (#1563)", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "create-1",
+      domain: DOCS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({ op: "create", apiPath: "/users/alice/Plan.md", content: "# mine" }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: "drive-rename",
+      domain: DRIVE_DOMAIN,
+      op: "rename",
+      payload: JSON.stringify({
+        op: "rename",
+        from: "/users/alice/Plan.md",
+        destination: "/users/alice",
+        to: "Renamed.md",
+      }),
+    });
+    createDriveFileKeepingBoth.mockResolvedValue("Plan (1).md");
+
+    await flushDocsOutbox(username);
+
+    const [row] = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
+    expect(JSON.parse(row!.payload)).toMatchObject({ from: "/users/alice/Plan (1).md" });
   });
 
   it("tells the create that a retried row may have landed already", async () => {

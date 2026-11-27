@@ -114,7 +114,10 @@ export type TabCache = {
 /** The tab's Docs offline cache. */
 export async function tabCache(tab: Tab): Promise<TabCache> {
   return tab.evaluate(async () => {
-    const user = localStorage.getItem("wgw.offline.docs.username");
+    // Docs home lists the Drive tree (#2063 C4): an empty home has only the Drive account key.
+    const user =
+      localStorage.getItem("wgw.offline.docs.username") ??
+      localStorage.getItem("wgw.offline.drive.username");
     const empty = { missingDb: true, outbox: [], views: {}, stars: [] };
     if (!user) return empty;
     const db = await new Promise<IDBDatabase | null>((resolve) => {

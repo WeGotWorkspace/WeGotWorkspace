@@ -169,6 +169,7 @@ async function fullResync(
   staleToken: string | null,
   signal?: AbortSignal,
 ): Promise<DriveInboundSyncResult> {
+  const before = await cachedPathsByNodeId(username);
   const tree = await syncDriveTree(username, { signal, ifTokenIs: staleToken });
   if (!tree.completed) {
     return {
@@ -178,7 +179,9 @@ async function fullResync(
       keptUnsavedPaths: tree.keptUnsavedPaths,
     };
   }
-  // Docs home lists the tree (#2063 C4): no Docs view cache is left to patch for moves.
+  // A full sync lists, it does not say what moved: starred paths, local text and an
+  // open editor still follow a renamed Doc by the moves found here (#1563).
+  await applyDocsInboundChanges(username, await movesSince(username, before));
   return {
     changed: true,
     listedChanges: true,
@@ -547,6 +550,41 @@ async function pathsForNodeId(username: string, nodeId: string): Promise<string[
   for (const row of driveRows) paths.add(row.id);
   for (const pin of pins) paths.add(pin.id);
   return [...paths];
+}
+
+/** Files the Drive cache now has at another path than in `before`, as Docs moves. */
+async function movesSince(
+  username: string,
+  before: ReadonlyMap<string, string>,
+): Promise<DocsInboundChange[]> {
+  const moves: DocsInboundChange[] = [];
+  const bare = (path: string): string => path.replace(/^\/+/, "");
+  for (const [nodeId, from] of before) {
+    // A Doc with unsaved text keeps its old row while the crawl upserts the new
+    // path, so one node id can have several rows; the destination is the one
+    // path that differs from `from`.
+    const rows = await driveEntriesTable(accountDb(username))
+      .where("nodeId")
+      .equals(nodeId)
+      .toArray();
+    const others = new Set(rows.map((r) => bare(r.id)).filter((id) => id !== bare(from)));
+    if (others.size !== 1) continue;
+    const to = `/${[...others][0]}`;
+    const row = await driveRowAt(username, to);
+    // Each file carries its own from and to; a folder move would also drag along
+    // children that were deleted or moved elsewhere in the same window.
+    if (!row || row.type === "dir") continue;
+    moves.push(docsChangeFor({ ...parseEntry(row.data), type: row.type, path: to }, from));
+  }
+  return moves;
+}
+
+function parseEntry(data: string): Partial<WgwDriveDirectoryEntry> {
+  try {
+    return JSON.parse(data) as Partial<WgwDriveDirectoryEntry>;
+  } catch {
+    return {};
+  }
 }
 
 async function driveRowAt(

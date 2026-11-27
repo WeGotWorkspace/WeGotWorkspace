@@ -111,6 +111,7 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
           };
           await moveKeptBothDocsCreate(username, move);
           keptBoth.push(move);
+          await retargetQueuedDriveRows(username, move);
         }
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
@@ -136,6 +137,22 @@ function docsCreateFile(payload: Extract<DocsOutboxPayload, { op: "create" }>): 
     type: isText ? "text/plain" : "text/markdown",
     lastModified: Date.now(),
   });
+}
+
+/**
+ * Docs home queues its renames, trashes and stars in the Drive outbox, so a
+ * write on an offline-created Doc sits there while its create is in the Docs
+ * one. Aim those rows at the name the create got (#1563).
+ */
+async function retargetQueuedDriveRows(username: string, move: DocsKeptBoth): Promise<void> {
+  for (const row of await listOutboxMutationsForDomain(username, DRIVE_DOMAIN)) {
+    const payload = parseFileOutboxPayload(row);
+    // Drive upload rows are not Docs payloads; they pass through unchanged.
+    if (!payload) continue;
+    const next = retargetDocsOutboxPayload(payload, move.from, move.to);
+    if (next !== payload)
+      await putOutboxMutation(username, { ...row, payload: JSON.stringify(next) });
+  }
 }
 
 function retargetQueuedRow(

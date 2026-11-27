@@ -1,3 +1,5 @@
+import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { notifyDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
@@ -27,5 +29,7 @@ export function docsFileWriteHooks(username: string): HybridDriveWriteHooks {
 
 /** Docs home file operations: Drive's hybrid operations with the Docs hooks. */
 export function createDocsFileOperations(username: string): DriveAPIOperations {
+  // A share guest has no offline account of its own: the live client, nothing queued.
+  if (wgwIsGuestSession()) return createWgwDriveOperations("/");
   return createHybridDriveOperations(username, null, docsFileWriteHooks(username));
 }

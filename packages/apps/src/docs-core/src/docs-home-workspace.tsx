@@ -108,7 +108,8 @@ export function DocsHomeWorkspace({
   const labels = mergeDocsLabels(labelOverrides);
   const username = session.user.username ?? "";
   const { show, showError } = useAppToast();
-  const offlineUsername = offlineUsernameProp;
+  // A share guest's username is the owner's: it must not read or write the owner's offline data.
+  const offlineUsername = wgwIsGuestSession() ? null : offlineUsernameProp;
 
   // One operations layer (#2063 C4): Drive's hybrid operations, with the Docs hooks.
   const driveOperations = useMemo(
@@ -222,10 +223,13 @@ export function DocsHomeWorkspace({
     clearDocsConflicts();
     clearDriveConflicts();
     if (!offlineUsername) return;
-    await Promise.all([
-      getDocsSyncRunner(offlineUsername).flush(),
-      getDriveSyncRunner(offlineUsername).flush(),
-    ]).finally(() => setOutboxNoticeKey((key) => key + 1));
+    // Docs first: a kept-both create retargets the Drive rows that follow it.
+    try {
+      await getDocsSyncRunner(offlineUsername).flush();
+      await getDriveSyncRunner(offlineUsername).flush();
+    } finally {
+      setOutboxNoticeKey((key) => key + 1);
+    }
   }, [clearDocsConflicts, clearDriveConflicts, offlineUsername]);
   const syncNotice = useSyncRetryNotice({
     id: "sync:docs",

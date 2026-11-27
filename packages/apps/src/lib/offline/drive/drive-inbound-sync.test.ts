@@ -990,7 +990,7 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect((await readDriveEntryFromCache(username, "/users/ada/a.md"))?.nodeId).toBe("fn-b");
   });
 
-  it("full resync leaves Docs to the tree: no Docs move events (#2063 C4)", async () => {
+  it("full resync tells Docs which Docs moved, so stars and editors follow (#1563)", async () => {
     await upsertDriveEntry(username, entry("/users/ada/before.md", "fn-ren"));
     fileNodeChanges.mockRejectedValue(
       new JmapMethodError("FileNode/changes", "c0", { type: "cannotCalculateChanges" }),
@@ -1012,7 +1012,7 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     stop();
 
     expect(result.usedFullResync).toBe(true);
-    expect(heard).toEqual([]);
+    expect(heard).toEqual([["users/ada/before.md", "users/ada/after.md"]]);
     expect(await treePaths()).toEqual(["users/ada/after.md"]);
   });
 
