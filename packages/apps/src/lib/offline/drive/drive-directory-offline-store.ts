@@ -16,6 +16,7 @@ import {
   areaFromCrawledPath,
   fileExtension,
   isDotName,
+  isTrashTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
 
@@ -228,20 +229,9 @@ export async function removeDriveEntriesUnderPrefix(
   await driveEntriesTable(db).bulkDelete(toDelete.map((row) => row.id));
 }
 
-/**
- * The view indexes of a row at its new path (#2063 C3): a move into or out of
- * Trash changes `area`, a rename can change `ext`. A shared row stays shared
- * unless it goes to Trash.
- */
-function movedRowIndexes(
-  row: { type: string; area?: DriveEntryArea },
-  newId: string,
-): { area?: DriveEntryArea; ext?: string } {
-  const crawled = areaFromCrawledPath(newId);
-  const area = row.area === "share" && crawled !== "trash" ? "share" : crawled;
-  return row.type === "file"
-    ? { area, ext: fileExtension(newId.split("/").pop() ?? "") }
-    : { area };
+/** A rename can change a file's `ext` view index (#2063 C3); `areaAfterMove` decides `area`. */
+function movedRowExt(row: { type: string }, newId: string): { ext?: string } {
+  return row.type === "file" ? { ext: fileExtension(newId.split("/").pop() ?? "") } : {};
 }
 
 export async function migrateDriveEntryPath(
@@ -259,11 +249,13 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
+  const area = await areaAfterMove(table, username, row, newId, newParent);
   await table.put({
     ...row,
-    ...movedRowIndexes(row, newId),
+    ...movedRowExt(row, newId),
     id: newId,
     parentPath: newParent,
+    area,
     data: JSON.stringify(entry),
   });
   await table.delete(oldId);
@@ -280,13 +272,38 @@ export async function migrateDriveEntryPath(
     // Spread the row so `nodeId` and an upload placeholder's `uploadId` move along.
     await table.put({
       ...descendant,
-      ...movedRowIndexes(descendant, migratedId),
+      ...movedRowExt(descendant, migratedId),
       id: migratedId,
       parentPath: migratedParent,
+      area: isTrashTreePath(migratedId) ? "trash" : (area ?? descendant.area),
       data: JSON.stringify(migratedEntry),
     });
     await table.delete(descendant.id);
   }
+}
+
+/**
+ * `area` of a row a local move puts at `newId`: Trash by path; else its new
+ * parent row's; else, under an account root (home or a team drive), the
+ * root's; else the row keeps its own (a renamed share root stays `share`),
+ * unless it comes out of Trash.
+ */
+async function areaAfterMove(
+  table: ReturnType<typeof driveEntriesTable>,
+  username: string,
+  row: OfflineDriveEntryRow,
+  newId: string,
+  newParent: string,
+): Promise<DriveEntryArea | undefined> {
+  if (isTrashTreePath(newId)) return "trash";
+  const parentArea = newParent ? (await table.get(newParent))?.area : undefined;
+  if (parentArea) return parentArea;
+  const parts = newParent.split("/");
+  const underAccountRoot =
+    parts.length === 2 &&
+    ((parts[0] === "users" && parts[1] === username) || parts[0] === "groups");
+  if (underAccountRoot || row.area === "trash") return areaFromCrawledPath(newId);
+  return row.area;
 }
 
 export async function searchDriveEntriesFromCache(

@@ -19,12 +19,7 @@ import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import {
-  migrateDocsAvailabilityPath,
-  stampDocsAvailabilityNodeIds,
-} from "@/lib/offline/docs/docs-availability-store";
-import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
-import { migrateDriveContentBlobPath } from "@/lib/offline/drive/drive-content-sync";
+import { stampDocsAvailabilityNodeIds } from "@/lib/offline/docs/docs-availability-store";
 import {
   normalizeDriveEntryPath,
   readDriveBootstrapFromCache,
@@ -38,6 +33,7 @@ import {
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
+import { SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
   driveEntriesTable,
   driveTreeStagingTable,
@@ -57,6 +53,12 @@ export const DRIVE_TREE_CURSOR_KEY = "drive:tree-sync:cursor";
 export const DRIVE_TREE_FIRST_SYNC_DONE_KEY = "drive:tree-sync:first-done";
 /** Meta key: FileNode id → path of the person's account roots (home, team drives). */
 export const DRIVE_TREE_ROOTS_KEY = "drive:tree-sync:roots";
+/**
+ * Meta key: how the last complete pass ran, `"tree"` (keyset walk) or
+ * `"crawl"` (per-folder fallback). A device that only crawled walks the tree
+ * once the server offers the keyset.
+ */
+export const DRIVE_TREE_LAST_PASS_KEY = "drive:tree-sync:last-pass";
 /** A pass restarted by `cannotCalculateChanges` more often than this waits for the next sync. */
 const MAX_PASSES = 3;
 
@@ -79,21 +81,28 @@ export type DriveTreeSyncResult = {
 const NOTHING: DriveTreeSyncResult = { completed: false, changed: false, keptUnsavedPaths: [] };
 
 /**
- * Account roots of the last complete pass, FileNode id → path. They have no
- * row of their own, so the change applier reads their area from here.
+ * Account roots of the last complete tree pass, FileNode id → path. They have
+ * no row of their own, so the change applier reads their area from here. Null
+ * when no tree pass wrote them (the per-folder crawl does not).
  */
-export async function readDriveTreeRoots(username: string): Promise<Map<string, string>> {
+export async function readDriveTreeRoots(username: string): Promise<Map<string, string> | null> {
   const raw = await readMeta(username, DRIVE_TREE_ROOTS_KEY);
+  if (!raw) return null;
   try {
-    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     return new Map(
       Object.entries(parsed).filter(
         (pair): pair is [string, string] => typeof pair[1] === "string",
       ),
     );
   } catch {
-    return new Map();
+    return null;
   }
+}
+
+export async function readDriveTreeLastPass(username: string): Promise<"tree" | "crawl" | null> {
+  const value = await readMeta(username, DRIVE_TREE_LAST_PASS_KEY);
+  return value === "tree" || value === "crawl" ? value : null;
 }
 
 export async function readDriveTreeFirstSyncDone(username: string): Promise<boolean> {
@@ -134,20 +143,19 @@ export function syncDriveTree(
   });
 }
 
-/** Servers without the keyset: one listing per folder, then the token. */
+/**
+ * Servers without the keyset: one listing per folder. The token is the state
+ * taken before the first listing, so a change made while the crawl runs comes
+ * back through `FileNode/changes` on the next sync.
+ */
 async function crawlFolders(
   username: string,
   session: DriveJmapSession,
   signal?: AbortSignal,
 ): Promise<DriveTreeSyncResult> {
+  const before = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
-  let crawlRoots: readonly string[] = [];
-  const progress = await syncDriveMetadataTree(username, bootstrap, {
-    signal,
-    onRoots: (roots) => {
-      crawlRoots = roots;
-    },
-  });
+  const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
   if (signal?.aborted || progress.failed > 0) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
@@ -163,26 +171,27 @@ async function crawlFolders(
   } catch {
     if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
-  const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
-  await writeDriveSyncToken(username, state.state);
+  // The crawl knows no root ids; the applier then reads `area` from the path.
+  await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await stampCrawledAreas(username);
-  const roots: Record<string, string> = {};
-  for (const root of crawlRoots) {
-    roots[session.cache.nodeIdForPath(root) ?? root] = normalizePath(root);
-  }
-  await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
+  await writeDriveSyncToken(username, before.state);
+  await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
 }
 
 /**
- * The crawl writes rows without `area`. Give each the area its own path
- * decides, so the area-indexed views (All files, Recent) find them.
+ * The crawl writes rows through `upsertDriveEntry`, which takes a parent row's
+ * area, and account roots have no row, so crawled rows have none. The crawl
+ * never stores share roots, so the path decides the area, as in the Dexie
+ * backfill. Area-indexed views (All files, Recent, Trash) need it.
  */
 async function stampCrawledAreas(username: string): Promise<void> {
-  const table = driveEntriesTable(accountDb(username));
-  const rows = await table.filter((row) => !row.area).toArray();
-  await table.bulkPut(rows.map((row) => ({ ...row, area: areaFromCrawledPath(row.id) })));
+  await driveEntriesTable(accountDb(username))
+    .filter((row) => row.area === undefined)
+    .modify((row) => {
+      row.area = areaFromCrawledPath(row.id);
+    });
 }
 
 /**
@@ -256,6 +265,7 @@ async function runTreePass(
   await clearCursor(username);
   await writeDriveSyncToken(username, drained.newState);
   await stagingTable(username).clear();
+  await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths };
 }
@@ -436,7 +446,8 @@ async function writeResolvedTree(username: string): Promise<string[]> {
 /**
  * A node that already had a row at another path takes that row's blob and
  * availability with it, per row, so a nested rename never leaves a blob on the
- * outer path. Runs before any final row is written.
+ * outer path. Two phases: a node renamed onto a path another node is leaving
+ * never overwrites that node's blob. Runs before any final row is written.
  */
 async function moveSidecarsOfMovedNodes(
   username: string,
@@ -449,28 +460,13 @@ async function moveSidecarsOfMovedNodes(
     list.push(row.id);
     previous.set(row.nodeId!, list);
   }
+  const moves = new SidecarMoves();
   for (const { entry } of finals) {
     if (!entry.nodeId) continue;
     const target = normalizeDriveEntryPath(entry.path);
-    for (const from of previous.get(entry.nodeId) ?? []) {
-      if (from !== target) await migrateNodeSidecars(username, from, target);
-    }
+    for (const from of previous.get(entry.nodeId) ?? []) moves.add(from, target);
   }
-}
-
-/**
- * Pins and blobs of a node follow its new path. The collab database does not
- * move: Docs keys it on the FileNode id, which a rename keeps.
- */
-export async function migrateNodeSidecars(
-  username: string,
-  oldPath: string,
-  newPath: string,
-): Promise<void> {
-  if (normalizeDriveEntryPath(oldPath) === normalizeDriveEntryPath(newPath)) return;
-  await migrateDocsAvailabilityPath(username, oldPath, newPath);
-  await migrateDriveAvailabilityPath(username, oldPath, newPath);
-  await migrateDriveContentBlobPath(username, oldPath, newPath);
+  await moves.apply(username);
 }
 
 async function readCursor(username: string): Promise<TreeCursor | null> {

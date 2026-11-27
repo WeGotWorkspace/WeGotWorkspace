@@ -26,6 +26,12 @@ export function isTrashTreePath(path: string): boolean {
   return segments(path).includes(TRASH_SEGMENT);
 }
 
+/** True for an item in Trash itself, not the `.Trash` folder and not a row inside a trashed folder. */
+export function isTrashItemPath(path: string): boolean {
+  const parts = segments(path);
+  return parts.length >= 2 && parts[parts.length - 2] === TRASH_SEGMENT;
+}
+
 /** True for a name a folder listing hides (every dot name, `.Trash` included). */
 export function isDotName(name: string): boolean {
   return name.trim().startsWith(".");

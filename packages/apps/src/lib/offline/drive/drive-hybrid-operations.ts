@@ -29,7 +29,6 @@ import {
   searchDriveEntriesFromCache,
   writeDriveBootstrapToCache,
 } from "@/lib/offline/drive/drive-directory-offline-store";
-import { notifyDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
 import { refreshDriveDirectoryCache } from "@/lib/offline/drive/drive-metadata-sync";
 import {
   removeDriveAvailability,
@@ -406,10 +405,7 @@ export function createHybridDriveOperations(
       if (readBrowserOnline()) {
         try {
           const paths = await live.listStars(opts);
-          const before = await readDocsStarredPaths(username);
           await writeDocsStarredPaths(username, paths);
-          // The Starred view reads this set: re-read only when it changed.
-          if (!sameStarSet(before, paths)) notifyDocsCachesChanged(username);
           return paths;
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -423,23 +419,15 @@ export function createHybridDriveOperations(
         try {
           await live.setStar({ path, starred: input.starred }, opts);
           await applyDocsStarToggle(username, path, input.starred);
-          notifyDocsCachesChanged(username);
           return;
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
       }
       await applyDocsStarToggle(username, path, input.starred);
-      notifyDocsCachesChanged(username);
       await queueDriveOutbox(username, { op: "star", path, starred: input.starred });
     },
   };
-}
-
-function sameStarSet(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length !== b.length) return false;
-  const set = new Set(a.map((path) => normalizeApiVirtualPath(path)));
-  return b.every((path) => set.has(normalizeApiVirtualPath(path)));
 }
 
 export async function flushDriveOutboxForAccount(

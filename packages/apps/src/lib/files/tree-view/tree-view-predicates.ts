@@ -7,7 +7,11 @@
  */
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import type { OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
-import { isHiddenTreePath, isTrashTreePath } from "@/lib/offline/drive/drive-tree-rows";
+import {
+  isHiddenTreePath,
+  isTrashItemPath,
+  isTrashTreePath,
+} from "@/lib/offline/drive/drive-tree-rows";
 
 /** One list of the file tree. Paths are drive paths, with or without a leading slash. */
 export type FileTreeView =
@@ -55,16 +59,6 @@ export function treeRowPath(path: string): string {
 
 function rowName(row: FileTreeRowColumns): string {
   return row.id.split("/").pop() ?? "";
-}
-
-function segments(path: string): string[] {
-  return path.split("/").filter(Boolean);
-}
-
-/** True for an item in Trash itself, not the `.Trash` folder and not a row inside a trashed folder. */
-export function isTrashItemPath(path: string): boolean {
-  const parts = segments(path);
-  return parts.length >= 2 && parts[parts.length - 2] === ".Trash";
 }
 
 /**
