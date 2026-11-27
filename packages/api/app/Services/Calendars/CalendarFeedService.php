@@ -143,7 +143,7 @@ final class CalendarFeedService
     private function publishableCalendarId(string $username, string $calendarId): int
     {
         $instance = $this->calendars->findPublishableCalendar($username, $calendarId);
-        if ($this->calendars->isSubscriptionCalendar($username, $calendarId)) {
+        if ($this->calendars->isSubscriptionInstance($instance)) {
             throw new ApiHttpException(403, 'Subscription calendars cannot be published.', 'forbidden');
         }
 

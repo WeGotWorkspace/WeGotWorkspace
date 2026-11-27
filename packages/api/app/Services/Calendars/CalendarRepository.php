@@ -273,15 +273,6 @@ final class CalendarRepository
     }
 
     /**
-     * The calendar of exactly this principal and uri. Calendar uris are only unique per
-     * principal, so a bare uri can name a different calendar of the same user.
-     */
-    public function findInstanceOfPrincipal(string $principalUri, string $calendarUri): ?CalendarInstance
-    {
-        return $this->findCalendarInstance($principalUri, $calendarUri);
-    }
-
-    /**
      * Removes one calendar a request just created, with its objects, without resolving it by
      * uri again. The subscription row goes too, unless it was not inserted by this request.
      */
@@ -294,17 +285,8 @@ final class CalendarRepository
         $this->forgetCalendarSideTables((string) $instance->principaluri, (string) $instance->uri);
     }
 
-    public function isSubscriptionCalendar(string $username, string $calendarId): bool
+    public function isSubscriptionInstance(CalendarInstance $instance): bool
     {
-        if (isset($this->subscriptionIdMap($this->collections->principalUri($username))[$calendarId])) {
-            return true;
-        }
-
-        $instance = $this->findAccessibleCalendar($username, $calendarId);
-        if ($instance === null) {
-            return false;
-        }
-
         return $this->subscriptionIdForInstance($instance) !== null;
     }
 
@@ -665,7 +647,11 @@ final class CalendarRepository
         $query->supportsVevent();
     }
 
-    private function findCalendarInstance(string $principalUri, string $calendarUri): ?CalendarInstance
+    /**
+     * The calendar of exactly this principal and uri. Calendar uris are only unique per
+     * principal, so a bare uri can name a different calendar of the same user.
+     */
+    public function findCalendarInstance(string $principalUri, string $calendarUri): ?CalendarInstance
     {
         return $this->collections->findInstance($principalUri, $calendarUri, self::eventCalendars(...));
     }
