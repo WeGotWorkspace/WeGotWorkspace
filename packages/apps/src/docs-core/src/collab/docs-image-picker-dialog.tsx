@@ -1,13 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { Button } from "@/button/src/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/ui/dialog";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { driveGroupUiPath } from "@/lib/files/drive-path-utils";
@@ -19,9 +11,6 @@ import {
   type DocsHomeGroupRoot,
 } from "@/docs-core/src/docs-home-drives";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import "./docs-image-picker-dialog.css";
-
-export type DocsImageInsertStep = "chooser" | "browse";
 
 export type DocsImagePickerDialogProps = {
   open: boolean;
@@ -31,8 +20,6 @@ export type DocsImagePickerDialogProps = {
   onClose: () => void;
   onSelectFile: (file: DriveFile) => void;
   onUploadFiles: (files: File[]) => void;
-  /** Stories / tests: start on browse. Default is the upload-or-browse chooser. */
-  initialStep?: DocsImageInsertStep;
 };
 
 export function DocsImagePickerDialog({
@@ -43,9 +30,7 @@ export function DocsImagePickerDialog({
   onClose,
   onSelectFile,
   onUploadFiles,
-  initialStep = "chooser",
 }: DocsImagePickerDialogProps) {
-  const [step, setStep] = useState<DocsImageInsertStep>(initialStep);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const groupPaths = useMemo(
     () => groupRoots.map((root) => driveGroupUiPath(root.slug)),
@@ -61,16 +46,10 @@ export function DocsImagePickerDialog({
       ...driveLabels,
       sidebarMyDrive: docsLabels.homeMyDrive,
       fileSelectDialogTitle: docsLabels.insertImageTitle,
+      fileSelectDialogDescription: docsLabels.insertImageChooserDescription,
     }),
     [],
   );
-
-  useEffect(() => {
-    if (open) setStep(initialStep);
-  }, [open, initialStep]);
-
-  const chooserOpen = open && step === "chooser";
-  const browseOpen = open && step === "browse";
 
   return (
     <>
@@ -90,31 +69,9 @@ export function DocsImagePickerDialog({
         }}
       />
 
-      <Dialog open={chooserOpen} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="docs-dialog-surface sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{docsLabels.insertImageTitle}</DialogTitle>
-            <DialogDescription>{docsLabels.insertImageChooserDescription}</DialogDescription>
-          </DialogHeader>
-          <div className="docs-image-insert-chooser__actions">
-            <Button variant="primary" onClick={() => uploadInputRef.current?.click()}>
-              {docsLabels.insertImageUpload}
-            </Button>
-            <Button variant="outline" onClick={() => setStep("browse")}>
-              {docsLabels.insertImageChooseFromDrive}
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
-              {docsLabels.cancel}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <DriveMoveToDialog
         mode="file-select"
-        open={browseOpen}
+        open={open}
         labels={pickerLabels}
         files={[]}
         groupPaths={groupPaths}
@@ -125,6 +82,11 @@ export function DocsImagePickerDialog({
         rootLabels={rootLabels}
         dialogSurfaceClassName="docs-dialog-surface"
         listingTheme="docs"
+        footerStart={
+          <Button variant="outline" onClick={() => uploadInputRef.current?.click()}>
+            {docsLabels.insertImageUpload}
+          </Button>
+        }
         onClose={onClose}
         onSelectFile={onSelectFile}
       />

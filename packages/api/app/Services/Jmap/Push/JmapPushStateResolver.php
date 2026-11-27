@@ -116,7 +116,7 @@ final class JmapPushStateResolver
         'docthreads' => JmapCapabilities::FILENODE,
     ];
 
-    /** @var array{roots: list<string>, grantPairs: string}|null `FileNode` and `DocThread` share one read per request */
+    /** @var array{roots: list<string>, accountRoots: list<string>, grantPairs: string}|null `FileNode` and `DocThread` share one read per request */
     private ?array $rootsOfRequest = null;
 
     public function __construct(
@@ -280,7 +280,7 @@ final class JmapPushStateResolver
     }
 
     /**
-     * @return array{roots: list<string>, grantPairs: string}
+     * @return array{roots: list<string>, accountRoots: list<string>, grantPairs: string}
      */
     private function rootsAndGrantPairs(string $username): array
     {
@@ -308,7 +308,7 @@ final class JmapPushStateResolver
      */
     private function fileNodeState(string $username): array
     {
-        ['roots' => $roots, 'grantPairs' => $grantPairs] = $this->rootsAndGrantPairs($username);
+        ['roots' => $roots, 'accountRoots' => $accountRoots, 'grantPairs' => $grantPairs] = $this->rootsAndGrantPairs($username);
         $markers = $this->fileMarkers->markersFor($roots);
         ksort($markers, SORT_STRING);
         // Length-prefixed `root=marker` lines: unambiguous for any byte in a path.
@@ -319,11 +319,13 @@ final class JmapPushStateResolver
 
         // The member grants follow the markers (#1926): hiding one of two grants on one root or
         // changing a grant's access in place moves neither the markers nor change_seq. The basis
-        // stays per user; the global seq would wake every browser on any file write.
+        // stays per user; the global seq would wake every browser on any file write. The root
+        // lines above already change on a Team join or leave; the state carries the same account
+        // roots in its hash (#2063), so the pushed state matches what FileNode/get returns.
         $basis .= "grants\n".$grantPairs;
 
         return [
-            'state' => $this->fileSyncState->forGrantPairs($grantPairs),
+            'state' => $this->fileSyncState->forScope($accountRoots, $grantPairs),
             'basis' => $basis,
         ];
     }

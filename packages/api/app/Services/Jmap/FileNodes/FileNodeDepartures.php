@@ -35,17 +35,25 @@ final class FileNodeDepartures
     }
 
     /**
-     * Ids of nodes that were visible at $since and are out of sight now. A
-     * node created after $since is left out, like in the main changes loop.
-     * A node that is gone now but still visible stays with the main loop,
-     * which reports its tombstone.
+     * Nodes that moved across the edge of the caller's sight since $since, from one read of
+     * the departures table. The first departure after $since holds the key the node had at
+     * $since; a move records every moved descendant, so a moved folder's subtree is here too.
+     *
+     * - `destroyed` (#2036): visible at $since, out of sight now. A node created after $since
+     *   is left out, like in the main changes loop. A node that is gone now but still visible
+     *   stays with the main loop, which reports its tombstone.
+     * - `arrived` (#2063): out of sight at $since, live and visible now, and created at or
+     *   before $since. `recordMove` bumps only the moved node, so without this a folder dragged
+     *   from someone's home into a Team drive reaches the other members without its children.
+     *   A node created after $since is in the main loop's `created` already. A node that was
+     *   visible but under a dot folder (`.notes`, `.attachments`; not a list path) and is on a
+     *   list path now arrives the same way, so a folder moved out of `.notes` brings its subtree.
      *
      * @param  Closure(string): bool  $isVisible
-     * @return list<string>
+     * @return array{destroyed: list<string>, arrived: list<string>}
      */
-    public function destroyedSince(int $since, Closure $isVisible): array
+    public function movedSince(int $since, Closure $isVisible): array
     {
-        // The first departure after $since holds the key the node had at $since.
         $keyAtSince = [];
         $rows = JmapFileNodeDeparture::query()
             ->where('seq', '>', $since)
@@ -56,28 +64,38 @@ final class FileNodeDepartures
             $keyAtSince[(string) $row->node_id] ??= (string) $row->from_key;
         }
 
-        $wasVisible = [];
-        foreach ($keyAtSince as $nodeId => $key) {
-            if ($isVisible($key)) {
-                $wasVisible[] = (string) $nodeId;
-            }
-        }
-
         $destroyed = [];
-        foreach (array_chunk($wasVisible, 500) as $chunk) {
-            $current = JmapFileNode::query()->whereIn('node_id', $chunk)->get()->keyBy('node_id');
+        $arrived = [];
+        foreach (array_chunk(array_keys($keyAtSince), 500) as $chunk) {
+            $chunk = array_map('strval', $chunk);
+            $current = JmapFileNode::query()->whereIn('node_id', $chunk)
+                ->get(['node_id', 'storage_key', 'created_seq', 'deleted_at'])->keyBy('node_id');
             foreach ($chunk as $nodeId) {
+                $wasVisible = $isVisible($keyAtSince[$nodeId]);
                 $node = $current->get($nodeId);
                 if ($node === null) {
                     // The row itself is gone: the caller cannot see it either.
+                    if ($wasVisible) {
+                        $destroyed[] = $nodeId;
+                    }
+
+                    continue;
+                }
+                if ((int) $node->created_seq > $since) {
+                    continue;
+                }
+                $currentKey = (string) $node->storage_key;
+                $isVisibleNow = $isVisible($currentKey);
+                if ($wasVisible && ! $isVisibleNow) {
                     $destroyed[] = $nodeId;
-                } elseif ((int) $node->created_seq <= $since && ! $isVisible((string) $node->storage_key)) {
-                    $destroyed[] = $nodeId;
+                } elseif ($isVisibleNow && $node->deleted_at === null && (! $wasVisible
+                    || (! FileNodeVisibility::isListKey($keyAtSince[$nodeId]) && FileNodeVisibility::isListKey($currentKey)))) {
+                    $arrived[] = $nodeId;
                 }
             }
         }
 
-        return $destroyed;
+        return ['destroyed' => $destroyed, 'arrived' => $arrived];
     }
 
     /**

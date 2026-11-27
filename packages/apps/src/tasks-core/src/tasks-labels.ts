@@ -10,6 +10,12 @@ export type TasksUILabels = {
   sidebarPriority: string;
   sidebarInbox: string;
   sidebarProjects: string;
+  /** The sidebar section of people (Me first) whose tasks you can open. */
+  sidebarAssignedTo: string;
+  /** Marks you among other people (assignee field and picker, the sidebar row). */
+  assigneeMeTag: string;
+  /** Your own row in the sidebar: your display name, marked as you. */
+  assignedToMeRow: (displayName: string) => string;
   sidebarSharedWithMe: string;
   stateAll: string;
   newTaskMenu: string;
@@ -97,8 +103,12 @@ export type TasksUILabels = {
   remindAtTimeOfTask: string;
   kanbanToggle: string;
   listView: string;
-  showCompletedTasks: string;
-  hideCompletedTasks: string;
+  /** Names the list menu beside the quick add field (a colleague's view). */
+  quickAddListLabel: string;
+  /** Quick add placeholder when no list is shared with the person being viewed. */
+  quickAddNoSharedList: string;
+  /** The list header filter button (status and priority). */
+  filterTasks: string;
   addTaskName: string;
   addTaskNamePlaceholder: string;
   addTaskDescriptionPlaceholder: string;
@@ -233,6 +243,9 @@ export const defaultTasksLabels: TasksUILabels = {
   sidebarPriority: "Priority",
   sidebarInbox: "Inbox",
   sidebarProjects: "Lists",
+  sidebarAssignedTo: "Assigned to",
+  assigneeMeTag: "(Me)",
+  assignedToMeRow: (displayName) => `${displayName} (Me)`,
   sidebarSharedWithMe: workspaceLabels.sharing.sharedWithMe,
   stateAll: "All Tasks",
   newTaskMenu: workspaceLabels.list.moreCreateOptions,
@@ -284,7 +297,7 @@ export const defaultTasksLabels: TasksUILabels = {
   stateUpcoming: "Upcoming",
   stateOverdue: "Overdue",
   stateAssignedToMe: "Assigned to me",
-  stateNeedsAction: "Needs action",
+  stateNeedsAction: "Not started",
   stateInProcess: "In progress",
   stateCompleted: "Completed",
   stateCancelled: "Cancelled",
@@ -295,7 +308,7 @@ export const defaultTasksLabels: TasksUILabels = {
   emptyDetail: "Select a task or create a new one.",
   selectTask: "Select a task",
   fallbackViewTitle: "Tasks",
-  statusNeedsAction: "Needs action",
+  statusNeedsAction: "Not started",
   statusInProcess: "In progress",
   statusCompleted: "Completed",
   statusCancelled: "Cancelled",
@@ -323,8 +336,9 @@ export const defaultTasksLabels: TasksUILabels = {
   remindAtTimeOfTask: "At time of task",
   kanbanToggle: "Kanban",
   listView: "List",
-  showCompletedTasks: "Show completed",
-  hideCompletedTasks: "Hide completed",
+  filterTasks: "Filter",
+  quickAddListLabel: "List",
+  quickAddNoSharedList: "No list is shared with this person",
   addTaskName: "Task name",
   addTaskNamePlaceholder: "Task name",
   addTaskDescriptionPlaceholder: "Description",

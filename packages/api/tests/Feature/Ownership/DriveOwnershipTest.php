@@ -254,6 +254,9 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             // queryChanges answers cannotCalculateChanges for every query of
             // the caller's own account; it returns no ids.
             $cases[] = OwnershipCase::of('JMAP FileNode/queryChanges', $actor, Scope::OwnUser, Outcome::Allowed);
+            // The tag list is scoped to the account and to the nodes the caller can see.
+            $cases[] = OwnershipCase::of('JMAP FileNode/tags', $actor, Scope::OtherUser, Outcome::AccountNotFound)->variant('foreign-account');
+            $cases[] = OwnershipCase::of('JMAP FileNode/tags', $actor, Scope::OwnUser, Outcome::Allowed);
             $cases[] = OwnershipCase::of('JMAP FileNode/copy', $actor, Scope::OtherUser, Outcome::AccountNotFound)
                 ->withCode('fromAccountNotFound')->variant('source');
             $cases[] = OwnershipCase::of('JMAP FileNode/copy', $actor, Scope::OtherUser, Outcome::AccountNotFound)->variant('destination');
@@ -532,6 +535,7 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             'JMAP FileNode/copy' => $this->runCopy($case),
             'JMAP FileNode/queryChanges' => $this->runQueryChanges($case),
             'JMAP FileNode/changes' => $this->runChanges($case),
+            'JMAP FileNode/tags' => $this->runTags($case),
             default => $this->runTargetCase($case),
         };
     }
@@ -1039,6 +1043,22 @@ final class DriveOwnershipTest extends WgwDatabaseTestCase implements OwnershipS
             ['FileNode/queryChanges', ['accountId' => $accountId, 'sinceQueryState' => '0'], 'c0'],
         ]);
         $this->assertJmapMethodError($response, $case->outcome === Outcome::AccountNotFound ? 'accountNotFound' : 'cannotCalculateChanges', $case);
+    }
+
+    private function runTags(OwnershipCase $case): void
+    {
+        $foreign = $case->outcome === Outcome::AccountNotFound;
+        $accountId = $foreign ? OwnershipPrincipals::CAROL : $this->usernameFor($case->actor);
+        $response = $this->jmap($case->actor, [
+            ['FileNode/tags', ['accountId' => $accountId], 'c0'],
+        ]);
+        if ($foreign) {
+            $this->assertJmapMethodError($response, 'accountNotFound', $case);
+
+            return;
+        }
+        $response->assertOk();
+        $this->assertSame('FileNode/tags', $response->json('methodResponses.0.0'), $case->key());
     }
 
     private function runChanges(OwnershipCase $case): void

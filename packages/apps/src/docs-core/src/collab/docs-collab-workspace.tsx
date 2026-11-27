@@ -51,7 +51,7 @@ import {
   getAcceptedTextEditorContent,
   getTrackChangesMode,
 } from "@/text-editor-core/src/text-editor-track-changes";
-import { TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src/text-editor-format-bar-config";
+import { useDocsFormatBarConfig } from "@/docs-core/src/collab/docs-format-bar-config";
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
@@ -286,6 +286,9 @@ function DocsCollabWorkspaceInner({
   const [activeOutlineIndex, setActiveOutlineIndex] = useState<number | null>(null);
   const resolvedDocumentTitle = documentTitle?.trim() || defaultTitleFromRoom(urls?.room);
   const editorFormat = docsEditorFormatFromFileName(resolvedDocumentTitle);
+  const formatBarConfig = useDocsFormatBarConfig(
+    editorFormat === "text" || formatBarMode === "hidden",
+  );
   const showMarkdownOutline = resolvedDocumentTitle.toLowerCase().endsWith(".md");
   const imageInsertEnabled = permissions.editable && editorFormat !== "text";
   const resolvedDocApiPath = docApiPath ?? (urls?.room ? `/${urls.room}` : null);
@@ -611,6 +614,7 @@ function DocsCollabWorkspaceInner({
           panel={reviewSidebar}
           sidebar={
             <AppSidebar
+              settingsAppId="docs"
               open={sidebarOpen}
               onCloseMobile={() => setSidebarOpen(false)}
               appSwitchSubtitle="Docs"
@@ -690,11 +694,7 @@ function DocsCollabWorkspaceInner({
                   editable={permissions.editable}
                   ariaLabel={labels.editor}
                   formattingDisabled={formatBarMode === "commentOnly"}
-                  formatBar={
-                    editorFormat === "text" || formatBarMode === "hidden"
-                      ? false
-                      : { groups: TEXT_EDITOR_FORMAT_BAR_FULL, showPrint: false, size: "lg" }
-                  }
+                  formatBar={formatBarConfig}
                   onContentChange={handleMarkdownChange}
                   onEditorReady={handleEditorReady}
                   onCommentActivated={handleCommentActivated}
@@ -710,7 +710,7 @@ function DocsCollabWorkspaceInner({
                       : labels.commentsAddFromSelectionDisabledReadOnly
                   }
                   commentControlLabels={labels}
-                  onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
+                  {...imageInsert.editorProps}
                   pageSetup={pageSetup.pageSetup}
                 />
               ) : (

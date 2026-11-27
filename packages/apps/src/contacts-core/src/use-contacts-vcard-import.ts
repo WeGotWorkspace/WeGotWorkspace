@@ -22,7 +22,7 @@ export type UseContactsVcardImportOptions = {
     | "importFailed"
   >;
   onImported?: (cards: ContactCard[]) => void;
-  /** Override POST batch cap (tests). Default stays under the 32M PHP limit. */
+  /** Override POST batch cap (tests). Default keeps each request small (see VCARD_IMPORT_BATCH_MAX_BYTES). */
   maxBatchBytes?: number;
 };
 
@@ -103,16 +103,32 @@ export function useContactsVcardImport({
             { maxBatchBytes, onProgress: setImportDialogProgress },
           );
 
+          // Cards a broken request created before it failed are in the book too.
+          const importedCount = result.list.length + result.recoveredCount;
           const outcome = summarizeVcfImportOutcome(
-            result.list.length,
+            importedCount,
             result.fileErrors,
             result.blockErrorMessages,
             L.importFailed,
+            {
+              alreadyExisting: result.alreadyExistingCount,
+              tooLarge: result.tooLargeCount,
+              failedCards: result.failedCardCount,
+            },
           );
-          if (result.list.length > 0 || (result.importedFileCount > 0 && !outcome.failed)) {
+          // Every card got an answer: imported, already in the book, or too large.
+          // Then the import is done even when it added nothing new.
+          const everyCardAnswered =
+            result.fileErrors.length === 0 &&
+            result.failedCardCount === 0 &&
+            result.blockErrorMessages.length === 0;
+          if (
+            importedCount > 0 ||
+            (everyCardAnswered && (result.importedFileCount > 0 || outcome.message !== null))
+          ) {
             onImported?.(result.list);
-            if (result.list.length > 0 && !outcome.failed) {
-              show(L.toastImported(result.list.length), {
+            if (!outcome.failed && (importedCount > 0 || outcome.message)) {
+              show(outcome.message ?? L.toastImported(importedCount), {
                 icon: createElement(Upload, { className: "size-4" }),
               });
             }
@@ -126,7 +142,7 @@ export function useContactsVcardImport({
           if (outcome.failed) {
             showError(outcome.message ?? L.importFailed);
           }
-          if (outcome.failed && result.list.length === 0) {
+          if (outcome.failed && importedCount === 0 && !everyCardAnswered) {
             setImportDialogError(outcome.message ?? L.importFailed);
           }
         } catch (error) {
