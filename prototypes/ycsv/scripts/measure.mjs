@@ -205,18 +205,23 @@ async function main() {
       { rows: 10000, cols: 10, notation: "current" },
       { rows: 10000, cols: 30, notation: "current" },
     ];
+    const layoutNames = ["L1-current", "L2-flat-row-map", "L3-one-cell-map", "L4-flat-row-map-short-ids", "L5-columnar"];
     for (const config of layoutConfigs) {
-      let handle;
-      try {
-        handle = await openPage();
-        const rows = await handle.page.evaluate((c) => window.__scale.layouts(c), config);
-        layouts.push(...rows);
-        console.log(`layouts ${config.rows}x${config.cols} ${config.notation ?? "absolute"} done`);
-      } catch (error) {
-        layouts.push({ ...config, failure: String(error?.message ?? error).split("\n")[0] });
-      } finally {
-        await handle?.context.close().catch(() => {});
+      // One fresh page per layout, so the heap delta of one layout is not mixed with the
+      // garbage of the previous one.
+      for (const name of layoutNames) {
+        let handle;
+        try {
+          handle = await openPage();
+          const rows = await handle.page.evaluate((c) => window.__scale.layouts(c), { ...config, layouts: [name] });
+          layouts.push(...rows);
+        } catch (error) {
+          layouts.push({ ...config, layout: name, failure: String(error?.message ?? error).split("\n")[0] });
+        } finally {
+          await handle?.context.close().catch(() => {});
+        }
       }
+      console.log(`layouts ${config.rows}x${config.cols} ${config.notation ?? "absolute"} done`);
       flush(env, results, layouts, null);
     }
   }
