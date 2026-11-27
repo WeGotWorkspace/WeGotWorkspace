@@ -105,10 +105,16 @@ async function readViewRows(
 export type FileTreeViewKnowledge = "syncing" | "complete" | "unknown";
 
 async function viewKnowledge(username: string, view: FileTreeView): Promise<FileTreeViewKnowledge> {
-  if (!(await readDriveTreeFirstSyncDone(username))) return "syncing";
+  const [firstSyncDone, lastPass] = await Promise.all([
+    readDriveTreeFirstSyncDone(username),
+    readDriveTreeLastPass(username),
+  ]);
+  // A finished per-folder crawl leaves `firstSyncDone` unset (a keyset server
+  // still walks the tree later), but its rows are complete for what it lists.
+  if (!firstSyncDone && lastPass !== "crawl") return "syncing";
   if (view.kind === "trash" || view.kind === "shared") {
     // The per-folder crawl stores neither `.Trash` nor share roots.
-    return (await readDriveTreeLastPass(username)) === "crawl" ? "unknown" : "complete";
+    return lastPass === "crawl" ? "unknown" : "complete";
   }
   if (view.kind !== "folder" && view.kind !== "prefix") return "complete";
   const path = treeRowPath(view.path);

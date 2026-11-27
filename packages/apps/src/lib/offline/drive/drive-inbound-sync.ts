@@ -23,9 +23,13 @@ import {
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
-import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
+import {
+  listKeptUnsavedDocumentPaths,
+  rememberKeptUnsavedDocuments,
+} from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   deleteDriveEntryByPath,
+  documentHasUnsavedLocalWork,
   retainOrDropLocalDocument,
 } from "@/lib/offline/drive/drive-local-document";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
@@ -50,7 +54,7 @@ import {
   readDriveTreeRoots,
   syncDriveTree,
 } from "@/lib/offline/drive/drive-tree-sync";
-import { moveDocsPageSetupOverrides } from "@/lib/docs-page-setup";
+import { moveDocsPageSetupOverrides, removeDocsPageSetupOverrides } from "@/lib/docs-page-setup";
 
 export {
   DRIVE_FILE_NODE_SYNC_TOKEN_KEY,
@@ -81,9 +85,10 @@ const inFlight = new Map<string, Promise<DriveInboundSyncResult>>();
  * `PENDING_SERVER_SAVE_KEY` is set — then all three stay.
  *
  * App open, reconnect and settings change call only this: `FileNode/changes`.
- * No stored token, or `cannotCalculateChanges` (including a device past the
- * 30-day tombstone horizon), runs the full tree sync (`syncDriveTree`), which
- * stores the token itself. It never calls changes from `"0"`.
+ * No stored token, no completed first sync on this device (even with a
+ * token), or `cannotCalculateChanges` (including a device past the 30-day
+ * tombstone horizon), runs the full tree sync (`syncDriveTree`), which stores
+ * the token itself. It never calls changes from `"0"`.
  */
 export function syncDriveInboundFromFileNodes(
   username: string,
@@ -121,8 +126,11 @@ async function runDriveInbound(
   const since = await readDriveSyncToken(username);
   if (since === null) return fullResync(username, null, options?.signal);
   const session = await driveJmapSession();
-  // A device that only crawled folders walks the tree once, when the server offers the keyset.
-  if (session.treeKeyset && (await readDriveTreeLastPass(username)) !== "tree") {
+  // A token from before this device's first tree walk (a device that synced
+  // before the walk existed, or one that only crawled): walk the tree once,
+  // when the server offers the keyset. A server without it crawls only on a
+  // missing token or `cannotCalculateChanges`, never on every sync.
+  if (session.treeKeyset && !(await readDriveTreeFirstSyncDone(username))) {
     return fullResync(username, since, options?.signal);
   }
   try {
@@ -207,7 +215,8 @@ async function applyFileNodeChanges(
     const ordered = parentsBeforeChildren(nodes);
     const cachePaths = await cachedPathsByNodeId(username);
     const tree = {
-      firstSyncDone: await readDriveTreeFirstSyncDone(username),
+      // A complete pass ran: the walk or the per-folder crawl.
+      complete: (await readDriveTreeLastPass(username)) !== null,
       roots: await readDriveTreeRoots(username),
     };
     const finalPaths = await finalPathsOf(username, ordered, cachePaths, session, signal);
@@ -230,6 +239,29 @@ async function applyFileNodeChanges(
     const placements: Placement[] = [];
     const occupantDrops: string[] = [];
     let leftTree: string[] = [];
+    // Another node's row at a final path: a batch node or a row under a moved
+    // folder is moving away itself. Any other one is an occupant: an unsaved
+    // document blocks the batch, anything else goes with its blob and pins, so
+    // the node landing there never keeps the previous file's offline copy.
+    const occupy = async (to: string, nodeId: string | undefined): Promise<boolean> => {
+      const occupant = await driveRowAt(username, to);
+      if (
+        !occupant?.nodeId ||
+        occupant.nodeId === nodeId ||
+        batchIds.has(occupant.nodeId) ||
+        movingAway.has(occupant.id)
+      ) {
+        return true;
+      }
+      // Only a read here: on `blocked` the batch writes nothing at all.
+      if (await documentHasUnsavedLocalWork(occupant.id)) {
+        keptUnsavedPaths.push(to);
+        blocked = true;
+        return false;
+      }
+      occupantDrops.push(occupant.id);
+      return true;
+    };
     for (const node of ordered) {
       const path = finalPaths.get(node.id);
       if (!path) {
@@ -249,31 +281,35 @@ async function applyFileNodeChanges(
         }
         continue;
       }
-      if (!from || from === to) {
+      if (from === to) {
         placements.push({ node, path });
         continue;
       }
-      const occupant = await driveRowAt(username, to);
-      // A batch node or a row under a moved folder at this path is moving away itself.
-      if (
-        occupant?.nodeId &&
-        occupant.nodeId !== node.id &&
-        !batchIds.has(occupant.nodeId) &&
-        !movingAway.has(occupant.id)
-      ) {
-        if ((await retainOrDropLocalDocument(username, occupant.id)) === "kept") {
-          upserted.delete(node.id);
-          keptUnsavedPaths.push(to);
-          blocked = true;
-          continue;
-        }
-        occupantDrops.push(occupant.id);
+      if (!(await occupy(to, node.id))) continue;
+      if (!from) {
+        placements.push({ node, path });
+        continue;
       }
       const move: PathMove = { from, to };
       moves.push(move);
       placements.push({ node, path, previous: from, move });
     }
-    const prefix = planPrefixMoves(under, moves, batchIds);
+    // A node deleted in this batch is not carried along: it goes from its old path below.
+    const prefix = planPrefixMoves(under, moves, new Set([...batchIds, ...destroyed]));
+    for (const { row, id } of prefix.moved) await occupy(id, row.nodeId);
+    // An unsaved document that is not part of this batch holds a final path:
+    // no row, blob, pin, page setup or Docs change is written, and the token
+    // stays, so the next sync retries the whole batch.
+    for (const id of blocked ? [] : occupantDrops) {
+      if ((await retainOrDropLocalDocument(username, id)) === "kept") {
+        keptUnsavedPaths.push(id);
+        blocked = true;
+      }
+    }
+    if (blocked) {
+      await rememberKeptUnsavedDocuments(username, keptUnsavedPaths);
+      return { changed: false, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
+    }
     const destinations: Set<string> = new Set([
       ...placements.map(({ path }) => normalizePath(path)),
       ...prefix.moved.map(({ id }) => id),
@@ -321,6 +357,7 @@ async function applyFileNodeChanges(
       }
     });
     changed ||= placements.length + prefix.moved.length + leftTree.length > 0;
+    removeDocsPageSetupOverrides(occupantDrops.map((path) => `/${path}`));
     moveDocsPageSetupOverrides(
       moves
         .filter((move) => !isHiddenTreePath(move.to))
@@ -333,7 +370,13 @@ async function applyFileNodeChanges(
     const paths = await pathsForNodeId(username, id);
     if (paths.length === 0) continue;
     for (const path of paths) {
-      if (landed.has(normalizePath(path))) continue;
+      // Another node of this batch holds that path now: leave its row, blob and
+      // local text; only a pin still naming the deleted node goes.
+      const holder = (await driveRowAt(username, path))?.nodeId;
+      if ((holder && holder !== id) || (!holder && landed.has(normalizePath(path)))) {
+        await removeDocsPinOfNode(username, path, id);
+        continue;
+      }
       const outcome = await retainOrDropLocalDocument(username, path);
       if (outcome === "kept") {
         keptUnsavedPaths.push(normalizePath(path));
@@ -352,14 +395,14 @@ async function applyFileNodeChanges(
 /**
  * `area` of a node the applier places: Trash by path, else its parent row's,
  * its account root's (roots have no row), or `share` for a node whose parent
- * is not in a complete tree. Undefined while the first sync has not finished.
+ * is not in a complete tree. Undefined while no complete pass has finished.
  */
 async function areaOfAppliedNode(
   username: string,
   node: JmapFileNode,
   path: string,
   cachePaths: ReadonlyMap<string, string>,
-  tree: { firstSyncDone: boolean; roots: ReadonlyMap<string, string> | null },
+  tree: { complete: boolean; roots: ReadonlyMap<string, string> | null },
 ): Promise<DriveEntryArea | undefined> {
   if (isTrashTreePath(path)) return "trash";
   if (!node.parentId) return areaForRoot(path, { kind: "account", path });
@@ -367,7 +410,7 @@ async function areaOfAppliedNode(
   if (rootPath) return areaForRoot(path, { kind: "account", path: rootPath });
   const parentPath = cachePaths.get(node.parentId);
   if (parentPath) return (await driveRowAt(username, parentPath))?.area;
-  if (!tree.firstSyncDone) return undefined;
+  if (!tree.complete) return undefined;
   // Only a tree pass knows the root ids; after the per-folder crawl (home and
   // team drives only) the path decides.
   return tree.roots ? "share" : areaFromCrawledPath(path);
@@ -443,6 +486,13 @@ async function finalPathsOf(
   };
   for (const node of ordered) await resolve(node, new Set());
   return paths;
+}
+
+/** Remove the Docs pin at `path` only when it still names `nodeId`. */
+async function removeDocsPinOfNode(username: string, path: string, nodeId: string): Promise<void> {
+  const pins = docsAvailabilityTable(accountDb(username));
+  const id = normalizePath(path);
+  if ((await pins.get(id))?.nodeId === nodeId) await pins.delete(id);
 }
 
 type Placement = {

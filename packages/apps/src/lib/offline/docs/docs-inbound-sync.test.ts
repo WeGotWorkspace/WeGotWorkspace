@@ -189,6 +189,22 @@ describe("applyDocsInboundChanges", () => {
     expect(await keys(SEARCH)).toEqual(["users/alice/plan.md"]);
   });
 
+  it("a Doc renamed onto a deleted Doc's path stays, and its old path goes", async () => {
+    await cache(ALL, ["users/alice/a.md", "users/alice/b.md"]);
+    await writeDocsStarredPaths(username, ["/users/alice/b.md"]);
+
+    await applyDocsInboundChanges(username, [
+      removed("/users/alice/a.md"),
+      moved("/users/alice/b.md", "/users/alice/a.md"),
+    ]);
+
+    const cached = await readDocsListingFromCache(username, ALL);
+    expect(cached?.results).toEqual([
+      expect.objectContaining({ id: 2, sourceKey: "users/alice/a.md" }),
+    ]);
+    expect(await readDocsStarredPaths(username)).toEqual(["/users/alice/a.md"]);
+  });
+
   it("keeps a row a queued write owns", async () => {
     await cache(ALL, ["users/alice/offline.md", "users/alice/renamed.md"]);
     await queue({ op: "create", apiPath: "/users/alice/offline.md", content: "# x" });

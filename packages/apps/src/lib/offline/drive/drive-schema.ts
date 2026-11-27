@@ -58,6 +58,18 @@ export type OfflineDriveTreeStagingRow = {
   data: string;
 };
 
+/**
+ * Where a node's rows were before a tree pass started, keyed by FileNode id
+ * (#2063). Written before page 1 and reused on resume: pages upsert into
+ * `drive_entries` during the walk, so only this map still says where each
+ * node's blob and pins sit. Cleared with the staging table.
+ */
+export type OfflineDriveTreePrepassRow = {
+  nodeId: string;
+  /** `drive_entries` ids (no leading `/`) the node held before the pass. */
+  paths: string[];
+};
+
 /** Binary file body cached for offline open/download. */
 export type OfflineDriveContentBlobRow = {
   id: string;
@@ -117,6 +129,7 @@ registerOfflineDomainTables({
       stores: {
         drive_entries: "id, parentPath, type, modifiedAt, nodeId, uploadId, ext, area",
         drive_tree_staging: "nodeId",
+        drive_tree_prepass: "nodeId",
       },
       upgrade: (tx) =>
         tx
@@ -160,6 +173,15 @@ export function driveTreeStagingTable(
 ): EntityTable<OfflineDriveTreeStagingRow, "nodeId"> {
   return db.table<OfflineDriveTreeStagingRow, string>("drive_tree_staging") as EntityTable<
     OfflineDriveTreeStagingRow,
+    "nodeId"
+  >;
+}
+
+export function driveTreePrepassTable(
+  db: WgwOfflineDatabase,
+): EntityTable<OfflineDriveTreePrepassRow, "nodeId"> {
+  return db.table<OfflineDriveTreePrepassRow, string>("drive_tree_prepass") as EntityTable<
+    OfflineDriveTreePrepassRow,
     "nodeId"
   >;
 }

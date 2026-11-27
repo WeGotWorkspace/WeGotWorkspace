@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/wgw/drive-jmap";
 import { fetchFileNodeTreeBatch, type FileNodeTreePage } from "@/lib/api/wgw/drive-jmap-tree";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
+import { moveDocsPageSetupOverrides, removeDocsPageSetupOverrides } from "@/lib/docs-page-setup";
 import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import type { JmapFileNode } from "@/lib/jmap-client";
@@ -24,17 +25,28 @@ import {
   readDriveBootstrapFromCache,
   upsertDriveEntriesInBulk,
 } from "@/lib/offline/drive/drive-directory-offline-store";
-import { pruneDriveEntriesToKeepSet } from "@/lib/offline/drive/drive-fetched-set-prune";
+import {
+  pruneDriveEntriesToKeepSet,
+  rememberKeptUnsavedDocuments,
+} from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   drainFileNodeChanges,
   isCannotCalculateChanges,
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
+import { removeDriveAvailability } from "@/lib/offline/drive/drive-availability-store";
+import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
+import {
+  documentHasUnsavedLocalWork,
+  retainOrDropLocalDocument,
+} from "@/lib/offline/drive/drive-local-document";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
+  driveContentBlobsTable,
   driveEntriesTable,
+  driveTreePrepassTable,
   driveTreeStagingTable,
   type OfflineDriveTreeStagingRow,
 } from "@/lib/offline/drive/drive-schema";
@@ -64,6 +76,12 @@ export const DRIVE_TREE_LAST_PASS_KEY = "drive:tree-sync:last-pass";
  * map tells the applier a keyset pass ran. Removed by a tree pass.
  */
 export const DRIVE_TREE_CRAWL_ROOTS_KEY = "drive:tree-sync:crawl-roots";
+/**
+ * Meta key set once the pre-pass `nodeId → path` map of the pass in progress
+ * is stored, so a resume or a restart never takes it again from rows the walk
+ * already upserted.
+ */
+const DRIVE_TREE_PREPASS_KEY = "drive:tree-sync:prepass";
 /** A pass restarted by `cannotCalculateChanges` more often than this waits for the next sync. */
 const MAX_PASSES = 3;
 
@@ -174,12 +192,12 @@ async function crawlFolders(
 ): Promise<DriveTreeSyncResult> {
   const before = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
-  // Null when the crawl returned before queueing roots (it went offline first).
-  let crawlRoots: readonly string[] | null = null;
+  // `roots` stays null when the crawl returned before queueing roots (it went offline first).
+  const queued: { roots: readonly string[] | null } = { roots: null };
   const progress = await syncDriveMetadataTree(username, bootstrap, {
     signal,
     onRoots: (roots) => {
-      crawlRoots = roots;
+      queued.roots = roots;
     },
   });
   if (signal?.aborted || progress.failed > 0) {
@@ -187,15 +205,16 @@ async function crawlFolders(
   }
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
+  await clearPrepass(username);
   await stampCrawledAreas(username);
   // A crawl that returned before queueing roots keeps the list it had: an empty
   // one would make every account root not-available until the next crawl.
-  if (crawlRoots) {
-    await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(crawlRoots));
+  if (queued.roots) {
+    await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(queued.roots));
   }
   await writeDriveSyncToken(username, before.state);
+  // Not `firstSyncDone`: the device walks the tree once the server offers the keyset.
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
-  await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
 }
 
@@ -238,6 +257,7 @@ async function runTreePass(
 
   let cursor = await readCursor(username);
   if (!cursor) await stagingTable(username).clear();
+  await takePrepassMap(username);
   let changed = false;
   while (!cursor?.walkDone) {
     if (signal?.aborted) return { ...NOTHING, changed };
@@ -279,7 +299,13 @@ async function runTreePass(
   await applyCatchUp(username, session, drained, paced, signal);
   if (signal?.aborted) return { ...NOTHING, changed };
 
-  const keptUnsavedPaths = await writeResolvedTree(username);
+  const written = await writeResolvedTree(username);
+  // An unsaved document holds a final path: nothing was written; the cursor and
+  // the token stay, so the next sync replays the catch-up and retries.
+  if (written.blocked) {
+    return { completed: false, changed, keptUnsavedPaths: written.keptUnsavedPaths };
+  }
+  const keptUnsavedPaths = written.keptUnsavedPaths;
   // Cursor first: a crash before the token is written starts a fresh pass.
   await clearCursor(username);
   await writeDriveSyncToken(username, drained.newState);
@@ -288,6 +314,34 @@ async function runTreePass(
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths };
+}
+
+/**
+ * Before page 1: where every node's rows are now. Pages upsert into
+ * `drive_entries` during the walk, so relocation reads a node's original
+ * paths from this map. Taken once per pass; a resume and a restart after
+ * `cannotCalculateChanges` reuse it, since no blob or pin has moved yet. The
+ * final write deletes it in the same transaction that moves the sidecars.
+ */
+async function takePrepassMap(username: string): Promise<void> {
+  if ((await readMeta(username, DRIVE_TREE_PREPASS_KEY)) === "1") return;
+  const db = accountDb(username);
+  const rows = await driveEntriesTable(db).where("nodeId").above("").toArray();
+  const blobs = await driveContentBlobsTable(db).bulkGet(rows.map((row) => row.id));
+  // One path per node: when a node holds two rows, the one with the blob.
+  const paths = new Map<string, string>();
+  rows.forEach((row, index) => {
+    if (!paths.has(row.nodeId!) || blobs[index]) paths.set(row.nodeId!, row.id);
+  });
+  const prepass = prepassTable(username);
+  await prepass.clear();
+  await prepass.bulkPut([...paths].map(([nodeId, path]) => ({ nodeId, paths: [path] })));
+  await writeMeta(username, DRIVE_TREE_PREPASS_KEY, "1");
+}
+
+async function clearPrepass(username: string): Promise<void> {
+  await accountDb(username).meta.delete(DRIVE_TREE_PREPASS_KEY);
+  await prepassTable(username).clear();
 }
 
 /** The last `node_id` of the batch's pages; null when every page was empty. */
@@ -302,13 +356,25 @@ function lastId(pages: readonly FileNodeTreePage[]): string | null {
 /**
  * Record the pages in the staging table (dot paths included), and upsert the
  * list rows among them at the server's path so rows that already arrived show.
+ * A node the pre-pass map has is only refreshed where its row already is (same
+ * path, same `nodeId`): it stays at its mapped path until the pass commits, so
+ * a rename during the walk never forks it onto a second path. A node the map
+ * lacks is inserted, never over another node's row. Either way a half-finished
+ * walk never pairs one node's entry with another node's blob.
  */
 async function stagePages(username: string, pages: readonly FileNodeTreePage[]): Promise<void> {
   const nodes = pages.flatMap((page) => page.nodes);
   const staged = await stageNodes(username, nodes);
-  const visible = staged
-    .filter((row) => row.parentId !== null && !isHiddenTreePath(row.path))
-    .map((row) => ({ entry: parseEntry(row.data) }));
+  const rows = staged.filter((row) => row.parentId !== null && !isHiddenTreePath(row.path));
+  const mapped = await prepassTable(username).bulkGet(rows.map((row) => row.nodeId));
+  const held = await driveEntriesTable(accountDb(username)).bulkGet(
+    rows.map((row) => normalizeDriveEntryPath(row.path)),
+  );
+  const visible = rows.flatMap((row, index) => {
+    const holder = held[index]?.nodeId;
+    if (mapped[index] ? holder !== row.nodeId : holder && holder !== row.nodeId) return [];
+    return [{ entry: parseEntry(row.data) }];
+  });
   await upsertDriveEntriesInBulk(username, visible, { skipOtherNodes: true });
 }
 
@@ -430,7 +496,9 @@ export function resolveTreePaths(
  * (except `.Trash`), move each node's blob and pins from its previous path,
  * upsert the rows with their `area`, then prune everything else.
  */
-async function writeResolvedTree(username: string): Promise<string[]> {
+async function writeResolvedTree(
+  username: string,
+): Promise<{ blocked: boolean; keptUnsavedPaths: string[] }> {
   const staged = await stagingTable(username).toArray();
   const resolved = resolveTreePaths(staged);
   const finals: Array<{ entry: WgwDriveDirectoryEntry; area: DriveEntryArea }> = [];
@@ -451,46 +519,113 @@ async function writeResolvedTree(username: string): Promise<string[]> {
     });
   }
 
+  const occupants = await occupantsOfFinalPaths(username, finals);
+  if (occupants.unsaved.length > 0) {
+    await rememberKeptUnsavedDocuments(username, occupants.unsaved);
+    return { blocked: true, keptUnsavedPaths: occupants.unsaved };
+  }
+  // The node landing on a replaced occupant's path never keeps that file's
+  // offline copy: its local document goes now (outside the transaction), its
+  // blob and Drive pin with the sidecar moves, its page setup after them.
+  for (const path of occupants.replaced) await retainOrDropLocalDocument(username, path);
+
   await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
-  // Rows, blobs and pins commit together: a pass stopped halfway resumes from
-  // rows and sidecars that still agree.
-  await inDriveTreeTransaction(username, async () => {
-    await moveSidecarsOfMovedNodes(username, finals);
+  // Rows, blobs and pins commit together with the end of the pre-pass map: a
+  // pass stopped before the commit replays from the same map and unmoved
+  // sidecars; one stopped after it takes a fresh map from the placed rows, so
+  // no blob ever moves twice.
+  const moves = await inDriveTreeTransaction(username, async () => {
+    for (const path of occupants.replaced) {
+      await removeDriveContentBlob(username, path);
+      await removeDriveAvailability(username, path);
+    }
+    const moved = await moveSidecarsOfMovedNodes(username, finals);
     await upsertDriveEntriesInBulk(username, finals);
-  });
+    await clearPrepass(username);
+    return moved;
+  }, ["drive_tree_prepass", "meta"]);
+  // Page setups (localStorage) follow once, from the same final map.
+  removeDocsPageSetupOverrides(occupants.replaced.map((path) => `/${path}`));
+  moveDocsPageSetupOverrides(moves.map(({ from, to }) => ({ from: `/${from}`, to: `/${to}` })));
   const keep = new Set(finals.map(({ entry }) => normalizeDriveEntryPath(entry.path)));
   const pruned = await pruneDriveEntriesToKeepSet(username, keep);
   await stampDocsAvailabilityNodeIds(
     username,
     finals.map(({ entry }) => ({ path: entry.path, nodeId: entry.nodeId })),
   );
-  return pruned.keptUnsavedPaths;
+  return { blocked: false, keptUnsavedPaths: pruned.keptUnsavedPaths };
 }
 
 /**
- * A node that already had a row at another path takes that row's blob and
- * availability with it, per row, so a nested rename never leaves a blob on the
- * outer path. Two phases: a node renamed onto a path another node is leaving
- * never overwrites that node's blob. Runs before any final row is written.
+ * Final paths whose current row belongs to another node that the pass does not
+ * move to a different final path. `unsaved`: that row has unsaved collab work,
+ * so the pass blocks. `replaced`: the rest, whose blob and pins must not stay
+ * for the node landing there. A node that is in `finals` elsewhere is moving
+ * away; a same-node refresh is fine. Only reads.
+ */
+async function occupantsOfFinalPaths(
+  username: string,
+  finals: readonly { entry: WgwDriveDirectoryEntry }[],
+): Promise<{ unsaved: string[]; replaced: string[] }> {
+  const targets = new Map<string, string>();
+  for (const { entry } of finals) {
+    if (entry.nodeId) targets.set(entry.nodeId, normalizeDriveEntryPath(entry.path));
+  }
+  const paths = finals.map(({ entry }) => normalizeDriveEntryPath(entry.path));
+  const rows = await driveEntriesTable(accountDb(username)).bulkGet(paths);
+  const unsaved: string[] = [];
+  const replaced: string[] = [];
+  for (const [index, row] of rows.entries()) {
+    const occupant = row?.nodeId;
+    const nodeId = finals[index]!.entry.nodeId;
+    if (!row || !occupant || !nodeId || occupant === nodeId) continue;
+    const movesTo = targets.get(occupant);
+    if (movesTo !== undefined && movesTo !== paths[index]) continue;
+    if (await documentHasUnsavedLocalWork(row.id)) unsaved.push(row.id);
+    else replaced.push(row.id);
+  }
+  return { unsaved, replaced };
+}
+
+/**
+ * A node that had a row at another path takes that path's blob and
+ * availability (Drive and Docs) with it, per node, so a nested rename never
+ * leaves a blob on the outer path. Sources are the node's pre-pass paths that
+ * no other node's row holds now, then the paths its rows hold now. Pages never
+ * put a node on a path another node holds (`skipOtherNodes`), so another
+ * node's row there means a local rename moved that row and its blob in since:
+ * the blob there is not this node's. A local move of this node's own row is
+ * followed through its current path. Two phases: a node renamed onto a path
+ * another node is leaving never overwrites that node's blob. Runs inside the
+ * write transaction, before any final row is written. Returns the moves, for
+ * the page setups.
  */
 async function moveSidecarsOfMovedNodes(
   username: string,
   finals: readonly { entry: WgwDriveDirectoryEntry }[],
-): Promise<void> {
-  const rows = await driveEntriesTable(accountDb(username)).where("nodeId").above("").toArray();
-  const previous = new Map<string, string[]>();
-  for (const row of rows) {
-    const list = previous.get(row.nodeId!) ?? [];
-    list.push(row.id);
-    previous.set(row.nodeId!, list);
+): Promise<Array<{ from: string; to: string }>> {
+  const table = driveEntriesTable(accountDb(username));
+  const holder = new Map<string, string>();
+  const current = new Map<string, string[]>();
+  for (const row of await table.where("nodeId").above("").toArray()) {
+    holder.set(row.id, row.nodeId!);
+    current.set(row.nodeId!, [...(current.get(row.nodeId!) ?? []), row.id]);
   }
+  const previous = new Map(
+    (await prepassTable(username).toArray()).map((row) => [row.nodeId, row.paths]),
+  );
   const moves = new SidecarMoves();
   for (const { entry } of finals) {
-    if (!entry.nodeId) continue;
+    const nodeId = entry.nodeId;
+    if (!nodeId) continue;
     const target = normalizeDriveEntryPath(entry.path);
-    for (const from of previous.get(entry.nodeId) ?? []) moves.add(from, target);
+    for (const from of previous.get(nodeId) ?? []) {
+      const now = holder.get(from);
+      if (!now || now === nodeId) moves.add(from, target);
+    }
+    for (const from of current.get(nodeId) ?? []) moves.add(from, target);
   }
-  await moves.apply(username);
+  return moves.apply(username);
 }
 
 async function readCursor(username: string): Promise<TreeCursor | null> {
@@ -524,6 +659,10 @@ async function clearPass(username: string): Promise<void> {
 
 function parseEntry(data: string): WgwDriveDirectoryEntry {
   return JSON.parse(data) as WgwDriveDirectoryEntry;
+}
+
+function prepassTable(username: string) {
+  return driveTreePrepassTable(accountDb(username));
 }
 
 function stagingTable(username: string) {
