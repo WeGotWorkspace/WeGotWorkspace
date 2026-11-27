@@ -229,7 +229,7 @@ export function useDriveShell({
       });
   }, [operations, showError]);
 
-  const viewKey = view.type === "folder" ? `folder:${view.path}` : view.type;
+  const viewKey = JSON.stringify(view);
   // Online search stays a server call (content search); offline the tree filters names.
   const serverSearch = Boolean(operations) && !(treeEnabled && !online);
   useEffect(() => {

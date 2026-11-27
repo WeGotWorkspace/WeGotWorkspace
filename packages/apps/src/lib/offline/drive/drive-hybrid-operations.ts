@@ -451,12 +451,9 @@ export function createHybridDriveOperations(
       const from = normalizeApiVirtualPath(input.from);
       let to = input.to;
       if (isTrash) {
-        const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
-        // Offline the server listing fails: the tree's Trash rows name what is taken.
-        for (const entry of await readDirectoryEntriesFromCache(username, destination)) {
-          trashNames.add(entry.name);
-        }
-        to = resolveFreeName(input.to, trashNames);
+        // Offline the names already in Trash come from the tree, not the server.
+        const inTrash = await readDirectoryEntriesFromCache(username, destination);
+        to = resolveFreeName(input.to, new Set(inTrash.map((entry) => entry.name)));
         const trashed = nextPathAfterRename(from, destination, to);
         await applyQueuedTrashSideEffects(username, from, trashed);
         moveDocsPageSetupOverride(from, trashed);

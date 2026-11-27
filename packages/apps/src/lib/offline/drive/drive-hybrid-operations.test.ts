@@ -136,6 +136,48 @@ describe("createHybridDriveOperations writes and the file tree (#2063 C3)", () =
     expect(heard).toHaveBeenCalled();
   });
 
+  it("offline, a second file with a title already in Trash gets a free name there", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(username, entry("/users/alice/.Trash/plan.md", "plan.md"), "trash");
+    await upsertDriveEntry(username, entry("/users/alice/Work/plan.md", "plan.md", 7), "home");
+
+    await createHybridDriveOperations(username, bootstrap()).renameItem({
+      from: "/users/alice/Work/plan.md",
+      destination: "/users/alice/.Trash",
+      to: "plan.md",
+    });
+
+    const inTrash = await driveEntriesTable(db())
+      .where("parentPath")
+      .equals("users/alice/.Trash")
+      .toArray();
+    expect(inTrash).toHaveLength(2);
+    expect((await driveEntriesTable(db()).get("users/alice/.Trash/plan.md"))?.modifiedAt).toBe(1);
+  });
+
+  it("a create that meets a name already there leaves that row as it is", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await upsertDriveEntry(
+      username,
+      { ...entry("/users/alice/notes.md", "notes.md"), nodeId: "n1", size: 12 },
+      "home",
+    );
+    await upsertDriveEntry(
+      username,
+      { ...entry("/groups/team/Plans", "Plans"), type: "dir", nodeId: "n2" },
+      "group",
+    );
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await ops.createFile({ cwd: "/users/alice", name: "notes.md" });
+    await ops.createFolder({ cwd: "/groups/team", name: "Plans" });
+
+    const file = await driveEntriesTable(db()).get("users/alice/notes.md");
+    expect(file?.nodeId).toBe("n1");
+    expect(JSON.parse(file!.data).size).toBe(12);
+    expect((await driveEntriesTable(db()).get("groups/team/Plans"))?.nodeId).toBe("n2");
+  });
+
   it("a rename keeps the row's view indexes in line with its new name", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
     await upsertDriveEntry(username, entry("/users/alice/plan.md", "plan.md"), "home");
@@ -179,33 +221,6 @@ describe("createHybridDriveOperations writes and the file tree (#2063 C3)", () =
       ext: "md",
     });
     expect(heard).toHaveBeenCalledTimes(2);
-  });
-
-  it("creating a name that already exists leaves its row untouched", async () => {
-    vi.mocked(readBrowserOnline).mockReturnValue(true);
-    await upsertDriveEntry(
-      username,
-      { ...entry("/users/alice/notes.md", "notes.md"), size: 12, nodeId: "n1" },
-      "home",
-    );
-    await upsertDriveEntry(
-      username,
-      { ...entry("/groups/team/Plans/Q3", "Q3"), type: "dir", nodeId: "n2" },
-      "group",
-    );
-    const ops = createHybridDriveOperations(username, bootstrap());
-
-    await ops.createFile({ cwd: "/users/alice", name: "notes.md" });
-    await ops.createFolder({ cwd: "/groups/team/Plans", name: "Q3" });
-
-    expect(await driveEntriesTable(db()).get("users/alice/notes.md")).toMatchObject({
-      nodeId: "n1",
-      data: expect.stringContaining('"size":12'),
-    });
-    expect(await driveEntriesTable(db()).get("groups/team/Plans/Q3")).toMatchObject({
-      nodeId: "n2",
-      type: "dir",
-    });
   });
 
   it("a permanent delete removes the rows from the tree and tells the open views", async () => {
