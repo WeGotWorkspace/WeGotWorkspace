@@ -137,7 +137,7 @@ export function DriveDetailPanel({
           </div>
           <h1 className="drive-detail-panel__title">{file.title}</h1>
           {tagsEditable || file.tags.length > 0 ? (
-            <section className="drive-detail-panel__tags tag-active" aria-label={labels.detailTags}>
+            <section className="drive-detail-panel__tags" aria-label={labels.detailTags}>
               <TagGroup
                 size="lg"
                 tags={file.tags}
