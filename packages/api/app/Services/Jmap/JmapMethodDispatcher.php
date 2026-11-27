@@ -227,6 +227,11 @@ final class JmapMethodDispatcher
                 }
             }
 
+            if (! self::isReadOnly($name)) {
+                // A write must read fresh state, not what an earlier read in the batch remembered (#2063).
+                $this->context->forget();
+            }
+
             try {
                 // Timed under the registered name only: never arguments (#2244).
                 $responses[] = [$name, $this->timings->method($name, fn (): array => $method->handle($username, $args)), $callId];
