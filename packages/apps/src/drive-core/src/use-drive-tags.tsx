@@ -8,21 +8,6 @@ import type { DriveFile } from "@/lib/files/drive-models";
 import { invertTagDelta, tagsAfterDelta, type TagDelta } from "@/lib/tags/tag-delta";
 
 /**
- * Whether the rights an item reports allow a tag write: structure or edit rights, or rights
- * not named at all (the server decides then).
- */
-export function mayWriteTags(
-  mayManageStructure: boolean | undefined,
-  mayEditContent: boolean | undefined,
-): boolean {
-  return (
-    mayManageStructure === true ||
-    mayEditContent === true ||
-    (mayManageStructure === undefined && mayEditContent === undefined)
-  );
-}
-
-/**
  * Tags on Drive and Docs rows (#2402). One write path for one file or a selection:
  * a delta per row, undoable, sent as it is made. Offered only where the operations
  * can set tags (signed-in accounts; not guests).
@@ -32,19 +17,13 @@ export function useDriveTags({ shell, list }: { shell: DriveShellState; list: Dr
   const { fileById, queueMutation } = list;
   const setTags = operations?.setTags;
 
-  /**
-   * Tags are metadata: whoever may write the item may tag it (structure or edit rights,
-   * as the server checks). Rights the listing did not name leave the editor on; the server
-   * refuses a write that is not allowed.
-   */
   const canEditTags = useCallback(
-    (file: DriveFile | null | undefined, fetchedMayManageStructure?: boolean): boolean => {
-      if (!setTags || inTrashView || file == null || !file.apiPath?.trim()) return false;
-      return mayWriteTags(
-        file.mayManageStructure ?? fetchedMayManageStructure,
-        file.mayEditContent,
-      );
-    },
+    (file: DriveFile | null | undefined): boolean =>
+      Boolean(setTags) &&
+      !inTrashView &&
+      file != null &&
+      file.mayManageStructure !== false &&
+      Boolean(file.apiPath?.trim()),
     [inTrashView, setTags],
   );
 
