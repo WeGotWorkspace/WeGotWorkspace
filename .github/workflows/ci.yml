@@ -203,12 +203,43 @@ jobs:
           # Call node directly: `pnpm run … -- <sha>` forwards a literal `--` as argv.
           node tools/file-size-ratchet.mjs check-growth "$BASE_SHA"
 
+      - name: "DIAG #2266: start resource sampler"
+        run: |
+          cat > "$RUNNER_TEMP/sampler.sh" <<'SH'
+          #!/usr/bin/env bash
+          while true; do
+            tmp=$(df -BM --output=avail /tmp | tail -1 | tr -dc 0-9)
+            shm=$(df -BM --output=used /dev/shm | tail -1 | tr -dc 0-9)
+            mem=$(free -m | awk '/Mem:/{print $7}')
+            swp=$(free -m | awk '/Swap:/{print $3}')
+            crss=$(ps -eo rss,comm | awk '/chrom|headless/ {s+=$1} END {print int(s/1024)}')
+            cn=$(ps -eo comm | grep -c -E 'chrom|headless')
+            nrss=$(ps -eo rss,comm | awk '$2=="node" {s+=$1} END {print int(s/1024)}')
+            tf=$(find /tmp -maxdepth 1 -name '.org.chromium*' 2>/dev/null | wc -l)
+            tfs=$(du -smc /tmp/.org.chromium* 2>/dev/null | tail -1 | cut -f1)
+            load=$(cut -d' ' -f1 /proc/loadavg)
+            echo "$(date +%T) tmp_avail=${tmp}M shm_used=${shm}M mem_avail=${mem}M swap_used=${swp}M chrome_rss=${crss}M chrome_procs=${cn} node_rss=${nrss}M tmp_chromium_files=${tf}/${tfs:-0}M load=${load}"
+            sleep 3
+          done
+          SH
+          chmod +x "$RUNNER_TEMP/sampler.sh"
+          nohup "$RUNNER_TEMP/sampler.sh" > "$RUNNER_TEMP/sampler.log" 2>&1 &
+          nproc; free -m; df -h / /tmp /dev/shm
+
       - name: Apps quality gate
         env:
           # Local pre-push skips unit + jsdom. CI runs both; jsdom shards
           # pool themselves from CPU and memory (see jsdom-concurrency.mjs).
           APPS_DONE_GATE_FULL: "1"
+          DEBUG: "vitest:browser:gc,vitest:browser:pool"
         run: pnpm run ci:quality:apps
+
+      - name: "DIAG #2266: resource samples"
+        if: always()
+        run: |
+          cat "$RUNNER_TEMP/sampler.log" || true
+          df -h / /tmp /dev/shm; free -m
+          sudo dmesg -T | grep -i -E 'oom|killed process|segfault|chrom|headless|out of memory' | tail -60 || true
 
   # Source, test and other line changes of a pull request (#1633), in the job
   # summary and in one PR comment that each push updates. A signal, never a
