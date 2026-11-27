@@ -128,7 +128,7 @@ describe("filterDocsHomeVisibleFiles", () => {
 
   it("drops hidden rows and keeps unstarred rows until stars settle", () => {
     const visible = filterDocsHomeVisibleFiles(rows, {
-      hiddenFileIds: new Set(["hidden"]),
+      hiddenFileIds: new Map([["hidden", undefined]]),
       isStarredView: true,
       starsReady: false,
       starredPaths: new Set(["/users/alice/Kept.md"]),
@@ -138,7 +138,7 @@ describe("filterDocsHomeVisibleFiles", () => {
 
   it("keeps only normalized starred paths once the star index is ready", () => {
     const visible = filterDocsHomeVisibleFiles(rows, {
-      hiddenFileIds: new Set(["hidden"]),
+      hiddenFileIds: new Map([["hidden", undefined]]),
       isStarredView: true,
       starsReady: true,
       starredPaths: new Set(["/users/alice/Kept.md"]),
@@ -146,9 +146,21 @@ describe("filterDocsHomeVisibleFiles", () => {
     expect(visible.map((item) => item.id)).toEqual(["kept"]);
   });
 
+  it("shows another file that took a hidden row's path (#2063 C4)", () => {
+    const server = file({ id: "/users/alice/Plan.md", title: "Plan", nodeId: "fn-server" });
+    const visible = filterDocsHomeVisibleFiles([server], {
+      // The trashed row was the offline create at that path, with no FileNode yet.
+      hiddenFileIds: new Map([["/users/alice/Plan.md", undefined]]),
+      isStarredView: false,
+      starsReady: true,
+      starredPaths: new Set(),
+    });
+    expect(visible).toEqual([server]);
+  });
+
   it("does not apply the star filter outside Starred", () => {
     const visible = filterDocsHomeVisibleFiles(rows, {
-      hiddenFileIds: new Set(),
+      hiddenFileIds: new Map(),
       isStarredView: false,
       starsReady: true,
       starredPaths: new Set(),

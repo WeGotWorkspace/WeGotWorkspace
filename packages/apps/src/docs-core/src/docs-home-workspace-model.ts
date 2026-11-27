@@ -103,8 +103,15 @@ export function docsHomeOfflineBadgePendingIds(
   return merged;
 }
 
+/**
+ * Rows hidden while their trash runs: row id to the FileNode id it had then. A
+ * row id is its path (#2063 C4), so a different file that later takes the path
+ * (the server's copy of a kept-both create, a new Doc of that name) shows.
+ */
+export type DocsHomeHiddenFiles = ReadonlyMap<string, string | undefined>;
+
 type DocsHomeVisibleFilesOptions = {
-  hiddenFileIds: ReadonlySet<string>;
+  hiddenFileIds: DocsHomeHiddenFiles;
   isStarredView: boolean;
   starsReady: boolean;
   starredPaths: ReadonlySet<string>;
@@ -115,7 +122,10 @@ export function filterDocsHomeVisibleFiles(
   files: readonly DriveFile[],
   options: DocsHomeVisibleFilesOptions,
 ): DriveFile[] {
-  const notHidden = files.filter((file) => !options.hiddenFileIds.has(file.id));
+  const notHidden = files.filter(
+    (file) =>
+      !options.hiddenFileIds.has(file.id) || options.hiddenFileIds.get(file.id) !== file.nodeId,
+  );
   if (!options.isStarredView) return notHidden;
   // Keep Starred rows until listStars settles; then drop optimistic unstars.
   if (!options.starsReady) return notHidden;

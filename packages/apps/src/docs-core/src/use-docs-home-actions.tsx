@@ -6,6 +6,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { DRIVE_DELETE_NEEDS_CONNECTION } from "@/lib/offline/drive/drive-hybrid-operations";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DocsHomeHiddenFiles } from "@/docs-core/src/docs-home-workspace-model";
 import type { DriveFile } from "@/lib/files/drive-models";
 import { runImmediateDriveBatch } from "@/drive-core/src/run-immediate-drive-batch";
 import {
@@ -56,17 +57,17 @@ function filesWithApiPath(
 
 /** A Doc moved back out of Trash gets its old row id again: stop hiding it (#1563). */
 function unhideArrivedFiles(
-  hidden: Set<string>,
+  hidden: DocsHomeHiddenFiles,
   destination: string,
   moved: readonly DriveFile[],
-): Set<string> {
+): DocsHomeHiddenFiles {
   const arrived = moved.map((file) =>
     normalizeApiVirtualPath(`${destination}/${file.title}`).replace(/^\/+/, ""),
   );
   // Tree rows are keyed by their API path (#2063 C4); server listing rows end in `:<path>`.
   const isArrived = (id: string) =>
     arrived.some((path) => id === `/${path}` || id.endsWith(`:${path}`));
-  const next = new Set([...hidden].filter((id) => !isArrived(id)));
+  const next: DocsHomeHiddenFiles = new Map([...hidden].filter(([id]) => !isArrived(id)));
   return next.size === hidden.size ? hidden : next;
 }
 
@@ -101,7 +102,7 @@ export function useDocsHomeActions({
     delayMs: WRITE_QUEUE_DELAY_MS,
     onMutationError: showMutationError,
   });
-  const [hiddenFileIds, setHiddenFileIds] = useState<Set<string>>(() => new Set());
+  const [hiddenFileIds, setHiddenFileIds] = useState<DocsHomeHiddenFiles>(() => new Map());
 
   const filesById = useMemo(() => {
     const map = new Map<string, DriveFile>();
@@ -306,14 +307,15 @@ export function useDocsHomeActions({
 
     const ids = rows.map((file) => file.id);
     setHiddenFileIds((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) next.add(id);
+      const next = new Map(prev);
+      // The file this row is now; another file that later takes its path shows.
+      for (const file of rows) next.set(file.id, file.nodeId);
       return next;
     });
 
     const rollbackUi = () => {
       setHiddenFileIds((prev) => {
-        const next = new Set(prev);
+        const next = new Map(prev);
         for (const id of ids) next.delete(id);
         return next;
       });

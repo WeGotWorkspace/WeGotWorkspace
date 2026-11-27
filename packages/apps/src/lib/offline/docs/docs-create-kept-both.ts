@@ -2,6 +2,13 @@ import { parentAndName } from "@/lib/files/api-path";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import { docsPathAfterMove, moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { moveDocsPageSetupOverride } from "@/lib/docs-page-setup";
+import {
+  forgetDocsAvailabilityNodeId,
+  migrateDocsAvailabilityPath,
+} from "@/lib/offline/docs/docs-availability-store";
+import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
+import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
 
 /** An offline-created Doc whose name was taken on the server, and the path it got. */
 export type DocsKeptBoth = { from: string; to: string };
@@ -15,7 +22,18 @@ export type DocsKeptBoth = { from: string; to: string };
  */
 export async function moveKeptBothDocsCreate(username: string, move: DocsKeptBoth): Promise<void> {
   const { destination, from: name } = parentAndName(move.to);
-  await applyDriveSidecarPathMigration(username, move.from, destination, name);
+  // A pull that ran before this flush put the server's file on the create's
+  // row (it has a FileNode id then): that row and its blob stay. The pull
+  // brings the kept copy's row; only this device's own state moves.
+  const serverNodeId = await readCachedDriveNodeId(username, move.from);
+  if (serverNodeId) {
+    await migrateDocsAvailabilityPath(username, move.from, move.to);
+    await forgetDocsAvailabilityNodeId(username, move.to, serverNodeId);
+    await migrateDriveAvailabilityPath(username, move.from, move.to);
+    moveDocsPageSetupOverride(move.from, move.to);
+  } else {
+    await applyDriveSidecarPathMigration(username, move.from, destination, name);
+  }
   await moveDocsPath(username, move.from, move.to);
 }
 
