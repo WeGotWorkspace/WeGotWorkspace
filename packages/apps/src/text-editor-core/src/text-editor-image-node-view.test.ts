@@ -4,8 +4,15 @@ import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTextEditorContent } from "./text-editor-content";
 import { createTextEditorExtensions } from "./text-editor-extensions";
-import { deselectDocsImage, isDocsImageNodeSelection } from "./text-editor-image-commands";
-import { DOCS_IMAGE_DELETE_LABEL } from "./text-editor-image-node-view";
+import {
+  deselectDocsImage,
+  isDocsImageNodeSelection,
+  replaceDocsImageAt,
+  setDocsImageLayoutAt,
+} from "./text-editor-image-commands";
+import { normalizeDocsImageHref } from "./text-editor-image-attrs";
+import { dragWidthPercent } from "./text-editor-image-node-view";
+import { splitImageFragment } from "./text-editor-image-src";
 
 const NODE_ID = "fn-cccccccccccccccccccccccccccccccc";
 const PIXEL_PNG = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
@@ -42,62 +49,169 @@ function imageElements(editor: Editor): HTMLImageElement[] {
   return [...editor.view.dom.querySelectorAll(".text-editor-image img")] as HTMLImageElement[];
 }
 
-function deleteButton(editor: Editor): HTMLButtonElement | null {
-  return editor.view.dom.querySelector(
-    `button[aria-label="${DOCS_IMAGE_DELETE_LABEL}"]`,
-  ) as HTMLButtonElement | null;
+function wrapperOf(editor: Editor): HTMLElement {
+  return editor.view.dom.querySelector(".text-editor-image") as HTMLElement;
 }
 
-function deleteHost(editor: Editor): HTMLElement | null {
-  return editor.view.dom.querySelector(".text-editor-image__delete-host");
+function captionOf(editor: Editor): HTMLElement {
+  return editor.view.dom.querySelector(".text-editor-image__caption") as HTMLElement;
 }
 
-describe("docs image node view delete control", () => {
+describe("docs image node view layout and caption", () => {
   afterEach(() => {
     document.body.replaceChildren();
   });
 
-  it("keeps the delete control available without selecting so hover can reveal it", () => {
+  it("has no hover trash: delete lives in the image bar", () => {
     const editor = mountEditor();
-    const button = deleteButton(editor);
-    expect(editor.view.dom.querySelector(".text-editor-image")).toBeTruthy();
-    expect(deleteHost(editor)?.hidden).toBe(false);
-    expect(button).toBeTruthy();
-    expect(isDocsImageNodeSelection(editor)).toBe(false);
-
-    fireEvent.click(button!);
-    expect(getTextEditorContent(editor, "markdown")).not.toContain(`drive:${NODE_ID}`);
-    expect(editor.view.dom.querySelector(".text-editor-image")).toBeNull();
+    expect(editor.view.dom.querySelector(".text-editor-image__delete-host")).toBeNull();
+    expect(editor.view.dom.querySelector("button[aria-label='Delete image']")).toBeNull();
     editor.destroy();
   });
 
-  it("shows a Delete image tooltip from the shared Tooltip primitive", async () => {
+  it("applies width and alignment from the node attrs", () => {
     const editor = mountEditor();
-    const button = deleteButton(editor);
-    expect(button).toBeTruthy();
-    fireEvent.pointerMove(button!);
-    fireEvent.focus(button!);
-    expect(await screen.findByRole("tooltip", { name: DOCS_IMAGE_DELETE_LABEL })).toBeTruthy();
+    expect(wrapperOf(editor).dataset.align).toBe("start");
+    expect(wrapperOf(editor).style.width).toBe("");
+    setDocsImageLayoutAt(editor, findImagePos(editor), { width: 50, align: "end" });
+    expect(wrapperOf(editor).style.width).toBe("50%");
+    expect(wrapperOf(editor).dataset.align).toBe("end");
     editor.destroy();
   });
 
-  it("keeps the delete control on a selected image and removes the node", () => {
+  it("shows the caption placeholder only while the image is focused", () => {
     const editor = mountEditor();
-    const wrapper = editor.view.dom.querySelector(".text-editor-image");
+    expect(wrapperOf(editor).dataset.focused).toBe("false");
     editor.commands.setNodeSelection(findImagePos(editor));
-    expect(wrapper?.classList.contains("ProseMirror-selectednode")).toBe(true);
-    expect(deleteHost(editor)?.hidden).toBe(false);
-
-    fireEvent.click(deleteButton(editor)!);
-    expect(getTextEditorContent(editor, "markdown")).not.toContain(`drive:${NODE_ID}`);
+    expect(wrapperOf(editor).dataset.focused).toBe("true");
+    expect(wrapperOf(editor).classList.contains("ProseMirror-selectednode")).toBe(true);
+    expect(captionOf(editor).dataset.placeholder).toBe("Add a caption");
+    expect(deselectDocsImage(editor)).toBe(true);
+    expect(wrapperOf(editor).dataset.focused).toBe("false");
     editor.destroy();
   });
 
-  it("hides the delete control when the editor is read-only", () => {
-    const editor = mountEditor(false);
-    editor.commands.setNodeSelection(findImagePos(editor));
-    expect(deleteHost(editor)?.hidden).toBe(true);
+  it("writes caption typing to the node and keeps it read-only for guests", () => {
+    const editor = mountEditor();
+    const caption = captionOf(editor);
+    expect(caption.contentEditable).toBe("true");
+    caption.textContent = "Our  team";
+    fireEvent.input(caption);
+    expect(editor.state.doc.nodeAt(findImagePos(editor))?.attrs.title).toBe("Our team");
     editor.destroy();
+
+    const guest = mountEditor(false, `![Team](drive:${NODE_ID})`);
+    expect(captionOf(guest).contentEditable).toBe("false");
+    guest.destroy();
+  });
+
+  it("writes standard markdown: width and alignment in the src fragment, the caption as title", () => {
+    const editor = mountEditor();
+    expect(getTextEditorContent(editor, "markdown")).toContain(`![Team photo](drive:${NODE_ID})`);
+    setDocsImageLayoutAt(editor, findImagePos(editor), {
+      width: 75,
+      align: "end",
+      title: 'Say "hi" (twice)',
+    });
+    const markdown = getTextEditorContent(editor, "markdown");
+    expect(markdown).toContain(
+      `![Team photo](drive:${NODE_ID}#width=75&align=end "Say \\"hi\\" (twice)")`,
+    );
+    expect(markdown).not.toContain("<img");
+    editor.destroy();
+
+    const reloaded = mountEditor(true, markdown);
+    const attrs = reloaded.state.doc.nodeAt(findImagePos(reloaded))?.attrs;
+    expect(attrs).toMatchObject({ width: 75, align: "end", title: 'Say "hi" (twice)' });
+    // The fragment is markdown's business: the node keeps a clean src.
+    expect(attrs?.src).toBe(`drive:${NODE_ID}`);
+    reloaded.destroy();
+  });
+
+  it('keeps a caption-only image as `![alt](src "caption")` and reads titles as captions', () => {
+    const editor = mountEditor(true, `![Rock](drive:${NODE_ID} "Shiprock, New Mexico")`);
+    expect(editor.state.doc.nodeAt(findImagePos(editor))?.attrs.title).toBe("Shiprock, New Mexico");
+    expect(captionOf(editor).textContent).toBe("Shiprock, New Mexico");
+    expect(editor.view.dom.querySelector("img")?.getAttribute("title")).toBeNull();
+    expect(getTextEditorContent(editor, "markdown")).toContain(
+      `![Rock](drive:${NODE_ID} "Shiprock, New Mexico")`,
+    );
+    editor.destroy();
+  });
+
+  it("keeps an image that is a link, and opens it for readers only", () => {
+    const md = `[![An old rock](https://example.com/rock.jpg "Shiprock")](https://www.domain.com/image.jpg)`;
+    const editor = mountEditor(true, md);
+    const attrs = editor.state.doc.nodeAt(findImagePos(editor))?.attrs;
+    expect(attrs).toMatchObject({
+      src: "https://example.com/rock.jpg",
+      title: "Shiprock",
+      href: "https://www.domain.com/image.jpg",
+    });
+    expect(getTextEditorContent(editor, "markdown")).toContain(md);
+
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    fireEvent.click(editor.view.dom.querySelector("img")!);
+    expect(open).not.toHaveBeenCalled();
+    editor.setEditable(false);
+    fireEvent.click(editor.view.dom.querySelector("img")!);
+    expect(open).toHaveBeenCalledWith(
+      "https://www.domain.com/image.jpg",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    open.mockRestore();
+    editor.destroy();
+  });
+
+  it("splits only our keys out of an image fragment and refuses unsafe links", () => {
+    expect(splitImageFragment("https://x.test/a.png#width=50&align=end&t=1")).toEqual({
+      src: "https://x.test/a.png#t=1",
+      width: 50,
+      align: "end",
+    });
+    expect(splitImageFragment(`drive:${NODE_ID}#width=500&align=up`)).toEqual({
+      src: `drive:${NODE_ID}`,
+      width: 100,
+      align: null,
+    });
+    // `left` / `right` (an earlier name) read as `start` / `end`; `start` stays out of markdown.
+    expect(splitImageFragment(`drive:${NODE_ID}#align=right`).align).toBe("end");
+    expect(splitImageFragment(`drive:${NODE_ID}#align=left`).align).toBe("start");
+    expect(normalizeDocsImageHref("javascript:alert(1)")).toBeNull();
+    expect(normalizeDocsImageHref("https://ok.test")).toBe("https://ok.test");
+  });
+
+  it("replaces the picture and keeps width, alignment and caption", () => {
+    const editor = mountEditor();
+    const pos = findImagePos(editor);
+    setDocsImageLayoutAt(editor, pos, { width: 50, title: "Hello" });
+    replaceDocsImageAt(editor, pos, "fn-dddddddddddddddddddddddddddddddd", "New");
+    expect(editor.state.doc.nodeAt(pos)?.attrs).toMatchObject({
+      src: "drive:fn-dddddddddddddddddddddddddddddddd",
+      alt: "New",
+      width: 50,
+      title: "Hello",
+    });
+    editor.destroy();
+  });
+
+  it("turns a side drag into a % of the column, relative to where the drag started", () => {
+    const base = { startX: 300, startWidth: 200, columnWidth: 400 };
+    // No movement: no jump, whatever the grab offset from the edge.
+    expect(dragWidthPercent({ ...base, clientX: 300, side: "end", align: "start" })).toBe(50);
+    // Edge-anchored: 100px outward is 100px wider.
+    expect(dragWidthPercent({ ...base, clientX: 400, side: "end", align: "start" })).toBe(75);
+    expect(dragWidthPercent({ ...base, clientX: 200, side: "start", align: "end" })).toBe(75);
+    // Centred: both edges move, so 50px outward is 100px wider.
+    expect(dragWidthPercent({ ...base, clientX: 350, side: "end", align: "center" })).toBe(75);
+    expect(dragWidthPercent({ ...base, clientX: 250, side: "start", align: "center" })).toBe(75);
+    // Right-to-left: the end edge is on the left, so outward is leftward.
+    const rtl = { ...base, rtl: true };
+    expect(dragWidthPercent({ ...rtl, clientX: 200, side: "end", align: "start" })).toBe(75);
+    expect(dragWidthPercent({ ...rtl, clientX: 400, side: "start", align: "end" })).toBe(75);
+    expect(dragWidthPercent({ ...base, clientX: 900, side: "end", align: "start" })).toBe(100);
+    expect(dragWidthPercent({ ...base, clientX: -900, side: "end", align: "start" })).toBe(5);
   });
 
   it("clears the selected ring on Escape without removing the image", () => {
@@ -108,7 +222,6 @@ describe("docs image node view delete control", () => {
     expect(deselectDocsImage(editor)).toBe(true);
     expect(isDocsImageNodeSelection(editor)).toBe(false);
     expect(wrapper?.classList.contains("ProseMirror-selectednode")).toBe(false);
-    expect(deleteHost(editor)?.hidden).toBe(false);
     expect(editor.view.dom.querySelector(".text-editor-image")).toBeTruthy();
     editor.destroy();
   });

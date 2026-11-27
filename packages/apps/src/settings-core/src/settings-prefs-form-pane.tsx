@@ -7,14 +7,17 @@ import { Form } from "@/ui/form";
 /** Pane shell for `useSettingsPrefsForm`: card and fields. Changes save themselves. */
 export function SettingsPrefsFormPane<T extends FieldValues>({
   controller,
+  continued = false,
   children,
 }: {
   controller: SettingsPrefsForm<T>;
+  /** Carries on the card above (see `SettingsPaneCard`). */
+  continued?: boolean;
   children: ReactNode;
 }) {
   return (
     <Form {...controller.form}>
-      <SettingsPaneCard>{children}</SettingsPaneCard>
+      <SettingsPaneCard continued={continued}>{children}</SettingsPaneCard>
     </Form>
   );
 }

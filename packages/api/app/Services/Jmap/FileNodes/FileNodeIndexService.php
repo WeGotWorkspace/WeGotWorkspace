@@ -42,6 +42,7 @@ final class FileNodeIndexService
         private readonly FileNodeRootMarkers $markers,
         private readonly FileNodeSequence $seq,
         private readonly FileNodeDepartures $departures,
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     // ---------------------------------------------------------------
@@ -291,6 +292,21 @@ final class FileNodeIndexService
     }
 
     /**
+     * A change that is not content or location (a tag edit): bumps the node's
+     * change_seq so FileNode/changes and live updates report it.
+     */
+    public function recordMetadataChange(JmapFileNode $node): JmapFileNode
+    {
+        return $this->markers->batch(function () use ($node): JmapFileNode {
+            $node->change_seq = $this->seq->next();
+            $node->save();
+            $this->markers->touch((string) $node->storage_key);
+
+            return $node;
+        });
+    }
+
+    /**
      * DAV COPY: the destination has identical bytes, so the destination rows
      * for the whole subtree are inserted in one bulk statement that maps the
      * source storage_key prefix onto the destination and carries size_bytes
@@ -353,6 +369,7 @@ final class FileNodeIndexService
         foreach (array_chunk($rows, 500) as $chunk) {
             JmapFileNode::query()->insert($chunk);
         }
+        $this->tags->copy($idMap);
         foreach ($pending as $destKey) {
             $node = $this->liveByKey($destKey);
             if ($node !== null) {
@@ -470,6 +487,7 @@ final class FileNodeIndexService
             $node->deleted_at = now();
             $node->change_seq = $this->seq->next();
             $node->save();
+            $this->tags->dropFor([(string) $node->node_id]);
         }
         $this->markers->touch($key, withDescendantShares: true);
         $this->syncSearch($key, deleted: true);
@@ -576,27 +594,6 @@ final class FileNodeIndexService
         return $this->markers->batch(fn (): array => $this->reconcileChildren($dirNode));
     }
 
-    /**
-     * {@see reconcileDirectory()} against preloaded live `$children`: no SQL unless the disk differs.
-     *
-     * @param  list<JmapFileNode>  $children
-     * @return list<JmapFileNode>
-     */
-    public function reconcileDirectoryAgainst(JmapFileNode $dir, array $children): array
-    {
-        $known = array_fill_keys(array_map(static fn (JmapFileNode $c): string => (string) $c->storage_key, $children), true);
-        $seen = 0;
-        foreach ($this->storage->files()->listContents((string) $dir->storage_key) as $entry) {
-            if (isset($known[$entry->path()])) {
-                $seen++;
-            } elseif (! $this->isHiddenKey($entry->path())) {
-                return $this->reconcileDirectory($dir);
-            }
-        }
-
-        return $seen === count($known) ? $children : $this->reconcileDirectory($dir);
-    }
-
     /** @return list<JmapFileNode> */
     private function reconcileChildren(JmapFileNode $dir): array
     {
@@ -692,11 +689,14 @@ final class FileNodeIndexService
                 $updated[] = $nodeId;
             }
         }
-        // Nodes that moved out of sight are destroyed for this caller (#2036).
-        array_push($destroyed, ...$this->departures->destroyedSince(
+        // Nodes that moved out of sight are destroyed for this caller (#2036); nodes that moved
+        // into sight, with every descendant of a moved folder, are updated (#2063).
+        $moved = $this->departures->movedSince(
             $since,
             fn (string $key): bool => FileNodeVisibility::isVisibleKey($key, $roots),
-        ));
+        );
+        array_push($destroyed, ...$moved['destroyed']);
+        array_push($updated, ...$moved['arrived']);
 
         return [
             'created' => array_values(array_unique($created)),

@@ -8,6 +8,7 @@ use App\Models\JmapFileNode;
 use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeSyncState;
+use App\Services\Jmap\FileNodes\FileNodeTags;
 use App\Services\Jmap\FileNodes\FileNodeTreeScope;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
@@ -29,7 +30,7 @@ use App\Storage\ProjectArchivePaths;
  */
 final class FileNodeQueryMethod implements JmapMethodInterface
 {
-    private const SUPPORTED_FILTER_CONDITIONS = ['isTopLevel', 'parentId', 'ancestorId', 'nodeType', 'name', 'nameMatch'];
+    private const SUPPORTED_FILTER_CONDITIONS = ['isTopLevel', 'parentId', 'ancestorId', 'nodeType', 'name', 'nameMatch', 'hasTag'];
 
     private const SUPPORTED_SORT_PROPERTIES = ['name', 'nodeType', 'id'];
 
@@ -39,6 +40,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
         private readonly FileNodeSyncState $syncState,
         private readonly FileNodeTreeScope $tree,
         private readonly JmapRequestContext $context,
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     public static function name(): string
@@ -101,9 +103,18 @@ final class FileNodeQueryMethod implements JmapMethodInterface
         }
         $candidates = $this->candidates($username, $filter, $roots, $depth ?? 0);
 
+        $tagged = null;
+        if (array_key_exists('hasTag', $filter)) {
+            if (! is_string($filter['hasTag']) || $filter['hasTag'] === '') {
+                throw new JmapMethodException('invalidArguments', 'hasTag must be a non-empty string.');
+            }
+            $tagged = array_flip($this->tags->nodeIdsWithTag($filter['hasTag']));
+        }
+
         $candidates = array_values(array_filter(
             $candidates,
-            fn (JmapFileNode $node): bool => $this->matches($node, $filter),
+            fn (JmapFileNode $node): bool => $this->matches($node, $filter)
+                && ($tagged === null || (isset($tagged[(string) $node->node_id]) && ! $this->inTrash($node))),
         ));
 
         $this->sortNodes($candidates, $sort);
@@ -297,6 +308,12 @@ final class FileNodeQueryMethod implements JmapMethodInterface
         }
 
         return true;
+    }
+
+    /** A tag view leaves trashed nodes out (the tags stay for a restore). */
+    private function inTrash(JmapFileNode $node): bool
+    {
+        return preg_match('#(?:^|/)\.Trash(?:/|$)#', (string) $node->storage_key) === 1;
     }
 
     /**

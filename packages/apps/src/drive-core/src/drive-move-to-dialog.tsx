@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/button/src/button";
 import {
   Dialog,
@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import { cn } from "@/lib/utils";
 import {
   drivePickerListingTheme,
   resolveDriveFolderPickerStartPath,
@@ -33,6 +32,8 @@ type DriveMoveToDialogShared = {
   dialogSurfaceClassName?: string;
   /** Docs chrome on the listing; defaults from `dialogSurfaceClassName`. */
   listingTheme?: "docs";
+  /** Extra action pinned to the footer's start, e.g. Docs' image *Upload*. */
+  footerStart?: ReactNode;
   onClose: () => void;
 };
 
@@ -65,6 +66,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
     rootLabels,
     dialogSurfaceClassName = "drive-dialog-surface",
     listingTheme,
+    footerStart,
     onClose,
   } = props;
   const fileSelect = props.mode === "file-select";
@@ -93,7 +95,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={cn(dialogSurfaceClassName, fileSelect && "sm:max-w-2xl")}>
+      <DialogContent className={dialogSurfaceClassName}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -119,6 +121,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
         ) : null}
 
         <DialogFooter>
+          {footerStart ? <div className="mr-auto">{footerStart}</div> : null}
           <Button variant="outline" onClick={onClose}>
             {labels.moveDialogCancel}
           </Button>

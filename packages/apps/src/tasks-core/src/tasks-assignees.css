@@ -117,3 +117,9 @@
 .tasks-assignee-picker__status {
   @apply m-0 px-3 py-3 text-sm text-muted-foreground;
 }
+
+/* "(Me)" after your own name in the picker: quieter than the name. */
+.tasks-assignee-picker__me {
+  @apply ml-1 font-normal;
+  color: color-mix(in oklab, var(--workspace-foreground) 60%, transparent);
+}

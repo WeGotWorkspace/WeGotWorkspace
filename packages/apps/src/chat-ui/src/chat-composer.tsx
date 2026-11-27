@@ -8,6 +8,8 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
 import { focusTextEditorFromChromeEvent } from "@/text-editor-core/src/text-editor-chrome-focus";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { getTextEditorContent } from "@/text-editor-core/src/text-editor-content";
+import type { TextEditorFeature } from "@/text-editor-core/src/text-editor-extensions";
+import { CHAT_COMPOSER_BASIC } from "@/chat-ui/src/chat-composer-allow";
 import { useTextEditor } from "@/text-editor-core/src/use-text-editor";
 import { ChatMentionMenu } from "@/chat-ui/src/chat-mention-menu";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
@@ -41,6 +43,12 @@ export type ChatComposerProps = {
   submitShortcut?: string;
   /** Before the input, e.g. the author's avatar. */
   leading?: ReactNode;
+  /**
+   * What the input may hold besides text and mentions. Typing, pasting and pasted markdown
+   * are all held to it: a heading or table pasted in keeps its text and loses its shape.
+   * Pass a stable array (`CHAT_COMPOSER_BASIC`, `CHAT_COMPOSER_RICH`).
+   */
+  allow?: readonly TextEditorFeature[];
   className?: string;
 };
 
@@ -55,6 +63,7 @@ export function ChatComposer({
   submitLabel,
   submitShortcut,
   leading,
+  allow = CHAT_COMPOSER_BASIC,
   className,
 }: ChatComposerProps) {
   const onSendRef = useRef(onSend);
@@ -67,9 +76,18 @@ export function ChatComposer({
   const editorRef = useRef<Editor | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
+  // Sending a stored body nobody touched sends it as stored: the editor's schema can be
+  // narrower than what an earlier composer wrote, and re-serializing would flatten it.
+  const editedRef = useRef(false);
+  const initialRef = useRef(initialContent);
+  initialRef.current = initialContent;
+
   const submit = useCallback(
     (current: Editor) => {
-      const body = getTextEditorContent(current, "markdown").trim();
+      const unedited = !editedRef.current && initialRef.current.trim() !== "";
+      const body = unedited
+        ? initialRef.current.trim()
+        : getTextEditorContent(current, "markdown").trim();
       if (!body) return;
       onSendRef.current({
         body,
@@ -89,9 +107,13 @@ export function ChatComposer({
     content: initialContent,
     format: "markdown",
     extraExtensions: CHAT_COMPOSER_EXTENSIONS,
+    // An existing body loads with the schema the reader (`ChatMarkdownBody`) uses, so a stored
+    // heading, table, task list or strikethrough survives an edit. A new message is held to `allow`.
+    ...(initialContent.trim() ? { links: { linkify: true, openOnClick: false } } : { allow }),
     editable: !disabled,
     placeholder,
     onUpdate: ({ content }) => {
+      editedRef.current = true;
       onTypingChangeRef.current?.(content.trim().length > 0);
     },
     editorProps: {

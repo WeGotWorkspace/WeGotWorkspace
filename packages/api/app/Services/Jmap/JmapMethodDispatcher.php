@@ -41,6 +41,7 @@ use App\Services\Jmap\Methods\FileNodeGetMethod;
 use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
 use App\Services\Jmap\Methods\FileNodeQueryMethod;
 use App\Services\Jmap\Methods\FileNodeSetMethod;
+use App\Services\Jmap\Methods\FileNodeTagsMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
 use App\Services\Jmap\Methods\MailboxGetMethod;
 use App\Services\Jmap\Methods\NotebookChangesMethod;
@@ -102,6 +103,7 @@ final class JmapMethodDispatcher
         FileNodeCopyMethod::class,
         FileNodeQueryMethod::class,
         FileNodeQueryChangesMethod::class,
+        FileNodeTagsMethod::class,
         // urn:ietf:params:jmap:blob (RFC 9404, #1500)
         BlobUploadMethod::class,
         BlobGetMethod::class,
