@@ -30,12 +30,13 @@ import {
 } from "@/lib/offline/drive/drive-local-document";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
 import {
-  dropRowLeavingTree,
-  moveRowsUnderMovedPaths,
+  deleteLeavingRow,
+  planPrefixMoves,
   rowsUnderOldPaths,
+  writePrefixMoves,
   type PathMove,
 } from "@/lib/offline/drive/drive-applier-moves";
-import { SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
+import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
   areaForRoot,
   areaFromCrawledPath,
@@ -200,6 +201,9 @@ async function applyFileNodeChanges(
     (id) => !destroyed.has(id),
   );
   const upserted = new Set<string>();
+  // Final paths of the rows this batch keeps: a deleted node's old path that
+  // another node now holds is not cleared.
+  const landed = new Set<string>();
   let changed = false;
   let blocked = false;
   const keptUnsavedPaths: string[] = [];
@@ -225,11 +229,13 @@ async function applyFileNodeChanges(
     });
     const under = await rowsUnderOldPaths(username, leaving);
     const movingAway = new Set(under.map((row) => row.id));
+
+    // Decide everything first. Only these reads leave the offline database
+    // (unsaved collab work), so the writes below can share one transaction.
     const moves: PathMove[] = [];
-    const destinations = new Set<string>();
-    const leftTree: string[] = [];
-    const sidecars = new SidecarMoves();
-    const placed: Array<{ path: string; nodeId: string }> = [];
+    const placements: Placement[] = [];
+    const occupantDrops: string[] = [];
+    let leftTree: string[] = [];
     for (const node of ordered) {
       const path = finalPaths.get(node.id);
       if (!path) {
@@ -237,70 +243,95 @@ async function applyFileNodeChanges(
         continue;
       }
       const previous = snapshot.get(node.id);
+      const from = previous ? normalizePath(previous) : null;
+      const to = normalizePath(path);
+      upserted.add(node.id);
       // `.notes`, `.attachments` and their contents are never list rows: a node
       // moved in leaves the tree, and so do its cached descendants.
       if (isHiddenTreePath(path)) {
-        if (previous) {
-          leftTree.push(normalizePath(previous));
-          moves.push({ from: normalizePath(previous), to: normalizePath(path), area: undefined });
+        if (from) {
+          leftTree.push(from);
+          moves.push({ from, to });
         }
-        cachePaths.delete(node.id);
-        upserted.add(node.id);
         continue;
       }
-      const placement = await placeNodeAtPath(username, node, path, cachePaths, {
-        batchIds,
-        movingAway,
-        sidecars,
-      });
-      if (placement === "blocked") {
-        keptUnsavedPaths.push(normalizePath(path));
-        blocked = true;
+      if (!from || from === to) {
+        placements.push({ node, path });
         continue;
       }
-      const area = await areaOfAppliedNode(username, node, path, cachePaths, tree);
-      if (placement === "moved" && previous) {
-        moves.push({ from: normalizePath(previous), to: normalizePath(path), area });
+      const occupant = await driveRowAt(username, to);
+      // A batch node or a row under a moved folder at this path is moving away itself.
+      if (
+        occupant?.nodeId &&
+        occupant.nodeId !== node.id &&
+        !batchIds.has(occupant.nodeId) &&
+        !movingAway.has(occupant.id)
+      ) {
+        if ((await retainOrDropLocalDocument(username, occupant.id)) === "kept") {
+          upserted.delete(node.id);
+          keptUnsavedPaths.push(to);
+          blocked = true;
+          continue;
+        }
+        occupantDrops.push(occupant.id);
       }
-      const entry = fileNodeToDirectoryEntry(path, node);
-      // Docs gets one `moved` per relocated file; a folder move is not expanded over them.
-      if (placement !== "moved" || entry.type !== "dir") {
-        docsChanges.push(docsChangeFor(entry, placement === "moved" ? previous : undefined));
-      }
-      await upsertDriveEntry(username, entry, area);
-      destinations.add(normalizePath(path));
-      placed.push({ path, nodeId: node.id });
-      cachePaths.set(node.id, path);
-      upserted.add(node.id);
-      changed = true;
+      const move: PathMove = { from, to };
+      moves.push(move);
+      placements.push({ node, path, previous: from, move });
     }
-    const prefixed = await moveRowsUnderMovedPaths(
-      username,
-      under,
-      moves,
-      batchIds,
-      destinations,
-      sidecars,
-      docsChanges,
-    );
-    keptUnsavedPaths.push(...prefixed.kept);
-    changed ||= prefixed.changed;
+    const prefix = planPrefixMoves(under, moves, batchIds);
+    const destinations: Set<string> = new Set([
+      ...placements.map(({ path }) => normalizePath(path)),
+      ...prefix.moved.map(({ id }) => id),
+    ]);
+    for (const path of destinations) landed.add(path);
+    const kept = await keepUnsaved(username, [...leftTree, ...prefix.hidden]);
+    keptUnsavedPaths.push(...kept);
+    leftTree = [...leftTree, ...prefix.hidden].filter((path) => !kept.includes(path));
     for (const path of leftTree) {
-      const outcome = await dropRowLeavingTree(username, path, destinations);
-      if (outcome === "kept") keptUnsavedPaths.push(path);
-      else docsChanges.push({ kind: "removed", path });
-      changed ||= outcome === "dropped";
+      // Another node landing on that path keeps its Docs row.
+      if (!destinations.has(path)) docsChanges.push({ kind: "removed", path: `/${path}` });
     }
-    await sidecars.apply(username);
+
+    // Rows, blobs and pins commit together: a sync stopped halfway replays from
+    // rows and sidecars that still agree (the token moves only after this).
+    await inDriveTreeTransaction(username, async () => {
+      const sidecars = new SidecarMoves();
+      const table = driveEntriesTable(accountDb(username));
+      for (const id of occupantDrops) await deleteDriveEntryByPath(username, id);
+      for (const { node, path, previous, move } of placements) {
+        if (previous && move) {
+          sidecars.add(previous, move.to);
+          if ((await table.get(previous))?.nodeId === node.id && !destinations.has(previous)) {
+            await table.delete(previous);
+          }
+          cachePaths.set(node.id, `/${move.to}`);
+        }
+        const area = await areaOfAppliedNode(username, node, path, cachePaths, tree);
+        if (move) move.area = area;
+        const entry = fileNodeToDirectoryEntry(path, node);
+        // Docs gets one `moved` per relocated file; a folder move is not expanded over them.
+        if (!move || entry.type !== "dir") {
+          docsChanges.push(docsChangeFor(entry, move ? `/${move.from}` : undefined));
+        }
+        await upsertDriveEntry(username, entry, area);
+        cachePaths.set(node.id, path);
+      }
+      await writePrefixMoves(username, prefix.moved, destinations, sidecars, docsChanges);
+      for (const path of leftTree) await deleteLeavingRow(username, path, destinations);
+      await sidecars.apply(username);
+      const placed = placements.map(({ node, path }) => ({ path, nodeId: node.id }));
+      await stampDocsAvailabilityNodeIds(username, placed);
+      for (const { path, nodeId } of placed) {
+        await moveDocsAvailabilityForNode(username, nodeId, path);
+      }
+    });
+    changed ||= placements.length + prefix.moved.length + leftTree.length > 0;
     moveDocsPageSetupOverrides(
       moves
         .filter((move) => !isHiddenTreePath(move.to))
         .map((move) => ({ from: `/${move.from}`, to: `/${move.to}` })),
     );
-    await stampDocsAvailabilityNodeIds(username, placed);
-    for (const { path, nodeId } of placed) {
-      await moveDocsAvailabilityForNode(username, nodeId, path);
-    }
   }
 
   for (const id of changes.destroyed) {
@@ -308,6 +339,7 @@ async function applyFileNodeChanges(
     const paths = await pathsForNodeId(username, id);
     if (paths.length === 0) continue;
     for (const path of paths) {
+      if (landed.has(normalizePath(path))) continue;
       const outcome = await retainOrDropLocalDocument(username, path);
       if (outcome === "kept") {
         keptUnsavedPaths.push(normalizePath(path));
@@ -419,46 +451,21 @@ async function finalPathsOf(
   return paths;
 }
 
-/**
- * Move one node's own cached row to `nextPath` and queue its blob and pins.
- * Rows below its old path are not touched here: {@link moveRowsUnderMovedPaths}
- * moves them once every node of the batch is placed, so nested renames in one
- * batch land at the inner path.
- */
-async function placeNodeAtPath(
-  username: string,
-  node: JmapFileNode,
-  nextPath: string,
-  cachePaths: Map<string, string>,
-  batch: {
-    batchIds: ReadonlySet<string>;
-    /** Rows under a moved node's old path: they leave this path themselves. */
-    movingAway: ReadonlySet<string>;
-    sidecars: SidecarMoves;
-  },
-): Promise<"moved" | "unchanged" | "blocked"> {
-  const current = cachePaths.get(node.id);
-  const nextId = normalizePath(nextPath);
-  if (!current) return "unchanged";
-  const oldId = normalizePath(current);
-  if (oldId === nextId) return "unchanged";
-  const occupant = await driveRowAt(username, nextId);
-  // A batch node or a row under a moved folder at this path is moving away itself.
-  if (
-    occupant?.nodeId &&
-    occupant.nodeId !== node.id &&
-    !batch.batchIds.has(occupant.nodeId) &&
-    !batch.movingAway.has(occupant.id)
-  ) {
-    const occupantOutcome = await retainOrDropLocalDocument(username, occupant.id);
-    if (occupantOutcome === "kept") return "blocked";
-    await deleteDriveEntryByPath(username, occupant.id);
+type Placement = {
+  node: JmapFileNode;
+  path: string;
+  /** The node's cached path before this batch, when it moves. */
+  previous?: string;
+  move?: PathMove;
+};
+
+/** Paths of `paths` whose Doc still has unsaved work: they stay. The rest drop their pin and local text. */
+async function keepUnsaved(username: string, paths: readonly string[]): Promise<string[]> {
+  const kept: string[] = [];
+  for (const path of paths) {
+    if ((await retainOrDropLocalDocument(username, path)) === "kept") kept.push(path);
   }
-  batch.sidecars.add(oldId, nextId);
-  const table = driveEntriesTable(accountDb(username));
-  if ((await table.get(oldId))?.nodeId === node.id) await table.delete(oldId);
-  cachePaths.set(node.id, `/${nextId}`);
-  return "moved";
+  return kept;
 }
 
 async function resolveNodePath(
