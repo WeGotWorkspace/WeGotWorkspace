@@ -88,6 +88,20 @@ Stock Sabre answers the outbox free/busy report for every principal: `Inbox::get
 
 External CalDAV clients (Apple Calendar, Thunderbird) therefore stop getting free/busy for a colleague until that colleague turns the switch on. This was decided with the product owner on 2026-11-04: one rule everywhere.
 
+## Public availability link
+
+A second audience: people outside the workspace. Epic #2404 (Goal WeGotWorkspace/Product#156). Spec: [.agents/specs/2404-availability-public-link/](../../.agents/specs/2404-availability-public-link/).
+
+- **Off until turned on, one link per person.** A row in `calendar_availability_links` means on. The owner turns it on, sees it, makes a new link or turns it off under `/calendars/availability/public-link`. A new link replaces the token in one update, so the old URL answers 404 at once. Turning on while on returns the same link.
+- **Independent of the Team switch**, so a person without a Team can publish. The per-calendar choices are shared: a calendar set to "Do not add" counts for no audience.
+- **Same code path as Teams.** `AvailabilityCalculator::publicBusyPeriods` runs the same read, week cache, `include`, dedupe, Free, cancelled and subscription rules, with the period filter forced to time only. It never returns a title or location, whatever a calendar's detail level.
+- **The feed** (`GET /calendars/availability/feeds/{token}`, no sign-in) is one `VCALENDAR` of `VEVENT`s, because calendar apps import events from a subscribed URL and ignore `VFREEBUSY`. Each event holds exactly `UID`, `DTSTAMP`, `DTSTART`, `DTEND` (UTC), `SUMMARY:Busy`, `TRANSP:OPAQUE` and `CLASS:PUBLIC`. Overlapping and touching periods are merged first, so nobody can count events or see their edges. The UID is a keyed hash of the merged block under the link's secret: no event UID leaves the server, and a new link changes every UID.
+- **Range.** Last week and the next 26 weeks, in whole UTC weeks.
+- **Never falsely free.** An incomplete week answers 503 with `Retry-After` rather than a feed with a gap.
+- **Refusals look the same.** Unknown, revoked, replaced and disabled-owner tokens all give the same 404.
+- **Abuse limits** run before the token is looked up or a calendar is read: 120 requests an hour per address, 30 unknown-token requests an hour per address, 600 an hour per link. A 429 carries `Retry-After`. The week cache serves every subscriber; `ETag` and `If-None-Match` give a `304`; `Cache-Control: no-cache` means a revoked link stops at the next request.
+- **Token.** 48 random characters, stored as a SHA-256 hash for lookup and encrypted with the app key so the owner can see the link again (the same trade-off as published calendars: a leaked app key recovers issued links).
+
 ## Limits
 
 | Limit | Value | Where |

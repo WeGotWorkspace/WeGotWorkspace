@@ -1,148 +1,13 @@
 /**
- * Pure listing, chrome, and badge selection for Docs home.
+ * Pure chrome and badge selection for Docs home. Its rows come from the
+ * Drive tree through `docs-home-config` (#2063 C4).
  * The workspace component owns hooks; these functions own the branch logic.
  */
 import type { DriveFile } from "@/lib/files/drive-models";
 import { apiPathFromUiPath, normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
-import { mergeDocsHomeBrowseWithShared, type DocsHomeView } from "@/docs-core/src/docs-home-shared";
+import type { DocsHomeView } from "@/docs-core/src/docs-home-shared";
 import { isSaveAsMarkdownOnlyFile } from "@/docs-core/src/docx-import/save-as-markdown-source";
-
-export type DocsHomeViewFlags = {
-  isSharedView: boolean;
-  isAllView: boolean;
-  isRecentView: boolean;
-  isStarredView: boolean;
-  isTrashView: boolean;
-  isDriveView: boolean;
-  includeSharedInListing: boolean;
-  usesBrowseList: boolean;
-};
-
-/** Sidebar view → which home lists are active. */
-export function docsHomeViewFlags(view: DocsHomeView): DocsHomeViewFlags {
-  const isSharedView = view.type === "shared";
-  const isAllView = view.type === "all";
-  const isRecentView = view.type === "recent";
-  const isStarredView = view.type === "starred";
-  const isTrashView = view.type === "trash";
-  const isDriveView = view.type === "drive";
-  return {
-    isSharedView,
-    isAllView,
-    isRecentView,
-    isStarredView,
-    isTrashView,
-    isDriveView,
-    includeSharedInListing: isAllView || isSharedView,
-    usesBrowseList: isAllView || isRecentView || isDriveView,
-  };
-}
-
-type DocsHomeFilesInput = {
-  isSharedView: boolean;
-  isStarredView: boolean;
-  isTrashView: boolean;
-  isAllView: boolean;
-  browseFiles: DriveFile[];
-  sharedFiles: DriveFile[];
-  starredFiles: DriveFile[];
-  trashFiles: DriveFile[];
-};
-
-/**
- * Pick the row set for the active view.
- * Recent and drive stay browse-only (recent is modified-desc across drives; no shared merge).
- * Returns the source array when the view does not merge, so list identity stays stable.
- */
-export function resolveDocsHomeFiles(input: DocsHomeFilesInput): DriveFile[] {
-  if (input.isSharedView) return input.sharedFiles;
-  if (input.isStarredView) return input.starredFiles;
-  if (input.isTrashView) return input.trashFiles;
-  if (input.isAllView) return mergeDocsHomeBrowseWithShared(input.browseFiles, input.sharedFiles);
-  return input.browseFiles;
-}
-
-export type DocsHomeListingStatus = {
-  /** Nothing to show yet: the pane renders its loading state. */
-  loading: boolean;
-  /** Rows are visible while a list refreshes or shares still merge in. */
-  refreshing: boolean;
-  loadingMore: boolean;
-  hasMore: boolean;
-  error: string | null;
-  isOfflineListing: boolean;
-  loadMore: () => void;
-};
-
-export type DocsHomeListingQuery = {
-  loading: boolean;
-  error: string | null;
-};
-
-export type DocsHomeBrowseListing = DocsHomeListingQuery & {
-  files: readonly DriveFile[];
-  refreshing: boolean;
-  loadingMore: boolean;
-  hasMore: boolean;
-  isOfflineListing: boolean;
-  loadMore: () => void;
-};
-
-type DocsHomeListingStatusInput = {
-  isSharedView: boolean;
-  isStarredView: boolean;
-  isTrashView: boolean;
-  isAllView: boolean;
-  usesBrowseList: boolean;
-  /** True when Share operations are wired (All docs merges the shared list in). */
-  shareOperationsEnabled: boolean;
-  browse: DocsHomeBrowseListing;
-  shared: DocsHomeListingQuery;
-  starred: DocsHomeListingQuery;
-  trash: DocsHomeListingQuery;
-};
-
-/**
- * Loading, error, and paging flags for the active view.
- * All docs shows browse rows as soon as they exist and merges shared-with-me
- * in when it arrives; it only waits on shares while browse has no rows.
- */
-export function resolveDocsHomeListingStatus(
-  input: DocsHomeListingStatusInput,
-): DocsHomeListingStatus {
-  const mergesShared = input.isAllView && input.shareOperationsEnabled;
-  const browseHasRows = input.browse.files.length > 0;
-  const loading = input.isSharedView
-    ? input.shared.loading
-    : input.isStarredView
-      ? input.starred.loading
-      : input.isTrashView
-        ? input.trash.loading
-        : mergesShared
-          ? input.browse.loading || (input.shared.loading && !browseHasRows)
-          : input.browse.loading;
-  const refreshing =
-    !loading &&
-    input.usesBrowseList &&
-    (input.browse.refreshing || (mergesShared && input.shared.loading));
-  const error = input.isSharedView
-    ? input.shared.error
-    : input.isStarredView
-      ? input.starred.error
-      : input.isTrashView
-        ? input.trash.error
-        : input.browse.error;
-  return {
-    loading,
-    refreshing,
-    loadingMore: input.usesBrowseList ? input.browse.loadingMore : false,
-    hasMore: input.usesBrowseList ? input.browse.hasMore : false,
-    error,
-    isOfflineListing: input.usesBrowseList ? input.browse.isOfflineListing : false,
-    loadMore: input.browse.loadMore,
-  };
-}
 
 type DocsHomeTitleLabels = Pick<
   DocsUILabels,
@@ -238,8 +103,15 @@ export function docsHomeOfflineBadgePendingIds(
   return merged;
 }
 
+/**
+ * Rows hidden while their trash runs: row id to the FileNode id it had then. A
+ * row id is its path (#2063 C4), so a different file that later takes the path
+ * (the server's copy of a kept-both create, a new Doc of that name) shows.
+ */
+export type DocsHomeHiddenFiles = ReadonlyMap<string, string | undefined>;
+
 type DocsHomeVisibleFilesOptions = {
-  hiddenFileIds: ReadonlySet<string>;
+  hiddenFileIds: DocsHomeHiddenFiles;
   isStarredView: boolean;
   starsReady: boolean;
   starredPaths: ReadonlySet<string>;
@@ -250,7 +122,10 @@ export function filterDocsHomeVisibleFiles(
   files: readonly DriveFile[],
   options: DocsHomeVisibleFilesOptions,
 ): DriveFile[] {
-  const notHidden = files.filter((file) => !options.hiddenFileIds.has(file.id));
+  const notHidden = files.filter(
+    (file) =>
+      !options.hiddenFileIds.has(file.id) || options.hiddenFileIds.get(file.id) !== file.nodeId,
+  );
   if (!options.isStarredView) return notHidden;
   // Keep Starred rows until listStars settles; then drop optimistic unstars.
   if (!options.starsReady) return notHidden;

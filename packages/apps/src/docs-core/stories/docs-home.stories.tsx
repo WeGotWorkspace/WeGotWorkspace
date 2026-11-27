@@ -16,7 +16,7 @@ import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { docsLabels } from "@/docs-core/src/docs-labels";
-import { mapDocsHomeResults } from "@/docs-core/src/use-docs-home-list";
+import { mapDocsHomeResults } from "@/docs-core/src/use-docs-home-server-rows";
 import type { ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
 import {
   createDocsHomePaginatedFetcher,
@@ -86,13 +86,11 @@ export const Default: Story = {
     // Docs home hides the redundant "Kind" column (everything is a document).
     await expect(canvas.queryByRole("columnheader", { name: "Kind" })).not.toBeInTheDocument();
 
-    const engineering = await canvas.findByRole("button", { name: "engineering" });
+    // The drive list settles once the rows are in: wait for them before choosing a drive.
     await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
-    // All docs merges docs-compatible Shared with me entries into the browse listing.
-    await expect(await canvas.findByText("Shared Notes.md")).toBeInTheDocument();
-    await expect(await canvas.findByText("Shared by hana")).toBeInTheDocument();
-
-    await userEvent.click(engineering);
+    // Without a local tree (mocks) All Docs is the browse listing; the live app's
+    // tree lists shared Docs too (#2063 C4). Shared with me has its own story.
+    await userEvent.click(await canvas.findByRole("button", { name: "engineering" }));
 
     await waitFor(async () => {
       await expect(canvas.queryByText("Roadmap 2026")).not.toBeInTheDocument();
@@ -225,8 +223,7 @@ export const ShareFromRowMenu: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    // Wait for All docs + shared merge so the list is stable before opening menus.
-    await expect(await canvas.findByText("Shared Notes.md")).toBeInTheDocument();
+    // Wait for the rows so the list is stable before opening menus.
     const row = (await canvas.findByText("Roadmap 2026")).closest("tr");
     if (!row) throw new Error("Expected Roadmap 2026 in a list row");
 
@@ -353,8 +350,12 @@ export const CreateFromSelectedDrive: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
 
-    await userEvent.click(await canvas.findByRole("button", { name: "engineering" }));
-    await expect(await canvas.findByRole("heading", { name: "engineering" })).toBeInTheDocument();
+    await expect(await canvas.findByText("Roadmap 2026")).toBeInTheDocument();
+    // Drives found in the rows join the sidebar list; choose once it has settled.
+    await waitFor(async () => {
+      await userEvent.click(canvas.getByRole("button", { name: "engineering" }));
+      await expect(canvas.getByRole("heading", { name: "engineering" })).toBeInTheDocument();
+    });
 
     await userEvent.click(await canvas.findByRole("button", { name: "New document" }));
     const dialog = await body.findByRole("dialog", { name: "New document" });
@@ -466,7 +467,9 @@ export const GridView: StoryObj<typeof DocsHomePane> = {
 function DocsHomePaneHarness({ initialViewMode = "list" }: { initialViewMode?: ViewMode }) {
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [query, setQuery] = useState("");
-  const files = mapDocsHomeResults(FIXTURES, session.user.username ?? "alice");
+  const files = mapDocsHomeResults(FIXTURES, session.user.username ?? "alice", {
+    personalDriveLabel: docsLabels.homeMyDrive,
+  });
   return (
     <div className="docs-workspace docs-home-workspace" style={{ height: "100dvh" }}>
       <DocsHomePane

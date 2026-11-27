@@ -10,6 +10,12 @@ import { Pencil, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ViewHeader } from "@/view-header/src/view-header";
 import type { Note } from "@/lib/models/note";
+import { ListSortMenu } from "@/list-sort-menu/src/list-sort-menu";
+import {
+  NOTES_SORT_FIRST_DIRECTION,
+  notesSortOptions,
+  type NotesListSort,
+} from "@/notes-core/src/notes-list-sort";
 import { NotesListRow } from "@/notes-core/src/notes-list-row";
 import type { NotesNotebookCollection } from "@/lib/models/notes-types";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
@@ -61,6 +67,8 @@ type NotesListPanelProps = {
   /** Set only on a tag view: opens the rename dialog for that tag. */
   onEditTag?: () => void;
   pendingNoteIds?: ReadonlySet<string>;
+  listSort: NotesListSort;
+  onListSortChange: (sort: NotesListSort) => void;
 };
 
 export function NotesListPanel({
@@ -93,6 +101,8 @@ export function NotesListPanel({
   onRefreshList,
   onEditTag,
   pendingNoteIds,
+  listSort,
+  onListSortChange,
 }: NotesListPanelProps) {
   const multiSelecting = selectionMode || selectedIds.length > 1;
   const headerCount = multiSelecting ? selectedIds.length : visibleNotes.length;
@@ -144,6 +154,13 @@ export function NotesListPanel({
                 variant="outline"
               />
             ) : null}
+            <ListSortMenu
+              options={notesSortOptions(L)}
+              sort={listSort}
+              onChange={onListSortChange}
+              firstDirection={NOTES_SORT_FIRST_DIRECTION}
+              labels={{ menu: L.sortMenu, sortBy: L.sortBy, order: L.sortOrder }}
+            />
           </div>
         }
         searchPlaceholder={L.searchPlaceholder}

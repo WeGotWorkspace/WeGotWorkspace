@@ -163,6 +163,10 @@ final class OwnershipRegistry
             'GET /jmap/session' => 'Returns the caller JMAP session.',
             'GET /calendars/availability' => "Returns the caller's own Team availability settings.",
             'PUT /calendars/availability' => "Writes only the caller's own settings rows; a calendarId outside the caller's own personal or Team event calendars is 422 (CalendarAvailabilitySettingsTest).",
+            'GET /calendars/availability/public-link' => "Returns only the caller's own link row, keyed by their principal (AvailabilityPublicLinkTest::test_people_have_their_own_link).",
+            'POST /calendars/availability/public-link' => "Creates or returns only the caller's own link row; never rotates a live token (AvailabilityPublicLinkTest::test_turning_on_twice_returns_the_same_link).",
+            'PUT /calendars/availability/public-link' => "Replaces only the caller's own token; the old one is gone at once (AvailabilityPublicLinkTest::test_regenerate_ends_old_url).",
+            'DELETE /calendars/availability/public-link' => "Deletes only the caller's own link row (AvailabilityPublicLinkTest::test_turning_off_ends_the_url_and_is_idempotent).",
             'GET /calendars/reply-mailbox' => "Returns the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
             'PUT /calendars/reply-mailbox' => "Writes only the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
             'DELETE /calendars/reply-mailbox' => "Deletes only the caller's own reply mailbox row (CalendarReplyMailboxApiTest).",
@@ -174,6 +178,7 @@ final class OwnershipRegistry
         }
 
         $publicToken = [
+            'GET /calendars/availability/feeds/{token}' => 'Public availability link token; AvailabilityPublicLinkTest::test_every_refusal_looks_the_same covers unknown, revoked, replaced and disabled-owner tokens.',
             'GET /calendars/feeds/{token}' => 'Calendar feed capability token; PublicAccessOwnershipTest covers scope calendar-feed.',
             'GET /calendar/rsvp/{token}' => 'RSVP capability token; PublicAccessOwnershipTest covers scope rsvp.',
             'POST /calendar/rsvp/{token}' => 'RSVP capability token; PublicAccessOwnershipTest covers scope rsvp.',

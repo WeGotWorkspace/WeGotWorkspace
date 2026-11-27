@@ -14,6 +14,7 @@ export type CalendarAvailabilityCalendar = components["schemas"]["CalendarAvaila
 export type CalendarAvailabilityGetRequest = components["schemas"]["CalendarAvailabilityGetRequest"];
 export type CalendarAvailabilityGetResponse = components["schemas"]["CalendarAvailabilityGetResponse"];
 export type CalendarAvailabilityPerson = components["schemas"]["CalendarAvailabilityPerson"];
+export type CalendarAvailabilityPublicLink = components["schemas"]["CalendarAvailabilityPublicLink"];
 export type CalendarAvailabilitySettings = components["schemas"]["CalendarAvailabilitySettings"];
 export type CalendarAvailabilitySettingsUpdate = components["schemas"]["CalendarAvailabilitySettingsUpdate"];
 export type CalendarAvailabilityTeam = components["schemas"]["CalendarAvailabilityTeam"];

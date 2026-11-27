@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { DriveListLoadMore } from "@/drive-core/src/drive-list-load-more";
 import type { Dispatch, MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
-import { FileText } from "lucide-react";
+import { CloudOff, FileText } from "lucide-react";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { ViewModeToggle, type ViewMode } from "@/view-mode-toggle/src/view-mode-toggle";
@@ -13,6 +13,7 @@ import { DriveListView } from "@/drive-core/src/drive-list-view";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveFileMenuAction } from "@/drive-core/src/drive-file-actions";
 import { driveLabels } from "@/drive-core/src/drive-labels";
+import type { DriveViewState } from "@/drive-core/src/use-drive-tree-rows";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
@@ -50,6 +51,12 @@ export type DocsHomePaneProps = {
   files: DriveFile[];
   /** Shows the loading state while `files` is still empty. */
   loading: boolean;
+  /**
+   * The local tree's state for this view (#2063 C4): `pending` until its first
+   * read answers (nothing shows, neither loading nor empty), `not-available`
+   * offline before the view ever synced (never the empty state).
+   */
+  viewState?: DriveViewState;
   /** Rows are visible while the list refreshes in the background. */
   refreshing?: boolean;
   loadingMore: boolean;
@@ -125,6 +132,7 @@ export function DocsHomePane({
   emptyIcon,
   files: unsortedFiles,
   loading,
+  viewState = null,
   refreshing = false,
   loadingMore,
   hasMore,
@@ -397,8 +405,15 @@ export function DocsHomePane({
           className="docs-home-pane__scroll collection-state-host"
           aria-busy={refreshing || undefined}
         >
-          {loading && files.length === 0 ? (
+          {viewState === "pending" && files.length === 0 ? null : (loading ||
+              viewState === "first-sync") &&
+            files.length === 0 ? (
             <CollectionState variant="loading">{labels.homeLoading}</CollectionState>
+          ) : viewState === "not-available" && files.length === 0 ? (
+            <CollectionState icon={<CloudOff className="size-12" />}>
+              <p role="status">{labels.homeNotSyncedOffline}</p>
+              <p className="drive-main-pane__hint">{labels.homeNotSyncedOfflineHint}</p>
+            </CollectionState>
           ) : error ? (
             <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>
               {error}

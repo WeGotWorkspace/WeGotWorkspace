@@ -28,6 +28,7 @@ import {
   writeDriveBootstrapToCache,
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
+import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import "@/lib/offline/drive/drive-schema";
 import { docsCollabIndexedDbKey, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
@@ -74,11 +75,6 @@ import {
   writeDriveAvailability,
 } from "@/lib/offline/drive/drive-availability-store";
 import { writeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
-import {
-  readDocsListingFromCache,
-  writeDocsListingToCache,
-} from "@/lib/offline/docs/docs-listing-offline-store";
-import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import { findUploadPlaceholder } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import { enqueueDriveUploadBatch } from "@/lib/offline/drive/upload/drive-upload-store";
 
@@ -1012,25 +1008,14 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
 });
 
 describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
-  const all = {};
-  const mine = { pathPrefix: "users/ada" };
-
-  function doc(sourceKey: string, id: number): WgwUnifiedSearchResult {
-    return {
-      id,
-      sourceType: "file",
-      sourceKey,
-      title: sourceKey.split("/").pop() ?? sourceKey,
-      extension: "md",
-      category: "document",
-      size: 4,
-      modifiedAt: 1,
-    };
-  }
-
-  async function listed(filters: object): Promise<string[] | undefined> {
-    const cached = await readDocsListingFromCache(username, filters);
-    return cached?.results.map((row) => row.sourceKey).sort();
+  async function treePaths(): Promise<string[]> {
+    const rows = await driveEntriesTable(
+      offlineDbForAccount(offlineAccountKeyFromUsername(username)),
+    ).toArray();
+    return rows
+      .map((row) => String(row.id))
+      .filter((id) => id.endsWith(".md"))
+      .sort();
   }
 
   beforeEach(async () => {
@@ -1039,7 +1024,6 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await driveEntriesTable(db).clear();
     await db.table("docs_availability").clear();
-    await db.table("docs_listing_rows").clear();
     await db.table("drive_availability").clear();
     await db.table("drive_content_blobs").clear();
     await db.outbox.clear();
@@ -1049,18 +1033,13 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   });
 
-  it("applies a FileNode delete, rename and move to every cached Docs view", async () => {
+  it("applies a FileNode delete, rename and move to the tree Docs home lists", async () => {
     await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
     await upsertDriveEntry(username, entry("/groups/team", "fn-team", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/deleted.md", "fn-del"));
     await upsertDriveEntry(username, entry("/users/ada/before.md", "fn-ren"));
     await upsertDriveEntry(username, entry("/users/ada/moving.md", "fn-mov"));
     await upsertDriveEntry(username, entry("/users/ada/kept.md", "fn-kept"));
-    const docs = ["deleted.md", "before.md", "moving.md", "kept.md"].map((name, at) =>
-      doc(`users/ada/${name}`, at + 1),
-    );
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
-    await writeDocsListingToCache(username, mine, { results: docs, hasMore: false });
     installCatalog(
       new Map<string, JmapFileNode>([
         ["fn-home", node("fn-home", null, "ada", "directory")],
@@ -1075,12 +1054,11 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
 
     await syncDriveInboundFromFileNodes(username);
 
-    expect(await listed(all)).toEqual([
+    expect(await treePaths()).toEqual([
       "groups/team/moving.md",
       "users/ada/after.md",
       "users/ada/kept.md",
     ]);
-    expect(await listed(mine)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
     expect(await readDriveSyncToken(username)).toBe("6");
   });
 
@@ -1089,8 +1067,6 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await upsertDriveEntry(username, entry("/users/ada/reports-2024/old.md", "fn-old"));
     await upsertDriveEntry(username, entry("/users/ada/reports", "fn-r", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/reports/new.md", "fn-new"));
-    const docs = [doc("users/ada/reports-2024/old.md", 1), doc("users/ada/reports/new.md", 2)];
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
     installCatalog(
       new Map<string, JmapFileNode>([
         [
@@ -1113,17 +1089,16 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
 
     await syncDriveInboundFromFileNodes(username);
 
-    const cached = await readDocsListingFromCache(username, all);
-    const byKey = new Map(cached?.results.map((row) => [row.sourceKey, row.id]));
-    expect([...byKey.keys()].sort()).toEqual([
+    expect(await treePaths()).toEqual([
       "users/ada/reports-2024-old/old.md",
       "users/ada/reports-2024/new.md",
     ]);
-    expect(byKey.get("users/ada/reports-2024-old/old.md")).toBe(1);
-    expect(byKey.get("users/ada/reports-2024/new.md")).toBe(2);
-    // Each doc is gone from its old path.
-    expect(byKey.has("users/ada/reports-2024/old.md")).toBe(false);
-    expect(byKey.has("users/ada/reports/new.md")).toBe(false);
+    expect(
+      (await readDriveEntryFromCache(username, "/users/ada/reports-2024-old/old.md"))?.nodeId,
+    ).toBe("fn-old");
+    expect(
+      (await readDriveEntryFromCache(username, "/users/ada/reports-2024/new.md"))?.nodeId,
+    ).toBe("fn-new");
   });
 
   it("a move blocked by unsaved work writes nothing from its batch", async () => {
@@ -1134,8 +1109,6 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await upsertDriveEntry(username, entry("/users/ada/gone.md", "fn-gone"));
     await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
     await seedPendingSave("/users/ada/taken.md", true);
-    const docs = [doc("users/ada/a.md", 1), doc("users/ada/gone.md", 2)];
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
     installCatalog(
       new Map([
         ["fn-home", node("fn-home", null, "ada", "directory")],
@@ -1158,18 +1131,11 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
       "drive_content_blobs",
     );
     expect((await blobs.get("users/ada/a.md"))?.size).toBe(1);
-    const cached = await readDocsListingFromCache(username, all);
-    expect(cached?.results.map((row) => row.sourceKey).sort()).toEqual([
-      "users/ada/a.md",
-      "users/ada/gone.md",
-    ]);
   });
 
-  it("two docs that swap paths keep their own rows in the Docs views", async () => {
+  it("two docs that swap paths keep their own rows in the tree Docs home lists", async () => {
     await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
     await upsertDriveEntry(username, entry("/users/ada/b.md", "fn-b"));
-    const docs = [doc("users/ada/a.md", 1), doc("users/ada/b.md", 2)];
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
     installCatalog(
       new Map<string, JmapFileNode>([
         ["fn-a", { ...node("fn-a", "fn-home", "b.md"), path: "/users/ada/b.md" }],
@@ -1180,17 +1146,91 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
 
     await syncDriveInboundFromFileNodes(username);
 
-    const cached = await readDocsListingFromCache(username, all);
-    const byKey = new Map(cached?.results.map((row) => [row.sourceKey, row.id]));
-    expect(byKey.get("users/ada/b.md")).toBe(1);
-    expect(byKey.get("users/ada/a.md")).toBe(2);
+    expect((await readDriveEntryFromCache(username, "/users/ada/b.md"))?.nodeId).toBe("fn-a");
+    expect((await readDriveEntryFromCache(username, "/users/ada/a.md"))?.nodeId).toBe("fn-b");
   });
 
-  it("a new file on a path the batch vacated stays in the Docs views", async () => {
+  /** Two Docs at a.md and b.md whose FileNodes swap names in one changes batch. */
+  async function swapAAndB(): Promise<void> {
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
+    await upsertDriveEntry(username, entry("/users/ada/b.md", "fn-b"));
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        ["fn-a", { ...node("fn-a", "fn-home", "b.md"), path: "/users/ada/b.md" }],
+        ["fn-b", { ...node("fn-b", "fn-home", "a.md"), path: "/users/ada/a.md" }],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-a", "fn-b"], newState: "8" }));
+  }
+
+  async function writeLocalText(apiPath: string, text: string): Promise<void> {
+    const ydoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(
+      docsCollabIndexedDbKey(docsCollabRoomKey(apiPath)),
+      ydoc,
+    );
+    await persistence.whenSynced;
+    const paragraph = new Y.XmlText();
+    paragraph.insert(0, text);
+    ydoc.getXmlFragment("default").insert(0, [paragraph]);
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+    ydoc.destroy();
+  }
+
+  async function readLocalText(apiPath: string): Promise<string> {
+    const ydoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(
+      docsCollabIndexedDbKey(docsCollabRoomKey(apiPath)),
+      ydoc,
+    );
+    await persistence.whenSynced;
+    const text = ydoc.getXmlFragment("default").toString();
+    await persistence.destroy();
+    ydoc.destroy();
+    return text;
+  }
+
+  it("two starred docs that swap paths keep their own stars", async () => {
+    // Only a.md is starred: after the swap the star is on a.md's Doc, now at b.md.
+    await writeDocsStarredPaths(username, ["/users/ada/a.md", "/users/ada/notes.md"]);
+    await swapAAndB();
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await readCachedDriveNodeId(username, "/users/ada/b.md")).toBe("fn-a");
+    expect((await readDocsStarredPaths(username)).sort()).toEqual([
+      "/users/ada/b.md",
+      "/users/ada/notes.md",
+    ]);
+  });
+
+  it("two open docs that swap paths keep their editor and their local text", async () => {
+    await writeLocalText("/users/ada/a.md", "text of a");
+    await writeLocalText("/users/ada/b.md", "text of b");
+    await swapAAndB();
+    const batches: Array<Array<[string, string]>> = [];
+    const stop = subscribeDocsPathMoved(username, (moves) =>
+      batches.push(moves.map(({ from, to }) => [from, to])),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+    stop();
+
+    // One batch: each open editor follows its own Doc once, never back again.
+    expect(batches).toHaveLength(1);
+    expect([...batches[0]!].sort()).toEqual([
+      ["users/ada/a.md", "users/ada/b.md"],
+      ["users/ada/b.md", "users/ada/a.md"],
+    ]);
+    // Each Doc's unsaved text moved alone: nothing merged with the other Doc's.
+    expect(await readLocalText("/users/ada/b.md")).toBe("text of a");
+    expect(await readLocalText("/users/ada/a.md")).toBe("text of b");
+  });
+
+  it("a new file on a path the batch vacated stays in the tree", async () => {
     await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
     await upsertDriveEntry(username, entry("/users/ada/report.md", "fn-report"));
-    const docs = [doc("users/ada/a.md", 1), doc("users/ada/report.md", 2)];
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
     // `a.md` is renamed to `b.md` and a new `a.md` created; `report.md` is
     // deleted and a new `report.md` created.
     installCatalog(
@@ -1214,14 +1254,7 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
 
     await syncDriveInboundFromFileNodes(username);
 
-    const cached = await readDocsListingFromCache(username, all);
-    const byKey = new Map(cached?.results.map((row) => [row.sourceKey, row.id]));
-    expect([...byKey.keys()].sort()).toEqual([
-      "users/ada/a.md",
-      "users/ada/b.md",
-      "users/ada/report.md",
-    ]);
-    expect(byKey.get("users/ada/b.md")).toBe(1);
+    expect(await readCachedDriveNodeId(username, "/users/ada/b.md")).toBe("fn-a");
     expect(await readCachedDriveNodeId(username, "/users/ada/a.md")).toBe("fn-a2");
     expect(await readCachedDriveNodeId(username, "/users/ada/report.md")).toBe("fn-report2");
   });
@@ -1231,8 +1264,6 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await upsertDriveEntry(username, entry("/users/ada/Plans/keep.md", "fn-keep"));
     await upsertDriveEntry(username, entry("/users/ada/Plans/gone.md", "fn-gone"));
     await writeDriveContentBlob(username, "/users/ada/Plans/gone.md", new Blob(["gone"]));
-    const docs = [doc("users/ada/Plans/keep.md", 1), doc("users/ada/Plans/gone.md", 2)];
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
     installCatalog(
       new Map<string, JmapFileNode>([
         [
@@ -1253,16 +1284,11 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect(await driveEntriesTable(db).get("users/ada/Plans/gone.md")).toBeUndefined();
     expect(await db.table("drive_content_blobs").get("users/ada/Archive/gone.md")).toBeUndefined();
     expect(await db.table("drive_content_blobs").get("users/ada/Plans/gone.md")).toBeUndefined();
-    expect(await listed(all)).toEqual(["users/ada/Archive/keep.md"]);
     expect(await readDriveSyncToken(username)).toBe("9");
   });
 
-  it("moves a Doc renamed elsewhere in every view when the full crawl finds it", async () => {
+  it("full resync tells Docs which Docs moved, so stars and editors follow (#1563)", async () => {
     await upsertDriveEntry(username, entry("/users/ada/before.md", "fn-ren"));
-    await upsertDriveEntry(username, entry("/users/ada/kept.md", "fn-kept"));
-    const docs = [doc("users/ada/before.md", 1), doc("users/ada/kept.md", 2)];
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
-    await writeDocsListingToCache(username, mine, { results: docs, hasMore: false });
     fileNodeChanges.mockRejectedValue(
       new JmapMethodError("FileNode/changes", "c0", { type: "cannotCalculateChanges" }),
     );
@@ -1271,76 +1297,20 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
         "users/ada/before.md",
       );
       await upsertDriveEntry(username, entry("/users/ada/after.md", "fn-ren"));
-      return { running: false, total: 2, synced: 2, failed: 0, updatedAt: 1 };
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
     });
     getFileNodes.mockResolvedValue({ accountId: "ada", state: "8", list: [], notFound: [] });
 
-    const result = await syncDriveInboundFromFileNodes(username);
-
-    expect(result.usedFullResync).toBe(true);
-    expect(await listed(all)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
-    expect(await listed(mine)).toEqual(["users/ada/after.md", "users/ada/kept.md"]);
-  });
-
-  it("moves each file on its own when the full crawl finds a renamed folder", async () => {
-    await upsertDriveEntry(username, entry("/users/ada/Plans", "fn-plans", "dir"));
-    await upsertDriveEntry(username, entry("/users/ada/Plans/keep.md", "fn-keep"));
-    await upsertDriveEntry(username, entry("/users/ada/Plans/out.md", "fn-out"));
-    await upsertDriveEntry(username, entry("/users/ada/Plans/gone.md", "fn-gone"));
-    const docs = ["keep.md", "out.md", "gone.md"].map((name, at) =>
-      doc(`users/ada/Plans/${name}`, at + 1),
-    );
-    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
-    fileNodeChanges.mockRejectedValue(
-      new JmapMethodError("FileNode/changes", "c0", { type: "cannotCalculateChanges" }),
-    );
-    syncDriveMetadataTree.mockImplementation(async () => {
-      const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
-      for (const id of [
-        "users/ada/Plans",
-        // keep.md stays: a Doc with unsaved text keeps its old row during the crawl.
-        "users/ada/Plans/out.md",
-        "users/ada/Plans/gone.md",
-      ]) {
-        await table.delete(id);
-      }
-      await upsertDriveEntry(username, entry("/users/ada/Archive", "fn-plans", "dir"));
-      await upsertDriveEntry(username, entry("/users/ada/Archive/keep.md", "fn-keep"));
-      await upsertDriveEntry(username, entry("/users/ada/Loose.md", "fn-out"));
-      return { running: false, total: 3, synced: 3, failed: 0, updatedAt: 1 };
-    });
-    getFileNodes.mockResolvedValue({ accountId: "ada", state: "9", list: [], notFound: [] });
-
     const heard: Array<[string, string]> = [];
-    const stop = subscribeDocsPathMoved(username, (from, to) => heard.push([from, to]));
-    await syncDriveInboundFromFileNodes(username);
+    const stop = subscribeDocsPathMoved(username, (moves) =>
+      moves.forEach(({ from, to }) => heard.push([from, to])),
+    );
+    const result = await syncDriveInboundFromFileNodes(username);
     stop();
 
-    expect(heard.map(([from, to]) => [from.replace(/^\//, ""), to.replace(/^\//, "")])).toEqual([
-      ["users/ada/Plans/keep.md", "users/ada/Archive/keep.md"],
-      ["users/ada/Plans/out.md", "users/ada/Loose.md"],
-    ]);
-    const rows = (await listed(all)) ?? [];
-    expect(rows).toContain("users/ada/Archive/keep.md");
-    expect(rows).toContain("users/ada/Loose.md");
-    expect(rows).not.toContain("users/ada/Archive/gone.md");
-    expect(rows).not.toContain("users/ada/Archive/out.md");
-  });
-
-  it("keeps a Doc with unsaved text in every view when it is deleted elsewhere", async () => {
-    const path = "/users/ada/unsaved-view.md";
-    await upsertDriveEntry(username, entry(path, "fn-unsaved-view"));
-    await writeDocsListingToCache(username, all, {
-      results: [doc("users/ada/unsaved-view.md", 1)],
-      hasMore: false,
-    });
-    await seedPendingSave(path, true);
-    fileNodeChanges.mockResolvedValue(changes({ destroyed: ["fn-unsaved-view"], newState: "7" }));
-
-    await syncDriveInboundFromFileNodes(username);
-
-    expect(await listed(all)).toEqual(["users/ada/unsaved-view.md"]);
-    await seedPendingSave(path, false);
+    expect(result.usedFullResync).toBe(true);
+    expect(heard).toEqual([["users/ada/before.md", "users/ada/after.md"]]);
+    expect(await treePaths()).toEqual(["users/ada/after.md"]);
   });
 
   it("removes the Drive availability row and content blob of a destroyed node", async () => {

@@ -7,6 +7,7 @@ namespace App\Services\Drive;
 use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\DriveShareSession;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -20,7 +21,10 @@ use Illuminate\Support\Collection;
  */
 final class DriveShareRevoker
 {
-    public function __construct(private DriveSharePathScope $scope) {}
+    public function __construct(
+        private DriveSharePathScope $scope,
+        private DriveShareChangeRecorder $changes,
+    ) {}
 
     public function revoke(DriveShare $share): void
     {
@@ -32,6 +36,8 @@ final class DriveShareRevoker
             ->where('share_id', $share->id)
             ->whereNull('revoked_at')
             ->update(['revoked_at' => $now]);
+
+        $this->changes->record((string) $share->path);
     }
 
     /**
@@ -102,10 +108,9 @@ final class DriveShareRevoker
             return 0;
         }
 
-        return DriveShareGrant::query()
+        return $this->deleteGrants(DriveShareGrant::query()
             ->where('grantee_type', 'user')
-            ->where('grantee_user', $username)
-            ->delete();
+            ->where('grantee_user', $username));
     }
 
     /**
@@ -118,9 +123,30 @@ final class DriveShareRevoker
             return 0;
         }
 
-        return DriveShareGrant::query()
+        return $this->deleteGrants(DriveShareGrant::query()
             ->where('grantee_type', 'group')
-            ->where('grantee_group', $slug)
-            ->delete();
+            ->where('grantee_group', $slug));
+    }
+
+    /**
+     * Deletes $grants, then records a share change on each share they belonged to, since a
+     * removed grant can turn off its badge.
+     *
+     * @param  Builder<DriveShareGrant>  $grants
+     */
+    private function deleteGrants(Builder $grants): int
+    {
+        $sharePaths = DriveShare::query()
+            ->whereIn('id', (clone $grants)->select('share_id'))
+            ->distinct()
+            ->pluck('path')
+            ->map(static fn (mixed $path): string => (string) $path)
+            ->all();
+        $removed = $grants->delete();
+        foreach ($sharePaths as $path) {
+            $this->changes->record($path);
+        }
+
+        return $removed;
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeTag;
 
 /**
@@ -207,11 +208,64 @@ final class FileNodeTags
 
     /**
      * @param  list<string>  $nodeIds
+     * @return list<string> the node ids that had tag rows deleted
      */
-    public function dropFor(array $nodeIds): void
+    public function dropFor(array $nodeIds): array
     {
+        $dropped = [];
         foreach (array_chunk($nodeIds, 500) as $chunk) {
-            JmapFileNodeTag::query()->whereIn('node_id', $chunk)->delete();
+            $query = JmapFileNodeTag::query()->whereIn('node_id', $chunk);
+            foreach ($query->distinct()->pluck('node_id') as $id) {
+                $dropped[] = (string) $id;
+            }
+            $query->delete();
+        }
+
+        return $dropped;
+    }
+
+    /**
+     * The space a storage key lives in: `users/<name>` (personal) or `groups/<slug>` (a
+     * Team). Tags belong to one space and never cross into another (#2402).
+     */
+    public static function spaceOf(string $storageKey): string
+    {
+        return implode('/', array_slice(explode('/', trim($storageKey, '/')), 0, 2));
+    }
+
+    public static function sameSpace(string $fromKey, string $toKey): bool
+    {
+        return self::spaceOf($fromKey) === self::spaceOf($toKey);
+    }
+
+    /**
+     * A copy keeps the source's tags inside one space; into another space it gets none.
+     *
+     * @param  array<string, string>  $idMap  source node id => new node id
+     */
+    public function copyWithinSpace(string $fromKey, string $toKey, array $idMap): void
+    {
+        if (self::sameSpace($fromKey, $toKey)) {
+            $this->copy($idMap);
+        }
+    }
+
+    /**
+     * A personal tag must not travel into a Team, nor the other way round: a move
+     * across spaces removes the tags of the moved nodes. Descendants that lost tags
+     * changed, so they get `$seq` and FileNode/changes reports them; the moved node
+     * itself is stamped by the caller.
+     *
+     * @param  list<string>  $nodeIds
+     */
+    public function dropOnSpaceChange(string $fromKey, string $toKey, array $nodeIds, string $rootId, int $seq): void
+    {
+        if (self::sameSpace($fromKey, $toKey)) {
+            return;
+        }
+        $descendants = array_values(array_diff($this->dropFor($nodeIds), [$rootId]));
+        foreach (array_chunk($descendants, 500) as $chunk) {
+            JmapFileNode::query()->whereIn('node_id', $chunk)->update(['change_seq' => $seq]);
         }
     }
 }

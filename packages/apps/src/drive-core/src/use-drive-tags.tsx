@@ -88,5 +88,5 @@ export function useDriveTags({ shell, list }: { shell: DriveShellState; list: Dr
     [files],
   );
 
-  return { canEditTags, changeTags, tagSuggestions, tagsEnabled: Boolean(setTags) };
+  return { canEditTags, changeTags, tagSuggestions };
 }

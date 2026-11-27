@@ -10860,6 +10860,199 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/availability/public-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read my public availability link
+         * @description Whether the caller's public availability link is on and, when it is, its URLs. Off until turned on.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The link state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilityPublicLink"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /**
+         * Make a new public availability link
+         * @description Replaces the token in one update; the old URL answers 404 at once. 409 while the link is off.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The new link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilityPublicLink"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+            };
+        };
+        /**
+         * Turn on my public availability link
+         * @description Creates the link, or returns the existing one unchanged (200). Never replaces a live token; use PUT for that. Independent of the Team switch.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The link was already on */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilityPublicLink"];
+                    };
+                };
+                /** @description The link was created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CalendarAvailabilityPublicLink"];
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        /**
+         * Turn off my public availability link
+         * @description Removes the link; its URL answers 404 at once. Idempotent.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The link is off */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/availability/feeds/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a public availability feed
+         * @description Unauthenticated VCALENDAR of the link owner's busy time: VEVENTs with SUMMARY Busy, UTC start and end, last week to 26 weeks ahead, overlapping blocks merged. No title, place, person, note or event UID. An optional .ics suffix on the token is accepted. Supports ETag and If-None-Match. Rate-limited per address and per link. Unknown, revoked, replaced and disabled-owner tokens all answer the same 404; 503 when some busy time could not be worked out.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Opaque link token. An optional .ics suffix is accepted. */
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description VCALENDAR of busy blocks */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/calendar": string;
+                    };
+                };
+                /** @description Not modified (If-None-Match) */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Busy time could not be worked out completely */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -15276,6 +15469,14 @@ export interface components {
         TotpSetupConfirmRequest: {
             currentPassword: string;
             code: string;
+        };
+        /** @description The caller's public availability link (#2405). `enabled: false` carries no URLs. The link shows only busy start and end. */
+        CalendarAvailabilityPublicLink: {
+            enabled: boolean;
+            /** @description Public feed URL, secret token included. Anyone holding it can read the person's busy times. */
+            httpsUrl?: string;
+            /** @description The same URL with the webcal scheme, for Apple, Google and Outlook subscribe flows. */
+            webcalUrl?: string;
         };
     };
     responses: {

@@ -369,7 +369,7 @@ final class FileNodeIndexService
         foreach (array_chunk($rows, 500) as $chunk) {
             JmapFileNode::query()->insert($chunk);
         }
-        $this->tags->copy($idMap);
+        $this->tags->copyWithinSpace($fromKey, $toKey, $idMap);
         foreach ($pending as $destKey) {
             $node = $this->liveByKey($destKey);
             if ($node !== null) {
@@ -431,11 +431,13 @@ final class FileNodeIndexService
             $descendant->save();
         }
 
+        $seq = $this->seq->next();
+        $this->tags->dropOnSpaceChange($fromKey, $toKey, array_column($moved, 'node_id'), (string) $row->node_id, $seq);
+
         $isDir = (bool) $row->is_dir;
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
-        $seq = $this->seq->next();
         $row->change_seq = $seq;
         $row->save();
         if ($fromKey !== $toKey) {

@@ -318,8 +318,14 @@ function parentId(id: string): string {
 
 /**
  * Drops the listing row, content blob, and drive availability pin.
- * A Docs path also drops its pin and collab database. Returns false when a
- * collab database delete is blocked or errors, and leaves that row in place.
+ * A Docs path also drops its pin and the collab databases keyed on that path.
+ * When its node still has a row elsewhere (a move), the pin follows it and the
+ * identity database stays. Path-keyed copies at the old path go either way:
+ * a tree pass has already moved them by its final map (#2063 C7), and the
+ * callers keep every row whose copy holds unsaved text, so only synced copies
+ * reach this point. A stale one would otherwise be opened by the next Doc on
+ * that path. Returns false when a collab database delete is blocked or errors,
+ * and leaves that row in place.
  */
 async function removePrunedFile(
   username: string,

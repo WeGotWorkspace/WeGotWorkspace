@@ -5,8 +5,7 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { afterViewTransition } from "@/lib/view-transition";
-import { filterNotesByHiddenNotebooks, filterVisibleNotes } from "./notes-note-utils";
-import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
+import { useNotesVisibleList } from "./use-notes-visible-list";
 import type { NotesShellState } from "./use-notes-shell";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
@@ -18,20 +17,7 @@ export type UseNotesListArgs = {
 };
 
 export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesListArgs) {
-  const {
-    notes,
-    setNotes,
-    view,
-    searchQuery,
-    workspaceLayoutRef,
-    starred,
-    archived,
-    hiddenNotebookIds,
-    notebookCollections,
-    listLoading,
-    data,
-    showMutationError,
-  } = shell;
+  const { notes, setNotes, view, workspaceLayoutRef, listLoading, data, showMutationError } = shell;
 
   const [activeId, setActiveId] = useState<string>(() => initialNoteId ?? "");
   const isTouch = useIsTouch();
@@ -87,36 +73,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     notifyNoteChange(activeId);
   }, [activeId, notifyNoteChange]);
 
-  const sharedNotebookKeys = useMemo(
-    () => sharedNotebookFilterKeys(notebookCollections),
-    [notebookCollections],
-  );
-
-  const visibleNotes = useMemo(
-    () =>
-      filterNotesByHiddenNotebooks(
-        filterVisibleNotes(notes, {
-          view,
-          archived,
-          starred,
-          searchQuery,
-          sharedNotebookKeys,
-          notebookCollections,
-        }),
-        view,
-        hiddenNotebookIds,
-      ),
-    [
-      archived,
-      hiddenNotebookIds,
-      notebookCollections,
-      notes,
-      searchQuery,
-      sharedNotebookKeys,
-      starred,
-      view,
-    ],
-  );
+  const { visibleNotes, listSort, setListSort } = useNotesVisibleList(shell);
 
   const visibleIds = useMemo(() => visibleNotes.map((n) => n.id), [visibleNotes]);
 
@@ -228,6 +185,8 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     setActiveId,
     active,
     visibleNotes,
+    listSort,
+    setListSort,
     selectedIds,
     setSelectedIds,
     selectionMode,

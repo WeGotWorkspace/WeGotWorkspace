@@ -15,6 +15,7 @@
 // where it can get lost, Restore and Delete act on the owner's own Trash, and
 // sharing needs a second person. The fixed offline gaps each have a case:
 //   gap 1  createTaken  an offline create whose name was taken meanwhile keeps both
+//   gap 1  createTakenRename, createTakenTrash  the same, then A renames or trashes the new Doc offline
 //   gap 2  renameOpen   a rename while another tab or person has the Doc open offline
 //   gap 3  star, unstar, trash, restore offline; delete and share say they need a connection
 //   gap 4  every offline case: "Changes synced" never shows while the tab is offline
@@ -23,7 +24,7 @@
 // No fixed waits: every step waits for what it needs (a row, the offline
 // badge, the Drive cache knowing the file, the server holding the write).
 // Run one case with --grep "rename · same · aOff".
-import type { Browser, BrowserContext, Locator } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 import {
   dav,
   driveKnows,
@@ -271,6 +272,16 @@ type ActionDef = {
   aView?: View | "editor";
   /** The other tab's view, or the editor. */
   bView?: View | "editor";
+  /**
+   * Pages of A's browser context that go offline and come back with A, such as
+   * Drive: its own outbox flush runs on reconnect beside Docs' (#2063 C4).
+   */
+  companions?: (a: Tab, c: Case) => Promise<Page[]>;
+  /**
+   * What the companion pages alone put on the server, A still offline: the create (empty, the
+   * typed body is A's editor save) and its retargeted rename or trash.
+   */
+  companionSent?: (s: Server, c: Case) => boolean;
   /** The UI steps of the action in tab A (and, for some, tab B). */
   run: (a: Tab, b: Tab | null, c: Case) => Promise<void>;
   /** The server holds the action (`mate` is the teammate's view, in a diff case). */
@@ -281,6 +292,16 @@ type ActionDef = {
 
 async function seedDoc(c: Case, path = startPath(c)): Promise<void> {
   await putDoc(OWNER, path, `# ${c.name}\n\nbody ${c.id}\n`);
+}
+
+/** Drive open beside Docs in A's browser: its reconnect flush must not outrun Docs' create. */
+async function openDriveCompanion(a: Tab): Promise<Page[]> {
+  const drive = await a.context().newPage();
+  await drive.goto("/drive");
+  await expect(drive.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 60_000 });
+  // Its list is read and cached once the page settles.
+  await drive.waitForLoadState("networkidle");
+  return [drive];
 }
 
 async function renameFromRow(tab: Tab, fileName: string, nextBase: string): Promise<void> {
@@ -371,6 +392,56 @@ const ACTIONS = {
       );
     },
     editorText: (c) => [token(c, "a")],
+  },
+  /** Gap 1: the offline-created Doc is renamed or trashed from its row before the create lands. */
+  createTakenRename: {
+    nets: { one: ["off"] },
+    companions: openDriveCompanion,
+    companionSent: (s, c) =>
+      s.active.join("|") === [startPath(c), docPath(c.dir, `${c.name} v2`)].sort().join("|"),
+    seed: async () => undefined,
+    run: async (a, _b, c) => {
+      await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
+      await createDoc(a, c, token(c, "a"));
+      await a.goBack();
+      await waitForHome(a);
+      await renameFromRow(a, `${c.name}.md`, `${c.name} v2`);
+      await expect(row(a, `${c.name} v2.md`)).toBeVisible();
+    },
+    landed: async (s, _m, c) => {
+      const renamed = docPath(c.dir, `${c.name} v2`);
+      if (s.active.join("|") !== [startPath(c), renamed].sort().join("|")) return false;
+      const server = (await readDoc(OWNER, startPath(c))) ?? "";
+      const local = (await readDoc(OWNER, renamed)) ?? "";
+      return (
+        server.includes(`server ${c.id}`) &&
+        !server.includes(token(c, "a")) &&
+        local.includes(token(c, "a"))
+      );
+    },
+  },
+  createTakenTrash: {
+    nets: { one: ["off"] },
+    companions: openDriveCompanion,
+    companionSent: (s, c) =>
+      isOnly(s.active, startPath(c)) && isOnly(s.trash, `${trashOf(home(OWNER))}/${c.name}.md`),
+    seed: async () => undefined,
+    run: async (a, _b, c) => {
+      await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
+      await createDoc(a, c, token(c, "a"));
+      await a.goBack();
+      await waitForHome(a);
+      await trashFromRow(a, `${c.name}.md`);
+    },
+    landed: async (s, _m, c) => {
+      if (!isOnly(s.active, startPath(c))) return false;
+      const server = (await readDoc(OWNER, startPath(c))) ?? "";
+      return (
+        isOnly(s.trash, `${trashOf(home(OWNER))}/${c.name}.md`) &&
+        server.includes(`server ${c.id}`) &&
+        !server.includes(token(c, "a"))
+      );
+    },
   },
   rename: {
     nets: FULL,
@@ -694,7 +765,13 @@ async function openTabs(browser: Browser, c: Case): Promise<Session> {
 
 /** Where the case's Doc is before the action (none before a create). */
 function startOf(c: Case): string | null {
-  if (c.action === "create" || c.action === "createTaken") return null;
+  if (
+    c.action === "create" ||
+    c.action === "createTaken" ||
+    c.action === "createTakenRename" ||
+    c.action === "createTakenTrash"
+  )
+    return null;
   if (c.action === "restore" || c.action === "delete")
     return `${trashOf(home(OWNER))}/${c.name}.md`;
   return startPath(c);
@@ -771,25 +848,42 @@ async function runCase(browser: Browser, c: Case): Promise<void> {
     if (b) await prepareTab(b, def.bView, c);
 
     const offline = { on: [], off: [a], both: all, aOff: [a], bOff: b ? [b] : [] }[c.net];
+    const companions = await (def.companions?.(a, c) ?? []);
     for (const tab of offline) await setOffline(tab, true);
+    for (const page of companions) await setTabOffline(page as Tab, true);
     await a.bringToFront();
     await def.run(a, b ?? null, c);
     // Gap 5: offline, nothing on screen says "Failed to fetch".
     for (const tab of offline) await expect(tab.getByText("Failed to fetch")).toHaveCount(0);
+    const landed = async () =>
+      expect
+        .poll(
+          async () =>
+            def.landed(
+              await serverState(OWNER, c),
+              c.tabs === "diff" ? await serverState(TEAMMATE, c) : null,
+              c,
+            ),
+          { message: "the server holds the action", timeout: 45_000 },
+        )
+        .toBe(true)
+        .catch((error: unknown) => explain(c, error));
+    if (companions.length > 0 && def.companionSent) {
+      const sent = def.companionSent;
+      for (const page of companions) await setTabOffline(page as Tab, false);
+      await expect
+        .poll(async () => sent(await serverState(OWNER, c), c), {
+          message: "the companion page alone sent the create and the retargeted write",
+          timeout: 45_000,
+        })
+        .toBe(true)
+        .catch((error: unknown) => explain(c, error));
+    } else {
+      for (const page of companions) await setTabOffline(page as Tab, false);
+    }
     for (const tab of offline) await setOffline(tab, false);
 
-    await expect
-      .poll(
-        async () =>
-          def.landed(
-            await serverState(OWNER, c),
-            c.tabs === "diff" ? await serverState(TEAMMATE, c) : null,
-            c,
-          ),
-        { message: "the server holds the action", timeout: 45_000 },
-      )
-      .toBe(true)
-      .catch((error: unknown) => explain(c, error));
+    await landed();
     expect(await converge(all, c, 45_000), "every tab mirrors the server").toEqual({});
 
     // A hard refresh of every tab changes nothing, in any home view.

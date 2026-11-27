@@ -131,7 +131,9 @@ export async function readDriveChildNames(
 /**
  * Upsert one listing entry. Without `area`, the row keeps the area it had at
  * this path, or takes its parent folder's: writers other than the tree sync
- * (operations, uploads, folder listings) do not know it.
+ * (operations, uploads, folder listings) do not know it. A row whose parent
+ * has no row sits at an account root (share roots come from the tree sync with
+ * their area), so its area follows from the path.
  */
 export async function upsertDriveEntry(
   username: string,
@@ -142,8 +144,10 @@ export async function upsertDriveEntry(
   const table = driveEntriesTable(db);
   const row = driveEntryRowFromEntry(entry, area);
   if (!row.area) {
-    const known = (await table.get(row.id))?.area ?? (await table.get(row.parentPath))?.area;
+    const parent = await table.get(row.parentPath);
+    const known = (await table.get(row.id))?.area ?? parent?.area;
     if (known) row.area = known;
+    else if (!parent) row.area = areaFromCrawledPath(row.id);
   }
   if (row.type !== "dir") {
     await table.put(row);

@@ -240,7 +240,7 @@ test.describe("Docs inbound sync (#1563)", () => {
     await expect(docsHomeRow(page, QUEUED_TO)).toBeVisible();
     await expect(docsHomeRow(page, QUEUED_FROM)).toHaveCount(0);
 
-    // Both cached views hold the moved folder's Doc at its new path.
+    // The file tree holds the moved folder's Doc at its new path (#2063 C4: one tree, no view caches).
     const home = HOME.slice(1);
     await expect
       .poll(async () =>
@@ -249,7 +249,7 @@ test.describe("Docs inbound sync (#1563)", () => {
           .map((keys) => keys.filter((key) => key.includes(RUN)).sort()),
       )
       .toEqual(
-        Array(2).fill(
+        Array(1).fill(
           [`${home}/${FOLDER_TO}/${MOVED}`, `${home}/${QUEUED_TO}`, `${home}/${RENAMED_TO}`].sort(),
         ),
       );

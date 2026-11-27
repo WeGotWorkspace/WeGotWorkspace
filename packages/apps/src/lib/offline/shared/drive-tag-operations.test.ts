@@ -5,7 +5,12 @@ import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
+import {
+  listOutboxMutationsForDomain,
+  settleSentOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
   readDriveEntryFromCache,
   upsertDriveEntry,
@@ -37,6 +42,7 @@ function entry(tags?: string[]): WgwDriveDirectoryEntry {
 describe("createHybridSetTags", () => {
   const db = () => offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notify = vi.fn();
+  const flush = vi.fn();
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -47,7 +53,13 @@ describe("createHybridSetTags", () => {
 
   it("offline: updates the cached row at once and merges edits into one queued row", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
-    const setTags = createHybridSetTags(username, {} as DriveAPIOperations, DRIVE_DOMAIN, notify);
+    const setTags = createHybridSetTags(
+      username,
+      {} as DriveAPIOperations,
+      DRIVE_DOMAIN,
+      notify,
+      flush,
+    );
 
     expect(await setTags({ path, tagsAdd: ["later"] })).toEqual(["keep", "later"]);
     expect(await setTags({ path, tagsRemove: ["later", "keep"], tagsAdd: ["fresh"] })).toEqual([
@@ -71,7 +83,7 @@ describe("createHybridSetTags", () => {
     const live = {
       setTags: vi.fn(async () => ["keep", "server-tag"]),
     } as unknown as DriveAPIOperations;
-    const setTags = createHybridSetTags(username, live, DRIVE_DOMAIN, notify);
+    const setTags = createHybridSetTags(username, live, DRIVE_DOMAIN, notify, flush);
 
     expect(await setTags({ path, tagsAdd: ["server-tag"] })).toEqual(["keep", "server-tag"]);
 
@@ -87,9 +99,85 @@ describe("createHybridSetTags", () => {
         throw new Error("forbidden");
       }),
     } as unknown as DriveAPIOperations;
-    const setTags = createHybridSetTags(username, live, DRIVE_DOMAIN, notify);
+    const setTags = createHybridSetTags(username, live, DRIVE_DOMAIN, notify, flush);
 
     await expect(setTags({ path, tagsAdd: ["x"] })).rejects.toThrow("forbidden");
     expect(await listOutboxMutationsForDomain(username, DRIVE_DOMAIN)).toHaveLength(0);
+  });
+
+  it("merges a delta queued while the row is sent, and settling keeps it queued", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const setTags = createHybridSetTags(
+      username,
+      {} as DriveAPIOperations,
+      DRIVE_DOMAIN,
+      notify,
+      flush,
+    );
+    await setTags({ path, tagsAdd: ["a"] });
+    const [sent] = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
+
+    await setTags({ path, tagsAdd: ["b"] });
+
+    const settlement = await settleSentOutboxMutation(username, sent as OfflineOutboxRow);
+    expect(settlement.kind).toBe("changed");
+    const queued = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
+    expect(queued).toHaveLength(1);
+    expect(JSON.parse(queued[0]?.payload ?? "{}").tagsAdd).toEqual(["a", "b"]);
+  });
+
+  it("keeps one row per path across Drive and Docs, so a later remove wins", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const docs = createHybridSetTags(
+      username,
+      {} as DriveAPIOperations,
+      DOCS_DOMAIN,
+      notify,
+      flush,
+    );
+    const drive = createHybridSetTags(
+      username,
+      {} as DriveAPIOperations,
+      DRIVE_DOMAIN,
+      notify,
+      flush,
+    );
+    await docs({ path, tagsAdd: ["work"] });
+    await drive({ path, tagsRemove: ["work"] });
+
+    const rows = await db().outbox.toArray();
+    expect(rows).toHaveLength(1);
+    expect(JSON.parse(rows[0]?.payload ?? "{}").tagsAdd ?? []).not.toContain("work");
+  });
+
+  it("flushes a queued edit at once when the browser still says online", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const live = {
+      setTags: vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    } as unknown as DriveAPIOperations;
+    await createHybridSetTags(
+      username,
+      live,
+      DRIVE_DOMAIN,
+      notify,
+      flush,
+    )({ path, tagsAdd: ["x"] });
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(await listOutboxMutationsForDomain(username, DRIVE_DOMAIN)).toHaveLength(1);
+  });
+
+  it("an empty delta changes nothing", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    const setTags = createHybridSetTags(
+      username,
+      {} as DriveAPIOperations,
+      DRIVE_DOMAIN,
+      notify,
+      flush,
+    );
+    expect(await setTags({ path })).toEqual(["keep"]);
+    expect(await db().outbox.count()).toBe(0);
   });
 });

@@ -39,6 +39,13 @@ final class JmapCapabilities
     public const FILENODE_VERSION_CHECK = 'https://wegotworkspace.org/jmap/filenode-version-check';
 
     /**
+     * WGW extension to draft-ietf-jmap-filenode-14 (#2063): the FileNode
+     * property `shareFlags` { hasShares, hasPublicShare, hasTeamShare } with
+     * the caller's own shares on the node.
+     */
+    public const FILENODE_SHARE_FLAGS = 'https://wegotworkspace.org/jmap/filenode-share-flags';
+
+    /**
      * WGW extension to draft-ietf-jmap-filenode-14 (#2063): the FileNode/query
      * arguments `idAfter` (node id keyset) and `asOfState` (nodes that existed at
      * a state), and the FileNode property `path` (the node's virtual path), so a

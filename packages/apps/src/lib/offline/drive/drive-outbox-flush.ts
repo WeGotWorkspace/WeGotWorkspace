@@ -13,7 +13,10 @@ import {
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
-import type { DriveTagsOutboxPayload } from "@/lib/offline/shared/drive-tag-operations";
+import {
+  sendQueuedTagsRow,
+  type DriveTagsOutboxPayload,
+} from "@/lib/offline/shared/drive-tag-operations";
 import { writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
   legacyDriveOutboxUploadPath,
@@ -56,7 +59,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
     // An old upload whose folder is not known yet: it stays until it moves to the queue.
     prepare: async (row) => (readLegacyDriveOutboxUpload(row) ? null : row),
     parse: parsePayload,
-    send: async (payload) => {
+    send: async (payload, row, context) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -79,11 +82,8 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         const paths = await drive.listStars();
         await writeDocsStarredPaths(username, paths);
       } else if (payload.op === "tags") {
-        await drive.setTags?.({
-          path: payload.path,
-          tagsAdd: payload.tagsAdd,
-          tagsRemove: payload.tagsRemove,
-        });
+        if (!drive.setTags) throw new Error("Tags are not offered");
+        return sendQueuedTagsRow(username, DRIVE_DOMAIN, row, drive.setTags, context);
       }
     },
     onFailure: (failure) => {
