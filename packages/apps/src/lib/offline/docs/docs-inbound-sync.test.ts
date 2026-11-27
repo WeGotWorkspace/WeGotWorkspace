@@ -28,7 +28,6 @@ import {
 
 const username = "alice";
 const FILE: DocsNodeFacts = { directory: false, size: 7, modifiedAt: 900 };
-const DIR: DocsNodeFacts = { directory: true, size: 0, modifiedAt: 900 };
 
 async function queue(
   payload: DocsOutboxPayload,
@@ -68,9 +67,10 @@ describe("applyDocsInboundChanges", () => {
       "/users/alice/keep.md",
     ]);
 
+    // A folder rename reaches Docs as one move per file under it (#2063 C7).
     await applyDocsInboundChanges(username, [
       removed("/users/alice/a.md"),
-      moved("/users/alice/Old", "/users/alice/New", DIR),
+      moved("/users/alice/Old/b.md", "/users/alice/New/b.md"),
     ]);
 
     expect((await readDocsStarredPaths(username)).sort()).toEqual([

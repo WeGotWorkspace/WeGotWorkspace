@@ -175,7 +175,25 @@ async function fullResync(
   signal?: AbortSignal,
 ): Promise<DriveInboundSyncResult> {
   const before = await cachedPathsByNodeId(username);
-  const tree = await syncDriveTree(username, { signal, ifTokenIs: staleToken });
+  // A full sync lists, it does not say what moved: starred paths, local text and
+  // an open editor follow a renamed Doc by the moves found here (#1563), as one
+  // final map, before the pass prunes the old rows (#2063 C7). The crawl
+  // fallback never reaches that point; it follows once the crawl is done.
+  let docsFollowed = false;
+  const followDocs = async () => {
+    docsFollowed = true;
+    try {
+      await applyDocsInboundChanges(username, await movesSince(username, before));
+    } catch (error) {
+      // The rows are written: a failure here must not hold back the prune and token.
+      console.warn("[drive-inbound] could not move Docs path state with the tree", error);
+    }
+  };
+  const tree = await syncDriveTree(username, {
+    signal,
+    ifTokenIs: staleToken,
+    beforePrune: followDocs,
+  });
   if (!tree.completed) {
     return {
       changed: true,
@@ -184,9 +202,9 @@ async function fullResync(
       keptUnsavedPaths: tree.keptUnsavedPaths,
     };
   }
-  // A full sync lists, it does not say what moved: starred paths, local text and an
-  // open editor still follow a renamed Doc by the moves found here (#1563).
-  await applyDocsInboundChanges(username, await movesSince(username, before));
+  // Unchanged: another tab finished the pass while this one waited for the
+  // lock, and it already applied this final map; applying it again would undo it.
+  if (!docsFollowed && tree.changed) await followDocs();
   return {
     changed: true,
     listedChanges: true,
