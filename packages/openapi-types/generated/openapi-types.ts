@@ -5726,6 +5726,16 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                409: components["responses"]["JmapConflict"];
+                /** @description The subscription could not be saved or its calendar could not be loaded */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;

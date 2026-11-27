@@ -3,6 +3,7 @@ import {
   docsPageSetupLabels as labels,
   docsPaperLabel,
 } from "@/lib/docs-page-setup-labels";
+import { isDocsFormatBarPlacement } from "@/lib/docs-format-bar-placement";
 import { isTextEditorPageOrientation, isTextEditorPaperChoice } from "@/lib/page-format";
 import { useSettingsDocsForm } from "@/settings-core/src/use-settings-docs-form";
 import { SettingsPrefsFormPane } from "@/settings-core/src/settings-prefs-form-pane";
@@ -75,6 +76,33 @@ export function SettingsDocsPane() {
               <SelectContent align="end">
                 <SelectItem value="portrait">{labels.pageOrientationPortrait}</SelectItem>
                 <SelectItem value="landscape">{labels.pageOrientationLandscape}</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldLabelRow>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="formatBar"
+        render={({ field }) => (
+          <FieldLabelRow
+            layout="inline"
+            label={labels.settingsFormatBar}
+            description={labels.settingsFormatBarDescription}
+          >
+            <Select
+              value={field.value}
+              onValueChange={(value) => {
+                if (isDocsFormatBarPlacement(value)) field.onChange(value);
+              }}
+            >
+              <CollectionGhostSelectTrigger
+                aria-label={labels.settingsFormatBar}
+                label={<SelectValue />}
+              />
+              <SelectContent align="end">
+                <SelectItem value="top">{labels.settingsFormatBarTop}</SelectItem>
+                <SelectItem value="selection">{labels.settingsFormatBarSelection}</SelectItem>
               </SelectContent>
             </Select>
           </FieldLabelRow>

@@ -111,6 +111,36 @@
  * padding edge (matches header sidebar toggle). Horizontal scroll (no wrap);
  * scrollbar chrome hidden. Children must not flex-shrink.
  */
+/* The image bar: the same bar, floating over the selected image instead of sticky on top. */
+.text-editor-sheet .text-editor-format-bar.text-editor-format-bar--floating {
+  @apply absolute z-40 w-max max-w-[calc(100%-1rem)];
+  position: absolute;
+  border-bottom: 0;
+  transform: translate(-100%, calc(-100% - 0.5rem));
+}
+
+/* The selection bar: centred over the selected text. */
+.text-editor-sheet .text-editor-format-bar--floating[data-anchor="center"] {
+  transform: translate(-50%, calc(-100% - 0.5rem));
+}
+
+.text-editor-sheet .text-editor-format-bar--floating[data-anchor="center"][data-placement="below"] {
+  transform: translate(-50%, 0.5rem);
+}
+
+/* Right-to-left: the bar hangs off the picture's left (end) edge instead. */
+.text-editor-sheet .text-editor-format-bar--floating[data-anchor="start"] {
+  transform: translate(0, calc(-100% - 0.5rem));
+}
+
+.text-editor-sheet .text-editor-format-bar--floating[data-placement="below"] {
+  transform: translate(-100%, 0.5rem);
+}
+
+.text-editor-sheet .text-editor-format-bar--floating[data-placement="below"][data-anchor="start"] {
+  transform: translate(0, 0.5rem);
+}
+
 .text-editor-format-bar__controls {
   @apply flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-1.5 overflow-x-auto whitespace-nowrap;
   justify-content: safe center;
@@ -763,8 +793,24 @@
   @apply max-w-full h-auto;
 }
 
+/*
+ * Wrapper = the width box (% of the column) and the alignment; `__frame` is the picture
+ * (selection ring, handles); the caption sits under it. `data-align` moves the box.
+ */
 .text-editor-image {
   @apply relative my-4 block w-fit max-w-full;
+}
+
+.text-editor-image[data-align="center"] {
+  @apply mx-auto;
+}
+
+.text-editor-image[data-align="end"] {
+  margin-inline-start: auto;
+}
+
+.text-editor-image__frame {
+  @apply relative block;
 }
 
 .text-editor-image img {
@@ -772,57 +818,94 @@
 }
 
 /*
- * NodeSelection on the wrapper — Docs accent, not Drive green / native cyan.
- * 1px ring (button-scale), not the thick offset outline used on dialog chrome.
+ * No hover or click ring: the bar and handles say "selected". Only keyboard focus draws one
+ * (the focus-visible look): the suite selection blue, 2px, hugging the picture.
  */
 .text-editor-image.ProseMirror-selectednode {
   @apply outline-none;
-  border-radius: var(--control-radius);
-  box-shadow: 0 0 0 1px var(--workspace-accent, var(--text-editor-comment));
 }
 
-.text-editor-image__delete-host {
-  @apply absolute z-[1] opacity-0 pointer-events-none;
-  top: 0.375rem;
-  right: 0.375rem;
+.text-editor-image.ProseMirror-selectednode[data-focus-visible="true"] .text-editor-image__frame {
+  box-shadow: 0 0 0 2px var(--workspace-selected-mark-border);
 }
 
-.text-editor-image:hover .text-editor-image__delete-host,
-.text-editor-image.ProseMirror-selectednode .text-editor-image__delete-host,
-.text-editor-image__delete-host:focus-within {
-  @apply opacity-100 pointer-events-auto;
+.text-editor-image[data-linked="true"][data-editable="false"] img {
+  @apply cursor-pointer;
 }
 
 /*
- * Opaque cream chip in every visible state. IconButton outline+danger hover
- * uses color-mix(..., transparent) — beat that so hover stays as readable
- * as selected. Severity stays on the icon, not a see-through fill.
+ * Side handles: the calendar event card's resize pill (3px × 28px, 12px hit area),
+ * white with a shadow so it reads on any picture. Only on the selected, editable image.
  */
-.text-editor-image .text-editor-image__delete,
-.text-editor-image .text-editor-image__delete:hover,
-.text-editor-image .text-editor-image__delete:focus-visible,
-.text-editor-image
-  .button.button--variant-outline.button--severity-danger.text-editor-image__delete,
-.text-editor-image
-  .button.button--variant-outline.button--severity-danger.text-editor-image__delete:hover,
-.text-editor-image
-  .button.button--variant-outline.button--severity-danger.text-editor-image__delete:focus-visible {
-  --button-severity-color: var(
-    --menu-item-severity-color,
-    var(--menu-item-danger-color, var(--color-destructive, var(--destructive)))
-  );
-  --text-editor-image-delete-surface: var(--workspace-surface);
-  color: var(--button-severity-color);
-  background-color: var(--text-editor-image-delete-surface);
-  box-shadow: var(--control-shadow);
+.text-editor-image__handle {
+  @apply absolute top-0 z-[1] hidden h-full w-3 cursor-ew-resize items-center justify-center;
+  touch-action: none;
 }
 
-.text-editor-image__delete:focus-visible {
-  @apply outline-none ring-1 ring-ring;
+.text-editor-image__handle--start {
+  inset-inline-start: 0.125rem;
+}
+
+.text-editor-image__handle--end {
+  inset-inline-end: 0.125rem;
+}
+
+.text-editor-image__handle::before {
+  content: "";
+  width: 3px;
+  height: 28px;
+  border-radius: 999px;
+  background: oklch(1 0 0);
+  box-shadow: 0 0 0 1px color-mix(in oklab, oklch(0 0 0) 28%, transparent);
+  opacity: 0.88;
+  transition: opacity 160ms ease-in-out;
+}
+
+.text-editor-image__handle:hover::before {
+  opacity: 1;
+}
+
+.text-editor-image[data-editable="true"]:hover .text-editor-image__handle,
+.text-editor-image.ProseMirror-selectednode[data-editable="true"] .text-editor-image__handle {
+  @apply flex;
+}
+
+/* Start-aligned images keep their start edge, end-aligned their end edge. */
+.text-editor-image[data-align="start"][data-editable="true"] .text-editor-image__handle--start,
+.text-editor-image[data-align="end"][data-editable="true"] .text-editor-image__handle--end {
+  @apply hidden;
 }
 
 /*
- * Opt-in chip and the blocked notice share the delete control's surface.
+ * Caption under the picture; its text aligns like the surrounding block. Empty: gone, except while the
+ * image is selected or the caption has focus, then a quiet placeholder invites one.
+ */
+.text-editor-image__caption {
+  @apply mt-1.5 min-h-[1.25em] text-sm outline-none;
+  color: var(--workspace-muted-foreground, color-mix(in oklab, currentColor 65%, transparent));
+  text-align: inherit;
+  overflow-wrap: anywhere;
+}
+
+.text-editor-image__caption:empty {
+  @apply hidden;
+}
+
+.text-editor-image[data-focused="true"][data-editable="true"] .text-editor-image__caption:empty {
+  @apply block;
+}
+
+.text-editor-image__caption:empty::before {
+  content: "+ " attr(data-placeholder);
+  opacity: 0.8;
+}
+
+.text-editor-image__caption:focus:empty::before {
+  opacity: 0.5;
+}
+
+/*
+ * Opt-in chip and the blocked notice share the workspace chip surface.
  * `hidden` still wins: Tailwind preflight sets `display: none !important`.
  */
 .text-editor-image__external-load,
@@ -845,10 +928,6 @@
 
 .text-editor-image__external-load:focus-visible {
   @apply outline-none ring-1 ring-ring;
-}
-
-.ProseMirror[contenteditable="false"] .text-editor-image__delete-host {
-  @apply hidden;
 }
 
 .text-editor-prose table {

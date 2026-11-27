@@ -35,6 +35,7 @@ final class FileNodeMapper
         private readonly JmapRequestContext $context,
         private readonly ProjectFolderRegistry $projectFolders,
         private readonly DriveShareIndicators $shareIndicators,
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     /**
@@ -45,13 +46,20 @@ final class FileNodeMapper
     public function toFileNodes(array $nodes, array $principal, ?GetProjection $projection = null): array
     {
         $projection ??= GetProjection::all();
+        $tagMap = $projection->wants('tags')
+            ? $this->tags->forNodes(array_map(static fn (JmapFileNode $node): string => (string) $node->node_id, $nodes))
+            : [];
         $shareFlags = $this->context->uses(JmapCapabilities::FILENODE_SHARE_FLAGS) && $projection->wants('shareFlags')
             ? $this->shareFlagsFor($nodes, $principal)
             : null;
 
         return array_map(
-            function (JmapFileNode $node) use ($principal, $projection, $shareFlags): array {
-                $shape = $this->toFileNode($node, $principal, $projection->wants('type'));
+            function (JmapFileNode $node) use ($principal, $projection, $tagMap, $shareFlags): array {
+                $shape = [
+                    ...$this->toFileNode($node, $principal, $projection->wants('type')),
+                    // WGW extension (#2402): who sees a node sees its tags.
+                    'tags' => $tagMap[(string) $node->node_id] ?? [],
+                ];
                 if ($shareFlags !== null) {
                     $shape['shareFlags'] = $shareFlags[(string) $node->node_id] ?? null;
                 }

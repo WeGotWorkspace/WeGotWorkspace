@@ -6,6 +6,7 @@ import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
 import type { Task, TaskListMember, TaskListMembersResult } from "@/lib/models/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import {
+  isViewerParticipant,
   removeTaskParticipant,
   taskAssignees,
   toggleTaskAssignee,
@@ -99,6 +100,8 @@ export type TasksAssigneesFieldProps = {
   disabled: boolean;
   /** The list audience (online, else the cached copy). Absent for a reader. */
   loadMembers?: (listId: string) => Promise<TaskListMembersResult>;
+  /** The signed-in username: that person reads "(Me)". */
+  viewerUsername?: string;
   onChange: (participants: Task["participants"]) => void;
 };
 
@@ -112,6 +115,7 @@ export function TasksAssigneesField({
   participants,
   disabled,
   loadMembers,
+  viewerUsername,
   onChange,
 }: TasksAssigneesFieldProps) {
   const [open, setOpen] = useState(false);
@@ -124,7 +128,9 @@ export function TasksAssigneesField({
     assignees.length === 0
       ? L.assigneeUnassigned
       : single
-        ? single.name
+        ? isViewerParticipant(single.id, viewerUsername)
+          ? `${single.name} ${L.assigneeMeTag}`
+          : single.name
         : L.assigneePeople(assignees.length);
   const leading =
     assignees.length === 0 ? null : (
@@ -174,6 +180,7 @@ export function TasksAssigneesField({
           L={L}
           members={members}
           assignees={assignees}
+          viewerUsername={viewerUsername}
           onToggleMember={(member: TaskListMember) =>
             onChange(toggleTaskAssignee(participants, member))
           }

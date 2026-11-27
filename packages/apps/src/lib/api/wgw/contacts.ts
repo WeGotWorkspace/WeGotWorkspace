@@ -279,14 +279,20 @@ function isContactCardImportResponse(value: unknown): value is ContactCardImport
   return Array.isArray((value as ContactCardImportResponse).list);
 }
 
-/** 2xx + JSON list is success; 2xx empty/text is accepted; HTML or error JSON is not. */
+/**
+ * 2xx + JSON list is success; 2xx empty/text is accepted; HTML or error JSON is not.
+ * A 400 with the list/errors body is the per-card result of a request that
+ * created nothing (every card failed or was already in the book), not a
+ * request failure: the caller reads each card's error.
+ */
 export async function readContactCardImportResponse(
   res: Pick<Response, "ok" | "status" | "statusText" | "text">,
 ): Promise<ContactCardImportResponse> {
   const text = await res.text();
   const parsed = parseApiErrorJson(text);
   if (isContactCardImportResponse(parsed)) {
-    if (!res.ok) {
+    const perCardResult = res.status === 400 && Array.isArray(parsed.errors);
+    if (!res.ok && !perCardResult) {
       const detail = wgwErrorMessageFromBody(text, res.status, res.statusText);
       throw new ContactsRequestError(detail, res.status);
     }

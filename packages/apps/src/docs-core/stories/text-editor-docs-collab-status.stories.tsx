@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { DocsCollabStatusIndicator } from "@/docs-core/src/collab/docs-collab-status-indicator";
 import {
@@ -61,7 +61,14 @@ export const Saving: Story = {
 export const Offline: Story = {
   tags: ["vitest-ci"],
   render: () => <StatusLine {...quiet} online={false} />,
-  play: assertStatus({ ...quiet, online: false }, docsLabels.statusOffline),
+  play: async (context) => {
+    await assertStatus({ ...quiet, online: false }, docsLabels.statusOffline)(context);
+    await userEvent.hover(within(context.canvasElement).getByRole("status"));
+    await waitFor(
+      () => expect(screen.getAllByText(docsLabels.statusOfflineHint).length).toBeGreaterThan(0),
+      { timeout: 3000 },
+    );
+  },
 };
 
 export const ChangesSyncWhenSaved: Story = {
