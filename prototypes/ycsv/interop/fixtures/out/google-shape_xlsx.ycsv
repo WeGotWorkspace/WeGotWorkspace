@@ -5,30 +5,26 @@ sheets:
     name: Sheet1
     header: true
     columns:
-      - ref: item
-        name: Item
+      - ref: Item
         type: string
         width: 84
-      - ref: bedrag
-        name: Bedrag
-      - ref: koers
-        name: Koers
-      - ref: gefilterd
-        name: Gefilterd
+      - ref: Bedrag
+      - ref: Koers
+      - ref: Gefilterd
     notes:
-      A1: Opmerking van een collega
+      Item1: Opmerking van een collega
     cells:
-      C1:
+      Koers1:
         source_formula: =GOOGLEFINANCE("CURRENCY:EURUSD")
-      D1:
+      Gefilterd1:
         source_formula: =FILTER(A2:B4,B2:B4>15)
-      C2:
+      Koers2:
         source_formula: ="COMPUTED_VALUE"
-      D3:
+      Gefilterd3:
         source_formula: =ARRAYFORMULA(B2:B4*2)
 ---
-item,bedrag,koers,gefilterd
+Item,Bedrag,Koers,Gefilterd
 A,10,1.08,B
-B,20,1.08,=bedrag2*2
+B,20,1.08,=Bedrag2*2
 C,30,,20
-Som,=SUM(bedrag1:bedrag3),,
+Som,=SUM(Bedrag1:Bedrag3),,

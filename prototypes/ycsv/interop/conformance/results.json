@@ -880,12 +880,12 @@
   {
     "id": "s06-multisheet-excel-range",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "sheets": 2,
       "values": {
         "som1": "6"
       },
-      "note": "Spec only shows the repeated-prefix form; Excel, Sheets and LibreOffice write `data!n1:n3`. Import needs this form."
+      "note": "P4 (decided 2026-11-27): a cross-sheet range names the sheet once (§8.3)."
     },
     "core": {
       "status": "ok",
@@ -1002,8 +1002,11 @@
   {
     "id": "s07-multisheet-missing-sheet",
     "expect": {
-      "status": "error",
-      "note": "A.10 makes this a hard (file-level) error; both spreadsheets show #REF! in the one cell instead."
+      "status": "ok",
+      "values": {
+        "x1": "#REF!"
+      },
+      "note": "Per-cell errors (decided 2026-11-27): an unknown sheet is #REF! in the one cell (§8.7)."
     },
     "core": {
       "status": "ok",
@@ -1070,22 +1073,18 @@
     },
     "verdicts": [
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       },
       {
         "pass": false,
         "notes": [
-          "accepted (spec: hard error)"
+          "x1=\"#SYNTAX\" (want \"#REF!\")"
         ]
       },
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       }
     ],
     "agree": false
@@ -1632,8 +1631,11 @@
   {
     "id": "e03-bom",
     "expect": {
-      "status": "silent",
-      "note": "§2.2 says 'No BOM' for writers but not what readers do. Excel writes a BOM in 'CSV UTF-8'; readers should strip it."
+      "status": "ok",
+      "values": {
+        "a1": "1"
+      },
+      "note": "P24 (decided 2026-11-27): readers strip a leading BOM."
     },
     "core": {
       "status": "ok",
@@ -1702,8 +1704,11 @@
   {
     "id": "e04-quoted-crlf-in-cell",
     "expect": {
-      "status": "silent",
-      "note": "Both parsers drop every \\r, so the cell value changes. RFC 4180 keeps it. Spec does not say whether line endings inside cells are normalised."
+      "status": "ok",
+      "values": {
+        "a1": "line1\nline2"
+      },
+      "note": "P23 (decided 2026-11-27): CR/CRLF inside a quoted field becomes LF."
     },
     "core": {
       "status": "ok",
@@ -1779,16 +1784,20 @@
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "a1=\"line1\\r\\nline2\" (want \"line1\\nline2\")"
+        ]
       },
       {
         "pass": true,
         "notes": []
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "a1=\"line1\\r\\nline2\" (want \"line1\\nline2\")"
+        ]
       }
     ],
     "agree": false
@@ -3586,7 +3595,11 @@
   {
     "id": "f01-missing-version",
     "expect": {
-      "status": "error"
+      "status": "ok",
+      "values": {
+        "a1": "1"
+      },
+      "note": "P34 (decided 2026-11-27): a missing ycsv_version is version 1."
     },
     "core": {
       "status": "ok",
@@ -3655,22 +3668,16 @@
     },
     "verdicts": [
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       },
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       },
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       }
     ],
     "agree": true
@@ -3770,8 +3777,16 @@
   {
     "id": "f03-no-frontmatter",
     "expect": {
-      "status": "error",
-      "note": "A.2 says error. Core reads it as a sheet without a warning; for import that is the friendlier choice, but then it is not YCSV."
+      "status": "ok",
+      "refs": [
+        "a",
+        "b"
+      ],
+      "dataRows": 1,
+      "values": {
+        "b1": "2"
+      },
+      "note": "P34 (decided 2026-11-27): frontmatter is optional; header detected (D6)."
     },
     "core": {
       "status": "ok",
@@ -3829,22 +3844,18 @@
     },
     "verdicts": [
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       },
       {
-        "pass": true,
+        "pass": false,
         "notes": [
           "error: YCSV: missing frontmatter"
         ]
       },
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       }
     ],
     "agree": false
@@ -3957,8 +3968,8 @@
   {
     "id": "f05-bad-yaml",
     "expect": {
-      "status": "silent",
-      "note": "A.3 says 'parse as YAML' but not what a YAML error does. Core ignores the frontmatter, the prototype throws."
+      "status": "error",
+      "note": "Decided 2026-11-27 (A.3): invalid YAML is an error that names the line."
     },
     "core": {
       "status": "ok",
@@ -4011,18 +4022,22 @@
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "accepted (spec: hard error)"
+        ]
       },
       {
-        "pass": false,
+        "pass": true,
         "notes": [
           "error: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 11:\n\ncolumns: [\n          ^\n"
         ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "accepted (spec: hard error)"
+        ]
       }
     ],
     "agree": false
@@ -4118,8 +4133,12 @@
   {
     "id": "f07-yaml-coercion",
     "expect": {
-      "status": "silent",
-      "note": "js-yaml (YAML 1.1 core) and `yaml` (1.2) read `no`/`on`/dates differently. The spec does not name a YAML version."
+      "status": "ok",
+      "refs": [
+        "no",
+        "on"
+      ],
+      "note": "P25 (decided 2026-11-27): YAML 1.2 core, so `no`, `on` and the date are strings."
     },
     "core": {
       "status": "ok",
@@ -4652,8 +4671,13 @@
   {
     "id": "c05-header-with-spaces",
     "expect": {
-      "status": "silent",
-      "note": "Refs must be 'lowercase, no spaces' (§3.2), but §4 uses header values as refs. Core makes `unit_price`; the prototype keeps `Unit Price` and quotes it in formulas."
+      "status": "ok",
+      "refs": [
+        "Unit Price",
+        "Qty"
+      ],
+      "dataRows": 1,
+      "note": "P33 (decided 2026-11-27): the ref is the header text, quoted in formulas ('Unit Price'1)."
     },
     "core": {
       "status": "ok",
@@ -4729,16 +4753,20 @@
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "refs [unit_price,qty]"
+        ]
       },
       {
         "pass": true,
         "notes": []
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "refs [unit_price,qty]"
+        ]
       }
     ],
     "agree": false
@@ -4820,8 +4848,11 @@
   {
     "id": "c07-ref-digit-suffix",
     "expect": {
-      "status": "silent",
-      "note": "`q12` is q row 12 or q1 row 2. Spec does not forbid refs that end in digits nor give a rule."
+      "status": "ok",
+      "values": {
+        "r2": "20"
+      },
+      "note": "P12/P33 (decided 2026-11-27): a ref that ends in a digit is quoted ('q1'2); bare `q12` is q row 12."
     },
     "core": {
       "status": "ok",
@@ -4844,7 +4875,7 @@
             [
               "2",
               "20",
-              "=q12"
+              "='q1'2"
             ]
           ],
           "values": {
@@ -4853,7 +4884,7 @@
             "r1": "0",
             "q2": "2",
             "q12": "20",
-            "r2": ""
+            "r2": "#PARSE!"
           }
         }
       ]
@@ -4879,7 +4910,7 @@
             [
               "2",
               "20",
-              "=q12"
+              "='q1'2"
             ]
           ],
           "values": {
@@ -4914,7 +4945,7 @@
             [
               "2",
               "20",
-              "=q13"
+              "='q2'2"
             ]
           ],
           "values": {
@@ -4923,23 +4954,27 @@
             "r1": "0",
             "q2": "2",
             "q12": "20",
-            "r2": ""
+            "r2": "#PARSE!"
           }
         }
       ]
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "r2=\"#PARSE!\" (want \"20\")"
+        ]
       },
       {
         "pass": true,
         "notes": []
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "r2=\"#PARSE!\" (want \"20\")"
+        ]
       }
     ],
     "agree": false
@@ -4947,8 +4982,9 @@
   {
     "id": "c08-header-mismatch",
     "expect": {
-      "status": "silent",
-      "note": "Not all values match refs, so per A.5 it is a data row (text 'a','x' in row 1). Probably not what the author meant."
+      "status": "ok",
+      "dataRows": 2,
+      "note": "D2 (decided 2026-11-27): with `columns`, a row-1 value that matches no ref or name means no header, so row 1 is data. Write `header: true` to say otherwise."
     },
     "core": {
       "status": "ok",
@@ -5040,8 +5076,10 @@
         "notes": []
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "1 data rows, expected 2"
+        ]
       },
       {
         "pass": true,
@@ -5533,9 +5571,9 @@
       "values": {
         "x1": "#VALUE!",
         "x2": "#VALUE!",
-        "x3": "#VALUE!"
+        "x3": "0.5"
       },
-      "note": "§5: not parseable as the type → string + warning. Canonical storage is `.`-decimal without symbols."
+      "note": "§5/§7: not parseable → string + warning; `50%` is read as 0.5 (P6 + P8, (decided 2026-11-27))."
     },
     "core": {
       "status": "ok",
@@ -5647,16 +5685,22 @@
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "x3=\"#VALUE!\" (want \"0.5\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "x3=\"#VALUE\" (want \"0.5\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "x3=\"#VALUE!\" (want \"0.5\")"
+        ]
       }
     ],
     "agree": true
@@ -5800,8 +5844,11 @@
   {
     "id": "t04-percent",
     "expect": {
-      "status": "silent",
-      "note": "Display divides by 100, but the spec does not say what `p1` is in a formula: 50 or 0.5. Excel stores 0.5. This makes `=200*p1` 10000 vs 100 — a format-level decision."
+      "status": "ok",
+      "values": {
+        "x1": "100"
+      },
+      "note": "P6 (decided 2026-11-27): percent is stored as a fraction; 0.5 is 50%."
     },
     "core": {
       "status": "ok",
@@ -5816,12 +5863,12 @@
           ],
           "rows": [
             [
-              "50",
+              "0.5",
               "=200*p1"
             ]
           ],
           "values": {
-            "p1": "50",
+            "p1": "0.5",
             "x1": "#VALUE!"
           }
         }
@@ -5840,13 +5887,13 @@
           ],
           "rows": [
             [
-              "50",
+              "0.5",
               "=200*p1"
             ]
           ],
           "values": {
-            "p1": "50",
-            "x1": "10000"
+            "p1": "0.5",
+            "x1": "100"
           }
         }
       ]
@@ -5864,21 +5911,23 @@
           ],
           "rows": [
             [
-              "50",
+              "0.5",
               "=200*p2"
             ]
           ],
           "values": {
-            "p1": "50",
-            "x1": "10000"
+            "p1": "0.5",
+            "x1": "100"
           }
         }
       ]
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "x1=\"#VALUE!\" (want \"100\")"
+        ]
       },
       {
         "pass": true,
@@ -5894,11 +5943,12 @@
   {
     "id": "t05-dates",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
-        "x1": "30"
+        "x1": "30",
+        "x2": "45323"
       },
-      "note": "§8.1 warns that formulajs returns Date objects, but the spec does not define date values in formulas (serial number? ISO text?) nor what `d1+1` returns."
+      "note": "P7 (decided 2026-11-27): dates are serial numbers in formulas (2024-02-01 = 45323)."
     },
     "core": {
       "status": "ok",
@@ -6012,19 +6062,22 @@
       {
         "pass": false,
         "notes": [
-          "x1=\"#VALUE!\" (want \"30\")"
+          "x1=\"#VALUE!\" (want \"30\")",
+          "x2=\"#VALUE!\" (want \"45323\")"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "x1=\"#SYNTAX\" (want \"30\")"
+          "x1=\"#SYNTAX\" (want \"30\")",
+          "x2=\"#VALUE\" (want \"45323\")"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "x1=\"#VALUE!\" (want \"30\")"
+          "x1=\"#VALUE!\" (want \"30\")",
+          "x2=\"#VALUE!\" (want \"45323\")"
         ]
       }
     ],
@@ -6248,8 +6301,11 @@
   {
     "id": "t08-literal-equals",
     "expect": {
-      "status": "silent",
-      "note": "Every value that starts with `=` is a formula, quoted or not. There is no way to store the text `=x` (Excel uses a leading `'`)."
+      "status": "ok",
+      "values": {
+        "a1": "=not a formula"
+      },
+      "note": "P5 (decided 2026-11-27): a leading ' stores text that starts with =."
     },
     "core": {
       "status": "ok",
@@ -6263,11 +6319,11 @@
           ],
           "rows": [
             [
-              "=not a formula"
+              "'=not a formula"
             ]
           ],
           "values": {
-            "a1": "#PARSE!"
+            "a1": "'=not a formula"
           }
         }
       ]
@@ -6284,11 +6340,11 @@
           ],
           "rows": [
             [
-              "=not a formula"
+              "'=not a formula"
             ]
           ],
           "values": {
-            "a1": "#SYNTAX"
+            "a1": "'=not a formula"
           }
         }
       ]
@@ -6305,39 +6361,47 @@
           ],
           "rows": [
             [
-              "=not a formula"
+              "'=not a formula"
             ]
           ],
           "values": {
-            "a1": "#PARSE!"
+            "a1": "'=not a formula"
           }
         }
       ]
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "a1=\"'=not a formula\" (want \"=not a formula\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "a1=\"'=not a formula\" (want \"=not a formula\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "a1=\"'=not a formula\" (want \"=not a formula\")"
+        ]
       }
     ],
-    "agree": false
+    "agree": true
   },
   {
     "id": "x01-precedence",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
+        "a1": "4",
+        "b1": "64",
         "c1": "14"
       },
-      "note": "Excel: -2^2 = 4 and 2^3^2 = 64 (left-assoc). Sheets: 4 and 64. LibreOffice: 4 and 64. Spec gives no precedence."
+      "note": "P4 (decided 2026-11-27): Excel precedence."
     },
     "core": {
       "status": "ok",
@@ -6422,16 +6486,23 @@
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "b1=\"512\" (want \"64\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "a1=\"-4\" (want \"4\")",
+          "b1=\"512\" (want \"64\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "b1=\"512\" (want \"64\")"
+        ]
       }
     ],
     "agree": false
@@ -6441,9 +6512,9 @@
     "expect": {
       "status": "ok",
       "values": {
-        "a1": "1"
+        "b1": "0.5"
       },
-      "note": "Spec: `%` is modulo. Excel/Sheets/LibreOffice: `50%` = 0.5 and `7%3` is a syntax error. Imported formulas with `%` change meaning."
+      "note": "P4 (decided 2026-11-27): `%` is postfix percent; `7%3` is not a valid formula (an error in that cell)."
     },
     "core": {
       "status": "ok",
@@ -6519,16 +6590,22 @@
     },
     "verdicts": [
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "b1=\"#PARSE!\" (want \"0.5\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "b1=\"#SYNTAX\" (want \"0.5\")"
+        ]
       },
       {
-        "pass": true,
-        "notes": []
+        "pass": false,
+        "notes": [
+          "b1=\"#PARSE!\" (want \"0.5\")"
+        ]
       }
     ],
     "agree": false
@@ -6536,11 +6613,11 @@
   {
     "id": "x03-concat",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
         "b1": "xy"
       },
-      "note": "`&` is not in §8.6 but is one of the most used operators in real workbooks."
+      "note": "P4 (decided 2026-11-27): `&` concatenates."
     },
     "core": {
       "status": "ok",
@@ -6637,12 +6714,12 @@
   {
     "id": "x04-absolute-refs",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
         "b1": "4",
         "b2": "6"
       },
-      "note": "No `$` in the spec. Imported workbooks are full of them; fill/copy needs them."
+      "note": "P4 (decided 2026-11-27): `$` markers."
     },
     "core": {
       "status": "ok",
@@ -6762,11 +6839,11 @@
   {
     "id": "x05-rect-range",
     "expect": {
-      "status": "error",
+      "status": "ok",
       "values": {
         "c1": "10"
       },
-      "note": "§8.3: start and end must share the same ref, so this is invalid; Excel ranges are rectangles (VLOOKUP tables, SUMPRODUCT)."
+      "note": "P4 (decided 2026-11-27): ranges are rectangles."
     },
     "core": {
       "status": "ok",
@@ -6877,22 +6954,18 @@
       {
         "pass": false,
         "notes": [
-          "accepted (spec: hard error)",
           "c1=\"3\" (want \"10\")"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "accepted (spec: hard error)",
           "c1=\"#REF\" (want \"10\")"
         ]
       },
       {
-        "pass": false,
-        "notes": [
-          "accepted (spec: hard error)"
-        ]
+        "pass": true,
+        "notes": []
       }
     ],
     "agree": false
@@ -6900,11 +6973,11 @@
   {
     "id": "x06-same-row-ref",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
         "totaal1": "6"
       },
-      "note": "Not in the spec; spike 4–6 recommend it (one shared formula per column). Spec would read `aantal` as a def name → error."
+      "note": "P4 (decided 2026-11-27): a bare ref is the same row."
     },
     "core": {
       "status": "ok",
@@ -7118,8 +7191,12 @@
   {
     "id": "x08-circular",
     "expect": {
-      "status": "error",
-      "note": "A.10: hard error. Excel and Sheets show a per-cell circular error and keep the file open."
+      "status": "ok",
+      "values": {
+        "a1": "#CIRC!",
+        "b1": "#CIRC!"
+      },
+      "note": "Per-cell errors (decided 2026-11-27): #CIRC! in each cell of the cycle (§8.7)."
     },
     "core": {
       "status": "ok",
@@ -7206,19 +7283,22 @@
       {
         "pass": false,
         "notes": [
-          "accepted (spec: hard error)"
+          "a1=\"b\" (want \"#CIRC!\")",
+          "b1=\"a\" (want \"#CIRC!\")"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "accepted (spec: hard error)"
+          "a1=\"#CYCLE\" (want \"#CIRC!\")",
+          "b1=\"#CYCLE\" (want \"#CIRC!\")"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "accepted (spec: hard error)"
+          "a1=\"#CIRCULAR!\" (want \"#CIRC!\")",
+          "b1=\"#CIRCULAR!\" (want \"#CIRC!\")"
         ]
       }
     ],
@@ -7227,14 +7307,14 @@
   {
     "id": "x09-blank-semantics",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
         "b1": "1",
         "c1": "TRUE",
         "d1": "TRUE",
         "e1": "0"
       },
-      "note": "Excel values shown. Spec does not define blank."
+      "note": "Blank cells as Excel (decided 2026-11-27), §8.7."
     },
     "core": {
       "status": "ok",
@@ -8057,11 +8137,11 @@
   {
     "id": "x16-whole-column",
     "expect": {
-      "status": "silent",
+      "status": "ok",
       "values": {
         "s1": "3"
       },
-      "note": "Very common in imported workbooks (`SUM(B:B)`), not in the spec."
+      "note": "P4 (decided 2026-11-27): `v:v` is the whole column."
     },
     "core": {
       "status": "ok",

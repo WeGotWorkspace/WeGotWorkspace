@@ -17,15 +17,15 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
 
 ## Answers in short
 
-1. **Conformance.** The spec decides 40 of the 70 corpus cases (with
-   P30 accepted, six empty-row cases are decided). `spreadsheet-core`
-   passes 12 of them and the prototype passes 19. The two parsers agree on
-   only 16 of the 70. The largest single cause is row
+1. **Conformance.** With every decision up to 2026-11-27 written in, the
+   spec decides 57 of the 70 corpus cases. `spreadsheet-core` passes 16 of
+   them and the prototype passes 24. The two parsers agree on only 17 of
+   the 70. The largest single cause is row
    numbering:
    - **The prototype follows the spec**: the first data row is row 1.
    - **The core engine counts the header as row 1.** That is a bug against
      §7.1 (Wouter's decision, see [Row numbering](#row-numbering-decision)).
-     With that bug simulated as fixed (refs shifted by one), it passes 25.
+     With that bug simulated as fixed (refs shifted by one), it passes 33.
 
    Both parsers lose:
    - trailing empty rows;
@@ -90,22 +90,23 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
     ref equals header text first, then position (C1–C5). Build consequence:
     `.csv` needs a Yjs sidecar and Sheets routing. See
     [CSV first](#csv-first-header-in-the-body-csv-stays-csv).
-11. **Named header columns without frontmatter (P33, P34, proposals).**
-    Frontmatter becomes optional in `.ycsv` too (first line exactly `---`
-    or not). Refs then come from the header text alone: the text itself,
-    quoted when it is not an identifier or ends in a digit
-    (`'Prijs incl. BTW'3`, `'kw1'2`), case-insensitive, no name for empty
-    or duplicate headers. Renaming a header by hand breaks formulas; our
-    editor is safe. See [Refs from the header text](#refs-from-the-header-text-p33-p34).
-12. **Spec.** 34 proposals in Appendix B (P1 rejected; P2/P27, P31, P32
-    accepted). The ones that matter
-   most:
-   - **P29**: frontmatter addresses (`cells`, `merges`, `notes`) use the same
-     row numbers as formulas, with the header as row 0.
-   - **P6**: percent stored as a fraction.
-   - **P4**: Excel formula grammar: `$`, ranges, `&`, postfix `%`, precedence.
-   - **P5**: a leading `'` marks literal text.
-   - **P22**: split sheets only on a `---` line outside quoted fields.
+11. **Named header columns without frontmatter (P33, P34): accepted.**
+    Frontmatter is optional in `.ycsv` too (first line exactly `---` or
+    not). Refs come from the header text alone: the text itself, quoted
+    when it is not an identifier or ends in a digit (`'Prijs incl. BTW'3`,
+    `'kw1'2`), case-insensitive, no name for empty or duplicate headers.
+    Renaming a header by hand breaks formulas; our editor is safe. See
+    [Refs from the header text](#refs-from-the-header-text-p33-p34).
+12. **Spec: all proposals decided (2026-11-27).** P1 rejected; everything
+    else accepted, P29 in a changed form (addresses use the formula ref
+    grammar: `product0:totaal0`). Checking the bulk-accepted proposals
+    against the decisions found 22 conflicts (K1–K22), each resolved in
+    the direction of the decisions; one needs Wouter's confirmation (K2:
+    the ref of a renamed duplicate column). The spec copy has every
+    decision written in, and `ycsv-spec-v1-clean.md` is the same text
+    without spike notes. It stays **v1.0**: v1 has not shipped, and a
+    v1.1 would promise compatibility with v1.0 files that the changes
+    break. See [Decisions of 2026-11-27](#7-decisions-of-2026-11-27).
 
 ## 1. Conformance corpus and round trips
 
@@ -562,7 +563,7 @@ can start its visible numbering at the data. So:
   - re-import is line-identical apart from tab colour;
   - the Numbers fixtures keep the same scores.
 - **Frontmatter addresses (P29)** follow the same numbering. Header cells are
-  row 0 (`cells: A0: …`). Styles on a fully empty row keep their address
+  row 0 (`cells: product0: …`, P29 as decided). Styles on a fully empty row keep their address
   (before P30 they were dropped and logged).
 
 **The one constraint that matters.** The number the grid shows next to a row
@@ -671,13 +672,15 @@ session). The converter is ready to plug into the formula bar.
 
 ## 6. Spec amendments
 
-All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
-**Proposal (spike 11)**.
+**All decided on 2026-11-27** (see [Decisions of 2026-11-27](#7-decisions-of-2026-11-27)):
+P1 rejected, everything else accepted, P29 in a changed form. The current
+status of each one is in the spec's Appendix D.1; the table below is the
+evidence as it was proposed.
 
 | Id | Proposal | Why (evidence) |
 |---|---|---|
 | P1 | ~~Grid row numbering: header = row 1~~ **Rejected** (Wouter): spec §7.1 stands | Import/export map rows instead; `spreadsheet-core` row counting is a bug |
-| P29 | Frontmatter addresses use YCSV rows; header = row 0 (`A0:D0`) | `B3` must mean one cell in `cells` and in formulas; changes example 9.3 |
+| P29 | Frontmatter addresses use YCSV rows; header = row 0. **Accepted in changed form:** the formula ref grammar (`product0:totaal0`) | `B3` must mean one cell in `cells` and in formulas; changes example 9.3 |
 | P31 | Header in the CSV body; `columns` is enrichment — **accepted**. Matching rule C1–C5 is a proposal | Wouter; see "CSV first" |
 | P32 | `.csv` stays CSV until a YCSV-only feature; editor asks — **accepted**. Dialect kept, `=` is text in CSV: proposals | Wouter; needs collab for `.csv` |
 | P30 | Empty rows keep their number (**accepted**) | §7.2 renumbered formulas on every Excel import with blank rows; now replaced |
@@ -694,7 +697,7 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 | P12 / P28 | Ref grammar; quoted refs for names ending in a digit; duplicates are an error | `kw1` + row 2 = `kw12` |
 | P13 | Defs may be ranges | Excel named ranges |
 | P14 | `notes` (plain text) | Fixtures |
-| P15 | Validation: `list` from a range, `range_value` | Fixtures |
+| P15 | Validation: `list` from a range, whole-number bounds (`range_value`, now `range.integer`, K7) | Fixtures |
 | P16 | `italic`, `underline`, `align`, `wrap` | Common in real sheets |
 | P18 | Hyperlinks as `=HYPERLINK()` | Fixtures |
 | P19 / P26 | Trailing empty rows carry no meaning | Both parsers drop them |
@@ -708,11 +711,9 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 | — | CSV import with explicit locale | Silent corruption shown above |
 | — | Export: correct cached values or none | LibreOffice shows cached values as they are |
 
-Row numbering is decided: P1 is rejected and §7.1 stands. What is still open:
-- ~~P30~~ decided: empty rows keep their number;
-- **P29:** confirming that frontmatter addresses use the same numbering,
-  which changes example 9.3 to `A0:D0`;
-- **fixing `spreadsheet-core`**, whose engine counts rows against §7.1.
+Row numbering is decided: P1 is rejected and §7.1 stands, P30 and P29
+(changed form) are accepted. Still to do: **fixing `spreadsheet-core`**,
+whose engine counts rows against §7.1.
 
 ### Header flag and detection
 
@@ -884,10 +885,10 @@ column.
 - the hand-typing case (`product,prijs,aantal` → `prijs3`), and
   `prijs3` finding the header `Prijs`.
 
-`resolve-columns.ts` (C2) now compares refs with the same rule, and still
-accepts a slug match, because the XLSX importer writes slugged refs
-(`btw_tarief`) in `columns`. Changing the importer to write the header text
-is left for when P33 is decided.
+`resolve-columns.ts` (C2) compares refs with the same rule. Since P33 was
+accepted, the XLSX importer writes the header text as the ref (`BTW tarief`,
+`Prijs`) instead of a slug. The prototype still accepts a slug match for
+older files; the spec does not (C2 matches `ref` or `name`, K13).
 
 **Renaming a header** (spec §4.4):
 - **Hand-edited file, no `columns`:** formulas with the old name give
@@ -901,6 +902,146 @@ is left for when P33 is decided.
 - **Outside tool renames:** like hand-editing. Proposal: when exactly one
   header changed at the same position since the last version the editor
   saw, offer to rename the ref in the formulas; never do it unasked.
+
+## 7. Decisions of 2026-11-27
+
+Wouter went through the proposals one by one. The spec copy
+(`upstream/ycsv-spec-v1.md`) now has every decision written into the
+sections it touches, with a one-line "Spike 11 decision" note under each,
+and the decision record in Appendix D (status per proposal, conflicts,
+original texts). `upstream/ycsv-spec-v1-clean.md` is the same text without
+the notes and without Appendix D. Neither is on main.
+
+**Accepted explicitly:** P33 and P34 as proposed; P29 in a changed form;
+P4 (with `%` as postfix percent, `-2^2` = 4, left-associative `^`,
+case-insensitive text comparison); P5; P6 ("percentage is puur een rendering
+ding": the file holds the fraction, `%` is display only, `10%` typed in a
+source cell is read as 0.1); P22 (writers quote any cell containing a `---`
+line). **Accepted in bulk:** every other proposal, unless it conflicts with a
+decision. Earlier decisions stand: P1 rejected; P2/P27, P30, P31, P32
+accepted.
+
+### P29 in its changed form
+
+Frontmatter addresses (`cells`, `merges`, `notes`, validation `at`) use
+exactly the formula ref grammar: header names plus YCSV row numbers, header
+row = row 0. `product0:totaal0`, not `A0:D0`. Letters only where a column
+has no ref (P33 H6). No separate `header:` style key. Example 9.3 now styles
+its header with `product0:totaal0`.
+
+**YAML check** (`interop/csv/yaml-keys.test.ts`, 15 cases, `yaml` 2.x with
+`version: "1.2"`):
+- valid as plain keys: `product0:totaal0`, `prijs3`, `$prijs$3`,
+  `prijs$1:$totaal$3`, `totaal:totaal`, `categorieën1:categorieën3`,
+  `Größe1`, `producten!totaal1:totaal5`, `on`, `null3`;
+- invalid YAML when written bare: `'Prijs incl. BTW'3:` and
+  `'kw1'2:'kw2'4:`; the parser reports an error, so a reader can say which
+  key, not miss it silently;
+- the whole key double-quoted (`"'Prijs incl. BTW'3":`) works, and
+  `YAML.stringify` writes exactly that by itself, while it leaves plain
+  refs unquoted;
+- flow style (`{ style: { bold: true } }`) reads as normal YAML.
+
+**Code:** the importer writes addresses in the ref grammar
+(`a1ToYcsv` per address); the exporters resolve them through `ycsvToA1`
+into a per-cell index, and an address that names no cell throws an error
+naming the key. Validation rules use `at` + `range` (K7). All checks are
+unchanged: 37/37 formulas round-trip as text, 135/135 identical values in
+LibreOffice from the exceljs export, and the same number of re-import line
+differences per file as before (their content changed: `at:` instead of
+`range:`, refs instead of letters).
+
+### Conflicts
+
+"Old §" is the section numbering before this round; "Where" is the new numbering.
+
+| # | Conflict | Resolved as (direction of the decisions) | Where |
+|---|---|---|---|
+| K1 | P12/P28: refs are identifiers, case-sensitive, duplicates are an error — vs P33 (any text, quoted; case-insensitive; duplicate headers lose their name with a warning) | P33 wins. Refs are any text, case-insensitive, unique case-insensitively. Duplicate header texts in a file from elsewhere: no name, letter fallback, warning. | §4.4, §8.2 |
+| K2 | Product decision 10 renames a duplicate to header `omzet 2` with ref `omzet_2` — vs P33 (the ref is the header text) and P34 (no frontmatter unless needed) | The rename stays (`omzet 2`, then the first free number; the later column by column id), but its ref is the header text: `'omzet 2'3`. A ref `omzet_2` would need `columns.ref` in frontmatter only for this. **Wouter to confirm.** | §4.4 |
+| K3 | P2/P27 "writers always write `header`" — vs P34 "frontmatter only when needed" | `header` is written whenever frontmatter is written; frontmatter is written for `header` only when detection would be wrong. | §3.1, §4.1 |
+| K4 | Old §3 / A.3 / A.10: `ycsv_version` required, missing = hard error — vs P34 (frontmatter optional) | A file without `ycsv_version` (with or without frontmatter) is version 1. Writers write it whenever they write frontmatter. | §3.1, §14, A.10 |
+| K5 | P9, P10, P14, P15, P21 and the old §3.5 use A1 addresses (`cells.<A1>`, `merges: [A1:D1]`, `notes: {A1: …}`, `range: B2:B6`, `cells.<A1>.source_formula`) — vs P29 as decided (formula ref grammar) | Every frontmatter address uses the ref grammar (`product0:totaal0`, `prijs3`); letters only for columns without a ref. | §3.6–§3.8 |
+| K6 | Old §3.5: a bare column ref as a `cells` key (`totaalwaarde`) = the whole column — vs P29 "exactly the formula grammar", where a bare ref means the same row (P4) | In an address a bare ref is accepted as the whole column (an address has no "same row"); writers write the formula form `totaalwaarde:totaalwaarde`. | §3.6 |
+| K7 | P15: sheet-level rules put the address in `range` and bounds in `range_value` — vs old §3.1.2, where `range` already means numeric bounds | Sheet rules use `at` for the address and the column-rule fields for the rule; `range` gains `integer`; `range_value` is dropped. Spike importer/exporter changed to match. | §3.3.2 |
+| K8 | P8 "a value outside the number grammar is text" — vs P6 "readers may accept `10%` typed in a source cell" | The number grammar accepts a trailing `%` on read (`10%` → 0.1). Writers write the fraction. | §6.3, §7 |
+| K9 | P24 (writers never write a BOM), P23 (writers emit LF), P8 (writers use `.`) — vs P32 detail "keep the CSV dialect" | Those writer rules are for `.ycsv`; a `.csv` written back keeps its dialect, BOM and line endings included. | §2.2–§2.4 |
+| K10 | Old §8.2 "letters and names may be mixed" (`=A1*B1` next to `=aantal1*prijs1`), and the §8.5 example `prijzen!A1:B10` — vs P33/H6 and P29 (letters only where a column has no ref) | Letters are refs only for columns without a ref. Example 8.5 rewritten with refs. | §4.2, §8.2, §8.5 |
+| K11 | Old §13: column widths and frozen panes live in the `.ycsv.ui` sidecar — vs P11 and the editor decision "frozen rows are shared and live in the file" | Widths, hidden columns and freeze are in the file; the sidecar keeps only per-user view state. | §3.8, §13 |
+| K12 | Old §3.2: `ref` is "lowercase, no spaces" — vs P12/P33 | Any text (§8.2). | §3.3 |
+| K13 | C1 (bulk-accepted: `name` is ignored under a header, writers do not write it) + C3 (warn when header ≠ ref) — vs example 9.3 (display names through `name`) and D2 (header detection already matches `name`) | C2 matches a definition by `ref` **or** `name`; under a header, `name` is the expected header text, and writers write it when the header text differs from the ref. Display is still the header text. Without this, every file with display-name headers warns. | §3.3, §4.3, §9.3 |
+| K14 | Old §3.3: column refs take precedence over defs of the same name — vs P33 (any header becomes a ref, so a header can silently shadow a def) | Precedence kept; readers warn when a def and a column ref of a sheet share a name. | §3.4 |
+| K15 | P11 "row heights are not stored" — vs the editor decision "fixed row height in v1, with room in the format for a per-row height later" | v1 stores none; `row_heights` is reserved and ignored by v1 readers. | §3.8, §14 |
+| K16 | Old §11.1 example `SUM(producten!totaal1:producten!totaal10)` — vs P4 "cross-sheet ranges name the sheet once" | Writers write the sheet once; readers accept the repeated prefix when both name the same sheet. | §8.3, §11.1 |
+| K17 | Old A.6 resolves `./<file>.ycsv!<ref><row>` — vs §2/§11 "cross-file references are not supported" (an old inconsistency, not from a proposal) | Removed from A.6. | A.6 |
+| K18 | Examples in P4, P13 and P15 use A1 row numbers (`$id$2:$korting$4`, `totaal2:totaal6`) — vs §7.1 (P1 rejected) | Rewritten with YCSV rows (`$id$1:$korting$3`, `totaal1:totaal5`). | §3.3.2, §3.4, §8.3 |
+| K19 | Old §2.4 "a file without frontmatter has no formulas" — vs P34 (a `.ycsv` without frontmatter may hold formulas) | The extension decides: a `.csv` has no formulas (`=` is text); a `.ycsv` without frontmatter may hold them. | §2, §2.4 |
+| K20 | A.10 "unknown frontmatter field: ignore silently" — vs P29 "readers give a clear error, not a silent miss" and B.7 "no silent loss" | Unknown fields are still ignored (forward compatibility, §14); a bad address in a known field is an error naming the key, the entry is skipped and the file still opens. | §3.6, A.10 |
+| K21 | Old §8.7, §11.2, A.6, A.10: circular and unknown-sheet references are hard errors — vs B.5 "errors, not aborts" (bulk) | Per-cell `#REF!` / `#CIRC!`. | §8.7, §11.2, A.10 |
+| K22 | Old §8.6 `%` is modulo; §5/§6.3 percent stored as 50 — vs P4 and P6 (accepted) | `%` is postfix percent; percent is a fraction. (Direct replacements, listed for completeness.) | §5, §6.3, §8.6 |
+
+**K2 needs Wouter.** Product decision 10 says the renamed duplicate gets ref
+`omzet_2`. Under P33 the ref is the header text, so the renamed column `omzet
+2` has the ref `omzet 2` (`'omzet 2'3` in formulas). Keeping `omzet_2` would
+mean writing `columns.ref` (and `name`) in the frontmatter for that column
+only, which goes against P34. I wrote the P33 form into the spec. If the
+underscore form matters (shorter formulas), the alternative is to rename the
+header itself to `omzet_2`.
+
+**K13 is a real change to C1.** As bulk-accepted, C1 ignored `name` under a
+header and C3 warned whenever a header text differed from its ref. Then every
+file with display-name headers ("Prijs ex. BTW") would warn on every read,
+and spec example 9.3 could not be written without warnings. Letting C2 match
+`name` too fixes both and reuses what D2 (header detection) already does.
+
+### Editor decisions that touch the format
+
+| Decision (Wouter) | What it means for the file | Spec |
+|---|---|---|
+| Formulas shift column names on fill and paste right; `$` locks | Writers write the shifted ref (`prijs1` → `aantal1`); `$` markers are stored (P4) | §8.2, §8.9 |
+| Cut + paste rewrites references to the moved cells | Formulas **and** frontmatter addresses are rewritten | §3.6, §8.9 |
+| Frozen rows are shared and live in the file | `freeze` per sheet; not in the UI sidecar (K11) | §3.8, §13 |
+| Fixed row height in v1, room for a per-row height later | No row heights stored; `row_heights` reserved, ignored by v1 readers (K15) | §3.8, §14 |
+| Formula input and display follow the browser locale (`=ROUND(3,27;1)` in nl-NL); the file stays canonical; function names stay English | B.6 as written; the converter is `interop/notation/notation.ts` | §8.8 |
+
+### Clean spec and version
+
+`upstream/ycsv-spec-v1-clean.md`: the spec without proposal markers, spike
+notes, P-ids or Appendix D. Its own appendices: A (parser algorithm,
+updated), B (writer rules in one place, new), C (import and export, from
+B.7).
+
+**Version: v1.0, not v1.1.** v1 has not been released; the only v1 files are
+test fixtures. Several decisions are not backward compatible (percent as a
+fraction, `%` as percent instead of modulo, empty rows numbered, addresses
+in the ref grammar, refs case-insensitive). A minor bump to 1.1 would tell
+readers that v1.0 files still mean the same thing, which they would not. If
+v1.0 had shipped, these changes would need `ycsv_version: 2`.
+
+**Added by me, not decided** (marked in the spec copy):
+- §12: a ref with `.`, `[` or `]` must be escaped in a Vega-Lite `field`
+  (`"Prijs incl\\. BTW"`), because Vega-Lite reads `.` as a nested field.
+  A consequence of P33.
+- Appendix B (writers) only collects rules that are elsewhere.
+- The "edge semantics" in §4 of this report (text inside ranges, booleans in
+  SUM, comparing at 15 significant digits) are **not** in the spec; only
+  blank cells and case-insensitive comparison are, because P4 and P30
+  cover them.
+
+### Conformance after the decisions
+
+The cases the decisions settle now carry a "decided 2026-11-27" note and an
+expectation (`interop/conformance/cases.ts`): P4 grammar (`x01`–`x06`,
+`x16`, `s06`), per-cell errors (`s07`, `x08`), P5 (`t08`), P6 (`t02`, `t04`),
+P7 (`t05`), P12/P33 (`c05`, `c07`), P23 (`e04`), P24 (`e03`), P25 (`f07`),
+P34 (`f01`, `f03`), invalid YAML (`f05`), D2 (`c08`), blank cells (`x09`).
+Result: the spec decides 57 of 70 cases; core passes 16 (33 with the row
+shift), the prototype 24. Still silent: surplus CSV blocks (`s08`, `s09`),
+quote in mid-field (`q03`), ragged rows (`q04`), spaces around values
+(`q06`), `a0` and refs past the end (`r02`, `r03`), time zones (`t06`),
+currency without a code (`t07`), duplicate `columns` refs (`c06`), float
+precision (`x11`). The "spec" column of the corpus still names the old
+section numbers.
 
 ## Open questions
 
@@ -927,6 +1068,9 @@ is left for when P33 is decided.
    Recommendation: no number on the header row, as Numbers does it, and 1 on
    the first data row. If the header must show a number, it is 0 and not 1.
    This needs Wouter's confirmation, because it is visible UI.
+3. **K2: ref of a renamed duplicate column.** `'omzet 2'3` (the header
+   text, as written into the spec) or `omzet_2` (product decision 10, needs
+   frontmatter for that column)? See [Conflicts](#conflicts).
 
 ## Not verified
 

@@ -1,8 +1,8 @@
 // Spike 11: how `columns` (optional enrichment) attaches to the CSV columns when the sheet
 // has a header row. Proposal C1–C5 in spec §4 (marked "Proposal (spike 11)").
 //
-// C1 With a header row, the header text is the display name. `columns[i].name` is ignored
-//    (a warning when it differs); writers do not write `name` when header is true.
+// C1 With a header row, the header text is the display name. `columns[i].name` is the expected
+//    header text (K13, 2026-11-27): it is used for matching, and a reader warns when it differs.
 // C2 A definition whose `ref` equals a header text (P33 H1+H3: NFC, trimmed, whitespace folded,
 //    case-insensitive; a slug match also counts, for refs that importers slugged) attaches to
 //    that column, wherever it is. This keeps hand-typed and tool-reordered CSVs correct.
@@ -36,11 +36,11 @@ export function resolveColumns(headerRow: string[] | null, width: number, defs: 
   if (headerRow) {
     // C2: by ref = header text.
     defs.forEach((d, di) => {
-      if (!d.ref) return;
-      const same = (h: string) => refKey(h) === refKey(d.ref!) || slug(h) === slug(d.ref!);
+      if (!d.ref && !d.name) return;
+      const same = (h: string) => [d.ref, d.name].some((x) => !!x && (refKey(h) === refKey(x) || slug(h) === slug(x)));
       const c = headerRow.findIndex((h, i) => !out[i] && same(h));
       if (c >= 0) {
-        out[c] = { index: c, ref: d.ref, display: headerRow[c]!.trim(), def: d, how: "name" };
+        out[c] = { index: c, ref: d.ref ?? refText(headerRow[c]!), display: headerRow[c]!.trim(), def: d, how: "name" };
         used.add(di);
       }
     });
@@ -58,14 +58,14 @@ export function resolveColumns(headerRow: string[] | null, width: number, defs: 
       if (!same) next += 1;
       const display = headerRow ? headerRow[c]!.trim() : (pick.d.name ?? pick.d.ref ?? letters(c));
       out[c] = { index: c, ref: pick.d.ref ?? (headerRow ? refText(headerRow[c]!) || letters(c) : letters(c)), display, def: pick.d, how: "position" };
-      if (headerRow && pick.d.ref && refKey(pick.d.ref) !== refKey(headerRow[c]!) && slug(pick.d.ref) !== slug(headerRow[c]!)) warnings.push(`column ${c + 1}: header "${headerRow[c]}" attached to definition "${pick.d.ref}" by position`);
+      if (headerRow && ![pick.d.ref, pick.d.name].some((x) => !!x && (refKey(x) === refKey(headerRow[c]!) || slug(x) === slug(headerRow[c]!)))) warnings.push(`column ${c + 1}: header "${headerRow[c]}" attached to definition "${pick.d.ref}" by position`);
     } else {
       // C4: no definition left.
       out[c] = { index: c, ref: headerRow ? refText(headerRow[c]!) || letters(c) : letters(c), display: headerRow ? headerRow[c]!.trim() : letters(c), how: "none" };
     }
   }
   // C1: name ignored under a header.
-  if (headerRow) for (const r of out) if (r?.def?.name && r.def.name !== r.display) warnings.push(`column ${r.index + 1}: columns.name "${r.def.name}" ignored; header "${r.display}" is the display name`);
+  if (headerRow) for (const r of out) if (r?.def?.name && refKey(r.def.name) !== refKey(r.display)) warnings.push(`column ${r.index + 1}: columns.name "${r.def.name}" differs from the header "${r.display}"; the header is the display name`);
   defs.forEach((d, di) => {
     if (!used.has(di)) warnings.push(`definition ${d.ref ?? di + 1} has no CSV column (unused; formulas using it give #REF!)`);
   });

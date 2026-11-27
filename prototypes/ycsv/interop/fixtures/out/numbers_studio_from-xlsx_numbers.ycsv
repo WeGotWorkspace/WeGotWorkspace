@@ -5,43 +5,31 @@ sheets:
     name: Producten
     header: true
     columns:
-      - ref: product
-        name: Product
+      - ref: Product
         type: string
-      - ref: categorie
-        name: Categorie
+      - ref: Categorie
         type: string
-      - ref: prijs
-        name: Prijs
-      - ref: aantal
-        name: Aantal
-      - ref: totaal
-        name: Totaal
-      - ref: btw
-        name: BTW
-      - ref: datum
-        name: Datum
+      - ref: Prijs
+      - ref: Aantal
+      - ref: Totaal
+      - ref: BTW
+      - ref: Datum
         type: date
         excel_format: m/d/yy
-      - ref: marge
-        name: Marge
-      - ref: actief
-        name: Actief
+      - ref: Marge
+      - ref: Actief
         type: boolean
     notes:
-      C1: Prijs per stuk, incl. korting
+      Prijs1: Prijs per stuk, incl. korting
   - ref: categorieën
     name: Categorieën
     header: true
     columns:
-      - ref: id
-        name: Id
+      - ref: Id
         type: string
-      - ref: label
-        name: Label
+      - ref: Label
         type: string
-      - ref: korting
-        name: Korting
+      - ref: Korting
   - ref: instellingen
     name: Instellingen
     header: false
@@ -76,7 +64,7 @@ sheets:
         type: date
         excel_format: m/d/yy
 ---
-product,categorie,prijs,aantal,totaal,btw,datum,marge,actief
+Product,Categorie,Prijs,Aantal,Totaal,BTW,Datum,Marge,Actief
 Appels,fruit,0.45,6,2.7,0.567,2026-01-05,0.18,true
 Brood,bakkerij,2.99,2,5.98,1.2558,2026-01-06,0.32,true
 Melk,zuivel,1.19,3,3.57,0.7497,2026-02-01,0.25,false
@@ -84,7 +72,7 @@ Kaas,zuivel,8.5,1,8.5,1.785,2026-02-28,0.41,true
 Peren,fruit,0.6,12,7.2,1.512,2026-03-31,0.2,true
 Totaal,,,,27.95,5.8695,,0.272,
 ---
-id,label,korting
+Id,Label,Korting
 fruit,Fruit,0.1
 bakkerij,Bakkerij,0
 zuivel,Zuivel,0.05

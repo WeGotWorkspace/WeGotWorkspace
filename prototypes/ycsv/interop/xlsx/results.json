@@ -4,7 +4,7 @@
       {
         "feature": "named ranges",
         "outcome": "survives",
-        "detail": "Cats → cats: =categorieën!$id$1:$korting$3"
+        "detail": "Cats → cats: =categorieën!$Id$1:$Korting$3"
       },
       {
         "feature": "named ranges",
@@ -15,51 +15,6 @@
         "feature": "named ranges",
         "outcome": "survives",
         "detail": "Omzet → omzet: =q1_overzicht!$B$4"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!A1 \"Product\" → ref product + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!F1 \"BTW\" → ref btw + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!G1 \"Datum\" → ref datum + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!H1 \"Marge\" → ref marge + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!I1 \"Actief\" → ref actief + name"
       },
       {
         "feature": "comments / notes",
@@ -74,82 +29,82 @@
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.product 132px"
+        "detail": "Producten.Product 132px"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.categorie 84px"
+        "detail": "Producten.Categorie 84px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.prijs: \"€\"\\ #,##0.00;[Red]\\-\"€\"\\ #,##0.00 → type currency"
+        "detail": "Producten.Prijs: \"€\"\\ #,##0.00;[Red]\\-\"€\"\\ #,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.prijs 72px"
+        "detail": "Producten.Prijs 72px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.aantal: 0 → type number"
+        "detail": "Producten.Aantal: 0 → type number"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.aantal 54px"
+        "detail": "Producten.Aantal 54px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.totaal: \"€\"\\ #,##0.00;[Red]\\-\"€\"\\ #,##0.00 → type currency"
+        "detail": "Producten.Totaal: \"€\"\\ #,##0.00;[Red]\\-\"€\"\\ #,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.totaal 84px"
+        "detail": "Producten.Totaal 84px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.btw: \"€\"\\ #,##0.00;[Red]\\-\"€\"\\ #,##0.00 → type currency"
+        "detail": "Producten.BTW: \"€\"\\ #,##0.00;[Red]\\-\"€\"\\ #,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.btw 72px"
+        "detail": "Producten.BTW 72px"
       },
       {
         "feature": "number formats",
         "outcome": "degrades",
-        "detail": "Producten.datum: dd-mm-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
+        "detail": "Producten.Datum: dd-mm-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.datum 72px"
+        "detail": "Producten.Datum 72px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.marge: 0.0% → type percent"
+        "detail": "Producten.Marge: 0.0% → type percent"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.marge 54px"
+        "detail": "Producten.Marge 54px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.actief: boolean → type boolean"
+        "detail": "Producten.Actief: boolean → type boolean"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.actief 48px"
+        "detail": "Producten.Actief 48px"
       },
       {
         "feature": "bold",
@@ -187,29 +142,14 @@
         "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
       },
       {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!A1 \"Id\" → ref id + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!B1 \"Label\" → ref label + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
-      },
-      {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Categorieën.korting: 0% → type percent"
+        "detail": "Categorieën.Korting: 0% → type percent"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Categorieën.korting 54px"
+        "detail": "Categorieën.Korting 54px"
       },
       {
         "feature": "fonts, sizes, italic, alignment, borders",
@@ -328,7 +268,7 @@
       }
     ],
     "tally": {
-      "survives": 51,
+      "survives": 39,
       "degrades": 3,
       "lost": 11
     },
@@ -349,59 +289,59 @@
           "      rows: 1",
           "      columns: 1",
           "    validate:",
-          "      - range: B1:B5",
-          "        list: =categorieën!$id$1:$id$3",
-          "      - range: D1:D5",
-          "        range_value:",
+          "      - at: Categorie1:Categorie5",
+          "        list: =categorieën!$Id$1:$Id$3",
+          "      - at: Aantal1:Aantal5",
+          "        range:",
           "          min: 0",
           "          max: 1000",
           "          integer: true",
-          "      A0:",
+          "      Product0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      B0:",
+          "      Categorie0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      C0:",
+          "      Prijs0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      D0:",
+          "      Aantal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      E0:",
+          "      Totaal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      F0:",
+          "      BTW0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      G0:",
+          "      Datum0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      H0:",
+          "      Marge0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      I0:",
+          "      Actief0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      A6:",
+          "      Product6:",
           "        style:",
           "          bold: true",
-          "      E6:",
+          "      Totaal6:",
           "        style:",
           "          bold: true",
-          "      F6:",
+          "      BTW6:",
           "        style:",
           "          bold: true",
-          "      H6:",
+          "      Marge6:",
           "        style:",
           "          bold: true",
           "    freeze:",
@@ -431,25 +371,25 @@
           "Overzicht Q1 2026,,,",
           ",,,",
           "Kengetal,Waarde,,",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5),,",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+btw_tarief),2)\",,",
           "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",cats,3,FALSE)\",,",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\",,",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id$1:$id$3,0)),\"\"-\"\")\",,",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\",,",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\",,",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\",,",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6,,",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\",,",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label$1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id$1:$Id$3,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal:Totaal)-producten!Totaal6,,",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1,,",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\",,",
           "Percent literal 50%*B4,=50%*B4,,",
-          "Eerste datum,=MIN(producten!datum1:datum5),,",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\",,",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\",,",
-          "Datum als tekst (TEXT),\"=TEXT(producten!datum1,\"\"dd-mm-yyyy\"\")\",,",
+          "Eerste datum,=MIN(producten!Datum1:Datum5),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\",,",
+          "Datum als tekst (TEXT),\"=TEXT(producten!Datum1,\"\"dd-mm-yyyy\"\")\",,",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
           "Deling door nul,=1/0,,",
           "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\",,",
@@ -474,7 +414,7 @@
       },
       "sheetjsOds": {
         "lostLines": [
-          "  cats: =categorieën!$id$1:$korting$3",
+          "  cats: =categorieën!$Id$1:$Korting$3",
           "    tab_color: \"#2e7d32\"",
           "    freeze:",
           "      rows: 1",
@@ -496,59 +436,59 @@
           "        width: 54",
           "        width: 48",
           "    validate:",
-          "      - range: B1:B5",
-          "        list: =categorieën!$id$1:$id$3",
-          "      - range: D1:D5",
-          "        range_value:",
+          "      - at: Categorie1:Categorie5",
+          "        list: =categorieën!$Id$1:$Id$3",
+          "      - at: Aantal1:Aantal5",
+          "        range:",
           "          min: 0",
           "          max: 1000",
           "          integer: true",
-          "      A0:",
+          "      Product0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      B0:",
+          "      Categorie0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      C0:",
+          "      Prijs0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      D0:",
+          "      Aantal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      E0:",
+          "      Totaal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      F0:",
+          "      BTW0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      G0:",
+          "      Datum0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      H0:",
+          "      Marge0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      I0:",
+          "      Actief0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      A6:",
+          "      Product6:",
           "        style:",
           "          bold: true",
-          "      E6:",
+          "      Totaal6:",
           "        style:",
           "          bold: true",
-          "      F6:",
+          "      BTW6:",
           "        style:",
           "          bold: true",
-          "      H6:",
+          "      Marge6:",
           "        style:",
           "          bold: true",
           "        width: 54",
@@ -601,25 +541,25 @@
           "Overzicht Q1 2026,,,",
           ",,,",
           "Kengetal,Waarde,,",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5),,",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+btw_tarief),2)\",,",
           "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",cats,3,FALSE)\",,",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\",,",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id$1:$id$3,0)),\"\"-\"\")\",,",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\",,",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\",,",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\",,",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6,,",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\",,",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label$1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id$1:$Id$3,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal:Totaal)-producten!Totaal6,,",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1,,",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\",,",
           "Percent literal 50%*B4,=50%*B4,,",
-          "Eerste datum,=MIN(producten!datum1:datum5),,",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\",,",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\",,",
-          "Datum als tekst (TEXT),\"=TEXT(producten!datum1,\"\"dd-mm-yyyy\"\")\",,",
+          "Eerste datum,=MIN(producten!Datum1:Datum5),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\",,",
+          "Datum als tekst (TEXT),\"=TEXT(producten!Datum1,\"\"dd-mm-yyyy\"\")\",,",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
           "Deling door nul,=1/0,,",
           "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\",,",
@@ -714,57 +654,12 @@
       {
         "feature": "named ranges",
         "outcome": "survives",
-        "detail": "Cats → cats: =categorieën!$id$1:$korting$3"
+        "detail": "Cats → cats: =categorieën!$Id$1:$Korting$3"
       },
       {
         "feature": "named ranges",
         "outcome": "survives",
         "detail": "Omzet → omzet: =q1_overzicht!$B$4"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!A1 \"Product\" → ref product + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!F1 \"BTW\" → ref btw + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!G1 \"Datum\" → ref datum + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!H1 \"Marge\" → ref marge + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!I1 \"Actief\" → ref actief + name"
       },
       {
         "feature": "comments / notes",
@@ -779,82 +674,82 @@
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.product 154px"
+        "detail": "Producten.Product 154px"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.categorie 98px"
+        "detail": "Producten.Categorie 98px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.prijs: \"€ \"#,##0.00;[RED]\"-€ \"#,##0.00 → type currency"
+        "detail": "Producten.Prijs: \"€ \"#,##0.00;[RED]\"-€ \"#,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.prijs 84px"
+        "detail": "Producten.Prijs 84px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.aantal: 0 → type number"
+        "detail": "Producten.Aantal: 0 → type number"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.aantal 63px"
+        "detail": "Producten.Aantal 63px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.totaal: \"€ \"#,##0.00;[RED]\"-€ \"#,##0.00 → type currency"
+        "detail": "Producten.Totaal: \"€ \"#,##0.00;[RED]\"-€ \"#,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.totaal 98px"
+        "detail": "Producten.Totaal 98px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.btw: \"€ \"#,##0.00;[RED]\"-€ \"#,##0.00 → type currency"
+        "detail": "Producten.BTW: \"€ \"#,##0.00;[RED]\"-€ \"#,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.btw 84px"
+        "detail": "Producten.BTW 84px"
       },
       {
         "feature": "number formats",
         "outcome": "degrades",
-        "detail": "Producten.datum: dd\\-mm\\-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
+        "detail": "Producten.Datum: dd\\-mm\\-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.datum 84px"
+        "detail": "Producten.Datum 84px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.marge: 0.0% → type percent"
+        "detail": "Producten.Marge: 0.0% → type percent"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.marge 63px"
+        "detail": "Producten.Marge 63px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.actief: boolean → type boolean"
+        "detail": "Producten.Actief: boolean → type boolean"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.actief 56px"
+        "detail": "Producten.Actief 56px"
       },
       {
         "feature": "bold",
@@ -892,29 +787,14 @@
         "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
       },
       {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!A1 \"Id\" → ref id + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!B1 \"Label\" → ref label + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
-      },
-      {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Categorieën.korting: 0% → type percent"
+        "detail": "Categorieën.Korting: 0% → type percent"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Categorieën.korting 63px"
+        "detail": "Categorieën.Korting 63px"
       },
       {
         "feature": "fonts, sizes, italic, alignment, borders",
@@ -1039,17 +919,17 @@
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!id1:id3,categorieën!korting1:korting3,\"?\"): source 0.05, engine \"#NAME?\""
+        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"?\"): source 0.05, engine \"#NAME?\""
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B10 =SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"fruit\",producten!actief1:actief5,TRUE): source 9.9, engine 0"
+        "detail": "Q1 overzicht!B10 =SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"fruit\",producten!Actief1:Actief5,TRUE): source 9.9, engine 0"
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B13 =SUM(producten!totaal:totaal)-producten!totaal6: source 27.95, engine \"#PARSE!\""
+        "detail": "Q1 overzicht!B13 =SUM(producten!Totaal:Totaal)-producten!Totaal6: source 27.95, engine \"#PARSE!\""
       },
       {
         "feature": "formula result differs from source app",
@@ -1059,12 +939,12 @@
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B20 =EOMONTH(producten!datum1,0): source 46053, engine 46052.958333333336"
+        "detail": "Q1 overzicht!B20 =EOMONTH(producten!Datum1,0): source 46053, engine 46052.958333333336"
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B22 =TEXT(producten!datum1,\"dd-mm-yyyy\"): source \"05-01-2026\", engine \"46027\""
+        "detail": "Q1 overzicht!B22 =TEXT(producten!Datum1,\"dd-mm-yyyy\"): source \"05-01-2026\", engine \"46027\""
       },
       {
         "feature": "formula result differs from source app",
@@ -1073,7 +953,7 @@
       }
     ],
     "tally": {
-      "survives": 48,
+      "survives": 36,
       "degrades": 11,
       "lost": 15
     },
@@ -1091,19 +971,19 @@
         },
         {
           "where": "Q1 overzicht!B7",
-          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!id1:id3,categorieën!korting1:korting3,\"?\")",
+          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"?\")",
           "cached": 0.05,
           "engine": "#NAME?"
         },
         {
           "where": "Q1 overzicht!B10",
-          "ycsv": "=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"fruit\",producten!actief1:actief5,TRUE)",
+          "ycsv": "=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"fruit\",producten!Actief1:Actief5,TRUE)",
           "cached": 9.9,
           "engine": 0
         },
         {
           "where": "Q1 overzicht!B13",
-          "ycsv": "=SUM(producten!totaal:totaal)-producten!totaal6",
+          "ycsv": "=SUM(producten!Totaal:Totaal)-producten!Totaal6",
           "cached": 27.95,
           "engine": "#PARSE!"
         },
@@ -1115,13 +995,13 @@
         },
         {
           "where": "Q1 overzicht!B20",
-          "ycsv": "=EOMONTH(producten!datum1,0)",
+          "ycsv": "=EOMONTH(producten!Datum1,0)",
           "cached": 46053,
           "engine": 46052.958333333336
         },
         {
           "where": "Q1 overzicht!B22",
-          "ycsv": "=TEXT(producten!datum1,\"dd-mm-yyyy\")",
+          "ycsv": "=TEXT(producten!Datum1,\"dd-mm-yyyy\")",
           "cached": "05-01-2026",
           "engine": "46027"
         },
@@ -1140,59 +1020,59 @@
         "lostLines": [
           "    tab_color: \"#2e7d32\"",
           "    validate:",
-          "      - range: B1:B5",
-          "        list: =categorieën!$id$1:$id$3",
-          "      - range: D1:D5",
-          "        range_value:",
+          "      - at: Categorie1:Categorie5",
+          "        list: =categorieën!$Id$1:$Id$3",
+          "      - at: Aantal1:Aantal5",
+          "        range:",
           "          min: 0",
           "          max: 1000",
           "          integer: true",
-          "      A0:",
+          "      Product0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      B0:",
+          "      Categorie0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      C0:",
+          "      Prijs0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      D0:",
+          "      Aantal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      E0:",
+          "      Totaal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      F0:",
+          "      BTW0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      G0:",
+          "      Datum0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      H0:",
+          "      Marge0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      I0:",
+          "      Actief0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      A6:",
+          "      Product6:",
           "        style:",
           "          bold: true",
-          "      E6:",
+          "      Totaal6:",
           "        style:",
           "          bold: true",
-          "      F6:",
+          "      BTW6:",
           "        style:",
           "          bold: true",
-          "      H6:",
+          "      Marge6:",
           "        style:",
           "          bold: true",
           "      - ref: C",
@@ -1222,25 +1102,25 @@
           "Overzicht Q1 2026,,,",
           ",,,",
           "Kengetal,Waarde,,",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5),,",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+btw_tarief),2)\",,",
           "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",cats,3,FALSE)\",,",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\",,",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id$1:$id$3,0)),\"\"-\"\")\",,",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\",,",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\",,",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\",,",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6,,",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\",,",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label$1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id$1:$Id$3,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal:Totaal)-producten!Totaal6,,",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1,,",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\",,",
           "Percent literal 50%*B4,=50%*B4,,",
-          "Eerste datum,=MIN(producten!datum1:datum5),,",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\",,",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\",,",
-          "Datum als tekst (TEXT),\"=TEXT(producten!datum1,\"\"dd-mm-yyyy\"\")\",,",
+          "Eerste datum,=MIN(producten!Datum1:Datum5),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\",,",
+          "Datum als tekst (TEXT),\"=TEXT(producten!Datum1,\"\"dd-mm-yyyy\"\")\",,",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
           "Deling door nul,=1/0,,",
           "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\",,",
@@ -1265,7 +1145,7 @@
       },
       "sheetjsOds": {
         "lostLines": [
-          "  cats: =categorieën!$id$1:$korting$3",
+          "  cats: =categorieën!$Id$1:$Korting$3",
           "    tab_color: \"#2e7d32\"",
           "        width: 154",
           "        width: 98",
@@ -1284,59 +1164,59 @@
           "        width: 63",
           "        width: 56",
           "    validate:",
-          "      - range: B1:B5",
-          "        list: =categorieën!$id$1:$id$3",
-          "      - range: D1:D5",
-          "        range_value:",
+          "      - at: Categorie1:Categorie5",
+          "        list: =categorieën!$Id$1:$Id$3",
+          "      - at: Aantal1:Aantal5",
+          "        range:",
           "          min: 0",
           "          max: 1000",
           "          integer: true",
-          "      A0:",
+          "      Product0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      B0:",
+          "      Categorie0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      C0:",
+          "      Prijs0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      D0:",
+          "      Aantal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      E0:",
+          "      Totaal0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      F0:",
+          "      BTW0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      G0:",
+          "      Datum0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      H0:",
+          "      Marge0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      I0:",
+          "      Actief0:",
           "        style:",
           "          bold: true",
           "          fill: \"#f5f5f5\"",
-          "      A6:",
+          "      Product6:",
           "        style:",
           "          bold: true",
-          "      E6:",
+          "      Totaal6:",
           "        style:",
           "          bold: true",
-          "      F6:",
+          "      BTW6:",
           "        style:",
           "          bold: true",
-          "      H6:",
+          "      Marge6:",
           "        style:",
           "          bold: true",
           "        width: 63",
@@ -1389,25 +1269,25 @@
           "Overzicht Q1 2026,,,",
           ",,,",
           "Kengetal,Waarde,,",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5),,",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+btw_tarief),2)\",,",
           "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",cats,3,FALSE)\",,",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\",,",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id$1:$id$3,0)),\"\"-\"\")\",,",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\",,",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\",,",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\",,",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6,,",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\",,",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label$1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id$1:$Id$3,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal:Totaal)-producten!Totaal6,,",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1,,",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\",,",
           "Percent literal 50%*B4,=50%*B4,,",
-          "Eerste datum,=MIN(producten!datum1:datum5),,",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\",,",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\",,",
-          "Datum als tekst (TEXT),\"=TEXT(producten!datum1,\"\"dd-mm-yyyy\"\")\",,",
+          "Eerste datum,=MIN(producten!Datum1:Datum5),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\",,",
+          "Datum als tekst (TEXT),\"=TEXT(producten!Datum1,\"\"dd-mm-yyyy\"\")\",,",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
           "Deling door nul,=1/0,,",
           "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\",,",
@@ -1490,57 +1370,12 @@
       {
         "feature": "named ranges",
         "outcome": "survives",
-        "detail": "Cats → cats: =categorieën!$id1:$korting$3"
+        "detail": "Cats → cats: =categorieën!$Id1:$Korting$3"
       },
       {
         "feature": "named ranges",
         "outcome": "survives",
         "detail": "Omzet → omzet: =q1_overzicht!$B$4"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!A1 \"Product\" → ref product + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!F1 \"BTW\" → ref btw + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!G1 \"Datum\" → ref datum + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!H1 \"Marge\" → ref marge + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!I1 \"Actief\" → ref actief + name"
       },
       {
         "feature": "comments / notes",
@@ -1560,17 +1395,17 @@
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.aantal: 0 → type number"
+        "detail": "Producten.Aantal: 0 → type number"
       },
       {
         "feature": "number formats",
         "outcome": "degrades",
-        "detail": "Producten.datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
+        "detail": "Producten.Datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.actief: boolean → type boolean"
+        "detail": "Producten.Actief: boolean → type boolean"
       },
       {
         "feature": "bold",
@@ -1591,21 +1426,6 @@
         "feature": "conditional formatting",
         "outcome": "lost",
         "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!A1 \"Id\" → ref id + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!B1 \"Label\" → ref label + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
       },
       {
         "feature": "bold",
@@ -1705,17 +1525,17 @@
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!id1:id3,categorieën!korting1:korting3,\"?\"): source 0.05, engine \"#NAME?\""
+        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"?\"): source 0.05, engine \"#NAME?\""
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B10 =SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"fruit\",producten!actief1:actief5,TRUE): source 9.9, engine 0"
+        "detail": "Q1 overzicht!B10 =SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"fruit\",producten!Actief1:Actief5,TRUE): source 9.9, engine 0"
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B13 =SUM(producten!totaal:totaal)-producten!totaal6: source 27.95, engine \"#PARSE!\""
+        "detail": "Q1 overzicht!B13 =SUM(producten!Totaal:Totaal)-producten!Totaal6: source 27.95, engine \"#PARSE!\""
       },
       {
         "feature": "formula result differs from source app",
@@ -1725,12 +1545,12 @@
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B20 =EOMONTH(producten!datum1,0): source 46053, engine 46052.958333333336"
+        "detail": "Q1 overzicht!B20 =EOMONTH(producten!Datum1,0): source 46053, engine 46052.958333333336"
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B22 =TEXT(producten!datum1,\"dd-mm-yyyy\"): source \"05-01-2026\", engine \"46027\""
+        "detail": "Q1 overzicht!B22 =TEXT(producten!Datum1,\"dd-mm-yyyy\"): source \"05-01-2026\", engine \"46027\""
       },
       {
         "feature": "formula result differs from source app",
@@ -1739,7 +1559,7 @@
       }
     ],
     "tally": {
-      "survives": 23,
+      "survives": 11,
       "degrades": 10,
       "lost": 18
     },
@@ -1757,19 +1577,19 @@
         },
         {
           "where": "Q1 overzicht!B7",
-          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!id1:id3,categorieën!korting1:korting3,\"?\")",
+          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"?\")",
           "cached": 0.05,
           "engine": "#NAME?"
         },
         {
           "where": "Q1 overzicht!B10",
-          "ycsv": "=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"fruit\",producten!actief1:actief5,TRUE)",
+          "ycsv": "=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"fruit\",producten!Actief1:Actief5,TRUE)",
           "cached": 9.9,
           "engine": 0
         },
         {
           "where": "Q1 overzicht!B13",
-          "ycsv": "=SUM(producten!totaal:totaal)-producten!totaal6",
+          "ycsv": "=SUM(producten!Totaal:Totaal)-producten!Totaal6",
           "cached": 27.95,
           "engine": "#PARSE!"
         },
@@ -1781,13 +1601,13 @@
         },
         {
           "where": "Q1 overzicht!B20",
-          "ycsv": "=EOMONTH(producten!datum1,0)",
+          "ycsv": "=EOMONTH(producten!Datum1,0)",
           "cached": 46053,
           "engine": 46052.958333333336
         },
         {
           "where": "Q1 overzicht!B22",
-          "ycsv": "=TEXT(producten!datum1,\"dd-mm-yyyy\")",
+          "ycsv": "=TEXT(producten!Datum1,\"dd-mm-yyyy\")",
           "cached": "05-01-2026",
           "engine": "46027"
         },
@@ -1816,7 +1636,7 @@
       },
       "sheetjsOds": {
         "lostLines": [
-          "  cats: =categorieën!$id1:$korting$3",
+          "  cats: =categorieën!$Id1:$Korting$3",
           "        excel_format: m/d/yy",
           "        excel_format: '\"€ \"#,##0.00;[Red]\"-€ \"#,##0.00'",
           "        excel_format: '\"€ \"#,##0.00;[Red]\"-€ \"#,##0.00'",
@@ -1843,9 +1663,9 @@
           "        excel_format: \"0.00E+00\"",
           "        excel_format: '#,##0.00;\"(\"#,##0.00\")\"'",
           "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",cats,3,FALSE)\"",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\"",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id1:$id$3,0)),\"\"-\"\")\"",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\"",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id1:$Id$3,0)),\"\"-\"\")\"",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal:Totaal)-producten!Totaal6",
           "Percent literal 50%*B4,=50%*B4",
           "Deling door nul,=1/0",
           "Hyperlink,\"=HYPERLINK(\"\"https://example.org/\"\",\"\"WeGotWorkspace\"\")\"",
@@ -1863,29 +1683,29 @@
       },
       "exceljsXlsx": {
         "lostLines": [
-          "  cats: =categorieën!$id1:$korting$3",
+          "  cats: =categorieën!$Id1:$Korting$3",
           "Overzicht Q1 2026,",
           ",",
           "Kengetal,Waarde",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5)",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5)",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+btw_tarief),2)\"",
           "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",cats,3,FALSE)\"",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\"",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id1:$id$3,0)),\"\"-\"\")\"",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\"",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\"",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5)",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\"",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\"",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\"",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\"",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id1:$Id$3,0)),\"\"-\"\")\"",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\"",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\"",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5)",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\"",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal:Totaal)-producten!Totaal6",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\"",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\"",
           "Percent literal 50%*B4,=50%*B4",
-          "Eerste datum,=MIN(producten!datum1:datum5)",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5)",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\"",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\"",
-          "Datum als tekst (TEXT),\"=TEXT(producten!datum1,\"\"dd-mm-yyyy\"\")\"",
+          "Eerste datum,=MIN(producten!Datum1:Datum5)",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5)",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\"",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\"",
+          "Datum als tekst (TEXT),\"=TEXT(producten!Datum1,\"\"dd-mm-yyyy\"\")\"",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\"",
           "Deling door nul,=1/0",
           "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\"",
@@ -1976,26 +1796,6 @@
   "google-shape.xlsx": {
     "log": [
       {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Sheet1!A1 \"Item\" → ref item + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Sheet1!B1 \"Bedrag\" → ref bedrag + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Sheet1!C1 \"Koers\" → ref koers + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Sheet1!D1 \"Gefilterd\" → ref gefilterd + name"
-      },
-      {
         "feature": "comments / notes",
         "outcome": "survives",
         "detail": "Sheet1!A2 as plain-text note (P14)"
@@ -2028,7 +1828,7 @@
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Sheet1.item 84px"
+        "detail": "Sheet1.Item 84px"
       },
       {
         "feature": "fonts, sizes, italic, alignment, borders",
@@ -2042,7 +1842,7 @@
       }
     ],
     "tally": {
-      "survives": 6,
+      "survives": 2,
       "degrades": 4,
       "lost": 3
     },
@@ -2059,13 +1859,13 @@
       "sheetjsXlsx": {
         "lostLines": [
           "    cells:",
-          "      C1:",
+          "      Koers1:",
           "        source_formula: =GOOGLEFINANCE(\"CURRENCY:EURUSD\")",
-          "      D1:",
+          "      Gefilterd1:",
           "        source_formula: =FILTER(A2:B4,B2:B4>15)",
-          "      C2:",
+          "      Koers2:",
           "        source_formula: =\"COMPUTED_VALUE\"",
-          "      D3:",
+          "      Gefilterd3:",
           "        source_formula: =ARRAYFORMULA(B2:B4*2)"
         ],
         "probe": {
@@ -2082,13 +1882,13 @@
         "lostLines": [
           "        width: 84",
           "    cells:",
-          "      C1:",
+          "      Koers1:",
           "        source_formula: =GOOGLEFINANCE(\"CURRENCY:EURUSD\")",
-          "      D1:",
+          "      Gefilterd1:",
           "        source_formula: =FILTER(A2:B4,B2:B4>15)",
-          "      C2:",
+          "      Koers2:",
           "        source_formula: =\"COMPUTED_VALUE\"",
-          "      D3:",
+          "      Gefilterd3:",
           "        source_formula: =ARRAYFORMULA(B2:B4*2)"
         ],
         "probe": {
@@ -2104,13 +1904,13 @@
       "exceljsXlsx": {
         "lostLines": [
           "    cells:",
-          "      C1:",
+          "      Koers1:",
           "        source_formula: =GOOGLEFINANCE(\"CURRENCY:EURUSD\")",
-          "      D1:",
+          "      Gefilterd1:",
           "        source_formula: =FILTER(A2:B4,B2:B4>15)",
-          "      C2:",
+          "      Koers2:",
           "        source_formula: =\"COMPUTED_VALUE\"",
-          "      D3:",
+          "      Gefilterd3:",
           "        source_formula: =ARRAYFORMULA(B2:B4*2)"
         ],
         "probe": {
@@ -2149,36 +1949,6 @@
         "detail": ".numbers: each table becomes a sheet; table names are lost (second table on a sheet becomes '<sheet>_1')"
       },
       {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget!A1 \"Post\" → ref post + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget!B1 \"Bedrag\" → ref bedrag + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget!C1 \"Betaald\" → ref betaald + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget!D1 \"Datum\" → ref datum + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget!E1 \"Aandeel\" → ref aandeel + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget!F1 \"Notitie\" → ref notitie + name"
-      },
-      {
         "feature": "number formats",
         "outcome": "survives",
         "detail": "Budget: 5 per-cell formats (P9, mixed-type column)"
@@ -2186,7 +1956,7 @@
       {
         "feature": "number formats",
         "outcome": "degrades",
-        "detail": "Budget.datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
+        "detail": "Budget.Datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
       },
       {
         "feature": "bold",
@@ -2207,16 +1977,6 @@
         "feature": "conditional formatting",
         "outcome": "lost",
         "detail": "Budget: not read (cellIs rules could map to column style IF(); not built in the spike)"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget_1!A1 \"Kengetal\" → ref kengetal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Budget_1!B1 \"Waarde\" → ref waarde + name"
       },
       {
         "feature": "error values",
@@ -2265,7 +2025,7 @@
       }
     ],
     "tally": {
-      "survives": 10,
+      "survives": 2,
       "degrades": 4,
       "lost": 13
     },
@@ -2892,51 +2652,6 @@
         "detail": ".numbers: each table becomes a sheet; table names are lost (second table on a sheet becomes '<sheet>_1')"
       },
       {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!A1 \"Product\" → ref product + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!F1 \"BTW\" → ref btw + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!G1 \"Datum\" → ref datum + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!H1 \"Marge\" → ref marge + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!I1 \"Actief\" → ref actief + name"
-      },
-      {
         "feature": "comments / notes",
         "outcome": "survives",
         "detail": "Producten!C2 as plain-text note (P14)"
@@ -2949,12 +2664,12 @@
       {
         "feature": "number formats",
         "outcome": "degrades",
-        "detail": "Producten.datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
+        "detail": "Producten.Datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.actief: boolean → type boolean"
+        "detail": "Producten.Actief: boolean → type boolean"
       },
       {
         "feature": "bold",
@@ -2975,21 +2690,6 @@
         "feature": "conditional formatting",
         "outcome": "lost",
         "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!A1 \"Id\" → ref id + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!B1 \"Label\" → ref label + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
       },
       {
         "feature": "bold",
@@ -3088,7 +2788,7 @@
       }
     ],
     "tally": {
-      "survives": 19,
+      "survives": 7,
       "degrades": 5,
       "lost": 19
     },
@@ -3236,51 +2936,6 @@
         "detail": "Numbers' XLSX export inlines ranges and shows hidden sheets"
       },
       {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!A1 \"Product\" → ref product + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!F1 \"BTW\" → ref btw + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!G1 \"Datum\" → ref datum + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!H1 \"Marge\" → ref marge + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Producten!I1 \"Actief\" → ref actief + name"
-      },
-      {
         "feature": "comments / notes",
         "outcome": "survives",
         "detail": "Producten!C2 as plain-text note (P14)"
@@ -3293,82 +2948,82 @@
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.product 308px"
+        "detail": "Producten.Product 308px"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.categorie 196px"
+        "detail": "Producten.Categorie 196px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.prijs: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
+        "detail": "Producten.Prijs: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.prijs 168px"
+        "detail": "Producten.Prijs 168px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.aantal: 0 → type number"
+        "detail": "Producten.Aantal: 0 → type number"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.aantal 126px"
+        "detail": "Producten.Aantal 126px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.totaal: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
+        "detail": "Producten.Totaal: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.totaal 196px"
+        "detail": "Producten.Totaal 196px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.btw: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
+        "detail": "Producten.BTW: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.btw 168px"
+        "detail": "Producten.BTW 168px"
       },
       {
         "feature": "number formats",
         "outcome": "degrades",
-        "detail": "Producten.datum: dd-mm-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
+        "detail": "Producten.Datum: dd-mm-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.datum 168px"
+        "detail": "Producten.Datum 168px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.marge: 0.0% → type percent"
+        "detail": "Producten.Marge: 0.0% → type percent"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.marge 126px"
+        "detail": "Producten.Marge 126px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Producten.actief: boolean → type boolean"
+        "detail": "Producten.Actief: boolean → type boolean"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Producten.actief 112px"
+        "detail": "Producten.Actief 112px"
       },
       {
         "feature": "fonts, sizes, italic, alignment, borders",
@@ -3391,39 +3046,24 @@
         "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
       },
       {
-        "feature": "header text",
+        "feature": "column widths",
         "outcome": "survives",
-        "detail": "Categorieën!A1 \"Id\" → ref id + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!B1 \"Label\" → ref label + name"
-      },
-      {
-        "feature": "header text",
-        "outcome": "survives",
-        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
+        "detail": "Categorieën.Id 124px"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Categorieën.id 124px"
-      },
-      {
-        "feature": "column widths",
-        "outcome": "survives",
-        "detail": "Categorieën.label 124px"
+        "detail": "Categorieën.Label 124px"
       },
       {
         "feature": "number formats",
         "outcome": "survives",
-        "detail": "Categorieën.korting: 0% → type percent"
+        "detail": "Categorieën.Korting: 0% → type percent"
       },
       {
         "feature": "column widths",
         "outcome": "survives",
-        "detail": "Categorieën.korting 126px"
+        "detail": "Categorieën.Korting 126px"
       },
       {
         "feature": "fonts, sizes, italic, alignment, borders",
@@ -3543,17 +3183,17 @@
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B6 =VLOOKUP(\"fruit\",categorieën!$id$1:$korting$3,3,FALSE): source 0.1, engine \"#N/A\""
+        "detail": "Q1 overzicht!B6 =VLOOKUP(\"fruit\",categorieën!$Id$1:$Korting$3,3,FALSE): source 0.1, engine \"#N/A\""
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!id1:id3,categorieën!korting1:korting3,\"?\"): source 0.05, engine \"#NAME?\""
+        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"?\"): source 0.05, engine \"#NAME?\""
       },
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B10 =SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"fruit\",producten!actief1:actief5,TRUE): source 9.9, engine 0"
+        "detail": "Q1 overzicht!B10 =SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"fruit\",producten!Actief1:Actief5,TRUE): source 9.9, engine 0"
       },
       {
         "feature": "formula result differs from source app",
@@ -3563,7 +3203,7 @@
       {
         "feature": "formula result differs from source app",
         "outcome": "degrades",
-        "detail": "Q1 overzicht!B20 =EOMONTH(producten!datum1,0): source 46053, engine 46052.958333333336"
+        "detail": "Q1 overzicht!B20 =EOMONTH(producten!Datum1,0): source 46053, engine 46052.958333333336"
       },
       {
         "feature": "formula result differs from source app",
@@ -3572,7 +3212,7 @@
       }
     ],
     "tally": {
-      "survives": 44,
+      "survives": 32,
       "degrades": 9,
       "lost": 17
     },
@@ -3584,19 +3224,19 @@
       "mismatches": [
         {
           "where": "Q1 overzicht!B6",
-          "ycsv": "=VLOOKUP(\"fruit\",categorieën!$id$1:$korting$3,3,FALSE)",
+          "ycsv": "=VLOOKUP(\"fruit\",categorieën!$Id$1:$Korting$3,3,FALSE)",
           "cached": 0.1,
           "engine": "#N/A"
         },
         {
           "where": "Q1 overzicht!B7",
-          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!id1:id3,categorieën!korting1:korting3,\"?\")",
+          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"?\")",
           "cached": 0.05,
           "engine": "#NAME?"
         },
         {
           "where": "Q1 overzicht!B10",
-          "ycsv": "=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"fruit\",producten!actief1:actief5,TRUE)",
+          "ycsv": "=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"fruit\",producten!Actief1:Actief5,TRUE)",
           "cached": 9.9,
           "engine": 0
         },
@@ -3608,7 +3248,7 @@
         },
         {
           "where": "Q1 overzicht!B20",
-          "ycsv": "=EOMONTH(producten!datum1,0)",
+          "ycsv": "=EOMONTH(producten!Datum1,0)",
           "cached": 46053,
           "engine": 46052.958333333336
         },
@@ -3737,7 +3377,7 @@
       "sheetjsXlsx": {
         "lostLines": [
           "    validate:",
-          "      - range: B1:B5",
+          "      - at: Categorie1:Categorie5",
           "        list:",
           "          - fruit",
           "          - bakkerij",
@@ -3748,24 +3388,24 @@
           "Overzicht Q1 2026,,,",
           ",,,",
           "Kengetal,Waarde,,",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5),,",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+instellingen!$B$1),2)\",,",
-          "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",categorieën!$id$1:$korting$3,3,FALSE)\",,",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\",,",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id$1:$id$3,0)),\"\"-\"\")\",,",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\",,",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\",,",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\",,",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal0:totaal9)-producten!totaal6,,",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\",,",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\",,",
+          "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",categorieën!$Id$1:$Korting$3,3,FALSE)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label$1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id$1:$Id$3,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal0:Totaal9)-producten!Totaal6,,",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1,,",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\",,",
           "Percent literal 50%*B4,=50%*B4,,",
-          "Eerste datum,=MIN(producten!datum1:datum5),,",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\",,",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\",,",
+          "Eerste datum,=MIN(producten!Datum1:Datum5),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\",,",
           "Datum als tekst (TEXT),,,",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
           "Deling door nul,=1/0,,",
@@ -3808,7 +3448,7 @@
           "        width: 126",
           "        width: 112",
           "    validate:",
-          "      - range: B1:B5",
+          "      - at: Categorie1:Categorie5",
           "        list:",
           "          - fruit",
           "          - bakkerij",
@@ -3845,24 +3485,24 @@
           "Overzicht Q1 2026,,,",
           ",,,",
           "Kengetal,Waarde,,",
-          "Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,",
+          "Omzet (SUM over tab),=SUM(producten!Totaal1:Totaal5),,",
           "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+instellingen!$B$1),2)\",,",
-          "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",categorieën!$id$1:$korting$3,3,FALSE)\",,",
-          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id1:id3,categorieën!korting1:korting3,\"\"?\"\")\",,",
-          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(\"\"zuivel\"\",categorieën!$id$1:$id$3,0)),\"\"-\"\")\",,",
-          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie1:categorie5,\"\"fruit\"\")\",,",
-          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,\"\"fruit\"\",producten!actief1:actief5,TRUE)\",,",
-          "Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,",
-          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)\",,",
-          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal0:totaal9)-producten!totaal6,,",
-          "Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,",
-          "Concat &,\"=producten!product1&\"\" (\"\"&producten!categorie1&\"\")\"\"\",,",
-          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product1:product3)\",,",
+          "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",categorieën!$Id$1:$Korting$3,3,FALSE)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!Id1:Id3,categorieën!Korting1:Korting3,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$Label$1:$Label$3,MATCH(\"\"zuivel\"\",categorieën!$Id$1:$Id$3,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!Categorie1:Categorie5,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!Totaal1:Totaal5,producten!Categorie1:Categorie5,\"\"fruit\"\",producten!Actief1:Actief5,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!Prijs1:Prijs5),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!Prijs1:Prijs5,producten!Aantal1:Aantal5)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!Totaal0:Totaal9)-producten!Totaal6,,",
+          "Absolute ref $C$2*D2,=producten!$Prijs$1*producten!Aantal1,,",
+          "Concat &,\"=producten!Product1&\"\" (\"\"&producten!Categorie1&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!Product1:Product3)\",,",
           "Percent literal 50%*B4,=50%*B4,,",
-          "Eerste datum,=MIN(producten!datum1:datum5),,",
-          "Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,",
-          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum1,0)\",,",
-          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum1,producten!datum5)\",,",
+          "Eerste datum,=MIN(producten!Datum1:Datum5),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!Datum1:Datum5)-MIN(producten!Datum1:Datum5),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!Datum1,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!Datum1,producten!Datum5)\",,",
           "Datum als tekst (TEXT),,,",
           "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
           "Deling door nul,=1/0,,",

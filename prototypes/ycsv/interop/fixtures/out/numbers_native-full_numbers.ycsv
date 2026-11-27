@@ -5,48 +5,40 @@ sheets:
     name: Budget
     header: true
     columns:
-      - ref: post
-        name: Post
+      - ref: Post
         type: string
-      - ref: bedrag
-        name: Bedrag
-      - ref: betaald
-        name: Betaald
-      - ref: datum
-        name: Datum
+      - ref: Bedrag
+      - ref: Betaald
+      - ref: Datum
         type: date
         excel_format: m/d/yy
-      - ref: aandeel
-        name: Aandeel
-      - ref: notitie
-        name: Notitie
+      - ref: Aandeel
+      - ref: Notitie
         type: string
     cells:
-      C1:
+      Betaald1:
         type: boolean
-      C2:
+      Betaald2:
         type: boolean
-      C3:
+      Betaald3:
         type: boolean
-      C4:
+      Betaald4:
         type: boolean
-      C5:
+      Betaald5:
         type: boolean
   - ref: budget_1
     name: Budget_1
     header: true
     columns:
-      - ref: kengetal
-        name: Kengetal
+      - ref: Kengetal
         type: string
-      - ref: waarde
-        name: Waarde
+      - ref: Waarde
   - ref: tweede_blad
     name: Tweede blad
     header: false
     columns: []
 ---
-post,bedrag,betaald,datum,aandeel,notitie
+Post,Bedrag,Betaald,Datum,Aandeel,Notitie
 Huur,1250.5,true,2026-01-05,0.828584680625497,vast
 Stroom,89.95,false,2026-01-31,0.0596011131725417,007
 Internet,45,true,2026-02-28,0.0298171216538563,''=tekst
@@ -54,7 +46,7 @@ Verzekering,120.25,false,2024-02-29,0.0796779750861384,"a, b ""c"""
 Koffie,3.5,true,2026-12-31,0.0023191094619666,regel1
 Totaal,1509.2,3,2026-12-31,,
 ---
-kengetal,waarde
+Kengetal,Waarde
 Totaal,1509.2
 Grootste post,Huur
 Afgerond,1826.13

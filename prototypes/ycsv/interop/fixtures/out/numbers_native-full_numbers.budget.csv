@@ -1,4 +1,4 @@
-post,bedrag,betaald,datum,aandeel,notitie
+Post,Bedrag,Betaald,Datum,Aandeel,Notitie
 Huur,1250.5,true,2026-01-05,0.828584680625497,vast
 Stroom,89.95,false,2026-01-31,0.0596011131725417,007
 Internet,45,true,2026-02-28,0.0298171216538563,'=tekst

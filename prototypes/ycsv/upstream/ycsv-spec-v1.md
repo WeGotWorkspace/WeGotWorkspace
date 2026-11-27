@@ -1,9 +1,15 @@
 # YCSV Specification v1.0
 
-> **YCSV** is a plain-text tabular data format combining a YAML frontmatter
-> header with a CSV body. It adds column types, display formatting, styling,
-> validation, and spreadsheet-style formulas to CSV — without sacrificing human
-> readability or compatibility with standard tooling.
+> **Spike 11 working copy.** This is the spec with every decision of spike 11
+> written in, plus a short decision note under each section it touched and
+> the decision record in Appendix D. The same text without notes is
+> `ycsv-spec-v1-clean.md`. Evidence: `prototypes/ycsv/docs/spike-11-interop.md`
+> and `prototypes/ycsv/docs/spike-11-conformance-results.md`.
+
+> **YCSV** is a plain-text tabular data format: a CSV body, optionally led by
+> a YAML frontmatter block. It adds column types, display formatting,
+> styling, validation and spreadsheet formulas to CSV, without giving up
+> human readability or compatibility with standard tooling.
 
 ---
 
@@ -14,16 +20,28 @@ has no concept of column types, number formatting, or computed values. XLSX
 solves this but is a binary format, hostile to version control and plain-text
 workflows. YCSV adds exactly what CSV is missing — nothing more.
 
+A plain CSV file with a header row is already a YCSV sheet. Its header names
+can be used in formulas right away. Frontmatter is only needed for what CSV
+cannot say: types, formats, styles, validation, more sheets, charts.
+
 ---
 
 ## 2. File format
 
-> **Proposal (spike 11):** split only on a `---` line outside quoted fields (P22). See Appendix B.
+> **Spike 11 decision:** **P34** (frontmatter optional, also in `.ycsv`) and **P22** (split only outside quoted fields; writers quote `---` lines) accepted. K19.
 
-A YCSV file consists of one frontmatter block followed by one or more CSV
-blocks, all separated by `---`.
+A YCSV file is either a single CSV body, or a YAML frontmatter block followed
+by one or more CSV bodies, all separated by `---` lines.
 
-**Single-sheet:**
+**Without frontmatter** (one sheet):
+
+```
+product,prijs,aantal,totaal
+Appels,0.45,6,=prijs1*aantal1
+Brood,2.99,2,=prijs2*aantal2
+```
+
+**Single sheet with frontmatter:**
 
 ```
 ---
@@ -43,116 +61,135 @@ blocks, all separated by `---`.
 <CSV body — sheet 2>
 ```
 
-The first `---`...`---` block is always YAML frontmatter. Every subsequent
-`---`-separated block is a CSV body, in the same order as the `sheets` array.
-Cross-file references are not supported — all sheets must be in the same file.
+**Frontmatter or not.** A file has frontmatter when its first line, after an
+optional BOM, is exactly `---` (trailing spaces or tabs allowed, LF or CRLF).
+The frontmatter ends at the next `---` line. Otherwise the whole file is one
+CSV body:
 
-> **Proposal (spike 11, P34): frontmatter is optional, in `.ycsv` too.**
-> Wouter: "de koprij bovenaan was ook fijn omdat je dan named header rows hebt zonder frontmatter, waarnaar je kunt verwijzen in formules."
-> - **How to tell.** A file has frontmatter when its first line, after an
->   optional BOM, is exactly `---` (trailing spaces or tabs allowed, LF or
->   CRLF). Otherwise the whole file is one CSV body.
-> - **Without frontmatter** the file is a single sheet: `header` is detected
->   (§4.1, D1–D7), `columns` is absent, refs come from the header text
->   (§4.4), and formulas are allowed (`=prijs1*aantal1`). This is what makes
->   a hand-typed file with named columns work without any YAML.
-> - **A `---` line in a file without frontmatter is data** (a one-cell row),
->   not a sheet separator. A second sheet needs frontmatter. A writer that
->   writes a file without frontmatter quotes a cell whose value is `---`
->   (`"---"`), so the file cannot be read as having frontmatter.
-> - **`.ycsv` vs `.csv` without frontmatter** have the same content. The
->   extension decides what the editor may add without asking (§2.4): a
->   `.ycsv` may gain frontmatter freely, a `.csv` asks first.
-> - **Writers add frontmatter only when needed:** for `header` when the
->   detected value is not the wanted one, for `columns`, defs, cells,
->   styles, charts or a second sheet.
+- the file is a single sheet;
+- whether the first row is a header is detected (§4.1);
+- column refs come from the header text (§4.4), or are letters (§4.2);
+- formulas are allowed.
+
+In a file without frontmatter, a `---` line is data (a one-cell row), not a
+separator. A second sheet needs frontmatter.
+
+**Splitting bodies.** After the frontmatter, each further `---` line starts
+the next CSV body, in the order of the `sheets` array. Only a `---` line
+that is outside a quoted CSV field separates bodies; inside a quoted field it
+is part of the value. Writers quote every cell whose value contains a line
+that is exactly `---`, so readers that split naively still split correctly.
+
+Cross-file references are not supported. All sheets must be in the same
+file.
 
 ### 2.1 File extension
 
-`.ycsv`
+`.ycsv`. A `.csv` file is read as a YCSV file without frontmatter; see §2.4
+for how editors write it.
 
 ### 2.2 Encoding
 
-> **Proposal (spike 11):** readers strip a leading BOM; writers never write one (P24).
+> **Spike 11 decision:** **P24** accepted (bulk). The no-BOM rule is for `.ycsv` only (K9).
 
-UTF-8. No BOM.
+UTF-8. Readers strip a leading UTF-8 BOM (Excel writes one in its "CSV
+UTF-8" output). Writers of `.ycsv` files never write one.
 
 ### 2.3 Line endings
 
-> **Proposal (spike 11):** CR/CRLF inside a quoted cell is normalised to LF (P23).
+> **Spike 11 decision:** **P23** accepted (bulk). LF on write is for `.ycsv` only (K9).
 
-LF (`\n`) preferred. CRLF (`\r\n`) tolerated.
+LF (`\n`) preferred. CRLF (`\r\n`) tolerated, including on the `---` lines.
+A CR or CRLF inside a quoted field is normalised to LF on read. Writers of
+`.ycsv` files emit LF.
 
 ### 2.4 Plain CSV
 
-> **Decision (spike 11, P32):** accepted (Wouter).
+> **Spike 11 decision:** **P32** accepted, with its details (keep the dialect; `=` is text in a `.csv`) accepted in bulk. K9, K19.
 
-- **A plain CSV is a valid YCSV sheet.** That means a file without
-  frontmatter: one sheet, header detected (§4.1), no formulas or formatting.
+- **A plain CSV is a valid YCSV sheet:** one sheet, no frontmatter, header
+  detected (§4.1).
 - **A `.csv` stays a plain CSV while only values change.** An editor that
   opens a `.csv` writes it back as plain CSV, as long as the user only edits
   values, adds or removes rows and columns, or edits the header.
-- **It becomes `.ycsv` only when a YCSV-only feature is used.** These are a
-  formula, a type or format, a style, validation, a note, a merge, a
-  def, a second sheet, a chart, or a header choice that differs from what
-  detection would guess (a plain CSV cannot store `header`). At that moment
-  the editor asks the user first. The answer is either "save as .ycsv"
-  (a new file next to the CSV, or a rename) or "keep CSV" (the feature is
-  not applied).
+- **It becomes `.ycsv` only when a YCSV-only feature is used:** a formula, a
+  type or format, a style, validation, a note, a merge, a def, a second
+  sheet, a chart, or a header choice that differs from what detection would
+  guess (a plain CSV cannot store `header`). At that moment the editor asks
+  the user first. The answer is either "save as .ycsv" (a new file next to
+  the CSV, or a rename) or "keep CSV" (the feature is not applied).
+- **Keep the dialect.** A `.csv` written back keeps the separator (`,` or
+  `;`), line endings, BOM, quoting style and number format it was read with,
+  so the tools that made it can read it again. The `.ycsv` writing rules
+  (§2.2, §2.3, §7) do not apply to it.
+- **No formulas in a `.csv`.** A value starting with `=` in a `.csv` is text,
+  because CSV has no formulas. Typing a formula is the trigger above. A
+  `.ycsv` file without frontmatter may hold formulas.
 
-> **Proposal (spike 11, P32 details):**
-> - **Keep the dialect.** A CSV written back keeps the separator (`,` or
->   `;`), line endings, BOM, quoting style and number format it was read
->   with, so the tools that made it can read it again.
-> - **No formulas in a plain CSV.** A value starting with `=` in a plain
->   `.csv` is text, because CSV has no formulas. Typing a formula is the
->   trigger above.
+### 2.5 YAML
 
+> **Spike 11 decision:** **P25** accepted (bulk). Wouter: the editor writes block style; readers accept flow style as normal YAML.
+
+The frontmatter is YAML 1.2, core schema: `no`, `on` and `yes` are strings,
+and `010` is the decimal number 10, not octal. Readers accept any valid YAML,
+including flow style (`style: { bold: true }`). Writers write block style
+(indented mappings and lists).
 
 ---
 
 ## 3. YAML frontmatter
 
-### Required fields
+### 3.1 Fields
 
-| Field          | Type    | Description                  |
-| -------------- | ------- | ---------------------------- |
-| `ycsv_version` | integer | Spec version. Currently `1`. |
+> **Spike 11 decision:** `ycsv_version` no longer required (K4); when writers write frontmatter (P34, K3). Section numbers in §3 changed: old §3.1 is §3.2, old §3.2 is §3.3, old §3.3 is §3.4, old §3.5 is §3.7.
 
-### Optional fields
+All fields are optional.
 
-| Field         | Type    | Description                                                                            |
-| ------------- | ------- | -------------------------------------------------------------------------------------- |
-| `name`        | string  | Human-readable sheet name.                                                             |
-| `description` | string  | Free-text description.                                                                 |
-| `created`     | date    | ISO 8601 date.                                                                         |
-| `author`      | string  | Author name.                                                                           |
-| `columns`     | array   | Ordered list of column definitions. See §3.1.                                          |
-| `defs`        | mapping | Named values (scalars or mappings) referenceable in formulas and validation. See §3.3. |
-| `cells`       | mapping | Cell-specific formatting overrides. See §3.5.                                          |
-| `charts`      | array   | Vega-Lite chart definitions. See §12.                                                  |
-| `header`      | boolean | Whether the first CSV row is a header (row 0). See §4.1. Writers always write it.      |
+| Field          | Type    | Description                                                                 |
+| -------------- | ------- | --------------------------------------------------------------------------- |
+| `ycsv_version` | integer | Spec version, `1`. A file without it is read as version 1. Writers write it. |
+| `name`         | string  | Human-readable sheet name.                                                  |
+| `description`  | string  | Free-text description.                                                      |
+| `created`      | date    | ISO 8601 date.                                                              |
+| `author`       | string  | Author name.                                                                |
+| `defs`         | mapping | Named values referenceable in formulas and validation. See §3.4.            |
+| `sheets`       | array   | Sheets of a multi-sheet file. See §3.2.                                     |
 
-### 3.1 Multi-sheet files
+A single-sheet file may also carry every sheet field of §3.2 (except `ref`,
+`hidden` and `tab_color`) at the top level: `header`, `columns`, `cells`,
+`merges`, `notes`, `validate`, `freeze` and `charts`.
 
-> **Decision (spike 11):** `header: true|false` per sheet is accepted (P2/P27, §4.1).
->
-> **Proposal (spike 11):** add `hidden`, `tab_color`, `freeze`, `merges`, `notes`, `validate` per sheet; Unicode ref grammar (P3, P10, P11, P14, P15, P17).
+**When writers write frontmatter.** Only when something needs it: a type,
+format, style, validation, note, merge, def, freeze, chart, a second sheet,
+or a `header` value that detection (§4.1) would not guess. Whenever a writer
+writes frontmatter, it includes `ycsv_version` and, per sheet, `header`.
 
-When a file contains multiple sheets, define them in a `sheets` array in the
-frontmatter. Each entry has a `ref` (required) and may include all the fields
-that would otherwise appear at the top level: `columns`, `defs`, `cells`,
-and `charts`.
+### 3.2 Sheets
 
-| Field     | Required | Type    | Description                                                                                                |
-| --------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| `ref`     | no       | string  | Sheet identifier. Used in cross-sheet formula references. Defaults to `sheet1`, `sheet2`, etc. if omitted. |
-| `name`    | no       | string  | Display name. Defaults to `ref` if omitted.                                                                |
-| `header`  | no       | boolean | Whether this sheet's first CSV row is a header (row 0). See §4.1. Writers always write it.                |
-| `columns` | no       | array   | Column definitions. See §3.2.                                                                              |
-| `defs`    | no       | mapping | Sheet-local defs. Merged with top-level defs; sheet-level takes precedence.                                |
-| `cells`   | no       | mapping | Cell-specific overrides. See §3.5.                                                                         |
-| `charts`  | no       | array   | Chart definitions. See §12.                                                                                |
+> **Spike 11 decision:** **P2/P27** (`header`), **P3/P17** (`hidden`, `tab_color`, sheet ref grammar), **P10**, **P11**, **P14**, **P15** accepted.
+
+When a file contains multiple sheets, they are defined in a `sheets` array.
+The order of the array is the order of the sheets and of the CSV bodies.
+
+| Field       | Type    | Description                                                                                        |
+| ----------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `ref`       | string  | Sheet identifier, used in cross-sheet references. Defaults to `sheet1`, `sheet2`, etc.             |
+| `name`      | string  | Display name. Defaults to `ref`.                                                                   |
+| `header`    | boolean | Whether the first CSV row is a header (row 0). See §4.1.                                           |
+| `hidden`    | boolean | Hidden sheet (Excel "hidden" and "very hidden" both map here).                                     |
+| `tab_color` | string  | Hex colour of the sheet tab.                                                                       |
+| `columns`   | array   | Column definitions. See §3.3.                                                                      |
+| `defs`      | mapping | Sheet-local defs. Merged with top-level defs; sheet-level takes precedence.                        |
+| `cells`     | mapping | Cell overrides. See §3.7.                                                                          |
+| `merges`    | array   | Merged ranges. See §3.8.                                                                           |
+| `notes`     | mapping | Cell notes. See §3.8.                                                                              |
+| `validate`  | array   | Validation rules for cell ranges. See §3.3.2.                                                      |
+| `freeze`    | mapping | Frozen rows and columns. See §3.8.                                                                 |
+| `charts`    | array   | Chart definitions. See §12.                                                                        |
+
+A sheet `ref` follows the same rules as a column ref (§8.2): any text,
+quoted in formulas when it is not an identifier, unique per file
+case-insensitively.
 
 ```yaml
 ---
@@ -162,6 +199,7 @@ defs:
 sheets:
   - ref: producten
     name: Productenoverzicht
+    header: true
     columns:
       - ref: product
         type: string
@@ -170,11 +208,7 @@ sheets:
         currency: EUR
         locale: nl-NL
   - ref: categorieën
-    columns:
-      - ref: id
-        type: string
-      - ref: label
-        type: string
+    header: true
 ---
 product,prijs
 Appels,0.45
@@ -185,40 +219,50 @@ zuivel,Zuivel
 groente,Groente
 ```
 
-Top-level `defs` are shared across all sheets. Sheet-level `defs`
-are local to that sheet.
+Top-level `defs` are shared across all sheets. Sheet-level `defs` are local
+to that sheet.
 
-### 3.2 Column definitions
+### 3.3 Column definitions
 
-`columns` is optional. When omitted, all columns fall back to A-Z identifiers
-(see §4).
+> **Spike 11 decision:** **P9** (`excel_format`), **P11** (`width`, `hidden`), **P31** accepted. `ref` grammar K12; `name` under a header K13.
 
-Each entry in `columns` is a YAML block mapping. Column order must match CSV
-column order.
+`columns` is optional, an enrichment of the CSV columns. A CSV with a header
+row is a complete sheet without it; `columns` adds a ref, a type, formats,
+styles and validation. How definitions attach to CSV columns is in §4.3.
 
-| Field      | Required | Type    | Description                                                                      |
-| ---------- | -------- | ------- | -------------------------------------------------------------------------------- |
-| `ref`      | no       | string  | Identifier used in formulas. Lowercase, no spaces. Falls back to A-Z if omitted. |
-| `name`     | no       | string  | Display name. Defaults to `ref` (or A-Z fallback) if omitted.                    |
-| `type`     | no       | string  | See §5. Defaults to `string`.                                                    |
-| `style`    | no       | mapping | Column-level styling. See §3.1.1.                                                |
-| `validate` | no       | mapping | Input validation rules. See §3.1.2.                                              |
+| Field          | Type    | Description                                                                                         |
+| -------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `ref`          | string  | Identifier used in formulas (§8.2). Defaults to the header text (§4.4), else the column letter.     |
+| `name`         | string  | Without a header: the display name. With a header: the expected header text, used for matching.     |
+| `type`         | string  | See §5. Defaults to `string`.                                                                       |
+| `style`        | mapping | Column-level styling. See §3.3.1.                                                                   |
+| `validate`     | mapping | Input validation rules. See §3.3.2.                                                                 |
+| `width`        | number  | Column width in CSS pixels.                                                                         |
+| `hidden`       | boolean | Hidden column.                                                                                      |
+| `excel_format` | string  | Original Excel or ODF number format code. Renderers ignore it; exporters write it back.             |
 
-Additional Intl formatting fields may be present depending on `type` (see §6).
+Additional Intl formatting fields may be present depending on `type` (§6).
 
-#### 3.1.1 Conditional styling
+#### 3.3.1 Styling
 
-Style properties live under a `style` key on the column definition. `fill` and
-`color` accept either a static hex value or a conditional formula. In a styling
-formula, `IF` takes an implicit left-hand operand — the value of the current
-cell in the current row. `AND`, `OR`, and `NOT` are supported.
+> **Spike 11 decision:** **P16** accepted (bulk): `italic`, `underline`, `align`, `wrap`.
+
+Style properties live under a `style` key on a column definition or a cell
+override (§3.7). `fill`, `color` and `bold` accept either a static value or
+a conditional formula. In a styling formula, `IF` takes an implicit
+left-hand operand — the value of the current cell. `AND`, `OR`, and `NOT`
+are supported, and `IF` may be nested.
 
 | Style field | Type                          | Description                                   |
 | ----------- | ----------------------------- | --------------------------------------------- |
-| `fill`      | string                        | Background color. Hex or conditional formula. |
-| `color`     | string                        | Text color. Hex or conditional formula.       |
-| `bold`      | boolean or conditional string | Bold text. Accepts `IF(...)` formula.         |
-| `border`    | boolean                       | Apply border. Renderer controls thickness.    |
+| `fill`      | string                        | Background colour. Hex or conditional formula. |
+| `color`     | string                        | Text colour. Hex or conditional formula.       |
+| `bold`      | boolean or conditional string | Bold text. Accepts `IF(...)` formula.          |
+| `italic`    | boolean                       | Italic text.                                   |
+| `underline` | boolean                       | Underlined text.                               |
+| `align`     | string                        | `left`, `center` or `right`.                   |
+| `wrap`      | boolean                       | Wrap text in the cell.                         |
+| `border`    | boolean                       | Apply border. Renderer controls thickness.     |
 
 ```yaml
 columns:
@@ -235,58 +279,70 @@ columns:
     style:
       fill: "#f9f9f9"
       bold: true
+      wrap: true
 ```
 
-Nested `IF` is supported.
+#### 3.3.2 Validation
 
-#### 3.1.2 Validation
+> **Spike 11 decision:** **P15** accepted (bulk), with K7 (`at` for the address, `range` with `integer`, no `range_value`) and K18 (rows).
 
-`validate` defines input rules for a column. All fields are optional and may
-be combined.
+`validate` on a column defines input rules for that column. All fields are
+optional and may be combined.
 
-| Field      | Type              | Description                                                                            |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------- |
-| `required` | boolean           | Cell must not be empty.                                                                |
-| `range`    | mapping           | Numeric bounds with optional `min` and/or `max`.                                       |
-| `list`     | string or mapping | Name of a mapping def, or a cross-sheet def reference (see §3.4). Renders as dropdown. |
-| `pattern`  | string            | ECMAScript regex the value must match.                                                 |
+| Field      | Type            | Description                                                                                          |
+| ---------- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| `required` | boolean         | Cell must not be empty.                                                                              |
+| `range`    | mapping         | Numeric bounds: optional `min`, `max`, and `integer: true` for whole numbers only.                   |
+| `list`     | string or array | A mapping def name (§3.4), a range formula (`=categorieën!id1:id3`), or an array of values. Renders as a dropdown. |
+| `pattern`  | string          | ECMAScript regex the value must match.                                                               |
 
 ```yaml
 columns:
   - ref: categorie
     validate:
       required: true
-      list: categorieën # refers to constants.categorieën
+      list: categorieën # a mapping def
 
   - ref: score
     validate:
       range:
         min: 0
         max: 100
+        integer: true
+
+  - ref: status
+    validate:
+      list: [actief, inactief]
 
   - ref: postcode
     validate:
       pattern: "^[0-9]{4}[A-Z]{2}$"
+```
 
-  - ref: email
-    validate:
-      pattern: "^[^@]+@[^@]+\\.[^@]+$"
+**Rules for cell ranges.** A sheet's `validate` is a list of rules that
+apply to an address (§3.6) instead of a whole column. Each rule has `at` and
+the same fields as above:
 
-  - ref: bedrag
-    validate:
-      required: true
-      range:
-        min: 0
+```yaml
+validate:
+  - at: categorie1:categorie5
+    list: =categorieën!$id$1:$id$3
+  - at: aantal1:aantal5
+    range:
+      min: 0
+      max: 1000
+      integer: true
 ```
 
 Validation is enforced by the renderer on user input. Error presentation
 (inline warning, blocking input, etc.) is renderer-defined.
 
-### 3.3 Defs
+### 3.4 Defs
 
-`defs` is an optional YAML mapping of named values. Defs may be
-referenced by name in any formula or validation rule, without a row number
-suffix.
+> **Spike 11 decision:** **P13** accepted (bulk), rows fixed (K18). Name collisions K14.
+
+`defs` is a YAML mapping of named values. Defs may be referenced by name in
+any formula or validation rule, without a row number.
 
 Scalar defs:
 
@@ -301,119 +357,158 @@ Mapping defs (key/label pairs, usable as dropdown sources):
 
 ```yaml
 defs:
-  btw: 0.21
   categorieën:
     zuivel: Zuivel
     groente: Groente
     fruit: Fruit
-  status:
-    actief: Actief
-    inactief: Inactief
 ```
 
-Types are inferred from the YAML value. No explicit `type` declaration is
-needed.
+Range defs: a def value may be a formula that yields a range. This is how
+Excel named ranges import.
 
-Defs are referenced by name in formulas. The parser resolves names by
-looking up `columns` first, then `defs` — so column refs take precedence
-over defs with the same name.
+```yaml
+defs:
+  cats: =categorieën!$id$1:$korting$3
+```
+
+Types are inferred from the YAML value.
 
 ```
 =prijs1*(1+btw)
 =IF(categorie1=categorieën.zuivel,"ja","nee")
-=IF(aantal1>=min_voorraad,prijs1*0.9,prijs1)
+=VLOOKUP("fruit",cats,3,FALSE)
 ```
 
 In a mapping def, `.key` notation accesses the key's label:
 `categorieën.zuivel` evaluates to `"Zuivel"`.
 
-### 3.4 Cross-sheet constants
+**Names.** Column refs take precedence over defs with the same name
+(compared case-insensitively). Because header texts become refs (§4.4), a
+header can shadow a def; readers warn when a def and a column ref of the same
+sheet share a name.
 
-Defs may also be scoped per sheet (see §3.1). Sheet-level defs take precedence
-over top-level defs with the same name.
+### 3.5 Cross-sheet constants
+
+Defs may also be scoped per sheet (§3.2). Sheet-level defs take precedence
+over top-level defs with the same name. A def may be a list:
 
 ```yaml
-# cross-sheet example — categorieën defined in stamdata.ycsv
 defs:
-  categorieën:
-    - Zuivel
-    - Groente
-    - Fruit
-    - Bakkerij
-    - Dranken
   statussen:
     - Actief
     - Inactief
     - Archief
 ```
 
-### 3.5 Cell overrides
+### 3.6 Addresses
 
-> **Proposal (spike 11):** cells may carry `type`, format options and `excel_format`; add `italic`, `underline`, `align`, `wrap` (P9, P16). Addresses use YCSV row numbers, header = row 0 (P29).
+> **Spike 11 decision:** **P29** accepted in Wouter's changed form: the formula ref grammar, header row = row 0, no `header:` style key. YAML quoting checked with the `yaml` package in `prototypes/ycsv/interop/csv/yaml-keys.test.ts` (15 cases). K5, K6, K20.
 
-`cells` is a YAML mapping of cell references to style objects. Keys may be
-single cells (`A1`), ranges (`A1:H1`), or column refs (`totaalwaarde`).
-Cell-level overrides take precedence over column-level styling.
+The keys of `cells` and `notes`, the entries of `merges`, and `at` in sheet
+`validate` rules are **addresses**. An address uses exactly the formula ref
+grammar of §8.2 and §8.3, with the same row numbers (§7.1):
 
-| Style field | Type                          | Description                                   |
-| ----------- | ----------------------------- | --------------------------------------------- |
-| `bold`      | boolean or conditional string | Bold text. Accepts `IF(...)` formula.         |
-| `fill`      | string                        | Background color. Hex or conditional formula. |
-| `color`     | string                        | Text color. Hex or conditional formula.       |
-| `border`    | boolean                       | Apply border. Renderer controls thickness.    |
+| Address              | Means                                                     |
+| -------------------- | --------------------------------------------------------- |
+| `prijs3`             | the cell in column `prijs`, data row 3                    |
+| `product0:totaal0`   | the header cells from `product` to `totaal` (header = row 0) |
+| `prijs1:aantal5`     | a rectangle                                               |
+| `totaal:totaal`      | the whole `totaal` column                                 |
+| `"'Prijs incl. BTW'3"` | a quoted ref (§8.2); the whole YAML key is double-quoted |
+| `B4`                 | column B, row 4 — only when column B has no ref (§4.2)    |
+
+- `$` markers are allowed and ignored.
+- A bare ref without a row (`totaalwaarde`) is accepted as the whole column,
+  the same as `totaalwaarde:totaalwaarde`. Writers write the range form.
+- **YAML quoting.** A key that contains a quoted ref is invalid YAML when
+  written bare (`'Prijs incl. BTW'3:`), so writers double-quote the whole key:
+  `"'Prijs incl. BTW'3":`. Plain refs and ranges (`product0:totaal0`,
+  `$prijs$3`, `categorieën1:categorieën3`) are valid plain YAML keys.
+- **No silent misses.** An address that does not name a cell of the sheet (an
+  unknown ref, invalid YAML) is an error that names the key. The entry is not
+  applied; the rest of the file still loads.
+- When a column is renamed or moved in an editor, the editor rewrites the
+  addresses together with the formulas.
+
+### 3.7 Cell overrides
+
+> **Spike 11 decision:** **P9** and **P21** (`source_formula`) accepted; addresses per P29 (K5). Example uses `product0:totaal0`.
+
+`cells` is a mapping of addresses (§3.6) to overrides. Cell overrides take
+precedence over column definitions; later keys win over earlier ones.
+
+| Field            | Description                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `style`          | Style fields of §3.3.1.                                                              |
+| `type`           | A type of §5 for this cell, with the format options of §6. Report sheets mix types in one column. |
+| `excel_format`   | Original number format code, as on a column.                                         |
+| `source_formula` | The original formula of a cell whose function is not supported (§8.1). The cell holds the last value. |
 
 ```yaml
 cells:
-  A1:H1:
+  product0:totaal0:
     style:
       bold: true
       fill: "#f5f5f5"
-  D8:
+  totaal4:
+    type: currency
+    currency: EUR
     style:
       bold: true
       border: true
-  totaalwaarde:
+  totaalwaarde:totaalwaarde:
     style:
       bold: IF(totaalwaarde > 200)
       color: IF(totaalwaarde > 200, "#2e7d32")
 ```
 
+### 3.8 Merges, notes, freeze and sizes
+
+> **Spike 11 decision:** **P10**, **P14**, **P11** accepted. Editor decisions: frozen rows are shared and live in the file; fixed row height in v1 with room for a per-row height later (K15).
+
+- **`merges`:** a list of ranges (`- product0:totaal0`). The top-left cell
+  holds the value; the other cells must be empty.
+- **`notes`:** a mapping of addresses to plain text
+  (`prijs1: Prijs per stuk`). Comment authors and threads are not kept.
+- **`freeze`:** `{rows: n, columns: n}`, the number of frozen rows and
+  columns from the top left. The header row counts as a row. Freezing is part
+  of the document, shared by everyone who opens it.
+- **Sizes:** column `width` and `hidden` are on the column definition
+  (§3.3). v1 has a fixed row height and stores no row heights. The key
+  `row_heights` (a mapping of row numbers to CSS pixels) is reserved for a
+  later version; v1 readers ignore it (§14).
+
 ---
 
-## 4. Column identity and fallback
+## 4. Column identity
 
-> **Decision (spike 11, P31):** the header row stays in the CSV body, and `columns` is an optional enrichment. A plain CSV with a header row is a complete sheet; `columns` only adds `ref`, `type`, format and validation. Wouter: "ik vond het ook wel elegant dat de columns een verrijking waren maar je met gewone csv header row kunt starten, zeker voor mensen die gewoon source typen."
->
-> **Proposal (spike 11, P31 C1–C5):** how `columns` attaches to the CSV columns, in §4.3. It replaces "matched by name" in the table below.
+> **Spike 11 decision:** **P31** accepted (header in the body, `columns` as enrichment).
 
-YCSV resolves column identity in the following order:
+The header row stays in the CSV body. `columns` is an optional enrichment.
 
-| Situation                                | Column identity                           |
-| ---------------------------------------- | ----------------------------------------- |
-| `columns` with `ref` + header row in CSV | `ref` names, matched by name              |
-| `columns` with `ref`, no header row      | position, `ref` from frontmatter          |
-| No `columns`, header row present         | header values used as refs, no types (§4.4, P33) |
-| No `columns`, no header row              | position, A-Z fallback (`A`, `B`, `C`...) |
+| Situation                         | Column identity                                                 |
+| --------------------------------- | --------------------------------------------------------------- |
+| Header row, no `columns`          | refs from the header text (§4.4), no types                      |
+| Header row and `columns`          | definitions attach by ref or name, then by position (§4.3)      |
+| No header row, `columns`          | by position; refs from `columns`, letters where missing         |
+| No header row, no `columns`       | by position, letters (`A`, `B`, `C`…)                           |
 
 ### 4.1 Header row
 
-> **Decision (spike 11):** P2/P27 **accepted** (Wouter). The explicit `header` flag and the detection rules below replace the old text of this section, which read: "A header row is the first CSV row where all values are non-numeric strings matching known `ref` names (or any strings when no `columns` is defined)."
+> **Spike 11 decision:** **P2/P27** accepted; when the flag is written follows P34 (K3).
 
 Whether the first CSV row is a header is stated by the `header` field:
-`header: true` or `header: false`. It sits at the top level of a
-single-sheet file and on each entry of `sheets` (§3.1).
+`header: true` or `header: false`, at the top level of a single-sheet file
+and on each entry of `sheets`.
 
-- **The flag wins.** When `header` is present, parsers use it and never
+- **The flag wins.** When `header` is present, readers use it and never
   guess.
-- **Detection only when it is missing.** This covers a plain CSV file
-  without frontmatter, and older files. The parser applies the rules below.
-- **Writers always write the flag.** Whenever a file is written, a
-  conversion from CSV or an import from XLSX, ODS or Numbers included, the
-  result of detection is recorded as `header: true|false`. After that the
-  file never depends on detection again.
-- **A header row is row 0** (§7.1). It holds column names, not data. With a
-  header, parsers match CSV columns to `columns` by name, so reordering
-  columns in the CSV is safe.
+- **Detection only when it is missing,** for example in a file without
+  frontmatter. Readers apply the rules below.
+- **Writers write the flag whenever they write frontmatter** (§3.1), and
+  write frontmatter for it when detection would give the wrong answer, for
+  example `header: false` for a first row of plain words that are data.
+- **A header row is row 0** (§7.1). It holds column names, not data.
 
 **Detection rules.** Apply them in order; the first rule that decides wins.
 "Row 1" is the first line of the CSV body.
@@ -423,7 +518,7 @@ single-sheet file and on each entry of `sheets` (§3.1).
 | D1 | Row 1 is missing or fully empty | no header |
 | D2 | `columns` is defined: every non-empty value in row 1 matches a column `ref` or `name` (trimmed, case-insensitive) | header; otherwise no header |
 | D3 | Fewer than two non-empty rows | no header |
-| D4 | A value in row 1 is empty, a number (§7.3, P8), an ISO date or time, `true`/`false`, a formula (`=`) or a literal (`'`) | no header |
+| D4 | A value in row 1 is empty, a number (§7), an ISO date or time, `true`/`false`, a formula (`=`) or a literal (`'`) | no header |
 | D5 | Two values in row 1 are equal (trimmed, case-insensitive) | no header |
 | D6 | Some column has a number, date, boolean or formula below row 1 | header |
 | D7 | All text: header unless a row-1 value occurs again in its own column below | header / no header |
@@ -431,72 +526,68 @@ single-sheet file and on each entry of `sheets` (§3.1).
 D7 is the weakest guess. A list of names with a header ("Naam,Plaats")
 gives a header; a list whose first row repeats further down does not.
 
-**Toggling.** Users can switch "first row is header" on and off. That only
-changes how the file numbers its rows (P1 decision: the header is row 0):
+**Toggling.** Users can switch "first row is header" on and off. That
+changes how the file numbers its rows:
 - **On:** the former data row 1 becomes the header and every other row moves
   up by one.
 - **Off:** the header becomes data row 1 and the other rows move down by one.
 
-Editors that keep formulas by row identity (for example row ids in a Yjs
-document) rewrite only the row numbers when they write the file form; what
-each formula points at does not change. Column refs keep their names. When
-the header is switched off, the writer keeps the refs in `columns` (with the
+Editors that keep formulas by row identity rewrite only the row numbers when
+they write the file; what each formula points at does not change. When the
+header is switched off, the writer keeps the refs in `columns` (with the
 former header text as `name`), so formulas such as `prijs3` keep working and
-do not fall back to A-Z.
+do not fall back to letters.
 
-### 4.2 A-Z fallback
+### 4.2 Letter fallback
 
-When no `ref` is defined for a column, it is assigned a letter identifier:
-`A` for the first column, `B` for the second, and so on (up to `Z`, then
-`AA`, `AB`, etc. following spreadsheet convention). These identifiers may be
-used in formulas.
+> **Spike 11 decision:** Letters only for columns without a ref (P33 H6, K10).
+
+A column without a ref gets a letter: `A` for the first column, `B` for the
+second, and so on (up to `Z`, then `AA`, `AB`, etc.). Letters are refs only
+for columns without a ref: in a sheet whose column B has the header
+`prijs`, `B3` is not that column. When a column's letter is the ref of
+another column (a header `A`), the column has no ref until it gets a header
+or a `columns` ref.
 
 ### 4.3 Matching `columns` to the CSV columns
 
-> **Proposal (spike 11).** Not decided. Prototype and cases: `prototypes/ycsv/interop/csv/resolve-columns.ts`.
+> **Spike 11 decision:** **C1–C5** accepted (bulk), with C2 also matching `name` (K13).
 
 With a header row:
 
-- **C1 — The header text is the display name.** `columns[i].name` is
-  ignored when a header row is present. A reader warns when it differs from
-  the header text. Writers do not write `name` for a sheet with
-  `header: true`.
-- **C2 — Match by ref first.** A definition whose `ref` equals a header text
-  (compared as in §4.4: NFC, trimmed, whitespace folded, case-insensitive;
-  a slug match also counts, for refs that older importers slugged) attaches
-  to that column,
-  wherever it is in the CSV. When a hand-typed or tool-edited CSV moves
-  columns, they keep their type and their formulas.
+- **C1 — The header text is the display name.** When `name` is given and
+  differs from the header text, the header text is shown and the reader
+  warns.
+- **C2 — Match by ref or name first.** A definition whose `ref` or `name`
+  equals a header text (compared as in §4.4: NFC, trimmed, whitespace
+  folded, case-insensitive) attaches to that column, wherever it is in the
+  CSV. When a hand-typed or tool-edited CSV moves columns, they keep their
+  type and their formulas.
 - **C3 — Then by position.** Definitions that matched nothing attach to the
-  remaining columns in order, with a warning (header text ≠ ref).
+  remaining columns in order, with a warning (the header text matches
+  neither `ref` nor `name`).
 - **C4 — Count differences.**
   - More CSV columns than definitions: the extra columns are untyped, and
     their ref is the header text (§4.4).
   - More definitions than CSV columns: the extra definitions are unused and
     the reader warns. Formulas that use their refs give `#REF!`.
-- **Writers keep C2 working.** A new column gets `ref` = its header text
-  (§4.4), so a writer need not write `ref` at all when it equals the header.
-  When a header is renamed in our editor, see §4.4 "Renaming a header".
+- **Writers keep C2 working.** A column's ref is its header text, and then a
+  writer need not write `ref` at all. When the ref differs from the header
+  text (an imported or renamed column), the writer writes both `ref` and
+  `name` (the header text).
 
 Without a header row:
 
-- **C5 — Position only.** `columns[i].name` is the display name, and the
-  A-Z fallback (§4.2) fills missing refs.
-
-Trade-off: a pure position rule is simpler, but when an outside tool
-reorders the columns, types, validation and formula targets silently move to
-the wrong column. With C2, that only happens to columns whose header text is
-not their ref, and then the reader warns.
+- **C5 — Position only.** `name` is the display name, and the letter
+  fallback (§4.2) fills missing refs.
 
 ### 4.4 Refs from the header text
 
-> **Proposal (spike 11, P33).** Not decided. Folds into P12/P28 (Appendix B.4). Prototype and cases: `prototypes/ycsv/interop/csv/header-refs.ts`.
+> **Spike 11 decision:** **P33** accepted as proposed. Duplicate handling for writers is product decision 10 (K2: ref follows the renamed header text; Wouter to confirm).
 
-A file without frontmatter (§2, P34), or a sheet with a header and no
-`columns`, has nowhere to store a generated ref. So the ref follows from the
-header text alone, by a fixed rule that every reader applies the same way.
-The rule keeps the text as it is and uses the quoted-ref syntax of P12/P28
-for anything that is not a plain identifier. It does not slug.
+A sheet with a header has a ref for every named column even without
+frontmatter. The ref follows from the header text alone, by a fixed rule that
+every reader applies the same way:
 
 - **H1 — The ref is the header text,** in Unicode NFC, trimmed, with every
   run of whitespace replaced by one space. `  BTW   tarief ` gives
@@ -515,70 +606,72 @@ for anything that is not a plain identifier. It does not slug.
   | `Jan's uren` | `'Jan''s uren'3` | apostrophe doubled |
 
 - **H3 — Case-insensitive.** Refs compare case-insensitively (Unicode lower
-  case), like names in Excel and LibreOffice: `prijs3` finds the header
-  `Prijs`. Writers keep the header's own spelling. This replaces "case-
-  sensitive" in P12/P28.
+  case): `prijs3` finds the header `Prijs`. Writers keep the header's own
+  spelling.
 - **H4 — An empty header cell gives no ref.**
 - **H5 — Duplicate header texts give no ref,** all of them, compared after
-  H1 and H3 (`naam`, `Naam`). Not "the first one wins" and not a suffix by
+  H1 and H3 (`naam`, `Naam`). Not "the first one wins", and not a suffix by
   position: when a column moves, a positional suffix would make formulas
   point at another column without any sign.
 - **H6 — Columns without a ref use their letter** (§4.2), unless that letter
-  is the ref of another column (a header `A`); then the column has no ref
-  and formulas can only reach it after it gets a header. Header refs win.
+  is the ref of another column; then the column has no ref.
 - **Never silent.** Each column that loses its name under H4–H6 is a reader
-  warning, and a formula that uses a name with no column gives `#REF!`
-  (`#NAME?` in Excel terms) with a warning.
+  warning, and a formula that uses a name with no column gives `#REF!` with a
+  warning.
 
-Letters are refs only for columns without a ref (§4.2). With a header row,
-`B3` is not column B when column B has a header; it is the column whose
-header is `B`, or `#REF!`.
+**Writers never write duplicate header texts.** When a user, a concurrent
+edit or an import produces a second column with an existing header text, the
+editor renames the later column: `omzet` becomes `omzet 2` (then `omzet 3`,
+the first free number), and its ref is the new header text (`'omzet 2'3`).
+Which column is "later" is decided by a stable column identity (in our
+editor, the column id), never by position, so every client renames the same
+column. H5 only applies to files written by other tools or by hand.
 
 **Renaming a header.**
-- **In a hand-edited file it breaks formulas.** The ref is the text, so
-  after renaming `prijs` to `stukprijs` in the source, `=prijs3` gives
-  `#REF!` with a warning. The reader cannot tell a rename from a removed
-  column plus a new one. People who type source rename the header and the
-  formulas together, as with any name in a text file.
+- **In a hand-edited file it breaks formulas.** The ref is the text, so after
+  renaming `prijs` to `stukprijs` in the source, `=prijs3` gives `#REF!` with
+  a warning. A reader cannot tell a rename from a removed column plus a new
+  one. People who type source rename the header and the formulas together.
 - **In a file with `columns`,** the ref can stay pinned: a definition with
   `ref: prijs` and header `stukprijs` attaches by position (C3, with a
   warning), and `=prijs3` keeps working.
-- **In our editor it is safe.** The Yjs document keeps formulas by column
-  and row id, so a rename changes the header only. When the editor writes
-  the file form, it writes formulas with the new ref (`=stukprijs3`).
-  Proposal: the editor always does this, so the file stays readable without
-  `columns.ref` and behaves the same with and without frontmatter.
-- **An outside tool that renames a header** (Excel over DAV, a script) is
-  the hand-edited case: formulas with the old name give `#REF!` after the
-  next read, with a warning. Proposal: when a read finds a ref that is
-  unknown and exactly one header disappeared at the same position since the
-  last version our editor saw, the editor offers to rename the ref in the
-  formulas. It must not do that by itself.
+- **In an editor that keeps formulas by column identity** a rename is safe:
+  the editor writes formulas and addresses with the new ref (`=stukprijs3`).
+- **When another tool renames a header,** formulas with the old name give
+  `#REF!` with a warning on the next read. An editor may offer to rename the
+  ref in the formulas when exactly one header changed at the same position;
+  it must not do that by itself.
 
 ---
 
 ## 5. Column types
 
-| Type       | Stored as             | Description                 |
-| ---------- | --------------------- | --------------------------- |
-| `string`   | plain text            | Default.                    |
-| `number`   | integer or decimal    |                             |
-| `currency` | decimal               | Rendered as monetary value. |
-| `percent`  | display value         | 50 = 50%, not 0.5.          |
-| `date`     | `YYYY-MM-DD`          | ISO 8601 date.              |
-| `time`     | `HH:MM:SS`            | ISO 8601 time.              |
-| `datetime` | `YYYY-MM-DDTHH:MM:SS` | ISO 8601 combined.          |
-| `boolean`  | `true` / `false`      |                             |
+> **Spike 11 decision:** **P6** (percent is a fraction) and **P5** (literal text) accepted.
 
-Renderers should use `type` for parsing and display. A cell value that cannot
-be parsed as the declared type is treated as a string and flagged as an error.
+| Type       | Stored as             | Description                                 |
+| ---------- | --------------------- | ------------------------------------------- |
+| `string`   | plain text            | Default.                                    |
+| `number`   | number (§7)           |                                             |
+| `currency` | number (§7)           | Rendered as monetary value.                 |
+| `percent`  | fraction              | `0.21` is 21%. `%` is display only (§6.3).   |
+| `date`     | `YYYY-MM-DD`          | ISO 8601 date.                              |
+| `time`     | `HH:MM:SS`            | ISO 8601 time.                              |
+| `datetime` | `YYYY-MM-DDTHH:MM:SS` | ISO 8601 combined, floating local time.     |
+| `boolean`  | `true` / `false`      |                                             |
+
+Renderers use `type` for parsing and display. A cell value that cannot be
+parsed as the declared type is treated as a string and flagged as an error.
+A cell override (§3.7) may give one cell another type.
+
+A value starting with `'` is literal text in every type (§7.5).
 
 ---
 
 ## 6. Display formatting
 
 Formatting is delegated to the platform's `Intl` library. Column definitions
-may include `Intl`-compatible options alongside `type`.
+and cell overrides may include `Intl`-compatible options alongside `type`.
+Formatting never changes the stored value.
 
 ### 6.1 Numbers and currency
 
@@ -590,8 +683,6 @@ Uses `Intl.NumberFormat`. Relevant options:
 | `locale`                | `nl-NL` | BCP 47 locale. Defaults to renderer's system locale.    |
 | `minimumFractionDigits` | `2`     | Passed directly to `Intl.NumberFormat`.                 |
 | `maximumFractionDigits` | `2`     | Passed directly to `Intl.NumberFormat`.                 |
-
-Example renderer call:
 
 ```js
 new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
@@ -606,8 +697,6 @@ All three temporal types use `Intl.DateTimeFormat`. Relevant options:
 | `locale`    | `nl-NL` | BCP 47 locale. Defaults to renderer's system locale.                  |
 | `dateStyle` | `short` | `full`, `long`, `medium`, or `short`. Used for `date` and `datetime`. |
 | `timeStyle` | `short` | `full`, `long`, `medium`, or `short`. Used for `time` and `datetime`. |
-
-Example renderer calls:
 
 ```js
 // type: date
@@ -625,38 +714,59 @@ If neither `dateStyle` nor `timeStyle` is specified, the renderer uses the
 
 ### 6.3 Percent
 
-> **Proposal (spike 11):** store percent as a fraction, 0.21 = 21% (P6).
+> **Spike 11 decision:** **P6** accepted. Wouter: "percentage is puur een rendering ding". Reading `10%` K8.
 
-Stored as display value (50 = 50%). Renderer divides by 100 before passing
-to `Intl.NumberFormat` with `style: 'percent'`.
+The file always holds the fraction: `0.1` is 10%, as in every spreadsheet
+application. `%` is display only: the renderer passes the value unchanged to
+`Intl.NumberFormat` with `style: 'percent'`. Formulas see the fraction
+(`=200*marge2` is 100 for a 50% margin).
+
+Readers also accept a percent typed in a source cell: `10%` (a number of §7
+followed by `%`) is read as `0.1`. Writers write `0.1`.
 
 ### 6.4 Locale
 
-`locale` may be specified per column. If omitted, the renderer uses the user's
-system locale.
+`locale` may be specified per column. If omitted, the renderer uses the
+user's locale. Formula notation follows the user's locale in the editor and
+is canonical in the file (§8.8).
 
 ---
 
 ## 7. CSV body
 
-The CSV body follows the YAML frontmatter. Standard RFC 4180 rules apply:
+> **Spike 11 decision:** **P8** accepted (bulk), with the trailing `%` (K8).
 
-- Values are comma-separated. Quoted values may contain commas and newlines.
-- Empty cell: `,` (two adjacent commas, or trailing comma).
+The CSV body follows the frontmatter, or is the whole file. Standard
+RFC 4180 rules apply:
+
+- Values are comma-separated. Quoted values may contain commas, quotes
+  (doubled) and newlines.
+- Empty cell: `,` (two adjacent commas, or a trailing comma).
+
+**Numbers** use `.` as the decimal mark and no grouping:
+`-?\d+(\.\d+)?([eE][+-]?\d+)?`. Accounting notation `(9.99)` (§7.3) and a
+trailing `%` (§6.3) are accepted on read. A value outside this grammar is
+text.
 
 ### 7.1 Row numbering
 
-> **Decision (spike 11):** P1 (grid numbering) is **rejected**; this section stands. The first data row is row 1, a header row is row 0. A1 addresses in the frontmatter (`cells`, `merges`, `notes`, `validate`) use the same numbering (P29). See Appendix B.
+> **Spike 11 decision:** **P1** rejected: this section stands. Wouter's constraint: the grid number equals the formula number.
 
-Rows are numbered starting at **1** for the first data row. The header row
-(if present) is row 0 and is not counted as a data row.
+Rows are numbered starting at **1** for the first data row. The header row,
+if present, is row 0 and is not counted as a data row. Addresses in the
+frontmatter use the same numbers (§3.6).
+
+The row number a grid shows and the row number typed in formulas are the
+same number. A renderer shows no number on the header row, or 0, and 1 on
+the first data row. Converting to and from A1 spreadsheets maps the numbers:
+with a header in A1 row 1, A1 row 2 is YCSV row 1.
 
 ### 7.2 Empty rows
 
-> **Decision (spike 11, P30):** accepted (Wouter, after comparing both options on source examples). Empty rows keep their row number. This section replaces the old text, which read: "A fully empty row (all cells empty) is valid and has no data meaning. It serves as a visual separator between sections. Empty rows are skipped during formula evaluation and chart data injection. They are assigned no row number."
+> **Spike 11 decision:** **P30** accepted (Wouter: "A!"). Replaces the old text (empty rows had no number and were "skipped during formula evaluation").
 
 A fully empty row is valid and has no data meaning; it usually separates
-sections. It is a row like any other for numbering:
+sections. It is numbered like any other row:
 
 - **What counts as an empty row.** A line in the CSV body that is empty, that
   holds only spaces or tabs, or that holds only separators (`,,`). All its
@@ -665,189 +775,267 @@ sections. It is a row like any other for numbering:
   minus the header offset: with a header, body line 2 is row 1; without
   one, body line 1 is row 1. Numbers never jump, and typing into an empty
   row does not renumber the rows below it.
-- **Parsers must not skip blank lines.** Many CSV libraries do so by
-  default (an option such as `skipEmptyLines`); that must be off.
+- **Readers must not skip blank lines.** Many CSV libraries do so by default
+  (an option such as `skipEmptyLines`); that must be off.
 - **A blank line inside a quoted field is part of the value,** not a row.
 - **The final newline of the file is not a row.** Trailing empty rows carry
-  no meaning, may be dropped by writers and are not stored (P26). Readers
-  must not rely on them.
+  no meaning, writers drop them, and readers must not rely on them.
 - **In formulas, cells of an empty row are blank cells,** like any other
-  empty cell. As in Excel: a blank is `0` in arithmetic and `""` in text,
-  and `SUM`, `AVERAGE`, `COUNT`, `COUNTA`, `MIN` and `MAX` ignore blanks,
-  so a range across an empty row gives the same result as without it.
-  `COUNTBLANK` and `ROWS` do count it. (The old text said empty rows are
-  "skipped during formula evaluation". With numbered rows there is nothing
-  to skip: an empty row has no formulas, and aggregates ignore its blank
-  cells. A reference to a blank cell is not an error.)
-- **Charts skip empty rows** when the data rows are injected (A.9), so a
-  separator does not become a data point.
+  empty cell (§8.7).
+- **Charts skip empty rows** (§12.5), so a separator is not a data point.
 
 ### 7.3 Negative numbers
 
-Negative numbers may be stored in two formats:
+| Format              | Example  | Notes                                            |
+| ------------------- | -------- | ------------------------------------------------ |
+| Prefixed minus      | `-9.99`  | Standard. Writers use this form.                 |
+| Accounting notation | `(9.99)` | Accepted on read. Renderers may display either.  |
 
-| Format              | Example  | Notes                                                 |
-| ------------------- | -------- | ----------------------------------------------------- |
-| Prefixed minus      | `-9.99`  | Standard. Preferred for machine-generated files.      |
-| Accounting notation | `(9.99)` | Accepted on input. Renderers may display either form. |
-
-Both formats are valid in cell values and formula results. Parsers must
-accept both. The `currency` type renderer may display negative values in
-accounting notation depending on the user's locale.
+The `currency` renderer may display negative values in accounting notation
+depending on the user's locale.
 
 ### 7.4 Booleans
 
 Boolean values are stored as `true` or `false` (lowercase). In formulas,
-`TRUE` and `FALSE` (uppercase) are also valid and follow Excel convention —
-they evaluate to `1` and `0` respectively in numeric contexts:
+`TRUE` and `FALSE` are also valid and follow Excel: they are `1` and `0` in
+arithmetic.
 
 ```
 =IF(actief1=TRUE,prijs1,0)
-=SUM(IF(actief1:actief4,prijs1:prijs4,0))
 ```
+
+### 7.5 Literal text
+
+> **Spike 11 decision:** **P5** accepted, with `''` for a real leading apostrophe.
+
+A cell value starting with `'` is text, and the `'` is not part of the
+value. This is the only way to store text that starts with `=`, or text that
+looks like a number or date: `'007`, `'2026-01-05`, `'=niet rekenen`. A
+real leading apostrophe is written `''`: `''t Hart` is the text `'t Hart`.
+Tools that do not know YCSV show the apostrophe.
+
+### 7.6 Dates and times
+
+> **Spike 11 decision:** **P7** accepted (bulk).
+
+Date, time and datetime cells keep their ISO text in the file
+(`2026-01-05`, `09:30:00`, `2026-01-05T09:30:00`). In formulas they evaluate
+to spreadsheet serial numbers: days since 1899-12-30, with the time of day
+as the fraction. Datetimes are floating local times: no time zone, no DST
+shift. Functions such as `TODAY()` and `EOMONTH()` return serial numbers.
+
+### 7.7 Error values
+
+> **Spike 11 decision:** **P20** accepted (bulk).
+
+An error value is stored as a formula (`=NA()`, `=1/0`), never as the
+literal text `#N/A`.
 
 ---
 
 ## 8. Formulas
 
-A cell value starting with `=` is a formula. Formulas follow standard
-spreadsheet syntax with one extension: **named column references**.
+A cell value starting with `=` is a formula (in a `.ycsv` file; see §2.4 for
+`.csv`). Formulas follow Excel's grammar, with one change: **columns are
+named by their ref** instead of a letter.
 
-### 8.1 Formula library
+### 8.1 Function set
 
-> **Proposal (spike 11):** an explicit v1 function list; `_xlfn.` handling; `source_formula` for unsupported functions (P21).
+> **Spike 11 decision:** **P21** accepted (bulk): an explicit list instead of "whatever formulajs supports".
 
-The YCSV reference implementation uses
-[`@formulajs/formulajs`](https://github.com/formulajs/formulajs) (MIT) as
-its formula evaluation engine. This library implements the full set of
-Microsoft Excel-compatible functions — `CONCAT`, `ROUND`, `FLOOR`, `CEIL`,
-`TODAY`, `NOW`, `DATEDIF`, `VLOOKUP`, and hundreds more.
+v1 supports these functions:
 
-The YCSV spec does not enumerate supported functions. Any function supported
-by the formula evaluation library is valid in a YCSV formula. The reference
-implementation defines the baseline; other implementations may support a
-different subset but should document any deviations.
+| Group | Functions |
+|---|---|
+| Math | SUM, SUMIF, SUMIFS, SUMPRODUCT, ROUND, ROUNDUP, ROUNDDOWN, INT, MOD, ABS, PRODUCT, POWER, SQRT, CEILING, FLOOR |
+| Statistics | AVERAGE, AVERAGEIF, COUNT, COUNTA, COUNTBLANK, COUNTIF, COUNTIFS, MIN, MAX, MEDIAN, MAXIFS, MINIFS |
+| Logic | IF, IFS, AND, OR, NOT, IFERROR, IFNA, SWITCH |
+| Lookup | VLOOKUP, HLOOKUP, XLOOKUP, INDEX, MATCH, XMATCH, CHOOSE, ROW, COLUMN |
+| Text | CONCAT, CONCATENATE, TEXTJOIN, LEFT, RIGHT, MID, LEN, UPPER, LOWER, PROPER, TRIM, SUBSTITUTE, FIND, SEARCH, TEXT, VALUE, REPT, EXACT |
+| Date | DATE, YEAR, MONTH, DAY, WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, NETWORKDAYS, WORKDAY, DAYS, TIME, HOUR, DATEVALUE, TODAY, NOW |
+| Info | ISBLANK, ISNUMBER, ISTEXT, ISERROR, ISNA, NA |
+| Finance | PMT |
+| Other | HYPERLINK |
 
-One caveat: formulajs returns `DATE`, `NOW`, and `TODAY` as plain JS `Date`
-objects rather than Excel serial numbers. Implementations must account for
-this when evaluating date arithmetic.
+Each function behaves as in Excel. Implementations may support more and
+document it. Function names are English in the file and in every locale.
 
-### 8.2 Named column references
+**Import rules.**
+- `_xlfn.` and `_xlws.` prefixes are removed on read and added back on write.
+- A function outside the list keeps the cell's last value as a plain value,
+  and the original formula is stored in `cells.<address>.source_formula`
+  (§3.7). The import report says so. Google `__xludf.DUMMYFUNCTION` wrappers
+  (functions such as `GOOGLEFINANCE` that Excel does not know) follow this
+  rule.
 
-> **Proposal (spike 11):** Unicode refs, quoted refs (`'Zo Doen'2`), `$` absolute refs, same-row bare refs (P4, P12).
+### 8.2 References
 
-Formulas reference columns by their `ref` identifier (or A-Z fallback),
-suffixed with a row number:
+> **Spike 11 decision:** **P4** and **P12/P28** accepted, P12/P28 as amended by **P33** (K1). Letters K10.
+
+A reference is a column ref followed by a row number:
 
 ```
 =aantal1*prijs1
-=A1*B1
+='Prijs incl. BTW'3*2
+=A1*B1          (only in a sheet whose columns have no refs)
 ```
 
-Both styles are valid and may be mixed. Named refs are preferred for
-readability.
+- **Refs** are any non-empty text. A ref is written bare when it is an
+  identifier (`[\p{L}_][\p{L}\p{N}_]*`) that does not end in a digit;
+  otherwise it is quoted with `'`, and `'` inside is doubled (§4.4, H2).
+- **Case-insensitive.** Refs, sheet refs and def names compare
+  case-insensitively, and must be unique case-insensitively within a sheet.
+- **Letters** are refs only for columns without a ref (§4.2).
+- **Absolute markers:** `$prijs$2`, `$prijs2`, `prijs$2`. `$` has no effect on
+  evaluation; it matters when a formula is filled or pasted (§8.9).
+- **Same row:** a bare ref without a row number (`prijs`) means the cell in
+  the same row as the formula.
+- **Cross-sheet:** the sheet ref and `!` go before the ref; the sheet ref is
+  quoted by the same rule: `categorieën!label1`, `'Q1 overzicht'!B4`.
 
-### 8.3 Aggregate functions
+### 8.3 Ranges
 
-> **Proposal (spike 11):** rectangular ranges across columns and whole columns (`totaal:totaal`) (P4).
-
-Standard aggregate functions operating over a column range:
+> **Spike 11 decision:** **P4** accepted. K16, K18.
 
 ```
 =SUM(totaal1:totaal4)
-=AVERAGE(prijs1:prijs3)
-=COUNT(product1:product10)
-=MIN(prijs1:prijs4)
-=MAX(prijs1:prijs4)
+=SUMPRODUCT(prijs1:prijs5,aantal1:aantal5)
+=VLOOKUP("fruit",categorieën!$id$1:$korting$3,3,FALSE)
+=SUM(totaal:totaal)
+=SUM(producten!totaal1:totaal5)
 ```
 
-Range syntax: `ref_start:ref_end` where start and end share the same `ref`
-and differ only in row number.
+- A range `start:end` is a rectangle; start and end may name different
+  columns (`id1:korting3`).
+- `ref:ref` is a whole column.
+- A cross-sheet range names the sheet once: `producten!totaal1:totaal5`.
+  Readers also accept the sheet repeated on the end
+  (`producten!totaal1:producten!totaal5`) when both name the same sheet.
+  Writers write it once.
+- Cells of empty rows inside a range are blank cells (§8.7).
 
 ### 8.4 Conditional: IF
 
 ```
 =IF(condition, value_if_true, value_if_false)
-```
-
-`AND`, `OR`, and `NOT` are supported:
-
-```
 =IF(AND(voorraad1<10,actief1=TRUE),"laag","ok")
 =IF(OR(score1<0,score1>100),"ongeldig",score1)
-```
-
-`IF` may be nested:
-
-```
 =IF(aantal1=0,"uitverkocht",IF(aantal1<5,"beperkt","op voorraad"))
 ```
 
 ### 8.5 Error handling: IFERROR
 
+> **Spike 11 decision:** Example rewritten with refs (K10).
+
 `IFERROR` catches formula errors and returns a fallback value:
 
 ```
-=IFERROR(value, value_if_error)
-```
-
-Examples:
-
-```
 =IFERROR(totaal1/aantal1,0)
-=IFERROR(VLOOKUP(product1,prijzen!A1:B10,2,FALSE),"niet gevonden")
+=IFERROR(VLOOKUP(product1,prijzen!product1:prijs10,2,FALSE),"niet gevonden")
 ```
 
-Useful for division-by-zero, failed lookups, and cross-sheet references that
-may be unavailable.
+### 8.6 Operators
 
-### 8.6 Supported operators
+> **Spike 11 decision:** **P4** accepted: `%` postfix percent, `&`, Excel precedence, case-insensitive text comparison (K22).
 
-> **Proposal (spike 11):** `%` is postfix percent, `&` concatenates, Excel precedence (`-2^2` = 4, `2^3^2` = 64), case-insensitive text comparison (P4).
+| Operator | Meaning |
+| -------- | ------- |
+| `+` `-` `*` `/` | arithmetic |
+| `^` | power |
+| `%` | postfix percent: `50%` is `0.5`. Modulo is only `MOD()`. |
+| `&` | text concatenation |
+| `=` `<>` `<` `>` `<=` `>=` | comparison |
+| `-` (unary) | negation |
 
-`+` `-` `*` `/` `^` (power) `%` (modulo)
+Precedence follows Excel: unary minus binds tighter than `^` (`-2^2` = 4),
+`^` is left-associative (`2^3^2` = 64), then `%`, `*` and `/`, `+` and `-`,
+`&`, comparison. Text comparison is case-insensitive (`"a"="A"` is TRUE).
 
-Comparison: `=` `<>` `<` `>` `<=` `>=`
+### 8.7 Evaluation
 
-### 8.7 Formula evaluation order
+> **Spike 11 decision:** "Errors, not aborts" (B.5) accepted (bulk), K21. Blank cells per P30.
 
-> **Proposal (spike 11):** circular references are a per-cell error, not a file error (B.5).
+Formulas are evaluated in dependency order. These cases are errors in the
+one cell, never in the whole file, so one broken formula does not make the
+rest of a workbook unreadable:
 
-Formulas are evaluated in dependency order (topological sort).
-Circular references are an error.
+| Case | Cell value |
+| ---- | ---------- |
+| Unknown column ref or sheet ref | `#REF!` |
+| Circular reference | `#CIRC!` (Excel and Sheets show their own circular error) |
+| Errors in arguments | propagate; `IFERROR`, `IFNA`, `ISERROR` and `ISNA` catch them |
+
+A **blank cell** (an empty cell, or a cell of an empty row) is `0` in
+arithmetic and `""` in text, as in Excel. `SUM`, `AVERAGE`, `COUNT`,
+`COUNTA`, `MIN` and `MAX` ignore blank cells, so a range across an empty row
+gives the same result as without it. `COUNTBLANK` and `ROWS` do count them.
+A reference to a blank cell is not an error.
+
+### 8.8 Notation and locale
+
+> **Spike 11 decision:** B.6 accepted (bulk), and Wouter's editor decision: input and display follow the browser locale (`=ROUND(3,27;1)` in nl-NL), the file stays canonical, function names stay English.
+
+The file always holds the canonical notation: `.` as the decimal mark and
+`,` between arguments (`=ROUND(3.27,1)`). The formula editor shows and
+accepts the user's locale notation: in a locale whose decimal mark is `,`
+(nl-NL, de-DE, fr-FR) that is `=ROUND(3,27;1)`. Function names stay English.
+Strings and quoted refs are never changed. Excel and LibreOffice work the
+same way.
+
+### 8.9 Filling, pasting and moving
+
+> **Spike 11 decision:** New section: Wouter's editor decisions (fill and paste shift refs, `$` locks; cut + paste rewrites references to the moved cells). They decide what writers write.
+
+The file format is the same before and after these editor operations; they
+are here because they decide which refs a writer writes.
+
+- **Fill and paste** shift refs like Excel: a formula filled or pasted one
+  column to the right refers to the next column's ref (`prijs1` becomes
+  `aantal1` when `aantal` is the next column), and one row down to the next
+  row. A `$` marker locks the column or the row.
+- **Cut and paste** moves cells, and every formula and address that referred
+  to the moved cells is rewritten to their new place.
+
+### 8.10 Hyperlinks
+
+> **Spike 11 decision:** **P18** accepted (bulk).
+
+A hyperlink cell is a formula: `=HYPERLINK("https://example.org/","label")`.
 
 ---
 
 ## 9. Examples
 
-### 9.1 Minimal valid YCSV
+> **Spike 11 decision:** 9.1 without frontmatter (P34); 9.2 without frontmatter (P34); 9.3 header styled with `product0:totaal0` (P29) and display names matched by `name` (K13); 9.4 validation list from a range (P15); 9.5 new (P33 quoting, YAML key quoting).
+
+### 9.1 Minimal file, no header
 
 ```
----
-ycsv_version: 1
----
 Appels,6,0.45,=A1*B1
 Brood,2,2.99,=A2*B2
 Melk,3,1.19,=A3*B3
 ```
 
-### 9.2 With header row, no column definitions
+The first row has numbers, so there is no header (§4.1, D4); columns are
+`A`–`D`.
+
+### 9.2 Header row, no frontmatter
 
 ```
----
-ycsv_version: 1
----
 product,aantal,prijs,totaal
 Appels,6,0.45,=prijs1*aantal1
 Brood,2,2.99,=prijs2*aantal2
 Melk,3,1.19,=prijs3*aantal3
 ```
 
-### 9.3 Fully typed with constants and styling
+The header names are the refs (§4.4).
+
+### 9.3 Fully typed with defs and styling
 
 ```
 ---
 ycsv_version: 1
+header: true
 defs:
   btw: 0.21
   min_voorraad: 5
@@ -873,17 +1061,20 @@ columns:
     currency: EUR
     locale: nl-NL
 cells:
-  A1:D1:
+  product0:totaal0:
     style:
       bold: true
       fill: "#f5f5f5"
 ---
-product,aantal,prijs,totaal
+product,aantal,Prijs ex. BTW,Prijs incl. BTW
 Appels,6,0.45,=prijs1*aantal1*(1+btw)
 Brood,2,2.99,=prijs2*aantal2*(1+btw)
 Melk,3,1.19,=prijs3*aantal3*(1+btw)
 ,,Totaal,=SUM(totaal1:totaal3)
 ```
+
+`prijs` and `totaal` attach to their columns by `name` (§4.3, C2), so the
+headers can be display text while formulas use short refs.
 
 Rendered output:
 
@@ -904,6 +1095,7 @@ defs:
 sheets:
   - ref: producten
     name: Productenoverzicht
+    header: true
     columns:
       - ref: product
         type: string
@@ -911,7 +1103,7 @@ sheets:
         type: string
         validate:
           required: true
-          list: categorieën
+          list: =categorieën!id1:id3
       - ref: prijs
         type: currency
         currency: EUR
@@ -921,11 +1113,7 @@ sheets:
         currency: EUR
         locale: nl-NL
   - ref: categorieën
-    columns:
-      - ref: id
-        type: string
-      - ref: label
-        type: string
+    header: true
 ---
 product,categorie,prijs,totaal_incl
 Appels,fruit,0.45,=prijs1*(1+btw)
@@ -938,19 +1126,40 @@ bakkerij,Bakkerij
 zuivel,Zuivel
 ```
 
-Cross-sheet ref example — display category label from the categorieën sheet:
+Cross-sheet ref example — the category label from the `categorieën` sheet:
 
 ```
 =categorieën!label1
+```
+
+### 9.5 Header names that need quoting
+
+```
+Omschrijving,Prijs incl. BTW,kw1,kw2
+Huur,1512.50,3,4
+Stroom,108.90,5,6
+Totaal,=SUM('Prijs incl. BTW'1:'Prijs incl. BTW'2),=SUM('kw1'1:'kw1'2),=SUM('kw2'1:'kw2'2)
+```
+
+With frontmatter, a style on the first total uses the same ref as a
+double-quoted YAML key:
+
+```yaml
+cells:
+  "'Prijs incl. BTW'3":
+    style:
+      bold: true
 ```
 
 ---
 
 ## 10. Compatibility
 
-A YCSV file stripped of its frontmatter (everything up to and including the
-second `---`) is valid CSV. Tools that do not understand YCSV can still read
-the data rows — they will see formula strings as literal text values.
+A YCSV body is valid CSV. Tools that do not understand YCSV can read the
+data rows of a file without frontmatter directly, and of any other file
+after removing the frontmatter (everything up to and including the second
+`---` line). They see formulas as text and literal-text cells with their
+leading `'`.
 
 This is intentional. YCSV degrades gracefully.
 
@@ -959,27 +1168,30 @@ This is intentional. YCSV degrades gracefully.
 ## 11. Multi-sheet files
 
 Multiple sheets live in a single `.ycsv` file. The `sheets` array in the
-frontmatter defines all sheets; each subsequent `---`-separated block is the
-CSV body for the corresponding sheet, in order. See §3.1.
+frontmatter defines all sheets; each `---`-separated block after it is the
+CSV body of the corresponding sheet, in order. See §3.2.
 
 Cross-file references are not supported.
 
 ### 11.1 Cross-sheet references
 
-Use `sheetref!columnrefrow` syntax (see §3.4):
+Use `sheetref!` before a reference or range (§8.2, §8.3):
 
 ```
 =categorieën!label1
-=SUM(producten!totaal1:producten!totaal10)
+=SUM(producten!totaal1:totaal10)
 ```
 
 ### 11.2 Circular references
 
-Circular cross-sheet references are an error.
+A circular reference, within a sheet or across sheets, is an error in each
+cell of the cycle (`#CIRC!`, §8.7). The rest of the file evaluates.
 
 ---
 
 ## 12. Charts
+
+> **Spike 11 decision:** Added by the spike, not decided: Vega-Lite field-name escaping for refs with `.`, `[` or `]` (a consequence of P33). Empty rows skipped (P30).
 
 Charts are defined in the frontmatter as an optional `charts` array. Each
 chart is a [Vega-Lite](https://vega.github.io/vega-lite/) specification
@@ -988,7 +1200,9 @@ chart is a [Vega-Lite](https://vega.github.io/vega-lite/) specification
 Vega-Lite is an open, declarative grammar for interactive visualizations.
 YCSV renderers inject the sheet's data automatically — no `data` key is
 needed in the chart spec. Column `ref` names map directly to Vega-Lite
-`field` values.
+`field` values. In Vega-Lite a `.` or `[` in a field name means a nested
+field, so a ref that contains `.`, `[` or `]` is written with a `\` before
+those characters: the ref `Prijs incl. BTW` is `field: "Prijs incl\\. BTW"`.
 
 ### 12.1 Chart definition fields
 
@@ -1135,7 +1349,8 @@ charts:
 
 ### 12.5 Renderer responsibilities
 
-- Inject the sheet's parsed data as the Vega-Lite `data.values` array.
+- Inject the sheet's evaluated data rows as the Vega-Lite `data.values`
+  array, keyed by column ref. Empty rows (§7.2) are skipped.
 - Pass the chart spec to the Vega-Lite compiler unchanged, except for the
   injected data.
 - Render charts below the table by default. Layout is application-defined.
@@ -1144,20 +1359,33 @@ charts:
 
 ## 13. Sidecar files
 
-UI state (column widths, frozen panes, sort/filter state, scroll position) is
-stored in a `.ycsv.ui` sidecar alongside the `.ycsv` file. The sidecar is
-renderer-defined and not part of this spec. It should be `.gitignore`d or
-treated as non-canonical.
+> **Spike 11 decision:** Widths and freeze moved into the file (K11). The collaboration sidecar line follows P32's build consequence.
+
+The file holds everything that is shared: data, formulas, formats, column
+widths, hidden columns and frozen rows and columns.
+
+- **Per-user view state** (sort and filter state, scroll position,
+  selection) may be stored in a `.ycsv.ui` sidecar next to the file. It is
+  renderer-defined, not part of this spec, and should be `.gitignore`d or
+  treated as non-canonical.
+- **Collaboration state** of an editor (for example a CRDT document next to
+  the file) is not part of this spec either. The `.ycsv` or `.csv` file is
+  the canonical form; an editor rebuilds its state when the file is changed
+  by another tool.
 
 ---
 
 ## 14. Versioning and forward compatibility
 
-The `ycsv_version` field is an integer. Parsers encountering a version higher
-than they support should warn the user and attempt a best-effort parse.
+> **Spike 11 decision:** Missing version = 1 (K4); `row_heights` reserved (K15).
+
+The `ycsv_version` field is an integer. A file without it is version 1.
+Readers that meet a version higher than they support warn the user and
+attempt a best-effort parse.
 
 New fields added to column definitions or the frontmatter in future versions
-must be ignored by v1 parsers (unknown fields are not an error).
+must be ignored by v1 readers (unknown fields are not an error). Reserved for
+later: `row_heights` (§3.8).
 
 ---
 
@@ -1172,6 +1400,9 @@ under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 | `@formulajs/formulajs` | MIT     | Formula evaluation |
 | `vega-lite`            | BSD-3   | Chart rendering    |
 
+formulajs returns `DATE`, `NOW` and `TODAY` as JavaScript `Date` objects in
+local time; implementations convert them to serial numbers (§7.6).
+
 ---
 
 _YCSV v1.0 — Draft. Feedback welcome._
@@ -1180,203 +1411,299 @@ _YCSV v1.0 — Draft. Feedback welcome._
 
 ## Appendix A: Parser algorithm
 
-This appendix defines the normative parsing algorithm for a `.ycsv` file.
+> **Spike 11 decision:** Updated for P22, P23, P24, P25, P29, P30, P33, P34 and per-cell errors; cross-file refs removed (K17).
+
+This appendix defines the normative parsing algorithm for a YCSV file.
 Implementations must produce equivalent results.
 
 ### A.1 Overview
 
 ```
-1. Read file as UTF-8
-2. Split into frontmatter and CSV body
+1. Read file as UTF-8, strip a leading BOM
+2. Split into frontmatter and CSV bodies
 3. Parse frontmatter
-4. Parse CSV body
+4. Parse CSV bodies
 5. Resolve column identity
 6. Evaluate formulas
 7. Apply styling
 ```
 
-### A.2 Step 1 — Split frontmatter and body
-
-> **Proposal (spike 11, P34):** a file whose first line (after an optional
-> BOM) is not exactly `---` has no frontmatter: `frontmatter = {}` and the
-> whole file is one CSV body. The error below then never applies.
+### A.2 Step 1 — Split frontmatter and bodies
 
 ```
-if file does not start with "---\n":
-  error: "missing frontmatter opening marker"
+if the first line is not exactly "---" (trailing spaces/tabs allowed):
+  frontmatter = {}
+  bodies = [ whole file ]            (a "---" line is data here)
+  stop
 
-find the second occurrence of "\n---\n" after the first marker
-if not found:
+frontmatter_text = lines up to the next "---" line
+if there is no such line:
   error: "missing frontmatter closing marker"
 
-frontmatter_text = content between first "---\n" and second "\n---\n"
-csv_text         = content after second "\n---\n"
+split the rest into bodies on "---" lines that are outside a quoted
+CSV field (track RFC 4180 quote state while scanning)
 ```
 
 ### A.3 Step 2 — Parse frontmatter
 
 ```
-parse frontmatter_text as YAML
+parse frontmatter_text as YAML 1.2 (core schema)
+if it is not valid YAML: error, naming the line
 
-if ycsv_version is missing:
-  error: "ycsv_version is required"
-
-if ycsv_version > known_version:
+version = ycsv_version or 1
+if version > known_version:
   warn: "unknown version, attempting best-effort parse"
 
-columns   = frontmatter.columns   or []
-defs = frontmatter.defs or {}
-cells     = frontmatter.cells     or {}
-charts    = frontmatter.charts    or []
+sheets = frontmatter.sheets, or one sheet built from the top-level
+         sheet fields (header, columns, cells, merges, notes, validate,
+         freeze, charts)
+defs   = frontmatter.defs or {}
 ```
 
-### A.4 Step 3 — Parse CSV body
+### A.4 Step 3 — Parse CSV bodies
 
 ```
-parse csv_text using RFC 4180 rules
-result: list of rows, each row a list of cell strings
+for each body:
+  parse using RFC 4180 rules; do not skip blank lines
+  CR and CRLF inside quoted fields → LF
+  result: list of rows, each row a list of cell strings
 
-for each row:
-  if all cells are empty:
-    mark as EMPTY_ROW (it keeps its number; see §7.2)
-    (an empty or whitespace-only line is an EMPTY_ROW; do not skip blank lines)
-drop trailing EMPTY_ROWs (P26); the final newline is not a row
+  for each row:
+    if the line is empty, whitespace only, or all cells are empty:
+      mark as EMPTY_ROW (it keeps its row number)
+  drop trailing EMPTY_ROWs; the final newline is not a row
 ```
 
 ### A.5 Step 4 — Resolve column identity
 
 ```
-data_rows = all rows after the header, EMPTY_ROWs included (§7.2)
+header = sheet.header if present, else detection rules D1–D7 (§4.1)
 
-if columns is non-empty:
-  assign ref to each column definition position:
-    if column has no ref: assign A-Z fallback by position
-
-  header = frontmatter `header` if present, else detection rules D1–D7 (§4.1)
-
-  if header:
-    use header row to map CSV columns to refs by name (order-independent)
-    first data row index = 1 (header is row 0, not counted)
-  else:
-    map CSV columns to refs by position
-    first data row index = 1
-
+if header:
+  refs = header texts by H1–H6 (§4.4)
+  attach columns[] by ref or name, then by position (§4.3, C1–C4)
+  row 0 = header row
 else:
-  header = frontmatter `header` if present, else detection rules D1–D7 (§4.1)
+  attach columns[] by position (C5); letters where no ref (§4.2)
 
-  if header:
-    use header values as ref names
-    assign type: string, no formatting to all columns
-  else:
-    assign A-Z fallback refs by position
-
-number data rows from 1 upward, EMPTY_ROWs included (§7.2, P30)
+number data rows from 1 upward, EMPTY_ROWs included (§7.2)
+resolve every address in cells, merges, notes and validate (§3.6);
+  an address that names no cell: error naming the key, entry skipped
 ```
 
 ### A.6 Step 5 — Evaluate formulas
 
 ```
-build cell graph:
-  for each data cell:
-    if cell value starts with "=":
-      mark as FORMULA cell
-      parse formula into AST
-      extract dependencies (ref+rownumber pairs, def names,
-                            cross-sheet references)
+for each data cell:
+  if value starts with "'": literal text, without the "'" (§7.5)
+  if value starts with "=": FORMULA cell (not in a .csv file, §2.4)
+    parse into AST (§8.2, §8.3, §8.6)
+    dependencies: ref+row pairs, ranges, def names, sheet refs
 
-check for circular references in cell graph:
-  if found: error: "circular reference at <ref><row>"
+evaluate in dependency order:
+  cells in a cycle → #CIRC!
+  unknown column ref or sheet ref → #REF!
+  <ref><row>              → value of that cell (blank if empty)
+  <ref>                   → same row
+  <start>:<end>           → rectangle of values
+  <ref>:<ref>             → whole column
+  <sheet>!...             → the same in another sheet
+  <name>                  → defs[name] (column refs win, §3.4)
 
-evaluate in dependency order (topological sort):
-  for each FORMULA cell:
-    resolve named refs:
-      <ref><row> → value of cell at column ref, row row
-      <ref><row>:<ref><row> → range of values
-      <name> → defs[name]
-      ./<file>.ycsv!<ref><row> → cross-sheet reference (see §A.8)
-    evaluate AST using formula library
-    store result
-
-for non-formula cells:
-  parse value according to column type:
-    number / currency / percent → parse as float
-      accept "-9.99" and "(9.99)" as negative
-    date    → parse as ISO 8601 date
-    time    → parse as ISO 8601 time
-    datetime → parse as ISO 8601 datetime
-    boolean → "true"/"TRUE" → true, "false"/"FALSE" → false
-    string  → use as-is
-  if parse fails: store as string, emit type warning
+for non-formula cells, parse by type (column type, or cell override):
+  number / currency / percent → number grammar (§7)
+    accept "-9.99", "(9.99)"; "10%" → 0.1
+  date / time / datetime → ISO 8601 text; serial number in formulas (§7.6)
+  boolean → "true"/"TRUE" → true, "false"/"FALSE" → false
+  string  → as-is
+  if parsing fails: store as string, emit type warning
 ```
 
 ### A.7 Step 6 — Apply styling
 
 ```
-for each data cell:
-  collect applicable style rules in order (lowest to highest priority):
-    1. column-level fill/color/border from columns[]
-    2. cell-level overrides from cells{}
-
-  for each style rule:
-    if value is a static hex: apply directly
-    if value is a conditional formula:
-      evaluate formula with implicit LHS = current cell's evaluated value
-      apply result
-
-  final style = merged result of all applicable rules
+for each cell:
+  collect style rules, lowest to highest priority:
+    1. column-level style from columns[]
+    2. cells{} entries whose address covers the cell, in file order
+  static value → apply
+  conditional formula → evaluate with implicit LHS = the cell's value
 ```
 
 ### A.8 Cross-sheet references
 
 ```
-when a formula contains <sheetref>!<columnref><row>:
-  look up <sheetref> in the sheets array
-  if not found: error
-  return evaluated value of <columnref><row> from that sheet
-  (all sheets are evaluated before cross-sheet refs are resolved)
+for <sheetref>!<ref><row>:
+  find <sheetref> in the sheets array (case-insensitive)
+  not found → #REF! in this cell
+  return the evaluated value of <ref><row> in that sheet
 ```
 
 ### A.9 Chart injection
 
 ```
 for each chart in charts:
-  build Vega-Lite data.values array from evaluated data rows:
-    each row → object keyed by ref name, value is the evaluated cell value
-    skip EMPTY_ROWs (they keep their number, but are not data points)
+  data.values = one object per data row, keyed by ref,
+                with the evaluated cell values; skip EMPTY_ROWs
   inject as chart.spec.data = { values: [...] }
-  pass completed spec to Vega-Lite compiler
+  pass the completed spec to the Vega-Lite compiler
 ```
 
 ### A.10 Error handling summary
 
-> **Proposal (spike 11):** unknown sheet refs and circular references become per-cell errors (B.5).
-
-| Error                           | Behaviour                                      |
-| ------------------------------- | ---------------------------------------------- |
-| Missing `ycsv_version`          | Hard error, abort                              |
-| Unknown `ycsv_version`          | Warn, attempt parse                            |
-| Unknown frontmatter field       | Ignore silently                                |
-| Type parse failure              | Store as string, emit warning                  |
-| Circular reference              | Hard error                                     |
-| Cross-sheet sheet ref not found | Hard error                                     |
-| Formula evaluation error        | Cell returns error value; `IFERROR` can handle |
-| Validation failure              | Renderer-defined; not a parse error            |
+| Error                                   | Behaviour                                      |
+| --------------------------------------- | ---------------------------------------------- |
+| Missing `ycsv_version`                  | Read as version 1                              |
+| Unknown `ycsv_version`                  | Warn, attempt parse                            |
+| Invalid YAML                            | Error naming the line                          |
+| Unknown frontmatter field               | Ignore (§14)                                   |
+| Address that names no cell              | Error naming the key; entry skipped            |
+| Empty or duplicate header text          | Warning; letter fallback (§4.4)                |
+| `columns` and header disagree           | Warning (§4.3)                                 |
+| Type parse failure                      | Store as string, emit warning                  |
+| Unknown column or sheet ref in a formula | `#REF!` in that cell                          |
+| Circular reference                      | `#CIRC!` in each cell of the cycle             |
+| Formula evaluation error                | Cell returns error value; `IFERROR` can handle |
+| Validation failure                      | Renderer-defined; not a parse error            |
 
 ---
 
-## Appendix B: Proposed amendments (spike 11)
+## Appendix B: Writers
 
-> **Status: Proposal (spike 11).** Nothing in this appendix is part of v1 yet.
-> These proposals come from the interop spike (Excel, Google Sheets,
-> LibreOffice). Evidence for each one is in
-> `prototypes/ycsv/docs/spike-11-interop.md` and the conformance results in
-> `prototypes/ycsv/docs/spike-11-conformance-results.md`. The sections they
-> would change carry a short "Proposal (spike 11)" note.
+> **Spike 11 decision:** New: a summary of writer rules spread over the decisions.
 
-Each proposal has an id (P1…P34). The ids match the spike report.
-P1 was rejected; P2/P27, P30, P31 and P32 were accepted (details per entry).
+What a writer does, in one place:
 
-### B.1 Rows, header and body
+- Write frontmatter only when something needs it (§3.1); when written,
+  include `ycsv_version` and `header` per sheet.
+- Write YAML 1.2 in block style; double-quote keys that contain a quoted
+  ref (§3.6).
+- Write addresses in the ref grammar (§3.6); `ref:ref` for whole columns.
+- Quote every CSV cell whose value contains a `---` line (§2), and in a file
+  without frontmatter a first cell whose value is `---`.
+- Use LF, no BOM, `.` decimals and `-` for negatives in `.ycsv` (§2.2, §2.3,
+  §7); keep the dialect of a `.csv` (§2.4).
+- Store percent as a fraction (§6.3), errors as formulas (§7.7), and text
+  that looks like a number, date or formula with a leading `'` (§7.5).
+- Drop trailing empty rows; keep empty rows inside the body (§7.2).
+- Never write duplicate header texts; rename the later column `<name> 2`
+  (§4.4).
+- Write `ref` only when it differs from the header text, and then also
+  `name` (§4.3).
+
+## Appendix C: Import and export
+
+> **Spike 11 decision:** B.7 accepted (bulk), with the P30 row mapping.
+
+- **CSV import needs a locale.** Plain CSV import (not YCSV) asks for, or
+  detects, the separator and number locale, and parses the raw text with it.
+  It must not let a library guess: a Dutch Excel CSV (`;`, `0,45`,
+  `05-01-2026`) read with default settings turns `0,45` into 45 and
+  `05-01-2026` into 1 May.
+- **Import report.** Import may lose features; it must not lose them
+  silently. An importer produces a report listing every feature that
+  degrades or is lost, with the cells involved. Every formula whose result
+  differs from the value the source application cached is listed with both
+  values, and the cell is flagged until the user accepts it. A file read
+  without formulas says so once, with the way to keep them.
+- **Row numbers.** A1 row numbers map to YCSV rows by the header offset only
+  (§7.1, §7.2).
+- **Cached values on export.** An XLSX or ODS export writes either correct
+  cached values for every formula, or none at all plus "recalculate on
+  load". It never writes values the engine got wrong, because some
+  applications show cached values as they are.
+
+---
+
+## Appendix D: Spike 11 decision record
+
+### D.1 Status per proposal
+
+Wouter went through the proposals one by one (session of 2026-11-27).
+
+| Id | Proposal | Status |
+|---|---|---|
+| P1 | Header = row 1, as in Excel | **Rejected.** §7.1 stands. |
+| P2 / P27 | Explicit `header` flag, detection D1–D7 | Accepted |
+| P3 / P17 | Sheet fields `hidden`, `tab_color`; sheet ref grammar | Accepted (bulk) |
+| P4 | Excel formula grammar: `$`, ranges, `&`, postfix `%`, `-2^2` = 4, left-associative `^`, case-insensitive text comparison, same-row bare refs | Accepted |
+| P5 | Leading `'` = literal text, `''` for a real apostrophe | Accepted |
+| P6 | Percent stored as a fraction | Accepted ("percentage is puur een rendering ding") |
+| P7 | Dates: ISO in the file, serials in formulas, floating local time | Accepted (bulk) |
+| P8 | Number grammar | Accepted (bulk), with trailing `%` on read (K8) |
+| P9 | Per-cell type and format, `excel_format` | Accepted (bulk) |
+| P10 | Merges | Accepted (bulk), ref-grammar addresses (K5) |
+| P11 | Freeze, column widths, hidden columns; no row heights | Accepted (bulk), `row_heights` reserved (K15) |
+| P12 / P28 | Ref grammar, quoted refs | Accepted, as amended by P33 (K1) |
+| P13 | Range defs | Accepted (bulk) |
+| P14 | Notes | Accepted (bulk), ref-grammar addresses (K5) |
+| P15 | Validation on ranges, `list` from a range or array, whole-number bounds | Accepted (bulk), with `at` and `range.integer` (K7) |
+| P16 | `italic`, `underline`, `align`, `wrap` | Accepted (bulk) |
+| P18 | Hyperlinks as `HYPERLINK()` formulas | Accepted (bulk) |
+| P19 / P26 | Trailing empty rows carry no meaning | Accepted (bulk) |
+| P20 | Errors stored as formulas | Accepted (bulk) |
+| P21 | Explicit function list, `_xlfn.`, `source_formula` | Accepted (bulk) |
+| P22 | Split only on `---` outside quoted fields; writers quote | Accepted |
+| P23 | CR/CRLF in cells → LF | Accepted (bulk) |
+| P24 | Strip BOM on read, never write one | Accepted (bulk), `.ycsv` only (K9) |
+| P25 | YAML 1.2 core schema | Accepted (bulk); block style written, flow style read |
+| P29 | Frontmatter addresses use YCSV rows | Accepted **in changed form**: the formula ref grammar (`product0:totaal0`), no `header:` style key |
+| P30 | Empty rows keep their number | Accepted ("A!") |
+| P31 | Header in the body, `columns` as enrichment; C1–C5 | Accepted; C1–C5 in bulk, C2 also matches `name` (K13) |
+| P32 | `.csv` stays CSV until a YCSV-only feature is used | Accepted, details in bulk |
+| P33 | Refs from the header text alone (H1–H6) | Accepted as proposed |
+| P34 | Frontmatter optional, also in `.ycsv` | Accepted as proposed |
+| B.5 | Per-cell errors instead of aborts | Accepted (bulk) |
+| B.6 | Canonical notation in the file, locale in the editor | Accepted (bulk) |
+| B.7 | CSV import locale, import report, cached values on export | Accepted (bulk) |
+
+Not in this list and **not** decided: the "edge semantics" in the spike
+report beyond blank cells and case-insensitive comparison (text inside
+ranges, booleans in SUM, comparing at 15 significant digits). The spec does
+not state them yet.
+
+### D.2 Conflicts found and how they were resolved
+
+Every proposal accepted in bulk was checked against the explicit decisions
+(P1 rejected; P2/P27, P4, P5, P6, P22, P29 changed, P30, P31, P32, P33, P34
+accepted) and against the rest of the spec. Each conflict is resolved in the
+direction of the decisions; the report has the reasoning.
+
+"Old §" is the section numbering before this round; "Where" is the new numbering.
+
+| # | Conflict | Resolved as (direction of the decisions) | Where |
+|---|---|---|---|
+| K1 | P12/P28: refs are identifiers, case-sensitive, duplicates are an error — vs P33 (any text, quoted; case-insensitive; duplicate headers lose their name with a warning) | P33 wins. Refs are any text, case-insensitive, unique case-insensitively. Duplicate header texts in a file from elsewhere: no name, letter fallback, warning. | §4.4, §8.2 |
+| K2 | Product decision 10 renames a duplicate to header `omzet 2` with ref `omzet_2` — vs P33 (the ref is the header text) and P34 (no frontmatter unless needed) | The rename stays (`omzet 2`, then the first free number; the later column by column id), but its ref is the header text: `'omzet 2'3`. A ref `omzet_2` would need `columns.ref` in frontmatter only for this. **Wouter to confirm.** | §4.4 |
+| K3 | P2/P27 "writers always write `header`" — vs P34 "frontmatter only when needed" | `header` is written whenever frontmatter is written; frontmatter is written for `header` only when detection would be wrong. | §3.1, §4.1 |
+| K4 | Old §3 / A.3 / A.10: `ycsv_version` required, missing = hard error — vs P34 (frontmatter optional) | A file without `ycsv_version` (with or without frontmatter) is version 1. Writers write it whenever they write frontmatter. | §3.1, §14, A.10 |
+| K5 | P9, P10, P14, P15, P21 and the old §3.5 use A1 addresses (`cells.<A1>`, `merges: [A1:D1]`, `notes: {A1: …}`, `range: B2:B6`, `cells.<A1>.source_formula`) — vs P29 as decided (formula ref grammar) | Every frontmatter address uses the ref grammar (`product0:totaal0`, `prijs3`); letters only for columns without a ref. | §3.6–§3.8 |
+| K6 | Old §3.5: a bare column ref as a `cells` key (`totaalwaarde`) = the whole column — vs P29 "exactly the formula grammar", where a bare ref means the same row (P4) | In an address a bare ref is accepted as the whole column (an address has no "same row"); writers write the formula form `totaalwaarde:totaalwaarde`. | §3.6 |
+| K7 | P15: sheet-level rules put the address in `range` and bounds in `range_value` — vs old §3.1.2, where `range` already means numeric bounds | Sheet rules use `at` for the address and the column-rule fields for the rule; `range` gains `integer`; `range_value` is dropped. Spike importer/exporter changed to match. | §3.3.2 |
+| K8 | P8 "a value outside the number grammar is text" — vs P6 "readers may accept `10%` typed in a source cell" | The number grammar accepts a trailing `%` on read (`10%` → 0.1). Writers write the fraction. | §6.3, §7 |
+| K9 | P24 (writers never write a BOM), P23 (writers emit LF), P8 (writers use `.`) — vs P32 detail "keep the CSV dialect" | Those writer rules are for `.ycsv`; a `.csv` written back keeps its dialect, BOM and line endings included. | §2.2–§2.4 |
+| K10 | Old §8.2 "letters and names may be mixed" (`=A1*B1` next to `=aantal1*prijs1`), and the §8.5 example `prijzen!A1:B10` — vs P33/H6 and P29 (letters only where a column has no ref) | Letters are refs only for columns without a ref. Example 8.5 rewritten with refs. | §4.2, §8.2, §8.5 |
+| K11 | Old §13: column widths and frozen panes live in the `.ycsv.ui` sidecar — vs P11 and the editor decision "frozen rows are shared and live in the file" | Widths, hidden columns and freeze are in the file; the sidecar keeps only per-user view state. | §3.8, §13 |
+| K12 | Old §3.2: `ref` is "lowercase, no spaces" — vs P12/P33 | Any text (§8.2). | §3.3 |
+| K13 | C1 (bulk-accepted: `name` is ignored under a header, writers do not write it) + C3 (warn when header ≠ ref) — vs example 9.3 (display names through `name`) and D2 (header detection already matches `name`) | C2 matches a definition by `ref` **or** `name`; under a header, `name` is the expected header text, and writers write it when the header text differs from the ref. Display is still the header text. Without this, every file with display-name headers warns. | §3.3, §4.3, §9.3 |
+| K14 | Old §3.3: column refs take precedence over defs of the same name — vs P33 (any header becomes a ref, so a header can silently shadow a def) | Precedence kept; readers warn when a def and a column ref of a sheet share a name. | §3.4 |
+| K15 | P11 "row heights are not stored" — vs the editor decision "fixed row height in v1, with room in the format for a per-row height later" | v1 stores none; `row_heights` is reserved and ignored by v1 readers. | §3.8, §14 |
+| K16 | Old §11.1 example `SUM(producten!totaal1:producten!totaal10)` — vs P4 "cross-sheet ranges name the sheet once" | Writers write the sheet once; readers accept the repeated prefix when both name the same sheet. | §8.3, §11.1 |
+| K17 | Old A.6 resolves `./<file>.ycsv!<ref><row>` — vs §2/§11 "cross-file references are not supported" (an old inconsistency, not from a proposal) | Removed from A.6. | A.6 |
+| K18 | Examples in P4, P13 and P15 use A1 row numbers (`$id$2:$korting$4`, `totaal2:totaal6`) — vs §7.1 (P1 rejected) | Rewritten with YCSV rows (`$id$1:$korting$3`, `totaal1:totaal5`). | §3.3.2, §3.4, §8.3 |
+| K19 | Old §2.4 "a file without frontmatter has no formulas" — vs P34 (a `.ycsv` without frontmatter may hold formulas) | The extension decides: a `.csv` has no formulas (`=` is text); a `.ycsv` without frontmatter may hold them. | §2, §2.4 |
+| K20 | A.10 "unknown frontmatter field: ignore silently" — vs P29 "readers give a clear error, not a silent miss" and B.7 "no silent loss" | Unknown fields are still ignored (forward compatibility, §14); a bad address in a known field is an error naming the key, the entry is skipped and the file still opens. | §3.6, A.10 |
+| K21 | Old §8.7, §11.2, A.6, A.10: circular and unknown-sheet references are hard errors — vs B.5 "errors, not aborts" (bulk) | Per-cell `#REF!` / `#CIRC!`. | §8.7, §11.2, A.10 |
+| K22 | Old §8.6 `%` is modulo; §5/§6.3 percent stored as 50 — vs P4 and P6 (accepted) | `%` is postfix percent; percent is a fraction. (Direct replacements, listed for completeness.) | §5, §6.3, §8.6 |
+
+### D.3 Original proposal texts
+
+The proposals as they were written before the decisions, for reference.
+Where they differ from the spec text above, the spec text wins.
+
+Statuses below are as of before the 2026-11-27 decisions; D.1 has the current status. Section numbers (§) refer to the old numbering.
+
+#### D.3.1 Rows, header and body
 
 **P1 — Grid row numbering. Rejected.** Proposed: header = row 1, first data
 row = row 2, as in Excel. Decision (Wouter): rows count from 1 in the spec,
@@ -1469,7 +1796,7 @@ P33). In such a file a `---` line is data, and writers quote it. Writers
 add frontmatter only when something needs it. Today §2 and A.2 make
 frontmatter mandatory and a missing opening marker an error.
 
-### B.2 Sheets
+#### D.3.2 Sheets
 
 **P3 / P17 — Sheet fields.** A `ref` follows the same grammar as a column
 `ref` (B.4, P12). Sheet entries gain:
@@ -1492,7 +1819,7 @@ decision 6: fixed row height).
 **P14 — Notes.** `notes: {A1: "text"}` per sheet, plain text. Comment
 authors and threads are not kept.
 
-### B.3 Values
+#### D.3.3 Values
 
 **P5 — Literal text.** A cell value starting with `'` is text, and the `'` is
 not part of the value. This is the only way to store text that starts with
@@ -1519,7 +1846,7 @@ grammar is text.
 **P20 — Error values.** An error value is stored as a formula (`=NA()`,
 `=1/0`), never as the literal text `#N/A`.
 
-### B.4 Columns, cells and formats
+#### D.3.4 Columns, cells and formats
 
 **P9 — Per-cell type and format.** `cells.<A1>` may carry `type` and the
 format options of §6, not only `style`. Report sheets mix currency, percent
@@ -1562,7 +1889,7 @@ rule covers Excel's whole-number and decimal limits:
 `range_value: {min: 0, max: 1000, integer: true}`. Rules apply to a `range`
 of cells as well as to a column.
 
-### B.5 Formulas
+#### D.3.5 Formulas
 
 **P4 — Formula grammar.** v1 formulas follow Excel's grammar, with named
 refs in place of column letters:
@@ -1599,7 +1926,7 @@ are per-cell errors (`#REF!`, `#CIRC!`), not hard errors that stop the whole
 file (A.10, §8.7, §11.2). One broken formula in an imported workbook must not
 make the other sheets unreadable.
 
-### B.6 Formula notation and locale
+#### D.3.6 Formula notation and locale
 
 **Canonical in the file, locale in the editor.** The file always uses `.`
 as the decimal mark and `,` between arguments (`=ROUND(3.27,1)`). The formula
@@ -1607,7 +1934,7 @@ editor shows and accepts the user's locale notation: in a locale whose
 decimal mark is `,` (nl-NL, de-DE, fr-FR) that is `=ROUND(3,27;1)`. Strings
 and quoted refs are never changed. Excel and LibreOffice work this way.
 
-### B.7 Import and export
+#### D.3.7 Import and export
 
 **CSV import needs a locale.** Plain CSV import (not YCSV) asks for, or
 detects, the separator and number locale, and parses the raw text with it.

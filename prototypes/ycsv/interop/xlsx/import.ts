@@ -3,7 +3,8 @@
 // Output follows the spec as amended by the spike 11 proposals (P1–P20 in ycsv-spec-v1.md).
 import * as XLSX from "xlsx";
 import YAML from "yaml";
-import { a1ToYcsv, mapAddress, rowNumbers, toYRow, colLetters, emitRef, openFormulaToA1, type Issue, type SheetCols } from "./translate";
+import { refText } from "../csv/header-refs";
+import { a1ToYcsv, rowNumbers, colLetters, emitRef, openFormulaToA1, type Issue, type SheetCols } from "./translate";
 
 export type Outcome = "survives" | "degrades" | "lost";
 export type LogEntry = { feature: string; outcome: Outcome; detail: string };
@@ -198,7 +199,9 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
       row1.every((c) => c && c.t === "s" && !c.f && String(c.v).trim() !== "") &&
       new Set(row1.map((c) => String(c!.v).trim().toLowerCase())).size === width;
     const taken = new Set<string>();
-    const refs = Array.from({ length: width }, (_, c) => (header ? unique(slug(String(row1[c]!.v)) || colLetters(c), taken) : colLetters(c)));
+    // P33 (accepted): a column ref is its header text (NFC, trimmed, whitespace folded), not a
+    // slug. Header detection above already requires unique, non-empty texts.
+    const refs = Array.from({ length: width }, (_, c) => (header ? unique(refText(String(row1[c]!.v)) || colLetters(c), taken) : colLetters(c)));
     const ref = unique(slug(name) || `sheet${si + 1}`, takenSheets);
     return { name, ws, width, height, header, refs, ref };
   });
@@ -410,9 +413,11 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     else if (!raw) L("frozen panes", "lost", `${m.name}: not readable via SheetJS CE${isOds ? " (ODS settings.xml not exposed)" : ""}`);
     const validations: Record<string, unknown>[] = [];
     for (const v of raw?.validations ?? []) {
-      const entry: Record<string, unknown> = { range: v.sqref };
+      // Sheet-level rule: `at` is the address, the rule fields are those of column validation
+      // (§3.1.2): `list`, `range: {min, max, integer}` (conflict 7 in the spike report).
+      const entry: Record<string, unknown> = { at: v.sqref };
       if (v.type === "list" && v.f1) entry.list = v.f1.startsWith('"') ? v.f1.slice(1, -1).split(",") : `=${a1ToYcsv(v.f1, { sheets, self: si, names }).text}`;
-      else if ((v.type === "whole" || v.type === "decimal") && (v.op ?? "between") === "between") entry.range_value = { min: Number(v.f1), max: Number(v.f2), ...(v.type === "whole" ? { integer: true } : {}) };
+      else if ((v.type === "whole" || v.type === "decimal") && (v.op ?? "between") === "between") entry.range = { min: Number(v.f1), max: Number(v.f2), ...(v.type === "whole" ? { integer: true } : {}) };
       else {
         L("data validation", "lost", `${m.name} ${v.type} ${v.op ?? ""} ${v.sqref}`);
         continue;
@@ -427,17 +432,21 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     if (rowsH) L("row heights", "lost", `${m.name}: ${rowsH} rows (fixed row height, product decision 6)`);
     L("conditional formatting", "lost", `${m.name}: not read (cellIs rules could map to column style IF(); not built in the spike)`);
 
-    // Frontmatter addresses use YCSV row numbers too (data row 1 = first row under the header;
-    // the header row itself is row 0), so `B3` means the same cell in `cells` and in a formula.
-    const toY = (a: string) => mapAddress(a, (row, side) => toYRow(rowMaps[si], row, side));
+    // P29 (accepted, changed form): frontmatter addresses use the formula ref grammar, column
+    // refs plus YCSV row numbers, header row = row 0: `product0:totaal0`, `prijs3`. Letters
+    // only for columns without a ref (P33 H6).
+    const toY = (a: string): string | null => {
+      const parts = a.split(/\s+/).map((p) => a1ToYcsv(p, { sheets, self: si, names }).text);
+      return parts.some((p) => p.includes("#REF!")) ? null : parts.join(" ");
+    };
     const rekey = <T,>(o: Record<string, T>) =>
       Object.fromEntries(Object.entries(o).flatMap(([k, v]) => {
         const y = toY(k);
-        if (y === null) L("formatting on unnumbered rows", "lost", `${m.name}!${k}: row has no YCSV number`);
+        if (y === null) L("formatting on unnumbered rows", "lost", `${m.name}!${k}: no YCSV address`);
         return y === null ? [] : [[y, v]];
       }));
     const merges2 = merges.map(toY).filter((g): g is string => g !== null);
-    for (const v of validations) v.range = toY(String(v.range)) ?? String(v.range);
+    for (const v of validations) v.at = toY(String(v.at)) ?? String(v.at);
     const notes2 = rekey(notes);
     const cells2 = rekey(cellsFm);
     const entry: Record<string, unknown> = { ref: m.ref };

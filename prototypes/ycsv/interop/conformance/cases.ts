@@ -1,7 +1,8 @@
 // YCSV v1 conformance corpus (spike 11).
 //
 // Each case is a file plus what the spec (prototypes/ycsv/upstream/ycsv-spec-v1.md, unamended
-// except accepted decisions: P30, empty rows keep their number)
+// except accepted decisions: P30, empty rows keep their number; and since 2026-11-27 every
+// proposal Wouter accepted (spec Appendix D) — cases it settles are marked "decided 2026-11-27")
 // says should happen. `expect.status`:
 //   ok        — the spec says this parses; `values`/`refs`/`rows` pin the result
 //   error     — the spec says this is a hard error
@@ -113,7 +114,7 @@ sheets:
 sheets:
   - ref: totaal
   - ref: data`)}som\n=SUM(data!n1:n3)\n---\nn\n1\n2\n3\n`,
-    expect: { status: "silent", sheets: 2, values: { som1: "6" }, note: "Spec only shows the repeated-prefix form; Excel, Sheets and LibreOffice write `data!n1:n3`. Import needs this form." },
+    expect: { status: "ok", sheets: 2, values: { som1: "6" }, note: "P4 (decided 2026-11-27): a cross-sheet range names the sheet once (§8.3)." },
   },
   {
     id: "s07-multisheet-missing-sheet",
@@ -123,7 +124,7 @@ sheets:
     text: `${fm(`${V1}
 sheets:
   - ref: a`)}x\n=nope!x1\n`,
-    expect: { status: "error", note: "A.10 makes this a hard (file-level) error; both spreadsheets show #REF! in the one cell instead." },
+    expect: { status: "ok", values: { x1: "#REF!" }, note: "Per-cell errors (decided 2026-11-27): an unknown sheet is #REF! in the one cell (§8.7)." },
   },
   {
     id: "s08-multisheet-block-count",
@@ -182,7 +183,7 @@ sheets:
     spec: "§2.2",
     title: "UTF-8 BOM before the first `---`",
     text: `﻿${fm(V1)}a\n1\n`,
-    expect: { status: "silent", note: "§2.2 says 'No BOM' for writers but not what readers do. Excel writes a BOM in 'CSV UTF-8'; readers should strip it." },
+    expect: { status: "ok", values: { a1: "1" }, note: "P24 (decided 2026-11-27): readers strip a leading BOM." },
   },
   {
     id: "e04-quoted-crlf-in-cell",
@@ -190,7 +191,7 @@ sheets:
     spec: "§2.3, §7",
     title: "CRLF inside a quoted cell",
     text: `${fm(V1)}a,b\n"line1\r\nline2",x\n`,
-    expect: { status: "silent", note: "Both parsers drop every \\r, so the cell value changes. RFC 4180 keeps it. Spec does not say whether line endings inside cells are normalised." },
+    expect: { status: "ok", values: { a1: "line1\nline2" }, note: "P23 (decided 2026-11-27): CR/CRLF inside a quoted field becomes LF." },
   },
   {
     id: "e05-unicode",
@@ -321,7 +322,7 @@ sheets:
     spec: "§3, §A.3",
     title: "No `ycsv_version`",
     text: `${fm("name: x")}a\n1\n`,
-    expect: { status: "error" },
+    expect: { status: "ok", values: { a1: "1" }, note: "P34 (decided 2026-11-27): a missing ycsv_version is version 1." },
   },
   {
     id: "f02-higher-version",
@@ -337,7 +338,7 @@ sheets:
     spec: "§A.2",
     title: "Plain CSV, no frontmatter",
     text: `a,b\n1,2\n`,
-    expect: { status: "error", note: "A.2 says error. Core reads it as a sheet without a warning; for import that is the friendlier choice, but then it is not YCSV." },
+    expect: { status: "ok", refs: ["a", "b"], dataRows: 1, values: { b1: "2" }, note: "P34 (decided 2026-11-27): frontmatter is optional; header detected (D6)." },
   },
   {
     id: "f04-unterminated",
@@ -353,7 +354,7 @@ sheets:
     spec: "§A.3",
     title: "Frontmatter is not valid YAML",
     text: `---\n${V1}\ncolumns: [\n---\na\n1\n`,
-    expect: { status: "silent", note: "A.3 says 'parse as YAML' but not what a YAML error does. Core ignores the frontmatter, the prototype throws." },
+    expect: { status: "error", note: "Decided 2026-11-27 (A.3): invalid YAML is an error that names the line." },
   },
   {
     id: "f06-unknown-fields",
@@ -369,7 +370,7 @@ sheets:
     spec: "§3",
     title: "YAML 1.1 surprises: `ref: no`, `ref: 1e3`, `name: 2024-01-01`",
     text: `${fm(`${V1}\ncolumns:\n  - ref: no\n  - ref: on\n    name: 2024-01-01`)}no,on\n1,2\n`,
-    expect: { status: "silent", note: "js-yaml (YAML 1.1 core) and `yaml` (1.2) read `no`/`on`/dates differently. The spec does not name a YAML version." },
+    expect: { status: "ok", refs: ["no", "on"], note: "P25 (decided 2026-11-27): YAML 1.2 core, so `no`, `on` and the date are strings." },
   },
   // --- column identity -------------------------------------------------------------------
   {
@@ -410,7 +411,7 @@ sheets:
     spec: "§3.2, §4",
     title: "Header values with spaces and capitals, no `columns`",
     text: `${fm(V1)}Unit Price,Qty\n2,3\n`,
-    expect: { status: "silent", note: "Refs must be 'lowercase, no spaces' (§3.2), but §4 uses header values as refs. Core makes `unit_price`; the prototype keeps `Unit Price` and quotes it in formulas." },
+    expect: { status: "ok", refs: ["Unit Price", "Qty"], dataRows: 1, note: "P33 (decided 2026-11-27): the ref is the header text, quoted in formulas ('Unit Price'1)." },
   },
   {
     id: "c06-duplicate-refs",
@@ -425,8 +426,8 @@ sheets:
     area: "columns",
     spec: "§8.2",
     title: "Columns `q` and `q1`: what is `q12`?",
-    text: `${fm(`${V1}\ncolumns:\n  - ref: q\n  - ref: q1\n  - ref: r`)}q,q1,r\n1,10,0\n2,20,=q12\n`,
-    expect: { status: "silent", note: "`q12` is q row 12 or q1 row 2. Spec does not forbid refs that end in digits nor give a rule." },
+    text: `${fm(`${V1}\ncolumns:\n  - ref: q\n  - ref: q1\n  - ref: r`)}q,q1,r\n1,10,0\n2,20,='q1'2\n`,
+    expect: { status: "ok", values: { r2: "20" }, note: "P12/P33 (decided 2026-11-27): a ref that ends in a digit is quoted ('q1'2); bare `q12` is q row 12." },
   },
   {
     id: "c08-header-mismatch",
@@ -434,7 +435,7 @@ sheets:
     spec: "§4",
     title: "Header has an unknown name next to known refs",
     text: `${fm(`${V1}\ncolumns:\n  - ref: a\n  - ref: b`)}a,x\n1,2\n`,
-    expect: { status: "silent", note: "Not all values match refs, so per A.5 it is a data row (text 'a','x' in row 1). Probably not what the author meant." },
+    expect: { status: "ok", dataRows: 2, note: "D2 (decided 2026-11-27): with `columns`, a row-1 value that matches no ref or name means no header, so row 1 is data. Write `header: true` to say otherwise." },
   },
   {
     id: "c09-az-beyond-z",
@@ -459,7 +460,7 @@ sheets:
     spec: "§5, §6",
     title: "Locale-formatted numbers in the file (`1.234,56`, `€ 3,27`, `50%`)",
     text: `${fm(`${V1}\ncolumns:\n  - ref: n\n    type: number\n  - ref: x`)}n,x\n"1.234,56",=n1+0\n"€ 3,27",=n2+0\n50%,=n3+0\n`,
-    expect: { status: "ok", values: { x1: "#VALUE!", x2: "#VALUE!", x3: "#VALUE!" }, note: "§5: not parseable as the type → string + warning. Canonical storage is `.`-decimal without symbols." },
+    expect: { status: "ok", values: { x1: "#VALUE!", x2: "#VALUE!", x3: "0.5" }, note: "§5/§7: not parseable → string + warning; `50%` is read as 0.5 (P6 + P8, (decided 2026-11-27))." },
   },
   {
     id: "t03-booleans",
@@ -474,8 +475,8 @@ sheets:
     area: "types",
     spec: "§5, §6.3",
     title: "Percent stored as 50 = 50%, used in a formula",
-    text: `${fm(`${V1}\ncolumns:\n  - ref: p\n    type: percent\n  - ref: x`)}p,x\n50,=200*p1\n`,
-    expect: { status: "silent", note: "Display divides by 100, but the spec does not say what `p1` is in a formula: 50 or 0.5. Excel stores 0.5. This makes `=200*p1` 10000 vs 100 — a format-level decision." },
+    text: `${fm(`${V1}\ncolumns:\n  - ref: p\n    type: percent\n  - ref: x`)}p,x\n0.5,=200*p1\n`,
+    expect: { status: "ok", values: { x1: "100" }, note: "P6 (decided 2026-11-27): percent is stored as a fraction; 0.5 is 50%." },
   },
   {
     id: "t05-dates",
@@ -483,7 +484,7 @@ sheets:
     spec: "§5, §8.1",
     title: "Date arithmetic: difference, +1 day, invalid date",
     text: `${fm(`${V1}\ncolumns:\n  - ref: d\n    type: date\n  - ref: x`)}d,x\n2024-01-31,=d2-d1\n2024-03-01,=d1+1\n2024-02-30,=YEAR(d3)\n`,
-    expect: { status: "silent", values: { x1: "30" }, note: "§8.1 warns that formulajs returns Date objects, but the spec does not define date values in formulas (serial number? ISO text?) nor what `d1+1` returns." },
+    expect: { status: "ok", values: { x1: "30", x2: "45323" }, note: "P7 (decided 2026-11-27): dates are serial numbers in formulas (2024-02-01 = 45323)." },
   },
   {
     id: "t06-time-datetime",
@@ -506,8 +507,8 @@ sheets:
     area: "types",
     spec: "§8",
     title: "A text value that starts with `=`",
-    text: `${fm(V1)}a\n"=not a formula"\n`,
-    expect: { status: "silent", note: "Every value that starts with `=` is a formula, quoted or not. There is no way to store the text `=x` (Excel uses a leading `'`)." },
+    text: `${fm(V1)}a\n'=not a formula\n`,
+    expect: { status: "ok", values: { a1: "=not a formula" }, note: "P5 (decided 2026-11-27): a leading ' stores text that starts with =." },
   },
   // --- formulas --------------------------------------------------------------------------
   {
@@ -516,7 +517,7 @@ sheets:
     spec: "§8.6",
     title: "Operator precedence: `-2^2`, `2^3^2`, `2+3*4`",
     text: `${fm(V1)}a,b,c\n=-2^2,=2^3^2,=2+3*4\n`,
-    expect: { status: "silent", values: { c1: "14" }, note: "Excel: -2^2 = 4 and 2^3^2 = 64 (left-assoc). Sheets: 4 and 64. LibreOffice: 4 and 64. Spec gives no precedence." },
+    expect: { status: "ok", values: { a1: "4", b1: "64", c1: "14" }, note: "P4 (decided 2026-11-27): Excel precedence." },
   },
   {
     id: "x02-percent-operator",
@@ -524,7 +525,7 @@ sheets:
     spec: "§8.6",
     title: "`%`: modulo in the spec, postfix percent in Excel",
     text: `${fm(V1)}a,b\n=7%3,=50%\n`,
-    expect: { status: "ok", values: { a1: "1" }, note: "Spec: `%` is modulo. Excel/Sheets/LibreOffice: `50%` = 0.5 and `7%3` is a syntax error. Imported formulas with `%` change meaning." },
+    expect: { status: "ok", values: { b1: "0.5" }, note: "P4 (decided 2026-11-27): `%` is postfix percent; `7%3` is not a valid formula (an error in that cell)." },
   },
   {
     id: "x03-concat",
@@ -532,7 +533,7 @@ sheets:
     spec: "§8.6",
     title: "`&` string concatenation",
     text: `${fm(V1)}a,b\n${line("x", '=a1&"y"')}`,
-    expect: { status: "silent", values: { b1: "xy" }, note: "`&` is not in §8.6 but is one of the most used operators in real workbooks." },
+    expect: { status: "ok", values: { b1: "xy" }, note: "P4 (decided 2026-11-27): `&` concatenates." },
   },
   {
     id: "x04-absolute-refs",
@@ -540,7 +541,7 @@ sheets:
     spec: "§8.2",
     title: "Absolute refs `$a$1`",
     text: `${fm(V1)}a,b\n2,=a1*$a$1\n3,=a2*$a$1\n`,
-    expect: { status: "silent", values: { b1: "4", b2: "6" }, note: "No `$` in the spec. Imported workbooks are full of them; fill/copy needs them." },
+    expect: { status: "ok", values: { b1: "4", b2: "6" }, note: "P4 (decided 2026-11-27): `$` markers." },
   },
   {
     id: "x05-rect-range",
@@ -548,7 +549,7 @@ sheets:
     spec: "§8.3",
     title: "Rectangular range `a1:b2`",
     text: `${fm(V1)}a,b,c\n1,2,=SUM(a1:b2)\n3,4,\n`,
-    expect: { status: "error", values: { c1: "10" }, note: "§8.3: start and end must share the same ref, so this is invalid; Excel ranges are rectangles (VLOOKUP tables, SUMPRODUCT)." },
+    expect: { status: "ok", values: { c1: "10" }, note: "P4 (decided 2026-11-27): ranges are rectangles." },
   },
   {
     id: "x06-same-row-ref",
@@ -556,7 +557,7 @@ sheets:
     spec: "§8.2",
     title: "Bare same-row ref `=aantal*prijs` (prototype extension)",
     text: `${fm(V1)}aantal,prijs,totaal\n2,3,=aantal*prijs\n`,
-    expect: { status: "silent", values: { totaal1: "6" }, note: "Not in the spec; spike 4–6 recommend it (one shared formula per column). Spec would read `aantal` as a def name → error." },
+    expect: { status: "ok", values: { totaal1: "6" }, note: "P4 (decided 2026-11-27): a bare ref is the same row." },
   },
   {
     id: "x07-defs",
@@ -572,7 +573,7 @@ sheets:
     spec: "§8.7, §A.10",
     title: "Circular refs, including a self-ref",
     text: `${fm(V1)}a,b,c\n=b1,=a1,=c1\n`,
-    expect: { status: "error", note: "A.10: hard error. Excel and Sheets show a per-cell circular error and keep the file open." },
+    expect: { status: "ok", values: { a1: "#CIRC!", b1: "#CIRC!" }, note: "Per-cell errors (decided 2026-11-27): #CIRC! in each cell of the cycle (§8.7)." },
   },
   {
     id: "x09-blank-semantics",
@@ -580,7 +581,7 @@ sheets:
     spec: "§8",
     title: "Blank vs 0 vs empty string",
     text: `${fm(V1)}a,b,c,d,e\n,=a1+1,=a1=0,"=a1=""""",=COUNTA(a1:a1)\n`,
-    expect: { status: "silent", values: { b1: "1", c1: "TRUE", d1: "TRUE", e1: "0" }, note: "Excel values shown. Spec does not define blank." },
+    expect: { status: "ok", values: { b1: "1", c1: "TRUE", d1: "TRUE", e1: "0" }, note: "Blank cells as Excel (decided 2026-11-27), §8.7." },
   },
   {
     id: "x10-text-to-number",
@@ -636,6 +637,6 @@ sheets:
     spec: "§8.3",
     title: "Whole-column range `SUM(v:v)`",
     text: `${fm(V1)}v,s\n1,=SUM(v:v)\n2,\n`,
-    expect: { status: "silent", values: { s1: "3" }, note: "Very common in imported workbooks (`SUM(B:B)`), not in the spec." },
+    expect: { status: "ok", values: { s1: "3" }, note: "P4 (decided 2026-11-27): `v:v` is the whole column." },
   },
 ];

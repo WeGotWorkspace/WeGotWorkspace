@@ -406,7 +406,7 @@
     },
     "t08-literal-equals": {
       "core": "stable after 1st write",
-      "proto": "stable after 1st write"
+      "proto": "byte-identical"
     },
     "x01-precedence": {
       "core": "stable after 1st write",

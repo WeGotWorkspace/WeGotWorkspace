@@ -45,10 +45,19 @@ describe("columns as enrichment of a CSV header (C1–C5)", () => {
     expect(r.warnings.some((w) => w.includes("prijs has no CSV column"))).toBe(true);
   });
 
-  test("columns.name is ignored under a header", () => {
+  test("columns.name differing from the header: header is the display name, warned", () => {
     const r = resolveColumns(["product"], 1, [{ ref: "product", name: "Artikel" }]);
     expect(r.columns[0]!.display).toBe("product");
-    expect(r.warnings[0]).toContain("ignored");
+    expect(r.warnings[0]).toContain("differs");
+  });
+
+  test("K13: display-name headers match by name, also when reordered (spec example 9.3)", () => {
+    const d = [{ ref: "product" }, { ref: "aantal" }, { ref: "prijs", name: "Prijs ex. BTW" }, { ref: "totaal", name: "Prijs incl. BTW" }];
+    const r = resolveColumns(["product", "aantal", "Prijs ex. BTW", "Prijs incl. BTW"], 4, d);
+    expect(refs(r)).toEqual(["product:-:name", "aantal:-:name", "prijs:-:name", "totaal:-:name"]);
+    expect(r.warnings).toEqual([]);
+    const swapped = resolveColumns(["Prijs incl. BTW", "product", "aantal", "Prijs ex. BTW"], 4, d);
+    expect(refs(swapped)).toEqual(["totaal:-:name", "product:-:name", "aantal:-:name", "prijs:-:name"]);
   });
 
   test("no header: position, name is the display name", () => {
