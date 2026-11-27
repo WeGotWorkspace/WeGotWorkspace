@@ -72,6 +72,63 @@ export function driveEntryRowFromEntry(
 }
 
 /**
+ * A folder or file this device just created on the server (#2063 C3): filed
+ * under its parent with the parent's `area` (or, under an account root, the
+ * root's) and the parent's rights, so the tree views show it before the push.
+ * The next change for its node fills in the rest.
+ */
+export async function addCreatedDriveEntry(
+  username: string,
+  parentApiPath: string,
+  name: string,
+  type: "dir" | "file",
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
+  const parentId = normalizeDriveEntryPath(parentApiPath);
+  const id = parentId ? `${parentId}/${name}` : name;
+  // One transaction: a change sync that files the real node meanwhile wins.
+  await db.transaction("rw", table, async () => {
+    // The server answers a name that already exists as a success: the row there
+    // (its node id, size, rights) stays as it is.
+    if (await table.get(id)) return;
+    const parent = parentId ? await table.get(parentId) : undefined;
+    const parentEntry = parent ? parseEntryRow(parent) : null;
+    const entry: WgwDriveDirectoryEntry = {
+      type,
+      path: `/${id}`,
+      name,
+      size: 0,
+      time: Math.floor(Date.now() / 1000),
+      permissions: 0,
+      // Under a root there is no parent row: the person just created it there.
+      myRights: parentEntry?.myRights ?? {
+        mayView: true,
+        mayComment: true,
+        mayReview: true,
+        mayEditContent: true,
+        mayManageStructure: true,
+        mayShare: true,
+      },
+    };
+    await table.put(driveEntryRowFromEntry(entry, parent?.area ?? areaFromCrawledPath(id)));
+  });
+}
+
+/** Every child name the tree holds under `parentPath`, dot names included. */
+export async function readDriveChildNames(
+  username: string,
+  parentPath: string,
+): Promise<Set<string>> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await driveEntriesTable(db)
+    .where("parentPath")
+    .equals(normalizeDriveEntryPath(parentPath))
+    .toArray();
+  return new Set(rows.map((row) => row.id.split("/").pop() ?? row.id));
+}
+
+/**
  * Upsert one listing entry. Without `area`, the row keeps the area it had at
  * this path, or takes its parent folder's: writers other than the tree sync
  * (operations, uploads, folder listings) do not know it.
@@ -229,6 +286,11 @@ export async function removeDriveEntriesUnderPrefix(
   await driveEntriesTable(db).bulkDelete(toDelete.map((row) => row.id));
 }
 
+/** A rename can change a file's `ext` view index (#2063 C3); `areaAfterMove` decides `area`. */
+function movedRowExt(row: { type: string }, newId: string): { ext?: string } {
+  return row.type === "file" ? { ext: fileExtension(newId.split("/").pop() ?? "") } : {};
+}
+
 export async function migrateDriveEntryPath(
   username: string,
   oldPath: string,
@@ -245,7 +307,14 @@ export async function migrateDriveEntryPath(
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
   const area = await areaAfterMove(table, username, row, newId, newParent);
-  await table.put({ ...row, id: newId, parentPath: newParent, area, data: JSON.stringify(entry) });
+  await table.put({
+    ...row,
+    ...movedRowExt(row, newId),
+    id: newId,
+    parentPath: newParent,
+    area,
+    data: JSON.stringify(entry),
+  });
   await table.delete(oldId);
 
   const descendants = await table
@@ -260,6 +329,7 @@ export async function migrateDriveEntryPath(
     // Spread the row so `nodeId` and an upload placeholder's `uploadId` move along.
     await table.put({
       ...descendant,
+      ...movedRowExt(descendant, migratedId),
       id: migratedId,
       parentPath: migratedParent,
       area: isTrashTreePath(migratedId) ? "trash" : (area ?? descendant.area),

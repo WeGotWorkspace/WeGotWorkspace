@@ -36,9 +36,14 @@ export const driveLabels = {
   emptyFolder: "This folder is empty",
   allFilesEmpty: "No files yet",
   allFilesLoading: filesBrowserSidebarLabels.listLoading,
-  listLoadingMore: filesBrowserSidebarLabels.loadingMore,
   folderListingLoading: "Loading folder…",
-  /** Folder view when the live listing failed and no rows are shown — never "empty". */
+  /** Offline before this view synced to the device (#2063): never "empty". */
+  notAvailableOffline: "Not available offline yet",
+  notAvailableOfflineHint: "Open Drive once while you're online. After that it works offline too.",
+  /** Online after the first sync: the tree does not hold this folder (moved, deleted, or a stale link). */
+  folderMissing: "This folder isn't here any more",
+  folderMissingHint: "It may have been moved or deleted.",
+  /** A share-link guest's folder listing failed: never shown as empty. */
   folderListingFailed: "This folder could not be loaded",
   folderListingRetry: "Try again",
   dropUploadHint: "Drop files to upload to",

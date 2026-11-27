@@ -103,7 +103,7 @@ function createShell(viewResetKey = "folder:My Drive"): DriveShellState {
     files: [FOLDER, MARKDOWN, PDF, IMAGE, VIDEO],
     setFiles: vi.fn(),
     liveSearchResults: null,
-    starredItems: [],
+    viewItems: null,
     starred: {},
     view: { type: "folder", path: "My Drive" },
     searchQuery: "",
@@ -177,7 +177,7 @@ describe("useDriveList openFile", () => {
     const shell = {
       ...createShell(),
       view: { type: "shared" },
-      sharedItems: [sharedFile],
+      viewItems: [sharedFile],
       operations: {},
     } as unknown as DriveShellState;
     const { result } = renderHook(() => useDriveList({ shell }));

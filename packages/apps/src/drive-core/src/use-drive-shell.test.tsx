@@ -93,7 +93,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-describe("useDriveShell folder listing sync", () => {
+describe("useDriveShell server folders (guests and mocks, no local tree)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(window, "matchMedia", {
@@ -131,7 +131,7 @@ describe("useDriveShell folder listing sync", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.folderListingPending).toBe(false);
+      expect(result.current.viewState).toBeNull();
     });
 
     act(() => {
@@ -164,203 +164,45 @@ describe("useDriveShell folder listing sync", () => {
     unmount();
   });
 
-  it("shows a cached folder at once while the live listing loads", async () => {
+  it("keeps a folder in the loading state until its listing arrives", async () => {
     const live = deferred<DriveUIData>();
     const changeDir = vi.fn().mockReturnValue(live.promise);
-    const operations: DriveAPIOperations = {
-      ...createOperations(changeDir),
-      readCachedDirectory: vi
-        .fn()
-        .mockResolvedValue(folderData(PROJECTS_CWD, ["plan.md", "gone.md"])),
-    };
+    const operations = createOperations(changeDir);
     const bootstrap = driveData(["old.txt"]);
     const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
-    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
 
     act(() => {
       result.current.selectView({ type: "folder", path: "My Drive/Projects" });
     });
 
-    await waitFor(() =>
-      expect(result.current.files.map((file) => file.title)).toEqual(["plan.md", "gone.md"]),
-    );
-    expect(result.current.folderListingPending).toBe(false);
-    expect(changeDir).toHaveBeenCalled();
-
-    await act(async () => {
-      live.resolve(folderData(PROJECTS_CWD, ["plan.md", "new.md"]));
-    });
-    await waitFor(() =>
-      expect(result.current.files.map((file) => file.title)).toEqual(["plan.md", "new.md"]),
-    );
-    expect(result.current.folderListingPending).toBe(false);
-  });
-
-  it("keeps an uncached folder pending until the live listing arrives", async () => {
-    const live = deferred<DriveUIData>();
-    const changeDir = vi.fn().mockReturnValue(live.promise);
-    const readCachedDirectory = vi.fn().mockResolvedValue(null);
-    const operations: DriveAPIOperations = {
-      ...createOperations(changeDir),
-      readCachedDirectory,
-    };
-    const bootstrap = driveData(["old.txt"]);
-    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
-    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
-
-    act(() => {
-      result.current.selectView({ type: "folder", path: "My Drive/Projects" });
-    });
-
-    await waitFor(() => expect(readCachedDirectory).toHaveBeenCalled());
     await waitFor(() => expect(changeDir).toHaveBeenCalled());
-    expect(result.current.folderListingPending).toBe(true);
+    expect(result.current.viewState).toBe("first-sync");
 
     await act(async () => {
       live.resolve(folderData(PROJECTS_CWD, ["plan.md"]));
     });
-    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
     expect(result.current.files.map((file) => file.title)).toEqual(["plan.md"]);
   });
 
-  it("keeps a failed folder load as an error instead of an empty listing, and retries it", async () => {
-    const changeDir = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("FileNode query+get failed"))
-      .mockResolvedValueOnce(folderData(PROJECTS_CWD, ["plan.md"]));
+  it("keeps a failed folder listing an error with Try again, never an empty folder", async () => {
+    const changeDir = vi.fn().mockRejectedValueOnce(new Error("Server error"));
     const operations = createOperations(changeDir);
     const bootstrap = driveData(["old.txt"]);
     const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
-    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
-    expect(result.current.folderListingError).toBeNull();
+    await waitFor(() => expect(result.current.viewState).toBeNull());
 
     act(() => {
       result.current.selectView({ type: "folder", path: "My Drive/Projects" });
     });
+    await waitFor(() => expect(result.current.viewState).toBe("error"));
 
-    await waitFor(() =>
-      expect(result.current.folderListingError).toEqual({
-        path: "My Drive/Projects",
-        message: "FileNode query+get failed",
-      }),
-    );
-    expect(result.current.folderListingPending).toBe(false);
-
-    act(() => {
-      result.current.retryFolderListing();
-    });
-    expect(result.current.folderListingError).toBeNull();
-    expect(result.current.folderListingPending).toBe(true);
-
-    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+    changeDir.mockResolvedValueOnce(folderData(PROJECTS_CWD, ["plan.md"]));
+    act(() => result.current.retryFolder());
+    await waitFor(() => expect(result.current.viewState).toBeNull());
     expect(changeDir).toHaveBeenCalledTimes(2);
-    expect(result.current.folderListingError).toBeNull();
-    expect(result.current.files.map((file) => file.title)).toContain("plan.md");
-  });
-
-  it("loads Shared with me entries when the shared view is selected", async () => {
-    const changeDir = vi.fn().mockResolvedValue(driveData(["old.txt"]));
-    const listEntriesByPaths = vi.fn().mockResolvedValue([]);
-    const operations = {
-      ...createOperations(changeDir),
-      listEntriesByPaths,
-    };
-    const listSharedWithMe = vi.fn().mockResolvedValue([
-      {
-        share: {
-          id: "share-1",
-          path: "/users/bob/Client Deck",
-          kind: "member",
-          defaultAccess: "edit",
-          publicToken: null,
-          hasPassword: false,
-          expiresAt: null,
-          updatedAt: null,
-          shareWith: null,
-          myRights: fullDriveMyRights,
-        },
-        entry: {
-          name: "Client Deck",
-          path: "/users/bob/Client Deck",
-          type: "dir" as const,
-          size: 0,
-          time: 1,
-          permissions: 755,
-          myRights: fullDriveMyRights,
-        },
-      },
-    ]);
-
-    const { result, unmount } = renderHook(() =>
-      useDriveShell({
-        data: driveData(["old.txt"]),
-        session,
-        operations,
-        shareOperations: {
-          listSharedWithMe,
-        } as never,
-        view: { type: "shared" },
-        onViewChange: vi.fn(),
-      }),
-    );
-
-    await waitFor(() => {
-      expect(listSharedWithMe).toHaveBeenCalled();
-      expect(listEntriesByPaths).not.toHaveBeenCalled();
-      expect(result.current.sharedItems?.map((file) => file.title)).toEqual(["Client Deck"]);
-      expect(result.current.sharedItems?.[0]?.parent).toBe("Shared with me");
-      expect(result.current.sharedItems?.[0]?.kind).toBe("folder");
-    });
-
-    unmount();
-  });
-
-  it("shows a single-file member share without parent listing", async () => {
-    const listSharedWithMe = vi.fn().mockResolvedValue([
-      {
-        share: {
-          id: "share-file",
-          path: "/users/admin/Jaap.md",
-          kind: "member",
-          defaultAccess: "view",
-          publicToken: null,
-          hasPassword: false,
-          expiresAt: null,
-          updatedAt: "2026-08-05T10:00:00.000Z",
-          shareWith: null,
-          myRights: fullDriveMyRights,
-        },
-        entry: {
-          name: "Jaap.md",
-          path: "/users/admin/Jaap.md",
-          type: "file" as const,
-          size: 42,
-          time: 1,
-          permissions: 0,
-          myRights: fullDriveMyRights,
-        },
-      },
-    ]);
-
-    const { result, unmount } = renderHook(() =>
-      useDriveShell({
-        data: driveData(["old.txt"]),
-        session,
-        shareOperations: {
-          listSharedWithMe,
-        } as never,
-        view: { type: "shared" },
-        onViewChange: vi.fn(),
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.sharedItems?.map((file) => file.title)).toEqual(["Jaap.md"]);
-      expect(result.current.sharedItems?.[0]?.apiPath).toBe("/users/admin/Jaap.md");
-      expect(result.current.sharedItems?.[0]?.parent).toBe("Shared with me");
-    });
-
-    unmount();
+    expect(result.current.files.map((file) => file.title)).toEqual(["plan.md"]);
   });
 
   it("does not load starred paths for guest share sessions", async () => {

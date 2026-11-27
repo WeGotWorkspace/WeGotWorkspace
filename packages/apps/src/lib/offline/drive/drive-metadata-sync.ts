@@ -101,13 +101,18 @@ async function collectMetadataRoots(username: string): Promise<string[]> {
 export async function syncDriveMetadataTree(
   username: string,
   bootstrap: DriveAppBootstrap,
-  options?: { signal?: AbortSignal },
+  options?: {
+    signal?: AbortSignal;
+    /** The roots the crawl queues: home and each team drive `/groups` listed. */
+    onRoots?: (roots: readonly string[]) => void;
+  },
 ): Promise<DriveMetadataSyncProgress> {
   if (!username || !getConnectivitySnapshot()) return emptyProgress();
   const signal = options?.signal;
   await writeDriveBootstrapToCache(username, bootstrap);
 
   const roots = await collectMetadataRoots(username);
+  options?.onRoots?.(roots);
   const rootKeys = new Set(roots.map(normalizeDriveEntryKey));
   const visited = new Set<string>();
   const queue: string[] = [...roots];

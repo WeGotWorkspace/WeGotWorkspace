@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
-import { useDriveTrashList } from "@/drive-core/src/use-drive-trash-list";
+import { fetchDriveTrashListing } from "@/drive-core/src/drive-trash-listing";
+import { useDocsHomeListingFetch } from "@/docs-core/src/use-docs-home-listing-fetch";
 import {
   filterDocsHomeSharedByQuery,
   isDocsHomeCompatibleSharedFile,
@@ -35,7 +36,16 @@ export function useDocsHomeTrashList({
   enabled = true,
   query = "",
 }: UseDocsHomeTrashListOptions): UseDocsHomeTrashListResult {
-  const drive = useDriveTrashList({ username, operations, enabled });
+  const listDirectory = operations?.listDirectory;
+  const load = useCallback(
+    (signal: AbortSignal) =>
+      fetchDriveTrashListing({ listDirectory: listDirectory! }, username, { signal }),
+    [listDirectory, username],
+  );
+  const drive = useDocsHomeListingFetch(
+    enabled && listDirectory && username.trim() ? load : null,
+    "Failed to load trash",
+  );
   const files = useMemo(
     () => filterDocsHomeSharedByQuery(mapDocsHomeTrashEntries(drive.files), query),
     [drive.files, query],

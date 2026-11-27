@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
-import { useDriveStarredList } from "@/drive-core/src/use-drive-starred-list";
+import { fetchDriveStarredListing } from "@/drive-core/src/drive-starred-listing";
+import { useDocsHomeListingFetch } from "@/docs-core/src/use-docs-home-listing-fetch";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
 import {
   filterDocsHomeSharedByQuery,
@@ -38,7 +39,23 @@ export function useDocsHomeStarredList({
   enabled = true,
   query = "",
 }: UseDocsHomeStarredListOptions): UseDocsHomeStarredListResult {
-  const drive = useDriveStarredList({ username, operations, enabled });
+  const listStars = operations?.listStars;
+  const listEntriesByPaths = operations?.listEntriesByPaths;
+  const load = useCallback(
+    async (signal: AbortSignal) =>
+      (
+        await fetchDriveStarredListing(
+          { listStars: listStars!, listEntriesByPaths: listEntriesByPaths! },
+          username,
+          { signal },
+        )
+      ).files,
+    [listEntriesByPaths, listStars, username],
+  );
+  const drive = useDocsHomeListingFetch(
+    enabled && listStars && listEntriesByPaths ? load : null,
+    "Failed to load starred items",
+  );
   const files = useMemo(
     () => filterDocsHomeSharedByQuery(mapDocsHomeStarredEntries(drive.files), query),
     [drive.files, query],

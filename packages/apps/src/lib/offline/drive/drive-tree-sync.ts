@@ -1,10 +1,13 @@
 import {
   driveJmapSession,
+  FileNodeNotFoundError,
   fileNodeToDirectoryEntry,
   fileNodeVirtualPath,
+  listFileNodeEntries,
   type DriveJmapSession,
 } from "@/lib/api/wgw/drive-jmap";
 import { fetchFileNodeTreeBatch, type FileNodeTreePage } from "@/lib/api/wgw/drive-jmap-tree";
+import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { moveDocsPageSetupOverrides, removeDocsPageSetupOverrides } from "@/lib/docs-page-setup";
 import type { DriveAppBootstrap } from "@/lib/files/drive-types";
@@ -41,6 +44,7 @@ import {
   documentHasUnsavedLocalWork,
   retainOrDropLocalDocument,
 } from "@/lib/offline/drive/drive-local-document";
+import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
@@ -52,6 +56,7 @@ import {
 } from "@/lib/offline/drive/drive-schema";
 import {
   areaForRoot,
+  areaFromCrawledPath,
   isHiddenTreePath,
   type DriveEntryArea,
 } from "@/lib/offline/drive/drive-tree-rows";
@@ -69,6 +74,12 @@ export const DRIVE_TREE_ROOTS_KEY = "drive:tree-sync:roots";
  * once the server offers the keyset.
  */
 export const DRIVE_TREE_LAST_PASS_KEY = "drive:tree-sync:last-pass";
+/**
+ * Meta key: JSON list of the account root paths the per-folder crawl queued
+ * (home and the team drives `/groups` listed). Not the roots map: a non-null
+ * map tells the applier a keyset pass ran. Removed by a tree pass.
+ */
+export const DRIVE_TREE_CRAWL_ROOTS_KEY = "drive:tree-sync:crawl-roots";
 /**
  * Meta key set once the pre-pass `nodeId → path` map of the pass in progress
  * is stored, so a resume or a restart never takes it again from rows the walk
@@ -111,6 +122,20 @@ export async function readDriveTreeRoots(username: string): Promise<Map<string, 
         (pair): pair is [string, string] => typeof pair[1] === "string",
       ),
     );
+  } catch {
+    return null;
+  }
+}
+
+/** The account root paths of the last crawl, or null when no crawl stored them. */
+export async function readDriveTreeCrawlRoots(username: string): Promise<string[] | null> {
+  const raw = await readMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((path): path is string => typeof path === "string")
+      : null;
   } catch {
     return null;
   }
@@ -171,17 +196,94 @@ async function crawlFolders(
 ): Promise<DriveTreeSyncResult> {
   const before = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
-  const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
+  // `roots` stays null when the crawl returned before queueing roots (it went offline first).
+  const queued: { roots: readonly string[] | null } = { roots: null };
+  const progress = await syncDriveMetadataTree(username, bootstrap, {
+    signal,
+    onRoots: (roots) => {
+      queued.roots = roots;
+    },
+  });
   if (signal?.aborted || progress.failed > 0) {
+    return { completed: false, changed: true, keptUnsavedPaths: [] };
+  }
+  // `total` 0: the crawl did not run (offline before it queued anything). Write
+  // nothing: a token and last-pass marker here would mark an empty tree as
+  // complete, and a server without the keyset would not crawl again.
+  if (progress.total === 0) return { completed: false, changed: false, keptUnsavedPaths: [] };
+  // The crawl lists the person's own drives; the share roots come from the
+  // shared-with-me list, so Shared with me reads the tree there too. A failing
+  // list does not hold the first sync back: the person's own drives are done.
+  try {
+    const shared = await fetchDriveSharedWithMe({ signal });
+    await upsertDriveEntriesInBulk(
+      username,
+      shared.map((item) => ({ entry: item.entry as WgwDriveDirectoryEntry, area: "share" })),
+    );
+  } catch {
+    if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
+  }
+  if (!(await crawlTrash(username, session, queued.roots ?? [], signal))) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
+  await stampCrawledAreas(username);
+  // A crawl that returned before queueing roots keeps the list it had: an empty
+  // one would make every account root not-available until the next crawl.
+  if (queued.roots) {
+    await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(queued.roots));
+  }
   await writeDriveSyncToken(username, before.state);
   // Not `firstSyncDone`: the device walks the tree once the server offers the keyset.
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
+}
+
+/**
+ * The crawl skips dot folders, so Trash would hold only what this device
+ * trashed. List each root's `.Trash` (its top level: what the Trash view
+ * shows) and store it, pruning what is gone. A root with no `.Trash` has an
+ * empty Trash. Any other failure returns false: the crawl then stays
+ * unfinished (no token, no last pass), so the first-sync retry runs it again.
+ */
+async function crawlTrash(
+  username: string,
+  session: DriveJmapSession,
+  roots: readonly string[],
+  signal?: AbortSignal,
+): Promise<boolean> {
+  for (const root of roots) {
+    if (signal?.aborted) return false;
+    const trash = `${normalizePath(root)}/.Trash`;
+    let entries: WgwDriveDirectoryEntry[];
+    try {
+      entries = await listFileNodeEntries(session, trash, username, {
+        includeHidden: true,
+        signal,
+      });
+    } catch (error) {
+      if (!(error instanceof FileNodeNotFoundError)) return false;
+      entries = [];
+    }
+    await applyFetchedDirectorySnapshot(username, trash, entries);
+  }
+  return true;
+}
+
+/**
+ * The crawl writes rows through `upsertDriveEntry`, which takes a parent row's
+ * area, and account roots have no row, so crawled rows have none. The crawl
+ * never stores share roots, so the path decides the area, as in the Dexie
+ * backfill. Area-indexed views (All files, Recent, Trash) need it.
+ */
+async function stampCrawledAreas(username: string): Promise<void> {
+  await driveEntriesTable(accountDb(username))
+    .filter((row) => row.area === undefined)
+    .modify((row) => {
+      row.area = areaFromCrawledPath(row.id);
+    });
 }
 
 /**
@@ -262,6 +364,7 @@ async function runTreePass(
   await clearCursor(username);
   await writeDriveSyncToken(username, drained.newState);
   await stagingTable(username).clear();
+  await accountDb(username).meta.delete(DRIVE_TREE_CRAWL_ROOTS_KEY);
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths };
