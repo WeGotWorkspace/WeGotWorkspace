@@ -333,7 +333,10 @@ async function applyFileNodeChanges(
     const paths = await pathsForNodeId(username, id);
     if (paths.length === 0) continue;
     for (const path of paths) {
-      if (landed.has(normalizePath(path))) continue;
+      // A path another node now holds is not this node's to delete. The
+      // destroyed node's own row (also one a prefix move relocated) always is.
+      const holder = (await driveRowAt(username, path))?.nodeId;
+      if (holder ? holder !== id : landed.has(normalizePath(path))) continue;
       const outcome = await retainOrDropLocalDocument(username, path);
       if (outcome === "kept") {
         keptUnsavedPaths.push(normalizePath(path));

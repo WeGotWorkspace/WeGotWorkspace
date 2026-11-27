@@ -866,6 +866,30 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
     expect(await blobs.get("users/ada/draft.md")).toBeUndefined();
   });
 
+  it("a file deleted in a folder renamed in the same batch is removed", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/X", "fn-x", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/X/c.md", "fn-c"));
+    await upsertDriveEntry(username, entry("/users/ada/X/keep.md", "fn-keep"));
+    await writeDriveContentBlob(username, "/users/ada/X/c.md", new Blob(["body"]));
+    installCatalog(
+      new Map([["fn-x", withPath(node("fn-x", "fn-home", "Y", "directory"), "/users/ada/Y")]]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ updated: ["fn-x"], destroyed: ["fn-c"], newState: "14" }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await readCachedDriveNodeId(username, "/users/ada/Y/keep.md")).toBe("fn-keep");
+    expect(await readCachedDriveNodeId(username, "/users/ada/Y/c.md")).toBeUndefined();
+    expect(await readCachedDriveNodeId(username, "/users/ada/X/c.md")).toBeUndefined();
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect(await blobs.get("users/ada/Y/c.md")).toBeUndefined();
+    expect(await blobs.get("users/ada/X/c.md")).toBeUndefined();
+  });
+
   it("updated ids are fetched in maxObjectsInGet batches", async () => {
     const ids = Array.from({ length: 1200 }, (_, index) => `fn-${index}`);
     installCatalog(new Map());
