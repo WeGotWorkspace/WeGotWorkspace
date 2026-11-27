@@ -83,13 +83,14 @@ export function driveFilesFromTreeEntries(
   return labeled;
 }
 
-/** Changes the rows of a flat view (All Files, Recent, Starred, Shared) in place. */
+/** Changes the rows of a flat view (All Files, Recent, Starred, Shared, a tag) in place. */
 export type DriveAllFilesPatch = (update: (rows: DriveFile[]) => DriveFile[]) => void;
 
-/** All Files, Recent, Starred and Shared with me: lists of the tree, not one folder. */
+/** All Files, Recent, Starred, Shared with me and a tag: lists of the tree, not one folder. */
 export function isFlatDriveView(view: ViewKey): boolean {
   return (
     view.type === "all" ||
+    view.type === "tag" ||
     view.type === "recent" ||
     view.type === "starred" ||
     view.type === "shared"

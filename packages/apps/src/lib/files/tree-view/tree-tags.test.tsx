@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
@@ -10,7 +11,7 @@ import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-pus
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import type { DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
 import { rowInView } from "@/lib/files/tree-view/tree-view-predicates";
-import { queryFileTreeTags } from "@/lib/files/tree-view/tree-view-query";
+import { queryFileTreeTags, queryFileTreeView } from "@/lib/files/tree-view/tree-view-query";
 import { useFileTreeTags } from "@/lib/files/tree-view/use-file-tree-tags";
 
 afterEach(cleanup);
@@ -73,5 +74,34 @@ describe("the tag view of the file tree (#2402)", () => {
     await put(user, `users/${user}/a.md`, "home", ["fresh"]);
     act(() => notifyDriveRemoteChange(user));
     await waitFor(() => expect(result.current).toEqual(["fresh"]));
+  });
+
+  it("backfills tags on a database already past the tags version", async () => {
+    const user = freshUser();
+    // As an install that already took Meet chat's version 60: no `*tags` index, so the
+    // version-36 upgrade never runs when the real registrations reopen it.
+    const legacy = new Dexie(`wgw-offline-${offlineAccountKeyFromUsername(user)}`);
+    legacy.version(60).stores({
+      meta: "key",
+      outbox: "id, domain, createdAt",
+      drive_entries: "id, parentPath, type, modifiedAt, nodeId, uploadId, ext, area",
+    });
+    const entry: WgwDriveDirectoryEntry = {
+      type: "file",
+      path: `/users/${user}/old.md`,
+      name: "old.md",
+      size: 1,
+      time: 1,
+      permissions: 0,
+      myRights: fullDriveMyRights,
+      tags: ["client-a"],
+    };
+    const { tags: _tags, ...untagged } = driveEntryRowFromEntry(entry, "home");
+    await legacy.table("drive_entries").put(untagged);
+    legacy.close();
+
+    expect(await queryFileTreeTags(user)).toEqual(["client-a"]);
+    const view = await queryFileTreeView(user, { kind: "tag", tag: "client-a" }, undefined, true);
+    expect(view.rows.map((row) => row.name)).toEqual(["old.md"]);
   });
 });
