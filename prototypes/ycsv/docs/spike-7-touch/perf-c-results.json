@@ -1,0 +1,126 @@
+{
+  "at": "2026-11-27T20:44:23.127Z",
+  "device": "Pixel 7 emulation, headless Chromium",
+  "results": [
+    {
+      "variant": "b",
+      "cpu": 1,
+      "kind": "fling",
+      "frames": 95,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 3794
+    },
+    {
+      "variant": "b",
+      "cpu": 1,
+      "kind": "fling",
+      "frames": 94,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 3796
+    },
+    {
+      "variant": "c",
+      "cpu": 1,
+      "kind": "fling",
+      "frames": 95,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 3801
+    },
+    {
+      "variant": "c",
+      "cpu": 1,
+      "kind": "fling",
+      "frames": 96,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 3799
+    },
+    {
+      "variant": "c",
+      "cpu": 1,
+      "kind": "hold-drag to edge",
+      "frames": 148,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 1364
+    },
+    {
+      "variant": "b",
+      "cpu": 4,
+      "kind": "fling",
+      "frames": 93,
+      "fps": 59,
+      "p95": 17,
+      "worst": 33,
+      "over20": 1,
+      "blank": 0,
+      "scrolled": 3835
+    },
+    {
+      "variant": "b",
+      "cpu": 4,
+      "kind": "fling",
+      "frames": 95,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 3836
+    },
+    {
+      "variant": "c",
+      "cpu": 4,
+      "kind": "fling",
+      "frames": 94,
+      "fps": 59,
+      "p95": 17,
+      "worst": 33,
+      "over20": 1,
+      "blank": 0,
+      "scrolled": 3810
+    },
+    {
+      "variant": "c",
+      "cpu": 4,
+      "kind": "fling",
+      "frames": 95,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 3809
+    },
+    {
+      "variant": "c",
+      "cpu": 4,
+      "kind": "hold-drag to edge",
+      "frames": 142,
+      "fps": 60,
+      "p95": 17,
+      "worst": 17,
+      "over20": 0,
+      "blank": 0,
+      "scrolled": 1364
+    }
+  ]
+}

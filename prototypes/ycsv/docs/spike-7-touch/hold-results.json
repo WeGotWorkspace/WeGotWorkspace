@@ -1,0 +1,8645 @@
+{
+  "at": "2026-11-27T20:43:44.938Z",
+  "runs": [
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 514
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 563
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 206
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 562
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 578
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 195
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 361
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 569
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 223
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 167
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 572
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 214
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 390
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 552
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 224
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 212
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 568
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 583
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 214
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 518
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 563
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 553
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 567
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 167
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 345
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 208
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 173
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 166
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 202
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 378
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 401
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 597
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 250
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 207
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 172
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 408
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 204
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 212
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 183
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 459
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 361
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 553
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 221
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 461
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 592
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 206
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 38
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 513
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 204
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 215
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 215
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 190
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 185
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 217
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-phone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 189
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 474
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 212
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 148
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 587
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 560
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 224
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 556
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 595
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 215
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 208
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 377
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 555
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 194
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 208
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 553
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 593
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 38
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 180
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 556
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 192
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 215
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 194
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 367
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 208
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 38
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 169
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 190
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 550
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 206
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 368
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 561
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 226
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 215
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 553
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 243
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 190
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 453
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 550
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 211
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 177
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 444
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 212
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 361
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 543
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 224
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 191
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 364
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 208
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 36
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 35
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 501
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 551
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 210
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 209
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 34
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "pan",
+      "scrolled": 33
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 471
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "pan",
+      "scrolled": 566
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 216
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "pan",
+      "scrolled": 213
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 37
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "pan",
+      "scrolled": 38
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "android-tablet",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "iphone",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 160,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 250,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 10,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 0,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 80,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 150,
+      "speed": 25,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 2000,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 300,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 100,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 50,
+      "outcome": "none",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    },
+    {
+      "project": "ipad",
+      "holdMs": 350,
+      "slop": 4,
+      "pause": 250,
+      "speed": 25,
+      "outcome": "select",
+      "scrolled": 0
+    }
+  ]
+}

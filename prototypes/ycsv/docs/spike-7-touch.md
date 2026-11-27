@@ -17,7 +17,7 @@ Touch did force two changes inside the grid. Neither changes the architecture:
    - rows are memoised
 2. **A second home for the editor on phones.** On a phone the on-screen keyboard covers half the screen, so the formula bar becomes the editor and docks above the keyboard. Spike 6 already let the formula bar be the editor (`source: "bar"`), so this is placement, not a new editing model.
 
-**Recommendation for decision 5: variant B.** See "Decision 5" below.
+**Recommendation for decision 5: variant C (B plus hold-to-drag), but with a 250 ms hold instead of Calendar's 160 ms.** At 160 ms a finger that rests briefly before scrolling selects cells instead in every measured case. See "Variant C" and "Decision 5" below.
 
 Branch `spike/sheets-touch`, cut from `spike/sheets-ux`. Nothing went to main and no PR was opened.
 
@@ -26,15 +26,16 @@ Branch `spike/sheets-touch`, cut from `spike/sheets-ux`. Nothing went to main an
 ```bash
 cd prototypes/ycsv
 pnpm install --ignore-workspace
-pnpm exec storybook dev -p 6027 --no-open   # "Spike 7 / Touch": Variant A, Variant B, Frozen A/B, Ten Thousand Rows (frame meter)
-SB_PORT=6027 pnpm test:touch                 # 56 touch tests: Android phone + tablet (Chromium), iPhone + iPad (WebKit)
+pnpm exec storybook dev -p 6027 --no-open   # "Spike 7 / Touch": Variant A/B/C, C 250, Frozen A/B/C, Ten Thousand Rows (frame meter)
+SB_PORT=6027 pnpm test:touch                 # 88 touch tests: Android phone + tablet (Chromium), iPhone + iPad (WebKit)
 SB_PORT=6027 pnpm test:e2e                   # spike 6 suite (desktop Chromium + Pixel 7), still green
 pnpm test                                    # vitest, 51 unit tests (2 new)
 PERF=1 SB_PORT=6027 pnpm exec playwright test e2e/touch-perf.spec.ts --project=touch-perf
 SHOTS=1 SB_PORT=6027 pnpm exec playwright test e2e/touch-shots.spec.ts --project=iphone --project=ipad --project=android-phone
+HOLD=1 SB_PORT=6027 pnpm exec playwright test e2e/touch-hold.spec.ts --project=android-phone --workers=1   # variant C accident matrix (per project)
 ```
 
-The A/B switch sits in the story's top bar, so both variants run on the same sheet. Variant A is also the spike 6 behaviour, made finger-ready.
+The A/B/C switch sits in the story's top bar, so all variants run on the same sheet. Variant A is also the spike 6 behaviour, made finger-ready.
 
 ## What was built
 
@@ -176,7 +177,168 @@ What changed in the grid, all local:
 
 For the real build, the suite `dropdown-menu` must get the same long-press guard, and `popover.tsx` needs the flip-above-the-keyboard rule.
 
-## Decision 5: recommendation — variant B
+## Variant C: hold-to-drag (Calendar parity)
+
+Asked for after A and B: does Calendar's gesture work in the grid? Calendar (`TimeLine.ts` on main) arms a drag when a finger rests 160 ms within 10 px; more travel before that is a pan and the browser keeps it. Nothing is captured or prevented until the hold arms; after that a window `touchmove` blocker stops native scrolling.
+
+### What C does (`touchVariant="c"`, on top of B)
+
+| Finger | Cell | Row / column header | Column header edge (±12 px) |
+| --- | --- | --- | --- |
+| tap, double-tap | select, edit (as A/B) | select, menu on second tap | select |
+| rest 160 ms, then move > 4 px | **range selection** from that cell, with edge auto-scroll; B's handles and callout after the lift | **move the row or column** (the selected block if the header is inside it), drop line as on desktop | **resize** the column (the whole selected set if it is inside one) |
+| rest 160 ms, lift without moving | a tap | a tap | a tap |
+| rest 500 ms without moving | context menu (as A/B) | header menu | header menu |
+| move > 10 px within 160 ms | native pan with momentum | pan | pan |
+| second finger before a drag starts | pinch zoom, nothing selected | pinch | pinch |
+
+How the two timers coexist: the 160 ms hold only *arms*. While armed nothing has changed yet: a light outline appears under the finger (`c-armed` screenshots) and native panning is blocked. If the finger then moves more than 4 px, the drag starts, the menu timer is cancelled, and a short vibration marks the start (Android only; iOS has no Vibration API). If the finger stays still, the menu opens at 500 ms, as in A and B. A lift in between is a tap. I did not vibrate on arming: many ordinary taps last longer than 160 ms and should not buzz.
+
+The B handles stay: a hold-drag makes the first range, the knobs adjust it afterwards. The header menus keep Move up/down/left/right, because moving by drag is not discoverable.
+
+Code: about 150 lines in `SheetGrid.tsx` (`startHoldDrag`, `endHold`, the arm timer in the touch branch of `onPointerDown`, the `holdLock` check in the existing non-passive `touchmove` listener) and `.sx-armed` in the CSS. The architecture is unchanged: C turns a pending touch into the same `select` / `move` / `resize` drags the mouse uses. `holdMs` and `holdSlop` are props, so the stories and the measurement can vary them.
+
+### Tests
+
+8 new tests in `e2e/8-touch.spec.ts` on all four projects (88 touch runs: 80 passed, 8 Chromium-only skipped on WebKit):
+
+- hold, then drag selects a range; handles and callout take over after the lift; a knob adjusts it
+- a hold without movement is a tap; double-tap still edits (keyboard / dock)
+- holding still opens the menu, and the armed outline is gone
+- hold-drag a column header moves the column; a row header moves the row
+- hold-drag the column header edge resizes the column
+- Chromium (real touch): a quick swipe still pans and keeps the selection; a rested finger then drags *without* scrolling the page
+- Chromium: a second finger after a 260 ms hold pinches the grid, selects nothing, and the page does not zoom
+
+Two findings while writing them:
+
+- **The B start knob overlaps row header 1.** Its 44 px hit box is centred on the cell corner, so 22 px of it lies over the row header, and a hold on row header 1 grabs the knob. Not new in C, but C makes the row header a drag source, so the product should clip the knob box to the cell side.
+- **A finger that lands during momentum catches the fling and does not arm.** Chromium treats that touch as part of the scroll. That is the right behaviour; it means "stop the fling, then hold" takes a second touch.
+
+### Accidental selection while scrolling (the main risk)
+
+`e2e/touch-hold.spec.ts` plays scroll gestures a person could make: finger down, **still for a pause**, then straight up at a **constant speed**, then lift. 3 hold times × 2 slops × 4 pauses × 5 speeds × 2 repeats on all four projects (960 gestures). Chromium gets real touch input through CDP, so Chromium's own pan decision takes part. WebKit gets synthetic touch PointerEvents timed inside the page (our logic only). Raw rows: `docs/spike-7-touch/hold-results.json`.
+
+Accidents (a selection instead of a pan) out of 8 (4 projects × 2 repeats). Speeds in px/s: 2000 is a flick, 300 a normal drag, 100 a slow drag, 50 and 25 careful nudging. The menu never fired by accident.
+
+| hold / slop | pause | 2000 | 300 | 100 | 50 | 25 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 160 ms / 10 px (Calendar) | 0 ms | 0 | 0 | 0 | **8** | **8** |
+| 160 ms / 10 px (Calendar) | 80 ms | 0 | **3** | **8** | **8** | **8** |
+| 160 ms / 10 px (Calendar) | 150 ms | **6** | **8** | **8** | **8** | **8** |
+| 160 ms / 10 px (Calendar) | 250 ms | **8** | **8** | **8** | **8** | **8** |
+| 160 ms / 4 px | 0 ms | 0 | 0 | 0 | 0 | **7** |
+| 160 ms / 4 px | 80 ms | 0 | 0 | **4** | **8** | **8** |
+| 160 ms / 4 px | 150 ms | **4** | **8** | **8** | **8** | **8** |
+| 160 ms / 4 px | 250 ms | **8** | **8** | **8** | **8** | **8** |
+| 250 ms / 10 px | 0 ms | 0 | 0 | 0 | **1** | **8** |
+| 250 ms / 10 px | 80 ms | 0 | 0 | 0 | **8** | **8** |
+| 250 ms / 10 px | 150 ms | 0 | 0 | **7** | **8** | **8** |
+| 250 ms / 10 px | 250 ms | **8** | **8** | **8** | **8** | **8** |
+| 250 ms / 4 px | 0 ms | 0 | 0 | 0 | 0 | 0 |
+| 250 ms / 4 px | 80 ms | 0 | 0 | 0 | 0 | **6** |
+| 250 ms / 4 px | 150 ms | 0 | 0 | 0 | **4** | **8** |
+| 250 ms / 4 px | 250 ms | **8** | **8** | **8** | **8** | **8** |
+| 350 ms / 10 px | 0 ms | 0 | 0 | 0 | 0 | **8** |
+| 350 ms / 10 px | 80 ms | 0 | 0 | 0 | 0 | **8** |
+| 350 ms / 10 px | 150 ms | 0 | 0 | 0 | **8** | **8** |
+| 350 ms / 10 px | 250 ms | 0 | 0 | **8** | **8** | **8** |
+| 350 ms / 4 px | 0 ms | 0 | 0 | 0 | 0 | 0 |
+| 350 ms / 4 px | 80 ms | 0 | 0 | 0 | 0 | 0 |
+| 350 ms / 4 px | 150 ms | 0 | 0 | 0 | 0 | 0 |
+| 350 ms / 4 px | 250 ms | 0 | 0 | 0 | **4** | **8** |
+
+The four projects agree within one gesture, so the result is about timing, not about the engine or the screen size. It follows one rule: **a scroll arms the hold when `pause + slop / speed ≥ hold`**, because the finger has not yet left the slop circle when the timer fires.
+
+What that means at Calendar's 160 ms / 10 px:
+
+- Any scroll that starts after the finger **rests 150 ms or more** selects cells instead, even a flick (6 of 8 at 150 ms, 8 of 8 at 250 ms).
+- A slow drag (50 px/s or slower) selects even with no rest at all.
+- Resting a moment before scrolling is a normal way to read a sheet. I could not measure how often people do it; that is the first item on the real-phone checklist.
+
+What helps:
+
+- **250 ms / 10 px**: with no rest only the slowest nudge arms; with an 80 ms rest, 50 px/s and slower; with a 150 ms rest, 100 px/s and slower. Normal drags and flicks are safe up to a 150 ms rest. An intended hold-drag waits 90 ms longer than in Calendar.
+- **350 ms / 4 px**: almost nothing arms by accident (only a 250 ms rest plus nudging). But 4 px is tight for a resting finger: real fingers roll and drift a few pixels, and every drift past 4 px turns an intended hold into a pan. Emulation cannot measure that drift, so this needs a phone.
+- A smaller slop alone (160 ms / 4 px) helps the slow-drag case but not the rest-then-scroll case.
+
+How bad is an accident? On a cell, a range appears with the callout; a tap clears it; no data changes. On a header, a row or column **moves** if the finger keeps going, which changes the document (undo restores it). So header accidents matter more than cell accidents.
+
+### Conflicts
+
+- **Double-tap**: no conflict. Each tap of a double-tap lifts before moving, and an armed but still finger is a tap. Tested.
+- **Pinch**: no conflict as long as the second finger lands before the first one has started a drag (a second pointer cancels the pending hold, and the pinch handler clears an armed hold). A second finger *after* a hold-drag started does not pinch: the drag already owns the gesture. The first case is tested.
+- **Long-press menu**: coexists through the "arm, then decide" rule above. Tested.
+- **Edge auto-scroll**: a header hold-drag near the screen edge scrolls the grid, as the desktop drag does (`c-column-move` shows the grid scrolled to the drop line, with the dragged column out of view; a floating label of the dragged column would help on a phone).
+
+### Frame rate
+
+Pixel 7 emulation, headless Chromium, 10k rows (`docs/spike-7-touch/perf-c-results.json`, machine load around 4):
+
+| | 1× CPU | 4× CPU |
+| --- | --- | --- |
+| fling, B | 60 fps, 0 blank | 59–60 fps, 0 blank, worst frame 33 ms |
+| fling, C | 60 fps, 0 blank | 59–60 fps, 0 blank, worst frame 33 ms |
+| hold-drag range into the bottom edge, 2 s of edge auto-scroll, C | 60 fps, worst 17 ms | 60 fps, worst 17 ms |
+
+C costs nothing while scrolling: the hold check is one boolean in a `touchmove` listener the grid already had for pinch.
+
+### A shared hold helper in `src/lib` (proposal only)
+
+Today every app decides on its own what a resting finger means. The numbers on main:
+
+| Where | Hold for a drag | Hold for a menu | Travel that cancels |
+| --- | --- | --- | --- |
+| Calendar `TimeLine.ts` | 160 ms (move / create) | none | 10 px |
+| Drive `use-drive-long-press.ts` | none | 450 ms | none in the hook (the caller cancels) |
+| List rows `use-delegated-list-item-events.ts` | none | 450 ms | 8 px |
+| Sheets spike (A/B) | none | 500 ms | 8 px |
+| Sheets spike (C) | 160 ms (prop `holdMs`) | 500 ms | 10 px (prop `holdSlop`) |
+
+The same finger on the same phone should not mean different things per app. Proposal: one small controller in `src/lib/touch/touch-hold.ts`, framework-free because Calendar is Lit and Sheets and Drive are React, plus a `useTouchHold` hook for React.
+
+```ts
+// dragMs: 250 if the real-phone check confirms the measurement above; Calendar would then move from 160 to 250.
+export const TOUCH_HOLD = { dragMs: 250, menuMs: 450, slopPx: 10, dragPx: 4 } as const;
+
+type TouchHoldEvents = {
+  /** The hold armed: the finger now owns the gesture (native panning is blocked). */
+  onArm?(at: { x: number; y: number }): void;
+  /** Moved more than dragPx after arming: start the app's drag here. */
+  onDragStart?(at: { x: number; y: number }, pointerId: number): void;
+  /** Still at menuMs (and no drag started). */
+  onMenu?(at: { x: number; y: number }): void;
+  /** Lifted before anything armed or after arming without moving: a tap. */
+  onTap?(at: { x: number; y: number }, heldMs: number): void;
+};
+
+/** Call from pointerdown with pointerType "touch". Returns a cancel function. */
+export function beginTouchHold(e: PointerEvent, events: TouchHoldEvents, opts?: Partial<typeof TOUCH_HOLD> & { drag?: boolean; menu?: boolean }): () => void;
+```
+
+What it owns, so the apps stop repeating it:
+
+- the pending state: window pointermove / pointerup / pointercancel listeners for that pointerId, the timers, and the travel check (`slopPx` before arming = a pan; the browser keeps it)
+- a second finger cancels it (pinch wins)
+- on arm: pointer capture and a window `touchmove` blocker (`passive: false`, `preventDefault` when `cancelable`), removed on lift or cancel; this is exactly what Calendar does today
+- `navigator.vibrate` once when a drag starts or a menu opens, never on arm (a slightly long tap must not buzz)
+- the "lift does not click the menu item under the finger" guard
+
+What stays in the app: what a drag or a menu means (move an event, select cells, move a file), the drop feedback, and the arm visual.
+
+Migration would be one app at a time. The open question is Calendar's 160 ms: the accident measurement above applies to its timeline as much as to the grid (a resting finger that then scrolls the day view starts a move or create there; not measured in Calendar itself). If the suite takes 250 ms, Calendar changes too, and that is a product call, not a refactor. I did not touch Calendar or Drive in this spike.
+
+## Decision 5: recommendation — variant C with a 250 ms hold
+
+*Updated after variant C. The original B reasoning follows below and still holds; C is B plus one gesture.*
+
+- **C over B**, because sliding a finger over cells is what people try first to select a block, and dragging a header is how they expect to move a row or column (Numbers and Google Sheets do both). B can do both only through knobs and menus.
+- **But not at Calendar's 160 ms.** At 160 ms, every scroll that starts after a short rest becomes a selection. **250 ms / 10 px** keeps normal scrolling safe up to a 150 ms rest and costs 90 ms on an intended drag.
+- **Headers are the riskier half**, because an accidental header drag moves data. If the real-phone check shows header accidents, keep hold-drag on cells and drop it on headers (the Move items in the header menu stay).
+- **The fallback is cheap.** C is B with the hold switched on; switching it off gives B. Try `VariantC250` / `FrozenC250` on a phone, next to `VariantC` / `FrozenC` (160 ms).
+- **One suite number.** Whatever Sheets picks should become the suite's hold time through the shared helper above, which reopens Calendar's 160 ms.
+
+### The original B reasoning
 
 Variant A is enough to **edit**. It is not enough to **work with ranges**. With A you cannot select a block of cells by finger: no 3×4 copy, no clearing a block, no status-bar sum of a range, no two-cell series to fill from. You can only work with one cell or whole rows and columns.
 
@@ -188,7 +350,7 @@ B adds that with:
 
 The cost is that fill moves from an always-visible handle into the callout/menu ("Fill", then drag), as in Excel for iPhone. On tablets one could later show both the fill handle and the knobs, because there is room. I did not build that; it is a v1.1 question.
 
-So: **v1 = B** (tap, double-tap, long-press, range handles, callout with Fill), with **Move up/down/left/right** in the header menus instead of header dragging.
+So, before C: **v1 = B** (tap, double-tap, long-press, range handles, callout with Fill), with **Move up/down/left/right** in the header menus instead of header dragging. With C, header dragging comes in through the hold.
 
 ## Other choices I made (reversible)
 
@@ -210,8 +372,9 @@ So: **v1 = B** (tap, double-tap, long-press, range handles, callout with Fill), 
   - freezing the first column, which phones would like
   - CSS-transform pinch
   - knob loupe/magnifier
-  - drag-to-move rows by long-press-then-drag
   - selecting multiple separate ranges by touch
+- Variant C, not measured: how often real people rest before scrolling, and how far a resting finger drifts (which decides whether a 4 px slop is usable). Both need the real-phone check (steps 18–25). The accident risk in Calendar's own timeline was inferred from the same timing rule, not measured there.
+- Variant C, not built: a floating label of the dragged row or column (on a phone the column can scroll out of view while it moves), and clipping the B start knob's hit box away from the row header.
 - Clipboard on iOS: menu Paste shows Safari's own "Paste" bubble, and paste from other apps needs it. Not verified.
 
 ## Checklist for a real iPhone and Android phone
@@ -222,7 +385,7 @@ Start Storybook so the phone can reach it (same Wi-Fi):
 cd prototypes/ycsv && pnpm exec storybook dev -p 6027 --no-open --host 0.0.0.0
 ```
 
-Open `http://<mac-ip>:6027/iframe.html?id=spike-7-touch--variant-a&viewMode=story` (and `--variant-b`, `--frozen-b`, `--ten-thousand-rows`). The A/B switch is in the top bar. Do each step on the iPhone (Safari) and on Android (Chrome):
+Open `http://<mac-ip>:6027/iframe.html?id=spike-7-touch--variant-a&viewMode=story` (and `--variant-b`, `--frozen-b`, `--ten-thousand-rows`, `--variant-c`, `--variant-c-250`, `--frozen-c`, `--frozen-c-250`). The A/B/C switch is in the top bar. Do each step on the iPhone (Safari) and on Android (Chrome):
 
 1. Tap a cell → it is selected, **no keyboard** appears.
 2. Swipe up and down hard → the grid flings with momentum, the selection does not change, and the page itself does not bounce or move.
@@ -242,13 +405,25 @@ Open `http://<mac-ip>:6027/iframe.html?id=spike-7-touch--variant-a&viewMode=stor
 16. Ten Thousand Rows: fling hard several times → the meter (bottom right) shows fps and "blank". Note the numbers and whether you ever see empty white rows.
 17. Rotate to landscape and double-tap → the phone layout (bar above the keyboard) is still used, and nothing is hidden behind the keyboard.
 
+Variant C: do 18–25 on `--frozen-c` (160 ms) **and** on `--frozen-c-250` (250 ms).
+
+18. **Read and scroll** for a minute as you would read a long sheet: put a finger down, look, then scroll, slowly and fast. Count how often a blue range appears instead of a scroll. This is the main question for C.
+19. Put a finger on a cell, wait until the light outline appears, then slide → a range grows. Lift → knobs and the callout appear.
+20. Hold a cell still → the outline appears, then the menu at about half a second; lifting does not pick an item.
+21. Hold a column header, then slide sideways → the column moves to the blue line. Same for a row header, up or down. Note whether a row or column ever moved by accident in step 18.
+22. Hold on the line between two column headers, then slide → the column gets wider or narrower.
+23. Hold a cell, and while holding put a second finger down and pinch → the grid zooms, no range.
+24. Double-tap still edits, a quick tap still only selects, and a flick still flings.
+25. On a phone that vibrates (Android): one short buzz when a drag starts and when a menu opens, never on a plain tap.
+
 Report: per step OK / not OK, the phone model and OS version, and a screenshot of step 16.
 
 ## Files
 
-- `src/ycsv-ux/touch.ts`: coarse pointer, `visualViewport` hook, edge speed, zoom helpers.
+- `src/ycsv-ux/touch.ts`: coarse pointer, `visualViewport` hook, edge speed, zoom helpers, the variant C hold constants.
 - `src/ycsv-ux/SheetGrid.tsx` / `.css`: variants, handles, dock, popover placement, pinch, stepped window, memoised rows.
 - `src/ycsv-ux/ContextMenu.tsx`: long-press click guard.
 - `src/stories/Touch.stories.tsx`, `touch-hud.tsx` (frame meter), `ux-seeds.ts` (seeds shared with spike 6).
 - `e2e/8-touch.spec.ts`, `e2e/touch-helpers.ts`, `e2e/touch-perf.spec.ts`, `e2e/touch-shots.spec.ts`, `tests/touch.test.ts`.
-- Screenshots: `docs/spike-7-touch/{iphone,ipad,android-phone}-*.png`. Variant A: `a-tap`, `a-long-press-menu`, `a-after-fill`. Variant B: `b-tap`, `b-range-callout`, `b-fill-mode`, `b-column`, `b-rows`, `b-dark`. Editing: `edit-autocomplete`, `edit-pick-ref`. Also `frozen-scrolled` and `pinch-zoomed-out` (Android).
+- Variant C: `e2e/touch-hold.spec.ts` (accident matrix); results in `docs/spike-7-touch/hold-results.json` and `perf-c-results.json`.
+- Screenshots: `docs/spike-7-touch/{iphone,ipad,android-phone}-*.png`. Variant A: `a-tap`, `a-long-press-menu`, `a-after-fill`. Variant B: `b-tap`, `b-range-callout`, `b-fill-mode`, `b-column`, `b-rows`, `b-dark`. Editing: `edit-autocomplete`, `edit-pick-ref`. Also `frozen-scrolled` and `pinch-zoomed-out` (Android). Variant C: `c-armed`, `c-hold-drag`, `c-after-lift`, `c-column-move`, `c-after-resize`.
