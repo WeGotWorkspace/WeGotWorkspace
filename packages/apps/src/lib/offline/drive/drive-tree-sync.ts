@@ -6,7 +6,7 @@ import {
 } from "@/lib/api/wgw/drive-jmap";
 import { fetchFileNodeTreeBatch, type FileNodeTreePage } from "@/lib/api/wgw/drive-jmap-tree";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
-import { moveDocsPageSetupOverrides } from "@/lib/docs-page-setup";
+import { moveDocsPageSetupOverrides, removeDocsPageSetupOverrides } from "@/lib/docs-page-setup";
 import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import type { JmapFileNode } from "@/lib/jmap-client";
@@ -35,7 +35,12 @@ import {
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
-import { documentHasUnsavedLocalWork } from "@/lib/offline/drive/drive-local-document";
+import { removeDriveAvailability } from "@/lib/offline/drive/drive-availability-store";
+import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
+import {
+  documentHasUnsavedLocalWork,
+  retainOrDropLocalDocument,
+} from "@/lib/offline/drive/drive-local-document";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
@@ -465,11 +470,15 @@ async function writeResolvedTree(
     });
   }
 
-  const blockedPaths = await pathsHeldByUnsavedDocuments(username, finals);
-  if (blockedPaths.length > 0) {
-    await rememberKeptUnsavedDocuments(username, blockedPaths);
-    return { blocked: true, keptUnsavedPaths: blockedPaths };
+  const occupants = await occupantsOfFinalPaths(username, finals);
+  if (occupants.unsaved.length > 0) {
+    await rememberKeptUnsavedDocuments(username, occupants.unsaved);
+    return { blocked: true, keptUnsavedPaths: occupants.unsaved };
   }
+  // The node landing on a replaced occupant's path never keeps that file's
+  // offline copy: its local document goes now (outside the transaction), its
+  // blob and Drive pin with the sidecar moves, its page setup after them.
+  for (const path of occupants.replaced) await retainOrDropLocalDocument(username, path);
 
   await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
   // Rows, blobs and pins commit together with the end of the pre-pass map: a
@@ -477,12 +486,17 @@ async function writeResolvedTree(
   // sidecars; one stopped after it takes a fresh map from the placed rows, so
   // no blob ever moves twice.
   const moves = await inDriveTreeTransaction(username, async () => {
+    for (const path of occupants.replaced) {
+      await removeDriveContentBlob(username, path);
+      await removeDriveAvailability(username, path);
+    }
     const moved = await moveSidecarsOfMovedNodes(username, finals);
     await upsertDriveEntriesInBulk(username, finals);
     await clearPrepass(username);
     return moved;
   }, ["drive_tree_prepass", "meta"]);
   // Page setups (localStorage) follow once, from the same final map.
+  removeDocsPageSetupOverrides(occupants.replaced.map((path) => `/${path}`));
   moveDocsPageSetupOverrides(moves.map(({ from, to }) => ({ from: `/${from}`, to: `/${to}` })));
   const keep = new Set(finals.map(({ entry }) => normalizeDriveEntryPath(entry.path)));
   const pruned = await pruneDriveEntriesToKeepSet(username, keep);
@@ -495,30 +509,33 @@ async function writeResolvedTree(
 
 /**
  * Final paths whose current row belongs to another node that the pass does not
- * move to a different final path, while that row has unsaved collab work. A
- * node that is in `finals` elsewhere is moving away; a same-node refresh is fine.
- * Only reads, so a blocked pass writes nothing.
+ * move to a different final path. `unsaved`: that row has unsaved collab work,
+ * so the pass blocks. `replaced`: the rest, whose blob and pins must not stay
+ * for the node landing there. A node that is in `finals` elsewhere is moving
+ * away; a same-node refresh is fine. Only reads.
  */
-async function pathsHeldByUnsavedDocuments(
+async function occupantsOfFinalPaths(
   username: string,
   finals: readonly { entry: WgwDriveDirectoryEntry }[],
-): Promise<string[]> {
+): Promise<{ unsaved: string[]; replaced: string[] }> {
   const targets = new Map<string, string>();
   for (const { entry } of finals) {
     if (entry.nodeId) targets.set(entry.nodeId, normalizeDriveEntryPath(entry.path));
   }
   const paths = finals.map(({ entry }) => normalizeDriveEntryPath(entry.path));
   const rows = await driveEntriesTable(accountDb(username)).bulkGet(paths);
-  const blocked: string[] = [];
+  const unsaved: string[] = [];
+  const replaced: string[] = [];
   for (const [index, row] of rows.entries()) {
     const occupant = row?.nodeId;
     const nodeId = finals[index]!.entry.nodeId;
     if (!row || !occupant || !nodeId || occupant === nodeId) continue;
     const movesTo = targets.get(occupant);
     if (movesTo !== undefined && movesTo !== paths[index]) continue;
-    if (await documentHasUnsavedLocalWork(row.id)) blocked.push(row.id);
+    if (await documentHasUnsavedLocalWork(row.id)) unsaved.push(row.id);
+    else replaced.push(row.id);
   }
-  return blocked;
+  return { unsaved, replaced };
 }
 
 /**

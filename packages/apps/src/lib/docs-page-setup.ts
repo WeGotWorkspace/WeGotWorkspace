@@ -205,6 +205,20 @@ export function moveDocsPageSetupOverride(from: string, to: string): boolean {
 }
 
 /**
+ * Drop the page setups of documents that left these paths (another file now
+ * sits there). Idempotent.
+ */
+export function removeDocsPageSetupOverrides(paths: readonly string[]): boolean {
+  const keys = new Set(paths.map(docsPageSetupDocKey));
+  if (keys.size === 0) return false;
+  const current = readDocsPageSetupOverrides();
+  if (!Object.keys(current).some((key) => keys.has(key))) return false;
+  return writeOverrides(
+    Object.fromEntries(Object.entries(current).filter(([key]) => !keys.has(key))),
+  );
+}
+
+/**
  * Several moves of one sync at once: every stored key gets the single longest
  * matching `from` (itself or a folder above it) applied once, on the paths as
  * they were before the sync. A rename onto a name another move vacates then

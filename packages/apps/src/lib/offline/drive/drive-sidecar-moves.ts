@@ -93,7 +93,9 @@ export class SidecarMoves {
     for (let index = 0; index < pending.length; index += 1) {
       await migrateNodeSidecars(username, pending[index]!.from, parked[index]!.parking);
     }
-    for (const { parking, to } of parked) {
+    // Last to first: when two sources land on one target, the one added
+    // first (a node's pre-pass path) is written last and wins.
+    for (const { parking, to } of [...parked].reverse()) {
       await migrateNodeSidecars(username, parking, to);
     }
     return pending;

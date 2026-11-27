@@ -345,6 +345,75 @@ describe("syncDriveInboundFromFileNodes", () => {
     expect(await readCachedDriveNodeId(username, "/users/ada/other.md")).toBe("fn-other");
   });
 
+  it("a file moved onto a destroyed unsaved document does not replace it", async () => {
+    const path = "/users/ada/a.md";
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry(path, "fn-unsaved"));
+    await upsertDriveEntry(username, entry("/users/ada/b.md", "fn-moving"));
+    await seedPendingSave(path, true);
+    installCatalog(new Map([["fn-moving", node("fn-moving", "fn-home", "a.md")]]));
+    fileNodeChanges.mockResolvedValue(
+      changes({ updated: ["fn-moving"], destroyed: ["fn-unsaved"], newState: "5" }),
+    );
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.keptUnsavedPaths).toEqual(["users/ada/a.md"]);
+    expect(await readDriveSyncToken(username)).toBe("0");
+    expect(await readCachedDriveNodeId(username, path)).toBe("fn-unsaved");
+    expect(await readCachedDriveNodeId(username, "/users/ada/b.md")).toBe("fn-moving");
+  });
+
+  it("a file created on a destroyed unsaved document's path does not replace it", async () => {
+    const path = "/users/ada/a.md";
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry(path, "fn-unsaved"));
+    await seedPendingSave(path, true);
+    installCatalog(new Map([["fn-new", node("fn-new", "fn-home", "a.md")]]));
+    fileNodeChanges.mockResolvedValue(
+      changes({ created: ["fn-new"], destroyed: ["fn-unsaved"], newState: "5" }),
+    );
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.keptUnsavedPaths).toEqual(["users/ada/a.md"]);
+    expect(await readDriveSyncToken(username)).toBe("0");
+    expect(await readCachedDriveNodeId(username, path)).toBe("fn-unsaved");
+  });
+
+  it("a file that lands on a path does not keep the previous file's offline blob", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-x"));
+    await upsertDriveEntry(username, entry("/users/ada/z.md", "fn-z"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["X"]));
+    await writeDriveContentBlob(username, "/users/ada/z.md", new Blob(["ZZ"]));
+    await writeDriveAvailability(username, { id: "/users/ada/z.md", source: "manual" });
+    // X is renamed away and a new Y takes `a.md`; Z is deleted and a new W takes `z.md`.
+    installCatalog(
+      new Map([
+        ["fn-x", node("fn-x", "fn-home", "c.md")],
+        ["fn-y", node("fn-y", "fn-home", "a.md")],
+        ["fn-w", node("fn-w", "fn-home", "z.md")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ created: ["fn-y", "fn-w"], updated: ["fn-x"], destroyed: ["fn-z"], newState: "5" }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect(await readCachedDriveNodeId(username, "/users/ada/a.md")).toBe("fn-y");
+    expect(await readCachedDriveNodeId(username, "/users/ada/z.md")).toBe("fn-w");
+    expect((await blobs.get("users/ada/c.md"))?.size).toBe(1);
+    expect(await blobs.get("users/ada/a.md")).toBeUndefined();
+    expect(await blobs.get("users/ada/z.md")).toBeUndefined();
+    await expect(readDriveAvailability(username, "/users/ada/z.md")).resolves.toBeUndefined();
+    expect(await readDriveSyncToken(username)).toBe("5");
+  });
+
   it("follows a remote rename on the same nodeId without duplicating the row", async () => {
     await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/original.md", "fn-same"));

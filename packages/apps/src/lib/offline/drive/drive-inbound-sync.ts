@@ -54,7 +54,7 @@ import {
   readDriveTreeRoots,
   syncDriveTree,
 } from "@/lib/offline/drive/drive-tree-sync";
-import { moveDocsPageSetupOverrides } from "@/lib/docs-page-setup";
+import { moveDocsPageSetupOverrides, removeDocsPageSetupOverrides } from "@/lib/docs-page-setup";
 
 export {
   DRIVE_FILE_NODE_SYNC_TOKEN_KEY,
@@ -239,6 +239,29 @@ async function applyFileNodeChanges(
     const placements: Placement[] = [];
     const occupantDrops: string[] = [];
     let leftTree: string[] = [];
+    // Another node's row at a final path: a batch node or a row under a moved
+    // folder is moving away itself. Any other one is an occupant: an unsaved
+    // document blocks the batch, anything else goes with its blob and pins, so
+    // the node landing there never keeps the previous file's offline copy.
+    const occupy = async (to: string, nodeId: string | undefined): Promise<boolean> => {
+      const occupant = await driveRowAt(username, to);
+      if (
+        !occupant?.nodeId ||
+        occupant.nodeId === nodeId ||
+        batchIds.has(occupant.nodeId) ||
+        movingAway.has(occupant.id)
+      ) {
+        return true;
+      }
+      // Only a read here: on `blocked` the batch writes nothing at all.
+      if (await documentHasUnsavedLocalWork(occupant.id)) {
+        keptUnsavedPaths.push(to);
+        blocked = true;
+        return false;
+      }
+      occupantDrops.push(occupant.id);
+      return true;
+    };
     for (const node of ordered) {
       const path = finalPaths.get(node.id);
       if (!path) {
@@ -258,30 +281,22 @@ async function applyFileNodeChanges(
         }
         continue;
       }
-      if (!from || from === to) {
+      if (from === to) {
         placements.push({ node, path });
         continue;
       }
-      const occupant = await driveRowAt(username, to);
-      // A batch node or a row under a moved folder at this path is moving away itself.
-      if (
-        occupant?.nodeId &&
-        occupant.nodeId !== node.id &&
-        !batchIds.has(occupant.nodeId) &&
-        !movingAway.has(occupant.id)
-      ) {
-        // Only a read here: on `blocked` the batch writes nothing at all.
-        if (await documentHasUnsavedLocalWork(occupant.id)) {
-          keptUnsavedPaths.push(to);
-          blocked = true;
-          continue;
-        }
-        occupantDrops.push(occupant.id);
+      if (!(await occupy(to, node.id))) continue;
+      if (!from) {
+        placements.push({ node, path });
+        continue;
       }
       const move: PathMove = { from, to };
       moves.push(move);
       placements.push({ node, path, previous: from, move });
     }
+    // A node deleted in this batch is not carried along: it goes from its old path below.
+    const prefix = planPrefixMoves(under, moves, new Set([...batchIds, ...destroyed]));
+    for (const { row, id } of prefix.moved) await occupy(id, row.nodeId);
     // An unsaved document that is not part of this batch holds a final path:
     // no row, blob, pin, page setup or Docs change is written, and the token
     // stays, so the next sync retries the whole batch.
@@ -295,8 +310,6 @@ async function applyFileNodeChanges(
       await rememberKeptUnsavedDocuments(username, keptUnsavedPaths);
       return { changed: false, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
     }
-    // A node deleted in this batch is not carried along: it goes from its old path below.
-    const prefix = planPrefixMoves(under, moves, new Set([...batchIds, ...destroyed]));
     const destinations: Set<string> = new Set([
       ...placements.map(({ path }) => normalizePath(path)),
       ...prefix.moved.map(({ id }) => id),
@@ -344,6 +357,7 @@ async function applyFileNodeChanges(
       }
     });
     changed ||= placements.length + prefix.moved.length + leftTree.length > 0;
+    removeDocsPageSetupOverrides(occupantDrops.map((path) => `/${path}`));
     moveDocsPageSetupOverrides(
       moves
         .filter((move) => !isHiddenTreePath(move.to))

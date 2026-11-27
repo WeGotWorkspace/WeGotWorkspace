@@ -670,6 +670,49 @@ describe("syncDriveTree", () => {
     expect(await rowPaths()).toEqual(["users/ada/a.md"]);
   });
 
+  it("a file that lands on a path does not keep the previous file's offline blob", async () => {
+    const server = standardTree();
+    server.add("f-x", "r-home", "a.md");
+    server.add("f-z", "r-home", "z.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["X"]));
+    await writeDriveContentBlob(username, "/users/ada/z.md", new Blob(["ZZ"]));
+    writeDocsPageSetupOverride("/users/ada/z.md", { format: "a4", orientation: "landscape" });
+    // X is renamed away and a new Y takes `a.md`; Z is deleted and a new W takes `z.md`.
+    server.move("f-x", { name: "c.md" });
+    server.add("f-y", "r-home", "a.md");
+    server.remove("f-z");
+    server.add("f-w", "r-home", "z.md");
+
+    await syncDriveTree(username);
+
+    const blob = async (path: string) => driveContentBlobsTable(db()).get(path);
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-y" });
+    expect(await row("/users/ada/z.md")).toMatchObject({ nodeId: "f-w" });
+    expect((await blob("users/ada/c.md"))?.size).toBe(1);
+    expect(await blob("users/ada/a.md")).toBeUndefined();
+    expect(await blob("users/ada/z.md")).toBeUndefined();
+    expect(readDocsPageSetupOverrides()["/users/ada/z.md"]).toBeUndefined();
+  });
+
+  it("a node with two source paths that hold a blob keeps the pre-pass one", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "c.md");
+    await connect(server);
+    // The map of an earlier pass says `a.md`; a local copy also sits at `x.md`.
+    await upsertDriveEntry(username, staleEntry("/users/ada/x.md", "f-a"));
+    await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-a"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/x.md", new Blob(["XXX"]));
+    await driveTreePrepassTable(db()).put({ nodeId: "f-a", paths: ["users/ada/a.md"] });
+    await writeMeta(username, "drive:tree-sync:prepass", "1");
+
+    await syncDriveTree(username);
+
+    expect((await driveContentBlobsTable(db()).get("users/ada/c.md"))?.size).toBe(1);
+  });
+
   it("a failed get mid-chain does not prune", async () => {
     const server = standardTree();
     for (let i = 0; i < 40; i += 1)
@@ -812,7 +855,7 @@ describe("syncDriveTree", () => {
     }
     const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
 
-    it("a full pass writes nothing over a node's pending save", async () => {
+    it("a file moved onto a destroyed unsaved document does not replace it", async () => {
       const server = await seedTwo();
       const token = await readDriveSyncToken(username);
       server.remove("f-a");
