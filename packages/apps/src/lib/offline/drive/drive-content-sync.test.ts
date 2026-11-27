@@ -296,4 +296,18 @@ describe("syncDriveContentFromCache", () => {
       "users/alice/a.png": { attempts: 1, modifiedAt: 7 },
     });
   });
+  it("keeps a failure a newer run records while the copy is being written", async () => {
+    net.fetch.mockResolvedValue(new Response("x"));
+    blobPut.mockImplementationOnce(async () => {
+      beginDriveContentRun("alice", ["/users/alice/a.png"]);
+      meta.values.set(
+        "drive:auto-sync:content-failures",
+        JSON.stringify({ "users/alice/a.png": { attempts: 1, modifiedAt: 7 } }),
+      );
+    });
+    await syncDriveContentFromCache("alice", ["/users/alice/a.png"]);
+    expect(await readDriveContentFailures("alice")).toEqual({
+      "users/alice/a.png": { attempts: 1, modifiedAt: 7 },
+    });
+  });
 });
