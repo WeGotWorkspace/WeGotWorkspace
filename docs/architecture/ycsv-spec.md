@@ -794,7 +794,7 @@ v1 supports these functions:
 | Math | SUM, SUMIF, SUMIFS, SUMPRODUCT, ROUND, ROUNDUP, ROUNDDOWN, INT, MOD, ABS, PRODUCT, POWER, SQRT, CEILING, FLOOR |
 | Statistics | AVERAGE, AVERAGEIF, COUNT, COUNTA, COUNTBLANK, COUNTIF, COUNTIFS, MIN, MAX, MEDIAN, MAXIFS, MINIFS |
 | Logic | IF, IFS, AND, OR, NOT, IFERROR, IFNA, SWITCH |
-| Lookup | VLOOKUP, HLOOKUP, XLOOKUP, INDEX, MATCH, XMATCH, CHOOSE, ROW, COLUMN |
+| Lookup | VLOOKUP, HLOOKUP, XLOOKUP, INDEX, MATCH, XMATCH, CHOOSE, ROW, COLUMN, ROWS, COLUMNS |
 | Text | CONCAT, CONCATENATE, TEXTJOIN, LEFT, RIGHT, MID, LEN, UPPER, LOWER, PROPER, TRIM, SUBSTITUTE, FIND, SEARCH, TEXT, VALUE, REPT, EXACT |
 | Date | DATE, YEAR, MONTH, DAY, WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, NETWORKDAYS, WORKDAY, DAYS, TIME, HOUR, DATEVALUE, TODAY, NOW |
 | Info | ISBLANK, ISNUMBER, ISTEXT, ISERROR, ISNA, NA |
@@ -1315,17 +1315,21 @@ Reference implementations (parser, renderer, CLI validator) will be published
 at a canonical repository under an MIT license. The spec itself is published
 under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+This section is informational and does not bind an implementation. The
+suite's Sheets app evaluates formulas with its own function library
+(`sheets-core/formula`, Epic #2430), not with the libraries below.
+
 | Dependency             | License | Purpose            |
 | ---------------------- | ------- | ------------------ |
 | `@formulajs/formulajs` | MIT     | Formula evaluation |
 | `vega-lite`            | BSD-3   | Chart rendering    |
 
-formulajs returns `DATE`, `NOW` and `TODAY` as JavaScript `Date` objects in
-local time; implementations convert them to serial numbers (§7.6).
+An implementation that uses formulajs must convert the `Date` objects it
+returns for `DATE`, `NOW` and `TODAY` (local time) to serial numbers (§7.6).
 
 ---
 
-_YCSV v1.0 — Draft. Feedback welcome._
+_YCSV v1.0. Files written to this text carry `ycsv_version: 1` (or no version, which means 1; §14). It includes the decisions of 2026-11-27, which the Sheets Epic and its spec folder call "v1.1"; there is no separate 1.1 file version._
 
 ---
 
