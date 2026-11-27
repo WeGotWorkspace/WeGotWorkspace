@@ -20,6 +20,7 @@ import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortc
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
@@ -62,6 +63,24 @@ export type UseDriveMutationsArgs = {
   onOpenDocsFile?: (apiPath: string) => void;
 };
 
+type ServerListingTarget = Pick<DriveShellState, "setFiles" | "commitView" | "currentUsername"> & {
+  operations: NonNullable<DriveShellState["operations"]>;
+};
+
+/**
+ * Show the listing a server write answered with. On the local tree the write
+ * already updated the rows and the open view re-reads them; that listing is the
+ * live client's bootstrap folder, not the open one, so it is ignored (#2063 C3).
+ */
+function showServerListing(target: ServerListingTarget, nextData: DriveUIData): void {
+  if (target.operations.localTree) return;
+  const { currentUsername } = target;
+  target.setFiles(
+    nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
+  );
+  target.commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+}
+
 /** Create the folder on the server: its listing replaces the optimistic row, a failure removes it. */
 function createFolderOnServer(input: {
   operations: NonNullable<DriveShellState["operations"]>;
@@ -73,12 +92,13 @@ function createFolderOnServer(input: {
   commitView: DriveShellState["commitView"];
   showError: (message: string) => void;
 }): void {
-  const { currentUsername, setFiles } = input;
+  const { setFiles } = input;
   void input.operations
     .createFolder({ cwd: input.cwd, name: input.name })
     .then((nextData) => {
-      setFiles(nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)));
-      input.commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+      // On the local tree the operation filed the new row; the open view re-reads it.
+      if (input.operations.localTree) setFiles((p) => p.filter((f) => f.id !== input.optimisticId));
+      showServerListing(input, nextData);
     })
     .catch((error: unknown) => {
       setFiles((p) => p.filter((file) => file.id !== input.optimisticId));
@@ -283,12 +303,9 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         from: fromPath,
         to: nextName,
       })
-      .then((nextData) => {
-        setFiles(
-          nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-        );
-        commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
-      })
+      .then((nextData) =>
+        showServerListing({ operations, setFiles, commitView, currentUsername }, nextData),
+      )
       .catch((error: unknown) => {
         setFiles((prev) =>
           prev.map((item) => (item.id === file.id ? { ...item, title: previousName } : item)),
@@ -364,10 +381,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         void operations
           .createFile({ cwd, name: trimmed })
           .then((nextData) => {
-            setFiles(
-              nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-            );
-            commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+            showServerListing({ operations, setFiles, commitView, currentUsername }, nextData);
             setMarkdownDialogOpen(false);
             setMarkdownDialogSubmitting(false);
             onOpenDocsFile(apiPath);

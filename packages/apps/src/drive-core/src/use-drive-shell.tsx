@@ -229,6 +229,7 @@ export function useDriveShell({
       });
   }, [operations, showError]);
 
+  const viewKey = view.type === "folder" ? `folder:${view.path}` : view.type;
   // Online search stays a server call (content search); offline the tree filters names.
   const serverSearch = Boolean(operations) && !(treeEnabled && !online);
   useEffect(() => {
@@ -263,7 +264,8 @@ export function useDriveShell({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [operations, serverSearch, searchText, currentUsername, showError]);
+    // A view change clears the results: search again so the new view settles.
+  }, [operations, serverSearch, searchText, currentUsername, showError, viewKey]);
 
   useEffect(() => {
     if (!operations) return;
@@ -277,13 +279,8 @@ export function useDriveShell({
   const inTrashView = view.type === "folder" && view.path === DRIVE_TRASH_UI_PATH;
   const isUnderTrash = isDriveUnderTrash;
 
-  /**
-   * What the pane shows instead of rows: nothing until the first read answers,
-   * loading during the first sync, "not available offline yet" offline before
-   * it, "not here" for a folder the finished tree does not hold. A known-empty
-   * view is `null` and shows the empty state. While searching, the search's own
-   * read decides: a search that is not ready never reads as "no hits".
-   */
+  // What the pane shows instead of rows (`DriveViewState`); null shows the empty
+  // state. A search that is not ready never reads as "no hits".
   const serverFolderState: DriveViewState = serverFolder.failed
     ? "error"
     : (listLoading && view.type === "folder") || serverFolder.pending
