@@ -9,7 +9,7 @@ import {
 } from "@/drive-core/src/drive-api-source";
 import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { subscribeOfflineDeviceContentSettings } from "@/lib/offline/core/offline-device-settings";
-import { syncDocsBodiesFromHomeListing } from "@/lib/offline/docs/docs-body-sync";
+import { syncDocsBodiesFromTree } from "@/lib/offline/docs/docs-body-sync";
 import { listAllCachedDriveEntryPaths } from "@/lib/offline/drive/drive-directory-offline-store";
 import { syncAllDriveContentFromCache } from "@/lib/offline/drive/drive-content-sync";
 import {
@@ -67,7 +67,7 @@ async function runDriveOfflineSync(username: string, signal?: AbortSignal): Prom
   if (inbound.changed || inbound.listedChanges) notifyDriveRemoteChange(username);
   const filePaths = await listAllCachedDriveEntryPaths(username);
   await syncAllDriveContentFromCache(username, filePaths, { signal });
-  await syncDocsBodiesFromHomeListing(username, { signal });
+  await syncDocsBodiesFromTree(username, { signal });
 }
 
 export function useDriveAPI(source?: DriveApiSource) {

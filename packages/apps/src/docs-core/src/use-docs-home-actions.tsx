@@ -3,7 +3,7 @@ import { Download, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { settleAll, useQueuedMutation } from "@/hooks/use-queued-mutation";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { DOCS_DELETE_NEEDS_CONNECTION } from "@/lib/offline/docs/docs-hybrid-operations";
+import { DRIVE_DELETE_NEEDS_CONNECTION } from "@/lib/offline/drive/drive-hybrid-operations";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import type { DriveFile } from "@/lib/files/drive-models";
@@ -60,10 +60,13 @@ function unhideArrivedFiles(
   destination: string,
   moved: readonly DriveFile[],
 ): Set<string> {
-  const arrived = moved.map(
-    (file) => `:${normalizeApiVirtualPath(`${destination}/${file.title}`).replace(/^\/+/, "")}`,
+  const arrived = moved.map((file) =>
+    normalizeApiVirtualPath(`${destination}/${file.title}`).replace(/^\/+/, ""),
   );
-  const next = new Set([...hidden].filter((id) => !arrived.some((key) => id.endsWith(key))));
+  // Tree rows are keyed by their API path (#2063 C4); server listing rows end in `:<path>`.
+  const isArrived = (id: string) =>
+    arrived.some((path) => id === `/${path}` || id.endsWith(`:${path}`));
+  const next = new Set([...hidden].filter((id) => !isArrived(id)));
   return next.size === hidden.size ? hidden : next;
 }
 
@@ -74,7 +77,7 @@ function permanentDeleteNeedsConnection(
   showError: (message: string) => void,
 ): boolean {
   if (!state.permanent || !offlineUsername || getConnectivitySnapshot()) return false;
-  showError(DOCS_DELETE_NEEDS_CONNECTION);
+  showError(DRIVE_DELETE_NEEDS_CONNECTION);
   return true;
 }
 

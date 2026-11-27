@@ -12,7 +12,13 @@ import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-s
 import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
-import { fileExtension, isDotName, type DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
+import {
+  areaFromCrawledPath,
+  fileExtension,
+  isDotName,
+  isTrashTreePath,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
 
 const DRIVE_BOOTSTRAP_META_KEY = "drive:bootstrap";
 
@@ -68,7 +74,9 @@ export function driveEntryRowFromEntry(
 /**
  * Upsert one listing entry. Without `area`, the row keeps the area it had at
  * this path, or takes its parent folder's: writers other than the tree sync
- * (operations, uploads, folder listings) do not know it.
+ * (operations, uploads, folder listings) do not know it. A row whose parent
+ * has no row sits at an account root (share roots come from the tree sync with
+ * their area), so its area follows from the path.
  */
 export async function upsertDriveEntry(
   username: string,
@@ -79,8 +87,10 @@ export async function upsertDriveEntry(
   const table = driveEntriesTable(db);
   const row = driveEntryRowFromEntry(entry, area);
   if (!row.area) {
-    const known = (await table.get(row.id))?.area ?? (await table.get(row.parentPath))?.area;
+    const parent = await table.get(row.parentPath);
+    const known = (await table.get(row.id))?.area ?? parent?.area;
     if (known) row.area = known;
+    else if (!parent) row.area = areaFromCrawledPath(row.id);
   }
   if (row.type !== "dir") {
     await table.put(row);
@@ -223,6 +233,20 @@ export async function removeDriveEntriesUnderPrefix(
   await driveEntriesTable(db).bulkDelete(toDelete.map((row) => row.id));
 }
 
+/**
+ * A row's `area` after a local move to `path`: into Trash it is `trash`; out of
+ * Trash it takes its drive's area from the path; any other move keeps it (a
+ * shared row stays shared). The next tree pass decides it from the parent chain.
+ */
+function areaAfterLocalMove(
+  area: DriveEntryArea | undefined,
+  path: string,
+): DriveEntryArea | undefined {
+  if (isTrashTreePath(path)) return "trash";
+  if (area === "trash") return areaFromCrawledPath(path);
+  return area;
+}
+
 export async function migrateDriveEntryPath(
   username: string,
   oldPath: string,
@@ -238,7 +262,13 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  await table.put({ ...row, id: newId, parentPath: newParent, data: JSON.stringify(entry) });
+  await table.put({
+    ...row,
+    id: newId,
+    parentPath: newParent,
+    area: areaAfterLocalMove(row.area, newId),
+    data: JSON.stringify(entry),
+  });
   await table.delete(oldId);
 
   const descendants = await table
@@ -255,6 +285,7 @@ export async function migrateDriveEntryPath(
       ...descendant,
       id: migratedId,
       parentPath: migratedParent,
+      area: areaAfterLocalMove(descendant.area, migratedId),
       data: JSON.stringify(migratedEntry),
     });
     await table.delete(descendant.id);

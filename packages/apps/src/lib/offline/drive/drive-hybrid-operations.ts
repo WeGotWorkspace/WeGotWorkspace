@@ -11,7 +11,10 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
-import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  enqueueOutboxMutation,
+  listOutboxMutationsForDomain,
+} from "@/lib/offline/core/outbox-store";
 import { clearDocsCollabOfflinePersistence } from "@/lib/collab/docs-collab-persistence";
 import { isDocsCollabEditablePath } from "@/lib/files/docs-collab-text-files";
 import {
@@ -19,11 +22,14 @@ import {
   readDocsStarredPaths,
   writeDocsStarredPaths,
 } from "@/lib/offline/docs/docs-stars-store";
+import { removeDocsAvailability } from "@/lib/offline/docs/docs-availability-store";
 import {
   buildOfflineDriveUIData,
   listAllCachedDriveFiles,
+  migrateDriveEntryPath,
   readDirectoryEntriesFromCache,
   readDriveBootstrapFromCache,
+  readDriveEntryFromCache,
   removeDriveEntry,
   removeDriveEntriesUnderPrefix,
   searchDriveEntriesFromCache,
@@ -34,7 +40,10 @@ import {
   removeDriveAvailability,
   normalizeDriveAvailabilityPath,
 } from "@/lib/offline/drive/drive-availability-store";
-import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
+import {
+  migrateDriveContentBlobPath,
+  removeDriveContentBlob,
+} from "@/lib/offline/drive/drive-content-sync";
 import {
   fetchDriveFolderOncePerBrowser,
   listenForSharedDriveFolderFetches,
@@ -66,6 +75,7 @@ import {
   driveUploadQueueOperations,
   queueOfflineDriveUploadFiles,
 } from "@/lib/offline/drive/upload/drive-upload-operations";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
@@ -82,6 +92,9 @@ const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<DriveOutboxFlushRe
 async function flushDriveOutboxTask(username: string): Promise<DriveOutboxFlushResult> {
   const result = await flushDriveOutbox(username);
   reportDriveSyncConflicts(result.stateMismatches);
+  // Every view of the tree, and an editor that held its text for a queued
+  // rename of its file (#2063 C4), reads again: the writes are on the server.
+  if (result.flushed > 0) notifyDriveRemoteChange(username);
   return result;
 }
 
@@ -102,7 +115,49 @@ async function queueDriveOutbox(username: string, payload: DriveOutboxPayload): 
     op: payload.op,
     payload: JSON.stringify(payload),
   });
+  // The connection may be back already: the write raced the reconnect (whose
+  // flush found nothing yet), or a flaky network failed it while the browser
+  // said online. No reconnect follows then, so send it now (#2104).
+  if (readBrowserOnline()) void runnerFor(username).flushAfterWrite();
 }
+
+/** Permanent delete is not queued: it cannot be undone, so it waits for a connection. */
+export const DRIVE_DELETE_NEEDS_CONNECTION = "Deleting permanently needs a connection.";
+
+/**
+ * The server's stars with this device's queued stars and unstars on top, in
+ * queue order (#1563). A read of the stars online would otherwise drop a star
+ * queued offline from the shared cache until it lands.
+ */
+async function withQueuedStars(username: string, serverPaths: string[]): Promise<string[]> {
+  const rows = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
+  const paths = new Set(serverPaths.map((path) => normalizeApiVirtualPath(path)));
+  for (const row of [...rows].sort((a, b) => a.createdAt - b.createdAt)) {
+    let payload: DriveOutboxPayload | null = null;
+    try {
+      payload = JSON.parse(row.payload) as DriveOutboxPayload;
+    } catch {
+      continue;
+    }
+    if (payload?.op !== "star") continue;
+    const path = normalizeApiVirtualPath(payload.path);
+    if (payload.starred) paths.add(path);
+    else paths.delete(path);
+  }
+  return [...paths];
+}
+
+/**
+ * App-only side effects of a file write (#2063 C4). Drive's factory owns the
+ * write, the outbox and the tree; an app that keeps more per file (Docs: the
+ * open editor's path, its local text) adds it here instead of a second factory.
+ */
+export type HybridDriveWriteHooks = {
+  /** `from` now lives at `to`: a rename or move, sent or queued. Not a trash. */
+  onMoved?: (from: string, to: string) => Promise<void>;
+  /** A star or unstar was written on this device, sent or queued. */
+  onStarred?: () => void;
+};
 
 async function offlineQueuedDriveData(username: string, cwd: string): Promise<DriveUIData> {
   const cached = await readCachedDriveState(username, cwd);
@@ -126,6 +181,24 @@ async function readCachedDriveState(username: string, cwd: string): Promise<Driv
   return buildOfflineDriveUIData(bootstrap, cwd, entries);
 }
 
+/**
+ * One folder from the tree for an app that has no Drive bootstrap (Docs home
+ * offline: the Move and New document dialogs), or null when the tree does not
+ * know the folder.
+ */
+async function readTreeFolderWithoutBootstrap(
+  username: string,
+  cwd: string,
+): Promise<DriveUIData | null> {
+  const entries = await readDirectoryEntriesFromCache(username, cwd);
+  if (entries.length === 0 && !(await readDriveEntryFromCache(username, cwd))) return null;
+  return {
+    user: { username, name: username, role: "user", roots: [] },
+    cwd,
+    directory: { location: cwd, files: entries },
+  };
+}
+
 /** A folder an upload has not created yet: only this device has it, as placeholders. */
 async function pendingUploadFolderState(username: string, cwd: string) {
   return (await isPendingUploadFolderPath(username, cwd))
@@ -133,17 +206,45 @@ async function pendingUploadFolderState(username: string, cwd: string) {
     : null;
 }
 
-async function applyOfflineTrashSideEffects(username: string, from: string): Promise<void> {
+async function clearTrashedLocalState(username: string, room: string): Promise<void> {
+  if (isDocsCollabEditablePath(room)) {
+    await clearDocsCollabOfflinePersistence(room);
+  }
+  await removeDriveAvailability(username, room);
+  await removeDocsAvailability(username, room);
+}
+
+/** After a trash the server applied: its FileNode change brings the Trash row. */
+async function applyTrashSideEffects(username: string, from: string): Promise<void> {
   const apiPath = normalizeApiVirtualPath(from);
   const room = normalizeDriveAvailabilityPath(apiPath);
   await removeOutboxMutationsForDrivePath(username, apiPath);
   await removeDriveEntry(username, apiPath);
   await removeDriveEntriesUnderPrefix(username, room);
-  if (isDocsCollabEditablePath(room)) {
-    await clearDocsCollabOfflinePersistence(room);
-  }
   await removeDriveContentBlob(username, apiPath);
-  await removeDriveAvailability(username, room);
+  await clearTrashedLocalState(username, room);
+}
+
+/**
+ * A trash queued offline: the row and its stored body move into Trash on this
+ * device, so the Trash view lists it before the server knows and an undo can
+ * move it back (#2063 C4).
+ */
+async function applyQueuedTrashSideEffects(
+  username: string,
+  from: string,
+  trashPath: string,
+): Promise<void> {
+  const apiPath = normalizeApiVirtualPath(from);
+  const room = normalizeDriveAvailabilityPath(apiPath);
+  await removeOutboxMutationsForDrivePath(username, apiPath);
+  await migrateDriveEntryPath(username, apiPath, trashPath);
+  await migrateDriveContentBlobPath(
+    username,
+    normalizeDriveAvailabilityPath(apiPath),
+    normalizeDriveAvailabilityPath(trashPath),
+  );
+  await clearTrashedLocalState(username, room);
 }
 
 async function applyOfflineRenameSideEffects(
@@ -158,6 +259,7 @@ async function applyOfflineRenameSideEffects(
 export function createHybridDriveOperations(
   username: string,
   bootstrap?: DriveAppBootstrap | null,
+  hooks: HybridDriveWriteHooks = {},
 ): DriveAPIOperations {
   const live = createWgwDriveOperations(bootstrap?.data.cwd ?? "/");
   let cachedBootstrap = bootstrap ?? null;
@@ -269,7 +371,9 @@ export function createHybridDriveOperations(
         }
       }
       const boot = await ensureBootstrap();
-      const cached = boot ? await readCachedDriveState(username, target) : null;
+      const cached = boot
+        ? await readCachedDriveState(username, target)
+        : await readTreeFolderWithoutBootstrap(username, target);
       if (cached) return cached;
       throw new Error("This folder is not available offline.");
     },
@@ -310,10 +414,11 @@ export function createHybridDriveOperations(
           }
           const data = await live.renameItem({ ...input, to }, opts);
           if (isTrash) {
-            await applyOfflineTrashSideEffects(username, input.from);
+            await applyTrashSideEffects(username, input.from);
             moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
           } else {
             await applyDriveSidecarPathMigration(username, input.from, input.destination, input.to);
+            await hooks.onMoved?.(input.from, nextPathAfterRename(input.from, destination, to));
           }
           return data;
         } catch (error) {
@@ -324,8 +429,16 @@ export function createHybridDriveOperations(
       let to = input.to;
       if (isTrash) {
         const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
+        // Offline the server listing fails: the tree's Trash rows name what is taken.
+        for (const entry of await readDirectoryEntriesFromCache(username, destination)) {
+          trashNames.add(entry.name);
+        }
         to = resolveFreeName(input.to, trashNames);
-        await applyOfflineTrashSideEffects(username, from);
+        await applyQueuedTrashSideEffects(
+          username,
+          from,
+          nextPathAfterRename(from, destination, to),
+        );
         moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
@@ -334,7 +447,32 @@ export function createHybridDriveOperations(
         ? { op: "trash", from, destination, to }
         : { op: "rename", from, destination, to: input.to };
       await queueDriveOutbox(username, payload);
+      // An editor of this file in another tab follows it now, while both are offline.
+      if (!isTrash) await hooks.onMoved?.(from, nextPathAfterRename(from, destination, input.to));
       return offlineQueuedDriveData(username, destination);
+    },
+    listEntriesByPaths: async (paths, opts) => {
+      if (readBrowserOnline()) {
+        try {
+          return await live.listEntriesByPaths(paths, opts);
+        } catch (error) {
+          rethrowUnlessOfflineQueue(error, opts?.signal);
+        }
+      }
+      // Offline the tree answers; a path it does not hold is left out.
+      const entries = await Promise.all(
+        paths.map((path) => readDriveEntryFromCache(username, normalizeApiVirtualPath(path))),
+      );
+      return entries.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    },
+    deleteItems: async (paths, opts) => {
+      if (!readBrowserOnline()) throw new Error(DRIVE_DELETE_NEEDS_CONNECTION);
+      try {
+        return await live.deleteItems(paths, opts);
+      } catch (error) {
+        rethrowUnlessOfflineQueue(error, opts?.signal);
+        throw new Error(DRIVE_DELETE_NEEDS_CONNECTION);
+      }
     },
     uploadFiles: async (input, opts) => {
       if (readBrowserOnline()) {
@@ -382,7 +520,7 @@ export function createHybridDriveOperations(
     listStars: async (opts) => {
       if (readBrowserOnline()) {
         try {
-          const paths = await live.listStars(opts);
+          const paths = await withQueuedStars(username, await live.listStars(opts));
           await writeDocsStarredPaths(username, paths);
           return paths;
         } catch (error) {
@@ -397,6 +535,7 @@ export function createHybridDriveOperations(
         try {
           await live.setStar({ path, starred: input.starred }, opts);
           await applyDocsStarToggle(username, path, input.starred);
+          hooks.onStarred?.();
           return;
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -404,6 +543,7 @@ export function createHybridDriveOperations(
       }
       await applyDocsStarToggle(username, path, input.starred);
       await queueDriveOutbox(username, { op: "star", path, starred: input.starred });
+      hooks.onStarred?.();
     },
   };
 }

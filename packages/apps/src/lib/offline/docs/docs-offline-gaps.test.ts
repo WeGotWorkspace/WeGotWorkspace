@@ -1,33 +1,22 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { retargetDocsOutboxPayload } from "@/lib/offline/docs/docs-create-kept-both";
-import {
-  forgetDocsLiveDirectories,
-  readDocsOfflineDirectory,
-  readDocsOfflineEntriesByPaths,
-  rememberDocsLiveDirectory,
-} from "@/lib/offline/docs/docs-offline-entries";
 import {
   docsPathAfterMove,
   moveDocsPath,
   subscribeDocsPathMoved,
 } from "@/lib/offline/docs/docs-path-moves";
-import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
-import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
-import "@/lib/offline/drive/drive-schema";
-import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import {
   docsCollabIndexedDbKey,
   listExistingIndexedDatabaseNames,
   moveDocsCollabPathDatabases,
 } from "@/lib/collab/docs-collab-persistence";
 
-// Docs offline gaps (#1563 step 2): text and writes follow a moved Doc, and
-// Trash and Starred are read from this device while offline.
+// Docs offline gaps (#1563 step 2): text and writes follow a moved Doc. Trash
+// and Starred offline are views of the Drive tree since #2063 C4
+// (docs-home-binding.test.tsx).
 
 const username = "alice";
 
@@ -54,17 +43,6 @@ async function readText(databaseName: string): Promise<string> {
   await persistence.destroy();
   ydoc.destroy();
   return text;
-}
-
-function entry(path: string, size = 1): WgwDriveDirectoryEntry {
-  return {
-    type: "file",
-    path,
-    name: path.split("/").pop() ?? path,
-    size,
-    time: 1,
-    permissions: 0,
-  } as WgwDriveDirectoryEntry;
 }
 
 describe("docsPathAfterMove", () => {
@@ -160,78 +138,5 @@ describe("retargetDocsOutboxPayload", () => {
   it("leaves other paths alone", () => {
     const payload = { op: "star" as const, path: "/users/a/Other.md", starred: true };
     expect(retargetDocsOutboxPayload(payload, from, to)).toBe(payload);
-  });
-});
-
-describe("Docs offline directory and entries", () => {
-  beforeEach(async () => {
-    forgetDocsLiveDirectories();
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    await db.outbox.clear();
-    await db.table("drive_entries").clear();
-  });
-
-  it("lists Trash with a Doc trashed offline and the last live listing", async () => {
-    await upsertDriveEntry(username, entry("/users/alice/.Trash/Cached.md"));
-    rememberDocsLiveDirectory(username, "/users/alice/.Trash", [
-      entry("/users/alice/.Trash/Listed.md"),
-    ]);
-    await enqueueOutboxMutation(username, {
-      id: "trash-offline",
-      domain: DOCS_DOMAIN,
-      op: "trash",
-      payload: JSON.stringify({
-        op: "trash",
-        from: "/users/alice/Gone.md",
-        destination: "/users/alice/.Trash",
-        to: "Gone.md",
-      }),
-    });
-
-    const trash = await readDocsOfflineDirectory(username, "users/alice/.Trash");
-
-    expect(trash.cwd).toBe("/users/alice/.Trash");
-    expect(trash.directory.files.map((file) => file.path).sort()).toEqual([
-      "/users/alice/.Trash/Cached.md",
-      "/users/alice/.Trash/Gone.md",
-      "/users/alice/.Trash/Listed.md",
-    ]);
-  });
-
-  it("drops a Doc a queued move took out of the folder", async () => {
-    rememberDocsLiveDirectory(username, "/users/alice/.Trash", [
-      entry("/users/alice/.Trash/Restore.md"),
-    ]);
-    await enqueueOutboxMutation(username, {
-      id: "restore-offline",
-      domain: DOCS_DOMAIN,
-      op: "rename",
-      payload: JSON.stringify({
-        op: "rename",
-        from: "/users/alice/.Trash/Restore.md",
-        destination: "/users/alice",
-        to: "Restore.md",
-      }),
-    });
-
-    const trash = await readDocsOfflineDirectory(username, "/users/alice/.Trash");
-    const home = await readDocsOfflineDirectory(username, "/users/alice");
-
-    expect(trash.directory.files).toEqual([]);
-    expect(home.directory.files.map((file) => file.path)).toEqual(["/users/alice/Restore.md"]);
-  });
-
-  it("gives every starred path an entry, from the Drive cache when it has one", async () => {
-    await upsertDriveEntry(username, entry("/users/alice/Known.md", 42));
-
-    const entries = await readDocsOfflineEntriesByPaths(username, [
-      "/users/alice/Known.md",
-      "users/alice/Unknown.md",
-    ]);
-
-    expect(entries.map((item) => [item.path, item.size])).toEqual([
-      ["/users/alice/Known.md", 42],
-      ["/users/alice/Unknown.md", 0],
-    ]);
   });
 });

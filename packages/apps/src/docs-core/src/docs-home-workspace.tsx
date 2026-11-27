@@ -10,39 +10,27 @@ import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint"
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
-import { useDocsHomeList } from "@/docs-core/src/use-docs-home-list";
 import { type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
-import { useDocsHomeSharedList } from "@/docs-core/src/use-docs-home-shared-list";
-import { useDocsHomeStarredList } from "@/docs-core/src/use-docs-home-starred-list";
-import { useDocsHomeTrashList } from "@/docs-core/src/use-docs-home-trash-list";
+import { useDocsHomeRows } from "@/docs-core/src/use-docs-home-rows";
+import { docsHomeWorkspaceConfig } from "@/docs-core/src/docs-home-config";
 import {
   useDocsHomeOfflineAvailability,
   useDocsHomeOpenGuard,
 } from "@/docs-core/src/use-docs-home-offline-availability";
-import {
-  docsHomeBrowsePathPrefix,
-  docsHomeCreateJumpsToPersonal,
-  type DocsHomeView,
-} from "@/docs-core/src/docs-home-shared";
+import { docsHomeBrowsePathPrefix, type DocsHomeView } from "@/docs-core/src/docs-home-shared";
 import { useDocsProjectScope } from "@/docs-core/src/use-docs-project-scope";
 import { useProjects } from "@/lib/projects/projects-store";
 import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
-import { docsPersonalDrivePathPrefix } from "@/docs-core/src/docs-home-drives";
 import { useDocsHomeSidebarModel } from "@/docs-core/src/use-docs-home-sidebar-model";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import { useDocsHomeGroupRoots } from "@/docs-core/src/use-docs-home-group-roots";
 import { useDocsHomeCreateDialog } from "@/docs-core/src/use-docs-home-create-dialog";
 import {
   docsHomeEmptyIconKind,
-  docsHomeEmptyMessage,
-  docsHomeHeaderTitle,
   docsHomePaneOfflineLabels,
   docsHomeOfflineBadgePendingIds,
   docsHomeOfflineSyncingIds,
-  docsHomeViewFlags,
   filterDocsHomeVisibleFiles,
-  resolveDocsHomeFiles,
-  resolveDocsHomeListingStatus,
 } from "@/docs-core/src/docs-home-workspace-model";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { DocsHomeModals } from "@/docs-core/src/docs-home-modals";
@@ -50,10 +38,11 @@ import { DocsHomeSidebar } from "@/docs-core/src/docs-home-sidebar";
 import { docsHomeEmptyIcon } from "@/docs-core/src/docs-home-empty-icon";
 import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import type { DriveFile } from "@/lib/files/drive-models";
-import {
-  createHybridDocsDriveOperations,
-  getDocsSyncRunner,
-} from "@/lib/offline/docs/docs-hybrid-operations";
+import { createDocsFileOperations } from "@/lib/offline/docs/docs-file-operations";
+import { getDocsSyncRunner } from "@/lib/offline/docs/docs-sync-runner";
+import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
+import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
+import { setDriveSyncConflictListener } from "@/lib/offline/drive/drive-sync-conflicts";
 import { readDocsBodySyncProgress } from "@/lib/offline/docs/docs-body-sync";
 import { useOfflineBodySyncRunning } from "@/lib/offline/core/use-offline-body-sync-running";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
@@ -62,27 +51,27 @@ import { useDomainOutboxNotice } from "@/lib/offline/core/use-domain-outbox-noti
 import { useDriveFileNodeInbound } from "@/drive-core/src/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/hooks/use-offline-reconnect-flush";
 import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
-import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useOfflineSyncToast } from "@/hooks/use-offline-sync-toast";
 import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
 import { useImportWordFile } from "@/docs-core/src/docx-import/use-import-word-file";
 import { WordFilePickerInput } from "@/docs-core/src/docx-import/word-file-picker-input";
 import { useSaveAsMarkdownAction } from "@/docs-core/src/docx-import/use-save-as-markdown-action";
-import {
-  isSaveAsMarkdownOnlyFile,
-  saveAsMarkdownSourceKindFromName,
-} from "@/docs-core/src/docx-import/save-as-markdown-source";
-import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
 export type DocsHomeWorkspaceProps = {
   session: WorkspaceSession;
-  /** Injectable browse fetcher (mock in Storybook/Vitest). */
+  /**
+   * Content search (`/search/results`); without `offlineUsername` (Storybook,
+   * Vitest) it also lists All Docs, Recent and the drives.
+   */
   fetcher?: DocsHomeFetcher;
-  /** When set, enables Dexie cache read/write for offline home browse (live app only). */
+  /**
+   * The account whose local file tree Docs home lists (live app only, #2063 C4).
+   * Its writes then go through Drive's hybrid operations.
+   */
   offlineUsername?: string | null;
   /** Live drive operations powering row actions (star/download/rename/move/trash). */
   operations?: DriveAPIOperations;
@@ -120,10 +109,11 @@ export function DocsHomeWorkspace({
   const { show, showError } = useAppToast();
   const offlineUsername = offlineUsernameProp;
 
-  const driveOperations = useMemo(() => {
-    if (!offlineUsername) return operations;
-    return createHybridDocsDriveOperations(offlineUsername);
-  }, [offlineUsername, operations]);
+  // One operations layer (#2063 C4): Drive's hybrid operations, with the Docs hooks.
+  const driveOperations = useMemo(
+    () => (offlineUsername ? createDocsFileOperations(offlineUsername) : operations),
+    [offlineUsername, operations],
+  );
   const listingOperations = driveOperations ?? operations;
   // The selection bar zips on the server, so it needs the hybrid's offline error;
   // single-item downloads stay as the pane received them.
@@ -136,7 +126,6 @@ export function DocsHomeWorkspace({
   );
 
   const { online } = useConnectivity();
-  const searchEnabled = !offlineUsername || online;
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [viewMode, setViewMode] = usePersistedViewMode({
@@ -153,95 +142,37 @@ export function DocsHomeWorkspace({
     online,
   });
 
-  const {
-    isSharedView,
-    isAllView,
-    isStarredView,
-    isTrashView,
-    includeSharedInListing,
-    usesBrowseList,
-  } = docsHomeViewFlags(view);
+  const isTrashView = view.type === "trash";
+  const isStarredView = view.type === "starred";
   const browsePathPrefix = docsHomeBrowsePathPrefix(view);
 
-  const browseList = useDocsHomeList({
-    username,
-    query,
-    pathPrefix: browsePathPrefix,
-    fetcher,
-    offlineUsername,
-    enabled: usesBrowseList,
-    groupRoots: labeledGroupRoots,
-  });
-
-  const sharedList = useDocsHomeSharedList({
-    username,
-    shareOperations,
-    // Prefetch whenever shares are available so All docs can merge them in.
-    enabled: Boolean(shareOperations),
-    query: includeSharedInListing ? query : "",
-  });
-
-  const starredList = useDocsHomeStarredList({
-    username,
-    operations: listingOperations,
-    enabled: isStarredView && Boolean(listingOperations),
-    query: isStarredView ? query : "",
-  });
-
-  const trashList = useDocsHomeTrashList({
-    username,
-    operations: listingOperations,
-    enabled: isTrashView && Boolean(listingOperations),
-    query: isTrashView ? query : "",
-  });
-
-  const files = useMemo(
-    () =>
-      resolveDocsHomeFiles({
-        isSharedView,
-        isStarredView,
-        isTrashView,
-        isAllView,
-        browseFiles: browseList.files,
-        sharedFiles: sharedList.files,
-        starredFiles: starredList.files,
-        trashFiles: trashList.files,
-      }),
-    [
-      browseList.files,
-      isAllView,
-      isSharedView,
-      isStarredView,
-      isTrashView,
-      sharedList.files,
-      starredList.files,
-      trashList.files,
-    ],
+  const selectView = useCallback((next: DocsHomeView) => {
+    setView(next);
+    dismissSidebarOverlay(() => setSidebarOpen(false));
+  }, []);
+  const projectDrives = useDocsProjectScope({ drives, view, selectView });
+  const config = useMemo(
+    () => docsHomeWorkspaceConfig({ labels, username, drives: projectDrives }),
+    // `labels` is rebuilt every render from the same overrides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [labelOverrides, username, projectDrives],
   );
 
-  const listing = resolveDocsHomeListingStatus({
-    isSharedView,
-    isStarredView,
-    isTrashView,
-    isAllView,
-    usesBrowseList,
-    shareOperationsEnabled: Boolean(shareOperations),
-    browse: browseList,
-    shared: sharedList,
-    starred: starredList,
-    trash: trashList,
+  const listing = useDocsHomeRows({
+    config,
+    treeUsername: offlineUsername,
+    username,
+    view,
+    query,
+    online,
+    personalDriveLabel: labels.homeMyDrive,
+    groupRoots: labeledGroupRoots,
+    fetcher,
+    operations: listingOperations,
+    shareOperations,
   });
-
-  const reloadBrowse = browseList.reload;
-  const reloadShared = sharedList.reload;
-  const reloadStarred = starredList.reload;
-  const reloadTrash = trashList.reload;
-  const reload = useCallback(() => {
-    reloadBrowse();
-    reloadShared();
-    reloadStarred();
-    reloadTrash();
-  }, [reloadBrowse, reloadShared, reloadStarred, reloadTrash]);
+  const files = listing.files;
+  const reload = listing.reload;
 
   const { offlineAvailableIds, offlinePendingSyncIds, refresh } = useDocsHomeOfflineAvailability(
     files,
@@ -257,8 +188,12 @@ export function DocsHomeWorkspace({
     flush: async () => {
       flushLandedRef.current = false;
       if (!offlineUsername) return;
-      const result = await getDocsSyncRunner(offlineUsername).flush();
-      flushLandedRef.current = Boolean(result && result.flushed > 0 && result.failed === 0);
+      // Docs home writes queue in the Drive outbox; the editor's creates in the Docs one.
+      const docs = await getDocsSyncRunner(offlineUsername).flush();
+      const drive = await getDriveSyncRunner(offlineUsername).flush();
+      const flushed = (docs?.flushed ?? 0) + (drive?.flushed ?? 0);
+      const failed = (docs?.failed ?? 0) + (drive?.failed ?? 0);
+      flushLandedRef.current = flushed > 0 && failed === 0;
     },
     afterFlush: async () => {
       await refresh();
@@ -267,19 +202,30 @@ export function DocsHomeWorkspace({
       setOutboxNoticeKey((key) => key + 1);
     },
   });
-  const { active: outboxNoticeActive, clearConflicts } = useDomainOutboxNotice({
+  const docsOutboxNotice = useDomainOutboxNotice({
     username: offlineUsername,
     domain: DOCS_DOMAIN,
     setConflictListener: setDocsSyncConflictListener,
     refreshKey: outboxNoticeKey,
   });
+  const driveOutboxNotice = useDomainOutboxNotice({
+    username: offlineUsername,
+    domain: DRIVE_DOMAIN,
+    setConflictListener: setDriveSyncConflictListener,
+    refreshKey: outboxNoticeKey,
+  });
+  const outboxNoticeActive = docsOutboxNotice.active || driveOutboxNotice.active;
+  const clearDocsConflicts = docsOutboxNotice.clearConflicts;
+  const clearDriveConflicts = driveOutboxNotice.clearConflicts;
   const retryFailedOutbox = useCallback(async () => {
-    clearConflicts();
+    clearDocsConflicts();
+    clearDriveConflicts();
     if (!offlineUsername) return;
-    await getDocsSyncRunner(offlineUsername)
-      .flush()
-      .finally(() => setOutboxNoticeKey((key) => key + 1));
-  }, [clearConflicts, offlineUsername]);
+    await Promise.all([
+      getDocsSyncRunner(offlineUsername).flush(),
+      getDriveSyncRunner(offlineUsername).flush(),
+    ]).finally(() => setOutboxNoticeKey((key) => key + 1));
+  }, [clearDocsConflicts, clearDriveConflicts, offlineUsername]);
   const syncNotice = useSyncRetryNotice({
     id: "sync:docs",
     active: Boolean(offlineUsername) && outboxNoticeActive,
@@ -287,24 +233,20 @@ export function DocsHomeWorkspace({
     retryLabel: labels.retrySync,
     onRetry: retryFailedOutbox,
   });
-  useDriveFileNodeInbound(offlineUsername, outboxNoticeKey);
-  // Another user's change: the lists load again and keep their rows meanwhile (#1663).
-  useEffect(
-    () => (offlineUsername ? subscribeDriveRemoteChanges(offlineUsername, reload) : undefined),
-    [offlineUsername, reload],
-  );
-  // A Docs cache change from any tab (a star, a landed queued write): read the stars and the
-  // Starred list again. Not the other lists: a browse load itself sends this notice (#1563).
+  // FileNode/changes keeps the tree current; the tree views re-read on their own (#1663).
+  // Until this page's first pull settled a row's id may be stale (deleted and
+  // made again elsewhere): such a row opens by path, as a cached listing row did.
+  const [treePulled, setTreePulled] = useState(false);
+  const markTreePulled = useCallback(() => setTreePulled(true), []);
+  useDriveFileNodeInbound(offlineUsername, outboxNoticeKey, markTreePulled);
+  // A Docs cache change from any tab (a star, a landed queued write): read the stars again.
   const [docsCacheNoticeKey, setDocsCacheNoticeKey] = useState(0);
   useEffect(
     () =>
       offlineUsername
-        ? subscribeDocsCachesChanged(offlineUsername, () => {
-            reloadStarred();
-            setDocsCacheNoticeKey((key) => key + 1);
-          })
+        ? subscribeDocsCachesChanged(offlineUsername, () => setDocsCacheNoticeKey((key) => key + 1))
         : undefined,
-    [offlineUsername, reloadStarred],
+    [offlineUsername],
   );
 
   const readBodySyncProgress = useCallback(() => {
@@ -330,10 +272,6 @@ export function DocsHomeWorkspace({
   useEffect(() => {
     if (online && offlineUsername) refresh();
   }, [online, offlineUsername, refresh]);
-
-  useEffect(() => {
-    if (!searchEnabled && query) setQuery("");
-  }, [searchEnabled, query]);
 
   /** Row badge dots: only pending body sync or unsaved/outbox/collab — never green "available offline". */
   const offlineSyncingIds = useMemo(
@@ -379,16 +317,10 @@ export function DocsHomeWorkspace({
     [actions.hiddenFileIds, actions.starredPaths, actions.starsReady, files, isStarredView],
   );
 
-  const emptyMessage = docsHomeEmptyMessage(view, labels);
+  const emptyMessage = config.emptyMessage(view);
   const emptyIconKind = docsHomeEmptyIconKind(view);
 
-  const selectView = useCallback((next: DocsHomeView) => {
-    setView(next);
-    dismissSidebarOverlay(() => setSidebarOpen(false));
-  }, []);
-
-  const projectDrives = useDocsProjectScope({ drives, view, selectView });
-  const headerTitle = docsHomeHeaderTitle(view, labels, projectDrives);
+  const headerTitle = config.title(view);
   useDocumentTitle(headerTitle);
 
   const { projects } = useProjects();
@@ -404,19 +336,18 @@ export function DocsHomeWorkspace({
 
   const handleOpenFile = useCallback(
     (file: DriveFile) => {
-      // Word files and Google links are listed for Save as Markdown, not opened (#1983).
-      if (isSaveAsMarkdownOnlyFile(file)) {
-        show(
-          saveAsMarkdownSourceKindFromName(file.title) === "gdoc"
-            ? docxImportLabels.googleLinkDescription(file.title)
-            : docxImportLabels.openDocxInDocs,
-        );
+      const action = config.openFile(file);
+      if (action.kind === "notice") {
+        show(action.message);
         return;
       }
       if (!canOpenOffline(file)) return;
-      if (file.apiPath) onOpenFile?.(file.apiPath, file.nodeId);
+      if (!file.apiPath) return;
+      // Offline the tree is all there is, so its id is the best answer.
+      const trustId = treePulled || !online || !offlineUsername;
+      onOpenFile?.(file.apiPath, trustId ? file.nodeId : undefined);
     },
-    [canOpenOffline, onOpenFile, show],
+    [canOpenOffline, config, offlineUsername, online, onOpenFile, show, treePulled],
   );
 
   const saveAsMarkdown = useSaveAsMarkdownAction({
@@ -444,12 +375,10 @@ export function DocsHomeWorkspace({
 
   const { handleCreateDocument } = createDialog;
   const handleNewDocument = useCallback(() => {
-    const personal = docsPersonalDrivePathPrefix(username);
-    if (personal && docsHomeCreateJumpsToPersonal(view)) {
-      selectView({ type: "drive", pathPrefix: personal });
-    }
+    const jumpTo = config.createJumpsTo(view);
+    if (jumpTo) selectView(jumpTo);
     handleCreateDocument();
-  }, [handleCreateDocument, selectView, username, view]);
+  }, [config, handleCreateDocument, selectView, view]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -481,7 +410,7 @@ export function DocsHomeWorkspace({
             emptyIcon={docsHomeEmptyIcon(emptyIconKind)}
             files={visibleFiles}
             loading={listing.loading}
-            refreshing={listing.refreshing}
+            viewState={listing.viewState}
             loadingMore={listing.loadingMore}
             hasMore={listing.hasMore}
             error={listing.error}
@@ -490,7 +419,7 @@ export function DocsHomeWorkspace({
             offlineLabels={docsHomePaneOfflineLabels(labels, docsBodySyncRunning)}
             query={query}
             onQueryChange={setQuery}
-            searchEnabled={searchEnabled}
+            searchEnabled
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onLoadMore={listing.loadMore}

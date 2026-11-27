@@ -1,14 +1,6 @@
-import type { WgwUnifiedSearchParams, WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
-import { fetchWgwUnifiedSearch } from "@/lib/api/wgw/search";
-import {
-  DOCS_HOME_CATEGORIES,
-  DOCS_HOME_EXTENSIONS,
-  DOCS_HOME_PAGE_SIZE,
-  DOCS_HOME_SOURCES,
-  fetchAllDocsHomeListingPages,
-  sortDocsHomeResults,
-  type DocsHomeFetcher,
-} from "@/lib/files/docs-home-listing";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
+import { DOCS_HOME_EXTENSIONS } from "@/lib/files/docs-home-listing";
+import { queryFileTreeView } from "@/lib/files/tree-view/tree-view-query";
 import { backgroundSyncPacer } from "@/lib/offline/core/background-sync-pacer";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {
@@ -36,33 +28,14 @@ function emptyProgress(): DocsBodySyncProgress {
   return emptyProgressiveSyncProgress();
 }
 
-function normalizeSourceKey(sourceKey: string): string {
-  return sourceKey.trim().replace(/^\/+/, "");
+function sourceKey(path: string): string {
+  return path.trim().replace(/^\/+/, "");
 }
 
-function sourceExt(sourceKey: string): string {
-  const file = normalizeSourceKey(sourceKey).split("/").pop() ?? "";
-  const dot = file.lastIndexOf(".");
-  return dot >= 0 ? file.slice(dot + 1).toLowerCase() : "";
-}
-
-function isSupportedHomeDoc(sourceKey: string, username: string): boolean {
-  const normalized = normalizeSourceKey(sourceKey);
-  if (!normalized) return false;
-  if (
-    !DOCS_HOME_EXTENSIONS.includes(sourceExt(normalized) as (typeof DOCS_HOME_EXTENSIONS)[number])
-  ) {
-    return false;
-  }
-  if (normalized.startsWith(`users/${username}/`)) return true;
-  return normalized.startsWith("groups/");
-}
-
-function fileLocationFromSourceKey(sourceKey: string, username: string): string {
-  const normalized = normalizeSourceKey(sourceKey);
-  if (normalized.startsWith(`users/${username}/`)) return "My Drive";
-  if (normalized.startsWith("groups/")) {
-    const team = normalized.split("/")[1] ?? "Team";
+function fileLocationFromSourceKey(key: string, username: string): string {
+  if (key.startsWith(`users/${username}/`)) return "My Drive";
+  if (key.startsWith("groups/")) {
+    const team = key.split("/")[1] ?? "Team";
     return `Team: ${team}`;
   }
   return "Documents";
@@ -77,9 +50,26 @@ export async function readDocsBodySyncProgress(username: string): Promise<DocsBo
   return readProgressiveSyncProgress(username, DOCS_BODY_SYNC_META_KEY);
 }
 
-export async function syncDocsBodiesFromListingResults(
+/**
+ * The documents whose bodies the device keeps: every Markdown and plain-text
+ * file of home and the team drives in the local tree (#2063 C4), newest first.
+ * Nothing is fetched to find them.
+ */
+export async function readDocsBodySyncCandidates(
   username: string,
-  results: readonly WgwUnifiedSearchResult[],
+): Promise<WgwDriveDirectoryEntry[]> {
+  const { rows } = await queryFileTreeView(
+    username,
+    { kind: "all" },
+    { extensions: DOCS_HOME_EXTENSIONS, filesOnly: true },
+    true,
+  );
+  return [...rows].sort((a, b) => (b.time ?? 0) - (a.time ?? 0));
+}
+
+/** Fetch the bodies of the tree's documents that changed since their last sync. */
+export async function syncDocsBodiesFromTree(
+  username: string,
   options?: { signal?: AbortSignal },
 ): Promise<DocsBodySyncProgress> {
   if (!username || !getConnectivitySnapshot()) return emptyProgress();
@@ -87,11 +77,8 @@ export async function syncDocsBodiesFromListingResults(
   if (!settings.contentSyncEnabled) return emptyProgress();
 
   const signal = options?.signal;
-  const newestFirst = sortDocsHomeResults(results);
-  const queue = newestFirst.filter(
-    (row) =>
-      isSupportedHomeDoc(row.sourceKey, username) &&
-      isEligibleForAutoContentSync(row.size, settings),
+  const queue = (await readDocsBodySyncCandidates(username)).filter((entry) =>
+    isEligibleForAutoContentSync(entry.size, settings),
   );
 
   const pacer = backgroundSyncPacer();
@@ -102,49 +89,48 @@ export async function syncDocsBodiesFromListingResults(
     concurrency: DOCS_BODY_SYNC_CONCURRENCY,
     signal,
     pacer,
-    syncOne: async (row) => {
-      const apiPath = `/${normalizeSourceKey(row.sourceKey)}`;
+    syncOne: async (entry) => {
+      const key = sourceKey(entry.path);
+      const apiPath = `/${key}`;
       const database = await resolveDocsCollabDatabase(docsCollabRoomKey(apiPath));
       // An open editor holds this lock for its room, in any tab; it owns the body.
       await withCrossTabLockIfFree(collabUploadLockName(database.name), () =>
-        makeDocsOfflineAvailable(
-          username,
-          apiPath,
-          fileLocationFromSourceKey(row.sourceKey, username),
-          {
-            beforeRequest: () => pacer.acquire(signal),
-            // Drive sync usually got here first; an unchanged document costs no request.
-            // An unknown mtime means "fetch": it never proves the local copy is current.
-            modifiedAtMs: listingModifiedAtMs(row.modifiedAt),
-          },
-        ),
+        makeDocsOfflineAvailable(username, apiPath, fileLocationFromSourceKey(key, username), {
+          beforeRequest: () => pacer.acquire(signal),
+          // Drive sync usually got here first; an unchanged document costs no request.
+          // An unknown mtime means "fetch": it never proves the local copy is current.
+          modifiedAtMs: listingModifiedAtMs(entry.time),
+        }),
       );
     },
   });
 }
 
-export async function syncDocsBodiesFromHomeListing(
-  username: string,
-  options?: {
-    fetcher?: DocsHomeFetcher;
-    signal?: AbortSignal;
-  },
-): Promise<DocsBodySyncProgress> {
-  if (!username || !getConnectivitySnapshot()) return emptyProgress();
-  const fetcher = options?.fetcher ?? fetchWgwUnifiedSearch;
-  const signal = options?.signal;
-  const params: Omit<WgwUnifiedSearchParams, "signal" | "q" | "offset"> & { limit: number } = {
-    sources: [...DOCS_HOME_SOURCES],
-    extensions: [...DOCS_HOME_EXTENSIONS],
-    categories: [...DOCS_HOME_CATEGORIES],
-    limit: DOCS_HOME_PAGE_SIZE,
-  };
+const bodySyncRuns = new Map<string, AbortController>();
 
-  const { results } = await fetchAllDocsHomeListingPages(
-    fetcher,
-    params,
-    "",
-    signal ?? new AbortController().signal,
-  );
-  return syncDocsBodiesFromListingResults(username, results, { signal });
+/**
+ * Run {@link syncDocsBodiesFromTree} for the tree as it is now (#2063 C4). A
+ * request while a run is busy stops that run and starts again: the queue is
+ * newest first, so a Doc the tree just learned is fetched next, and the Docs
+ * the stopped run already stored cost no request. Docs home used to start this
+ * after each live listing; now the tree changing is the signal.
+ */
+export async function requestDocsBodySyncFromTree(
+  username: string,
+  options?: { signal?: AbortSignal },
+): Promise<void> {
+  bodySyncRuns.get(username)?.abort();
+  const controller = new AbortController();
+  bodySyncRuns.set(username, controller);
+  const outer = options?.signal;
+  const stop = () => controller.abort();
+  outer?.addEventListener("abort", stop, { once: true });
+  try {
+    await syncDocsBodiesFromTree(username, { signal: controller.signal });
+  } catch {
+    // A failed run leaves its Docs for the next request.
+  } finally {
+    outer?.removeEventListener("abort", stop);
+    if (bodySyncRuns.get(username) === controller) bodySyncRuns.delete(username);
+  }
 }

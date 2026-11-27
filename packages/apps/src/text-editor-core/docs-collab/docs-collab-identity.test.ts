@@ -9,7 +9,7 @@ import {
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { recordDocsNodePath } from "@/lib/offline/docs/docs-node-paths";
-import { createHybridDocsDriveOperations } from "@/lib/offline/docs/docs-hybrid-operations";
+import { createDocsFileOperations } from "@/lib/offline/docs/docs-file-operations";
 import { rememberOfflineDriveUsername } from "@/lib/offline/core/offline-session";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import "@/lib/offline/drive/drive-schema";
@@ -120,7 +120,7 @@ function nextTask(): Promise<void> {
 }
 
 async function renameThroughDocs(from: string, destination: string, to: string): Promise<void> {
-  const operations = createHybridDocsDriveOperations(username);
+  const operations = createDocsFileOperations(username);
   await operations.renameItem({ from, destination, to });
 }
 

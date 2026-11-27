@@ -7,6 +7,7 @@ import {
   subscribeDocsCachesChanged,
 } from "@/lib/offline/docs/docs-inbound-sync";
 import { docsPathAfterMove, subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
+import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { useDriveFileNodeInbound } from "@/drive-core/src/use-drive-file-node-inbound";
 
 type UseDocsEditorPathFollowArgs = {
@@ -20,7 +21,7 @@ type UseDocsEditorPathFollowArgs = {
 
 /**
  * Whether a queued create or rename still owns `filePath`; re-read when Docs
- * caches change. `undefined` until the read answers (or when it fails).
+ * caches or the file tree change. `undefined` until the read answers (or when it fails).
  * `learn(path)` answers for a path before the editor opens it, so a followed
  * move does not start the new path unknown (and its room local-only).
  */
@@ -44,9 +45,12 @@ function useQueuedWriteOwnsPath(username: string | null | undefined, filePath: s
     };
     check();
     const unsubscribe = subscribeDocsCachesChanged(username, check);
+    // Docs home writes queue in the Drive outbox (#2063 C4): its flush says so here.
+    const unsubscribeDrive = subscribeDriveRemoteChanges(username, check);
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubscribeDrive();
     };
   }, [filePath, username]);
   const learn = useCallback(

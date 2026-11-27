@@ -7,17 +7,17 @@ import {
   removeDocsAvailability,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
-import {
-  createHybridDocsDriveOperations,
-  parentAndName,
-} from "@/lib/offline/docs/docs-hybrid-operations";
+import { parentAndName } from "@/lib/files/api-path";
+import { queueDocsOutbox } from "@/lib/offline/docs/docs-sync-runner";
 import {
   hydrateDocsCollabForOffline,
   seedEmptyDocsCollabOffline,
 } from "@/lib/offline/docs/docs-pin-hydrate";
 import { clearDocsCollabOfflinePersistence } from "@/lib/collab/docs-collab-persistence";
-import { upsertDocsListingResult } from "@/lib/offline/docs/docs-listing-offline-store";
-import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
+import {
+  readCachedDriveNodeId,
+  upsertDriveEntry,
+} from "@/lib/offline/drive/drive-directory-offline-store";
 
 export type MakeDocsOfflineAvailableOptions = {
   /** Background sync paces every request through this. */
@@ -69,16 +69,26 @@ export async function queueNewDocsOfflineDocument(
 ): Promise<void> {
   const normalized = normalizeApiVirtualPath(apiPath);
   const room = normalizeDocsAvailabilityPath(normalized);
-  const { destination, from } = parentAndName(normalized);
-  const lower = from.toLowerCase();
-  const mime = lower.endsWith(".txt") ? "text/plain;charset=utf-8" : "text/markdown;charset=utf-8";
-  const file = new File([new Blob([""], { type: mime })], from, {
-    type: lower.endsWith(".txt") ? "text/plain" : "text/markdown",
-    lastModified: Date.now(),
+  await queueDocsOutbox(username, { op: "create", apiPath: normalized, content: "" });
+  // Docs home lists the tree: the new Doc is a row there until the server's
+  // FileNode replaces it (the tree prune keeps a queued create's path).
+  await upsertDriveEntry(username, {
+    type: "file",
+    path: normalized,
+    name: parentAndName(normalized).from,
+    size: 0,
+    time: Math.floor(Date.now() / 1000),
+    permissions: 0,
+    // The person creates it in a folder they write to: theirs to edit and share.
+    myRights: {
+      mayView: true,
+      mayComment: true,
+      mayReview: true,
+      mayEditContent: true,
+      mayManageStructure: true,
+      mayShare: true,
+    },
   });
-  const hybrid = createHybridDocsDriveOperations(username);
-  await hybrid.uploadFiles({ cwd: destination, files: [file] });
-  await upsertDocsListingResult(username, normalized);
   if (isDocsCollabEditablePath(room)) {
     await seedEmptyDocsCollabOffline(room);
     await writeDocsAvailability(username, { id: room, location });

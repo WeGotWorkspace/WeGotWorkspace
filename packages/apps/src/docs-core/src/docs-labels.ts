@@ -23,8 +23,9 @@ export const docsLabels = {
   homeLoadingMore: filesBrowserSidebarLabels.loadingMore,
   homeLoadError: "Could not load documents.",
   homeNotAvailableOffline: "This document is not available offline.",
-  /** Shared with me is read from the server only (#1563). */
-  homeSharedOffline: "Shared documents are not available offline.",
+  /** A view offline before this device ever synced the file tree (#2063 C4). */
+  homeNotSyncedOffline: driveLabels.notAvailableOffline,
+  homeNotSyncedOfflineHint: "Open Docs once while you're online. After that it works offline too.",
   /** Drive SST — single source (`driveLabels`). */
   offlineAvailable: driveLabels.offlineAvailable,
   syncingOffline: "Syncing offline",
