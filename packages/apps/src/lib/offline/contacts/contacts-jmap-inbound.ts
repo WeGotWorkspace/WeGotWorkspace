@@ -1,5 +1,6 @@
 import type { AddressBook, ContactCard } from "@/lib/models/contacts-types";
 import {
+  isContactCardPending,
   listCachedCardsForAddressBook,
   listPendingContactCardIds,
   readCachedContactCard,
@@ -24,8 +25,7 @@ export async function ingestRemoteContactCard(
   card: ContactCard,
 ): Promise<"upserted" | "skipped-pending"> {
   if (!card.id) return "skipped-pending";
-  const pending = await pendingSet(username);
-  if (pending.has(card.id)) {
+  if (await isContactCardPending(username, card.id)) {
     reportContactsSyncConflicts([card.id]);
     return "skipped-pending";
   }
@@ -38,8 +38,7 @@ export async function ingestRemoteContactCardDestroyed(
   username: string,
   cardId: string,
 ): Promise<"removed" | "skipped-pending"> {
-  const pending = await pendingSet(username);
-  if (pending.has(cardId)) {
+  if (await isContactCardPending(username, cardId)) {
     reportContactsSyncConflicts([cardId]);
     return "skipped-pending";
   }
@@ -122,8 +121,7 @@ export async function ingestRemoteContactCardListedAway(
   cardId: string,
   addressBookId: string,
 ): Promise<boolean> {
-  const pending = await pendingSet(username);
-  if (pending.has(cardId)) return false;
+  if (await isContactCardPending(username, cardId)) return false;
   const card = await readCachedContactCard(username, cardId);
   const membership = { ...(card?.addressBookIds ?? {}) };
   if (!card || membership[addressBookId] !== true) return false;

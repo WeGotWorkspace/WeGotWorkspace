@@ -23,6 +23,8 @@ const reportConflicts = vi.fn();
 
 vi.mock("@/lib/offline/contacts/contacts-offline-store", () => ({
   listPendingContactCardIds: () => listPending(),
+  isContactCardPending: async (_username: string, cardId: string) =>
+    (await listPending()).includes(cardId),
   upsertContactCardInCache: (...args: unknown[]) => upsert(...args),
   removeContactCardFromCache: (...args: unknown[]) => remove(...args),
   upsertAddressBookInCache: (...args: unknown[]) => upsertBook(...args),

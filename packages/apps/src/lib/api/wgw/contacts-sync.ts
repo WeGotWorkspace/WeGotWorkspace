@@ -5,6 +5,7 @@ import {
   contactCardChanges,
   getAddressBook,
   getCard,
+  getCards,
   isCannotCalculateChanges,
   isContactsNotFound,
   listAddressBooks,
@@ -20,6 +21,7 @@ import {
 import {
   listCachedAddressBookIds,
   listPendingContactCardIds,
+  readCachedContactCard,
   readAddressBooksSyncToken,
   readContactsBootstrapFromCache,
   readSyncToken,
@@ -27,6 +29,7 @@ import {
   writeSyncToken,
 } from "@/lib/offline/contacts/contacts-offline-store";
 import { runScopedInbound, type ScopedInboundBinding } from "@/lib/offline/core/inbound-sync";
+import { CONTACT_CARD_GET_MAX_IDS_PER_REQUEST } from "@/lib/jmap-client";
 
 /** Envelope empty compose — REST used `"0"`, which cannotCalculateChanges. */
 const INITIAL_JMAP_STATE = "0:";
@@ -56,17 +59,70 @@ function contactCardsInbound(
   const readPending = async () => {
     pending = new Set(await listPendingContactCardIds(username));
   };
+  // Changed cards are fetched a page at a time, not one request each: an
+  // import of thousands of cards elsewhere would otherwise cost a request per
+  // card. A page holds the next ids in the order `/changes` listed them, from
+  // the id the run asks for. Every book shares the answers.
+  const queued: string[] = [];
+  const queuedAt = new Map<string, number>();
+  const requested = new Set<string>();
+  const fetched = new Map<string, ContactCard>();
+  // A cached card a page left out: the server can still store it but not
+  // return it (over the read size guard). Its row stays as it is.
+  const keepCached = new WeakSet<ContactCard>();
+  const queue = (changes: JmapChangesResponse) => {
+    for (const id of [...changes.created, ...changes.updated]) {
+      if (pending.has(id) || queuedAt.has(id)) continue;
+      queuedAt.set(id, queued.length);
+      queued.push(id);
+    }
+  };
+  const fetchPageFrom = async (id: string) => {
+    const page: string[] = [];
+    for (let index = queuedAt.get(id) ?? 0; index < queued.length; index += 1) {
+      const next = queued[index]!;
+      if (requested.has(next)) continue;
+      page.push(next);
+      if (page.length === CONTACT_CARD_GET_MAX_IDS_PER_REQUEST) break;
+    }
+    const paced = requested.size > 0;
+    for (const next of page) requested.add(next);
+    for (const card of await getCards(page, { signal: opts?.signal, paced })) {
+      fetched.set(card.id, card);
+    }
+  };
   return {
     // No token yet: changes since the empty state, as before (not a full list).
     readToken: async (bookId) => (await readSyncToken(username, bookId)) ?? INITIAL_JMAP_STATE,
     writeToken: (bookId, token) => writeSyncToken(username, bookId, token),
-    changes: (_bookId, since) => contactCardChanges(since, opts),
+    changes: async (_bookId, since) => {
+      const changes = await contactCardChanges(since, opts);
+      queue(changes);
+      return changes;
+    },
     isCannotCalculateChanges,
     list: (bookId) => listCards({ addressBookId: bookId, signal: opts?.signal }),
     currentState: () => currentTypeState("ContactCard"),
     rowId: (card) => card.id,
     // A pending card is not fetched: its ingest only reports the conflict.
-    fetch: async (id) => (pending.has(id) ? ({ id } as ContactCard) : getCard(id, opts)),
+    fetch: async (id) => {
+      if (pending.has(id)) return { id } as ContactCard;
+      if (!queuedAt.has(id)) return getCard(id, opts);
+      if (!requested.has(id)) await fetchPageFrom(id);
+      const card = fetched.get(id);
+      if (card) {
+        // The engine asks for each id once; free the page as it is applied.
+        fetched.delete(id);
+        return card;
+      }
+      // Asked for and not returned. A card the cache lacks was deleted since its
+      // change was listed. A cached one stays: a real delete is listed as
+      // destroyed on the next run.
+      if (!(await readCachedContactCard(username, id))) return null;
+      const keep = { id } as ContactCard;
+      keepCached.add(keep);
+      return keep;
+    },
     readCached: async () => {
       await readPending();
       const cached = await readContactsBootstrapFromCache(username);
@@ -84,7 +140,10 @@ function contactCardsInbound(
     createApplier: async () => {
       await readPending();
       return {
-        ingest: (card) => ingestRemoteContactCard(username, card),
+        ingest: (card) =>
+          keepCached.has(card)
+            ? Promise.resolve("skipped-pending" as const)
+            : ingestRemoteContactCard(username, card),
         ingestDestroyed: (id) => ingestRemoteContactCardDestroyed(username, id),
         ingestListedAway: (id, bookId) => ingestRemoteContactCardListedAway(username, id, bookId),
         // Every run stores its state, as before: a skipped change of a pending
@@ -159,16 +218,14 @@ async function applyAddressBookChanges(
   for (const bookId of changes.destroyed) {
     await ingestRemoteAddressBookDestroyed(username, bookId);
   }
-  for (const bookId of changes.created) {
+  const changedBookIds = [...changes.created, ...changes.updated];
+  for (const bookId of changedBookIds) {
     const book = await getAddressBook(bookId, opts);
     await ingestRemoteAddressBook(username, book);
-    await pullContactCardChangesForBook(username, bookId, opts);
   }
-  for (const bookId of changes.updated) {
-    const book = await getAddressBook(bookId, opts);
-    await ingestRemoteAddressBook(username, book);
-    await pullContactCardChangesForBook(username, bookId, opts);
-  }
+  // One run for every changed book: a card that moved between two books is
+  // named by both, and is fetched once instead of once per book.
+  if (changedBookIds.length > 0) await syncContactCardScopes(username, changedBookIds, opts);
 }
 
 export async function syncAllContactBooks(

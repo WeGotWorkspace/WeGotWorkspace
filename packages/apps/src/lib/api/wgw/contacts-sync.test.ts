@@ -46,6 +46,7 @@ const newBook: AddressBook = {
 const {
   getAddressBook,
   getCard,
+  getCards,
   listAddressBooks,
   addressBookChanges,
   contactCardChanges,
@@ -54,6 +55,8 @@ const {
 } = vi.hoisted(() => ({
   getAddressBook: vi.fn(),
   getCard: vi.fn(),
+  // By default the batch answers each id through `getCard`, like the server would.
+  getCards: vi.fn(),
   listAddressBooks: vi.fn(),
   addressBookChanges: vi.fn(),
   contactCardChanges: vi.fn(),
@@ -68,11 +71,19 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
     getAddressBook,
     listAddressBooks,
     getCard,
+    getCards,
     listCards,
     addressBookChanges,
     contactCardChanges,
     connectedContacts,
   };
+});
+
+beforeEach(() => {
+  getCards.mockImplementation(async (ids: string[]) => {
+    const cards = await Promise.all(ids.map((id) => getCard(id).catch(() => null)));
+    return cards.filter((card): card is ContactCard => Boolean(card));
+  });
 });
 
 vi.mock("@/lib/offline/contacts/contacts-sync-conflicts", () => ({
@@ -177,6 +188,39 @@ describe("pullAddressBookChanges", () => {
     expect(getAddressBook).toHaveBeenCalledWith("new-book", undefined);
     expect(await readSyncToken(username, "extra-book")).toBeNull();
     expect(await readAddressBooksSyncToken(username)).toBe("3:default:1,new-book:1");
+  });
+
+  it("syncs the cards of every changed book in one run, fetching a moved card once", async () => {
+    await upsertAddressBookInCache(username, extraBook);
+    await writeSyncToken(username, "default", "cards-1");
+    await writeSyncToken(username, "extra-book", "cards-1");
+    addressBookChanges.mockResolvedValueOnce({
+      oldState: "books-1",
+      newState: "books-2",
+      created: [],
+      updated: ["default", "extra-book"],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+    getAddressBook.mockImplementation(async (id: string) =>
+      id === "default" ? defaultBook : extraBook,
+    );
+    getCards.mockResolvedValue([
+      { id: "moved", addressBookIds: { "extra-book": true } } as unknown as ContactCard,
+    ]);
+    contactCardChanges.mockResolvedValue({
+      oldState: "cards-1",
+      newState: "cards-2",
+      created: ["moved"],
+      updated: [],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+
+    await pullAddressBookChanges(username);
+
+    expect(getCards).toHaveBeenCalledOnce();
+    expect(getCards).toHaveBeenCalledWith(["moved"], { signal: undefined, paced: false });
+    expect(await readSyncToken(username, "default")).toBe("cards-2");
+    expect(await readSyncToken(username, "extra-book")).toBe("cards-2");
   });
 
   it("full-resyncs address books when changes cannot be calculated", async () => {
@@ -345,14 +389,87 @@ describe("syncAllContactBooks", () => {
       updated: ["both"],
       destroyed: [],
     } satisfies JmapChangesResponse);
-    getCard.mockResolvedValue(card("both", ["default", "extra-book"]));
+    getCards.mockResolvedValue([card("both", ["default", "extra-book"])]);
 
     await syncAllContactBooks(username, ["default", "extra-book"]);
 
     expect(contactCardChanges).toHaveBeenCalledTimes(2);
-    expect(getCard).toHaveBeenCalledOnce();
+    expect(getCards).toHaveBeenCalledOnce();
+    expect(getCards).toHaveBeenCalledWith(["both"], { signal: undefined, paced: false });
+    expect(getCard).not.toHaveBeenCalled();
     expect(await readSyncToken(username, "default")).toBe("card-state-2");
     expect(await readSyncToken(username, "extra-book")).toBe("card-state-2");
+  });
+
+  it("fetches many changed cards a page at a time, pacing every page after the first", async () => {
+    await writeContactsBootstrapToCache(username, {
+      session: { ...mockWorkspaceSession, user: { ...mockWorkspaceSession.user, username } },
+      data: { addressBooks: [defaultBook], cards: [] },
+    });
+    await writeSyncToken(username, "default", "card-state-1");
+    const ids = Array.from({ length: 200 }, (_, index) => `imported-${index}`);
+    contactCardChanges.mockResolvedValue({
+      oldState: "card-state-1",
+      newState: "card-state-2",
+      created: ids,
+      updated: [],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+    // The last card was deleted before it was fetched: the server leaves it out.
+    getCards.mockImplementation(async (page: string[]) =>
+      page.filter((id) => id !== "imported-199").map((id) => card(id, ["default"])),
+    );
+
+    await syncAllContactBooks(username, ["default"]);
+
+    expect(getCard).not.toHaveBeenCalled();
+    expect(getCards).toHaveBeenCalledTimes(5);
+    expect(getCards.mock.calls.map(([page]) => (page as string[]).length)).toEqual([
+      40, 40, 40, 40, 40,
+    ]);
+    expect(getCards.mock.calls.map(([, opts]) => (opts as { paced: boolean }).paced)).toEqual([
+      false,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    const cached = await readContactsBootstrapFromCache(username);
+    const cachedIds = new Set((cached?.data.cards ?? []).map((row) => row.id));
+    expect(cachedIds.size).toBe(199);
+    expect(cachedIds.has("imported-199")).toBe(false);
+    expect(await readSyncToken(username, "default")).toBe("card-state-2");
+  });
+
+  it("keeps a cached card that a page leaves out, and still advances the token", async () => {
+    const kept = {
+      ...card("kept", ["default"]),
+      name: { "@type": "Name", isOrdered: false, full: "Cached copy" },
+    } as ContactCard;
+    await writeContactsBootstrapToCache(username, {
+      session: { ...mockWorkspaceSession, user: { ...mockWorkspaceSession.user, username } },
+      data: { addressBooks: [defaultBook], cards: [kept] },
+    });
+    await writeSyncToken(username, "default", "card-state-1");
+    contactCardChanges.mockResolvedValue({
+      oldState: "card-state-1",
+      newState: "card-state-2",
+      created: ["fresh"],
+      updated: ["kept"],
+      destroyed: [],
+    } satisfies JmapChangesResponse);
+    // The server still stores "kept" but cannot return it (over the read guard).
+    getCards.mockImplementation(async (page: string[]) =>
+      page.filter((id) => id !== "kept").map((id) => card(id, ["default"])),
+    );
+
+    await syncAllContactBooks(username, ["default"]);
+
+    const cached = await readContactsBootstrapFromCache(username);
+    expect(cached?.data.cards.find((row) => row.id === "kept")?.name?.full).toBe("Cached copy");
+    expect(cached?.data.cards.some((row) => row.id === "fresh")).toBe(true);
+    expect(reportContactsSyncConflicts).not.toHaveBeenCalled();
+    expect(await readSyncToken(username, "default")).toBe("card-state-2");
   });
 
   it("deletes a card that the full lists of both its books lack", async () => {

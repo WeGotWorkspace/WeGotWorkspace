@@ -50,6 +50,7 @@ vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
     fetchContactsLiveBootstrap,
     fetchContactCardPages,
     getCard: vi.fn(),
+    getCards: vi.fn(),
     getAddressBook: vi.fn(),
   };
 });
@@ -82,7 +83,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
   }),
 }));
 
-import { getCard } from "@/lib/api/wgw/contacts";
+import { getCards } from "@/lib/api/wgw/contacts";
 import { useContactsAPI } from "./use-contacts-api";
 
 const book = {
@@ -272,7 +273,7 @@ describe("useContactsAPI first visit", () => {
       }
       return emptyChanges(since, "cards-ignored");
     });
-    vi.mocked(getCard).mockResolvedValue(updated);
+    vi.mocked(getCards).mockResolvedValue([updated]);
 
     const { result } = renderHook(() => useContactsAPI());
 
