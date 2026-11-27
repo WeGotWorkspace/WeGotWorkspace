@@ -69,8 +69,7 @@ function roomOf(path: string): string | null {
  *
  * A destination that is no source of the batch and holds unsaved text (a Doc
  * created offline on that path) is never cleared or written: that move's
- * source stays where it is too, so no Doc loses its text. A later move onto
- * that staying source still goes ahead: the path now belongs to that Doc.
+ * source stays where it is too, so neither Doc loses its text.
  */
 export async function moveDocsCollabPathDatabasesInBatch(
   moves: readonly DocsCollabPathMove[],
@@ -90,15 +89,15 @@ export async function moveDocsCollabPathDatabasesInBatch(
       if (toName) pairs.push({ fromName, toName, toRoom });
     }
   }
+  const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
   const stays = new Set<string>();
-  for (const { fromName, toName } of pairs) {
+  for (const { fromName, toName, toRoom } of pairs) {
     const unsavedOccupant =
       !sources.has(toName) && exists(toName) && (await collabIndexedDbHasPendingServerSave(toName));
-    if (unsavedOccupant) stays.add(fromName);
-  }
-  const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
-  for (const { fromName, toName, toRoom } of pairs) {
-    if (stays.has(fromName)) continue;
+    if (unsavedOccupant) {
+      stays.add(fromName);
+      continue;
+    }
     plan.push({ toName, toRoom, state: exists(fromName) ? await capture(fromName) : null });
   }
   const written = new Set<string>();
