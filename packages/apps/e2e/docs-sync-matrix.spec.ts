@@ -24,7 +24,7 @@
 // No fixed waits: every step waits for what it needs (a row, the offline
 // badge, the Drive cache knowing the file, the server holding the write).
 // Run one case with --grep "rename · same · aOff".
-import type { Browser, BrowserContext, Locator } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 import {
   dav,
   driveKnows,
@@ -219,6 +219,10 @@ async function setOffline(tab: Tab, offline: boolean): Promise<void> {
   });
 }
 
+async function setPageOffline(page: Page, offline: boolean): Promise<void> {
+  await setTabOffline(page as Tab, offline);
+}
+
 async function openEditor(tab: Tab, apiPath: string): Promise<void> {
   await tab.goto(`/docs?file=${encodeURIComponent(apiPath.replace(/^\/+/, ""))}`);
   await expect(tab.locator(".ProseMirror")).toBeVisible({ timeout: 60_000 });
@@ -272,6 +276,11 @@ type ActionDef = {
   aView?: View | "editor";
   /** The other tab's view, or the editor. */
   bView?: View | "editor";
+  /**
+   * Pages of A's browser context that go offline and come back with A, such as
+   * Drive: its own outbox flush runs on reconnect beside Docs' (#2063 C4).
+   */
+  companions?: (a: Tab, c: Case) => Promise<Page[]>;
   /** The UI steps of the action in tab A (and, for some, tab B). */
   run: (a: Tab, b: Tab | null, c: Case) => Promise<void>;
   /** The server holds the action (`mate` is the teammate's view, in a diff case). */
@@ -282,6 +291,16 @@ type ActionDef = {
 
 async function seedDoc(c: Case, path = startPath(c)): Promise<void> {
   await putDoc(OWNER, path, `# ${c.name}\n\nbody ${c.id}\n`);
+}
+
+/** Drive open beside Docs in A's browser: its reconnect flush must not outrun Docs' create. */
+async function openDriveCompanion(a: Tab): Promise<Page[]> {
+  const drive = await a.context().newPage();
+  await drive.goto("/drive");
+  await expect(drive.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 60_000 });
+  // Its list is read and cached once the page settles.
+  await drive.waitForLoadState("networkidle");
+  return [drive];
 }
 
 async function renameFromRow(tab: Tab, fileName: string, nextBase: string): Promise<void> {
@@ -376,6 +395,7 @@ const ACTIONS = {
   /** Gap 1: the offline-created Doc is renamed or trashed from its row before the create lands. */
   createTakenRename: {
     nets: { one: ["off"] },
+    companions: openDriveCompanion,
     seed: async () => undefined,
     run: async (a, _b, c) => {
       await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
@@ -399,6 +419,7 @@ const ACTIONS = {
   },
   createTakenTrash: {
     nets: { one: ["off"] },
+    companions: openDriveCompanion,
     seed: async () => undefined,
     run: async (a, _b, c) => {
       await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
@@ -822,12 +843,15 @@ async function runCase(browser: Browser, c: Case): Promise<void> {
     if (b) await prepareTab(b, def.bView, c);
 
     const offline = { on: [], off: [a], both: all, aOff: [a], bOff: b ? [b] : [] }[c.net];
+    const companions = await (def.companions?.(a, c) ?? []);
     for (const tab of offline) await setOffline(tab, true);
+    for (const page of companions) await setPageOffline(page, true);
     await a.bringToFront();
     await def.run(a, b ?? null, c);
     // Gap 5: offline, nothing on screen says "Failed to fetch".
     for (const tab of offline) await expect(tab.getByText("Failed to fetch")).toHaveCount(0);
     for (const tab of offline) await setOffline(tab, false);
+    for (const page of companions) await setPageOffline(page, false);
 
     await expect
       .poll(

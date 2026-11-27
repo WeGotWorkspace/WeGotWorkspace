@@ -49,6 +49,7 @@ import {
   fetchDriveFolderOncePerBrowser,
   listenForSharedDriveFolderFetches,
 } from "@/lib/offline/drive/drive-folder-fetch-share";
+import { getDocsSyncRunner } from "@/lib/offline/docs/docs-sync-runner";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
@@ -91,6 +92,12 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
 const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<DriveOutboxFlushResult>(DRIVE_DOMAIN);
 
 async function flushDriveOutboxTask(username: string): Promise<DriveOutboxFlushResult> {
+  // Docs home queues its rename, trash and star here, at the path of a Doc
+  // created offline. When that name was taken, the Docs flush keeps both and
+  // retargets these rows; sent first, they would hit the server's file. Wait
+  // for a Docs flush that starts now, so one already running with an older
+  // snapshot of its outbox does not count (#2063 C4).
+  await getDocsSyncRunner(username).flushAfterWrite();
   const result = await flushDriveOutbox(username);
   reportDriveSyncConflicts(result.stateMismatches);
   // Every view of the tree, and an editor that held its text for a queued
