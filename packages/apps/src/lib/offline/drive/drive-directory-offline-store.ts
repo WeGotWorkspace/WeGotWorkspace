@@ -83,32 +83,49 @@ export async function addCreatedDriveEntry(
   name: string,
   type: "dir" | "file",
 ): Promise<void> {
-  const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
   const parentId = normalizeDriveEntryPath(parentApiPath);
   const id = parentId ? `${parentId}/${name}` : name;
-  // The server answers a name that already exists as a success: the row there
-  // (its node id, size, rights) stays as it is.
-  if (await table.get(id)) return;
-  const parent = parentId ? await table.get(parentId) : undefined;
-  const parentEntry = parent ? parseEntryRow(parent) : null;
-  const entry: WgwDriveDirectoryEntry = {
-    type,
-    path: `/${id}`,
-    name,
-    size: 0,
-    time: Math.floor(Date.now() / 1000),
-    permissions: 0,
-    // Under a root there is no parent row: the person just created it there.
-    myRights: parentEntry?.myRights ?? {
-      mayView: true,
-      mayComment: true,
-      mayReview: true,
-      mayEditContent: true,
-      mayManageStructure: true,
-      mayShare: true,
-    },
-  };
-  await table.put(driveEntryRowFromEntry(entry, parent?.area ?? areaFromCrawledPath(id)));
+  // One transaction: a change sync that files the real node meanwhile wins.
+  await db.transaction("rw", table, async () => {
+    // The server answers a name that already exists as a success: the row there
+    // (its node id, size, rights) stays as it is.
+    if (await table.get(id)) return;
+    const parent = parentId ? await table.get(parentId) : undefined;
+    const parentEntry = parent ? parseEntryRow(parent) : null;
+    const entry: WgwDriveDirectoryEntry = {
+      type,
+      path: `/${id}`,
+      name,
+      size: 0,
+      time: Math.floor(Date.now() / 1000),
+      permissions: 0,
+      // Under a root there is no parent row: the person just created it there.
+      myRights: parentEntry?.myRights ?? {
+        mayView: true,
+        mayComment: true,
+        mayReview: true,
+        mayEditContent: true,
+        mayManageStructure: true,
+        mayShare: true,
+      },
+    };
+    await table.put(driveEntryRowFromEntry(entry, parent?.area ?? areaFromCrawledPath(id)));
+  });
+}
+
+/** Every child name the tree holds under `parentPath`, dot names included. */
+export async function readDriveChildNames(
+  username: string,
+  parentPath: string,
+): Promise<Set<string>> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await driveEntriesTable(db)
+    .where("parentPath")
+    .equals(normalizeDriveEntryPath(parentPath))
+    .toArray();
+  return new Set(rows.map((row) => row.id.split("/").pop() ?? row.id));
 }
 
 /**
