@@ -590,3 +590,239 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------------------
+ * Spike 7: touch. Everything below only changes how the same grid looks and
+ * reacts under a finger; geometry still comes from widths × row height.
+ * ------------------------------------------------------------------------- */
+
+/* Native panning (with momentum) stays on; pinch is the grid's own zoom. */
+.sx-scroller {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sx-cell {
+  font-size: calc(13px * var(--sx-zoom, 1));
+}
+
+/* Variant B range handles: a knob on the corner, a 44 px hit area around it. */
+.sx-handle {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 2;
+}
+
+.sx-handle::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 13px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sx-brand);
+  border: 2px solid var(--sx-bg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.sx-fill-handle.is-fill-mode {
+  border-radius: 3px;
+  width: 16px !important;
+  height: 16px !important;
+  margin: -1px 0 0 -1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sx-brand) 30%, transparent);
+}
+
+.sx-input-wrap.is-bar-edit {
+  pointer-events: none;
+}
+
+.sx-popover {
+  overflow: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+/* Docked editor (phone): formula bar + symbol strip pinned above the keyboard. */
+.sx-dock {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--sx-head-bg);
+  border-top: 1px solid var(--sx-line-strong);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.08);
+}
+
+.sx-dock .sx-bar {
+  height: 48px;
+  box-sizing: border-box;
+  border-bottom: 0;
+  padding: 6px 6px;
+  gap: 6px;
+}
+
+.sx-dock .sx-bar-input {
+  height: 36px;
+}
+
+.sx-dock .sx-fx {
+  display: none;
+}
+
+.sx-dock-sig {
+  height: 26px;
+  line-height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--sx-muted);
+}
+
+.sx-dock-sig b {
+  color: var(--sx-brand);
+}
+
+.sx-dock-keys {
+  height: 48px;
+  display: flex;
+  gap: 4px;
+  padding: 2px 6px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sx-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1px solid var(--sx-line-strong);
+  background: var(--sx-bg);
+  font-size: 15px;
+}
+
+.sx-chip[aria-selected="true"] {
+  border-color: var(--sx-brand);
+  background: var(--sx-sel-fill);
+}
+
+.sx-dock-key,
+.sx-dock-btn {
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+  border: 1px solid var(--sx-line-strong);
+  border-radius: 0.375rem;
+  background: var(--sx-bg);
+  color: var(--sx-fg);
+  font: 500 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  touch-action: manipulation;
+}
+
+.sx-dock-btn.is-primary {
+  background: var(--sx-brand);
+  border-color: var(--sx-brand);
+  color: #fff;
+}
+
+/* Variant B callout: the iOS-style edit menu next to the selection. */
+.sx-callout {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #27272a;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);
+}
+
+.sx-callout button {
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid #3f3f46;
+  background: transparent;
+  color: #fafafa;
+  font: 500 15px system-ui, -apple-system, sans-serif;
+  touch-action: manipulation;
+}
+
+.sx-callout button:last-child {
+  border-right: 0;
+}
+
+@media (pointer: coarse) {
+  /* iOS zooms the page into any focused input under 16 px. */
+  .sx-input,
+  .sx-mirror,
+  .sx-bar-input {
+    font-size: 16px;
+  }
+
+  .sx-cell {
+    font-size: calc(15px * var(--sx-zoom, 1));
+  }
+
+  .sx-option {
+    min-height: 44px;
+    align-items: center;
+    padding: 0 10px;
+  }
+
+  .sx-menu {
+    max-height: calc(100dvh - 16px);
+    overflow: auto;
+  }
+
+  .sx-menuitem {
+    min-height: 44px;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+
+  .sx-menuitem kbd {
+    display: none;
+  }
+
+  /* A finger on a header pans; only a selected column offers a resize grip. */
+  .sx-resize {
+    display: none;
+  }
+
+  .sx-resize.is-grip {
+    display: block;
+    width: 28px;
+    margin-left: -14px;
+    background: linear-gradient(to right, transparent 12px, var(--sx-bg) 12px, var(--sx-bg) 16px, transparent 16px);
+  }
+
+  .sx-resize.is-grip::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 7px;
+    width: 8px;
+    height: 16px;
+    border-radius: 4px;
+    background: var(--sx-bg);
+    border: 1px solid var(--sx-brand);
+    box-sizing: border-box;
+  }
+
+  .sx-namebox {
+    min-width: 0;
+  }
+}

@@ -20,6 +20,12 @@ export function ContextMenu({
   label: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  /**
+   * Lifting the finger after a long-press can land as a click on whatever item
+   * opened under it. Pointer clicks count only once a press started inside the
+   * menu; keyboard activation (detail 0) always counts.
+   */
+  const pressed = useRef(false);
 
   useEffect(() => {
     const first = ref.current?.querySelector<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])');
@@ -64,6 +70,9 @@ export function ContextMenu({
       style={{ left: x, top: y }}
       onKeyDown={onKeyDown}
       onContextMenu={(event) => event.preventDefault()}
+      onPointerDown={() => {
+        pressed.current = true;
+      }}
     >
       {items.map((item, i) =>
         item === "sep" ? (
@@ -76,8 +85,9 @@ export function ContextMenu({
             data-menu-id={item.id}
             aria-disabled={item.disabled ? "true" : undefined}
             className="sx-menuitem"
-            onClick={() => {
+            onClick={(event) => {
               if (item.disabled) return;
+              if (event.detail > 0 && !pressed.current) return;
               onClose(true);
               item.onSelect();
             }}

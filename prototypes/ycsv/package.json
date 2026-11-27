@@ -6,7 +6,8 @@
     "test": "vitest run",
     "storybook": "storybook dev -p 6007 --no-open",
     "test:e2e": "playwright test --project=chromium --project=touch",
-    "test:e2e:all": "playwright test"
+    "test:e2e:all": "playwright test",
+    "test:touch": "playwright test --project=android-phone --project=android-tablet --project=iphone --project=ipad"
   },
   "dependencies": {
     "@formulajs/formulajs": "^4.5.1",

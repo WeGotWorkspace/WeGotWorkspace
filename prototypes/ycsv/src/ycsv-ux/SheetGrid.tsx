@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useId,
@@ -73,6 +74,16 @@ import {
 } from "./selection";
 import { shiftFormula } from "./shift";
 import { readSnap } from "./snapshot";
+import {
+  clampZoom,
+  edgeSpeed,
+  FORMULA_KEYS,
+  loadZoom,
+  saveZoom,
+  useCoarsePointer,
+  useVisualViewport,
+  type TouchVariant,
+} from "./touch";
 import "./SheetGrid.css";
 
 type User = { id: string; name: string; color: string };
@@ -82,6 +93,13 @@ type Props = {
   height?: number | string;
   awareness?: Awareness;
   user?: User;
+  /**
+   * Spike 7. "a": tap, double-tap, long-press menu, finger fill handle.
+   * "b": A plus draggable range handles (fill moves into the menu).
+   */
+  touchVariant?: TouchVariant;
+  /** Rows rendered above and below the visible ones. Default: 4, or 12 with a finger. */
+  overscan?: number;
 };
 
 type EditState = {
@@ -105,12 +123,13 @@ type Drag =
   | { kind: "headers"; axis: "row" | "col"; anchor: number; add: boolean }
   | { kind: "move"; axis: "row" | "col"; from: number; count: number; startX: number; startY: number; moved: boolean; hit: number }
   | { kind: "resize"; col: number; colIds: string[]; startX: number; startW: number }
-  | { kind: "touch"; startX: number; startY: number; cell: Cell; moved: boolean; timer: number };
+  | { kind: "touch"; startX: number; startY: number; cell: Cell; zone: Hit["zone"]; moved: boolean; timer: number }
+  /** Spike 7 variant B: a range handle. `fixed` is the opposite corner; `dx/dy` keep the handle under the finger's grab point. */
+  | { kind: "handle"; axis: "cell" | "row" | "col"; end: boolean; fixed: Cell; dx: number; dy: number };
 
 type Hit = { zone: "cell" | "colhead" | "rowhead" | "corner"; r: number; c: number; x: number; y: number };
 
 const HEADER_H = 30;
-const ROWHEAD_W = 52;
 const DEFAULT_W = 120;
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 const modKey = (e: { metaKey: boolean; ctrlKey: boolean }) => (isMac ? e.metaKey : e.ctrlKey);
@@ -154,7 +173,82 @@ function valueToString(value: Value | undefined): string {
   return String(value);
 }
 
-export function SheetGrid({ doc, theme = "light", height = "100%", awareness, user }: Props) {
+type SheetRow = ReturnType<typeof useSheet>["rows"][number];
+type SheetCol = ReturnType<typeof useSheet>["columns"][number];
+
+/**
+ * One rendered row. Memoised: while scrolling only rows that enter the window
+ * render; rows that stay are skipped unless their data or selection changed.
+ */
+const GridRow = memo(function GridRow(props: {
+  row: SheetRow;
+  r: number;
+  top: number;
+  rowH: number;
+  rowHeadW: number;
+  totalW: number;
+  columns: SheetCol[];
+  values: Map<string, Value>;
+  lefts: number[];
+  widths: number[];
+  gridId: string;
+  /** Selected column spans in this row: "c1-c2,c1-c2,". */
+  cover: string;
+  activeC: number;
+  editing: boolean;
+  head: "" | "sel" | "whole";
+  /** Variant B row-header handles: 1 = start, 2 = end. */
+  headHandle: number;
+}) {
+  const { row, r, top, rowH, rowHeadW, totalW, columns, values, lefts, widths, gridId, cover, activeC, editing, head, headHandle } = props;
+  const spans = cover ? cover.slice(0, -1).split(",").map((x) => x.split("-").map(Number) as [number, number]) : [];
+  const knob = (end: boolean) => (
+    <div
+      className={`sx-handle is-${end ? "end" : "start"} is-row`}
+      data-handle={end ? "end" : "start"}
+      data-axis="row"
+      data-testid={`handle-${end ? "end" : "start"}`}
+      aria-hidden="true"
+      style={{ left: "50%", top: end ? "100%" : 0 }}
+    />
+  );
+  return (
+    <div role="row" aria-rowindex={r + 2} className="sx-row" style={{ top, height: rowH, width: totalW + rowHeadW }}>
+      <div
+        role="rowheader"
+        className={`sx-rowhead${head === "whole" ? " is-whole" : head === "sel" ? " is-sel" : ""}`}
+        style={{ position: "sticky", left: 0, width: rowHeadW, height: rowH, zIndex: headHandle ? 3 : 2, background: "var(--sx-head-bg)", borderRight: "1px solid var(--sx-line-strong)" }}
+      >
+        {r + 1}
+        {headHandle & 1 ? knob(false) : null}
+        {headHandle & 2 ? knob(true) : null}
+      </div>
+      {columns.map((col, c) => {
+        const value = values.get(`${col.ref}@${row.rowId}`);
+        const err = isCellError(value);
+        const selected = spans.some(([a, b]) => c >= a && c <= b);
+        const isActive = c === activeC;
+        const text = value === undefined || value === "" ? "" : showValue(value, col);
+        return (
+          <div
+            key={col.colId}
+            id={`${gridId}-cell-${r}-${c}`}
+            role="gridcell"
+            aria-colindex={c + 2}
+            aria-selected={selected}
+            title={err ? ERROR_HELP[value as string] : undefined}
+            className={`sx-cell${typeof value === "number" ? " is-num" : ""}${err ? " is-error" : ""}${isActive ? " is-active" : ""}`}
+            style={{ left: rowHeadW + (lefts[c] ?? 0), width: widths[c] }}
+          >
+            {isActive && editing ? "" : text}
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+
+export function SheetGrid({ doc, theme = "light", height = "100%", awareness, user, touchVariant = "a", overscan }: Props) {
   const { columns, rows, values } = useSheet(doc);
   const gridId = useId().replaceAll(":", "");
   const rowCount = rows.length;
@@ -170,14 +264,11 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   }, [doc]);
   const frozen = Math.max(0, Math.min(frozenRaw, rowCount));
 
-  const [rowH, setRowH] = useState(28);
-  useEffect(() => {
-    const mq = window.matchMedia("(pointer: coarse)");
-    const set = () => setRowH(mq.matches ? 36 : 28);
-    set();
-    mq.addEventListener("change", set);
-    return () => mq.removeEventListener("change", set);
-  }, []);
+  const coarse = useCoarsePointer();
+  const vv = useVisualViewport();
+  /** Grid zoom (pinch on touch). Per person and device, not in the document. */
+  const [zoom, setZoom] = useState(() => (typeof window === "undefined" ? 1 : loadZoom()));
+  const rowH = Math.round((coarse ? 36 : 28) * zoom);
   const frozenH = frozen * rowH;
 
   const [selRaw, setSel] = useState<Selection>(() => single({ r: 0, c: 0 }));
@@ -190,6 +281,14 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   editRef.current = edit;
 
   const [scroll, setScroll] = useState({ top: 0, left: 0, w: 800, h: 400 });
+  /** Phone-sized: the editor docks above the keyboard instead of sitting in the cell. */
+  const compact = coarse && (scroll.w < 600 || vv.height + vv.keyboard < 500);
+  const rowHeadW = compact ? 40 : 52;
+  /** Variant B: the range "Fill" was chosen for; the fill handle shows only while the selection is still that range. */
+  const [fillFor, setFillFor] = useState<Range | null>(null);
+  /** Variant B: the range the callout belongs to (shown after a handle drag). */
+  const [callout, setCallout] = useState<Range | null>(null);
+  const lastHandleRange = useRef<Range | null>(null);
   const [liveWidths, setLiveWidths] = useState<Record<string, number>>({});
   const [fillPreview, setFillPreview] = useState<Range | null>(null);
   const [ants, setAnts] = useState<Range | null>(null);
@@ -205,6 +304,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const inputRef = useRef<HTMLInputElement | null>(null);
   const barRef = useRef<HTMLInputElement | null>(null);
   const drag = useRef<Drag | null>(null);
+  const lastPointer = useRef<string>("mouse");
   const clipRef = useRef<YcsvClip | null>(null);
   const valuesOnlyNext = useRef(false);
   const caretSync = useRef(false);
@@ -216,8 +316,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
 
   // ---- geometry ---------------------------------------------------------------
   const widths = useMemo(
-    () => columns.map((col) => liveWidths[col.colId] ?? col.width ?? DEFAULT_W),
-    [columns, liveWidths],
+    () => columns.map((col) => Math.round((liveWidths[col.colId] ?? col.width ?? DEFAULT_W) * zoom)),
+    [columns, liveWidths, zoom],
   );
   const lefts = useMemo(() => {
     const out: number[] = [];
@@ -240,7 +340,9 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   );
 
   /** Row top in viewport coordinates (below the column header). */
-  const rowTopInView = (r: number, top = scroll.top) =>
+  const liveTop = () => scrollerRef.current?.scrollTop ?? scroll.top;
+  const liveLeft = () => scrollerRef.current?.scrollLeft ?? scroll.left;
+  const rowTopInView = (r: number, top = liveTop()) =>
     r < frozen ? HEADER_H + r * rowH : HEADER_H + frozenH + (r - frozen) * rowH - top;
 
   const hitTest = useCallback(
@@ -250,18 +352,18 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       const rect = el.getBoundingClientRect();
       const vx = clientX - rect.left;
       const vy = clientY - rect.top;
-      const contentX = vx + el.scrollLeft - ROWHEAD_W;
+      const contentX = vx + el.scrollLeft - rowHeadW;
       const c = colAt(contentX);
       let r: number;
       if (vy < HEADER_H) r = -1;
       else if (vy < HEADER_H + frozenH) r = Math.floor((vy - HEADER_H) / rowH);
       else r = frozen + Math.floor((vy - HEADER_H - frozenH + el.scrollTop) / rowH);
       r = Math.max(-1, Math.min(rowCount - 1, r));
-      const inRowHead = vx < ROWHEAD_W;
+      const inRowHead = vx < rowHeadW;
       const zone = r < 0 && inRowHead ? "corner" : r < 0 ? "colhead" : inRowHead ? "rowhead" : "cell";
       return { zone, r: Math.max(0, r), c, x: contentX, y: vy };
     },
-    [colAt, frozen, frozenH, rowCount, rowH],
+    [colAt, frozen, frozenH, rowCount, rowH, rowHeadW],
   );
 
   const scrollIntoView = useCallback(
@@ -270,7 +372,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       if (!el) return;
       const x = lefts[cell.c] ?? 0;
       const w = widths[cell.c] ?? DEFAULT_W;
-      const viewW = el.clientWidth - ROWHEAD_W;
+      const viewW = el.clientWidth - rowHeadW;
       if (x < el.scrollLeft) el.scrollLeft = x;
       else if (x + w > el.scrollLeft + viewW) el.scrollLeft = x + w - viewW;
       if (cell.r >= frozen) {
@@ -279,14 +381,34 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
         if (y < el.scrollTop) el.scrollTop = y;
         else if (y + rowH > el.scrollTop + viewH) el.scrollTop = y + rowH - viewH;
       }
+      // Render the new window in the same pass as the selection, not a frame later on the scroll event.
+      readScroll.current();
     },
-    [frozen, frozenH, lefts, rowH, widths],
+    [frozen, frozenH, lefts, rowH, widths, rowHeadW],
   );
 
+  /**
+   * Scroll position as React state. While nothing is positioned in viewport
+   * coordinates (no editor, menu or callout), it moves in steps of half the
+   * overscan, so a fling re-renders every few rows instead of every frame.
+   * Positions read the live scrollTop/scrollLeft instead (liveTop/liveLeft).
+   */
+  const exactScroll = useRef(true);
+  const scrollStep = useRef({ y: 28, x: 96 });
+  const readScroll = useRef<() => void>(() => {});
   useLayoutEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const read = () => setScroll({ top: el.scrollTop, left: el.scrollLeft, w: el.clientWidth, h: el.clientHeight });
+    const read = () => {
+      const exact = exactScroll.current;
+      const { y, x } = scrollStep.current;
+      const top = exact ? el.scrollTop : Math.floor(el.scrollTop / y) * y;
+      const left = exact ? el.scrollLeft : Math.floor(el.scrollLeft / x) * x;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      setScroll((prev) => (prev.top === top && prev.left === left && prev.w === w && prev.h === h ? prev : { top, left, w, h }));
+    };
+    readScroll.current = read;
     read();
     el.addEventListener("scroll", read, { passive: true });
     const ro = new ResizeObserver(read);
@@ -411,6 +533,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     (moveDir: Dir | null) => {
       const e = editRef.current;
       if (!e) return;
+      // Focus moves below; a blur handler must not commit this edit a second time.
+      editRef.current = null;
       const snap = readSnap(doc);
       const rowId = snap.rowIds[e.r];
       const colId = snap.colIds[e.c];
@@ -757,11 +881,15 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
         } else text = await navigator.clipboard.readText();
         doPaste(readIncoming(html, text), valuesOnly, insert);
       } catch {
-        flash(`Use ${MOD}V to paste. This browser blocks paste from the menu.`);
+        // No system clipboard access (no permission, or Safari's Paste callout was
+        // dismissed). A copy made in this sheet can still be pasted from memory.
+        const clip = clipRef.current;
+        if (clip) doPaste({ kind: "ycsv", clip, grid: clip.values }, valuesOnly, insert);
+        else flash(coarse ? "Paste is blocked. Allow clipboard access and try again." : `Use ${MOD}V to paste. This browser blocks paste from the menu.`);
       }
       focusGrid();
     },
-    [doPaste, flash, focusGrid],
+    [doPaste, flash, focusGrid, coarse],
   );
 
   const copyFromMenu = useCallback(
@@ -777,12 +905,14 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             "text/html": new Blob([toHtml(built.display, built.clip)], { type: "text/html" }),
           }),
         ]);
+        setAnnounce(cut ? "Cut" : "Copied");
       } catch {
-        flash(`Use ${MOD}C to copy. This browser blocks copy from the menu.`);
+        // The copy still works inside this sheet (clipRef); only other apps miss it.
+        flash(coarse ? "Copied in this sheet only. The browser blocked the system clipboard." : `Use ${MOD}C to copy. This browser blocks copy from the menu.`);
       }
       focusGrid();
     },
-    [buildClip, flash, focusGrid],
+    [buildClip, flash, focusGrid, coarse],
   );
 
   // ---- row / column ops ------------------------------------------------------
@@ -826,8 +956,26 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     setSel(single({ r: selRef.current.active.r, c: Math.min(...idx) }));
   };
 
+  /** Touch has no header drag (a finger on a header pans), so moving is a menu step. */
+  const moveSelected = (axis: "row" | "col", delta: -1 | 1) => {
+    const range = lastRange(selRef.current);
+    const from = axis === "row" ? range.r1 : range.c1;
+    const count = axis === "row" ? range.r2 - range.r1 + 1 : range.c2 - range.c1 + 1;
+    const to = delta < 0 ? from - 1 : from + count + 1;
+    const start = delta < 0 ? from - 1 : from + 1;
+    if (axis === "row") {
+      moveRows(doc, from, count, to);
+      select(selectRows(start, start + count - 1, bounds, 0), { r: start, c: 0 });
+    } else {
+      moveColumns(doc, from, count, to);
+      select(selectCols(start, start + count - 1, bounds, 0), { r: 0, c: start });
+    }
+  };
+
   // ---- menu ------------------------------------------------------------------
-  const openMenuAt = (x: number, y: number, kind: "cell" | "row" | "col") => setMenu({ x, y, kind });
+  const openMenuAt = (x: number, y: number, kind: "cell" | "row" | "col") =>
+    // Under a finger, open below the contact point so the lifting finger does not land on an item.
+    setMenu({ x, y: lastPointer.current === "touch" ? y + 28 : y, kind });
 
   const menuItems = (kind: "cell" | "row" | "col"): MenuItem[] => {
     const range = lastRange(sel);
@@ -842,6 +990,27 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       { id: "paste-values", label: "Paste values only", shortcut: `${isMac ? "⇧⌘" : "Ctrl+Shift+"}V`, onSelect: () => void pasteFromMenu(true) },
       "sep",
     ];
+    if (coarse && kind === "cell") {
+      // No ⌘D / ⌘R on a phone keyboard; variant B also has no always-on fill handle.
+      if (touchVariant === "b") items.push({ id: "fill-drag", label: "Fill…", onSelect: () => setFillFor(lastRange(selRef.current)) });
+      items.push(
+        { id: "fill-down", label: "Fill down", disabled: range.r1 === range.r2 && range.r1 === 0, onSelect: () => fillCopy("down") },
+        { id: "fill-right", label: "Fill right", disabled: range.c1 === range.c2 && range.c1 === 0, onSelect: () => fillCopy("right") },
+        "sep",
+      );
+    }
+    if (coarse && kind === "row") {
+      items.push(
+        { id: "move-rows-up", label: rowsN === 1 ? "Move row up" : "Move rows up", disabled: range.r1 === 0, onSelect: () => moveSelected("row", -1) },
+        { id: "move-rows-down", label: rowsN === 1 ? "Move row down" : "Move rows down", disabled: range.r2 >= rowCount - 1, onSelect: () => moveSelected("row", 1) },
+      );
+    }
+    if (coarse && kind === "col") {
+      items.push(
+        { id: "move-cols-left", label: colsN === 1 ? "Move column left" : "Move columns left", disabled: range.c1 === 0, onSelect: () => moveSelected("col", -1) },
+        { id: "move-cols-right", label: colsN === 1 ? "Move column right" : "Move columns right", disabled: range.c2 >= colCount - 1, onSelect: () => moveSelected("col", 1) },
+      );
+    }
     if (kind !== "col") {
       items.push(
         { id: "insert-rows-above", label: `Insert ${plural(rowsN, "row", "rows")} above`, onSelect: () => insertRowsAt(range.r1, rowsN) },
@@ -970,7 +1139,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     } else if ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu") {
       e.preventDefault();
       const rect = scrollerRef.current?.getBoundingClientRect();
-      const x = (rect?.left ?? 0) + ROWHEAD_W + (lefts[s.active.c] ?? 0) - scroll.left + 8;
+      const x = (rect?.left ?? 0) + rowHeadW + (lefts[s.active.c] ?? 0) - liveLeft() + 8;
       const y = (rect?.top ?? 0) + rowTopInView(s.active.r) + rowH;
       const range = lastRange(s);
       openMenuAt(x, y, isWholeRows(range, bounds) ? "row" : isWholeCols(range, bounds) ? "col" : "cell");
@@ -1057,21 +1226,158 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     setAcIndex(0);
   };
 
+  // ---- docked editor (phone) --------------------------------------------------
+  /** On a phone the formula bar docks above the keyboard while editing. */
+  const docked = compact && !!edit && edit.source === "bar";
+  const DOCK_ROW = 48;
+  const DOCK_KEYS = 48;
+  const DOCK_SIG = 26;
+  const dockH = docked ? DOCK_ROW + DOCK_KEYS + (sigHelp ? DOCK_SIG : 0) : 0;
+  /** Client y of the docked bar's top edge (just above the keyboard). */
+  const dockTop = vv.top + vv.height - dockH;
+
+  /** The symbol strip above a phone keyboard: `=`, `(`, `:` … are a layer deep there. */
+  const insertSymbol = (text: string) => {
+    const cur = editRef.current;
+    if (!cur) return;
+    const next = insertAt(cur.draft, cur.caret, 0, text);
+    caretSync.current = true;
+    setEdit({ ...cur, draft: next.draft, caret: next.caret, picked: 0, pickAnchor: null, pickCursor: null });
+  };
+
   // ---- pointer ---------------------------------------------------------------
-  const autoScroll = (clientX: number, clientY: number) => {
+  /** Last pointer position of a drag; the edge loop re-applies it after each scroll step. */
+  const dragPos = useRef<{ x: number; y: number; alt: boolean } | null>(null);
+  const edgeFrame = useRef(0);
+  const edgeTick = useRef<() => void>(() => {});
+
+  /** Client-space position of a range handle's knob (the corner it sits on). */
+  const knobPos = (range: Range, end: boolean, axis: "cell" | "row" | "col") => {
+    const rect = scrollerRef.current?.getBoundingClientRect();
+    const left = rect?.left ?? 0;
+    const top = rect?.top ?? 0;
+    const x = axis === "row" ? left + rowHeadW / 2 : left + rowHeadW + (lefts[end ? range.c2 + 1 : range.c1] ?? 0) - liveLeft();
+    const y = axis === "col" ? top + HEADER_H / 2 : top + (end ? rowTopInView(range.r2) + rowH : rowTopInView(range.r1));
+    return { x, y };
+  };
+
+  /** Apply a drag at a client position. Called from pointer moves and from the edge auto-scroll loop. */
+  const moveDrag = (clientX: number, clientY: number) => {
+    const d = drag.current;
+    if (!d || d.kind === "touch" || d.kind === "resize") return;
+    if (d.kind === "handle") {
+      // The corner goes to the cell the knob is over (not the finger, which sits beside it).
+      const nudge = d.end ? -2 : 2;
+      const hit = hitTest(clientX - d.dx + nudge, clientY - d.dy + nudge);
+      if (!hit) return;
+      const s = selRef.current;
+      const range: Range =
+        d.axis === "row"
+          ? { r1: Math.min(d.fixed.r, hit.r), r2: Math.max(d.fixed.r, hit.r), c1: 0, c2: colCount - 1 }
+          : d.axis === "col"
+            ? { r1: 0, r2: rowCount - 1, c1: Math.min(d.fixed.c, hit.c), c2: Math.max(d.fixed.c, hit.c) }
+            : rangeOf(d.fixed, { r: hit.r, c: hit.c });
+      const cur = lastRange(s);
+      if (s.ranges.length === 1 && cur.r1 === range.r1 && cur.r2 === range.r2 && cur.c1 === range.c1 && cur.c2 === range.c2) return;
+      const active = inRange(range, s.active.r, s.active.c) ? s.active : d.fixed;
+      lastHandleRange.current = range;
+      setSel({ active, anchor: d.fixed, ranges: [range] });
+      return;
+    }
+    const hit = hitTest(clientX, clientY);
+    if (!hit) return;
+    const cell = { r: hit.r, c: hit.c };
+    if (d.kind === "select") {
+      const s = selRef.current;
+      const range = lastRange(s);
+      const corner = { r: s.anchor.r === range.r1 ? range.r2 : range.r1, c: s.anchor.c === range.c1 ? range.c2 : range.c1 };
+      if (corner.r !== cell.r || corner.c !== cell.c) setSel(extendTo(s, cell));
+    } else if (d.kind === "pick") {
+      pick(rangeOf(d.start, cell), cell, d.start);
+    } else if (d.kind === "headers") {
+      const s = selRef.current;
+      const idx = d.axis === "col" ? hit.c : hit.r;
+      const next = d.axis === "col" ? selectCols(d.anchor, idx, bounds, s.active.r) : selectRows(d.anchor, idx, bounds, s.active.c);
+      setSel(d.add ? { ...next, active: s.active, ranges: [...s.ranges.slice(0, -1), ...next.ranges] } : { ...next, active: s.active });
+    } else if (d.kind === "fill") {
+      const R = d.range;
+      const dv = cell.r > R.r2 ? cell.r - R.r2 : cell.r < R.r1 ? R.r1 - cell.r : 0;
+      const dh = cell.c > R.c2 ? cell.c - R.c2 : cell.c < R.c1 ? R.c1 - cell.c : 0;
+      if (dv === 0 && dh === 0) setFillPreview(null);
+      else if (dv >= dh) setFillPreview({ ...R, r1: Math.min(R.r1, cell.r), r2: Math.max(R.r2, cell.r) });
+      else setFillPreview({ ...R, c1: Math.min(R.c1, cell.c), c2: Math.max(R.c2, cell.c) });
+    } else if (d.kind === "move") {
+      if (d.axis === "col") {
+        const x = hit.x;
+        const c = colAt(x);
+        const mid = (lefts[c] ?? 0) + (widths[c] ?? 0) / 2;
+        setDrop({ axis: "col", index: x < mid ? c : c + 1 });
+      } else {
+        const rel = hit.y - HEADER_H;
+        const r = hit.r;
+        const top = rowTopInView(r) - HEADER_H;
+        setDrop({ axis: "row", index: rel < top + rowH / 2 ? r : r + 1 });
+      }
+    }
+  };
+  const moveDragRef = useRef(moveDrag);
+  moveDragRef.current = moveDrag;
+
+  /**
+   * Edge auto-scroll that keeps going while the pointer is still (a finger
+   * resting at the bottom edge must keep extending the fill or the range).
+   * The bottom edge is the top of the keyboard / docked editor when they cover the grid.
+   */
+  edgeTick.current = () => {
+    edgeFrame.current = 0;
+    const d = drag.current;
+    const p = dragPos.current;
     const el = scrollerRef.current;
-    if (!el) return;
+    if (!d || !p || !el || d.kind === "touch" || d.kind === "resize") return;
+    if (d.kind === "move" && !d.moved) return;
     const rect = el.getBoundingClientRect();
-    const edge = 24;
-    if (clientY > rect.bottom - edge) el.scrollTop += 20;
-    else if (clientY < rect.top + HEADER_H + frozenH + 4 && el.scrollTop > 0) el.scrollTop -= 20;
-    if (clientX > rect.right - edge) el.scrollLeft += 20;
-    else if (clientX < rect.left + ROWHEAD_W + 4 && el.scrollLeft > 0) el.scrollLeft -= 20;
+    const band = lastPointer.current === "touch" ? 40 : 24;
+    const bottom = Math.min(rect.top + el.clientHeight, vv.top + vv.height - dockH);
+    const lockY = (d.kind === "headers" && d.axis === "col") || (d.kind === "handle" && d.axis === "col") || (d.kind === "move" && d.axis === "col");
+    const lockX = (d.kind === "headers" && d.axis === "row") || (d.kind === "handle" && d.axis === "row") || (d.kind === "move" && d.axis === "row");
+    const dy = lockY ? 0 : edgeSpeed(p.y, rect.top + HEADER_H + frozenH, bottom, band);
+    const dx = lockX ? 0 : edgeSpeed(p.x, rect.left + rowHeadW, rect.left + el.clientWidth, band);
+    if (!dx && !dy) return;
+    const before = el.scrollTop + el.scrollLeft * 1e7;
+    if (dy) el.scrollTop += dy;
+    if (dx) el.scrollLeft += dx;
+    if (el.scrollTop + el.scrollLeft * 1e7 !== before) moveDragRef.current(p.x, p.y);
+    edgeFrame.current = requestAnimationFrame(() => edgeTick.current());
+  };
+  const kickEdgeLoop = () => {
+    if (!edgeFrame.current) edgeFrame.current = requestAnimationFrame(() => edgeTick.current());
+  };
+  useEffect(() => () => cancelAnimationFrame(edgeFrame.current), []);
+
+  /**
+   * Start editing from a touch. The focus() must happen synchronously inside the
+   * touch handler: iOS only raises the keyboard for a focus made during the gesture.
+   */
+  const beginTouchEdit = () => {
+    if (compact) {
+      // Phone: edit in the formula bar, docked above the keyboard. Its onFocus starts the edit.
+      barRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const el = inputRef.current;
+    if (el) {
+      // The nav input is focused with inputmode=none; re-focus it as a text field.
+      el.blur();
+      el.inputMode = "text";
+      el.focus({ preventScroll: true });
+    }
+    startEdit("edit");
   };
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     const el = scrollerRef.current;
     if (!el) return;
+    lastPointer.current = e.pointerType;
     const rect = el.getBoundingClientRect();
     if (e.clientX - rect.left > el.clientWidth || e.clientY - rect.top > el.clientHeight) return; // scrollbars
     const target = e.target as HTMLElement;
@@ -1080,22 +1386,48 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     if (e.button === 2) return; // contextmenu handles it
     setMenu(null);
     const cur = editRef.current;
+    const handleEl = target.closest("[data-handle]") as HTMLElement | null;
 
-    // Touch: tap selects, double-tap edits, long-press opens the menu. Moving scrolls.
-    if (e.pointerType === "touch" && !target.closest(".sx-fill-handle, .sx-resize")) {
+    // Touch on a cell or header: a tap selects, a double-tap edits, a long-press
+    // opens the menu. Any movement is left to the browser, which pans with momentum.
+    if (e.pointerType === "touch" && !handleEl && !target.closest(".sx-fill-handle, .sx-resize")) {
+      const prev = drag.current;
+      if (prev?.kind === "touch") {
+        // A second finger: a pinch, not a tap.
+        window.clearTimeout(prev.timer);
+        drag.current = null;
+        return;
+      }
+      const zone = hit.zone;
       const timer = window.setTimeout(() => {
         const d = drag.current;
         if (d?.kind !== "touch" || d.moved) return;
         drag.current = null;
-        if (!isSelected(selRef.current, d.cell.r, d.cell.c)) setSel(single(d.cell));
-        openMenuAt(d.startX, d.startY, "cell");
-      }, 550);
-      drag.current = { kind: "touch", startX: e.clientX, startY: e.clientY, cell: { r: hit.r, c: hit.c }, moved: false, timer };
+        if (editRef.current) commit(null);
+        setCallout(null);
+        const s = selRef.current;
+        const range = lastRange(s);
+        if (d.zone === "colhead") {
+          if (!(isWholeCols(range, bounds) && d.cell.c >= range.c1 && d.cell.c <= range.c2)) setSel(selectCols(d.cell.c, d.cell.c, bounds));
+          openMenuAt(d.startX, d.startY, "col");
+        } else if (d.zone === "rowhead") {
+          if (!(isWholeRows(range, bounds) && d.cell.r >= range.r1 && d.cell.r <= range.r2)) setSel(selectRows(d.cell.r, d.cell.r, bounds));
+          openMenuAt(d.startX, d.startY, "row");
+        } else if (d.zone === "cell") {
+          if (!isSelected(s, d.cell.r, d.cell.c)) setSel(single(d.cell));
+          openMenuAt(d.startX, d.startY, "cell");
+        }
+      }, 500);
+      drag.current = { kind: "touch", startX: e.clientX, startY: e.clientY, cell: { r: hit.r, c: hit.c }, zone, moved: false, timer };
       return;
     }
 
     e.preventDefault();
-    el.setPointerCapture(e.pointerId);
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Synthetic pointers (tests) have no capturable id.
+    }
     const resizeEl = target.closest(".sx-resize") as HTMLElement | null;
     lastDown.current = target.closest(".sx-fill-handle")
       ? { kind: "handle" }
@@ -1103,16 +1435,31 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
         ? { kind: "resize", col: Number(resizeEl.dataset.col) }
         : null;
 
-    if (target.closest(".sx-resize")) {
-      const c = Number((target.closest(".sx-resize") as HTMLElement).dataset.col);
+    if (handleEl) {
+      if (cur) commit(null);
+      setCallout(null);
+      const axis = (handleEl.dataset.axis ?? "cell") as "cell" | "row" | "col";
+      const end = handleEl.dataset.handle === "end";
+      const range = lastRange(selRef.current);
+      const fixed = end ? { r: range.r1, c: range.c1 } : { r: range.r2, c: range.c2 };
+      const knob = knobPos(range, end, axis);
+      drag.current = { kind: "handle", axis, end, fixed, dx: e.clientX - knob.x, dy: e.clientY - knob.y };
+      lastHandleRange.current = range;
+      dragPos.current = { x: e.clientX, y: e.clientY, alt: false };
+      return;
+    }
+    if (resizeEl) {
+      const c = Number(resizeEl.dataset.col);
       const range = lastRange(selRef.current);
       const cs = isWholeCols(range, bounds) && c >= range.c1 && c <= range.c2 ? Array.from({ length: range.c2 - range.c1 + 1 }, (_, i) => range.c1 + i) : [c];
-      drag.current = { kind: "resize", col: c, colIds: cs.map((i) => columns[i]?.colId ?? ""), startX: e.clientX, startW: widths[c] ?? DEFAULT_W };
+      drag.current = { kind: "resize", col: c, colIds: cs.map((i) => columns[i]?.colId ?? ""), startX: e.clientX, startW: (widths[c] ?? DEFAULT_W) / zoom };
       return;
     }
     if (target.closest(".sx-fill-handle")) {
       if (cur) commit(null);
+      setCallout(null);
       drag.current = { kind: "fill", range: lastRange(selRef.current) };
+      dragPos.current = { x: e.clientX, y: e.clientY, alt: e.altKey };
       return;
     }
 
@@ -1180,64 +1527,54 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       return;
     }
     if (d.kind === "resize") {
-      const w = Math.max(32, d.startW + e.clientX - d.startX);
+      const w = Math.round(Math.max(32, d.startW + (e.clientX - d.startX) / zoom));
       setLiveWidths(Object.fromEntries(d.colIds.map((id) => [id, w])));
       return;
     }
-    autoScroll(e.clientX, e.clientY);
-    const hit = hitTest(e.clientX, e.clientY);
-    if (!hit) return;
-    const cell = { r: hit.r, c: hit.c };
-    if (d.kind === "select") {
-      const s = selRef.current;
-      const range = lastRange(s);
-      const corner = { r: s.anchor.r === range.r1 ? range.r2 : range.r1, c: s.anchor.c === range.c1 ? range.c2 : range.c1 };
-      if (corner.r !== cell.r || corner.c !== cell.c) setSel(extendTo(s, cell));
-    } else if (d.kind === "pick") {
-      pick(rangeOf(d.start, cell), cell, d.start);
-    } else if (d.kind === "headers") {
-      const s = selRef.current;
-      const idx = d.axis === "col" ? hit.c : hit.r;
-      const next = d.axis === "col" ? selectCols(d.anchor, idx, bounds, s.active.r) : selectRows(d.anchor, idx, bounds, s.active.c);
-      setSel(d.add ? { ...next, active: s.active, ranges: [...s.ranges.slice(0, -1), ...next.ranges] } : { ...next, active: s.active });
-    } else if (d.kind === "fill") {
-      const R = d.range;
-      const dv = cell.r > R.r2 ? cell.r - R.r2 : cell.r < R.r1 ? R.r1 - cell.r : 0;
-      const dh = cell.c > R.c2 ? cell.c - R.c2 : cell.c < R.c1 ? R.c1 - cell.c : 0;
-      if (dv === 0 && dh === 0) setFillPreview(null);
-      else if (dv >= dh) setFillPreview({ ...R, r1: Math.min(R.r1, cell.r), r2: Math.max(R.r2, cell.r) });
-      else setFillPreview({ ...R, c1: Math.min(R.c1, cell.c), c2: Math.max(R.c2, cell.c) });
-    } else if (d.kind === "move") {
-      if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < 4) return;
+    if (d.kind === "move" && !d.moved) {
+      if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < 4) return;
       d.moved = true;
-      if (d.axis === "col") {
-        const x = hit.x;
-        const c = colAt(x);
-        const mid = (lefts[c] ?? 0) + (widths[c] ?? 0) / 2;
-        setDrop({ axis: "col", index: x < mid ? c : c + 1 });
-      } else {
-        const rel = hit.y - HEADER_H;
-        const r = hit.r;
-        const top = rowTopInView(r) - HEADER_H;
-        setDrop({ axis: "row", index: rel < top + rowH / 2 ? r : r + 1 });
-      }
     }
+    dragPos.current = { x: e.clientX, y: e.clientY, alt: e.altKey };
+    moveDrag(e.clientX, e.clientY);
+    kickEdgeLoop();
   };
 
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     drag.current = null;
+    dragPos.current = null;
     if (!d) return;
     if (d.kind === "touch") {
       window.clearTimeout(d.timer);
       if (d.moved) return;
       const cur = editRef.current;
       const cell = d.cell;
-      if (cur && wantsRef(cur.draft, cur.caret, cur.picked)) {
+      if (d.zone === "cell" && cur && wantsRef(cur.draft, cur.caret, cur.picked)) {
         pick(rangeOf(cell, cell), cell, cell);
         return;
       }
       if (cur) commit(null);
+      setCallout(null);
+      setFillFor(null);
+      const s = selRef.current;
+      if (d.zone === "corner") {
+        select(selectAll(bounds, s.active), null);
+        focusGrid();
+        return;
+      }
+      if (d.zone === "colhead" || d.zone === "rowhead") {
+        const axis = d.zone === "colhead" ? "col" : "row";
+        const idx = axis === "col" ? cell.c : cell.r;
+        const range = lastRange(s);
+        const whole = axis === "col" ? isWholeCols(range, bounds) && !isWholeRows(range, bounds) : isWholeRows(range, bounds) && !isWholeCols(range, bounds);
+        const inside = axis === "col" ? idx >= range.c1 && idx <= range.c2 : idx >= range.r1 && idx <= range.r2;
+        // A tap on a selected header opens its actions (Numbers does the same).
+        if (whole && inside && s.ranges.length === 1) openMenuAt(e.clientX, e.clientY, axis);
+        else select(axis === "col" ? selectCols(idx, idx, bounds, 0) : selectRows(idx, idx, bounds, 0), null);
+        focusGrid();
+        return;
+      }
       const now = performance.now();
       const prev = lastTap.current;
       lastTap.current = { t: now, r: cell.r, c: cell.c };
@@ -1245,12 +1582,19 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       if (prev && now - prev.t < 350 && prev.r === cell.r && prev.c === cell.c) {
         lastTap.current = null;
         suppressCompat.current = true;
-        startEdit("edit");
+        selRef.current = single(cell);
+        beginTouchEdit();
       } else focusGrid();
       return;
     }
+    if (d.kind === "handle") {
+      // Variant B: offer the common actions right where the finger lifted.
+      setCallout(lastHandleRange.current);
+      focusGrid();
+      return;
+    }
     if (d.kind === "resize") {
-      const w = Math.max(32, d.startW + e.clientX - d.startX);
+      const w = Math.round(Math.max(32, d.startW + (e.clientX - d.startX) / zoom));
       doc.transact(() => d.colIds.forEach((id) => setColumnWidth(doc, id, w)), LOCAL);
       setLiveWidths({});
       return;
@@ -1258,6 +1602,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     if (d.kind === "fill") {
       const preview = fillPreview;
       setFillPreview(null);
+      setFillFor(null);
       if (preview) applyFill(d.range, preview, e.altKey);
       focusGrid();
       return;
@@ -1305,6 +1650,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
 
   const onContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    // Android fires contextmenu on a long-press too; the touch timer already handled it.
+    if (lastPointer.current === "touch") return;
     const hit = hitTest(e.clientX, e.clientY);
     if (!hit) return;
     if (editRef.current) commit(null);
@@ -1327,13 +1674,128 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     if (!edit && !menu && document.activeElement === document.body) focusGrid();
   }, [edit, menu, focusGrid]);
 
+  // ---- keyboard: keep the edited cell above it ---------------------------------
+  useEffect(() => {
+    if (!edit || !coarse) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const visibleTop = Math.max(rect.top + HEADER_H + frozenH, vv.top);
+    const visibleBottom = Math.min(rect.top + el.clientHeight, vv.top + vv.height - dockH);
+    if (edit.r < frozen) return;
+    const cellTop = rect.top + rowTopInView(edit.r, el.scrollTop);
+    const cellBottom = cellTop + rowH;
+    if (cellBottom > visibleBottom - 8) el.scrollTop += cellBottom - (visibleBottom - 8);
+    else if (cellTop < visibleTop) el.scrollTop -= visibleTop - cellTop;
+    // Only when the edited cell, the keyboard or the dock changes.
+  }, [edit?.r, edit?.c, edit?.source, coarse, vv.top, vv.height, dockH]);
+
+  // ---- pinch: grid zoom, not page zoom -------------------------------------------
+  const live = useRef({ zoom, rowH, rowHeadW, frozenH });
+  live.current = { zoom, rowH, rowHeadW, frozenH };
+  const pinch = useRef<{ d0: number; z0: number; rowH0: number; ax: number; ay: number } | null>(null);
+  const zoomAnchor = useRef<{ z0: number; rowH0: number; ax: number; ay: number; cx: number; cy: number } | null>(null);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const dist = (t: TouchList) => Math.hypot((t[0]?.clientX ?? 0) - (t[1]?.clientX ?? 0), (t[0]?.clientY ?? 0) - (t[1]?.clientY ?? 0));
+    const mid = (t: TouchList) => ({ x: ((t[0]?.clientX ?? 0) + (t[1]?.clientX ?? 0)) / 2, y: ((t[0]?.clientY ?? 0) + (t[1]?.clientY ?? 0)) / 2 });
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      const d = drag.current;
+      if (d?.kind === "touch") window.clearTimeout(d.timer);
+      if (d && d.kind !== "fill" && d.kind !== "handle") drag.current = null;
+      const m = mid(e.touches);
+      const rect = el.getBoundingClientRect();
+      const L = live.current;
+      pinch.current = {
+        d0: Math.max(1, dist(e.touches)),
+        z0: L.zoom,
+        rowH0: L.rowH,
+        ax: el.scrollLeft + m.x - rect.left - L.rowHeadW,
+        ay: el.scrollTop + m.y - rect.top - HEADER_H - L.frozenH,
+      };
+    };
+    const move = (e: TouchEvent) => {
+      const p = pinch.current;
+      if (!p || e.touches.length !== 2) return;
+      e.preventDefault();
+      const z = clampZoom((p.z0 * dist(e.touches)) / p.d0);
+      const m = mid(e.touches);
+      zoomAnchor.current = { z0: p.z0, rowH0: p.rowH0, ax: p.ax, ay: p.ay, cx: m.x, cy: m.y };
+      setZoom(z);
+    };
+    const end = (e: TouchEvent) => {
+      if (!pinch.current || e.touches.length >= 2) return;
+      pinch.current = null;
+      saveZoom(live.current.zoom);
+    };
+    // Safari's own pinch events: stop the page from zooming while the grid zooms.
+    const gesture = (e: Event) => e.preventDefault();
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", end);
+    el.addEventListener("gesturestart", gesture);
+    el.addEventListener("gesturechange", gesture);
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+      el.removeEventListener("gesturestart", gesture);
+      el.removeEventListener("gesturechange", gesture);
+    };
+  }, []);
+  // Keep the content under the pinch centre where it was.
+  useLayoutEffect(() => {
+    const a = zoomAnchor.current;
+    const el = scrollerRef.current;
+    if (!a || !el) return;
+    zoomAnchor.current = null;
+    const rect = el.getBoundingClientRect();
+    el.scrollLeft = (a.ax * zoom) / a.z0 - (a.cx - rect.left - rowHeadW);
+    el.scrollTop = (a.ay * rowH) / a.rowH0 - (a.cy - rect.top - HEADER_H - frozenH);
+  }, [zoom]);
+
   // ---- render ----------------------------------------------------------------
   const bodyRows = Math.max(0, rowCount - frozen);
-  const bodyH = bodyRows * rowH;
+  // While a finger edits, leave room below the last row so it can scroll above the keyboard.
+  const kbPad = edit && coarse ? vv.keyboard + dockH : 0;
+  const bodyH = bodyRows * rowH + kbPad;
   const viewH = Math.max(0, scroll.h - HEADER_H - frozenH);
-  const first = frozen + Math.max(0, Math.floor(scroll.top / rowH) - 4);
-  const last = Math.min(rowCount - 1, frozen + Math.ceil((scroll.top + viewH) / rowH) + 4);
+  // Fingers fling: render more rows ahead so momentum scrolling does not show blank rows.
+  const os = overscan ?? (coarse ? 12 : 4);
+  scrollStep.current = { y: Math.max(1, Math.floor(os / 2)) * rowH, x: 96 };
+  const first = frozen + Math.max(0, Math.floor(scroll.top / rowH) - os);
+  const last = Math.min(rowCount - 1, frozen + Math.ceil((scroll.top + viewH) / rowH) + os);
   const active = sel.active;
+
+  // Variant B range handles (finger only). Whole rows/columns get them on the headers.
+  const hRange = lastRange(sel);
+  const hWholeRows = isWholeRows(hRange, bounds);
+  const hWholeCols = isWholeCols(hRange, bounds);
+  const sameRange = (a: Range | null, b: Range) => !!a && a.r1 === b.r1 && a.r2 === b.r2 && a.c1 === b.c1 && a.c2 === b.c2;
+  const fillMode = sameRange(fillFor, hRange) && sel.ranges.length === 1;
+  const showCallout = sameRange(callout, hRange) && sel.ranges.length === 1;
+  const needExact = !!edit || !!menu || showCallout;
+  exactScroll.current = needExact;
+  useLayoutEffect(() => {
+    if (needExact) readScroll.current();
+  }, [needExact]);
+  const showHandles = coarse && touchVariant === "b" && !edit && !fillMode && sel.ranges.length === 1 && !(hWholeRows && hWholeCols);
+  const showFillHandle = !coarse || touchVariant === "a" || fillMode;
+  const handle = (end: boolean, axis: "cell" | "row" | "col", style: React.CSSProperties) => (
+    <div
+      key={`handle-${end ? "end" : "start"}`}
+      className={`sx-handle is-${end ? "end" : "start"} is-${axis}`}
+      data-handle={end ? "end" : "start"}
+      data-axis={axis}
+      data-testid={`handle-${end ? "end" : "start"}`}
+      aria-hidden="true"
+      style={style}
+    />
+  );
 
   const selCols = new Set<number>();
   const selRows = new Set<number>();
@@ -1354,37 +1816,30 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const renderRow = (r: number, top: number) => {
     const row = rows[r];
     if (!row) return null;
+    // Everything selection-related this row needs, as one string, so memo can skip unchanged rows.
+    let cover = "";
+    for (const range of sel.ranges) if (r >= range.r1 && r <= range.r2) cover += `${range.c1}-${range.c2},`;
+    const headHandle = showHandles && hWholeRows ? (r === hRange.r1 ? 1 : 0) | (r === hRange.r2 ? 2 : 0) : 0;
     return (
-      <div key={row.rowId} role="row" aria-rowindex={r + 2} className="sx-row" style={{ top, height: rowH, width: totalW + ROWHEAD_W }}>
-        <div
-          role="rowheader"
-          className={`sx-rowhead${wholeRowSet.has(r) ? " is-whole" : selRows.has(r) ? " is-sel" : ""}`}
-          style={{ position: "sticky", left: 0, width: ROWHEAD_W, height: rowH, zIndex: 2, background: "var(--sx-head-bg)", borderRight: "1px solid var(--sx-line-strong)" }}
-        >
-          {r + 1}
-        </div>
-        {columns.map((col, c) => {
-          const value = values.get(`${col.ref}@${row.rowId}`);
-          const err = isCellError(value);
-          const selected = isSelected(sel, r, c);
-          const isActive = r === active.r && c === active.c;
-          const text = value === undefined || value === "" ? "" : showValue(value, col);
-          return (
-            <div
-              key={col.colId}
-              id={`${gridId}-cell-${r}-${c}`}
-              role="gridcell"
-              aria-colindex={c + 2}
-              aria-selected={selected}
-              title={err ? ERROR_HELP[value as string] : undefined}
-              className={`sx-cell${typeof value === "number" ? " is-num" : ""}${err ? " is-error" : ""}${isActive ? " is-active" : ""}`}
-              style={{ left: ROWHEAD_W + (lefts[c] ?? 0), width: widths[c] }}
-            >
-              {isActive && edit ? "" : text}
-            </div>
-          );
-        })}
-      </div>
+      <GridRow
+        key={row.rowId}
+        row={row}
+        r={r}
+        top={top}
+        rowH={rowH}
+        rowHeadW={rowHeadW}
+        totalW={totalW}
+        columns={columns}
+        values={values}
+        lefts={lefts}
+        widths={widths}
+        gridId={gridId}
+        cover={cover}
+        activeC={r === active.r ? active.c : -1}
+        editing={!!edit && r === active.r}
+        head={wholeRowSet.has(r) ? "whole" : selRows.has(r) ? "sel" : ""}
+        headHandle={headHandle}
+      />
     );
   };
 
@@ -1397,7 +1852,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       const b = Math.min(range.r2, r1);
       if (b < a) return null;
       return {
-        left: ROWHEAD_W + (lefts[range.c1] ?? 0),
+        left: rowHeadW + (lefts[range.c1] ?? 0),
         top: yOf(a),
         width: (lefts[range.c2 + 1] ?? 0) - (lefts[range.c1] ?? 0),
         height: (b - a + 1) * rowH,
@@ -1438,33 +1893,42 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       if (b) items.push(<div key="fill" className="sx-o sx-o-fill-preview" data-testid="fill-preview" style={b} />);
     }
     const lr = lastRange(sel);
-    if (!edit && sel.ranges.length === 1 && lr.r2 >= r0 && lr.r2 <= r1) {
-      const size = rowH > 30 ? 12 : 8;
+    if (showFillHandle && !edit && sel.ranges.length === 1 && lr.r2 >= r0 && lr.r2 <= r1) {
+      const size = coarse ? 14 : 8;
       items.push(
         <div
           key="handle"
-          className="sx-fill-handle"
+          className={`sx-fill-handle${fillMode ? " is-fill-mode" : ""}`}
           data-testid="fill-handle"
           aria-hidden="true"
-          style={{ left: ROWHEAD_W + (lefts[lr.c2 + 1] ?? 0) - size / 2 - 1, top: yOf(lr.r2) + rowH - size / 2 - 1 }}
+          style={{ left: rowHeadW + (lefts[lr.c2 + 1] ?? 0) - size / 2 - 1, top: yOf(lr.r2) + rowH - size / 2 - 1 }}
         />,
       );
     }
     if (drop?.axis === "row" && drop.index >= r0 && drop.index <= r1 + 1) {
       const y = drop.index <= r1 ? yOf(drop.index) : yOf(r1) + rowH;
-      items.push(<div key="drop" className="sx-o sx-o-drop" data-testid="drop-indicator" style={{ left: 0, top: y - 1, width: totalW + ROWHEAD_W, height: 3 }} />);
+      items.push(<div key="drop" className="sx-o sx-o-drop" data-testid="drop-indicator" style={{ left: 0, top: y - 1, width: totalW + rowHeadW, height: 3 }} />);
     }
+    return items;
+  };
+
+  /** Variant B handles for a cell range, in their own layer above the sticky row headers. */
+  const handlesFor = (r0: number, r1: number, yOf: (r: number) => number) => {
+    const items: ReactNode[] = [];
+    if (!showHandles || hWholeRows || hWholeCols) return items;
+    if (hRange.r1 >= r0 && hRange.r1 <= r1) items.push(handle(false, "cell", { left: rowHeadW + (lefts[hRange.c1] ?? 0), top: yOf(hRange.r1) }));
+    if (hRange.r2 >= r0 && hRange.r2 <= r1) items.push(handle(true, "cell", { left: rowHeadW + (lefts[hRange.c2 + 1] ?? 0), top: yOf(hRange.r2) + rowH }));
     return items;
   };
 
   // Editor geometry, in viewport coordinates.
   const edR = edit ? edit.r : active.r;
   const edC = edit ? edit.c : active.c;
-  const cellX = ROWHEAD_W + (lefts[edC] ?? 0) - scroll.left;
+  const cellX = rowHeadW + (lefts[edC] ?? 0) - liveLeft();
   const cellY = rowTopInView(edR);
   const cellW = widths[edC] ?? DEFAULT_W;
   const editorW = edit ? Math.min(Math.max(cellW, textWidth(edit.draft) + 24), Math.max(cellW, scroll.w - cellX - 4)) : cellW;
-  const navX = Math.max(ROWHEAD_W, Math.min(cellX, scroll.w - cellW));
+  const navX = Math.max(rowHeadW, Math.min(cellX, scroll.w - cellW));
   const navY = Math.max(HEADER_H, Math.min(cellY, scroll.h - rowH));
   const inputBox = edit ? { left: cellX, top: cellY, width: editorW, height: rowH } : { left: navX, top: navY, width: cellW, height: rowH };
   const activeRendered = active.r < frozen || (active.r >= first && active.r <= last);
@@ -1502,12 +1966,84 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     return { sum, count, nums };
   }, [sel, valueAt]);
 
+  // Popover placement. Phone: above the docked editor. Tablet: below the cell, or
+  // above it when the keyboard leaves too little room below.
+  const vpTop = scrollerRef.current?.getBoundingClientRect().top ?? 0;
+  const roomBelow = vv.top + vv.height - vpTop - (inputBox.top + rowH + 4);
+  const acPlacement: "dock" | "below" | "above" = docked ? "dock" : coarse && roomBelow < 220 && inputBox.top > roomBelow ? "above" : "below";
+  const acStyle: React.CSSProperties =
+    acPlacement === "dock"
+      ? { position: "fixed", left: vv.left + 8, width: vv.width - 16, top: "auto", bottom: window.innerHeight - dockTop + 4, maxHeight: Math.min(4.5 * 44 + 8, Math.max(132, dockTop - vv.top - 16)) }
+      : acPlacement === "above"
+        ? { left: inputBox.left, top: "auto", bottom: scroll.h - inputBox.top + 4, maxHeight: Math.max(132, inputBox.top - 8) }
+        : { left: inputBox.left, top: inputBox.top + rowH + 4, maxHeight: coarse ? Math.max(132, roomBelow - 8) : undefined };
+
+  // Variant B callout after a handle drag: the iOS-style edit menu, at the selection.
+  const calloutW = 300;
+  const selTopY = rowTopInView(hRange.r1);
+  const calloutTop = selTopY - 52 >= HEADER_H ? selTopY - 52 : Math.min(scroll.h - 52, rowTopInView(hRange.r2) + rowH + 12);
+  const calloutLeft = Math.max(4, Math.min(scroll.w - calloutW - 4, rowHeadW + (lefts[hRange.c1] ?? 0) - liveLeft()));
+
   const lr = lastRange(sel);
   const nameBox = sel.ranges.length > 1 ? `${sel.ranges.length} ranges` : rangeLabel(lr, colRef);
   const barValue = edit ? edit.draft : rowCount && colCount ? fileFormAt(active.r, active.c) : "";
 
   return (
     <div className="sx-root" data-theme={theme} style={{ height }}>
+      {/* The bar keeps its place in the layout; on a phone it docks above the keyboard while editing. */}
+      <div className="sx-bar-slot" style={docked ? { height: 41 } : undefined}>
+      <div
+        className={docked ? "sx-dock" : "sx-bar-host"}
+        data-testid="dock"
+        data-docked={docked ? "true" : undefined}
+        style={docked ? { left: vv.left, width: vv.width, top: dockTop, height: dockH } : undefined}
+      >
+      {docked && sigHelp ? (
+        <div className="sx-dock-sig" role="tooltip" data-testid="signature">
+          {sigHelp.sig.name}(
+          {sigHelp.sig.params.map((p, i) => (
+            <span key={p + i}>
+              {i > 0 ? ", " : ""}
+              {i === Math.min(sigHelp.arg, sigHelp.sig.params.length - 1) || (p === "…" && sigHelp.arg >= i) ? <b>{p}</b> : p}
+            </span>
+          ))}
+          )
+        </div>
+      ) : null}
+      {docked && suggestions && suggestions.items.length > 0 ? (
+        // Phone: suggestions are chips in the dock, so no list covers the cell being edited.
+        <div className="sx-dock-keys is-suggestions" role="listbox" aria-orientation="horizontal" id={acId} aria-label="Suggestions" data-testid="autocomplete" data-placement="dock">
+          {suggestions.items.map((item, i) => (
+            <div
+              key={`${item.kind}${item.label}`}
+              id={`${acId}-${i}`}
+              role="option"
+              aria-selected={i === Math.min(acIndex, suggestions.items.length - 1)}
+              className="sx-chip"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => acceptSuggestion(i)}
+            >
+              <span className="sx-option-label">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      ) : docked ? (
+        <div className="sx-dock-keys" role="toolbar" aria-label="Formula symbols">
+          {FORMULA_KEYS.map((k) => (
+            <button
+              type="button"
+              tabIndex={-1}
+              key={k}
+              className="sx-dock-key"
+              data-testid={`key-${k}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => insertSymbol(k)}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="sx-bar">
         <div className="sx-namebox" data-testid="namebox" aria-label="Selection">
           {nameBox}
@@ -1532,9 +2068,27 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             if (cur && cur.source === "bar" && cur.caret !== caret) setEdit({ ...cur, caret });
           }}
           onKeyDown={(e) => onInputKeyDown(e, "bar")}
+          onBlur={(e) => {
+            // iOS "Done", or a tap that moves focus out of the sheet, ends the edit.
+            const next = e.relatedTarget as HTMLElement | null;
+            if (editRef.current?.source === "bar" && next !== inputRef.current && !next?.closest?.(".sx-root")) commit(null);
+          }}
+          enterKeyHint={docked ? "enter" : undefined}
         />
+        {docked ? (
+          <>
+            <button type="button" tabIndex={-1} className="sx-dock-btn" aria-label="Cancel edit" data-testid="dock-cancel" onMouseDown={(e) => e.preventDefault()} onClick={cancel}>
+              ✕
+            </button>
+            <button type="button" tabIndex={-1} className="sx-dock-btn is-primary" aria-label="Save cell" data-testid="dock-commit" onMouseDown={(e) => e.preventDefault()} onClick={() => commit(null)}>
+              ✓
+            </button>
+          </>
+        ) : null}
       </div>
-      <div className="sx-viewport" style={{ ["--sx-row-h" as string]: `${rowH}px` }}>
+      </div>
+      </div>
+      <div className="sx-viewport" data-touch-variant={touchVariant} data-coarse={coarse ? "true" : undefined} style={{ ["--sx-row-h" as string]: `${rowH}px`, ["--sx-zoom" as string]: String(zoom) }}>
         <div
           ref={scrollerRef}
           className="sx-scroller"
@@ -1564,13 +2118,13 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
         >
-          <div role="rowgroup" className="sx-layer" style={{ position: "sticky", top: 0, zIndex: 3, width: totalW + ROWHEAD_W, height: HEADER_H + frozenH }}>
-            <div role="row" aria-rowindex={1} className="sx-row" style={{ top: 0, height: HEADER_H, width: totalW + ROWHEAD_W, background: "var(--sx-head-bg)", borderBottom: "1px solid var(--sx-line-strong)", boxSizing: "border-box" }}>
+          <div role="rowgroup" className="sx-layer" style={{ position: "sticky", top: 0, zIndex: 3, width: totalW + rowHeadW, height: HEADER_H + frozenH }}>
+            <div role="row" aria-rowindex={1} className="sx-row" style={{ top: 0, height: HEADER_H, width: totalW + rowHeadW, background: "var(--sx-head-bg)", borderBottom: "1px solid var(--sx-line-strong)", boxSizing: "border-box" }}>
               <div
                 className="sx-corner"
                 data-testid="corner"
                 aria-label="Select all"
-                style={{ position: "sticky", left: 0, width: ROWHEAD_W, height: HEADER_H, zIndex: 4 }}
+                style={{ position: "sticky", left: 0, width: rowHeadW, height: HEADER_H, zIndex: 4 }}
               />
               {columns.map((col, c) => (
                 <div
@@ -1579,17 +2133,25 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
                   aria-colindex={c + 2}
                   data-testid={`colhead-${c}`}
                   className={`sx-colhead${wholeColSet.has(c) ? " is-whole" : selCols.has(c) ? " is-sel" : ""}`}
-                  style={{ left: ROWHEAD_W + (lefts[c] ?? 0), width: widths[c], height: HEADER_H - 1 }}
+                  style={{ left: rowHeadW + (lefts[c] ?? 0), width: widths[c], height: HEADER_H - 1 }}
                 >
                   <span>{col.name ?? col.ref}</span>
                   {col.name && col.name !== col.ref ? <span className="sx-ref">{col.ref}</span> : null}
                 </div>
               ))}
               {columns.map((col, c) => (
-                <div key={`rs${col.colId}`} className="sx-resize" data-col={c} data-testid={`resize-${c}`} style={{ left: ROWHEAD_W + (lefts[c + 1] ?? 0) }} />
+                <div
+                  key={`rs${col.colId}`}
+                  className={`sx-resize${coarse && wholeColSet.has(c) && !wholeRowSet.size ? " is-grip" : ""}`}
+                  data-col={c}
+                  data-testid={`resize-${c}`}
+                  style={{ left: rowHeadW + (lefts[c + 1] ?? 0) }}
+                />
               ))}
+              {showHandles && hWholeCols ? handle(false, "col", { left: rowHeadW + (lefts[hRange.c1] ?? 0), top: HEADER_H / 2 }) : null}
+              {showHandles && hWholeCols ? handle(true, "col", { left: rowHeadW + (lefts[hRange.c2 + 1] ?? 0), top: HEADER_H / 2 }) : null}
               {drop?.axis === "col" ? (
-                <div className="sx-o sx-o-drop" data-testid="drop-indicator" style={{ left: ROWHEAD_W + (lefts[drop.index] ?? totalW) - 1, top: 0, width: 3, height: HEADER_H }} />
+                <div className="sx-o sx-o-drop" data-testid="drop-indicator" style={{ left: rowHeadW + (lefts[drop.index] ?? totalW) - 1, top: 0, width: 3, height: HEADER_H }} />
               ) : null}
             </div>
             {Array.from({ length: frozen }, (_, r) => renderRow(r, HEADER_H + r * rowH))}
@@ -1598,16 +2160,26 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
                 {overlayFor(0, frozen - 1, (r) => r * rowH)}
               </div>
             ) : null}
+            {frozen > 0 && showHandles ? (
+              <div className="sx-overlay" style={{ top: HEADER_H, height: frozenH, zIndex: 2 }}>
+                {handlesFor(0, frozen - 1, (r) => r * rowH)}
+              </div>
+            ) : null}
           </div>
-          <div role="rowgroup" className="sx-layer" style={{ width: totalW + ROWHEAD_W, height: bodyH }}>
+          <div role="rowgroup" className="sx-layer" data-testid="body" data-rows={`${first}-${last}`} data-row-h={rowH} style={{ width: totalW + rowHeadW, height: bodyH }}>
             {Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => renderRow(first + i, (first + i - frozen) * rowH))}
             <div className="sx-overlay" style={{ zIndex: 1 }}>
               {overlayFor(Math.max(frozen, first), last, (r) => (r - frozen) * rowH)}
             </div>
+            {showHandles ? (
+              <div className="sx-overlay" style={{ zIndex: 2 }}>
+                {handlesFor(Math.max(frozen, first), last, (r) => (r - frozen) * rowH)}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className={`sx-input-wrap ${edit ? "is-editing" : "is-nav"}`} style={inputBox} data-testid="editor-wrap">
+        <div className={`sx-input-wrap ${edit ? "is-editing" : "is-nav"}${docked ? " is-bar-edit" : ""}`} style={inputBox} data-testid="editor-wrap">
           {isFormula && edit?.source === "cell" ? (
             <div className="sx-mirror" aria-hidden="true" data-testid="mirror">
               {segs.map((seg, i) =>
@@ -1658,14 +2230,15 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           />
         </div>
 
-        {edit && suggestions ? (
+        {edit && suggestions && !docked ? (
           <div
             className="sx-popover"
             role="listbox"
             id={acId}
             aria-label="Suggestions"
             data-testid="autocomplete"
-            style={{ left: inputBox.left, top: inputBox.top + rowH + 4 }}
+            data-placement={acPlacement}
+            style={acStyle}
             onMouseDown={(e) => e.preventDefault()}
           onTouchEnd={(e) => {
             if (!suppressCompat.current) return;
@@ -1689,8 +2262,13 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             ))}
           </div>
         ) : null}
-        {edit && sigHelp ? (
-          <div className="sx-popover sx-sig" role="tooltip" data-testid="signature" style={{ left: inputBox.left, top: Math.max(0, inputBox.top - 58) }}>
+        {edit && sigHelp && !docked ? (
+          <div
+            className="sx-popover sx-sig"
+            role="tooltip"
+            data-testid="signature"
+            style={acPlacement === "above" ? { left: inputBox.left, top: inputBox.top + rowH + 4 } : { left: inputBox.left, top: Math.max(0, inputBox.top - 58) }}
+          >
             <div>
               {sigHelp.sig.name}(
               {sigHelp.sig.params.map((p, i) => (
@@ -1702,6 +2280,44 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
               )
             </div>
             <div className="sx-sig-summary">{sigHelp.sig.summary}</div>
+          </div>
+        ) : null}
+        {showCallout && coarse && touchVariant === "b" && !edit ? (
+          <div className="sx-callout" role="toolbar" aria-label="Selection actions" data-testid="callout" style={{ left: calloutLeft, top: calloutTop }} onMouseDown={(e) => e.preventDefault()}>
+            {(
+              [
+                ["cut", "Cut", () => void copyFromMenu(true)],
+                ["copy", "Copy", () => void copyFromMenu(false)],
+                ["paste", "Paste", () => void pasteFromMenu(false)],
+                ["fill", "Fill", () => setFillFor(lastRange(selRef.current))],
+              ] as const
+            ).map(([id, label, run]) => (
+              <button
+                key={id}
+                type="button"
+                tabIndex={-1}
+                data-testid={`callout-${id}`}
+                onClick={() => {
+                  setCallout(null);
+                  run();
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="More actions"
+              data-testid="callout-more"
+              onClick={(e) => {
+                setCallout(null);
+                const kind = hWholeRows ? "row" : hWholeCols ? "col" : "cell";
+                openMenuAt(e.clientX, e.clientY, kind);
+              }}
+            >
+              ⋯
+            </button>
           </div>
         ) : null}
         {toast ? (
