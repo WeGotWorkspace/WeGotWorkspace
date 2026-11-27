@@ -136,6 +136,7 @@ export function DriveWorkspace({
   const {
     offlineAvailableIds: rowOfflineAvailableIds,
     offlinePendingSyncIds: rowOfflinePendingSyncIds,
+    offlineFailedIds: rowOfflineFailedIds,
     refresh,
   } = useDriveOfflineAvailability(controller.visibleItems, offlineEnabled, offlineUsername);
 
@@ -429,6 +430,7 @@ export function DriveWorkspace({
                 offlineEnabled={offlineEnabled}
                 offlineAvailableIds={rowOfflineAvailableIds}
                 offlinePendingSyncIds={rowOfflinePendingSyncIds}
+                offlineFailedIds={rowOfflineFailedIds}
                 onMakeOfflineAvailable={handleMakeOfflineAvailable}
                 pinLoadingId={pinLoadingId}
                 extraFileActions={fileExtraActions}

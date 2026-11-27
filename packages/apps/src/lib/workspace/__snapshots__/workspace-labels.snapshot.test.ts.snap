@@ -1204,6 +1204,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: drive 1`
   "notAvailableOfflineHint": "Open Drive once while you're online. After that it works offline too.",
   "noticeBarLabel": "Needs your attention",
   "offlineAvailable": "Available offline",
+  "offlineDownloadFailed": "Couldn't save for offline use. Try again",
   "offlineDownloading": "Downloading for offline use",
   "offlineMakeAvailable": "Make available offline",
   "offlinePendingSync": "Pending sync",

@@ -64,6 +64,7 @@ export function DriveGridView({
   fileCanManageStructure,
   offlineAvailableIds,
   offlinePendingSyncIds,
+  offlineFailedIds,
   offlineEnabled = false,
   onMakeOfflineAvailable,
   canPinOffline = false,
@@ -83,6 +84,8 @@ export function DriveGridView({
   showLocationColumn?: boolean;
   offlineAvailableIds?: ReadonlySet<string>;
   offlinePendingSyncIds?: ReadonlySet<string>;
+  /** Files whose automatic offline copy failed. */
+  offlineFailedIds?: ReadonlySet<string>;
   /** When true, show cloud/download affordances for files without a local copy. */
   offlineEnabled?: boolean;
   onMakeOfflineAvailable?: (file: DriveFile) => void;
@@ -165,6 +168,7 @@ export function DriveGridView({
       isTouch={isTouch}
       isOfflineAvailable={offlineAvailableIds?.has(f.id) ?? false}
       isOfflinePendingSync={offlinePendingSyncIds?.has(f.id) ?? false}
+      isOfflineFailed={offlineFailedIds?.has(f.id) ?? false}
       offlineEnabled={offlineEnabled}
       canPinOffline={canPinOffline}
       onMakeOfflineAvailable={onMakeOfflineAvailable}
@@ -287,6 +291,7 @@ function FileTile({
   isTouch,
   isOfflineAvailable = false,
   isOfflinePendingSync = false,
+  isOfflineFailed = false,
   offlineEnabled = false,
   canPinOffline = false,
   onMakeOfflineAvailable,
@@ -319,6 +324,7 @@ function FileTile({
   isTouch: boolean;
   isOfflineAvailable?: boolean;
   isOfflinePendingSync?: boolean;
+  isOfflineFailed?: boolean;
   offlineEnabled?: boolean;
   canPinOffline?: boolean;
   onMakeOfflineAvailable?: (file: DriveFile) => void;
@@ -386,6 +392,7 @@ function FileTile({
             offlineEnabled={offlineEnabled}
             isOfflineAvailable={isOfflineAvailable}
             isOfflinePendingSync={isOfflinePendingSync}
+            isOfflineFailed={isOfflineFailed}
             isPinning={actionsDisabled}
             canPinOffline={canPinOffline}
             onMakeOfflineAvailable={onMakeOfflineAvailable}

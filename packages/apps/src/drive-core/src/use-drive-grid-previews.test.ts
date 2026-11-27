@@ -5,6 +5,23 @@ import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import * as filePreviewUtils from "@/lib/file-preview/file-preview-utils";
 import { useDriveGridPreviews } from "@/drive-core/src/use-drive-grid-previews";
+import { clearPreviewBlobCache } from "@/lib/files/preview-blob-cache";
+
+const stored = vi.hoisted(() => ({
+  username: null as string | null,
+  blobs: new Map<string, Blob>(),
+  reads: [] as string[],
+}));
+
+vi.mock("@/lib/offline/core/offline-session", () => ({
+  readOfflineDriveUsername: () => stored.username,
+}));
+vi.mock("@/lib/offline/drive/drive-offline-read", () => ({
+  readStoredDriveFileBlobForPreview: async (_user: string, path: string) => {
+    stored.reads.push(path);
+    return stored.blobs.get(path) ?? null;
+  },
+}));
 
 const DOC: DriveFile = {
   id: "doc-1",
@@ -78,6 +95,10 @@ function installBlobUrlStubs() {
 
 beforeEach(() => {
   installBlobUrlStubs();
+  clearPreviewBlobCache();
+  stored.username = null;
+  stored.blobs = new Map();
+  stored.reads = [];
 });
 
 afterEach(() => {
@@ -402,5 +423,83 @@ describe("useDriveGridPreviews", () => {
       await Promise.resolve();
     });
     expect(readFileBlob).not.toHaveBeenCalled();
+  });
+
+  it("uses the stored copy first for a member and does not download it", async () => {
+    stored.username = "alice";
+    stored.blobs.set(IMAGE.apiPath!, new Blob(["stored"], { type: "image/png" }));
+    vi.spyOn(filePreviewUtils, "readBlobMediaDimensions").mockResolvedValue(null);
+    const readFileBlob = vi.fn(async () => new Blob(["net"], { type: "image/png" }));
+
+    const { result } = renderHook(() =>
+      useDriveGridPreviews({
+        items: [IMAGE],
+        operations: { ...createOperations({ readFileBlob }), localTree: true },
+        enabled: true,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url"));
+    expect(readFileBlob).not.toHaveBeenCalled();
+    expect(stored.reads).toEqual([IMAGE.apiPath]);
+  });
+
+  it("never reads the device's stored copies for share-link guests", async () => {
+    stored.username = "alice";
+    stored.blobs.set(IMAGE.apiPath!, new Blob(["stored"], { type: "image/png" }));
+    vi.spyOn(filePreviewUtils, "readBlobMediaDimensions").mockResolvedValue(null);
+    const readFileBlob = vi.fn(async () => new Blob(["net"], { type: "image/png" }));
+
+    const { result } = renderHook(() =>
+      useDriveGridPreviews({
+        items: [IMAGE],
+        operations: createOperations({ readFileBlob }),
+        enabled: true,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url"));
+    expect(readFileBlob).toHaveBeenCalledTimes(1);
+    expect(stored.reads).toEqual([]);
+  });
+
+  it("does not download a thumbnail again when the folder is opened a second time", async () => {
+    vi.spyOn(filePreviewUtils, "readBlobMediaDimensions").mockResolvedValue(null);
+    const readFileBlob = vi.fn(async () => new Blob(["net"], { type: "image/png" }));
+    const operations = createOperations({ readFileBlob });
+
+    const first = renderHook(() =>
+      useDriveGridPreviews({ items: [IMAGE], operations, enabled: true }),
+    );
+    await waitFor(() => expect(first.result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url"));
+    first.unmount();
+
+    const second = renderHook(() =>
+      useDriveGridPreviews({ items: [IMAGE], operations, enabled: true }),
+    );
+    await waitFor(() =>
+      expect(second.result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url"),
+    );
+    expect(readFileBlob).toHaveBeenCalledTimes(1);
+  });
+
+  it("downloads a new version of the file instead of the cached one", async () => {
+    vi.spyOn(filePreviewUtils, "readBlobMediaDimensions").mockResolvedValue(null);
+    const readFileBlob = vi.fn(async () => new Blob(["net"], { type: "image/png" }));
+    const operations = createOperations({ readFileBlob });
+
+    const first = renderHook(() =>
+      useDriveGridPreviews({ items: [{ ...IMAGE, modifiedMs: 1000 }], operations, enabled: true }),
+    );
+    await waitFor(() => expect(first.result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url"));
+    first.unmount();
+
+    const second = renderHook(() =>
+      useDriveGridPreviews({ items: [{ ...IMAGE, modifiedMs: 2000 }], operations, enabled: true }),
+    );
+    await waitFor(() =>
+      expect(second.result.current.filePreviews[IMAGE.id]?.kind).toBe("blob-url"),
+    );
+    expect(readFileBlob).toHaveBeenCalledTimes(2);
   });
 });

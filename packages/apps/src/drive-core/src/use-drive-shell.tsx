@@ -32,7 +32,7 @@ import type {
   DriveUIData,
 } from "@/lib/files/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import { wgwLiveApiEnabled, wgwSettingsStateRead } from "@/lib/api/wgw/http";
+import { useTeamDisplayNames } from "@/lib/files/team-labels/use-team-display-names";
 import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export type UseDriveShellArgs = {
@@ -81,9 +81,6 @@ export function useDriveShell({
   const [liveSearchResults, setLiveSearchResults] = useState<DriveFile[] | null>(null);
   const [starred, setStarred] = useState<Record<string, boolean>>({});
   const [knownGroupRoots, setKnownGroupRoots] = useState<DriveGroupRoot[]>([]);
-  const [groupDirectory, setGroupDirectory] = useState<
-    readonly { id: string; displayName: string }[]
-  >([]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const starredLoadVersionRef = useRef(0);
   const { online } = useConnectivity();
@@ -102,21 +99,8 @@ export function useDriveShell({
     return () => controller.abort();
   }, [operations]);
 
-  useEffect(() => {
-    if (!wgwLiveApiEnabled()) return;
-    const controller = new AbortController();
-    void wgwSettingsStateRead
-      .read()
-      .then((read) => {
-        if (!read.ok || controller.signal.aborted) return;
-        const json = read.json as { groups?: { id: string; displayName: string }[] };
-        if (Array.isArray(json.groups)) setGroupDirectory(json.groups);
-      })
-      .catch(() => {
-        /* best-effort labels only */
-      });
-    return () => controller.abort();
-  }, []);
+  // Cached in the meta store, so team drives keep their name offline (#2063).
+  const groupDirectory = useTeamDisplayNames(treeEnabled ? currentUsername : null, online);
 
   useEffect(() => {
     const discovered = collectDriveGroupRoots(files);

@@ -192,6 +192,7 @@ export const driveLabels = {
   offlineMakeAvailable: "Make available offline",
   offlineRemoveCopy: "Remove offline copy",
   offlineDownloading: "Downloading for offline use",
+  offlineDownloadFailed: "Couldn't save for offline use. Try again",
   offlineAvailable: "Available offline",
   offlinePendingSync: workspaceLabels.sync.pending,
   toastSynced: workspaceLabels.sync.changesSynced,
