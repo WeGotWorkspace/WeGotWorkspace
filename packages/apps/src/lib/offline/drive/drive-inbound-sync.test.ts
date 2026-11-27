@@ -1081,6 +1081,35 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect(byKey.get("users/ada/a.md")).toBe(2);
   });
 
+  it("a file created on a path the batch vacated stays in the Docs views", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
+    await upsertDriveEntry(username, entry("/users/ada/report.md", "fn-report"));
+    const docs = [doc("users/ada/a.md", 1), doc("users/ada/report.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        ["fn-a", { ...node("fn-a", "fn-home", "b.md"), path: "/users/ada/b.md" }],
+        ["fn-new-a", { ...node("fn-new-a", "fn-home", "a.md"), path: "/users/ada/a.md" }],
+        [
+          "fn-new-report",
+          { ...node("fn-new-report", "fn-home", "report.md"), path: "/users/ada/report.md" },
+        ],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({
+        updated: ["fn-a"],
+        created: ["fn-new-a", "fn-new-report"],
+        destroyed: ["fn-report"],
+        newState: "8",
+      }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await listed(all)).toEqual(["users/ada/a.md", "users/ada/b.md", "users/ada/report.md"]);
+  });
+
   it("a file deleted inside a folder renamed in the same batch is gone", async () => {
     await upsertDriveEntry(username, entry("/users/ada/Plans", "fn-plans", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/Plans/keep.md", "fn-keep"));

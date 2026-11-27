@@ -7,6 +7,7 @@ import {
   driveAvailabilityTable,
   driveContentBlobsTable,
   driveEntriesTable,
+  driveTreePrepassTable,
 } from "@/lib/offline/drive/drive-schema";
 import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 
@@ -27,6 +28,8 @@ export function inDriveTreeTransaction<T>(username: string, write: () => Promise
       driveContentBlobsTable(db),
       driveAvailabilityTable(db),
       docsAvailabilityTable(db),
+      driveTreePrepassTable(db),
+      db.meta,
     ],
     write,
   );

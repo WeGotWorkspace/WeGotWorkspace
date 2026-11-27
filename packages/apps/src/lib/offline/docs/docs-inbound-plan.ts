@@ -230,9 +230,14 @@ export function planDocsListingInbound(
     if (change.kind === "upserted") applyUpserted(planner, change.path, change.node);
   }
   // After the writes: every `from` and destroyed path that no row moved onto
-  // goes; a path some row's `to` now holds stays (a swap, a rename onto a
-  // deleted file's path).
-  const landed = new Set(moved.map((change) => docsSourceKey(change.to)));
+  // goes; a path some change wrote stays (a swap, a rename onto a deleted
+  // file's path, a new file on a path this batch vacated).
+  const landed = new Set([
+    ...moved.map((change) => docsSourceKey(change.to)),
+    ...changes.flatMap((change) =>
+      change.kind === "upserted" && !change.node.directory ? [docsSourceKey(change.path)] : [],
+    ),
+  ]);
   const vacated = [
     ...moved.map((change) => change.from),
     ...changes.flatMap((change) => (change.kind === "removed" ? [change.path] : [])),

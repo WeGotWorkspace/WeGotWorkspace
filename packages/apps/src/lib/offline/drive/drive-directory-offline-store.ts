@@ -5,6 +5,7 @@ import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   driveEntriesTable,
+  driveTreePrepassTable,
   DRIVE_DOMAIN,
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
@@ -267,6 +268,26 @@ export async function migrateDriveEntryPath(
     });
     await table.delete(descendant.id);
   }
+  await followPrepassMap(db, oldId, newId);
+}
+
+/**
+ * A tree pass reads each node's original paths from its pre-pass map. A local
+ * move during the pass takes the row and its blob along, so the map follows it.
+ */
+async function followPrepassMap(
+  db: ReturnType<typeof offlineDbForAccount>,
+  oldId: string,
+  newId: string,
+): Promise<void> {
+  const prepass = driveTreePrepassTable(db);
+  const moved = (await prepass.toArray()).flatMap((row) => {
+    const paths = row.paths.map((path) =>
+      path === oldId || path.startsWith(`${oldId}/`) ? `${newId}${path.slice(oldId.length)}` : path,
+    );
+    return paths.some((path, index) => path !== row.paths[index]) ? [{ ...row, paths }] : [];
+  });
+  if (moved.length > 0) await prepass.bulkPut(moved);
 }
 
 /**

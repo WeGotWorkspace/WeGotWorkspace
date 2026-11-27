@@ -444,10 +444,13 @@ async function writeResolvedTree(username: string): Promise<string[]> {
   await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
   // Rows, blobs and pins commit together: a pass stopped halfway resumes from
   // rows and sidecars that still agree.
-  const previous = new Map(
-    (await prepassTable(username).toArray()).map((row) => [row.nodeId, row.paths]),
-  );
   const moves = await inDriveTreeTransaction(username, async () => {
+    // The map goes with the write: a committed move leaves none to replay.
+    const previous = new Map(
+      (await prepassTable(username).toArray()).map((row) => [row.nodeId, row.paths]),
+    );
+    await prepassTable(username).clear();
+    await accountDb(username).meta.delete(DRIVE_TREE_PREPASS_KEY);
     const moved = await moveSidecarsOfMovedNodes(username, finals, previous);
     await upsertDriveEntriesInBulk(username, finals);
     return moved;
