@@ -1,5 +1,5 @@
 import type { Node } from "./ast";
-import { evalNode, isCellError, type CellError, type EvalCtx, type Value } from "./eval";
+import { columnsBetween, evalNode, isCellError, type CellError, type EvalCtx, type Value } from "./eval";
 import { parseFormula } from "./parser";
 
 export type RawCells = Map<string, string>;
@@ -9,7 +9,7 @@ const AST_CACHE_LIMIT = 10_000;
 const astCache = new Map<string, Node | CellError>();
 let astMisses = 0;
 
-function astFor(src: string): Node | CellError {
+export function astFor(src: string): Node | CellError {
   const hit = astCache.get(src);
   if (hit !== undefined) return hit;
   if (astCache.size >= AST_CACHE_LIMIT) astCache.clear();
@@ -73,8 +73,9 @@ function orderedKeys(raw: RawCells, rowOrder: string[]): string[] {
 
 export type AstDeps = {
   sameRowCols: string[];
-  absolute: { col: string; row: string }[];
-  ranges: { col: string; from: string; to: string }[];
+  /** `sheet`: another sheet's id (integration slice); absent = the formula's own sheet. */
+  absolute: { col: string; row: string; sheet?: string }[];
+  ranges: { col: string; from: string; to: string; col2?: string; sheet?: string }[];
 };
 
 const depCache = new Map<string, { columnsKey: string; deps: AstDeps }>();
@@ -88,13 +89,13 @@ export function astDeps(node: Node, isColumn: (path: string) => boolean): AstDep
 function walkAst(node: Node, isColumn: (path: string) => boolean, out: AstDeps): void {
   switch (node.k) {
     case "ref":
-      out.absolute.push({ col: node.col, row: node.row });
+      out.absolute.push(node.sheet === undefined ? { col: node.col, row: node.row } : { col: node.col, row: node.row, sheet: node.sheet });
       break;
     case "range":
-      out.ranges.push({ col: node.col, from: node.from, to: node.to });
+      out.ranges.push({ col: node.col, from: node.from, to: node.to, col2: node.col2, sheet: node.sheet });
       break;
     case "name":
-      if (!node.path.includes(".") && node.path !== "#REF!" && isColumn(node.path)) out.sameRowCols.push(node.path);
+      if (node.sheet === undefined && !node.path.includes(".") && node.path !== "#REF!" && isColumn(node.path)) out.sameRowCols.push(node.path);
       break;
     case "call":
       for (const arg of node.args) walkAst(arg, isColumn, out);
@@ -116,19 +117,23 @@ export function cellDeps(
   currentRow: string,
   rowOrder: string[],
   rowIndex: ReadonlyMap<string, number>,
+  colOrder?: readonly string[],
 ): string[] {
   const keys: string[] = [];
   for (const col of deps.sameRowCols) keys.push(`${col}@${currentRow}`);
-  for (const ref of deps.absolute) keys.push(`${ref.col}@${ref.row}`);
+  for (const ref of deps.absolute) if (ref.sheet === undefined) keys.push(`${ref.col}@${ref.row}`);
   for (const range of deps.ranges) {
+    if (range.sheet !== undefined) continue;
     const start = rowIndex.get(range.from);
     const end = rowIndex.get(range.to);
     if (start === undefined || end === undefined) continue;
     const lo = Math.min(start, end);
     const hi = Math.max(start, end);
+    const cols = columnsBetween(colOrder, range.col, range.col2) ?? [range.col];
     for (let i = lo; i <= hi; i += 1) {
       const row = rowOrder[i];
-      if (row) keys.push(`${range.col}@${row}`);
+      if (!row) continue;
+      for (const col of cols) keys.push(`${col}@${row}`);
     }
   }
   return keys;
@@ -193,6 +198,7 @@ export function evaluateAll(
     rowOrder,
     currentRow: "",
     isColumn,
+    colOrder: columnRefs,
   };
 
   const visit = (key: string, stack: string[]) => {
@@ -202,7 +208,13 @@ export function evaluateAll(
     stack.push(key);
     if (item.ast) {
       const { row } = splitKey(key);
-      const deps = cellDeps(cachedAstDeps(raw.get(key) ?? "", item.ast, isColumn, columnsKey), row, rowOrder, rowIndex);
+      const deps = cellDeps(
+        cachedAstDeps(raw.get(key) ?? "", item.ast, isColumn, columnsKey),
+        row,
+        rowOrder,
+        rowIndex,
+        columnRefs,
+      );
       for (const dep of deps) {
         const state = color.get(dep) ?? "white";
         if (state === "grey") {

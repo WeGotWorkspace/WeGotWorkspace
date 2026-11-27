@@ -98,3 +98,8 @@ test("marks a cycle and propagates it", () => {
   expect(values.get("b@r_a")).toBe("#CYCLE");
   expect(values.get("c@r_a")).toBe("#CYCLE");
 });
+
+test("#REF! left by a deleted column is a reference error, not a sheet prefix", () => {
+  expect(evalFormula("=1*#REF!")).toBe("#REF");
+  expect(evalFormula("=#REF!")).toBe("#REF");
+});

@@ -19,7 +19,7 @@ final class CollabRoomPolicy
 {
     /** @var non-empty-string */
     private const DOCUMENT_EXTENSIONS =
-        'csv|env|html|ini|json|log|md|markdown|toml|txt|xml|yaml|yml';
+        'csv|env|html|ini|json|log|md|markdown|toml|txt|xml|yaml|yml|ycsv';
 
     /** Characters, not bytes: a path of accented characters is not half as long. */
     private const MAX_ROOM_CHARACTERS = 1024;

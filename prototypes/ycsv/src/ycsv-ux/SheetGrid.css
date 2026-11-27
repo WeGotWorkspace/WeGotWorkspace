@@ -1,0 +1,909 @@
+/* Light neutral suite look; selection = brand blue (#0045ff, 12% / 18% fill). */
+.sx-root {
+  --sx-bg: #ffffff;
+  --sx-fg: #18181b;
+  --sx-muted: #71717a;
+  --sx-head-bg: #f7f7f8;
+  --sx-head-sel-bg: color-mix(in srgb, #0045ff 14%, #f7f7f8);
+  --sx-head-sel-fg: #0035c5;
+  --sx-line: #e4e4e7;
+  --sx-line-strong: #d4d4d8;
+  --sx-brand: #0045ff;
+  --sx-sel-fill: color-mix(in srgb, #0045ff 12%, transparent);
+  --sx-error: #c92a2a;
+  --sx-popover-bg: #ffffff;
+  --sx-popover-shadow: 0 6px 24px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08);
+  --sx-hover: #f1f1f3;
+  --sx-row-h: 28px;
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--sx-fg);
+  background: var(--sx-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+.sx-root[data-theme="dark"] {
+  --sx-bg: #18181b;
+  --sx-fg: #f4f4f5;
+  --sx-muted: #a1a1aa;
+  --sx-head-bg: #202024;
+  --sx-head-sel-bg: color-mix(in srgb, #0045ff 30%, #202024);
+  --sx-head-sel-fg: #c7d4ff;
+  --sx-line: #2e2e33;
+  --sx-line-strong: #3f3f46;
+  --sx-brand: #4d7bff;
+  --sx-sel-fill: color-mix(in srgb, #0045ff 18%, transparent);
+  --sx-error: #ff8787;
+  --sx-popover-bg: #232327;
+  --sx-popover-shadow: 0 6px 24px rgb(0 0 0 / 0.5);
+  --sx-hover: #2a2a2f;
+}
+
+.sx-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--sx-line);
+}
+
+.sx-namebox {
+  min-width: 96px;
+  padding: 0 8px;
+  height: 28px;
+  line-height: 28px;
+  border: 1px solid var(--sx-line-strong);
+  border-radius: 0.375rem;
+  color: var(--sx-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sx-fx {
+  color: var(--sx-muted);
+  font-style: italic;
+  user-select: none;
+}
+
+.sx-bar-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--sx-line-strong);
+  border-radius: 0.375rem;
+  background: var(--sx-bg);
+  color: var(--sx-fg);
+  font: inherit;
+  min-width: 0;
+}
+
+.sx-bar-input:focus {
+  outline: 2px solid var(--sx-brand);
+  outline-offset: -1px;
+}
+
+.sx-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sx-corner,
+.sx-colheads,
+.sx-rowheads,
+.sx-frozen,
+.sx-frozen-rowheads,
+.sx-scroller {
+  position: absolute;
+}
+
+.sx-corner {
+  left: 0;
+  top: 0;
+  background: var(--sx-head-bg);
+  border-right: 1px solid var(--sx-line-strong);
+  border-bottom: 1px solid var(--sx-line-strong);
+  box-sizing: border-box;
+  z-index: 4;
+  cursor: cell;
+}
+
+.sx-colheads,
+.sx-frozen {
+  right: 0;
+  overflow: hidden;
+}
+
+.sx-colheads {
+  top: 0;
+  background: var(--sx-head-bg);
+  border-bottom: 1px solid var(--sx-line-strong);
+  box-sizing: border-box;
+  z-index: 3;
+}
+
+.sx-rowheads,
+.sx-frozen-rowheads {
+  left: 0;
+  overflow: hidden;
+  background: var(--sx-head-bg);
+  border-right: 1px solid var(--sx-line-strong);
+  box-sizing: border-box;
+  z-index: 3;
+}
+
+.sx-rowheads {
+  bottom: 0;
+}
+
+.sx-frozen {
+  z-index: 2;
+  background: var(--sx-bg);
+  border-bottom: 2px solid var(--sx-line-strong);
+  box-sizing: border-box;
+}
+
+.sx-frozen-rowheads {
+  border-bottom: 2px solid var(--sx-line-strong);
+}
+
+.sx-scroller {
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.sx-layer {
+  position: relative;
+}
+
+.sx-colhead,
+.sx-rowhead {
+  position: absolute;
+  box-sizing: border-box;
+  color: var(--sx-muted);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.sx-colhead {
+  top: 0;
+  border-right: 1px solid var(--sx-line);
+  padding: 0 10px;
+  font-weight: 500;
+  color: var(--sx-fg);
+  justify-content: flex-start;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sx-colhead .sx-ref {
+  color: var(--sx-muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.sx-rowhead {
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--sx-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.sx-colhead.is-sel,
+.sx-rowhead.is-sel {
+  background: var(--sx-head-sel-bg);
+  color: var(--sx-head-sel-fg);
+}
+
+.sx-colhead.is-whole,
+.sx-rowhead.is-whole {
+  background: var(--sx-brand);
+  color: #fff;
+}
+
+.sx-colhead.is-whole .sx-ref {
+  color: rgb(255 255 255 / 0.8);
+}
+
+.sx-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  cursor: col-resize;
+  z-index: 2;
+  touch-action: none;
+}
+
+.sx-resize:hover,
+.sx-resize.is-active {
+  background: linear-gradient(to right, transparent 3px, var(--sx-brand) 3px, var(--sx-brand) 5px, transparent 5px);
+}
+
+.sx-row {
+  position: absolute;
+  left: 0;
+}
+
+.sx-cell {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  height: var(--sx-row-h);
+  line-height: calc(var(--sx-row-h) - 1px);
+  padding: 0 8px;
+  border-right: 1px solid var(--sx-line);
+  border-bottom: 1px solid var(--sx-line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: cell;
+}
+
+.sx-cell.is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sx-cell.is-error {
+  color: var(--sx-error);
+  text-align: center;
+}
+
+.sx-cell[aria-selected="true"]:not(.is-active) {
+  background: var(--sx-sel-fill);
+}
+
+/* Overlay: drawn from geometry, not from rendered cells. */
+.sx-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sx-o {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.sx-o-range {
+  border: 1px solid var(--sx-brand);
+}
+
+.sx-o-active {
+  border: 2px solid var(--sx-brand);
+}
+
+.sx-o-fill-preview {
+  border: 1px dashed var(--sx-fg);
+}
+
+.sx-o-ants {
+  border: 2px dashed var(--sx-brand);
+  animation: sx-ants 0.6s linear infinite;
+}
+
+@keyframes sx-ants {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.sx-o-ref {
+  border: 2px solid currentColor;
+}
+
+.sx-o-ref::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0.08;
+}
+
+.sx-o-peer {
+  border: 2px solid currentColor;
+}
+
+.sx-o-peer-range {
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.sx-o-peer-label {
+  position: absolute;
+  top: -16px;
+  right: -2px;
+  font-size: 10px;
+  line-height: 14px;
+  color: #fff;
+  padding: 0 4px;
+  border-radius: 3px 3px 0 0;
+  white-space: nowrap;
+}
+
+.sx-o-drop {
+  background: var(--sx-brand);
+}
+
+.sx-fill-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--sx-brand);
+  border: 1px solid var(--sx-bg);
+  box-sizing: content-box;
+  cursor: crosshair;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.sx-fill-handle::before {
+  /* A bigger hit area than the dot, more so for fingers. */
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+@media (pointer: coarse) {
+  .sx-fill-handle {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .sx-fill-handle::before {
+    inset: -12px;
+  }
+}
+
+/* The one input: focus holder in navigation, the editor while editing. */
+.sx-input-wrap {
+  position: absolute;
+  z-index: 5;
+}
+
+.sx-input-wrap.is-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sx-input-wrap.is-editing {
+  background: var(--sx-bg);
+  box-shadow: 0 0 0 2px var(--sx-brand), 0 4px 12px rgb(0 0 0 / 0.12);
+}
+
+.sx-mirror,
+.sx-input {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 0 7px;
+  font: inherit;
+  line-height: calc(var(--sx-row-h) - 2px);
+  white-space: pre;
+  letter-spacing: normal;
+}
+
+.sx-mirror {
+  overflow: hidden;
+  color: var(--sx-fg);
+}
+
+.sx-input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--sx-fg);
+  caret-color: var(--sx-fg);
+}
+
+.sx-input.is-formula {
+  color: transparent;
+}
+
+.sx-input-wrap.is-nav .sx-input {
+  caret-color: transparent;
+}
+
+.sx-t-fn {
+  color: var(--sx-fg);
+  font-weight: 600;
+}
+
+.sx-t-num {
+  color: #1c7ed6;
+}
+
+.sx-t-str {
+  color: #2b8a3e;
+}
+
+.sx-t-op {
+  color: var(--sx-muted);
+}
+
+.sx-t-err,
+.sx-t-name-unknown {
+  color: var(--sx-error);
+  text-decoration: wavy underline;
+  text-underline-offset: 3px;
+}
+
+.sx-t-name {
+  color: #9c36b5;
+}
+
+.sx-root[data-theme="dark"] .sx-t-num {
+  color: #74c0fc;
+}
+
+.sx-root[data-theme="dark"] .sx-t-str {
+  color: #8ce99a;
+}
+
+.sx-root[data-theme="dark"] .sx-t-name {
+  color: #e599f7;
+}
+
+.sx-popover {
+  position: absolute;
+  z-index: 10;
+  background: var(--sx-popover-bg);
+  color: var(--sx-fg);
+  border: 1px solid var(--sx-line-strong);
+  border-radius: 0.5rem;
+  box-shadow: var(--sx-popover-shadow);
+  padding: 4px;
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.sx-option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 0.375rem;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.sx-option[aria-selected="true"] {
+  background: var(--sx-sel-fill);
+}
+
+.sx-option-kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--sx-muted);
+  width: 2.2em;
+  flex: none;
+}
+
+.sx-option-label {
+  font-weight: 500;
+}
+
+.sx-option-detail {
+  color: var(--sx-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.sx-sig {
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.sx-sig b {
+  color: var(--sx-brand);
+}
+
+.sx-sig-summary {
+  color: var(--sx-muted);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.sx-menu {
+  position: fixed;
+  min-width: 240px;
+}
+
+.sx-menuitem {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 6px 10px;
+  border-radius: 0.375rem;
+  cursor: default;
+  outline: none;
+}
+
+.sx-menuitem:focus,
+.sx-menuitem:hover {
+  background: var(--sx-hover);
+}
+
+.sx-menuitem[aria-disabled="true"] {
+  color: var(--sx-muted);
+}
+
+.sx-menuitem kbd {
+  font: inherit;
+  color: var(--sx-muted);
+}
+
+.sx-menusep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--sx-line);
+}
+
+.sx-status {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  padding: 4px 12px;
+  border-top: 1px solid var(--sx-line);
+  color: var(--sx-muted);
+  font-size: 12px;
+  min-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sx-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  background: var(--sx-fg);
+  color: var(--sx-bg);
+  padding: 6px 12px;
+  border-radius: 0.375rem;
+  z-index: 20;
+}
+
+.sx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- spike 8: accessibility ---------------------------------------------- */
+/* Cell focus model: the focused cell is an empty editing host; its value is drawn here. */
+.sx-cell.is-host {
+  outline: none;
+  caret-color: transparent;
+  cursor: cell;
+}
+.sx-cell.is-host::before {
+  content: attr(data-text);
+}
+.sx-cell.is-host.is-composing::before {
+  content: none;
+}
+.sx-cell.is-host.is-composing {
+  caret-color: auto;
+  background: var(--sx-bg, #fff);
+  z-index: 3;
+}
+.sx-root:has(.sx-cell.is-host:focus-visible) .sx-o-active {
+  box-shadow: 0 0 0 1px var(--sx-bg, #fff), 0 0 0 3px #0045ff;
+}
+input.sx-namebox {
+  font: inherit;
+  background: transparent;
+  width: 120px;
+  color: inherit;
+  min-width: 0;
+}
+input.sx-namebox:focus {
+  outline: 2px solid #0045ff;
+  outline-offset: -2px;
+}
+.sx-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.2);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+.sx-dialog {
+  background: var(--sx-bg, #fff);
+  color: inherit;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 280px;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.2);
+  font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.sx-dialog-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.sx-dialog-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.sx-dialog-row input {
+  width: 90px;
+}
+.sx-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Spike 8: the ref under a column name failed 4.5:1 on the selected-column tint (axe). */
+.sx-root[data-theme="light"] .sx-colhead .sx-ref {
+  color: #52525b;
+}
+.sx-root[data-theme="light"] .sx-option-kind,
+.sx-root[data-theme="light"] .sx-option-detail,
+.sx-root[data-theme="light"] .sx-menu kbd,
+.sx-root[data-theme="light"] [role="menuitem"] kbd {
+  color: #52525b;
+}
+
+/* ---------------------------------------------------------------------------
+ * Spike 7: touch. Everything below only changes how the same grid looks and
+ * reacts under a finger; geometry still comes from widths × row height.
+ * ------------------------------------------------------------------------- */
+
+/* Native panning (with momentum) stays on; pinch is the grid's own zoom. */
+.sx-scroller {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sx-cell {
+  font-size: calc(13px * var(--sx-zoom, 1));
+}
+
+/* Variant B range handles: a knob on the corner, a 44 px hit area around it. */
+.sx-handle {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 2;
+}
+
+.sx-handle::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 13px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sx-brand);
+  border: 2px solid var(--sx-bg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.sx-fill-handle.is-fill-mode {
+  border-radius: 3px;
+  width: 16px !important;
+  height: 16px !important;
+  margin: -1px 0 0 -1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sx-brand) 30%, transparent);
+}
+
+.sx-input-wrap.is-bar-edit {
+  pointer-events: none;
+}
+
+.sx-popover {
+  overflow: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+/* Docked editor (phone): formula bar + symbol strip pinned above the keyboard. */
+.sx-dock {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--sx-head-bg);
+  border-top: 1px solid var(--sx-line-strong);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.08);
+}
+
+.sx-dock .sx-bar {
+  height: 48px;
+  box-sizing: border-box;
+  border-bottom: 0;
+  padding: 6px 6px;
+  gap: 6px;
+}
+
+.sx-dock .sx-bar-input {
+  height: 36px;
+}
+
+.sx-dock .sx-fx {
+  display: none;
+}
+
+.sx-dock-sig {
+  height: 26px;
+  line-height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--sx-muted);
+}
+
+.sx-dock-sig b {
+  color: var(--sx-brand);
+}
+
+.sx-dock-keys {
+  height: 48px;
+  display: flex;
+  gap: 4px;
+  padding: 2px 6px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sx-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1px solid var(--sx-line-strong);
+  background: var(--sx-bg);
+  font-size: 15px;
+}
+
+.sx-chip[aria-selected="true"] {
+  border-color: var(--sx-brand);
+  background: var(--sx-sel-fill);
+}
+
+.sx-dock-key,
+.sx-dock-btn {
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+  border: 1px solid var(--sx-line-strong);
+  border-radius: 0.375rem;
+  background: var(--sx-bg);
+  color: var(--sx-fg);
+  font: 500 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  touch-action: manipulation;
+}
+
+.sx-dock-btn.is-primary {
+  background: var(--sx-brand);
+  border-color: var(--sx-brand);
+  color: #fff;
+}
+
+/* Variant B callout: the iOS-style edit menu next to the selection. */
+.sx-callout {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #27272a;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);
+}
+
+.sx-callout button {
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid #3f3f46;
+  background: transparent;
+  color: #fafafa;
+  font: 500 15px system-ui, -apple-system, sans-serif;
+  touch-action: manipulation;
+}
+
+.sx-callout button:last-child {
+  border-right: 0;
+}
+
+@media (pointer: coarse) {
+  /* iOS zooms the page into any focused input under 16 px. */
+  .sx-input,
+  .sx-mirror,
+  .sx-bar-input {
+    font-size: 16px;
+  }
+
+  .sx-cell {
+    font-size: calc(15px * var(--sx-zoom, 1));
+  }
+
+  .sx-option {
+    min-height: 44px;
+    align-items: center;
+    padding: 0 10px;
+  }
+
+  .sx-menu {
+    max-height: calc(100dvh - 16px);
+    overflow: auto;
+  }
+
+  .sx-menuitem {
+    min-height: 44px;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+
+  .sx-menuitem kbd {
+    display: none;
+  }
+
+  /* A finger on a header pans; only a selected column offers a resize grip. */
+  .sx-resize {
+    display: none;
+  }
+
+  .sx-resize.is-grip {
+    display: block;
+    width: 28px;
+    margin-left: -14px;
+    background: linear-gradient(to right, transparent 12px, var(--sx-bg) 12px, var(--sx-bg) 16px, transparent 16px);
+  }
+
+  .sx-resize.is-grip::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 7px;
+    width: 8px;
+    height: 16px;
+    border-radius: 4px;
+    background: var(--sx-bg);
+    border: 1px solid var(--sx-brand);
+    box-sizing: border-box;
+  }
+
+  .sx-namebox {
+    min-width: 0;
+  }
+}

@@ -1,4 +1,5 @@
 import * as Y from "yjs";
+import { collabShapeOf } from "@/lib/collab/collab-document-shape";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import {
   isTextFieldsDoc,
@@ -40,12 +41,18 @@ export function collabSaveBody(
   holdSave?: () => boolean,
 ): CollabSaveBody | null {
   if (!ydoc || holdSave?.()) return null;
-  const getMd = refs.getMarkdownRef.current;
+  // A registered shape (Sheets spike: YCSV) is its own save body, like text-fields.
+  const shape = collabShapeOf(ydoc);
+  const getMd = shape ? () => shape.read(ydoc) : refs.getMarkdownRef.current;
   const override = refs.markdownOverrideRef.current;
   const textFields = isTextFieldsDoc(ydoc);
   if (!getMd && override === null && !textFields) return null;
   const current = () =>
-    textFields ? readTextFields(ydoc).description : markdownForSave(ydoc, getMd ? getMd() : "");
+    textFields
+      ? readTextFields(ydoc).description
+      : shape
+        ? shape.read(ydoc)
+        : markdownForSave(ydoc, getMd ? getMd() : "");
   const markdown = override ?? current();
   // The title the request carries; typing in it while the save is on its way is not in the body.
   const sentTitle = textFields ? readTextFields(ydoc).title : "";
@@ -57,6 +64,7 @@ export function collabSaveBody(
     seenFallback: () => (textFields ? (readTextFieldsBase(ydoc)?.contentTag ?? null) : null),
     editedSince: (saved, latest) => {
       if (textFields) return current() !== saved || readTextFields(ydoc).title !== sentTitle;
+      if (shape) return shape.read(ydoc) !== saved;
       return latest ? markdownForSave(ydoc, latest()) !== saved : false;
     },
     startSave: () => (textFields ? textFieldsSaveBase(ydoc) : null),
@@ -108,5 +116,7 @@ export function pendingSignatureBody(
   getMarkdown: (() => string) | null,
 ): string | null {
   if (isTextFieldsDoc(ydoc)) return readTextFields(ydoc).description;
+  const shape = collabShapeOf(ydoc);
+  if (shape) return shape.read(ydoc);
   return getMarkdown ? getMarkdown() : null;
 }

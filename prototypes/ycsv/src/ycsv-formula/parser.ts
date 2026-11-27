@@ -87,8 +87,17 @@ export function parseFormula(src: string): Node {
     throw new Error("#SYNTAX");
   };
 
-  const parseIdent = (ident: string): Node => {
+  /** `sheet!rest` → [sheet, rest]; no sheet → [undefined, ident]. */
+  const splitSheet = (ident: string): [string | undefined, string] => {
+    const bang = ident.indexOf("!");
+    // `#REF!` (a deleted column or sheet) is an error literal, not a sheet prefix.
+    return bang < 0 || ident === "#REF!" ? [undefined, ident] : [ident.slice(0, bang), ident.slice(bang + 1)];
+  };
+
+  const parseIdent = (fullIdent: string): Node => {
     const next = peek();
+    const [sheet, rawIdent] = next?.t === "op" && next.v === "(" ? [undefined, fullIdent] : splitSheet(fullIdent);
+    const ident = next?.t === "op" && next.v === "(" ? rawIdent : rawIdent.replaceAll("$", "");
     if (next?.t === "op" && next.v === "(") {
       eat();
       const args: Node[] = [];
@@ -111,15 +120,24 @@ export function parseFormula(src: string): Node {
         eat();
         const right = eat();
         if (right.t !== "ident" || !right.v.includes("@")) throw new Error("#REF");
-        const atRight = right.v.indexOf("@");
-        const colRight = right.v.slice(0, atRight);
-        const rowRight = right.v.slice(atRight + 1);
-        if (col !== colRight) throw new Error("#REF");
-        return { k: "range", col, from: row, to: rowRight };
+        const [rightSheet, rightBody] = splitSheet(right.v);
+        // A range stays on one sheet: `p!a1:p!a9` or `p!a1:a9`.
+        if (rightSheet !== undefined && rightSheet !== sheet) throw new Error("#REF");
+        const rightV = rightBody.replaceAll("$", "");
+        const atRight = rightV.indexOf("@");
+        const colRight = rightV.slice(0, atRight);
+        const rowRight = rightV.slice(atRight + 1);
+        const range: Node = { k: "range", col, from: row, to: rowRight };
+        if (col !== colRight) range.col2 = colRight;
+        if (sheet !== undefined) range.sheet = sheet;
+        return range;
       }
-      return { k: "ref", col, row };
+      return sheet === undefined ? { k: "ref", col, row } : { k: "ref", col, row, sheet };
     }
     if (peek()?.t === "op" && peek()?.v === ":") throw new Error("#REF");
+    // Spec §11.1/A.8: a cross-sheet ref always names a row (`p!totaal1`); "this row" has no
+    // meaning on another sheet, and a sheet-qualified def does not exist.
+    if (sheet !== undefined) throw new Error("#SYNTAX");
     return { k: "name", path: ident };
   };
 

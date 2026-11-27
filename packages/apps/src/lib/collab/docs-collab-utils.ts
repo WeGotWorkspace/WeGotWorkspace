@@ -4,6 +4,7 @@ import type { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
 import { isTextFieldsDoc, isTextFieldsEmpty } from "./docs-collab-text-fields-shape";
+import { collabShapeOf } from "./collab-document-shape";
 
 /** Origin of an update another tab of this browser sent over the BroadcastChannel. */
 export const BC_TAB_ORIGIN = "bc-tab";
@@ -156,6 +157,9 @@ export function isCollabPayloadTooLarge(error: unknown): boolean {
 export function isYDocEmpty(doc: Y.Doc): boolean {
   // A text-fields document has no `default` fragment, and asking must not create one.
   if (isTextFieldsDoc(doc)) return isTextFieldsEmpty(doc);
+  // A registered shape (Sheets spike: YCSV) has no `default` fragment either.
+  const shape = collabShapeOf(doc);
+  if (shape) return shape.isEmpty(doc);
   return doc.getXmlFragment("default").length === 0;
 }
 

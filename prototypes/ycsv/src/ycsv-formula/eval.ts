@@ -13,7 +13,38 @@ export type EvalCtx = {
   currentRow: string;
   /** Whether `path` is a column ref in this sheet. */
   isColumn: (path: string) => boolean;
+  /** Column refs in sheet order, for rectangular ranges. */
+  colOrder?: readonly string[];
+  /**
+   * Integration slice: another sheet of the same workbook, by sheet id (id form `s_x!prijs@r_y`).
+   * Null when the sheet is gone. Without it, cross-sheet refs are #REF.
+   */
+  sheet?: (sheetId: string) => SheetScope | null;
 };
+
+/** What a formula needs from another sheet. */
+export type SheetScope = {
+  cell: (col: string, row: string) => Value;
+  rowIndex: ReadonlyMap<string, number>;
+  rowOrder: string[];
+  colOrder?: readonly string[];
+  isColumn: (path: string) => boolean;
+};
+
+function scopeOf(ctx: EvalCtx, sheet: string | undefined): SheetScope | null {
+  if (sheet === undefined) return ctx;
+  return ctx.sheet?.(sheet) ?? null;
+}
+
+/** Columns covered by a range, left to right; null when an edge column is unknown. */
+export function columnsBetween(colOrder: readonly string[] | undefined, col: string, col2?: string): string[] | null {
+  if (!col2 || col2 === col) return [col];
+  if (!colOrder) return null;
+  const a = colOrder.indexOf(col);
+  const b = colOrder.indexOf(col2);
+  if (a < 0 || b < 0) return null;
+  return colOrder.slice(Math.min(a, b), Math.max(a, b) + 1);
+}
 
 const ERRORS = new Set<string>(["#SYNTAX", "#REF", "#NAME", "#CYCLE", "#VALUE", "#DIV/0"]);
 
@@ -117,20 +148,30 @@ function evalAny(node: Node, ctx: EvalCtx): Result {
     case "num":
     case "str":
       return node.v;
-    case "ref":
-      return ctx.cell(node.col, node.row);
+    case "ref": {
+      const scope = scopeOf(ctx, node.sheet);
+      if (!scope || (node.sheet !== undefined && !scope.isColumn(node.col))) return "#REF";
+      return scope.cell(node.col, node.row);
+    }
     case "name":
       if (node.path === "#REF!") return "#REF";
+      // `other!prijs` has no row: "this row" means nothing on another sheet.
+      if (node.sheet !== undefined) return "#REF";
       if (!node.path.includes(".") && ctx.isColumn(node.path)) return ctx.cell(node.path, ctx.currentRow);
       return ctx.def(node.path) ?? "#NAME";
     case "range": {
-      const rows = rowsBetween(ctx.rowOrder, ctx.rowIndex, node.from, node.to);
-      if (!rows) return "#REF";
+      const scope = scopeOf(ctx, node.sheet);
+      if (!scope) return "#REF";
+      const rows = rowsBetween(scope.rowOrder, scope.rowIndex, node.from, node.to);
+      const cols = columnsBetween(scope.colOrder, node.col, node.col2);
+      if (!rows || !cols) return "#REF";
       const values: Value[] = [];
       for (const rowId of rows) {
-        const value = ctx.cell(node.col, rowId);
-        if (isCellError(value)) return value;
-        values.push(value);
+        for (const col of cols) {
+          const value = scope.cell(col, rowId);
+          if (isCellError(value)) return value;
+          values.push(value);
+        }
       }
       return values;
     }

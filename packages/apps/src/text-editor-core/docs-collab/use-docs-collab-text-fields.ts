@@ -9,6 +9,8 @@ import {
 } from "@/lib/collab/docs-collab-server-io";
 import type { TextEditorContentFormat } from "@/lib/files/text-content-format";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
+import { collabDocumentShapeById, markCollabShapeDoc } from "@/lib/collab/collab-document-shape";
+import { SEED_ORIGIN } from "@/lib/collab/docs-collab-utils";
 import {
   markTextFieldsDoc,
   observeTextFieldsSeeds,
@@ -50,11 +52,13 @@ export function useDocsCollabTextFields({
   /** Mark a new document before IndexedDB loads, so emptiness and the seed ask the shape. */
   const prepareDoc = useCallback(
     (ydoc: Y.Doc) => {
+      const registered = collabDocumentShapeById(urls.documentShape);
+      if (registered) markCollabShapeDoc(ydoc, registered);
       if (!textFields) return;
       markTextFieldsDoc(ydoc);
       observeTextFieldsSeeds(ydoc);
     },
-    [textFields],
+    [textFields, urls.documentShape],
   );
 
   const noteServed = useCallback((text: CollabText) => {
@@ -64,6 +68,11 @@ export function useDocsCollabTextFields({
   /** Seed an empty document through its shape. */
   const seedDocument = useCallback(
     (ydoc: Y.Doc, markdown: string) => {
+      const registered = collabDocumentShapeById(urls.documentShape);
+      if (registered) {
+        registered.seed(ydoc, markdown, { origin: SEED_ORIGIN });
+        return;
+      }
       if (!textFields) {
         applyContentSeedToYDoc(ydoc, markdown, documentFormat);
         return;
@@ -75,7 +84,7 @@ export function useDocsCollabTextFields({
         served?.etag ?? null,
       );
     },
-    [documentFormat, textFields, urls.seedTitle],
+    [documentFormat, textFields, urls.documentShape, urls.seedTitle],
   );
 
   const reread = useCallback(

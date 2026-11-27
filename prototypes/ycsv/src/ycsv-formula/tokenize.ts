@@ -8,11 +8,14 @@ export type Span =
   | { t: "ws"; raw: string }
   | { t: "num"; v: number; raw: string }
   | { t: "str"; v: string; raw: string }
-  | { t: "ident"; v: string; raw: string; quoted?: boolean; suffix?: string }
+  | { t: "ident"; v: string; raw: string; quoted?: boolean; suffix?: string; quotedSheet?: boolean }
   | { t: "op"; v: string; raw: string };
 
+// `$` marks an absolute column (`$prijs`) or row (`prijs$3`, id form `prijs@$r_x`).
+// It only matters when a formula is copied or filled; evaluation ignores it.
+// Integration slice: an optional sheet prefix (`categorieën!label1`, id form `s_x!label@r_y`).
 const IDENT =
-  /[A-Za-z_\u00C0-\u024F][A-Za-z0-9_\u00C0-\u024F]*(@[A-Za-z0-9_-]+)?(\.[A-Za-z0-9_\u00C0-\u024F]+)?/y;
+  /(?:[A-Za-z_\u00C0-\u024F][A-Za-z0-9_\u00C0-\u024F]*!)?\$?[A-Za-z_\u00C0-\u024F][A-Za-z0-9_\u00C0-\u024F]*(\$\d+)?(@\$?[A-Za-z0-9_-]+)?(\.[A-Za-z0-9_\u00C0-\u024F]+)?/y;
 
 function isDigit(char: string | undefined): boolean {
   return char !== undefined && char >= "0" && char <= "9";
@@ -37,7 +40,7 @@ function readNumber(src: string, start: number): { v: number; raw: string; next:
   return { v: Number(raw), raw, next: i };
 }
 
-function readQuotedIdent(src: string, start: number): { v: string; raw: string; next: number; suffix: string } {
+function readQuotedIdent(src: string, start: number): { v: string; raw: string; next: number; suffix: string; sheet?: boolean } {
   let i = start + 1;
   let name = "";
   while (i < src.length) {
@@ -48,9 +51,17 @@ function readQuotedIdent(src: string, start: number): { v: string; raw: string; 
         continue;
       }
       i += 1;
+      // Integration slice: a quoted sheet name, `'Mijn blad'!prijs3`.
+      if (src[i] === "!") {
+        IDENT.lastIndex = i + 1;
+        const rest = IDENT.exec(src);
+        if (!rest || rest.index !== i + 1 || rest[0].includes("!")) throw new Error("#SYNTAX");
+        const next = i + 1 + rest[0].length;
+        return { v: `${name}!${rest[0]}`, raw: src.slice(start, next), next, suffix: "", sheet: true };
+      }
       let suffix = "";
       if (src[i] === "@") {
-        const rest = /^@[A-Za-z0-9_-]+/.exec(src.slice(i));
+        const rest = /^@\$?[A-Za-z0-9_-]+/.exec(src.slice(i));
         if (rest) {
           suffix = rest[0];
           i += rest[0].length;
@@ -112,7 +123,8 @@ export function scan(src: string): Span[] {
     }
     if (char === "'") {
       const quoted = readQuotedIdent(src, i);
-      spans.push({ t: "ident", v: quoted.v, raw: quoted.raw, quoted: true, suffix: quoted.suffix });
+      if (quoted.sheet) spans.push({ t: "ident", v: quoted.v, raw: quoted.raw, quotedSheet: true });
+      else spans.push({ t: "ident", v: quoted.v, raw: quoted.raw, quoted: true, suffix: quoted.suffix });
       i = quoted.next;
       continue;
     }
