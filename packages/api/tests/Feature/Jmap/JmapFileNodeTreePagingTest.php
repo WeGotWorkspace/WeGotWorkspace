@@ -420,6 +420,27 @@ final class JmapFileNodeTreePagingTest extends WgwDatabaseTestCase
         }
     }
 
+    public function test_get_all_heals_files_changed_past_the_app(): void
+    {
+        $this->seedFolders('users/bob', 2, 2);
+        $this->liveVisibleIds('bob');
+        $gone = $this->nodeIdAt('users/bob/folder00/file00.md');
+        $kept = $this->nodeIdAt('users/bob/folder01/file00.md');
+        $disk = app(WgwStorage::class)->files();
+        $disk->delete('users/bob/folder00/file00.md');
+        $disk->put('users/bob/folder01/late.md', 'x');
+
+        // An unfiltered query reads the index alone; get-all reconciles from one preloaded query.
+        $this->assertContains($gone, $this->jmapAs('bob', [['FileNode/query', ['accountId' => 'bob'], 'q']])->assertOk()->json('methodResponses.0.1.ids'));
+        $listed = array_column($this->jmapAs('bob', [['FileNode/get', ['accountId' => 'bob', 'ids' => null, 'properties' => ['id']], 'g']])
+            ->assertOk()->json('methodResponses.0.1.list'), 'id');
+
+        $this->assertNotContains($gone, $listed);
+        $this->assertContains($kept, $listed);
+        $this->assertNull(app(FileNodeIndexService::class)->liveByKey('users/bob/folder00/file00.md'));
+        $this->assertContains($this->nodeIdAt('users/bob/folder01/late.md'), $listed);
+    }
+
     public function test_a_write_in_the_batch_moves_the_remembered_state(): void
     {
         $this->seedFolders('users/bob', 1, 1);

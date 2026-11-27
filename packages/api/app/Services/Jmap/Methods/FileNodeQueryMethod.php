@@ -251,9 +251,8 @@ final class FileNodeQueryMethod implements JmapMethodInterface
             return $this->descendantsOf($ancestor, PHP_INT_MAX);
         }
 
-        // Unfiltered (or attribute-only) query: the whole visible set.
-        $this->accounts->reconcileVisibleTree($roots);
-
+        // Unfiltered (or attribute-only) query: the whole visible set, from the index alone.
+        // Writes through the app keep it current; a parentId listing or get-all heals drift (#2063).
         // Only what the filter and the sort read: no hydration of whole rows (#2063).
         return $this->index->liveVisible($roots, ['node_id', 'parent_node_id', 'name', 'is_dir']);
     }

@@ -131,18 +131,19 @@ final class FileNodeAccountSupport
 
         return [
             'accountRoots' => FileNodeVisibility::roots($username, $slugs),
-            'grants' => $this->liveMemberGrantsOf($username),
+            'grants' => $this->liveMemberGrantsOf($username, $slugs),
         ];
     }
 
     /**
+     * @param  list<string>|null  $slugs  the member Teams when the caller already has them
      * @return list<DriveShareGrant>
      */
-    private function liveMemberGrantsOf(string $username): array
+    private function liveMemberGrantsOf(string $username, ?array $slugs = null): array
     {
         return $this->context->remember(
             'filenode.grants:'.$username,
-            fn (): array => $this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username)),
+            fn (): array => $this->grants->liveMemberGrants($username, $slugs ?? $this->groups->allowedGroupSlugs($username)),
         );
     }
 

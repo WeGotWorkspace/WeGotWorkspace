@@ -195,7 +195,22 @@ final class JmapMethodDispatcher
     {
         $responses = [];
         $this->context->setUsing($using);
+        try {
+            $this->dispatchCalls($username, $using, $methodCalls, $responses);
+        } finally {
+            $this->context->endBatch();
+        }
 
+        return $responses;
+    }
+
+    /**
+     * @param  list<string>  $using
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $methodCalls
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $responses
+     */
+    private function dispatchCalls(string $username, array $using, array $methodCalls, array &$responses): void
+    {
         foreach ($methodCalls as [$name, $args, $callId]) {
             try {
                 $args = $this->resolveResultReferences($args, $responses);
@@ -227,6 +242,11 @@ final class JmapMethodDispatcher
                 }
             }
 
+            $writes = ! self::isReadOnly($name);
+            if ($writes) {
+                // A write reads fresh state (ifInState, oldState): never a value a read cached (#2063).
+                $this->context->forget();
+            }
             try {
                 // Timed under the registered name only: never arguments (#2244).
                 $responses[] = [$name, $this->timings->method($name, fn (): array => $method->handle($username, $args)), $callId];
@@ -238,19 +258,15 @@ final class JmapMethodDispatcher
                 // A write the disk or hosting quota refused fails the whole
                 // request with 507 (JmapApiController), never a serverFail
                 // the client would retry forever.
-                $this->context->endBatch();
                 throw $e;
             } catch (\Throwable $e) {
                 $responses[] = ['error', JmapSetErrors::serverFail($e), $callId];
             }
-            if (! self::isReadOnly($name)) {
+            if ($writes) {
                 // A write, even a failed one, may move roots, grants or the sequence (#2063).
                 $this->context->forget();
             }
         }
-        $this->context->endBatch();
-
-        return $responses;
     }
 
     private static function isReadOnly(string $name): bool
