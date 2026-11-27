@@ -135,7 +135,11 @@ export function useMeetChannelActions({
 
   const patchShareWith = async (channelId: string, shareWith: CollectionShareWith) => {
     const current = channels.find((row) => row.id === channelId);
-    if (!current) return;
+    if (!current) {
+      const error = new Error("Channel not found");
+      onError(error);
+      throw error;
+    }
     let patched: MeetChannel;
     try {
       patched = operations?.patchChannelShareWith
@@ -145,7 +149,7 @@ export function useMeetChannelActions({
           });
     } catch (error) {
       onError(error);
-      return;
+      throw error;
     }
     replaceChannel(patched);
     setDialog((openDialog) =>
