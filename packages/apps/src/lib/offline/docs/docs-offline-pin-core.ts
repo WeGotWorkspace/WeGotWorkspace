@@ -27,6 +27,8 @@ export type MakeDocsOfflineAvailableOptions = {
    * and its local copy is not empty, nothing is fetched. Background sync only.
    */
   modifiedAtMs?: number;
+  /** False once a newer run replaced this one: nothing is stored or stamped. */
+  shouldWrite?: () => boolean;
 };
 
 export async function makeDocsOfflineAvailable(
@@ -39,7 +41,7 @@ export async function makeDocsOfflineAvailable(
   if (!isDocsCollabEditablePath(room)) {
     throw new Error("Only editable text files can be made available offline.");
   }
-  const { beforeRequest, modifiedAtMs } = options;
+  const { beforeRequest, modifiedAtMs, shouldWrite } = options;
   const lastSyncedAt =
     modifiedAtMs === undefined
       ? null
@@ -49,7 +51,9 @@ export async function makeDocsOfflineAvailable(
     beforeRequest,
     keepLocalCopy:
       modifiedAtMs !== undefined && lastSyncedAt !== null && lastSyncedAt >= modifiedAtMs,
+    shouldWrite,
   });
+  if (shouldWrite && !shouldWrite()) return;
   const nodeId = await readCachedDriveNodeId(username, room);
   await writeDocsAvailability(username, { id: room, location, nodeId });
   await markDocsAvailabilitySynced(username, room);

@@ -198,6 +198,7 @@ export async function syncDriveFileContent(
       beforeRequest: options?.beforeRequest,
       // Background sync skips a document whose local copy is newer than the file.
       modifiedAtMs: background ? listingModifiedAtMs(entryModifiedAt) : undefined,
+      shouldWrite: options?.shouldWrite,
     });
     if (options?.shouldWrite && !options.shouldWrite()) return;
     await writeDriveAvailability(username, {
@@ -218,6 +219,8 @@ export async function syncDriveFileContent(
   if (options?.source === "manual") {
     await writeDriveAvailability(username, { id: room, source: "manual", entryModifiedAt });
   }
+  // The put took time: a newer run may have recorded a failure meanwhile.
+  if (options?.shouldWrite && !options.shouldWrite()) return;
   await clearDriveContentFailure(username, room);
 }
 
