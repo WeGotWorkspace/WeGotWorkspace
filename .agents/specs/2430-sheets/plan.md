@@ -53,7 +53,7 @@ Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) —
 
 ## Open decisions
 
-- [ ] Conflict K2 in the spec review: decision 10 renames a duplicate column to `omzet 2` with ref `omzet_2`, but P33 makes the ref the header text, so the spec now writes `'omzet 2'3`. Wouter to confirm. Blocks only the duplicate-name part of chunk D (`chunk-d-file`) and chunk N (`chunk-n-import`); the rest of both may start.
+None — every choice for this work is made. Decision 5 (touch: variant B) and spec conflict K2 (duplicate column ref = header text, `'omzet 2'3`) were decided on 2026-11-27.
 
 ## Invariants
 
@@ -97,8 +97,8 @@ Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) —
 - **id:** `chunk-c-ycsv-spec`
 - **Issue:** #2432
 - **Skill:** document
-- **Inputs:** the clean spec `prototypes/ycsv/upstream/ycsv-spec-v1-clean.md` on `spike/sheets-interop` (commit 6529b3757), committed in this spec PR as `docs/architecture/ycsv-spec.md`; Appendix B decisions and conflicts K1–K22 in the amended copy on the same branch; conformance corpus (70 cases) in `prototypes/ycsv/docs/spike-11-conformance-results.md` on `spike/sheets-interop`.
-- **Done when:** #2432 AC hold: `docs/architecture/ycsv-spec.md` names Epic #2430 and links this folder (done in the spec PR); K2 settled in §4.4; corpus fixtures under `packages/apps/src/sheets-core/src/file/fixtures/`; every decided case has an expected result.
+- **Inputs:** `docs/architecture/ycsv-spec.md` (source of truth; started from `prototypes/ycsv/upstream/ycsv-spec-v1-clean.md` on `spike/sheets-interop`, commit 6529b3757, which may lag behind); Appendix B decisions and conflicts K1–K22 in the amended copy on the same branch; conformance corpus (70 cases) in `prototypes/ycsv/docs/spike-11-conformance-results.md` on `spike/sheets-interop`.
+- **Done when:** #2432 AC hold: `docs/architecture/ycsv-spec.md` names Epic #2430 and links this folder (done in the spec PR, K2 included in §4.4); corpus fixtures under `packages/apps/src/sheets-core/src/file/fixtures/`; every decided case has an expected result.
 - **Verify with:** `pnpm run check:agent-docs`.
 - **Parallel with:** `chunk-a-collab-lift`, `chunk-b-file-registry`.
 
@@ -242,6 +242,6 @@ Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) —
 
 ## Doc updates (only if user wants)
 
-- `docs/architecture/ycsv-spec.md` (added with this plan; chunk C finishes K2 and the corpus).
+- `docs/architecture/ycsv-spec.md` (added with this plan, the source of truth for the format; chunk C adds the corpus).
 - `packages/apps/docs/workspace-shells.md`: the Sheets shell (chunk M).
 - `.agents/skills/workspace/collab-hooks.md`: the shape registry and its new home in `src/lib/collab` (chunk A).

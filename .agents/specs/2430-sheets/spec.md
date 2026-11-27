@@ -1,4 +1,4 @@
-Source: #2430 (body-hash: a2cf0e1d)
+Source: #2430 (body-hash: 712fd717)
 Goal: WeGotWorkspace/Product#164
 
 # Sheets: live-collaborative spreadsheets on YCSV
@@ -108,7 +108,7 @@ Product decisions 1–18 and the spec decisions are listed in #2430. Behaviour-s
 - A peer inserts a row while I type a ref in the open editor: the ref keeps pointing at the intended row (id-form draft, `EditBase`).
 - A peer sorts while I type a range: reversed ranges are normalised (`SUM(ka6:ka1)` → `SUM(ka1:ka6)`).
 - Undo of a row insert that a peer typed in, or of a move a peer overrode: skipped with "Can't undo: <name> …".
-- Two peers add a column with the same name at the same time: the second by column id gets the header ` 2` (decision 10); its ref form follows conflict K2 once Wouter confirms it (see plan Open decisions).
+- Two peers add a column with the same name at the same time, or an import brings duplicate headers: the later column by column id is renamed to the first free number (`omzet 2`, then `omzet 3`), and its ref is the new header text (`'omzet 2'3`); no `omzet_2`, no frontmatter `columns.ref` for it (decision 10, K2 decided 2026-11-27, spec §4.4). A file written by another tool with duplicate headers still opens with those columns unnamed (letter fallback, warning; H5).
 - Two peers edit the same cell: one value wins silently.
 - A `.csv` with a `---` line inside a quoted cell: one sheet, the line is data.
 - A `.csv` whose first row may or may not be a header: detection D1–D7, result recorded, user toggle.

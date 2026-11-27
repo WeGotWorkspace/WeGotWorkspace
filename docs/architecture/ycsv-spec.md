@@ -1,7 +1,7 @@
 # YCSV Specification v1.0
 
 > Epic: #2430 (Sheets). Spec folder: [.agents/specs/2430-sheets/](../../.agents/specs/2430-sheets/spec.md).
-> This is the format the suite's Sheets app reads and writes. Decisions taken on 2026-11-27 are written in; the review history (proposals P1–P34, conflicts K1–K22) stays on the `spike/sheets-interop` branch (`prototypes/ycsv/upstream/ycsv-spec-v1.md`, Appendix B).
+> This is the format the suite's Sheets app reads and writes, and this file is its source of truth. Decisions taken on 2026-11-27 are written in, and every review conflict (K1–K22) is decided. The review history (proposals P1–P34, conflicts K1–K22) stays on the `spike/sheets-interop` branch (`prototypes/ycsv/upstream/ycsv-spec-v1.md`, Appendix B); that copy may lag behind this file.
 
 > **YCSV** is a plain-text tabular data format: a CSV body, optionally led by
 > a YAML frontmatter block. It adds column types, display formatting,
@@ -582,6 +582,8 @@ every reader applies the same way:
 edit or an import produces a second column with an existing header text, the
 editor renames the later column: `omzet` becomes `omzet 2` (then `omzet 3`,
 the first free number), and its ref is the new header text (`'omzet 2'3`).
+There is no separate slug ref (no `omzet_2`) and no `columns.ref` in the
+frontmatter for this case.
 Which column is "later" is decided by a stable column identity (in our
 editor, the column id), never by position, so every client renames the same
 column. H5 only applies to files written by other tools or by hand.
