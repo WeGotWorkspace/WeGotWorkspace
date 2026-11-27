@@ -6,6 +6,7 @@ namespace Tests\Feature\Calendars;
 
 use App\Models\CalendarAvailabilityLink;
 use App\Models\CalendarInstance;
+use App\Models\Principal;
 use App\Models\User;
 use App\Services\Calendars\Availability\AvailabilitySettings;
 use Illuminate\Support\Facades\RateLimiter;
@@ -206,10 +207,28 @@ final class AvailabilityPublicLinkTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('no-cache', (string) $first->headers->get('Cache-Control'));
         $this->assertSame('noindex', $first->headers->get('X-Robots-Tag'));
         $this->assertStringStartsWith('text/calendar', (string) $first->headers->get('Content-Type'));
+        $this->assertStringContainsString('availability.ics', (string) $first->headers->get('Content-Disposition'));
         $this->withHeaders(['If-None-Match' => $etag])->get($url)->assertStatus(304);
 
         $this->seedBusy('carol', 'b', $day + 50000, $day + 53000);
         $this->withHeaders(['If-None-Match' => $etag])->get($url)->assertOk();
+    }
+
+    public function test_the_calendar_name_is_the_owners_display_name_and_availability(): void
+    {
+        Principal::forUsername('carol')->update(['displayname' => 'Carol Example']);
+        $body = $this->get($this->publicUrl())->assertOk()->getContent();
+
+        $this->assertStringContainsString("X-WR-CALNAME:Carol Example's Availability", $body);
+        $this->assertStringContainsString("NAME:Carol Example's Availability", $body);
+    }
+
+    public function test_the_calendar_name_is_plain_availability_without_a_display_name(): void
+    {
+        Principal::forUsername('carol')->update(['displayname' => '']);
+        $body = $this->get($this->publicUrl())->assertOk()->getContent();
+
+        $this->assertStringContainsString('X-WR-CALNAME:Availability', $body);
     }
 
     public function test_an_incomplete_week_fails_instead_of_showing_free_time(): void

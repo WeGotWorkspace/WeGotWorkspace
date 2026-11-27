@@ -57,7 +57,7 @@ final class AvailabilityPublicLinkController
             return response('', 304, $headers);
         }
 
-        return response($ics, 200, $headers + ['Content-Type' => 'text/calendar; charset=utf-8']);
+        return response($ics, 200, $headers + ['Content-Type' => 'text/calendar; charset=utf-8', 'Content-Disposition' => 'inline; filename="availability.ics"']);
     }
 
     private static function username(Request $request): string

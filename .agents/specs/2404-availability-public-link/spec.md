@@ -11,7 +11,7 @@ A person turns on one public link. Anyone holding it can subscribe in Google, Ap
 
 ## Non-goals
 
-- A web page for browsers (open question in plan.md)
+- A web page for browsers (decided: not built; the link is a feed)
 - Several links per person, booking pages, titles or places for outsiders
 - Colleagues' busy times inside the workspace (Goal Product#43, done by Epic #1907)
 - Any change to how the Team API (#1909) answers
@@ -27,7 +27,7 @@ A person turns on one public link. Anyone holding it can subscribe in Google, Ap
 
 ### What the feed is
 
-- **VEVENT, not VFREEBUSY.** Google Calendar, Apple Calendar and Outlook import `VEVENT`s from a subscribed URL and show nothing for `VFREEBUSY` (a long-standing client gap, e.g. Mozilla bug 415376; Google also says nothing official). The existing "busy" mode of published calendars already uses `VEVENT` + `SUMMARY:Busy`. One `VCALENDAR`, `PRODID:-//WeGotWorkspace//Availability//EN`, `X-WR-CALNAME:Availability`, `REFRESH-INTERVAL;VALUE=DURATION:PT1H`, `X-PUBLISHED-TTL:PT1H`. The calendar name carries no person's name.
+- **VEVENT, not VFREEBUSY.** Google Calendar, Apple Calendar and Outlook import `VEVENT`s from a subscribed URL and show nothing for `VFREEBUSY` (a long-standing client gap, e.g. Mozilla bug 415376; Google also says nothing official). The existing "busy" mode of published calendars already uses `VEVENT` + `SUMMARY:Busy`. One `VCALENDAR`, `PRODID:-//WeGotWorkspace//Availability//EN`, `X-WR-CALNAME` and `NAME` set to `{DisplayName}'s Availability` (plain `Availability` when the owner has no display name), `REFRESH-INTERVAL;VALUE=DURATION:PT1H`, `X-PUBLISHED-TTL:PT1H`. The calendar name carries the owner's display name (Wouter's decision, #2404): outsiders who have the link learn whose it is, never what the person does. The response is `text/calendar; charset=utf-8` with `Content-Disposition: inline; filename="availability.ics"`, so one URL both subscribes (`webcal://`, Apple, Google, Outlook, Thunderbird) and downloads as a file.
 - **Per VEVENT exactly these properties:** `UID`, `DTSTAMP`, `DTSTART`, `DTEND` (UTC `Z`), `SUMMARY:Busy`, `TRANSP:OPAQUE`, `CLASS:PUBLIC`. No RRULE, no VTIMEZONE, no VALARM, no organizer, no attendees, no description, no location.
 - **UID is derived**, never copied: `hash_hmac('sha256', "<utcStart>-<utcEnd>", token_hash)` first 32 hex + `@availability`. An event's real UID cannot be derived or compared, and a new link changes every UID.
 - **DTSTAMP** is the Monday 00:00 UTC of the current week, so the body is byte-stable between polls and the `ETag` works.

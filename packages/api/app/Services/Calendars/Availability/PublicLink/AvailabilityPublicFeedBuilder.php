@@ -21,11 +21,12 @@ final class AvailabilityPublicFeedBuilder
      * @param  int  $windowStart  Unix seconds, Monday 00:00 UTC
      * @param  int  $windowEnd  Unix seconds, exclusive
      */
-    public function build(AvailabilityResult $result, int $windowStart, int $windowEnd, string $uidKey, int $stamp): string
+    public function build(AvailabilityResult $result, int $windowStart, int $windowEnd, string $uidKey, int $stamp, string $calendarName = 'Availability'): string
     {
         $out = new VCalendar;
         $out->PRODID = '-//WeGotWorkspace//Availability//EN';
-        $out->add('X-WR-CALNAME', 'Availability');
+        $out->add('X-WR-CALNAME', $calendarName);
+        $out->add('NAME', $calendarName);
         $out->add('REFRESH-INTERVAL', 'PT1H', ['VALUE' => 'DURATION']);
         $out->add('X-PUBLISHED-TTL', 'PT1H');
 

@@ -48,7 +48,7 @@ final class AvailabilityPublicLinkPrivacyTest extends WgwDatabaseTestCase
         $calendar = Reader::read($body);
         $this->assertInstanceOf(VCalendar::class, $calendar);
 
-        $this->assertEqualsCanonicalizing(['PRODID', 'VERSION', 'CALSCALE', 'X-WR-CALNAME', 'REFRESH-INTERVAL', 'X-PUBLISHED-TTL'], array_values(array_unique($this->names($calendar))));
+        $this->assertEqualsCanonicalizing(['PRODID', 'VERSION', 'CALSCALE', 'X-WR-CALNAME', 'NAME', 'REFRESH-INTERVAL', 'X-PUBLISHED-TTL'], array_values(array_unique($this->names($calendar))));
         $events = $calendar->select('VEVENT');
         $this->assertNotEmpty($events);
         foreach ($events as $event) {

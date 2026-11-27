@@ -6,6 +6,7 @@ namespace App\Services\Calendars\Availability\PublicLink;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarAvailabilityLink;
+use App\Models\Principal;
 use App\Models\User;
 use App\Services\Calendars\Availability\AvailabilityCalculator;
 
@@ -61,6 +62,7 @@ final class AvailabilityPublicFeedService
             $first + count($weeks) * self::WEEK_SECONDS,
             (string) $link->token_hash,
             $thisWeek,
+            self::calendarName($username),
         );
     }
 
@@ -72,6 +74,15 @@ final class AvailabilityPublicFeedService
         }
 
         return User::query()->where('username', $username)->where('enabled', true)->exists() ? $username : null;
+    }
+
+    /** "{Name}'s Availability" from the owner's display name; plain "Availability" when none is set. */
+    private static function calendarName(string $username): string
+    {
+        $name = trim((string) (Principal::forUsername($username)->displayname ?? ''));
+        $name = trim((string) preg_replace('/[\x00-\x1f\x7f]+/u', ' ', $name));
+
+        return $name === '' ? 'Availability' : $name."'s Availability";
     }
 
     private static function normalize(string $token): string

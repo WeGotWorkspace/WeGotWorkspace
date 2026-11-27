@@ -24,7 +24,7 @@ Draws from Goal Product#156. Adds one table and one public route, reads the calc
 - **Copy real UIDs or keep RRULE:** rejected. A UID or a recurrence rule lets a recipient tell events apart or correlate with invites.
 - **Return a partial feed when a week is incomplete:** rejected (503). It would show free time that is not free.
 - **Longer-lived `Cache-Control`:** rejected. A revoked link must stop at the next request.
-- **Include the owner's name in the calendar name:** left out; the Goal says outsiders see only "Busy". Open question for the product lead.
+- **Include the owner's name in the calendar name:** decided yes, as "{DisplayName}'s Availability" (Wouter). A web page for the link was dropped: the link is a subscribable feed, and a download of the same `.ics` is enough.
 
 ## Dependencies
 
@@ -32,8 +32,7 @@ Draws from Goal Product#156. Adds one table and one public route, reads the calc
 
 ## Open decisions
 
-- [ ] Web page for browsers (the Goal says "open it in a browser"): a feed link downloads as `.ics` today. Needs a product call on layout and time zone before it is built.
-- [ ] Whether the calendar name should carry the owner's display name.
+None. Decided with Wouter: no web page; the link is a subscribable feed with a file download as an extra.
 
 ## Invariants
 
