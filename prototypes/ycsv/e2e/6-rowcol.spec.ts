@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { cell, clickCell, MOD, nameBox, open, rows } from "./helpers";
+import { cell, clickCell, MOD, nameBox, open, rows, focusHolder, expectCellText } from "./helpers";
 
 async function columnWidths(page: Page) {
   return page.evaluate(() => window.__sheet!.doc.getArray("columns").toArray().map((c) => (c as { get(k: string): unknown }).get("width")));
 }
 
 async function headerOrder(page: Page) {
-  return page.locator('[role="columnheader"] > span:first-child').allInnerTexts();
+  return page.locator('[role="columnheader"]:not(.sx-corner) > span:first-child').allInnerTexts();
 }
 
 async function dragHeader(page: Page, from: string, toX: number, toY: number) {
@@ -53,7 +53,7 @@ test.describe("6 · rows and columns", () => {
     await page.getByTestId("colhead-2").click({ button: "right" });
     await page.getByRole("menuitem", { name: "Delete 1 column" }).click();
     expect(await headerOrder(page)).toEqual(["Product", "Aantal", "Totaal", "Datum", "Notitie"]);
-    await expect(cell(page, 0, 2)).toHaveText("#REF!");
+    await expectCellText(page, 0, 2, "#REF!");
     expect((await rows(page))[0]?.[2]).toBe("=aantal*#REF!*(1+btw)");
     await page.keyboard.press(`${MOD}+z`);
     expect(await headerOrder(page)).toEqual(["Product", "Aantal", "Prijs", "Totaal", "Datum", "Notitie"]);
@@ -110,7 +110,7 @@ test.describe("6 · rows and columns", () => {
     await expect(page.getByRole("menuitem", { name: /^Copy/ })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
-    await expect(page.getByTestId("cell-input")).toBeFocused();
+    await expect(focusHolder(page)).toBeFocused();
     await page.keyboard.press(`${MOD}+Alt+Equal`);
     expect(await rows(page)).toHaveLength(7);
     expect((await rows(page))[1]?.[0]).toBe("");

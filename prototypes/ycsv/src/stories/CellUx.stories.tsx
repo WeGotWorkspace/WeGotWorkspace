@@ -76,10 +76,28 @@ declare global {
       serialize: () => string;
       cells: () => string[][];
     };
+    __sheetB?: Y.Doc;
   }
 }
 
-function Demo({ seed, theme, frozen }: { seed: string; theme: "light" | "dark"; frozen?: number }) {
+function wideSeed(rows: number, cols: number): string {
+  const refs = Array.from({ length: cols }, (_, c) => `k${c + 1}`);
+  const head = `---
+ycsv_version: 1
+name: Wide
+columns:
+${refs.map((r, c) => `  - ref: ${r}\n    name: Kolom ${c + 1}\n    type: number`).join("\n")}
+---
+${refs.join(",")}
+`;
+  const lines: string[] = [];
+  for (let i = 1; i <= rows; i += 1) lines.push(refs.map((_, c) => (c === 2 ? "=k1+k2" : String(i * (c + 1)))).join(","));
+  return head + lines.join("\n") + "\n";
+}
+
+type FocusModel = "descendant" | "cell";
+
+function Demo({ seed, theme, frozen, focusModel, autoFocus }: { seed: string; theme: "light" | "dark"; frozen?: number; focusModel?: FocusModel; autoFocus?: boolean }) {
   const doc = useMemo(() => {
     const d = new Y.Doc();
     fileToDoc(parse(seed), d);
@@ -96,17 +114,21 @@ function Demo({ seed, theme, frozen }: { seed: string; theme: "light" | "dark"; 
     force((n) => n + 1);
   }, [doc]);
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: theme === "dark" ? "#18181b" : "#fff" }}>
-      <SheetGrid doc={doc} theme={theme} />
-    </div>
+    <main style={{ height: "100vh", display: "flex", flexDirection: "column", background: theme === "dark" ? "#18181b" : "#fff" }}>
+      <SheetGrid doc={doc} theme={theme} focusModel={focusModel} autoFocus={autoFocus} />
+    </main>
   );
 }
 
 const meta: Meta<typeof Demo> = {
   title: "Spike 6/Cell UX",
   component: Demo,
-  args: { seed: UX_SEED, theme: "light" },
-  argTypes: { seed: { control: false }, theme: { control: "inline-radio", options: ["light", "dark"] } },
+  args: { seed: UX_SEED, theme: "light", focusModel: "descendant" },
+  argTypes: {
+    seed: { control: false },
+    theme: { control: "inline-radio", options: ["light", "dark"] },
+    focusModel: { control: "inline-radio", options: ["descendant", "cell"] },
+  },
 };
 export default meta;
 
@@ -143,7 +165,7 @@ const PEOPLE = [
 ];
 const CHRIS = { id: "chris", name: "Chris", color: "#e8590c" };
 
-function TwoUsersDemo({ seed, theme }: { seed: string; theme: "light" | "dark" }) {
+function TwoUsersDemo({ seed, theme, focusModel, remoteWindowMs }: { seed: string; theme: "light" | "dark"; focusModel?: FocusModel; remoteWindowMs?: number }) {
   const sessions = useMemo(() => {
     const a = new Y.Doc();
     fileToDoc(parse(seed), a);
@@ -195,24 +217,38 @@ function TwoUsersDemo({ seed, theme }: { seed: string; theme: "light" | "dark" }
   useEffect(() => {
     const doc = sessions.docs[0]!;
     window.__sheet = { doc, serialize: () => serialize(docToFile(doc)), cells: () => docToFile(doc).rows };
+    window.__sheetB = sessions.docs[1];
   }, [sessions]);
 
   const bg = theme === "dark" ? "#18181b" : "#fff";
   const fg = theme === "dark" ? "#e4e4e7" : "#3f3f46";
   return (
-    <div style={{ height: "100vh", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, background: bg }}>
+    <main style={{ height: "100vh", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, background: bg }}>
+      <h1 style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Two people in one sheet</h1>
       {sessions.docs.map((doc, i) => (
         <div key={PEOPLE[i]!.id} style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
           <div style={{ font: "600 12px system-ui", padding: "6px 8px", color: fg }}>
             <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: PEOPLE[i]!.color, marginRight: 6 }} />
             {PEOPLE[i]!.name}'s screen
           </div>
-          <SheetGrid doc={doc} theme={theme} awareness={sessions.aws[i]} user={PEOPLE[i]} />
+          <SheetGrid doc={doc} theme={theme} awareness={sessions.aws[i]} user={PEOPLE[i]} focusModel={focusModel} remoteWindowMs={remoteWindowMs} />
         </div>
       ))}
-    </div>
+    </main>
   );
 }
 
 export const TwoUsers: Story = { render: (args) => <TwoUsersDemo seed={args.seed} theme={args.theme} /> };
 export const TwoUsersDark: Story = { args: { theme: "dark" }, render: (args) => <TwoUsersDemo seed={args.seed} theme={args.theme} /> };
+
+/* ---- Spike 8: accessibility ------------------------------------------------------------- */
+/** The proposed focus model: DOM focus on the active gridcell. */
+export const A11yCell: Story = { args: { focusModel: "cell" } };
+/** Rows and columns windowed: 10 000 rows × 30 columns. */
+export const A11yWide: Story = { args: { seed: wideSeed(10_000, 30), focusModel: "cell" } };
+export const A11yWideDescendant: Story = { args: { seed: wideSeed(10_000, 30), focusModel: "descendant" } };
+/** Two people; remote digest window shortened to 1.5 s for tests and manual screen reader runs. */
+export const A11yTwoUsers: Story = {
+  args: { focusModel: "cell" },
+  render: (args) => <TwoUsersDemo seed={args.seed} theme={args.theme} focusModel={args.focusModel} remoteWindowMs={1500} />,
+};

@@ -18,6 +18,7 @@
     "yjs": "^13.6.27"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.0",
     "@playwright/test": "1.65.0",
     "@storybook/react-vite": "^9.1.10",
     "@testing-library/react": "^16.3.0",

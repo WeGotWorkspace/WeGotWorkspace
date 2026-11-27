@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cell, clickCell, MOD, nameBox, open, rawAt } from "./helpers";
+import { cell, clickCell, MOD, nameBox, open, rawAt, focusHolder } from "./helpers";
 
 test.describe("2 · editing", () => {
   test.beforeEach(async ({ page }) => open(page));
@@ -104,7 +104,7 @@ test.describe("2 · editing", () => {
     await page.getByTestId("formula-bar").fill("7");
     await page.keyboard.press("Enter");
     expect(await rawAt(page, 1, 1)).toBe("7");
-    await expect(page.getByTestId("cell-input")).toBeFocused();
+    await expect(focusHolder(page)).toBeFocused();
     await expect(cell(page, 1, 3)).toHaveText("€ 25,33");
   });
 });

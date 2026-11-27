@@ -590,3 +590,84 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---- spike 8: accessibility ---------------------------------------------- */
+/* Cell focus model: the focused cell is an empty editing host; its value is drawn here. */
+.sx-cell.is-host {
+  outline: none;
+  caret-color: transparent;
+  cursor: cell;
+}
+.sx-cell.is-host::before {
+  content: attr(data-text);
+}
+.sx-cell.is-host.is-composing::before {
+  content: none;
+}
+.sx-cell.is-host.is-composing {
+  caret-color: auto;
+  background: var(--sx-bg, #fff);
+  z-index: 3;
+}
+.sx-root:has(.sx-cell.is-host:focus-visible) .sx-o-active {
+  box-shadow: 0 0 0 1px var(--sx-bg, #fff), 0 0 0 3px #0045ff;
+}
+input.sx-namebox {
+  font: inherit;
+  background: transparent;
+  width: 120px;
+  color: inherit;
+  min-width: 0;
+}
+input.sx-namebox:focus {
+  outline: 2px solid #0045ff;
+  outline-offset: -2px;
+}
+.sx-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.2);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+.sx-dialog {
+  background: var(--sx-bg, #fff);
+  color: inherit;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 280px;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.2);
+  font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.sx-dialog-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.sx-dialog-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.sx-dialog-row input {
+  width: 90px;
+}
+.sx-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Spike 8: the ref under a column name failed 4.5:1 on the selected-column tint (axe). */
+.sx-root[data-theme="light"] .sx-colhead .sx-ref {
+  color: #52525b;
+}
+.sx-root[data-theme="light"] .sx-option-kind,
+.sx-root[data-theme="light"] .sx-option-detail,
+.sx-root[data-theme="light"] .sx-menu kbd,
+.sx-root[data-theme="light"] [role="menuitem"] kbd {
+  color: #52525b;
+}

@@ -17,6 +17,7 @@ import { isCellError, type Value } from "../ycsv-formula/eval";
 import { formatValue } from "../ycsv-grid/format";
 import { useSheet } from "../ycsv-grid/useSheet";
 import { readIncoming, toHtml, toTsv, type Incoming, type YcsvClip } from "./clipboard";
+import { NameBox, WidthDialog } from "./A11yParts";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
 import { fillSeries } from "./fill";
 import {
@@ -72,6 +73,7 @@ import {
   type Selection,
 } from "./selection";
 import { shiftFormula } from "./shift";
+import { cellDetails, cellName, cellPlace, headerLabel, presenceSpeech, readableOn, RemoteDigest, selectionSpeech } from "./a11y";
 import { readSnap } from "./snapshot";
 import "./SheetGrid.css";
 
@@ -82,6 +84,18 @@ type Props = {
   height?: number | string;
   awareness?: Awareness;
   user?: User;
+  /**
+   * Spike 8. "descendant": one <input> keeps DOM focus and points at the active gridcell with
+   * aria-activedescendant (spike 6). "cell": the active gridcell itself takes DOM focus (roving
+   * focus) and is a plain-text editing host, so IME, dead keys and clipboard still land on it.
+   */
+  focusModel?: "descendant" | "cell";
+  /** Announce collaborators' edits elsewhere in the sheet (digest, max one line per 10 s). */
+  announceRemoteEdits?: boolean;
+  /** Digest window for remote announcements (tests shorten it). */
+  remoteWindowMs?: number;
+  /** Put focus in the sheet on mount (stories, the VoiceOver script). */
+  autoFocus?: boolean;
 };
 
 type EditState = {
@@ -154,7 +168,18 @@ function valueToString(value: Value | undefined): string {
   return String(value);
 }
 
-export function SheetGrid({ doc, theme = "light", height = "100%", awareness, user }: Props) {
+export function SheetGrid({
+  doc,
+  theme = "light",
+  height = "100%",
+  awareness,
+  user,
+  focusModel = "descendant",
+  announceRemoteEdits = true,
+  remoteWindowMs = 10_000,
+  autoFocus = false,
+}: Props) {
+  const cellFocus = focusModel === "cell";
   const { columns, rows, values } = useSheet(doc);
   const gridId = useId().replaceAll(":", "");
   const rowCount = rows.length;
@@ -199,11 +224,20 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const [drop, setDrop] = useState<{ axis: "row" | "col"; index: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [peers, setPeers] = useState<{ clientId: number; user: User; ranges: Range[]; active: Cell }[]>([]);
-  const [announce, setAnnounce] = useState("");
+  /** Polite live region. Two slots, alternated, so the same text twice is still spoken. */
+  const [live, setLive] = useState<{ text: string; n: number }>({ text: "", n: 0 });
+  const say = useCallback((text: string) => {
+    if (text) setLive((l) => ({ text, n: l.n + 1 }));
+  }, []);
+  const [widthDialog, setWidthDialog] = useState<{ cols: number[] } | null>(null);
+  /** Composition (IME / dead key) running in the focused cell (cell focus model). */
+  const [composing, setComposing] = useState(false);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const barRef = useRef<HTMLInputElement | null>(null);
+  const nameBoxRef = useRef<HTMLInputElement | null>(null);
+  const barPointer = useRef(false);
   const drag = useRef<Drag | null>(null);
   const clipRef = useRef<YcsvClip | null>(null);
   const valuesOnlyNext = useRef(false);
@@ -299,6 +333,12 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
 
   // ---- derived ---------------------------------------------------------------
   const colRef = useCallback((c: number) => fileRef(columns[c]?.ref ?? `col${c + 1}`), [columns]);
+  /** Column name as a screen reader user hears it in announcements. */
+  const headerName = useCallback((c: number) => columns[c]?.name ?? columns[c]?.ref ?? `column ${c + 1}`, [columns]);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
   const rawAt = useCallback((r: number, c: number) => rows[r]?.cells[columns[c]?.colId ?? ""] ?? "", [rows, columns]);
   const valueAt = useCallback(
     (r: number, c: number) => values.get(`${columns[c]?.ref ?? ""}@${rows[r]?.rowId ?? ""}`),
@@ -375,8 +415,114 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     return () => awareness.off("change", read);
   }, [awareness, rows, columns]);
 
+  // ---- remote changes → screen reader digest (spike 8) ---------------------------
+  const digestRef = useRef<RemoteDigest | null>(null);
+  useEffect(() => {
+    const d = new RemoteDigest(say, { windowMs: remoteWindowMs, cellEdits: announceRemoteEdits });
+    digestRef.current = d;
+    return () => d.dispose();
+  }, [say, remoteWindowMs, announceRemoteEdits]);
+  const peerNames = useRef(new Map<number, string>());
+  useEffect(() => {
+    if (!awareness) return;
+    const seen = peerNames.current;
+    awareness.getStates().forEach((st, id) => {
+      const name = (st as { user?: User }).user?.name;
+      if (name && id !== awareness.clientID) seen.set(id, name);
+    });
+    const onChange = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
+      for (const id of [...added, ...updated]) {
+        if (id === awareness.clientID) continue;
+        const name = (awareness.getStates().get(id) as { user?: User } | undefined)?.user?.name;
+        if (name && !seen.has(id)) {
+          seen.set(id, name);
+          digestRef.current?.push({ kind: "join", who: name });
+        }
+      }
+      for (const id of removed) {
+        const name = seen.get(id);
+        if (name) digestRef.current?.push({ kind: "leave", who: name });
+        seen.delete(id);
+      }
+    };
+    awareness.on("change", onChange);
+    return () => awareness.off("change", onChange);
+  }, [awareness]);
+  useEffect(() => {
+    const rowsArr = doc.getArray<Y.Map<unknown>>("rows");
+    const colsArr = doc.getArray<Y.Map<unknown>>("columns");
+    const author = (tr: Y.Transaction) => {
+      for (const [client, clock] of tr.afterState) {
+        if ((tr.beforeState.get(client) ?? 0) < clock) return peerNames.current.get(client) ?? "Someone";
+      }
+      return "Someone";
+    };
+    const onRows = (events: Y.YEvent<Y.AbstractType<unknown>>[], tr: Y.Transaction) => {
+      if (tr.local) return;
+      const who = author(tr);
+      const act = selRef.current.active;
+      const activeRowId = rowsRef.current[act.r]?.rowId;
+      const activeColId = columnsRef.current[act.c]?.colId;
+      let cells = 0;
+      let inserted = 0;
+      let deleted = 0;
+      for (const ev of events) {
+        if (ev.target === rowsArr) {
+          for (const d of ev.changes.delta) {
+            if (d.insert) inserted += (d.insert as unknown[]).length;
+            if (d.delete) deleted += d.delete;
+          }
+        } else if (ev.target instanceof Y.Map && ev.target.parent instanceof Y.Map) {
+          const rowId = ev.target.parent.get("rowId");
+          for (const key of (ev as Y.YMapEvent<unknown>).keysChanged) {
+            if (rowId === activeRowId && key === activeColId && !editRef.current) {
+              const raw = String(ev.target.get(key) ?? "");
+              digestRef.current?.push({ kind: "here", who, place: "this cell", value: raw.startsWith("=") ? "a formula" : raw });
+            } else cells += 1;
+          }
+        }
+      }
+      if (inserted || deleted) digestRef.current?.push({ kind: "rows", who, inserted, deleted });
+      if (cells) digestRef.current?.push({ kind: "cells", who, count: cells });
+    };
+    const onCols = (ev: Y.YArrayEvent<Y.Map<unknown>>, tr: Y.Transaction) => {
+      if (tr.local) return;
+      let inserted = 0;
+      let deleted = 0;
+      for (const d of ev.changes.delta) {
+        if (d.insert) inserted += (d.insert as unknown[]).length;
+        if (d.delete) deleted += d.delete;
+      }
+      if (inserted || deleted) digestRef.current?.push({ kind: "cols", who: author(tr), inserted, deleted });
+    };
+    rowsArr.observeDeep(onRows);
+    colsArr.observe(onCols);
+    return () => {
+      rowsArr.unobserveDeep(onRows);
+      colsArr.unobserve(onCols);
+    };
+  }, [doc]);
+
   // ---- focus helpers -----------------------------------------------------------
-  const focusGrid = useCallback(() => inputRef.current?.focus({ preventScroll: true }), []);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  /** The grid (not the formula bar or name box) owns focus, or should get it back after a re-render. */
+  const gridOwnsFocus = useRef(false);
+  /** focusGrid() was called; the next render must put focus on the active cell. */
+  const wantFocus = useRef(false);
+  const activeCellEl = () => document.getElementById(`${gridId}-cell-${selRef.current.active.r}-${selRef.current.active.c}`);
+  const focusGrid = useCallback(() => {
+    gridOwnsFocus.current = true;
+    if (!cellFocus) {
+      inputRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    // Cell focus: focus the active gridcell now; the layout effect below repeats it after the render.
+    wantFocus.current = true;
+    const el = activeCellEl();
+    el?.focus({ preventScroll: true });
+    if (el && document.activeElement === el) wantFocus.current = false;
+    // gridId and selRef are stable.
+  }, [cellFocus]);
   const flash = useCallback((text: string) => {
     setToast(text);
     window.setTimeout(() => setToast((t) => (t === text ? null : t)), 2200);
@@ -431,8 +577,9 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
 
   const cancel = useCallback(() => {
     setEdit(null);
+    say("Edit cancelled");
     focusGrid();
-  }, [focusGrid]);
+  }, [focusGrid, say]);
 
   /** Keep the editor's draft pointing at the same rows when peers insert or delete rows. */
   const idDraft = useRef<string | null>(null);
@@ -496,7 +643,9 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     const next = insertAt(e.draft, e.caret, e.picked, text);
     caretSync.current = true;
     setEdit({ ...e, draft: next.draft, caret: next.caret, picked: text.length, pickCursor: cursor, pickAnchor: anchor });
-  }, [colRef]);
+    // The input's value changed under the caret; screen readers do not reliably read that.
+    say(`${text}, ${range.r1 === range.r2 && range.c1 === range.c2 ? cellPlace(headerName(cursor.c), cursor.r) : "range"}`);
+  }, [colRef, headerName, say]);
 
   const acceptSuggestion = useCallback(
     (index: number) => {
@@ -525,8 +674,9 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
         }
       }
       writeCells(doc, writes);
+      say(writes.length ? `Cleared ${writes.length === 1 ? "1 cell" : `${writes.length} cells`}` : "Nothing to clear");
     },
-    [doc],
+    [doc, say],
   );
 
   const applyFill = useCallback(
@@ -562,8 +712,9 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       }
       writeCells(doc, writes);
       setSel((s) => ({ ...s, anchor: { r: target.r1, c: target.c1 }, ranges: [target] }));
+      say(`Filled ${writes.length === 1 ? "1 cell" : `${writes.length} cells`}`);
     },
-    [doc],
+    [doc, say],
   );
 
   /** Double-click on the fill handle: fill down as far as the neighbouring column has data. */
@@ -603,8 +754,9 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           }
       }
       writeCells(doc, writes);
+      say(writes.length ? `Filled ${axis} ${writes.length === 1 ? "1 cell" : `${writes.length} cells`}` : "Nothing to fill");
     },
-    [doc],
+    [doc, say],
   );
 
   // ---- clipboard -------------------------------------------------------------
@@ -660,7 +812,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       event.clipboardData.setData("text/html", toHtml(built.display, built.clip));
       clipRef.current = built.clip;
       setAnts(lastRange(selRef.current));
-      setAnnounce(cut ? "Cut" : "Copied");
+      say(cut ? "Cut" : "Copied");
     },
     [buildClip],
   );
@@ -724,7 +876,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           clipRef.current = null;
           setAnts(null);
         }
-        setAnnounce("Pasted");
+        say(`Pasted ${p.r2 - p.r1 + 1} by ${p.c2 - p.c1 + 1}`);
       }
     },
     [doc, columns],
@@ -808,22 +960,59 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const insertRowsAt = (at: number, count: number) => {
     insertRows(doc, at, count);
     select(selectRows(at, at + count - 1, { rows: rowCount + count, cols: colCount }), null);
+    say(`Inserted ${count === 1 ? "1 row" : `${count} rows`} at row ${at + 1}`);
   };
   const insertColsAt = (at: number, count: number) => {
     insertColumns(doc, at, count);
     select(selectCols(at, at + count - 1, { rows: rowCount, cols: colCount + count }), null);
+    say(`Inserted ${count === 1 ? "1 column" : `${count} columns`}`);
+  };
+  /** Keyboard route for what header drag does with the mouse. */
+  const moveSelected = (axis: "row" | "col", delta: -1 | 1) => {
+    const range = lastRange(selRef.current);
+    const from = axis === "row" ? range.r1 : range.c1;
+    const count = axis === "row" ? range.r2 - range.r1 + 1 : range.c2 - range.c1 + 1;
+    const max = axis === "row" ? rowCount : colCount;
+    const start = from + delta;
+    if (start < 0 || start + count > max) {
+      say(`Cannot move ${axis === "row" ? "rows" : "columns"} further`);
+      return;
+    }
+    const to = delta < 0 ? from - 1 : from + count + 1;
+    if (axis === "row") {
+      moveRows(doc, from, count, to);
+      setSel(selectRows(start, start + count - 1, bounds, selRef.current.active.c));
+      say(`Moved to row ${start + 1}`);
+    } else {
+      moveColumns(doc, from, count, to);
+      setSel(selectCols(start, start + count - 1, bounds, selRef.current.active.r));
+      say(`Moved to column ${start + 1}`);
+    }
+  };
+  /** Keyboard route for fill-handle drags: extend the series at the top of the range into the rest. */
+  const fillSeriesDown = () => {
+    const range = lastRange(selRef.current);
+    let end = range.r1;
+    while (end + 1 < range.r2 && rawAt(end + 1, range.c1) !== "") end += 1;
+    if (end >= range.r2) {
+      say("Select the series and the empty cells to fill");
+      return;
+    }
+    applyFill({ ...range, r2: end }, range, false);
   };
   const deleteSelectedRows = () => {
     const idx = new Set<number>();
     for (const range of selRef.current.ranges) for (let r = range.r1; r <= range.r2; r += 1) idx.add(r);
     deleteRows(doc, [...idx]);
     setSel(single({ r: Math.min(...idx), c: selRef.current.active.c }));
+    say(`Deleted ${idx.size === 1 ? "1 row" : `${idx.size} rows`}`);
   };
   const deleteSelectedCols = () => {
     const idx = new Set<number>();
     for (const range of selRef.current.ranges) for (let c = range.c1; c <= range.c2; c += 1) idx.add(c);
     deleteColumns(doc, [...idx]);
     setSel(single({ r: selRef.current.active.r, c: Math.min(...idx) }));
+    say(`Deleted ${idx.size === 1 ? "1 column" : `${idx.size} columns`}`);
   };
 
   // ---- menu ------------------------------------------------------------------
@@ -859,6 +1048,28 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       items.push({ id: "delete-cols", label: `Delete ${plural(colsN, "column", "columns")}`, onSelect: deleteSelectedCols });
     }
     items.push("sep", { id: "clear", label: "Clear contents", shortcut: "Delete", onSelect: () => clearRanges(sel.ranges) });
+    // Spike 8: keyboard routes for what is otherwise mouse-only (fill handle, header drag, resize).
+    if (kind === "cell") {
+      items.push(
+        { id: "fill-down", label: "Fill down", shortcut: `${MOD}D`, onSelect: () => fillCopy("down") },
+        { id: "fill-right", label: "Fill right", shortcut: `${MOD}R`, onSelect: () => fillCopy("right") },
+        { id: "fill-series", label: "Fill series down", disabled: rowsN < 2, onSelect: fillSeriesDown },
+        { id: "fill-to-data", label: "Fill down to end of data", onSelect: fillDownToNeighbour },
+      );
+    }
+    if (kind !== "col") {
+      items.push(
+        { id: "move-rows-up", label: rowsN === 1 ? "Move row up" : "Move rows up", shortcut: `${isMac ? "⌥⇧" : "Alt+Shift+"}↑`, disabled: range.r1 === 0, onSelect: () => moveSelected("row", -1) },
+        { id: "move-rows-down", label: rowsN === 1 ? "Move row down" : "Move rows down", shortcut: `${isMac ? "⌥⇧" : "Alt+Shift+"}↓`, disabled: range.r2 >= rowCount - 1, onSelect: () => moveSelected("row", 1) },
+      );
+    }
+    if (kind !== "row") {
+      items.push(
+        { id: "move-cols-left", label: colsN === 1 ? "Move column left" : "Move columns left", shortcut: `${isMac ? "⌥⇧" : "Alt+Shift+"}←`, disabled: range.c1 === 0, onSelect: () => moveSelected("col", -1) },
+        { id: "move-cols-right", label: colsN === 1 ? "Move column right" : "Move columns right", shortcut: `${isMac ? "⌥⇧" : "Alt+Shift+"}→`, disabled: range.c2 >= colCount - 1, onSelect: () => moveSelected("col", 1) },
+        { id: "col-width", label: "Column width…", onSelect: () => setWidthDialog({ cols: Array.from({ length: colsN }, (_, i) => range.c1 + i) }) },
+      );
+    }
     if (kind === "col") items.push({ id: "autofit", label: "Fit column width to content", onSelect: () => autoFit(Array.from({ length: colsN }, (_, i) => range.c1 + i)) });
     if (kind !== "col") {
       items.push(
@@ -878,6 +1089,12 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     const mod = modKey(e);
     const arrow: Record<string, Dir> = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
     const dir = arrow[e.key];
+    if (dir && e.altKey && e.shiftKey && !mod) {
+      e.preventDefault();
+      if (dir === "up" || dir === "down") moveSelected("row", dir === "up" ? -1 : 1);
+      else moveSelected("col", dir === "left" ? -1 : 1);
+      return;
+    }
     if (dir) {
       e.preventDefault();
       if (e.altKey) return;
@@ -892,6 +1109,27 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       return;
     }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (e.altKey && e.shiftKey && e.code === "KeyP") {
+      // "Where is everyone?" Peer carets are never announced as they move; this asks.
+      e.preventDefault();
+      say(presenceSpeech(peers.map((p) => ({ name: p.user.name, place: cellPlace(headerName(p.active.c), p.active.r) }))));
+      return;
+    }
+    if (e.key === "F6") {
+      // Leave the sheet without a pointer: Tab moves between cells, so F6 moves between regions.
+      e.preventDefault();
+      gridOwnsFocus.current = false;
+      nameBoxRef.current?.focus();
+      nameBoxRef.current?.select();
+      return;
+    }
+    if (e.ctrlKey && !e.metaKey && k === "g") {
+      e.preventDefault();
+      gridOwnsFocus.current = false;
+      nameBoxRef.current?.focus();
+      nameBoxRef.current?.select();
+      return;
+    }
     if (e.key === "Tab") {
       e.preventDefault();
       select(cycleWithin(s, e.shiftKey ? "left" : "right", bounds));
@@ -929,10 +1167,16 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       select(selectAll(bounds, s.active), null);
     } else if (mod && k === "z") {
       e.preventDefault();
-      if (e.shiftKey) undo.redo();
-      else undo.undo();
+      if (e.shiftKey) {
+        if (undo.canRedo()) say("Redone");
+        undo.redo();
+      } else {
+        if (undo.canUndo()) say("Undone");
+        undo.undo();
+      }
     } else if (mod && k === "y" && !isMac) {
       e.preventDefault();
+      if (undo.canRedo()) say("Redone");
       undo.redo();
     } else if (mod && k === "d") {
       e.preventDefault();
@@ -1010,7 +1254,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     } else if (e.key === "F2") {
       e.preventDefault();
       setEdit({ ...cur, mode: cur.mode === "enter" ? "edit" : "enter" });
-      setAnnounce(cur.mode === "enter" ? "Edit mode: arrows move the caret" : "Point mode: arrows pick cells");
+      say(cur.mode === "enter" ? "Edit mode: arrows move the caret" : "Point mode: arrows pick cells");
     } else if (e.key.startsWith("Arrow")) {
       const dir = ({ ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" } as const)[e.key as "ArrowUp"];
       const pointing = wantsRef(cur.draft, cur.caret, cur.picked) && (cur.mode === "enter" || cur.picked > 0);
@@ -1039,6 +1283,50 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     const cur = editRef.current;
     if (cur) editKey(e, cur);
     else if (source === "cell") navKey(e);
+    else if (e.key === "Escape" || e.key === "F6") {
+      e.preventDefault();
+      focusGrid();
+    } else if (e.key === "Enter" || e.key === "F2") {
+      e.preventDefault();
+      startEdit("edit", undefined, "bar");
+    }
+  };
+
+  /** Cell focus model: keys on the focused gridcell go through the same navigation map. */
+  const onCellKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.nativeEvent.isComposing || e.key === "Dead" || e.key === "Process") return;
+    navKey(e as unknown as KeyboardEvent<HTMLInputElement>);
+  };
+
+  /**
+   * Cell focus model: text arrived in the focused cell (typing, IME, dead key, dictation).
+   * Move it into the real editor. During a composition wait for compositionend, so the IME
+   * finishes in the cell and its result becomes the draft.
+   */
+  const onCellInput = (el: HTMLDivElement, compositionEnded = false) => {
+    if (composing && !compositionEnded) return;
+    const text = el.textContent ?? "";
+    if (!text) return;
+    el.textContent = "";
+    const { r, c } = selRef.current.active;
+    if (!rows[r] || !columns[c]) return;
+    scrollIntoView({ r, c });
+    setEdit({ r, c, mode: "enter", draft: text, caret: text.length, picked: 0, pickAnchor: null, pickCursor: null, source: "cell" });
+    setAcDismissed(null);
+    setAcIndex(0);
+    caretSync.current = true;
+  };
+
+  const goTo = (text: string) => {
+    const parts = text.trim().split(":");
+    const a = parts[0] ? resolver(parts[0]) : null;
+    const b = parts[1] ? resolver(parts[1]) : a;
+    if (!a || !b) {
+      say(`${text} not found`);
+      return;
+    }
+    select({ active: a, anchor: a, ranges: [rangeOf(a, b)] }, a);
+    focusGrid();
   };
 
   const onInputChange = (value: string, caret: number, source: "cell" | "bar") => {
@@ -1048,7 +1336,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       const { r, c } = selRef.current.active;
       if (!rows[r] || !columns[c]) return;
       scrollIntoView({ r, c });
-      setEdit({ r, c, mode: "enter", draft: value, caret, picked: 0, pickAnchor: null, pickCursor: null, source });
+      setEdit({ r, c, mode: source === "bar" ? "edit" : "enter", draft: value, caret, picked: 0, pickAnchor: null, pickCursor: null, source });
       setAcDismissed(null);
       setAcIndex(0);
       return;
@@ -1069,7 +1357,40 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     else if (clientX < rect.left + ROWHEAD_W + 4 && el.scrollLeft > 0) el.scrollLeft -= 20;
   };
 
+  /**
+   * Spike 8: assistive tech "activate" (VoiceOver double-tap on iOS, VO+Space, NVDA/JAWS default
+   * action in browse mode) fires a bare click with no pointer or mouse events before it. Treat
+   * it like a tap: select the cell, header or row; activating the active cell again edits it.
+   */
+  const lastPointerDownAt = useRef(0);
+  const onAtClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (performance.now() - lastPointerDownAt.current < 1000) return;
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[role="gridcell"], [role="columnheader"], [role="rowheader"]');
+    if (!t) return;
+    const role = t.getAttribute("role");
+    if (role === "gridcell") {
+      const m = /-cell-(\d+)-(\d+)$/.exec(t.id);
+      if (!m) return;
+      const cell = { r: Number(m[1]), c: Number(m[2]) };
+      const s = selRef.current;
+      if (s.active.r === cell.r && s.active.c === cell.c && s.ranges.length === 1 && !editRef.current) startEdit("edit");
+      else {
+        select(single(cell));
+        focusGrid();
+      }
+    } else if (role === "columnheader") {
+      const c = Number(t.getAttribute("aria-colindex")) - 2;
+      if (c >= 0) select(selectCols(c, c, bounds, selRef.current.active.r), null);
+      focusGrid();
+    } else {
+      const r = Number(t.closest('[role="row"]')?.getAttribute("aria-rowindex")) - 2;
+      if (r >= 0) select(selectRows(r, r, bounds, selRef.current.active.c), null);
+      focusGrid();
+    }
+  };
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    lastPointerDownAt.current = performance.now();
     const el = scrollerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -1322,10 +1643,29 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     openMenuAt(e.clientX, e.clientY, kind);
   };
 
+  useEffect(() => {
+    if (autoFocus) window.setTimeout(focusGrid, 50);
+    // Mount only.
+  }, []);
+
   // Keep focus in the grid input when it remounts or selection changes.
   useEffect(() => {
     if (!edit && !menu && document.activeElement === document.body) focusGrid();
   }, [edit, menu, focusGrid]);
+
+  // Cell focus model: DOM focus follows the active cell. Runs after every render because the
+  // active cell's element can change without the selection changing (a row moved, a peer
+  // inserted rows above, the window scrolled it out and back in).
+  useLayoutEffect(() => {
+    if (!cellFocus || edit || menu || !gridOwnsFocus.current) return;
+    const el = activeCellEl();
+    if (!el || document.activeElement === el) return;
+    const current = document.activeElement;
+    const inRoot = !!current && !!rootRef.current?.contains(current);
+    const elsewhereInBar = current === barRef.current || (current as HTMLElement | null)?.dataset?.testid === "namebox";
+    if (wantFocus.current || current === document.body || current === null || (inRoot && !elsewhereInBar)) el.focus({ preventScroll: true });
+    if (document.activeElement === el) wantFocus.current = false;
+  });
 
   // ---- render ----------------------------------------------------------------
   const bodyRows = Math.max(0, rowCount - frozen);
@@ -1334,6 +1674,22 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const first = frozen + Math.max(0, Math.floor(scroll.top / rowH) - 4);
   const last = Math.min(rowCount - 1, frozen + Math.ceil((scroll.top + viewH) / rowH) + 4);
   const active = sel.active;
+
+  // Spike 8: columns are windowed too. Every rendered row (header row included) renders the
+  // SAME column set in the same DOM order. Browsers build the table model from DOM position,
+  // not from aria-colindex, so a row with an extra or missing cell would pair cells with the
+  // wrong column header. The active (and edited) cell's column and row are always rendered,
+  // even when scrolled out of view, so focus / aria-activedescendant never points at nothing.
+  const firstCol = Math.max(0, colAt(scroll.left) - 2);
+  const lastCol = Math.min(colCount - 1, colAt(scroll.left + Math.max(0, scroll.w - ROWHEAD_W)) + 2);
+  const visCols: number[] = [];
+  for (let c = firstCol; c <= lastCol; c += 1) visCols.push(c);
+  for (const extra of [active.c, edit?.c]) if (extra !== undefined && extra < colCount && !visCols.includes(extra)) visCols.push(extra);
+  visCols.sort((a, b) => a - b);
+  const bodyRowIdx: number[] = [];
+  for (let r = first; r <= last; r += 1) bodyRowIdx.push(r);
+  for (const extra of [active.r, edit?.r]) if (extra !== undefined && extra >= frozen && extra < rowCount && !bodyRowIdx.includes(extra)) bodyRowIdx.push(extra);
+  bodyRowIdx.sort((a, b) => a - b);
 
   const selCols = new Set<number>();
   const selRows = new Set<number>();
@@ -1358,17 +1714,25 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       <div key={row.rowId} role="row" aria-rowindex={r + 2} className="sx-row" style={{ top, height: rowH, width: totalW + ROWHEAD_W }}>
         <div
           role="rowheader"
+          aria-colindex={1}
           className={`sx-rowhead${wholeRowSet.has(r) ? " is-whole" : selRows.has(r) ? " is-sel" : ""}`}
           style={{ position: "sticky", left: 0, width: ROWHEAD_W, height: rowH, zIndex: 2, background: "var(--sx-head-bg)", borderRight: "1px solid var(--sx-line-strong)" }}
         >
           {r + 1}
         </div>
-        {columns.map((col, c) => {
+        {visCols.map((c) => {
+          const col = columns[c]!;
           const value = values.get(`${col.ref}@${row.rowId}`);
           const err = isCellError(value);
           const selected = isSelected(sel, r, c);
           const isActive = r === active.r && c === active.c;
           const text = value === undefined || value === "" ? "" : showValue(value, col);
+          const shown = isActive && edit ? "" : text;
+          const name = cellName(shown, err ? (value as string) : null);
+          // Cell focus model: the active cell is the focus target and a plain-text editing host.
+          // Its text is drawn by CSS (data-text) so the editable content starts empty: whatever
+          // the user types, composes (IME, dead keys) or pastes lands in an empty host.
+          const host = cellFocus && isActive && !edit;
           return (
             <div
               key={col.colId}
@@ -1376,11 +1740,34 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
               role="gridcell"
               aria-colindex={c + 2}
               aria-selected={selected}
+              aria-label={host || err ? name : undefined}
+              aria-describedby={isActive && activeDetails ? `${gridId}-desc` : undefined}
               title={err ? ERROR_HELP[value as string] : undefined}
-              className={`sx-cell${typeof value === "number" ? " is-num" : ""}${err ? " is-error" : ""}${isActive ? " is-active" : ""}`}
+              className={`sx-cell${typeof value === "number" ? " is-num" : ""}${err ? " is-error" : ""}${isActive ? " is-active" : ""}${host ? " is-host" : ""}${host && composing ? " is-composing" : ""}`}
               style={{ left: ROWHEAD_W + (lefts[c] ?? 0), width: widths[c] }}
+              {...(host
+                ? {
+                    tabIndex: 0,
+                    contentEditable: "plaintext-only" as const,
+                    suppressContentEditableWarning: true,
+                    spellCheck: false,
+                    inputMode: "none" as const,
+                    "data-text": shown,
+                    "data-testid": "focus-cell",
+                    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => onCellKeyDown(e),
+                    onInput: (e: React.FormEvent<HTMLDivElement>) => onCellInput(e.currentTarget),
+                    onCompositionStart: () => setComposing(true),
+                    onCompositionEnd: (e: React.CompositionEvent<HTMLDivElement>) => {
+                      setComposing(false);
+                      onCellInput(e.currentTarget, true);
+                    },
+                    onCopy: (e: ClipboardEvent<HTMLDivElement>) => onCopyOrCut(e as unknown as ClipboardEvent<HTMLInputElement>, false),
+                    onCut: (e: ClipboardEvent<HTMLDivElement>) => onCopyOrCut(e as unknown as ClipboardEvent<HTMLInputElement>, true),
+                    onPaste: (e: ClipboardEvent<HTMLDivElement>) => onPaste(e as unknown as ClipboardEvent<HTMLInputElement>),
+                  }
+                : {})}
             >
-              {isActive && edit ? "" : text}
+              {host ? null : shown}
             </div>
           );
         })}
@@ -1421,7 +1808,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       if (b)
         items.push(
           <div key={`p${p.clientId}`} className="sx-o sx-o-peer" style={{ ...b, color: p.user.color }}>
-            <span className="sx-o-peer-label" style={{ background: p.user.color }}>
+            <span className="sx-o-peer-label" style={{ background: p.user.color, color: readableOn(p.user.color) }}>
               {p.user.name}
             </span>
           </div>,
@@ -1467,7 +1854,17 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const navX = Math.max(ROWHEAD_W, Math.min(cellX, scroll.w - cellW));
   const navY = Math.max(HEADER_H, Math.min(cellY, scroll.h - rowH));
   const inputBox = edit ? { left: cellX, top: cellY, width: editorW, height: rowH } : { left: navX, top: navY, width: cellW, height: rowH };
-  const activeRendered = active.r < frozen || (active.r >= first && active.r <= last);
+  // The active row and column are always rendered (see visCols / bodyRowIdx).
+  const activeRendered = active.r < rowCount && active.c < colCount;
+  const activeRaw = activeRendered ? fileFormAt(active.r, active.c) : "";
+  const activeValue = activeRendered ? valueAt(active.r, active.c) : undefined;
+  const activeDetails = edit
+    ? ""
+    : cellDetails({
+        formula: activeRaw.startsWith("=") ? activeRaw : null,
+        errorHelp: isCellError(activeValue) ? ERROR_HELP[activeValue as string] ?? null : null,
+        peers: peers.filter((p) => p.active.r === active.r && p.active.c === active.c).map((p) => p.user.name),
+      });
   const isFormula = !!edit && edit.draft.startsWith("=");
   const acId = `${gridId}-ac`;
 
@@ -1502,16 +1899,49 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     return { sum, count, nums };
   }, [sel, valueAt]);
 
+  // Range size is not expressed by focus (focus stays on the active cell): say it, debounced so
+  // holding Shift+arrow gives one line when the key is released, not one per step.
+  const selKey = sel.ranges.map((x) => `${x.r1},${x.c1},${x.r2},${x.c2}`).join(";");
+  const lastSaidSel = useRef("");
+  useEffect(() => {
+    if (edit || !gridOwnsFocus.current) return;
+    const t = window.setTimeout(() => {
+      const range = lastRange(sel);
+      const all = sel.ranges.length === 1 && isWholeRows(range, bounds) && isWholeCols(range, bounds);
+      const text = selectionSpeech(sel.ranges, headerName, {
+        all,
+        wholeRows: isWholeRows(range, bounds),
+        wholeCols: isWholeCols(range, bounds),
+        sum: status.nums > 0 ? status.sum : null,
+      });
+      if (text && text !== lastSaidSel.current) say(text);
+      lastSaidSel.current = text;
+    }, 250);
+    return () => window.clearTimeout(t);
+    // selKey covers sel.ranges; status follows sel.
+  }, [selKey, edit]);
+
   const lr = lastRange(sel);
   const nameBox = sel.ranges.length > 1 ? `${sel.ranges.length} ranges` : rangeLabel(lr, colRef);
   const barValue = edit ? edit.draft : rowCount && colCount ? fileFormAt(active.r, active.c) : "";
 
   return (
-    <div className="sx-root" data-theme={theme} style={{ height }}>
+    <div
+      ref={rootRef}
+      className="sx-root"
+      data-theme={theme}
+      style={{ height }}
+      onFocusCapture={(e) => {
+        const t = e.target as HTMLElement;
+        gridOwnsFocus.current = t === inputRef.current || !!t.closest?.('[role="grid"]');
+      }}
+      onBlurCapture={(e) => {
+        const next = e.relatedTarget as Node | null;
+        if (next && !rootRef.current?.contains(next)) gridOwnsFocus.current = false;
+      }}
+    >
       <div className="sx-bar">
-        <div className="sx-namebox" data-testid="namebox" aria-label="Selection">
-          {nameBox}
-        </div>
+        <NameBox inputRef={nameBoxRef} value={nameBox} onGo={goTo} onLeave={focusGrid} />
         <span className="sx-fx" aria-hidden="true">
           fx
         </span>
@@ -1521,9 +1951,15 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           data-testid="formula-bar"
           aria-label="Formula bar"
           value={barValue}
+          onPointerDown={() => {
+            barPointer.current = true;
+          }}
           onFocus={() => {
-            if (!editRef.current) startEdit("edit", undefined, "bar");
-            else setEdit({ ...editRef.current, source: "bar" });
+            // Spike 8: only a click starts editing. Tabbing through the bar (screen reader users
+            // exploring the toolbar) must not open the cell editor; typing does (onChange).
+            if (editRef.current) setEdit({ ...editRef.current, source: "bar" });
+            else if (barPointer.current) startEdit("edit", undefined, "bar");
+            barPointer.current = false;
           }}
           onChange={(e) => onInputChange(e.target.value, e.target.selectionStart ?? e.target.value.length, "bar")}
           onSelect={(e) => {
@@ -1543,6 +1979,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           aria-rowcount={rowCount + 1}
           aria-colcount={colCount + 1}
           aria-multiselectable="true"
+          aria-describedby={`${gridId}-help`}
           data-testid="grid"
           style={{ inset: 0 }}
           onPointerDown={onPointerDown}
@@ -1563,20 +2000,25 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           }}
           onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
+          onClick={onAtClick}
         >
           <div role="rowgroup" className="sx-layer" style={{ position: "sticky", top: 0, zIndex: 3, width: totalW + ROWHEAD_W, height: HEADER_H + frozenH }}>
             <div role="row" aria-rowindex={1} className="sx-row" style={{ top: 0, height: HEADER_H, width: totalW + ROWHEAD_W, background: "var(--sx-head-bg)", borderBottom: "1px solid var(--sx-line-strong)", boxSizing: "border-box" }}>
               <div
                 className="sx-corner"
                 data-testid="corner"
-                aria-label="Select all"
+                role="columnheader"
+                aria-colindex={1}
                 style={{ position: "sticky", left: 0, width: ROWHEAD_W, height: HEADER_H, zIndex: 4 }}
-              />
-              {columns.map((col, c) => (
+              >
+                <span className="sx-sr">Row</span>
+              </div>
+              {visCols.map((c) => columns[c]!).map((col, i) => ({ col, c: visCols[i]! })).map(({ col, c }) => (
                 <div
                   key={col.colId}
                   role="columnheader"
                   aria-colindex={c + 2}
+                  aria-label={headerLabel(col)}
                   data-testid={`colhead-${c}`}
                   className={`sx-colhead${wholeColSet.has(c) ? " is-whole" : selCols.has(c) ? " is-sel" : ""}`}
                   style={{ left: ROWHEAD_W + (lefts[c] ?? 0), width: widths[c], height: HEADER_H - 1 }}
@@ -1585,8 +2027,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
                   {col.name && col.name !== col.ref ? <span className="sx-ref">{col.ref}</span> : null}
                 </div>
               ))}
-              {columns.map((col, c) => (
-                <div key={`rs${col.colId}`} className="sx-resize" data-col={c} data-testid={`resize-${c}`} style={{ left: ROWHEAD_W + (lefts[c + 1] ?? 0) }} />
+              {visCols.map((c) => ({ col: columns[c]!, c })).map(({ col, c }) => (
+                <div key={`rs${col.colId}`} aria-hidden="true" className="sx-resize" data-col={c} data-testid={`resize-${c}`} style={{ left: ROWHEAD_W + (lefts[c + 1] ?? 0) }} />
               ))}
               {drop?.axis === "col" ? (
                 <div className="sx-o sx-o-drop" data-testid="drop-indicator" style={{ left: ROWHEAD_W + (lefts[drop.index] ?? totalW) - 1, top: 0, width: 3, height: HEADER_H }} />
@@ -1594,14 +2036,14 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             </div>
             {Array.from({ length: frozen }, (_, r) => renderRow(r, HEADER_H + r * rowH))}
             {frozen > 0 ? (
-              <div className="sx-overlay" style={{ top: HEADER_H, height: frozenH, zIndex: 1 }}>
+              <div className="sx-overlay" aria-hidden="true" style={{ top: HEADER_H, height: frozenH, zIndex: 1 }}>
                 {overlayFor(0, frozen - 1, (r) => r * rowH)}
               </div>
             ) : null}
           </div>
           <div role="rowgroup" className="sx-layer" style={{ width: totalW + ROWHEAD_W, height: bodyH }}>
-            {Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => renderRow(first + i, (first + i - frozen) * rowH))}
-            <div className="sx-overlay" style={{ zIndex: 1 }}>
+            {bodyRowIdx.map((r) => renderRow(r, (r - frozen) * rowH))}
+            <div className="sx-overlay" aria-hidden="true" style={{ zIndex: 1 }}>
               {overlayFor(Math.max(frozen, first), last, (r) => (r - frozen) * rowH)}
             </div>
           </div>
@@ -1627,10 +2069,26 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             ref={inputRef}
             className={`sx-input${isFormula && edit?.source === "cell" ? " is-formula" : ""}`}
             data-testid="cell-input"
-            aria-label={edit ? `Edit ${colRef(edit.c)}${edit.r + 1}` : `Sheet, ${colRef(active.c)}${active.r + 1}`}
-            aria-activedescendant={
-              edit && suggestions ? `${acId}-${Math.min(acIndex, suggestions.items.length - 1)}` : !edit && activeRendered ? `${gridId}-cell-${active.r}-${active.c}` : undefined
+            aria-label={
+              edit
+                ? `Editing ${cellPlace(headerName(edit.c), edit.r)}${edit.mode === "enter" ? "" : ", edit mode"}`
+                : cellFocus
+                  ? "Cell editor"
+                  : "Sheet"
             }
+            aria-describedby={edit && sigHelp ? `${gridId}-sig` : undefined}
+            aria-activedescendant={
+              edit && suggestions
+                ? `${acId}-${Math.min(acIndex, suggestions.items.length - 1)}`
+                : !edit && !cellFocus && activeRendered
+                  ? `${gridId}-cell-${active.r}-${active.c}`
+                  : undefined
+            }
+            // Cell focus model: the editor is only reachable while editing.
+            inert={cellFocus && !edit ? true : undefined}
+            tabIndex={cellFocus && !edit ? -1 : undefined}
+            // While editing, the editor is an APG combobox (autocomplete list); aria-expanded is not valid on a textbox.
+            role={edit ? "combobox" : undefined}
             aria-autocomplete={edit ? "list" : undefined}
             aria-controls={edit && suggestions ? acId : undefined}
             aria-expanded={edit ? !!suggestions : undefined}
@@ -1690,7 +2148,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           </div>
         ) : null}
         {edit && sigHelp ? (
-          <div className="sx-popover sx-sig" role="tooltip" data-testid="signature" style={{ left: inputBox.left, top: Math.max(0, inputBox.top - 58) }}>
+          <div className="sx-popover sx-sig" role="tooltip" id={`${gridId}-sig`} data-testid="signature" style={{ left: inputBox.left, top: Math.max(0, inputBox.top - 58) }}>
             <div>
               {sigHelp.sig.name}(
               {sigHelp.sig.params.map((p, i) => (
@@ -1720,9 +2178,40 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
         ) : null}
         {edit ? <span data-testid="edit-mode">{edit.mode === "enter" ? "Enter" : "Edit"}</span> : null}
       </div>
-      <div className="sx-sr" aria-live="polite">
-        {announce}
+      {/* Two polite regions, alternated, so a repeated message is spoken again. */}
+      <div className="sx-sr" aria-live="polite" data-testid="live-a">
+        {live.n % 2 === 1 ? live.text : ""}
       </div>
+      <div className="sx-sr" aria-live="polite" data-testid="live-b">
+        {live.n % 2 === 0 && live.n > 0 ? live.text : ""}
+      </div>
+      <div id={`${gridId}-desc`} hidden>
+        {activeDetails}
+      </div>
+      <div id={`${gridId}-help`} hidden>
+        Arrow keys move. Enter or F2 edits, Escape cancels. Tab moves to the next cell. F6 leaves the sheet. Shift+F10 opens the cell menu.
+      </div>
+      {widthDialog ? (
+        <WidthDialog
+          title={widthDialog.cols.length === 1 ? `Width of column ${headerName(widthDialog.cols[0]!)}` : `Width of ${widthDialog.cols.length} columns`}
+          initial={Math.round(widths[widthDialog.cols[0] ?? 0] ?? DEFAULT_W)}
+          onCancel={() => {
+            setWidthDialog(null);
+            focusGrid();
+          }}
+          onSave={(w) => {
+            doc.transact(() => {
+              for (const c of widthDialog.cols) {
+                const col = columns[c];
+                if (col) setColumnWidth(doc, col.colId, w);
+              }
+            }, LOCAL);
+            setWidthDialog(null);
+            say(`Width set to ${w} pixels`);
+            focusGrid();
+          }}
+        />
+      ) : null}
       {menu ? (
         <ContextMenu
           x={menu.x}

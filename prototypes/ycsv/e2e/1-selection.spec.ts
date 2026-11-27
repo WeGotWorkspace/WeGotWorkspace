@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { activeId, cell, clickCell, dragCells, MOD, nameBox, open } from "./helpers";
+import { activeId, cell, clickCell, dragCells, MOD, nameBox, open, focusHolder, expectCellText } from "./helpers";
 
 test.describe("1 · selection", () => {
   test.beforeEach(async ({ page }) => open(page));
@@ -78,9 +78,9 @@ test.describe("1 · selection", () => {
     const target = page.locator(`#${id}`);
     await expect(target).toHaveAttribute("role", "gridcell");
     await expect(target).toHaveAttribute("aria-selected", "true");
-    await expect(target).toHaveText("Brood");
+    await expectCellText(page, 1, 0, "Brood");
     // Focus stays on the one input; it is the grid's focus holder.
-    await expect(page.getByTestId("cell-input")).toBeFocused();
+    await expect(focusHolder(page)).toBeFocused();
   });
 });
 
@@ -92,7 +92,8 @@ test.describe("1 · selection on a virtualized grid", () => {
     await page.keyboard.press(`${MOD}+ArrowDown`);
     expect(await nameBox(page)).toBe("id10000");
     const id = await activeId(page);
-    await expect(page.locator(`#${id}`)).toHaveText("10000");
+    expect(id).toMatch(/-cell-9999-0$/);
+    await expectCellText(page, 9999, 0, "10000");
     await page.keyboard.press(`Shift+${MOD}+ArrowUp`);
     expect(await nameBox(page)).toBe("id1:id10000");
     expect(await page.locator('[role="row"]').count()).toBeLessThan(80);
