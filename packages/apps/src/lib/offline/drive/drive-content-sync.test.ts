@@ -35,7 +35,8 @@ vi.mock("@/lib/offline/core/offline-db", async (importOriginal) => ({
   offlineAccountKeyFromUsername: (user: string) => user,
   offlineDbForAccount: () => ({}),
 }));
-vi.mock("@/lib/offline/drive/drive-schema", () => ({
+vi.mock("@/lib/offline/drive/drive-schema", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/drive/drive-schema")>()),
   driveContentBlobsTable: () => ({ get: async () => undefined, put: blobPut }),
 }));
 vi.mock("@/lib/offline/core/background-sync-pacer", async (importOriginal) => {
