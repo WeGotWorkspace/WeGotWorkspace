@@ -28,6 +28,7 @@ import {
   writeDriveBootstrapToCache,
 } from "@/lib/offline/drive/drive-directory-offline-store";
 import { subscribeDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
+import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import "@/lib/offline/drive/drive-schema";
 import { docsCollabIndexedDbKey, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
@@ -1147,6 +1148,84 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
 
     expect((await readDriveEntryFromCache(username, "/users/ada/b.md"))?.nodeId).toBe("fn-a");
     expect((await readDriveEntryFromCache(username, "/users/ada/a.md"))?.nodeId).toBe("fn-b");
+  });
+
+  /** Two Docs at a.md and b.md whose FileNodes swap names in one changes batch. */
+  async function swapAAndB(): Promise<void> {
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
+    await upsertDriveEntry(username, entry("/users/ada/b.md", "fn-b"));
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        ["fn-a", { ...node("fn-a", "fn-home", "b.md"), path: "/users/ada/b.md" }],
+        ["fn-b", { ...node("fn-b", "fn-home", "a.md"), path: "/users/ada/a.md" }],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-a", "fn-b"], newState: "8" }));
+  }
+
+  async function writeLocalText(apiPath: string, text: string): Promise<void> {
+    const ydoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(
+      docsCollabIndexedDbKey(docsCollabRoomKey(apiPath)),
+      ydoc,
+    );
+    await persistence.whenSynced;
+    const paragraph = new Y.XmlText();
+    paragraph.insert(0, text);
+    ydoc.getXmlFragment("default").insert(0, [paragraph]);
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+    ydoc.destroy();
+  }
+
+  async function readLocalText(apiPath: string): Promise<string> {
+    const ydoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(
+      docsCollabIndexedDbKey(docsCollabRoomKey(apiPath)),
+      ydoc,
+    );
+    await persistence.whenSynced;
+    const text = ydoc.getXmlFragment("default").toString();
+    await persistence.destroy();
+    ydoc.destroy();
+    return text;
+  }
+
+  it("two starred docs that swap paths keep their own stars", async () => {
+    // Only a.md is starred: after the swap the star is on a.md's Doc, now at b.md.
+    await writeDocsStarredPaths(username, ["/users/ada/a.md", "/users/ada/notes.md"]);
+    await swapAAndB();
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await readCachedDriveNodeId(username, "/users/ada/b.md")).toBe("fn-a");
+    expect((await readDocsStarredPaths(username)).sort()).toEqual([
+      "/users/ada/b.md",
+      "/users/ada/notes.md",
+    ]);
+  });
+
+  it("two open docs that swap paths keep their editor and their local text", async () => {
+    await writeLocalText("/users/ada/a.md", "text of a");
+    await writeLocalText("/users/ada/b.md", "text of b");
+    await swapAAndB();
+    const batches: Array<Array<[string, string]>> = [];
+    const stop = subscribeDocsPathMoved(username, (moves) =>
+      batches.push(moves.map(({ from, to }) => [from, to])),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+    stop();
+
+    // One batch: each open editor follows its own Doc once, never back again.
+    expect(batches).toHaveLength(1);
+    expect([...batches[0]!].sort()).toEqual([
+      ["users/ada/a.md", "users/ada/b.md"],
+      ["users/ada/b.md", "users/ada/a.md"],
+    ]);
+    // Each Doc's unsaved text moved alone: nothing merged with the other Doc's.
+    expect(await readLocalText("/users/ada/b.md")).toBe("text of a");
+    expect(await readLocalText("/users/ada/a.md")).toBe("text of b");
   });
 
   it("a new file on a path the batch vacated stays in the tree", async () => {

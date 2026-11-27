@@ -161,10 +161,19 @@ export async function readDriveTreeFirstSyncDone(username: string): Promise<bool
  *
  * On a server without the keyset (#2063 S1) it keeps the per-folder crawl and
  * never pages by position.
+ *
+ * `beforePrune`: runs once the pass has written every row at its final path
+ * and before it prunes the rest, so path-keyed state (stars, local text, open
+ * editors) follows the final map while the old rows still name their nodes
+ * (#2063 C7). The crawl prunes folder by folder and never calls it.
  */
 export function syncDriveTree(
   username: string,
-  options?: { signal?: AbortSignal; ifTokenIs?: string | null },
+  options?: {
+    signal?: AbortSignal;
+    ifTokenIs?: string | null;
+    beforePrune?: () => Promise<void>;
+  },
 ): Promise<DriveTreeSyncResult> {
   if (!username || !getConnectivitySnapshot()) return Promise.resolve(NOTHING);
   return withCrossTabLock(`wgw.drive.tree-sync.${username}`, async () => {
@@ -177,7 +186,7 @@ export function syncDriveTree(
     const session = await driveJmapSession();
     if (!session.treeKeyset) return crawlFolders(username, session, options?.signal);
     for (let pass = 0; pass < MAX_PASSES; pass += 1) {
-      const outcome = await runTreePass(username, session, options?.signal);
+      const outcome = await runTreePass(username, session, options?.signal, options?.beforePrune);
       if (outcome !== "restart") return outcome;
     }
     return NOTHING;
@@ -295,6 +304,7 @@ async function runTreePass(
   username: string,
   session: DriveJmapSession,
   signal?: AbortSignal,
+  beforePrune?: () => Promise<void>,
 ): Promise<DriveTreeSyncResult | "restart"> {
   const pacer = backgroundSyncPacer();
   const paced = async <T>(request: () => Promise<T>): Promise<T> => {
@@ -353,7 +363,7 @@ async function runTreePass(
   await applyCatchUp(username, session, drained, paced, signal);
   if (signal?.aborted) return { ...NOTHING, changed };
 
-  const written = await writeResolvedTree(username);
+  const written = await writeResolvedTree(username, beforePrune);
   // An unsaved document holds a final path: nothing was written; the cursor and
   // the token stay, so the next sync replays the catch-up and retries.
   if (written.blocked) {
@@ -552,6 +562,7 @@ export function resolveTreePaths(
  */
 async function writeResolvedTree(
   username: string,
+  beforePrune?: () => Promise<void>,
 ): Promise<{ blocked: boolean; keptUnsavedPaths: string[] }> {
   const staged = await stagingTable(username).toArray();
   const resolved = resolveTreePaths(staged);
@@ -601,6 +612,7 @@ async function writeResolvedTree(
   // Page setups (localStorage) follow once, from the same final map.
   removeDocsPageSetupOverrides(occupants.replaced.map((path) => `/${path}`));
   moveDocsPageSetupOverrides(moves.map(({ from, to }) => ({ from: `/${from}`, to: `/${to}` })));
+  await beforePrune?.();
   const keep = new Set(finals.map(({ entry }) => normalizeDriveEntryPath(entry.path)));
   const pruned = await pruneDriveEntriesToKeepSet(username, keep);
   await stampDocsAvailabilityNodeIds(

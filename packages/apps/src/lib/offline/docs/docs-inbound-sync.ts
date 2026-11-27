@@ -94,37 +94,41 @@ export async function readDocsPendingWrites(username: string): Promise<DocsPendi
   return readPendingWrites(await listQueuedFileWriteRows(username), docsPendingRowViews);
 }
 
+/**
+ * Starred paths follow the sync's final map (#2063 C7): each star is read
+ * once, from its path before the sync, and written only at its own Doc's final
+ * path. Exact paths only (the batch lists every relocated file). A star whose
+ * Doc was removed, or that sat on a path another Doc landed on, goes, so a
+ * swap keeps each Doc's own star and a Doc never inherits a previous file's.
+ */
 async function applyStarredPathChanges(
   username: string,
   changes: readonly DocsInboundChange[],
 ): Promise<boolean> {
   const before = await readDocsStarredPaths(username);
   if (before.length === 0) return false;
-  // Moves first, all at once on the paths before the sync: a swap keeps both stars.
-  const moves = changes
-    .flatMap((change) =>
-      change.kind === "moved"
-        ? [{ from: docsSourceKey(change.from), to: docsSourceKey(change.to) }]
-        : [],
-    )
-    .sort((a, b) => b.from.length - a.from.length);
-  let paths = before.map((path) => {
-    const key = docsSourceKey(path);
-    const move = moves.find(({ from }) => key === from || key.startsWith(`${from}/`));
-    return move ? `/${move.to}${key.slice(move.from.length)}` : path;
-  });
-  // A destroyed path some move landed on is that moved Doc's star now.
-  const landed = new Set(moves.map(({ to }) => to));
+  const finalOf = new Map<string, string>();
+  const gone = new Set<string>();
   for (const change of changes) {
-    if (change.kind !== "removed") continue;
-    const key = docsSourceKey(change.path);
-    if (landed.has(key)) continue;
-    paths = paths.filter((path) => docsSourceKey(path) !== key);
+    if (change.kind === "moved") {
+      finalOf.set(docsSourceKey(change.from), docsSourceKey(change.to));
+    } else if (change.kind === "removed") {
+      gone.add(docsSourceKey(change.path));
+    }
   }
-  if (paths.length === before.length && paths.every((path, at) => path === before[at])) {
+  const landed = new Set(finalOf.values());
+  const paths: string[] = [];
+  for (const path of before) {
+    const key = docsSourceKey(path);
+    const to = finalOf.get(key);
+    if (to !== undefined) paths.push(`/${to}`);
+    else if (!gone.has(key) && !landed.has(key)) paths.push(path);
+  }
+  const after = [...new Set(paths)];
+  if (after.length === before.length && after.every((path, at) => path === before[at])) {
     return false;
   }
-  await writeDocsStarredPaths(username, paths);
+  await writeDocsStarredPaths(username, after);
   return true;
 }
 

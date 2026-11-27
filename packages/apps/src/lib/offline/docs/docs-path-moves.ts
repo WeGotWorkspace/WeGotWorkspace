@@ -1,4 +1,5 @@
 import { crossTabTopic } from "@/lib/offline/core/cross-tab-topic";
+import { moveDocsCollabPathDatabasesInBatch } from "@/lib/collab/docs-collab-path-batch";
 import { moveDocsCollabPathDatabases } from "@/lib/collab/docs-collab-persistence";
 
 /** One path change: a Doc, or the folder that holds it, from `from` to `to`. */
@@ -63,12 +64,12 @@ export function publishDocsPathMoved(username: string, from: string, to: string)
 }
 
 /**
- * Docs (or folders) moved: first move the text this device keeps under the
- * old paths, then tell every tab once. Text in a path-keyed database (a Doc
- * opened before its FileNode id was known, or created offline) is otherwise
- * stranded at the old path once the editor follows the file. A batch moves
- * through temporary names first, so a swap never merges one Doc's text into
- * the other's.
+ * The Docs a sync relocated (#2063 C7), as its final map: one move per file,
+ * from its path before the sync to its final path. The text this device keeps
+ * in path-keyed databases follows that map (each read once, written only at
+ * its own final path, never merged into what was there), then every tab hears
+ * the batch once, so each open editor follows its own Doc once. A swap never
+ * merges one Doc's text into the other's or sends an editor to the wrong Doc.
  */
 export async function moveDocsPaths(
   username: string,
@@ -77,25 +78,26 @@ export async function moveDocsPaths(
   const batch = normalizeMoves(moves);
   if (!username || batch.length === 0) return;
   try {
-    if (batch.length === 1) {
-      await moveDocsCollabPathDatabases(batch[0]!.from, batch[0]!.to);
-    } else {
-      const parked = batch.map((move, index) => ({
-        ...move,
-        via: `.docs-moving/${crypto.randomUUID()}-${index}/${move.from.split("/").pop()}`,
-      }));
-      for (const move of parked) await moveDocsCollabPathDatabases(move.from, move.via);
-      for (const move of parked) await moveDocsCollabPathDatabases(move.via, move.to);
-    }
+    await moveDocsCollabPathDatabasesInBatch(batch);
   } catch (error) {
     console.warn("[docs] could not move local text with the document", error);
   }
   publishDocsPathMoves(username, batch);
 }
 
-/** {@link moveDocsPaths} for one move. */
+/**
+ * The person moved one Doc or folder: the text this device keeps under the
+ * old path (and, for a folder, under it) moves along, then every tab hears it.
+ */
 export async function moveDocsPath(username: string, from: string, to: string): Promise<void> {
-  await moveDocsPaths(username, [{ from, to }]);
+  const batch = normalizeMoves([{ from, to }]);
+  if (!username || batch.length === 0) return;
+  try {
+    await moveDocsCollabPathDatabases(batch[0]!.from, batch[0]!.to);
+  } catch (error) {
+    console.warn("[docs] could not move local text with the document", error);
+  }
+  publishDocsPathMoves(username, batch);
 }
 
 /** Hear each batch of path moves for `username` from any tab, this one included. */

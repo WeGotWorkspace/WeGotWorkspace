@@ -27,6 +27,7 @@ import {
   docsCollabRoomKey,
 } from "@/lib/collab/docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
+import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
   readDriveEntryFromCache,
   upsertDriveEntry,
@@ -1665,5 +1666,63 @@ describe("the walk catch-up relocates in two phases", () => {
     expect(await row("/users/ada/final.md")).toMatchObject({ nodeId: "f-b" });
     expect(await blobSize("users/ada/final-v1.md")).toBe(1);
     expect(await blobSize("users/ada/final.md")).toBe(2);
+  });
+});
+
+describe("Docs path state follows a full resync (#2063 C7)", () => {
+  async function writeLocalText(apiPath: string, text: string): Promise<void> {
+    const ydoc = new Y.Doc();
+    const name = docsCollabIndexedDbKey(docsCollabRoomKey(apiPath));
+    const persistence = new IndexeddbPersistence(name, ydoc);
+    await persistence.whenSynced;
+    const paragraph = new Y.XmlText();
+    paragraph.insert(0, text);
+    ydoc.getXmlFragment("default").insert(0, [paragraph]);
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+    ydoc.destroy();
+  }
+
+  async function localText(apiPath: string): Promise<string> {
+    const ydoc = new Y.Doc();
+    const name = docsCollabIndexedDbKey(docsCollabRoomKey(apiPath));
+    const persistence = new IndexeddbPersistence(name, ydoc);
+    await persistence.whenSynced;
+    const text = ydoc.getXmlFragment("default").toString();
+    await persistence.destroy();
+    ydoc.destroy();
+    return text;
+  }
+
+  it("stars and local text follow a swap and a rename before the pass prunes", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    server.add("f-c", "r-home", "c.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeLocalText("/users/ada/a.md", "text of a");
+    await writeLocalText("/users/ada/b.md", "text of b");
+    await writeLocalText("/users/ada/c.md", "text of c");
+    await writeDocsStarredPaths(username, ["/users/ada/a.md", "/users/ada/c.md"]);
+
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    server.move("f-c", { name: "d.md" });
+    // The token is too old: the next sync is a full resync over the tree.
+    server.cannotCalculate = 1;
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.usedFullResync).toBe(true);
+    expect(await rowPaths()).toEqual(["users/ada/a.md", "users/ada/b.md", "users/ada/d.md"]);
+    expect(await localText("/users/ada/b.md")).toBe("text of a");
+    expect(await localText("/users/ada/a.md")).toBe("text of b");
+    // The prune of c.md's old row keeps the text its node took to d.md.
+    expect(await localText("/users/ada/d.md")).toBe("text of c");
+    expect(await localText("/users/ada/c.md")).toBe("");
+    expect((await readDocsStarredPaths(username)).sort()).toEqual([
+      "/users/ada/b.md",
+      "/users/ada/d.md",
+    ]);
   });
 });
