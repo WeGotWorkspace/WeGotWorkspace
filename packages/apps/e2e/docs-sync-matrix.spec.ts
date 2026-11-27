@@ -219,10 +219,6 @@ async function setOffline(tab: Tab, offline: boolean): Promise<void> {
   });
 }
 
-async function setPageOffline(page: Page, offline: boolean): Promise<void> {
-  await setTabOffline(page as Tab, offline);
-}
-
 async function openEditor(tab: Tab, apiPath: string): Promise<void> {
   await tab.goto(`/docs?file=${encodeURIComponent(apiPath.replace(/^\/+/, ""))}`);
   await expect(tab.locator(".ProseMirror")).toBeVisible({ timeout: 60_000 });
@@ -281,6 +277,11 @@ type ActionDef = {
    * Drive: its own outbox flush runs on reconnect beside Docs' (#2063 C4).
    */
   companions?: (a: Tab, c: Case) => Promise<Page[]>;
+  /**
+   * What the companion pages alone put on the server, A still offline: the create (empty, the
+   * typed body is A's editor save) and its retargeted rename or trash.
+   */
+  companionSent?: (s: Server, c: Case) => boolean;
   /** The UI steps of the action in tab A (and, for some, tab B). */
   run: (a: Tab, b: Tab | null, c: Case) => Promise<void>;
   /** The server holds the action (`mate` is the teammate's view, in a diff case). */
@@ -396,6 +397,8 @@ const ACTIONS = {
   createTakenRename: {
     nets: { one: ["off"] },
     companions: openDriveCompanion,
+    companionSent: (s, c) =>
+      s.active.join("|") === [startPath(c), docPath(c.dir, `${c.name} v2`)].sort().join("|"),
     seed: async () => undefined,
     run: async (a, _b, c) => {
       await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
@@ -420,6 +423,8 @@ const ACTIONS = {
   createTakenTrash: {
     nets: { one: ["off"] },
     companions: openDriveCompanion,
+    companionSent: (s, c) =>
+      isOnly(s.active, startPath(c)) && isOnly(s.trash, `${trashOf(home(OWNER))}/${c.name}.md`),
     seed: async () => undefined,
     run: async (a, _b, c) => {
       await putDoc(OWNER, startPath(c), `# server copy\n\nserver ${c.id}\n`);
@@ -845,26 +850,40 @@ async function runCase(browser: Browser, c: Case): Promise<void> {
     const offline = { on: [], off: [a], both: all, aOff: [a], bOff: b ? [b] : [] }[c.net];
     const companions = await (def.companions?.(a, c) ?? []);
     for (const tab of offline) await setOffline(tab, true);
-    for (const page of companions) await setPageOffline(page, true);
+    for (const page of companions) await setTabOffline(page as Tab, true);
     await a.bringToFront();
     await def.run(a, b ?? null, c);
     // Gap 5: offline, nothing on screen says "Failed to fetch".
     for (const tab of offline) await expect(tab.getByText("Failed to fetch")).toHaveCount(0);
+    const landed = async () =>
+      expect
+        .poll(
+          async () =>
+            def.landed(
+              await serverState(OWNER, c),
+              c.tabs === "diff" ? await serverState(TEAMMATE, c) : null,
+              c,
+            ),
+          { message: "the server holds the action", timeout: 45_000 },
+        )
+        .toBe(true)
+        .catch((error: unknown) => explain(c, error));
+    if (companions.length > 0 && def.companionSent) {
+      const sent = def.companionSent;
+      for (const page of companions) await setTabOffline(page as Tab, false);
+      await expect
+        .poll(async () => sent(await serverState(OWNER, c), c), {
+          message: "the companion page alone sent the create and the retargeted write",
+          timeout: 45_000,
+        })
+        .toBe(true)
+        .catch((error: unknown) => explain(c, error));
+    } else {
+      for (const page of companions) await setTabOffline(page as Tab, false);
+    }
     for (const tab of offline) await setOffline(tab, false);
-    for (const page of companions) await setPageOffline(page, false);
 
-    await expect
-      .poll(
-        async () =>
-          def.landed(
-            await serverState(OWNER, c),
-            c.tabs === "diff" ? await serverState(TEAMMATE, c) : null,
-            c,
-          ),
-        { message: "the server holds the action", timeout: 45_000 },
-      )
-      .toBe(true)
-      .catch((error: unknown) => explain(c, error));
+    await landed();
     expect(await converge(all, c, 45_000), "every tab mirrors the server").toEqual({});
 
     // A hard refresh of every tab changes nothing, in any home view.
