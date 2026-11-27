@@ -16,7 +16,7 @@ export type DocsNodeFacts = { directory: boolean; size: number; modifiedAt: numb
 /**
  * One FileNode outcome from Drive inbound, by path:
  * - `removed`: destroyed elsewhere and dropped locally (no unsaved text kept).
- * - `moved`: renamed or moved; a folder moves every path under it.
+ * - `moved`: renamed or moved, by exact path: list each file, a folder move does not cover its children.
  * - `upserted`: created or changed in place.
  */
 export type DocsInboundChange =

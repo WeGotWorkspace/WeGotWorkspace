@@ -197,7 +197,9 @@ async function fullResync(
       keptUnsavedPaths: tree.keptUnsavedPaths,
     };
   }
-  if (!docsFollowed) await followDocs();
+  // Only the tab that updated the tree applies the map: a tab that waited on
+  // the lock sees `changed: false` and the other tab already followed.
+  if (!docsFollowed && tree.changed) await followDocs();
   return {
     changed: true,
     listedChanges: true,

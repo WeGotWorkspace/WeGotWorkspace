@@ -319,9 +319,8 @@ function parentId(id: string): string {
 /**
  * Drops the listing row, content blob, and drive availability pin.
  * A Docs path also drops its pin and collab databases, unless its node still
- * has a row elsewhere (a move): then its pin follows it and no collab database
- * goes, path-keyed ones included, since the sync moves those by its final map
- * (#2063 C7). Returns false when a collab database delete is blocked or
+ * has a row elsewhere (a move): then its pin follows it and only its
+ * identity database stays; path-keyed ones go. Returns false when a collab database delete is blocked or
  * errors, and leaves that row in place.
  */
 async function removePrunedFile(
@@ -333,6 +332,9 @@ async function removePrunedFile(
   if (isDocsCollabEditablePath(apiPath)) {
     const livingPath = await livingPathOfNode(row, table);
     if (livingPath && row.nodeId) {
+      // Path-keyed databases go: a live listing has no sync batch to move them.
+      // A row with a pending path-keyed save never reaches here.
+      if (!(await dropCollabDatabase(apiPath, null))) return false;
       await moveDocsAvailabilityForNode(username, row.nodeId, livingPath);
     } else {
       if (!(await dropCollabDatabase(apiPath, await identityDatabaseFor(row, table)))) {

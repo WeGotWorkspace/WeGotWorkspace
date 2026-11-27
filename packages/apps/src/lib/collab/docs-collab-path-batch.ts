@@ -73,16 +73,28 @@ export async function moveDocsCollabPathDatabasesInBatch(
   const exists = (name: string) => !existing || existing.has(name);
   const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
   const sources = new Map<string, string>();
-  for (const move of moves) {
+  const relevant = moves.flatMap((move) => {
     const fromRoom = roomOf(move.from);
     const toRoom = roomOf(move.to);
-    if (!fromRoom || !toRoom || fromRoom === toRoom) continue;
+    return fromRoom && toRoom && fromRoom !== toRoom ? [{ fromRoom, toRoom }] : [];
+  });
+  for (const { fromRoom } of relevant) {
+    for (const name of indexedDbNamesForRoom(fromRoom)) sources.set(name, fromRoom);
+  }
+  // Sources whose move was skipped: their text stays where it is.
+  const kept = new Set<string>();
+  for (const { fromRoom, toRoom } of relevant) {
     const fromNames = indexedDbNamesForRoom(fromRoom);
     const toNames = indexedDbNamesForRoom(toRoom);
-    for (const name of fromNames) sources.set(name, fromRoom);
     for (const [index, fromName] of fromNames.entries()) {
       const toName = toNames[index];
       if (!toName) continue;
+      // A destination outside the batch with unsaved text (a Doc created
+      // offline at that path) is never overwritten.
+      if (!sources.has(toName) && exists(toName) && (await capture(toName))?.pendingServerSave) {
+        kept.add(fromName);
+        continue;
+      }
       plan.push({ toName, toRoom, state: exists(fromName) ? await capture(fromName) : null });
     }
   }
@@ -92,14 +104,14 @@ export async function moveDocsCollabPathDatabasesInBatch(
     if (state) {
       await writeAlone(toName, state);
       setCollabRoomPendingServerSave(toRoom, true);
-    } else if (exists(toName) && sources.has(toName)) {
+    } else if (exists(toName) && sources.has(toName) && !kept.has(toName)) {
       // Its own Doc moved away and nothing moved in: no stale text stays.
       await clear(toName);
       setCollabRoomPendingServerSave(toRoom, false);
     }
   }
   for (const [name, room] of sources) {
-    if (written.has(name) || !exists(name)) continue;
+    if (written.has(name) || kept.has(name) || !exists(name)) continue;
     await clear(name);
     setCollabRoomPendingServerSave(room, false);
   }

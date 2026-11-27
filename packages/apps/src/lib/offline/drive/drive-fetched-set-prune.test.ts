@@ -181,6 +181,24 @@ describe("applyFetchedDirectorySnapshot", () => {
     expect(await databaseNames()).not.toContain(identityDatabaseName("fn-gone"));
   });
 
+  it("drops the path-keyed database of a pruned path whose node lives elsewhere", async () => {
+    const oldPath = "/users/alice/before.md";
+    const room = docsCollabRoomKey(oldPath);
+    await upsertDriveEntry(username, entry(oldPath, "file", "fn-moved"));
+    await upsertDriveEntry(username, entry("/users/alice/sub/after.md", "file", "fn-moved"));
+    const ydoc = new Y.Doc();
+    ydoc.getText("body").insert(0, "synced body");
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
+    await persistence.whenSynced;
+    await persistence.destroy();
+    ydoc.destroy();
+    expect(await databaseNames()).toContain(docsCollabIndexedDbKey(room));
+
+    await applyFetchedDirectorySnapshot(username, "/users/alice", []);
+
+    expect(await databaseNames()).not.toContain(docsCollabIndexedDbKey(room));
+  });
+
   it("leaves the identity database to the new path after a remote rename", async () => {
     await upsertDriveEntry(username, entry("/users/alice/before.md", "file", "fn-moved"));
     await seedIdentityDatabase("fn-moved", true);
