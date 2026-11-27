@@ -1081,6 +1081,46 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect(byKey.get("users/ada/a.md")).toBe(2);
   });
 
+  it("a new file on a path the batch vacated stays in the Docs views", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-a"));
+    await upsertDriveEntry(username, entry("/users/ada/report.md", "fn-report"));
+    const docs = [doc("users/ada/a.md", 1), doc("users/ada/report.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    // `a.md` is renamed to `b.md` and a new `a.md` created; `report.md` is
+    // deleted and a new `report.md` created.
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        ["fn-a", { ...node("fn-a", "fn-home", "b.md"), path: "/users/ada/b.md" }],
+        ["fn-a2", { ...node("fn-a2", "fn-home", "a.md"), path: "/users/ada/a.md" }],
+        [
+          "fn-report2",
+          { ...node("fn-report2", "fn-home", "report.md"), path: "/users/ada/report.md" },
+        ],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({
+        created: ["fn-a2", "fn-report2"],
+        updated: ["fn-a"],
+        destroyed: ["fn-report"],
+        newState: "8",
+      }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const cached = await readDocsListingFromCache(username, all);
+    const byKey = new Map(cached?.results.map((row) => [row.sourceKey, row.id]));
+    expect([...byKey.keys()].sort()).toEqual([
+      "users/ada/a.md",
+      "users/ada/b.md",
+      "users/ada/report.md",
+    ]);
+    expect(byKey.get("users/ada/b.md")).toBe(1);
+    expect(await readCachedDriveNodeId(username, "/users/ada/a.md")).toBe("fn-a2");
+    expect(await readCachedDriveNodeId(username, "/users/ada/report.md")).toBe("fn-report2");
+  });
+
   it("a file deleted inside a folder renamed in the same batch is gone", async () => {
     await upsertDriveEntry(username, entry("/users/ada/Plans", "fn-plans", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/Plans/keep.md", "fn-keep"));

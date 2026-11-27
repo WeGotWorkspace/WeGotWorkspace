@@ -15,9 +15,14 @@ import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-s
  * moved rows and both phases of {@link SidecarMoves.apply} commit together or
  * not at all: a sync stopped halfway replays from rows and sidecars that still
  * agree. `write` may only touch this account's offline database (another
- * await would commit the transaction early).
+ * await would commit the transaction early); `extraTables` names any other
+ * table of it that `write` uses.
  */
-export function inDriveTreeTransaction<T>(username: string, write: () => Promise<T>): Promise<T> {
+export function inDriveTreeTransaction<T>(
+  username: string,
+  write: () => Promise<T>,
+  extraTables: readonly string[] = [],
+): Promise<T> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   return db.transaction(
     "rw",
@@ -27,6 +32,7 @@ export function inDriveTreeTransaction<T>(username: string, write: () => Promise
       driveContentBlobsTable(db),
       driveAvailabilityTable(db),
       docsAvailabilityTable(db),
+      ...extraTables.map((name) => db.table(name)),
     ],
     write,
   );

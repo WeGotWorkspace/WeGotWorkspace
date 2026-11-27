@@ -69,6 +69,7 @@ import {
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { migrateDriveEntryPath } from "@/lib/offline/drive/drive-directory-offline-store";
 import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
+import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
 
 const username = "ada";
 /** Page size of the stand-in (`maxObjectsInGet`); small so a few nodes span many pages. */
@@ -1250,24 +1251,23 @@ describe("the walk catch-up relocates in two phases", () => {
     expect(await driveTreePrepassTable(db()).count()).toBe(0);
   });
 
-  it("a row another writer puts on a path during the walk does not cross the blobs", async () => {
+  it("a tree pass stopped after its final write does not move the blobs again", async () => {
     const server = standardTree();
     server.add("f-a", "r-home", "a.md");
     server.add("f-b", "r-home", "b.md");
-    for (let i = 0; i < 40; i += 1)
-      server.add(`n${String(i).padStart(3, "0")}`, "r-home", `f${i}.md`);
     await connect(server);
     await syncDriveTree(username);
     await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
     await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
     server.move("f-a", { name: "b.md" });
     server.move("f-b", { name: "a.md" });
-    // A folder listing open in the app writes the swapped rows while the walk runs.
-    server.after.set(server.requests.length + 1, async () => {
-      await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-b"));
-      await upsertDriveEntry(username, staleEntry("/users/ada/b.md", "f-a"));
-    });
+    const prune = await import("@/lib/offline/drive/drive-fetched-set-prune");
+    const spy = vi
+      .spyOn(prune, "pruneDriveEntriesToKeepSet")
+      .mockRejectedValueOnce(new Error("tab closed"));
 
+    await expect(syncDriveTree(username)).rejects.toThrow("tab closed");
+    spy.mockRestore();
     await syncDriveTree(username);
 
     const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
@@ -1275,5 +1275,63 @@ describe("the walk catch-up relocates in two phases", () => {
     expect(await row("/users/ada/b.md")).toMatchObject({ nodeId: "f-a" });
     expect(await blobSize("users/ada/a.md")).toBe(2);
     expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+
+  it("a pre-pass map a crashed pass left behind does not cross the blobs", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "b.md");
+    server.add("f-b", "r-home", "a.md");
+    await connect(server);
+    // The crashed pass already swapped rows and blobs, but its map survived.
+    await upsertDriveEntry(username, staleEntry("/users/ada/b.md", "f-a"));
+    await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-b"));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["BB"]));
+    await driveTreePrepassTable(db()).bulkPut([
+      { nodeId: "f-a", paths: ["users/ada/a.md"] },
+      { nodeId: "f-b", paths: ["users/ada/b.md"] },
+    ]);
+    await writeMeta(username, "drive:tree-sync:prepass", "1");
+
+    await syncDriveTree(username);
+
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+  });
+
+  it("local renames during the walk keep each blob with its node", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "final.md");
+    server.add("f-b", "r-home", "draft.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/final.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/draft.md", new Blob(["BB"]));
+    server.move("f-a", { name: "final-v1.md" });
+    server.move("f-b", { name: "final.md" });
+    // The person renames both files on this device while the pass runs.
+    server.after.set(server.requests.length + 1, async () => {
+      await applyDriveSidecarPathMigration(
+        username,
+        "/users/ada/final.md",
+        "/users/ada",
+        "final-v1.md",
+      );
+      await applyDriveSidecarPathMigration(
+        username,
+        "/users/ada/draft.md",
+        "/users/ada",
+        "final.md",
+      );
+    });
+
+    await syncDriveTree(username);
+
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await row("/users/ada/final-v1.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await row("/users/ada/final.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await blobSize("users/ada/final-v1.md")).toBe(1);
+    expect(await blobSize("users/ada/final.md")).toBe(2);
   });
 });
