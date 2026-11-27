@@ -35,6 +35,7 @@ import {
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
+  driveContentBlobsTable,
   driveEntriesTable,
   driveTreePrepassTable,
   driveTreeStagingTable,
@@ -169,8 +170,8 @@ async function crawlFolders(
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
   await writeDriveSyncToken(username, before.state);
+  // Not `firstSyncDone`: the device walks the tree once the server offers the keyset.
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
-  await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
 }
 
@@ -260,16 +261,17 @@ async function runTreePass(
  */
 async function takePrepassMap(username: string): Promise<void> {
   if ((await readMeta(username, DRIVE_TREE_PREPASS_KEY)) === "1") return;
-  const rows = await driveEntriesTable(accountDb(username)).where("nodeId").above("").toArray();
-  const paths = new Map<string, string[]>();
-  for (const row of rows) {
-    const list = paths.get(row.nodeId!) ?? [];
-    list.push(row.id);
-    paths.set(row.nodeId!, list);
-  }
+  const db = accountDb(username);
+  const rows = await driveEntriesTable(db).where("nodeId").above("").toArray();
+  const blobs = await driveContentBlobsTable(db).bulkGet(rows.map((row) => row.id));
+  // One path per node: when a node holds two rows, the one with the blob.
+  const paths = new Map<string, string>();
+  rows.forEach((row, index) => {
+    if (!paths.has(row.nodeId!) || blobs[index]) paths.set(row.nodeId!, row.id);
+  });
   const prepass = prepassTable(username);
   await prepass.clear();
-  await prepass.bulkPut([...paths].map(([nodeId, list]) => ({ nodeId, paths: list })));
+  await prepass.bulkPut([...paths].map(([nodeId, path]) => ({ nodeId, paths: [path] })));
   await writeMeta(username, DRIVE_TREE_PREPASS_KEY, "1");
 }
 
@@ -290,15 +292,25 @@ function lastId(pages: readonly FileNodeTreePage[]): string | null {
 /**
  * Record the pages in the staging table (dot paths included), and upsert the
  * list rows among them at the server's path so rows that already arrived show.
- * A row another node holds is left to the final relocation: a half-finished
+ * A node the pre-pass map has is only refreshed where its row already is (same
+ * path, same `nodeId`): it stays at its mapped path until the pass commits, so
+ * a rename during the walk never forks it onto a second path. A node the map
+ * lacks is inserted, never over another node's row. Either way a half-finished
  * walk never pairs one node's entry with another node's blob.
  */
 async function stagePages(username: string, pages: readonly FileNodeTreePage[]): Promise<void> {
   const nodes = pages.flatMap((page) => page.nodes);
   const staged = await stageNodes(username, nodes);
-  const visible = staged
-    .filter((row) => row.parentId !== null && !isHiddenTreePath(row.path))
-    .map((row) => ({ entry: parseEntry(row.data) }));
+  const rows = staged.filter((row) => row.parentId !== null && !isHiddenTreePath(row.path));
+  const mapped = await prepassTable(username).bulkGet(rows.map((row) => row.nodeId));
+  const held = await driveEntriesTable(accountDb(username)).bulkGet(
+    rows.map((row) => normalizeDriveEntryPath(row.path)),
+  );
+  const visible = rows.flatMap((row, index) => {
+    const holder = held[index]?.nodeId;
+    if (mapped[index] ? holder !== row.nodeId : holder && holder !== row.nodeId) return [];
+    return [{ entry: parseEntry(row.data) }];
+  });
   await upsertDriveEntriesInBulk(username, visible, { skipOtherNodes: true });
 }
 

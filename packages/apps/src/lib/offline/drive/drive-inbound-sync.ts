@@ -124,14 +124,13 @@ async function runDriveInbound(
     return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
   }
   const since = await readDriveSyncToken(username);
-  // No token, or a token from before this device's first complete tree sync
-  // (every device that synced before the walk existed): list the tree once.
-  if (since === null || !(await readDriveTreeFirstSyncDone(username))) {
-    return fullResync(username, since, options?.signal);
-  }
+  if (since === null) return fullResync(username, null, options?.signal);
   const session = await driveJmapSession();
-  // A device that only crawled folders walks the tree once, when the server offers the keyset.
-  if (session.treeKeyset && (await readDriveTreeLastPass(username)) !== "tree") {
+  // A token from before this device's first tree walk (a device that synced
+  // before the walk existed, or one that only crawled): walk the tree once,
+  // when the server offers the keyset. A server without it crawls only on a
+  // missing token or `cannotCalculateChanges`, never on every sync.
+  if (session.treeKeyset && !(await readDriveTreeFirstSyncDone(username))) {
     return fullResync(username, since, options?.signal);
   }
   try {
@@ -216,7 +215,8 @@ async function applyFileNodeChanges(
     const ordered = parentsBeforeChildren(nodes);
     const cachePaths = await cachedPathsByNodeId(username);
     const tree = {
-      firstSyncDone: await readDriveTreeFirstSyncDone(username),
+      // A complete pass ran: the walk or the per-folder crawl.
+      complete: (await readDriveTreeLastPass(username)) !== null,
       roots: await readDriveTreeRoots(username),
     };
     const finalPaths = await finalPathsOf(username, ordered, cachePaths, session, signal);
@@ -381,14 +381,14 @@ async function applyFileNodeChanges(
 /**
  * `area` of a node the applier places: Trash by path, else its parent row's,
  * its account root's (roots have no row), or `share` for a node whose parent
- * is not in a complete tree. Undefined while the first sync has not finished.
+ * is not in a complete tree. Undefined while no complete pass has finished.
  */
 async function areaOfAppliedNode(
   username: string,
   node: JmapFileNode,
   path: string,
   cachePaths: ReadonlyMap<string, string>,
-  tree: { firstSyncDone: boolean; roots: ReadonlyMap<string, string> | null },
+  tree: { complete: boolean; roots: ReadonlyMap<string, string> | null },
 ): Promise<DriveEntryArea | undefined> {
   if (isTrashTreePath(path)) return "trash";
   if (!node.parentId) return areaForRoot(path, { kind: "account", path });
@@ -396,7 +396,7 @@ async function areaOfAppliedNode(
   if (rootPath) return areaForRoot(path, { kind: "account", path: rootPath });
   const parentPath = cachePaths.get(node.parentId);
   if (parentPath) return (await driveRowAt(username, parentPath))?.area;
-  if (!tree.firstSyncDone) return undefined;
+  if (!tree.complete) return undefined;
   // Only a tree pass knows the root ids; after the per-folder crawl (home and
   // team drives only) the path decides.
   return tree.roots ? "share" : areaFromCrawledPath(path);

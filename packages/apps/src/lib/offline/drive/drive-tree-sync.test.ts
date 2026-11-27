@@ -632,6 +632,40 @@ describe("syncDriveTree", () => {
     expect(stateGets).toHaveLength(3);
   });
 
+  it("a catch-up that returns cannotCalculateChanges keeps a renamed file's offline blob", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["AAA"]));
+    // Renamed on the server; the next pass lists it at `b.md`, then its
+    // catch-up answers cannotCalculateChanges once and a new pass finishes.
+    server.move("f-a", { name: "b.md" });
+    server.cannotCalculate = 1;
+
+    const result = await syncDriveTree(username);
+
+    expect(result.completed).toBe(true);
+    expect(await rowPaths()).toEqual(["users/ada/b.md"]);
+    expect(await row("/users/ada/b.md")).toMatchObject({ nodeId: "f-a" });
+    expect((await driveContentBlobsTable(db()).get("users/ada/b.md"))?.size).toBe(3);
+    expect(await driveContentBlobsTable(db()).get("users/ada/a.md")).toBeUndefined();
+  });
+
+  it("a page leaves a mapped node at its mapped path until the pass commits", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    await connect(server);
+    await syncDriveTree(username);
+    server.move("f-a", { name: "b.md" });
+    server.cannotCalculate = 99;
+
+    await syncDriveTree(username);
+
+    // Every pass stopped at the catch-up: the file never forked onto `b.md`.
+    expect(await rowPaths()).toEqual(["users/ada/a.md"]);
+  });
+
   it("a failed get mid-chain does not prune", async () => {
     const server = standardTree();
     for (let i = 0; i < 40; i += 1)
@@ -888,17 +922,31 @@ describe("review fixes (#2063 C1)", () => {
     spy.mockRestore();
   });
 
-  it("a token without a completed first sync runs the full sync once", async () => {
+  it("a token without a completed first sync walks the tree once", async () => {
+    const server = standardTree();
+    server.add("a1", "r-home", "a.md");
+    await connect(server);
+    // A device that synced before the tree walk: a token, no first-sync flag.
+    await writeDriveSyncToken(username, server.state());
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(server.listingRequests()).toHaveLength(1);
+    expect(await readDriveTreeFirstSyncDone(username)).toBe(true);
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(server.listingRequests()).toHaveLength(1);
+  });
+
+  it("a server without the keyset crawls only on a missing token", async () => {
     const server = standardTree();
     server.add("a1", "r-home", "a.md");
     await connect(server, { keyset: false });
-    // A device that synced before the tree walk: a token, no first-sync flag.
-    await writeDriveSyncToken(username, server.state());
     const spy = await mockCrawl();
 
     await syncDriveInboundFromFileNodes(username);
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(await readDriveTreeFirstSyncDone(username)).toBe(true);
+    expect(await readDriveTreeFirstSyncDone(username)).toBe(false);
+    expect(await readDriveSyncToken(username)).not.toBeNull();
 
     await syncDriveInboundFromFileNodes(username);
     expect(spy).toHaveBeenCalledTimes(1);

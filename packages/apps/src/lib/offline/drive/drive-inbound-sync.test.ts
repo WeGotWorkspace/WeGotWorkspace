@@ -311,6 +311,40 @@ describe("syncDriveInboundFromFileNodes", () => {
     expect(await databaseNames()).toContain(docsCollabIndexedDbKey(room));
   });
 
+  it("a server delete keeps a document with unsaved local work", async () => {
+    const path = "/users/ada/unsaved.md";
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry(path, "fn-unsaved"));
+    await upsertDriveEntry(username, entry("/users/ada/other.md", "fn-other"));
+    await writeDriveContentBlob(username, path, new Blob(["local"], { type: "text/markdown" }), 1);
+    await writeDriveAvailability(username, { id: path, source: "manual" });
+    await seedPendingSave(path, true);
+    fileNodeChanges.mockResolvedValue(changes({ destroyed: ["fn-unsaved"], newState: "4" }));
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    // Row, blob, pin and collab database stay; the token still moves on.
+    expect(result.keptUnsavedPaths).toEqual(["users/ada/unsaved.md"]);
+    expect(await readCachedDriveNodeId(username, path)).toBe("fn-unsaved");
+    await expect(readDriveAvailability(username, path)).resolves.toMatchObject({
+      source: "manual",
+    });
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect(await blobs.get("users/ada/unsaved.md")).toBeDefined();
+    await expect(listKeptUnsavedDocumentPaths(username)).resolves.toEqual(["users/ada/unsaved.md"]);
+    expect(await readDriveSyncToken(username)).toBe("4");
+
+    // Another node moving onto that path still blocks.
+    installCatalog(new Map([["fn-other", node("fn-other", "fn-home", "unsaved.md")]]));
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-other"], newState: "5" }));
+    await syncDriveInboundFromFileNodes(username);
+    expect(await readDriveSyncToken(username)).toBe("4");
+    expect(await readCachedDriveNodeId(username, path)).toBe("fn-unsaved");
+    expect(await readCachedDriveNodeId(username, "/users/ada/other.md")).toBe("fn-other");
+  });
+
   it("follows a remote rename on the same nodeId without duplicating the row", async () => {
     await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/original.md", "fn-same"));
