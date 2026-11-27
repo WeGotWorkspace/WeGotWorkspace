@@ -1,0 +1,431 @@
+[
+ {
+  "profile": "notes",
+  "day": 0,
+  "actions": 0,
+  "blocks": 20,
+  "textBytes": 3530,
+  "sidecar": {
+   "v1": 4076,
+   "v2": 4014,
+   "v1gz": 1620,
+   "v2gz": 1525
+  },
+  "compacted": {
+   "v1": 4076,
+   "v2": 4014,
+   "v1gz": 1621,
+   "v2gz": 1525
+  },
+  "seedFromText": {
+   "v1": 4328,
+   "v2": 4018,
+   "v1gz": 1623,
+   "v2gz": 1536
+  },
+  "stats": {
+   "clients": 1,
+   "liveItems": 63,
+   "deletedItems": 0,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 2,
+  "ms": 17
+ },
+ {
+  "profile": "notes",
+  "day": 21,
+  "actions": 1260,
+  "blocks": 218,
+  "textBytes": 51493,
+  "sidecar": {
+   "v1": 188837,
+   "v2": 170578,
+   "v1gz": 63998,
+   "v2gz": 55019
+  },
+  "compacted": {
+   "v1": 90800,
+   "v2": 87953,
+   "v1gz": 28973,
+   "v2gz": 26117
+  },
+  "seedFromText": {
+   "v1": 64766,
+   "v2": 58103,
+   "v1gz": 20429,
+   "v2gz": 17937
+  },
+  "stats": {
+   "clients": 36,
+   "liveItems": 1769,
+   "deletedItems": 1956,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 29978,
+  "ms": 1343
+ },
+ {
+  "profile": "notes",
+  "day": 42,
+  "actions": 2520,
+  "blocks": 397,
+  "textBytes": 90159,
+  "sidecar": {
+   "v1": 356556,
+   "v2": 323112,
+   "v1gz": 123226,
+   "v2gz": 103455
+  },
+  "compacted": {
+   "v1": 165154,
+   "v2": 159793,
+   "v1gz": 51722,
+   "v2gz": 47124
+  },
+  "seedFromText": {
+   "v1": 113235,
+   "v2": 100866,
+   "v1gz": 35503,
+   "v2gz": 30334
+  },
+  "stats": {
+   "clients": 75,
+   "liveItems": 3287,
+   "deletedItems": 3804,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 59138,
+  "ms": 4335
+ },
+ {
+  "profile": "notes",
+  "day": 63,
+  "actions": 3780,
+  "blocks": 609,
+  "textBytes": 141408,
+  "sidecar": {
+   "v1": 536699,
+   "v2": 487179,
+   "v1gz": 187438,
+   "v2gz": 152926
+  },
+  "compacted": {
+   "v1": 252109,
+   "v2": 243810,
+   "v1gz": 77649,
+   "v2gz": 70905
+  },
+  "seedFromText": {
+   "v1": 178289,
+   "v2": 159113,
+   "v1gz": 55009,
+   "v2gz": 46724
+  },
+  "stats": {
+   "clients": 116,
+   "liveItems": 4991,
+   "deletedItems": 5597,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 84990,
+  "ms": 9355
+ },
+ {
+  "profile": "notes",
+  "day": 84,
+  "actions": 5040,
+  "blocks": 839,
+  "textBytes": 194574,
+  "sidecar": {
+   "v1": 726355,
+   "v2": 661531,
+   "v1gz": 254646,
+   "v2gz": 209431
+  },
+  "compacted": {
+   "v1": 346781,
+   "v2": 334965,
+   "v1gz": 106541,
+   "v2gz": 96286
+  },
+  "seedFromText": {
+   "v1": 245796,
+   "v2": 218962,
+   "v1gz": 75260,
+   "v2gz": 63007
+  },
+  "stats": {
+   "clients": 159,
+   "liveItems": 6687,
+   "deletedItems": 7499,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 116505,
+  "ms": 16029
+ },
+ {
+  "profile": "notes",
+  "day": 105,
+  "actions": 6300,
+  "blocks": 1021,
+  "textBytes": 240065,
+  "sidecar": {
+   "v1": 899948,
+   "v2": 819869,
+   "v1gz": 317983,
+   "v2gz": 256914
+  },
+  "compacted": {
+   "v1": 428369,
+   "v2": 413571,
+   "v1gz": 131274,
+   "v2gz": 117460
+  },
+  "seedFromText": {
+   "v1": 303892,
+   "v2": 270541,
+   "v1gz": 93104,
+   "v2gz": 76479
+  },
+  "stats": {
+   "clients": 198,
+   "liveItems": 8304,
+   "deletedItems": 9324,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 143623,
+  "ms": 26803
+ },
+ {
+  "profile": "notes",
+  "day": 126,
+  "actions": 7560,
+  "blocks": 1194,
+  "textBytes": 282070,
+  "sidecar": {
+   "v1": 1072864,
+   "v2": 978000,
+   "v1gz": 381001,
+   "v2gz": 308456
+  },
+  "compacted": {
+   "v1": 507098,
+   "v2": 489271,
+   "v1gz": 155303,
+   "v2gz": 139847
+  },
+  "seedFromText": {
+   "v1": 358149,
+   "v2": 318302,
+   "v1gz": 109687,
+   "v2gz": 90672
+  },
+  "stats": {
+   "clients": 236,
+   "liveItems": 9940,
+   "deletedItems": 11072,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 171543,
+  "ms": 41333
+ },
+ {
+  "profile": "notes",
+  "day": 147,
+  "actions": 8820,
+  "blocks": 1366,
+  "textBytes": 323809,
+  "sidecar": {
+   "v1": 1247573,
+   "v2": 1136316,
+   "v1gz": 445626,
+   "v2gz": 356943
+  },
+  "compacted": {
+   "v1": 588626,
+   "v2": 567423,
+   "v1gz": 180268,
+   "v2gz": 161179
+  },
+  "seedFromText": {
+   "v1": 406307,
+   "v2": 366102,
+   "v1gz": 126266,
+   "v2gz": 103251
+  },
+  "stats": {
+   "clients": 280,
+   "liveItems": 11553,
+   "deletedItems": 12944,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 202098,
+  "ms": 57335
+ },
+ {
+  "profile": "notes",
+  "day": 168,
+  "actions": 10080,
+  "blocks": 1566,
+  "textBytes": 365767,
+  "sidecar": {
+   "v1": 1418162,
+   "v2": 1293532,
+   "v1gz": 507819,
+   "v2gz": 406780
+  },
+  "compacted": {
+   "v1": 664895,
+   "v2": 641270,
+   "v1gz": 203060,
+   "v2gz": 182111
+  },
+  "seedFromText": {
+   "v1": 465711,
+   "v2": 413166,
+   "v1gz": 142807,
+   "v2gz": 115607
+  },
+  "stats": {
+   "clients": 326,
+   "liveItems": 12964,
+   "deletedItems": 14746,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 228955,
+  "ms": 78319
+ },
+ {
+  "profile": "notes",
+  "day": 189,
+  "actions": 11340,
+  "blocks": 1815,
+  "textBytes": 419971,
+  "sidecar": {
+   "v1": 1599730,
+   "v2": 1459329,
+   "v1gz": 573714,
+   "v2gz": 459228
+  },
+  "compacted": {
+   "v1": 755475,
+   "v2": 728318,
+   "v1gz": 231098,
+   "v2gz": 207123
+  },
+  "seedFromText": {
+   "v1": 535898,
+   "v2": 475383,
+   "v1gz": 163582,
+   "v2gz": 131899
+  },
+  "stats": {
+   "clients": 370,
+   "liveItems": 14834,
+   "deletedItems": 16447,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 253855,
+  "ms": 106006
+ },
+ {
+  "profile": "notes",
+  "day": 210,
+  "actions": 12600,
+  "blocks": 2036,
+  "textBytes": 469307,
+  "sidecar": {
+   "v1": 1784890,
+   "v2": 1628649,
+   "v1gz": 641863,
+   "v2gz": 513896
+  },
+  "compacted": {
+   "v1": 842673,
+   "v2": 812476,
+   "v1gz": 257631,
+   "v2gz": 230516
+  },
+  "seedFromText": {
+   "v1": 598163,
+   "v2": 530668,
+   "v1gz": 182586,
+   "v2gz": 146741
+  },
+  "stats": {
+   "clients": 415,
+   "liveItems": 16556,
+   "deletedItems": 18274,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 282800,
+  "ms": 130751
+ },
+ {
+  "profile": "notes",
+  "day": 231,
+  "actions": 13860,
+  "blocks": 2288,
+  "textBytes": 524024,
+  "sidecar": {
+   "v1": 1967542,
+   "v2": 1794915,
+   "v1gz": 707868,
+   "v2gz": 565992
+  },
+  "compacted": {
+   "v1": 932708,
+   "v2": 899215,
+   "v1gz": 284611,
+   "v2gz": 255070
+  },
+  "seedFromText": {
+   "v1": 667764,
+   "v2": 592679,
+   "v1gz": 203454,
+   "v2gz": 163471
+  },
+  "stats": {
+   "clients": 460,
+   "liveItems": 18309,
+   "deletedItems": 20121,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 307567,
+  "ms": 160220
+ },
+ {
+  "profile": "notes",
+  "day": 252,
+  "actions": 15120,
+  "blocks": 2470,
+  "textBytes": 568656,
+  "sidecar": {
+   "v1": 2148169,
+   "v2": 1959498,
+   "v1gz": 775264,
+   "v2gz": 618268
+  },
+  "compacted": {
+   "v1": 1015289,
+   "v2": 978759,
+   "v1gz": 310699,
+   "v2gz": 278352
+  },
+  "seedFromText": {
+   "v1": 724442,
+   "v2": 642758,
+   "v1gz": 221409,
+   "v2gz": 177721
+  },
+  "stats": {
+   "clients": 503,
+   "liveItems": 20007,
+   "deletedItems": 21969,
+   "gcStructs": 0
+  },
+  "commentsMapV1": 337232,
+  "ms": 198119
+ }
+]

@@ -1,0 +1,390 @@
+{
+ "profile": {
+  "name": "log",
+  "rows": 1000,
+  "cols": 10,
+  "users": 4,
+  "actionsPerDay": 200,
+  "offlineUser": true
+ },
+ "ms": 356160,
+ "checkpoints": [
+  {
+   "day": 0,
+   "actions": 0,
+   "sessions": 0,
+   "rows": 1000,
+   "textBytes": 125846,
+   "sidecar": {
+    "v1": 376114,
+    "v2": 315235,
+    "v1gz": 106827,
+    "v2gz": 68665
+   },
+   "compacted": {
+    "v1": 416214,
+    "v2": 315290,
+    "v1gz": 108459,
+    "v2gz": 68706
+   },
+   "stats": {
+    "clients": 1,
+    "structs": 11022,
+    "liveItems": 11022,
+    "deletedItems": 0,
+    "gcStructs": 0,
+    "deleteRanges": 0
+   },
+   "saves": 0,
+   "deltaBytes": 0
+  },
+  {
+   "day": 21,
+   "actions": 4067,
+   "sessions": 65,
+   "rows": 2404,
+   "textBytes": 162780,
+   "sidecar": {
+    "v1": 849144,
+    "v2": 684943,
+    "v1gz": 276114,
+    "v2gz": 180428
+   },
+   "compacted": {
+    "v1": 569912,
+    "v2": 451997,
+    "v1gz": 157107,
+    "v2gz": 115807
+   },
+   "stats": {
+    "clients": 64,
+    "structs": 35356,
+    "liveItems": 16879,
+    "deletedItems": 18086,
+    "gcStructs": 391,
+    "deleteRanges": 6662
+   },
+   "saves": 608,
+   "deltaBytes": 7704959
+  },
+  {
+   "day": 42,
+   "actions": 8717,
+   "sessions": 131,
+   "rows": 4129,
+   "textBytes": 355452,
+   "sidecar": {
+    "v1": 1695886,
+    "v2": 1340847,
+    "v1gz": 544442,
+    "v2gz": 357397
+   },
+   "compacted": {
+    "v1": 1135297,
+    "v2": 881063,
+    "v1gz": 310577,
+    "v2gz": 225514
+   },
+   "stats": {
+    "clients": 129,
+    "structs": 68990,
+    "liveItems": 32556,
+    "deletedItems": 35434,
+    "gcStructs": 1000,
+    "deleteRanges": 11934
+   },
+   "saves": 1308,
+   "deltaBytes": 28958410
+  },
+  {
+   "day": 63,
+   "actions": 12869,
+   "sessions": 192,
+   "rows": 5618,
+   "textBytes": 560411,
+   "sidecar": {
+    "v1": 2602687,
+    "v2": 2015331,
+    "v1gz": 816598,
+    "v2gz": 521285
+   },
+   "compacted": {
+    "v1": 1679380,
+    "v2": 1283897,
+    "v1gz": 455761,
+    "v2gz": 324647
+   },
+   "stats": {
+    "clients": 191,
+    "structs": 105595,
+    "liveItems": 47847,
+    "deletedItems": 56398,
+    "gcStructs": 1350,
+    "deleteRanges": 16958
+   },
+   "saves": 1933,
+   "deltaBytes": 59386163
+  },
+  {
+   "day": 84,
+   "actions": 17171,
+   "sessions": 255,
+   "rows": 7193,
+   "textBytes": 725883,
+   "sidecar": {
+    "v1": 3633784,
+    "v2": 2821560,
+    "v1gz": 1160441,
+    "v2gz": 754163
+   },
+   "compacted": {
+    "v1": 2067335,
+    "v2": 1618806,
+    "v1gz": 574421,
+    "v2gz": 414077
+   },
+   "stats": {
+    "clients": 256,
+    "structs": 142918,
+    "liveItems": 59831,
+    "deletedItems": 81272,
+    "gcStructs": 1815,
+    "deleteRanges": 26661
+   },
+   "saves": 2585,
+   "deltaBytes": 103065596
+  },
+  {
+   "day": 105,
+   "actions": 21475,
+   "sessions": 319,
+   "rows": 8712,
+   "textBytes": 1039489,
+   "sidecar": {
+    "v1": 4754271,
+    "v2": 3605176,
+    "v1gz": 1459429,
+    "v2gz": 896392
+   },
+   "compacted": {
+    "v1": 2907645,
+    "v2": 2201073,
+    "v1gz": 779608,
+    "v2gz": 547228
+   },
+   "stats": {
+    "clients": 320,
+    "structs": 190766,
+    "liveItems": 80540,
+    "deletedItems": 107721,
+    "gcStructs": 2505,
+    "deleteRanges": 33720
+   },
+   "saves": 3255,
+   "deltaBytes": 163335973
+  },
+  {
+   "day": 126,
+   "actions": 25255,
+   "sessions": 383,
+   "rows": 9972,
+   "textBytes": 1404329,
+   "sidecar": {
+    "v1": 5858317,
+    "v2": 4435342,
+    "v1gz": 1793961,
+    "v2gz": 1095061
+   },
+   "compacted": {
+    "v1": 3757800,
+    "v2": 2818830,
+    "v1gz": 999268,
+    "v2gz": 689828
+   },
+   "stats": {
+    "clients": 382,
+    "structs": 228963,
+    "liveItems": 102685,
+    "deletedItems": 123288,
+    "gcStructs": 2990,
+    "deleteRanges": 39934
+   },
+   "saves": 3790,
+   "deltaBytes": 221848075
+  },
+  {
+   "day": 147,
+   "actions": 29397,
+   "sessions": 439,
+   "rows": 11248,
+   "textBytes": 1861679,
+   "sidecar": {
+    "v1": 7260678,
+    "v2": 5440384,
+    "v1gz": 2203817,
+    "v2gz": 1332807
+   },
+   "compacted": {
+    "v1": 4848900,
+    "v2": 3602679,
+    "v1gz": 1269729,
+    "v2gz": 857353
+   },
+   "stats": {
+    "clients": 437,
+    "structs": 279210,
+    "liveItems": 131532,
+    "deletedItems": 144234,
+    "gcStructs": 3444,
+    "deleteRanges": 44316
+   },
+   "saves": 4409,
+   "deltaBytes": 303989051
+  },
+  {
+   "day": 168,
+   "actions": 33477,
+   "sessions": 506,
+   "rows": 12775,
+   "textBytes": 2154013,
+   "sidecar": {
+    "v1": 8628630,
+    "v2": 6375000,
+    "v1gz": 2601541,
+    "v2gz": 1531270
+   },
+   "compacted": {
+    "v1": 5584551,
+    "v2": 4123904,
+    "v1gz": 1457349,
+    "v2gz": 976195
+   },
+   "stats": {
+    "clients": 504,
+    "structs": 335746,
+    "liveItems": 153191,
+    "deletedItems": 178587,
+    "gcStructs": 3968,
+    "deleteRanges": 54087
+   },
+   "saves": 5041,
+   "deltaBytes": 402961543
+  },
+  {
+   "day": 189,
+   "actions": 37454,
+   "sessions": 573,
+   "rows": 14291,
+   "textBytes": 2743167,
+   "sidecar": {
+    "v1": 10619971,
+    "v2": 7805231,
+    "v1gz": 3237068,
+    "v2gz": 1929584
+   },
+   "compacted": {
+    "v1": 6814450,
+    "v2": 5006783,
+    "v1gz": 1768516,
+    "v2gz": 1168003
+   },
+   "stats": {
+    "clients": 574,
+    "structs": 404999,
+    "liveItems": 185501,
+    "deletedItems": 214510,
+    "gcStructs": 4988,
+    "deleteRanges": 61165
+   },
+   "saves": 5688,
+   "deltaBytes": 522023522
+  },
+  {
+   "day": 210,
+   "actions": 41686,
+   "sessions": 642,
+   "rows": 15743,
+   "textBytes": 3393796,
+   "sidecar": {
+    "v1": 12423338,
+    "v2": 8967150,
+    "v1gz": 3688557,
+    "v2gz": 2107240
+   },
+   "compacted": {
+    "v1": 8317767,
+    "v2": 6074034,
+    "v1gz": 2137967,
+    "v2gz": 1394143
+   },
+   "stats": {
+    "clients": 642,
+    "structs": 481165,
+    "liveItems": 225167,
+    "deletedItems": 250138,
+    "gcStructs": 5860,
+    "deleteRanges": 68892
+   },
+   "saves": 6331,
+   "deltaBytes": 655787011
+  },
+  {
+   "day": 231,
+   "actions": 46129,
+   "sessions": 707,
+   "rows": 17302,
+   "textBytes": 3813667,
+   "sidecar": {
+    "v1": 14442839,
+    "v2": 10305054,
+    "v1gz": 4248357,
+    "v2gz": 2350789
+   },
+   "compacted": {
+    "v1": 9166357,
+    "v2": 6701974,
+    "v1gz": 2368741,
+    "v2gz": 1551091
+   },
+   "stats": {
+    "clients": 706,
+    "structs": 563684,
+    "liveItems": 247155,
+    "deletedItems": 310065,
+    "gcStructs": 6464,
+    "deleteRanges": 88515
+   },
+   "saves": 6983,
+   "deltaBytes": 809604838
+  },
+  {
+   "day": 252,
+   "actions": 49874,
+   "sessions": 776,
+   "rows": 18600,
+   "textBytes": 4594627,
+   "sidecar": {
+    "v1": 16407430,
+    "v2": 11671430,
+    "v1gz": 4811452,
+    "v2gz": 2657420
+   },
+   "compacted": {
+    "v1": 10777861,
+    "v2": 7839402,
+    "v1gz": 2776705,
+    "v2gz": 1796641
+   },
+   "stats": {
+    "clients": 775,
+    "structs": 632322,
+    "liveItems": 289678,
+    "deletedItems": 335271,
+    "gcStructs": 7373,
+    "deleteRanges": 94168
+   },
+   "saves": 7600,
+   "deltaBytes": 983909488
+  }
+ ]
+}
