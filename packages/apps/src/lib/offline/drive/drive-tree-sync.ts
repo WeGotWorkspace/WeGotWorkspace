@@ -1,7 +1,7 @@
 import {
   driveJmapSession,
-  fileNodeToDirectoryEntry,
   FileNodeNotFoundError,
+  fileNodeToDirectoryEntry,
   fileNodeVirtualPath,
   listFileNodeEntries,
   type DriveJmapSession,
