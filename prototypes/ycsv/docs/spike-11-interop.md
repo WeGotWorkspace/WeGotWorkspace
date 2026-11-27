@@ -82,7 +82,14 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
    flag is missing, as on a plain CSV, and its result is written back. Users
    can toggle "first row is header", which renumbers only the file form. See
    [Header flag and detection](#header-flag-and-detection).
-10. **Spec.** 30 proposals in Appendix B (P1 rejected, P2/P27 accepted). The ones that matter
+10. **CSV first (P31, P32 accepted).** The header row stays in the CSV body,
+    and `columns` is an optional enrichment. A `.csv` stays CSV until a
+    YCSV-only feature is used; then the editor asks. Proposed matching rule:
+    ref equals header text first, then position (C1–C5). Build consequence:
+    `.csv` needs a Yjs sidecar and Sheets routing. See
+    [CSV first](#csv-first-header-in-the-body-csv-stays-csv).
+11. **Spec.** 32 proposals in Appendix B (P1 rejected; P2/P27, P31, P32
+    accepted). The ones that matter
    most:
    - **P29**: frontmatter addresses (`cells`, `merges`, `notes`) use the same
      row numbers as formulas, with the header as row 0.
@@ -637,6 +644,8 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 |---|---|---|
 | P1 | ~~Grid row numbering: header = row 1~~ **Rejected** (Wouter): spec §7.1 stands | Import/export map rows instead; `spreadsheet-core` row counting is a bug |
 | P29 | Frontmatter addresses use YCSV rows; header = row 0 (`A0:D0`) | `B3` must mean one cell in `cells` and in formulas; changes example 9.3 |
+| P31 | Header in the CSV body; `columns` is enrichment — **accepted**. Matching rule C1–C5 is a proposal | Wouter; see "CSV first" |
+| P32 | `.csv` stays CSV until a YCSV-only feature; editor asks — **accepted**. Dialect kept, `=` is text in CSV: proposals | Wouter; needs collab for `.csv` |
 | P30 | Empty rows keep their number (**open question 1**) | §7.2 renumbers formulas on every Excel import with blank rows; neither parser follows it |
 | P2 / P27 | Explicit `header: true\|false` — **accepted** (Wouter); detection rules D1–D7 in §4.1 | A-Z files misread by proto; detection guesses |
 | P3 / P17 | Sheet refs: Unicode grammar; `hidden`, `tab_color`, array order | Example 9.4 fails in core; fixtures |
@@ -717,16 +726,109 @@ accepted and written into spec §3, §3.1, §4.1 and A.5.
   text as `name`, so `prijs3` keeps working instead of turning into `C4`.
   Neither the model nor the toggle was built in this spike; the grid is owned
   by the sheets-integration session.
-- **Still open, decided separately by Wouter (not marked here):**
-  - whether the header moves out of the CSV body into `columns`;
-  - P30, whether empty rows keep their number;
-  - whether a `.csv` edited in our editor stays CSV until a YCSV-only
-    feature is used.
+- **Since decided:** the header stays in the body (P31), and a `.csv` stays
+  CSV until a YCSV-only feature is used (P32). See
+  [CSV first](#csv-first-header-in-the-body-csv-stays-csv). P30 is still
+  open.
+
+### CSV first: header in the body, `.csv` stays CSV
+
+**Decisions (Wouter), written into the spec as accepted:**
+- **P31:** the header row stays in the CSV body, and `columns` is an
+  optional enrichment (spec §4). A plain CSV with a header row is a complete
+  sheet. `columns` adds `ref`, `type`, format and validation; people who
+  type source can start with a bare CSV.
+- **P32:** a `.csv` edited in our editor stays a plain CSV while only values
+  change (spec §2.4). The first YCSV-only feature is the trigger, and the
+  editor asks first. The features: a formula, a type or format, a style,
+  validation, a note, a merge, a def, a second sheet, a chart, or a header
+  choice that differs from detection.
+
+**Proposal: matching `columns` to the CSV columns (spec §4.3, C1–C5).** I
+checked the suggested pure-position rule (header text = display name,
+`columns` by position) against two write paths:
+
+| Write path | Pure position | Proposed: ref = header text first, then position |
+|---|---|---|
+| Hand-typed source, header `product,prijs`, refs the same | works | works |
+| Hand-typed, a column moved in the source | types, validation and formula targets move to the wrong column, silently | columns follow their header |
+| Outside tool (CSV editor, script, Excel over DAV) reorders columns | silently wrong | follows, except for columns whose header text is not their ref; those attach by position **with a warning** |
+| Outside tool renames a header | still right (position unchanged) | falls back to position, so still right |
+| Outside tool adds a column | the new column takes the next definition if it sits in the middle (wrong) | untyped new column, ref = slug(header) |
+| Outside tool removes a column | the definitions after it shift onto the wrong columns | the definition is unused, with a warning; formulas using it give `#REF!` |
+
+So I propose:
+- **C1:** with a header row, the header text is the display name.
+  `columns[i].name` is ignored (warn when it differs), and writers do not
+  write it.
+- **C2:** match by `ref` = header text (normalised).
+- **C3:** then by position.
+- **C4:** extra columns are untyped; extra definitions are unused, with a
+  warning.
+- **C5:** without a header, position only, and `name` is the display name.
+
+Writers give a new column `ref` = slug(header text) so that C2 keeps
+working; renaming a header later keeps the ref.
+
+Prototype: `interop/csv/resolve-columns.ts`. Its 9 cases cover hand-typed,
+reordered, display-name, renamed, added and removed columns, `name` under a
+header, and no header. The case where an outside tool reorders two columns
+with display-name headers is the one weak spot, and it warns.
+
+**Build consequence of P32.** `.csv` needs real-time collaboration like
+`.ycsv`, so it needs a Yjs sidecar:
+- **Client:** `DOCS_COLLAB_TEXT_EXTENSIONS` in
+  `packages/apps/src/lib/files/docs-collab-text-files.ts` (main) already
+  lists `csv`, but routes it to the Docs text editor. Routing must send
+  `.csv` and `.ycsv` to Sheets, or offer both.
+- **Server:** `CollabDocFormats` in
+  `packages/api/app/Services/Drive/CollabDocFormats.php` (main) knows only
+  `md` and `markdown`. `csv` and `ycsv` need a sheet doc type there before a
+  sidecar `.<name>.csv.yjs` is accepted.
+- **Outside writes:** the external-write detection that Docs and Notes use
+  must also cover the CSV, so that an outside write rebuilds the Yjs sheet.
+- **Writing the file back:** it must keep the CSV's dialect (separator,
+  line endings, BOM, quoting, number format). That part is a proposal in
+  §2.4. It matters because the Dutch Excel CSV uses `;` and the decimal
+  comma, and Excel must be able to read the file again.
+
+**Proposed with P32, not decided:**
+- **Dialect preservation:** see the last point above.
+- **`=` is text in a plain `.csv`:** a value starting with `=` is text,
+  because CSV has no formulas; typing a formula is the trigger.
 
 ## Open questions
 
 1. **Should empty rows keep their row number (P30)?** Recommended: yes.
    Details are under [Row numbering decision](#row-numbering-decision).
+
+   What a blank row looks like in the source: a line with only commas
+   (`,,`), or an empty line. Both are a fully empty row. An example with a
+   header and one blank separator line:
+
+   ```
+   post,bedrag
+   Huur,1250
+   Stroom,90
+   ,
+   Totaal,=SUM(bedrag1:bedrag2)
+   ```
+
+   | Line in the source | §7.2 as written | P30 (blank rows numbered) |
+   |---|---|---|
+   | `post,bedrag` | header (row 0) | header (row 0) |
+   | `Huur,1250` | row 1 | row 1 |
+   | `Stroom,90` | row 2 | row 2 |
+   | `,` | no number | row 3 |
+   | `Totaal,…` | row 3: `bedrag3` is the total | row 4: `bedrag4` is the total |
+
+   - **Under §7.2:** the grid shows 1, 2, (blank), 3.
+     - Typing anything into the blank line turns it into row 3, and every
+       row below it, and every formula that points there, moves up by one.
+     - An Excel import with blank rows needs renumbering: Excel calls the
+       total row 5.
+   - **Under P30:** the numbering is the line number minus the header line,
+     and it never jumps.
 2. **How does the grid label the header row?** Wouter's decision mentions
    that the visible numbering "can start at 2". That works only if formulas
    also say 2 for that row, which is P1, now rejected. With §7.1, a grid that
@@ -786,7 +888,7 @@ accepted and written into spec §3, §3.1, §4.1 and A.5.
 | `interop/xlsx/` | Probe, A1 ↔ YCSV translator, importer, evaluator, exporter, end-to-end test |
 | `interop/formulas/` | v1 function set vs LibreOffice; formulajs direct calls |
 | `interop/notation/` | Canonical ↔ locale formula converter and tests |
-| `interop/csv/` | Header detection (rules D1–D7) and tests |
+| `interop/csv/` | Header detection (rules D1–D7), `columns` matching (C1–C5), tests |
 | `interop/fixtures/files/numbers/` | Numbers 15.1 fixtures: `.numbers`, Numbers' XLSX and CSV exports |
 | `interop/xlsx/numbers.test.ts` | Numbers values vs LibreOffice, `.numbers` read/write; opening in Numbers is opt-in (`NUMBERS_E2E=1`) |
 

@@ -63,6 +63,32 @@ UTF-8. No BOM.
 
 LF (`\n`) preferred. CRLF (`\r\n`) tolerated.
 
+### 2.4 Plain CSV
+
+> **Decision (spike 11, P32):** accepted (Wouter).
+
+- **A plain CSV is a valid YCSV sheet.** That means a file without
+  frontmatter: one sheet, header detected (§4.1), no formulas or formatting.
+- **A `.csv` stays a plain CSV while only values change.** An editor that
+  opens a `.csv` writes it back as plain CSV, as long as the user only edits
+  values, adds or removes rows and columns, or edits the header.
+- **It becomes `.ycsv` only when a YCSV-only feature is used.** These are a
+  formula, a type or format, a style, validation, a note, a merge, a
+  def, a second sheet, a chart, or a header choice that differs from what
+  detection would guess (a plain CSV cannot store `header`). At that moment
+  the editor asks the user first. The answer is either "save as .ycsv"
+  (a new file next to the CSV, or a rename) or "keep CSV" (the feature is
+  not applied).
+
+> **Proposal (spike 11, P32 details):**
+> - **Keep the dialect.** A CSV written back keeps the separator (`,` or
+>   `;`), line endings, BOM, quoting style and number format it was read
+>   with, so the tools that made it can read it again.
+> - **No formulas in a plain CSV.** A value starting with `=` in a plain
+>   `.csv` is text, because CSV has no formulas. Typing a formula is the
+>   trigger above.
+
+
 ---
 
 ## 3. YAML frontmatter
@@ -336,6 +362,10 @@ cells:
 
 ## 4. Column identity and fallback
 
+> **Decision (spike 11, P31):** the header row stays in the CSV body, and `columns` is an optional enrichment. A plain CSV with a header row is a complete sheet; `columns` only adds `ref`, `type`, format and validation. Wouter: "ik vond het ook wel elegant dat de columns een verrijking waren maar je met gewone csv header row kunt starten, zeker voor mensen die gewoon source typen."
+>
+> **Proposal (spike 11, P31 C1–C5):** how `columns` attaches to the CSV columns, in §4.3. It replaces "matched by name" in the table below.
+
 YCSV resolves column identity in the following order:
 
 | Situation                                | Column identity                           |
@@ -400,6 +430,41 @@ When no `ref` is defined for a column, it is assigned a letter identifier:
 `A` for the first column, `B` for the second, and so on (up to `Z`, then
 `AA`, `AB`, etc. following spreadsheet convention). These identifiers may be
 used in formulas.
+
+### 4.3 Matching `columns` to the CSV columns
+
+> **Proposal (spike 11).** Not decided. Prototype and cases: `prototypes/ycsv/interop/csv/resolve-columns.ts`.
+
+With a header row:
+
+- **C1 — The header text is the display name.** `columns[i].name` is
+  ignored when a header row is present. A reader warns when it differs from
+  the header text. Writers do not write `name` for a sheet with
+  `header: true`.
+- **C2 — Match by ref first.** A definition whose `ref` equals a header text
+  (trimmed, case-insensitive, compared as slugs) attaches to that column,
+  wherever it is in the CSV. When a hand-typed or tool-edited CSV moves
+  columns, they keep their type and their formulas.
+- **C3 — Then by position.** Definitions that matched nothing attach to the
+  remaining columns in order, with a warning (header text ≠ ref).
+- **C4 — Count differences.**
+  - More CSV columns than definitions: the extra columns are untyped, and
+    their ref is the slug of the header text.
+  - More definitions than CSV columns: the extra definitions are unused and
+    the reader warns. Formulas that use their refs give `#REF!`.
+- **Writers keep C2 working.** A new column gets `ref` = slug of its header
+  text. Renaming the header later keeps the ref, so formulas do not change,
+  and the column falls back to C3.
+
+Without a header row:
+
+- **C5 — Position only.** `columns[i].name` is the display name, and the
+  A-Z fallback (§4.2) fills missing refs.
+
+Trade-off: a pure position rule is simpler, but when an outside tool
+reorders the columns, types, validation and formula targets silently move to
+the wrong column. With C2, that only happens to columns whose header text is
+not their ref, and then the reader warns.
 
 ---
 
@@ -1190,8 +1255,8 @@ for each chart in charts:
 > `prototypes/ycsv/docs/spike-11-conformance-results.md`. The sections they
 > would change carry a short "Proposal (spike 11)" note.
 
-Each proposal has an id (P1…P30). The ids match the spike report. P1 was
-rejected (see below).
+Each proposal has an id (P1…P32). The ids match the spike report.
+P1 was rejected; P2/P27, P31 and P32 were accepted (details per entry).
 
 ### B.1 Rows, header and body
 
@@ -1234,6 +1299,25 @@ een mooie aanpak"). Every sheet states `header: true|false`. Detection
 plain CSV, and its result is written back as the flag. Users can toggle
 "first row is header"; that renumbers the file form only (§4.1, Toggling).
 Written into §3, §4.1 and A.5.
+
+**P31 — Header in the body, `columns` as enrichment. Accepted** (Wouter).
+The matching rule C1–C5 (§4.3) is a proposal: ref-equals-header-text first,
+then position. The header text is the display name.
+
+**P32 — A `.csv` stays CSV until a YCSV-only feature is used. Accepted**
+(Wouter). The editor asks at that moment (§2.4). Build consequence: a `.csv`
+needs real-time collaboration like `.ycsv`, so it needs a Yjs sidecar and
+must be on the collab-editable lists:
+- client: `DOCS_COLLAB_TEXT_EXTENSIONS` (`packages/apps/src/lib/files/docs-collab-text-files.ts`)
+  already lists `csv`, but routes it to the Docs text editor, so routing must
+  send `.csv` (and `.ycsv`) to Sheets;
+- server: `CollabDocFormats` (`packages/api/app/Services/Drive/CollabDocFormats.php`)
+  knows only `md` and `markdown`, so `csv` and `ycsv` need a sheet doc type
+  there;
+- the external-write detection used for Docs and Notes must cover the CSV
+  file.
+
+Dialect preservation and "`=` is text in a plain CSV" are proposals (§2.4).
 
 **P22 — Quote-aware split.** The body splitter (§2, A.2) must only split on a
 `---` line that is outside a quoted CSV field. Today a cell value containing
