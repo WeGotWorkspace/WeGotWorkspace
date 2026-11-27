@@ -369,12 +369,12 @@ export function DriveWorkspace({
           })
         }
         onAddTag={
-          tags.canEditTags(active) && activeMayManageStructure !== false
+          tags.canEditTags(active, fetchedActiveMayManageStructure)
             ? (label) => tags.changeTags([active.id], { tagsAdd: [label] })
             : undefined
         }
         onRemoveTag={
-          tags.canEditTags(active) && activeMayManageStructure !== false
+          tags.canEditTags(active, fetchedActiveMayManageStructure)
             ? (label) => tags.changeTags([active.id], { tagsRemove: [label] })
             : undefined
         }

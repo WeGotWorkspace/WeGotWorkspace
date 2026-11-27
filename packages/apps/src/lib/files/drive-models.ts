@@ -25,6 +25,8 @@ export type DriveFile = Note & {
   mayShare?: boolean;
   /** From directory listing `myRights.mayManageStructure` (full access) when available. */
   mayManageStructure?: boolean;
+  /** From directory listing `myRights.mayEditContent` (edit level) when available. */
+  mayEditContent?: boolean;
   /** True when the item has outgoing share grants (member, guest, or public). */
   isShared?: boolean;
   /** Active public link on this path. */

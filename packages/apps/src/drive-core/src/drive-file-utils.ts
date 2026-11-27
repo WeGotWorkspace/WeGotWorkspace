@@ -94,6 +94,7 @@ export function driveFileFromEntry(
     location,
     mayShare: entry.myRights?.mayShare,
     mayManageStructure: entry.myRights?.mayManageStructure,
+    mayEditContent: entry.myRights?.mayEditContent,
     ...driveShareFlagsFromListing(entry),
     ...(upload ? { upload } : {}),
   };
