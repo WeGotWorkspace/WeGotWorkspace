@@ -149,7 +149,7 @@ Taken one by one on 2026-11-27. The original questions follow below the table.
 | 2 | Fill / paste right | Column names shift like A1 (`=jan*1.21` → `=feb*1.21`); `$` locks. |
 | 3 | Cut + paste | References from other cells follow the moved cells. |
 | 4 | Frozen rows | Shared, stored in the file. |
-| 5 | Touch v1 | **Open.** Variant C (Calendar's hold-to-drag, 160 ms) is being tried on `spike/sheets-touch` first; then Wouter picks A, B or C. |
+| 5 | Touch v1 | **B**: range handles on top of tap / double-tap / long-press, matching Calendar's touch resize handles; rows and columns move through the header menu. Variant C (hold-to-drag, `spike/sheets-touch`) was tried: Calendar's 160 ms hold turns a scroll after a short rest into a selection; 250 ms is safe for normal scrolling. Hold-drag on headers only (250 ms, like moving a Calendar event) stays an optional later addition after a real-phone test. |
 | 6 | Row height | Fixed in v1; keep room in the format for an optional per-row height later; no wrap. |
 | 7 | Multi-range copy | Refused with a clear message (like Google Sheets). |
 | 8 | Undo of a row insert others typed in | Blocked: the step is skipped with a message ("Can't undo: Anna typed in this row"). Undo never silently removes someone else's work. |
