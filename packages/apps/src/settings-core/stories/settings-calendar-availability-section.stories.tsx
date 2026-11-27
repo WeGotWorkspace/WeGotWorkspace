@@ -4,7 +4,9 @@ import {
   createMockCalendarAvailabilitySettingsOperations,
   mockCalendarAvailabilitySettings,
 } from "@/lib/api/mock/calendar-availability-settings";
+import { createMockCalendarAvailabilityPublicLinkOperations } from "@/lib/api/mock/calendar-availability-public-link";
 import type { CalendarAvailabilitySettingsOperations } from "@/lib/api/wgw/calendar-availability";
+import type { CalendarAvailabilityPublicLinkOperations } from "@/lib/api/wgw/calendar-availability-public-link";
 import { calendarAvailabilityLabels as labels } from "@/settings-core/src/settings-calendar-availability-labels";
 import { SettingsCalendarAvailabilitySection } from "@/settings-core/src/settings-calendar-availability-section";
 import { SettingsStoryScope } from "./settings-story-scope";
@@ -20,10 +22,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof SettingsCalendarAvailabilitySection>;
 
-function story(operations: CalendarAvailabilitySettingsOperations): Story["render"] {
+function story(
+  operations: CalendarAvailabilitySettingsOperations,
+  publicLinkOperations?: CalendarAvailabilityPublicLinkOperations,
+): Story["render"] {
   return () => (
     <SettingsStoryScope>
-      <SettingsCalendarAvailabilitySection operations={operations} />
+      <SettingsCalendarAvailabilitySection
+        operations={operations}
+        publicLinkOperations={publicLinkOperations}
+      />
     </SettingsStoryScope>
   );
 }
@@ -153,5 +161,45 @@ export const TeamTagTooltip: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await expect(await body.findByRole("tooltip")).toHaveTextContent("Counts for the whole Team");
     await expect(tag).toHaveAccessibleDescription(labels.teamHint);
+  },
+};
+
+/** Public link on while Team sharing is off: the address, and the calendar choices apply to it. */
+export const PublicLinkOn: Story = {
+  render: story(
+    createMockCalendarAvailabilitySettingsOperations(),
+    createMockCalendarAvailabilityPublicLinkOperations({
+      enabled: true,
+      httpsUrl: "https://workspace.example/api/v1/calendars/availability/feeds/k3x9q2m7a1",
+      webcalUrl: "webcal://workspace.example/api/v1/calendars/availability/feeds/k3x9q2m7a1",
+    }),
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("textbox", { name: labels.publicLinkAddress }),
+    ).toHaveValue("https://workspace.example/api/v1/calendars/availability/feeds/k3x9q2m7a1");
+    await expect(canvas.getByRole("switch", { name: labels.switch })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    await expect(canvas.getByText(labels.calendarsHeading)).toBeInTheDocument();
+  },
+};
+
+/** Turning the public link on shows its address; turning it off asks first. */
+export const PublicLinkTurnOnAndOff: Story = {
+  render: story(
+    createMockCalendarAvailabilitySettingsOperations(),
+    createMockCalendarAvailabilityPublicLinkOperations(),
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("switch", { name: labels.publicLink }));
+    await expect(
+      await canvas.findByRole("textbox", { name: labels.publicLinkAddress }),
+    ).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("switch", { name: labels.publicLink }));
+    await expect(await within(document.body).findByText(labels.turnOffTitle)).toBeInTheDocument();
   },
 };

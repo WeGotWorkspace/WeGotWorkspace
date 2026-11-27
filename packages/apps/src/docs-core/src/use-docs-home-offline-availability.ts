@@ -3,6 +3,7 @@ import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-
 import {
   listDocsAvailability,
   normalizeDocsAvailabilityPath,
+  readDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
 import { docsOutboxApiPath } from "@/lib/offline/docs/docs-outbox-flush";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
@@ -132,23 +133,44 @@ export function useDocsHomeOfflineAvailability(
   };
 }
 
+/**
+ * Whether a row may open offline. The resolved set can lag a body that landed
+ * since its last pass (background body sync stores one every few seconds), so
+ * a row missing from it is checked on the device before the refusal.
+ */
 export function useDocsHomeOpenGuard({
   isOfflineListing,
   offlineAvailableIds,
+  username,
   onUnavailable,
 }: {
   isOfflineListing: boolean;
   offlineAvailableIds: ReadonlySet<string>;
+  username: string | null | undefined;
   onUnavailable: () => void;
 }) {
   return useCallback(
-    (file: DriveFile) => {
+    async (file: DriveFile): Promise<boolean> => {
       if (!isOfflineListing || offlineAvailableIds.has(file.id)) {
         return true;
       }
+      const apiPath = fileApiPath(file);
+      if (apiPath && (await isDocsBodyOnDevice(username, apiPath))) return true;
       onUnavailable();
       return false;
     },
-    [isOfflineListing, offlineAvailableIds, onUnavailable],
+    [isOfflineListing, offlineAvailableIds, onUnavailable, username],
   );
+}
+
+async function isDocsBodyOnDevice(
+  username: string | null | undefined,
+  apiPath: string,
+): Promise<boolean> {
+  try {
+    if (await hasDocsCollabOfflinePersistence(apiPath)) return true;
+    return Boolean(username && (await readDocsAvailability(username, apiPath)));
+  } catch {
+    return false;
+  }
 }

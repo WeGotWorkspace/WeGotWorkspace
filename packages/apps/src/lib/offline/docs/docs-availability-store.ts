@@ -107,6 +107,19 @@ export async function moveDocsAvailabilityForNode(
   for (const pin of stale) await table.delete(pin.id);
 }
 
+/** The pin at `apiPath` stops naming `nodeId`: that FileNode is another file (keep both, #1563). */
+export async function forgetDocsAvailabilityNodeId(
+  username: string,
+  apiPath: string,
+  nodeId: string,
+): Promise<void> {
+  const table = docsAvailabilityTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const pin = await table.get(normalizeDocsAvailabilityPath(apiPath));
+  if (pin?.nodeId !== nodeId) return;
+  const { nodeId: _dropped, ...rest } = pin;
+  await table.put(rest);
+}
+
 export async function migrateDocsAvailabilityPath(
   username: string,
   oldPath: string,

@@ -203,7 +203,8 @@ final class TeamHiddenDriveSharesTest extends WgwDatabaseTestCase
             'shareWith' => ['carol' => ['access' => 'edit']],
         ])->assertOk();
 
-        $this->assertSame($seq, app(FileNodeIndexService::class)->currentSeq());
+        // Only the share flags bump of the shared folder moves the sequence (#2063); the reset comes from the grant hash.
+        $this->assertSame($seq + 1, app(FileNodeIndexService::class)->currentSeq());
         $this->assertCannotCalculateChanges('carol', $state);
         $this->assertSame(
             ['FileNode'],

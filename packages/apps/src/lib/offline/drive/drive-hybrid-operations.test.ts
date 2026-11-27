@@ -374,6 +374,17 @@ describe("createHybridDriveOperations upload queue", () => {
     ).rejects.toThrow(/not available offline/);
   });
 
+  it("lists an empty account root from the tree without a Drive bootstrap (#2063 C4)", async () => {
+    // Docs home has no Drive bootstrap; account roots have no tree row.
+    const ops = createHybridDriveOperations(username, null);
+
+    const home = await ops.listDirectory("/users/alice");
+    expect(home.directory.files).toEqual([]);
+    await expect(ops.listDirectory("/users/alice/Unknown")).rejects.toThrow(
+      /not available offline/,
+    );
+  });
+
   it("opens a folder an upload has not created yet from its placeholders, also online", async () => {
     await writeDriveBootstrapToCache(username, bootstrap());
     await upsertDriveEntry(username, {

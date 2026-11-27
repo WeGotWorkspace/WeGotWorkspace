@@ -175,7 +175,25 @@ async function fullResync(
   signal?: AbortSignal,
 ): Promise<DriveInboundSyncResult> {
   const before = await cachedPathsByNodeId(username);
-  const tree = await syncDriveTree(username, { signal, ifTokenIs: staleToken });
+  // A full sync lists, it does not say what moved: starred paths, local text and
+  // an open editor follow a renamed Doc by the moves found here (#1563), as one
+  // final map, before the pass prunes the old rows (#2063 C7). The crawl
+  // fallback never reaches that point; it follows once the crawl is done.
+  let docsFollowed = false;
+  const followDocs = async () => {
+    docsFollowed = true;
+    try {
+      await applyDocsInboundChanges(username, await movesSince(username, before));
+    } catch (error) {
+      // The rows are written: a failure here must not hold back the prune and token.
+      console.warn("[drive-inbound] could not move Docs path state with the tree", error);
+    }
+  };
+  const tree = await syncDriveTree(username, {
+    signal,
+    ifTokenIs: staleToken,
+    beforePrune: followDocs,
+  });
   if (!tree.completed) {
     return {
       changed: true,
@@ -184,9 +202,9 @@ async function fullResync(
       keptUnsavedPaths: tree.keptUnsavedPaths,
     };
   }
-  // A full sync lists, it does not say what moved: the cached Docs views would keep a
-  // renamed Doc at its old name (#1563). Until C4 removes those views, patch moves only.
-  await applyDocsInboundChanges(username, await movesSince(username, before));
+  // Unchanged: another tab finished the pass while this one waited for the
+  // lock, and it already applied this final map; applying it again would undo it.
+  if (!docsFollowed && tree.changed) await followDocs();
   return {
     changed: true,
     listedChanges: true,
@@ -589,6 +607,16 @@ async function cachedPathsByNodeId(username: string): Promise<Map<string, string
   return paths;
 }
 
+async function pathsForNodeId(username: string, nodeId: string): Promise<string[]> {
+  const db = accountDb(username);
+  const driveRows = await driveEntriesTable(db).where("nodeId").equals(nodeId).toArray();
+  const pins = await docsAvailabilityTable(db).where("nodeId").equals(nodeId).toArray();
+  const paths = new Set<string>();
+  for (const row of driveRows) paths.add(row.id);
+  for (const pin of pins) paths.add(pin.id);
+  return [...paths];
+}
+
 /** Files the Drive cache now has at another path than in `before`, as Docs moves. */
 async function movesSince(
   username: string,
@@ -622,16 +650,6 @@ function parseEntry(data: string): Partial<WgwDriveDirectoryEntry> {
   } catch {
     return {};
   }
-}
-
-async function pathsForNodeId(username: string, nodeId: string): Promise<string[]> {
-  const db = accountDb(username);
-  const driveRows = await driveEntriesTable(db).where("nodeId").equals(nodeId).toArray();
-  const pins = await docsAvailabilityTable(db).where("nodeId").equals(nodeId).toArray();
-  const paths = new Set<string>();
-  for (const row of driveRows) paths.add(row.id);
-  for (const pin of pins) paths.add(pin.id);
-  return [...paths];
 }
 
 async function driveRowAt(

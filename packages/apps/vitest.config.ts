@@ -7,10 +7,10 @@ import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const storybookVitestTags =
-  process.env.STORYBOOK_VITEST_SMOKE === "1"
-    ? { include: ["vitest-ci"] }
-    : { include: ["test"], exclude: ["live"] };
+const storybookVitestSmoke = process.env.STORYBOOK_VITEST_SMOKE === "1";
+const storybookVitestTags = storybookVitestSmoke
+  ? { include: ["vitest-ci"] }
+  : { include: ["test"], exclude: ["live"] };
 
 /**
  * Node 25+ enables Web Storage by default; without a backing file the global is a
@@ -107,11 +107,22 @@ export default defineConfig({
         test: {
           name: "storybook",
           testTimeout: 30_000,
+          // Smoke run (CI): all story files share one iframe per browser page.
+          // With isolation, every file gets a fresh iframe, and after roughly
+          // 60–150 heavy story files on one page Chromium resets all of that
+          // page's connections: "Browser connection was closed" (#2266). CI's
+          // 4 vCPUs give 3 pages of ~85 files each, so the queue lost the page
+          // on most runs. It was not memory, disk, GC, HMR sockets, or one
+          // story; turning isolation off is what stops it, and the run is
+          // about twice as fast. Trade-off: CSS that a story file imports stays
+          // in the shared iframe, so a story can now see an earlier file's
+          // styles. The full local `test:storybook` run keeps isolation.
+          isolate: !storybookVitestSmoke,
           browser: {
             enabled: true,
             headless: true,
-            // Avoid Chromium /dev/shm OOM crashes that surface as Vitest
-            // "Browser connection was closed" drops in CI (#1037).
+            // Playwright passes this flag by default too. It did not stop the
+            // "Browser connection was closed" drops (#1037, #2266); see isolate.
             provider: playwright({
               launch: {
                 args: ["--disable-dev-shm-usage"],

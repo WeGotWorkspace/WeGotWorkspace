@@ -32,13 +32,14 @@ Considered: WebDAV/dead properties (path-keyed property store; files have none; 
 A before C. B before C, D and E (B can land first, no visible change). D and E after C. F after D and after the Notes rename behaviour is confirmed. UI chunks build on the shared file workspace of #2063 where it has landed; if not, they bind to both apps' current code and #2063 moves the binding.
 
 ## Open decisions
-- [ ] (chunk C) Tags follow the item when it moves between personal and Team space. Recommended yes; product lead to confirm.
-- [ ] (chunk C) A person a file is shared with (personal sharing only) sees, and with write rights edits, the owner's tags. Recommended yes; product lead to confirm.
+- [x] (chunk C) Tags are removed when an item moves between personal and Team space. Decided 2026-11-27.
+- [x] (chunk C) Internal share recipients see the owner's tags; external recipients never do. Decided 2026-11-27.
+- [ ] (chunk C) May an internal share recipient with write rights edit the owner's tags? Built view-only until the product lead answers.
 
 ## Invariants
 - Notes tags behave as before after B. A wrong move of the model breaks note tag toggles. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/lib/models/note-tag.test.ts src/notes-core`
 - A person never sees a tag of a node they cannot see. Proof: `cmd: php artisan test --filter=FileNodeTagsVisibilityTest` (test added in A).
-- A move or rename keeps tags. Proof: `cmd: php artisan test --filter=FileNodeTagsMoveTest` (test added in A).
+- A rename or a move inside one space keeps tags; a move into another space removes them. Proof: `cmd: vendor/bin/phpunit tests/Feature/Jmap/JmapFileNodeTagsScopeTest.php` (test added in A).
 - After chunk A, main still works without the next chunk: no client sends `tags` yet and the projection field is additive. Proof: `cmd: php scripts/done-gate.php`
 
 ## Chunks

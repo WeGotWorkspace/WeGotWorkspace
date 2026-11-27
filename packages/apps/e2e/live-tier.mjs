@@ -116,6 +116,7 @@ export const liveTierSpecs = [
   "queued-write-reload",
   "rtc-idle-poll",
   "settings-calendar-availability",
+  "settings-calendar-public-link",
   "settings-dialog-stays-open",
   "settings-offline-clear-cache",
   "sync-notice-bar",

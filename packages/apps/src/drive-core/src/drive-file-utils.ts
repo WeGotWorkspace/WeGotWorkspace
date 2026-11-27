@@ -84,7 +84,7 @@ export function driveFileFromEntry(
     title: entry.name,
     excerpt: entry.path,
     body: [],
-    tags: [],
+    tags: entry.tags ?? [],
     wordCount: 0,
     parent,
     kind,

@@ -88,7 +88,10 @@ export async function waitForDocsBodySynced(
     .toBe(true);
 }
 
-/** Listing paths of every cached Docs view, by cache key. */
+/**
+ * Doc paths in the device's file tree (#2063 C4: Docs home lists `drive_entries`,
+ * so there is one cached "view"). Trash rows are left out.
+ */
 export async function cachedDocsViews(page: Page): Promise<string[][]> {
   return page.evaluate(async () => {
     const username = localStorage.getItem("wgw.offline.docs.username");
@@ -98,17 +101,17 @@ export async function cachedDocsViews(page: Page): Promise<string[][]> {
       request.onerror = () => resolve([]);
       request.onsuccess = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains("docs_listing_rows")) return resolve([]);
+        if (!db.objectStoreNames.contains("drive_entries")) return resolve([]);
         const read = db
-          .transaction("docs_listing_rows", "readonly")
-          .objectStore("docs_listing_rows")
+          .transaction("drive_entries", "readonly")
+          .objectStore("drive_entries")
           .getAll();
         read.onsuccess = () => {
-          const views = new Map<string, string[]>();
-          for (const row of read.result as Array<{ cacheKey: string; sourceKey: string }>) {
-            views.set(row.cacheKey, [...(views.get(row.cacheKey) ?? []), row.sourceKey]);
-          }
-          resolve([...views.values()]);
+          const paths = (read.result as Array<{ id: string; type?: string; area?: string }>)
+            .filter((row) => row.type !== "dir" && row.area !== "trash")
+            .filter((row) => !row.id.split("/").includes(".Trash"))
+            .map((row) => row.id);
+          resolve(paths.length ? [paths] : []);
         };
         read.onerror = () => resolve([]);
       };

@@ -35,5 +35,14 @@ export function useListSort<K extends string>({
     [columns, storageKey],
   );
 
-  return { sort, toggleSort };
+  /** Set an exact order (a sort menu) instead of toggling a column. */
+  const chooseSort = useCallback(
+    (next: ListSort<K>) => {
+      setSort(next);
+      if (storageKey) writeListSort(storageKey, next);
+    },
+    [storageKey],
+  );
+
+  return { sort, toggleSort, chooseSort };
 }

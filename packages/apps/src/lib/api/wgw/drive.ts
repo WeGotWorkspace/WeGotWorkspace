@@ -24,6 +24,7 @@ import type { DriveAPIOperations, DriveAppBootstrap, DriveUIData } from "@/lib/f
 import { parentAndName, normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 import { DRIVE_READ_BLOB_MAX_BYTES, readResponseBlobWithin } from "@/lib/files/read-blob-limit";
 import { isShareTargetFile } from "@/lib/files/drive-path-utils";
+import { setFileNodeTags } from "@/lib/api/wgw/drive-jmap-tags";
 import { fetchWgwUnifiedSearch } from "@/lib/api/wgw/search";
 import {
   createFileNodeFile,
@@ -455,6 +456,10 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
             return parent === "/" ? `/${input.from}` : `${parent}/${input.from}`;
           })();
       return renameFileNode(fromPath, normalizePath(input.destination), input.to, opts, cwd);
+    },
+    async setTags(input, opts) {
+      const { path, ...delta } = input;
+      return setFileNodeTags(normalizePath(path), delta, opts);
     },
     async deleteItems(paths, opts) {
       return destroyFileNodes(

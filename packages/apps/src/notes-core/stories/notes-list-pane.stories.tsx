@@ -77,6 +77,8 @@ export function NotesListPaneHarness({
     toggleStar: controller.toggleStar,
     toggleArchive: controller.toggleArchive,
     selectionBar: controller.selectionBar,
+    listSort: controller.listSort,
+    onListSortChange: controller.setListSort,
     onRefreshList: () => {},
     onEditTag: tagForNotesView(controller.view, controller.tags) ? () => {} : undefined,
     pendingNoteIds: pendingNoteIds ? new Set(pendingNoteIds) : undefined,

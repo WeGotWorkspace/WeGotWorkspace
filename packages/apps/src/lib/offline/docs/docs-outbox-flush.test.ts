@@ -12,6 +12,12 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
+  readDocsAvailability,
+  writeDocsAvailability,
+} from "@/lib/offline/docs/docs-availability-store";
+import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
+import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
+import {
   flushDocsOutbox,
   removeOutboxMutationsForDocsPath,
 } from "@/lib/offline/docs/docs-outbox-flush";
@@ -197,6 +203,67 @@ describe("flushDocsOutbox", () => {
     );
     expect(setStar).toHaveBeenCalledWith({ path: "/users/alice/Plan (1).md", starred: true });
     expect(uploadFiles).not.toHaveBeenCalled();
+  });
+
+  it("aims queued Drive rows of a kept-both create at its new name (#1563)", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "create-1",
+      domain: DOCS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({ op: "create", apiPath: "/users/alice/Plan.md", content: "# mine" }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: "drive-rename",
+      domain: DRIVE_DOMAIN,
+      op: "rename",
+      payload: JSON.stringify({
+        op: "rename",
+        from: "/users/alice/Plan.md",
+        destination: "/users/alice",
+        to: "Renamed.md",
+      }),
+    });
+    createDriveFileKeepingBoth.mockResolvedValue("Plan (1).md");
+
+    await flushDocsOutbox(username);
+
+    const [row] = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
+    expect(JSON.parse(row!.payload)).toMatchObject({ from: "/users/alice/Plan (1).md" });
+  });
+
+  it("leaves the server's file on its row when a pull put it there before the create kept both (#1563)", async () => {
+    // A pull before this flush placed the server's Plan.md on the offline create's row.
+    await upsertDriveEntry(username, {
+      type: "file",
+      path: "/users/alice/Plan.md",
+      name: "Plan.md",
+      size: 1,
+      time: 1,
+      permissions: 0,
+      nodeId: "fn-server",
+    } as WgwDriveDirectoryEntry);
+    await writeDocsAvailability(username, {
+      id: "/users/alice/Plan.md",
+      location: "",
+      nodeId: "fn-server",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "create-1",
+      domain: DOCS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({ op: "create", apiPath: "/users/alice/Plan.md", content: "# mine" }),
+    });
+    createDriveFileKeepingBoth.mockResolvedValue("Plan (1).md");
+
+    await flushDocsOutbox(username);
+
+    expect(await readCachedDriveNodeId(username, "users/alice/Plan.md")).toBe("fn-server");
+    expect(await readCachedDriveNodeId(username, "users/alice/Plan (1).md")).toBeUndefined();
+    // This device's pin follows its own Doc, without the server file's id.
+    expect(await readDocsAvailability(username, "/users/alice/Plan.md")).toBeUndefined();
+    const pin = await readDocsAvailability(username, "/users/alice/Plan (1).md");
+    expect(pin).toBeDefined();
+    expect(pin?.nodeId).toBeUndefined();
   });
 
   it("tells the create that a retried row may have landed already", async () => {
