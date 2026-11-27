@@ -13,6 +13,10 @@ import { openUser, TEAMMATE } from "./helpers/live-matrix";
 import { setRtcTestOverrides } from "./helpers/rtc-test-overrides";
 import { TrafficMeter, writeReport } from "./helpers/traffic-meter";
 
+// Report the service worker's own fetches: the Meet polls and doorbell reads
+// are answered by the worker, and without this the meter never sees them.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
+
 /**
  * Issue #2419: call setup on the default `shared` traffic numbers. From the
  * host's admit click (the join POST for a member the lobby already knows is
@@ -134,6 +138,13 @@ test("call setup stays fast and under 60 requests a minute for a member and a gu
     const guestReport = guestMeter.report("meet-call-setup-guest");
     const within = (report: { timeline: unknown[] }, from: number) =>
       (report.timeline as [number, string, string][]).filter(([at]) => at < from).length;
+    // The count must include the governed polls, or it passes empty.
+    for (const report of [teammateReport, guestReport]) {
+      const polls = (report.timeline as [number, string, string][]).filter(
+        ([, tab, group]) => tab === "sw" && /^GET \/rooms\/\{id\}\/events/.test(group),
+      );
+      expect(polls.length).toBeGreaterThan(0);
+    }
     expect(within(teammateReport, 60)).toBeLessThan(PER_MINUTE);
     expect(within(guestReport, 60)).toBeLessThan(PER_MINUTE);
   } finally {
