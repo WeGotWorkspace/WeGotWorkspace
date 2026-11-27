@@ -44,7 +44,15 @@ export type CalendarTimelineEvent = TimelineEvent & {
 /** A year-view day chip: what its day list needs. */
 export type YearDayChip = Pick<
   CalendarTimelineEvent,
-  "key" | "summary" | "color" | "displayStart" | "displayEnd" | "allDay" | "rsvp" | "overlayKind"
+  | "key"
+  | "summary"
+  | "color"
+  | "displayStart"
+  | "displayEnd"
+  | "allDay"
+  | "rsvp"
+  | "overlayKind"
+  | "hasMeeting"
 >;
 
 /** Popover payload for a day's events (shared by the overflow footer and compact header). */
@@ -58,6 +66,7 @@ export function dayOverflowPopoverEvents(events: YearDayChip[]): DayOverflowPopo
     hidden: false,
     rsvp: ev.rsvp,
     overlay: ev.overlayKind ?? "",
+    hasMeeting: ev.hasMeeting,
   }));
 }
 

@@ -58,6 +58,7 @@ describe("year day lists", () => {
         allDay: false,
         rsvp: "",
         overlayKind: "availability",
+        hasMeeting: false,
       },
     ]);
     expect(busy).toMatchObject({
@@ -82,5 +83,51 @@ describe("year day lists", () => {
     expect(timelineRsvp(event("tentative"))).toBe("tentative");
     expect(timelineRsvp(event("accepted"))).toBe("");
     expect(timelineRsvp(event())).toBe("");
+  });
+});
+
+describe("meeting flag", () => {
+  const meetingEvent: CalendarEvent = {
+    eventId: "call@example.test",
+    data: {
+      start: Temporal.PlainDateTime.from("2025-01-13T09:00:00"),
+      end: Temporal.PlainDateTime.from("2025-01-13T09:30:00"),
+      summary: "Call",
+      hasMeeting: true,
+    },
+  };
+  const args = {
+    now: Temporal.PlainDateTime.from("2025-01-13T12:00:00"),
+    pending: null,
+    scale: SCALE,
+    displayTimeZone: "UTC",
+    resolveColor: () => "#000",
+  };
+
+  it("carries hasMeeting to timed and all-day cards, and to the +N popover", () => {
+    const [timed] = mapTimelineOccurrenceEvents([["call", meetingEvent]], "timed", args);
+    const [allDay] = mapTimelineOccurrenceEvents([["call", meetingEvent]], "all-day", args);
+    expect(timed?.hasMeeting).toBe(true);
+    expect(allDay?.hasMeeting).toBe(true);
+    const [popover] = dayOverflowPopoverEvents([
+      {
+        key: "call",
+        summary: "Call",
+        color: "#000",
+        displayStart: Temporal.PlainDateTime.from("2025-01-13T09:00:00"),
+        displayEnd: Temporal.PlainDateTime.from("2025-01-13T09:30:00"),
+        allDay: false,
+        rsvp: "",
+        hasMeeting: true,
+      },
+    ]);
+    expect(popover?.hasMeeting).toBe(true);
+  });
+
+  it("is false without a meeting link", () => {
+    const plain = { ...meetingEvent, data: { ...meetingEvent.data, hasMeeting: undefined } };
+    expect(mapTimelineOccurrenceEvents([["call", plain]], "timed", args)[0]?.hasMeeting).toBe(
+      false,
+    );
   });
 });

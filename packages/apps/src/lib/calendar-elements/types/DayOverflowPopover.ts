@@ -8,4 +8,6 @@ export type DayOverflowPopoverEvent = {
   rsvp?: "" | "needs-action" | "tentative";
   /** Render-only overlay kind (`task`, `availability`), passed to the card. */
   overlay?: string;
+  /** The event has a meeting URL: the card shows a video icon. */
+  hasMeeting?: boolean;
 };

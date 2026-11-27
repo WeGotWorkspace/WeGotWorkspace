@@ -1082,7 +1082,6 @@ export class CalendarTimelineView extends CalendarViewBase {
     const timelineEvent = event as CalendarTimelineEvent;
     const selected = this.selectedEventKey === timelineEvent.key;
     const timeLabel = this.#timelineEventTimeLabel(variant, timelineEvent, preview);
-    // Inside <time-line>'s shadow root; selection shows via aria-pressed and the selected part.
     return html`
       <event-card
         layout="flow"
@@ -2127,6 +2126,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         allDay: event.data.allDay === true,
         rsvp: timelineRsvp(event),
         overlayKind: event.overlayKind,
+        hasMeeting: event.data.hasMeeting === true,
       };
       for (const dayKey of occurrenceDayKeys(displayStart, displayEnd)) {
         const bucket = byDay.get(dayKey);
