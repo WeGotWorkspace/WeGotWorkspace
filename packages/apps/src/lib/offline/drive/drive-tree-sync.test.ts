@@ -1019,6 +1019,23 @@ describe("review fixes (#2063 C1)", () => {
     expect(await readDriveTreeCrawlRoots(username)).toEqual(["/users/ada"]);
   });
 
+  it("a crawl that never started is not stored as a finished pass", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi
+      .spyOn(crawl, "syncDriveMetadataTree")
+      .mockResolvedValue({ running: false, total: 0, synced: 0, failed: 0, updatedAt: 1 });
+    const tokenBefore = await readDriveSyncToken(username);
+
+    const result = await syncDriveTree(username);
+    spy.mockRestore();
+
+    expect(result.completed).toBe(false);
+    expect(await readDriveSyncToken(username)).toBe(tokenBefore);
+    expect(await readMeta(username, DRIVE_TREE_LAST_PASS_KEY)).not.toBe("crawl");
+  });
+
   it("a file written while the per-folder crawl runs arrives on the next sync", async () => {
     const server = standardTree();
     await connect(server, { keyset: false });

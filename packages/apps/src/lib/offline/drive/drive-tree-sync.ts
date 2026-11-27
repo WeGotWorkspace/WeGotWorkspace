@@ -203,6 +203,11 @@ async function crawlFolders(
   if (signal?.aborted || progress.failed > 0) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
+  // Nothing was queued and no roots were reported: the crawl never started (the
+  // device was offline). Storing that as a finished pass would stop it running again.
+  if (progress.total === 0 && !queued.roots) {
+    return { completed: false, changed: false, keptUnsavedPaths: [] };
+  }
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
