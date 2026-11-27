@@ -1,0 +1,752 @@
+@import "../../styles.css" reference;
+@import "../../workspace-shell/src/workspace-split-app.css";
+@import "../../text-editor-core/src/text-editor-source.css";
+@import "@glideapps/glide-data-grid/dist/index.css";
+
+.spreadsheet-workspace {
+  @apply min-w-0 overflow-x-hidden;
+
+  /* Teal/green family — distinct from Docs (blue) and Drive. */
+  --spreadsheet-accent: #0d9488;
+  --spreadsheet-sidebar: var(--spreadsheet-accent);
+  --spreadsheet-surface: var(--color-cream, #ffffff);
+  --spreadsheet-canvas: oklch(96% 0.006 170);
+  --spreadsheet-text: var(--color-ink);
+  --spreadsheet-muted: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  --spreadsheet-border: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --spreadsheet-error: #dc2626;
+  --spreadsheet-formula: #2563eb;
+  --spreadsheet-stat-tag-bg: color-mix(in oklab, var(--spreadsheet-accent) 10%, transparent);
+  --spreadsheet-stat-tag-color: color-mix(
+    in oklab,
+    var(--spreadsheet-accent) 88%,
+    var(--color-ink)
+  );
+
+  --app-sidebar-bg: var(--spreadsheet-sidebar);
+  --app-sidebar-border-color: color-mix(in oklab, #ffffff 18%, transparent);
+  --app-sidebar-color: #ffffff;
+  --sidebar-logo-close-button-color: var(--app-sidebar-color);
+  --sidebar-badge-fg: var(--spreadsheet-accent);
+  --workspace-main-content-max-width: none;
+  --workspace-sidebar-toggle-color: var(--color-ink);
+  --workspace-sidebar-toggle-bg: color-mix(in oklab, var(--color-ink) 6%, transparent);
+
+  --button-primary-bg: var(--spreadsheet-accent);
+  --button-primary-fg: #ffffff;
+  --foreground: var(--spreadsheet-text);
+  --color-foreground: var(--spreadsheet-text);
+
+  background-color: var(--spreadsheet-surface);
+  color: var(--spreadsheet-text);
+  font-family: var(--font-sans);
+}
+
+.spreadsheet-workspace .workspace-app-layout__main-scroll {
+  @apply flex flex-col;
+}
+
+.spreadsheet-workspace .workspace-app-layout__main-content {
+  @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col overflow-hidden px-0 py-0;
+}
+
+.spreadsheet-workspace .app-sidebar__scroll {
+  --color-ink: #ffffff;
+  --button-subtle-color: #ffffff;
+  --button-subtle-background: color-mix(in oklab, #ffffff 12%, transparent);
+  --button-subtle-hover-background: color-mix(in oklab, #ffffff 20%, transparent);
+}
+
+.spreadsheet-workspace .app-sidebar {
+  --field-label-color: #ffffff;
+  --app-switch-label-color: #ffffff;
+  --app-switch-label-tagline-color: #ffffff;
+  --app-switch-chevron-color: #ffffff;
+}
+
+.spreadsheet-workspace .sidebar-section .menu-item--surface-idle {
+  color: #ffffff;
+  background-color: var(--spreadsheet-sidebar);
+}
+
+.spreadsheet-workspace .sidebar-section .menu-item--surface-selected {
+  background-color: color-mix(in oklab, #ffffff 14%, var(--spreadsheet-sidebar));
+  color: #ffffff;
+}
+
+.spreadsheet-workspace .sidebar-section .menu-item--interactive:hover {
+  background-color: color-mix(in oklab, #ffffff 12%, var(--spreadsheet-sidebar));
+}
+
+.spreadsheet-workspace .sidebar-section .menu-item:not(.menu-item--selected) .menu-item__icon-slot,
+.spreadsheet-workspace .sidebar-section .menu-item.menu-item--selected .menu-item__icon-slot {
+  color: #ffffff;
+  opacity: 1;
+}
+
+.spreadsheet-workspace .sidebar-section__title {
+  color: #ffffff;
+}
+
+.spreadsheet-sheets-sidebar__item {
+  @apply relative flex items-center;
+}
+
+.spreadsheet-sheets-sidebar__item .spreadsheet-sheets-sidebar__select {
+  @apply min-w-0 flex-1 pr-14;
+}
+
+.spreadsheet-sheets-sidebar__item .actions {
+  @apply absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.spreadsheet-sheets-sidebar__item:hover .actions,
+.spreadsheet-sheets-sidebar__item:focus-within .actions {
+  opacity: 1;
+}
+
+.spreadsheet-workspace .app-sidebar__footer {
+  --workspace-user-footer-text-color: #ffffff;
+  --workspace-user-footer-subtitle-color: color-mix(in oklab, #ffffff 72%, transparent);
+  --workspace-user-footer-border-color: color-mix(in oklab, #ffffff 18%, transparent);
+  --workspace-user-footer-avatar-bg: color-mix(in oklab, #ffffff 22%, transparent);
+  --workspace-user-footer-avatar-color: var(--app-sidebar-color);
+  --workspace-user-footer-link-color: #ffffff;
+}
+
+.spreadsheet-workspace__header-actions {
+  @apply flex shrink-0 flex-wrap items-center justify-end gap-1.5;
+}
+
+.spreadsheet-workspace__header-actions .button.spreadsheet-workspace__source-toggle--active {
+  color: var(--spreadsheet-accent);
+  background-color: color-mix(in oklab, var(--spreadsheet-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--spreadsheet-accent) 28%, transparent);
+}
+
+.spreadsheet-workspace__header-actions .button.spreadsheet-workspace__schema-toggle--active {
+  color: var(--spreadsheet-accent);
+  background-color: color-mix(in oklab, var(--spreadsheet-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--spreadsheet-accent) 28%, transparent);
+}
+
+/* ── Main pane layout ─────────────────────────────────────────────────── */
+
+.spreadsheet-workspace__pane {
+  @apply flex min-h-0 flex-1 overflow-hidden;
+}
+
+.spreadsheet-workspace__grid-area {
+  @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+}
+
+.spreadsheet-workspace__grid-wrap {
+  @apply min-h-0 flex-1 overflow-hidden;
+  background-color: var(--spreadsheet-canvas);
+}
+
+.spreadsheet-workspace__source {
+  @apply hidden min-h-0 flex-col overflow-hidden;
+  border-left: 1px solid var(--spreadsheet-border);
+  background-color: var(--spreadsheet-surface);
+}
+
+.spreadsheet-workspace--view-source .spreadsheet-workspace__source {
+  @apply flex;
+}
+
+/* Wide landscape: grid + source side by side. Narrow: source only. */
+@media (max-width: 900px) {
+  .spreadsheet-workspace--view-source .spreadsheet-workspace__grid-area {
+    @apply hidden;
+  }
+  .spreadsheet-workspace--view-source .spreadsheet-workspace__source {
+    @apply flex-1;
+  }
+}
+
+@media (min-width: 901px) {
+  .spreadsheet-workspace--view-source .spreadsheet-workspace__source {
+    flex: 0 0 clamp(20rem, 40%, 36rem);
+  }
+}
+
+/* ── Schema panel (right sidebar) ─────────────────────────────────────── */
+
+.spreadsheet-workspace__schema-panel {
+  @apply flex min-h-0 shrink-0 flex-col;
+  flex: 0 0 clamp(18rem, 30vw, 22rem);
+  border-left: 1px solid var(--spreadsheet-border);
+  background-color: color-mix(in oklab, var(--spreadsheet-canvas) 35%, var(--spreadsheet-surface));
+
+  --field-label-font-family: var(--font-sans);
+  --field-label-color: var(--spreadsheet-muted);
+  --card-surface-bg: var(--spreadsheet-surface);
+  --card-surface-border-color: var(--spreadsheet-border);
+  --segmented-control-track-bg: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --segmented-control-active-bg: var(--spreadsheet-surface);
+  --segmented-control-active-fg: var(--spreadsheet-text);
+  --segmented-control-active-shadow: 0 1px 2px
+    color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.spreadsheet-workspace__schema-panel .field-label-row {
+  @apply mb-3 last:mb-0;
+}
+
+.spreadsheet-workspace__schema-panel .field-label-row__label {
+  @apply text-sm font-medium normal-case tracking-normal;
+  font-family: var(--font-sans);
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-workspace__schema-toolbar {
+  @apply shrink-0 px-4 pt-4 pb-3;
+  border-bottom: 1px solid var(--spreadsheet-border);
+  background-color: color-mix(in oklab, var(--spreadsheet-surface) 92%, transparent);
+}
+
+.spreadsheet-workspace__schema-segmented {
+  @apply flex w-full;
+}
+
+.spreadsheet-workspace__schema-segmented .segmented-control__button--text {
+  @apply min-w-0 flex-1;
+}
+
+.spreadsheet-workspace__schema-scroll {
+  @apply min-h-0 flex-1 overflow-y-auto px-4 py-4;
+}
+
+.spreadsheet-workspace__schema-section {
+  @apply flex flex-col gap-4;
+}
+
+.spreadsheet-workspace__schema-def-list,
+.spreadsheet-workspace__schema-column-list {
+  @apply m-0 flex list-none flex-col gap-3 p-0;
+}
+
+.spreadsheet-workspace__schema-def-card.card,
+.spreadsheet-workspace__schema-column-card.card {
+  @apply mb-0 p-4;
+}
+
+.spreadsheet-workspace__schema-def-card .card__header-row,
+.spreadsheet-workspace__schema-column-card .card__header-row {
+  @apply mb-0 -mt-1 justify-end;
+}
+
+.spreadsheet-workspace__schema-caption {
+  @apply mb-3 text-sm;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-workspace__schema-empty-state {
+  @apply rounded-md border px-4 py-6 text-center;
+  border-color: var(--spreadsheet-border);
+  background-color: color-mix(in oklab, var(--spreadsheet-surface) 80%, transparent);
+}
+
+.spreadsheet-workspace__schema-empty-title {
+  @apply mb-1 text-sm font-medium;
+  color: var(--spreadsheet-text);
+}
+
+.spreadsheet-workspace__schema-empty,
+.spreadsheet-workspace__schema-hint {
+  @apply text-sm leading-relaxed;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-workspace__schema-footer {
+  @apply flex flex-col gap-2 border-t pt-4;
+  border-color: var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__schema-footer-actions {
+  @apply flex flex-wrap gap-2;
+}
+
+.spreadsheet-workspace__schema-footer-actions .button {
+  @apply min-w-0 flex-1 justify-center;
+}
+
+.spreadsheet-workspace__schema-hint {
+  @apply text-xs;
+}
+
+.spreadsheet-workspace__schema-mapping {
+  @apply space-y-2;
+}
+
+.spreadsheet-workspace__schema-mapping-label {
+  @apply text-sm font-medium;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-workspace__schema-mapping-table {
+  @apply overflow-hidden rounded-md border;
+  border-color: var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__schema-mapping-head {
+  @apply grid items-center gap-2 px-2 py-1.5 text-xs font-medium;
+  grid-template-columns: 1fr 1fr 2rem;
+  color: var(--spreadsheet-muted);
+  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  border-bottom: 1px solid var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__schema-mapping-head-action {
+  @apply size-8;
+}
+
+.spreadsheet-workspace__schema-mapping-list {
+  @apply m-0 list-none p-0;
+}
+
+.spreadsheet-workspace__schema-mapping-row {
+  @apply grid items-center gap-2 px-2 py-1.5;
+  grid-template-columns: 1fr 1fr 2rem;
+}
+
+.spreadsheet-workspace__schema-mapping-row + .spreadsheet-workspace__schema-mapping-row {
+  border-top: 1px solid var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__schema-mapping-row-action {
+  @apply flex justify-center;
+}
+
+.spreadsheet-workspace__schema-input--invalid {
+  border-color: color-mix(in oklab, var(--spreadsheet-error) 55%, transparent);
+}
+
+.spreadsheet-workspace__schema-select {
+  @apply w-full;
+}
+
+.spreadsheet-workspace__schema-textarea {
+  @apply min-h-20 resize-y;
+}
+
+.spreadsheet-workspace__source .text-editor-source {
+  @apply min-h-0 flex-1;
+}
+
+/* Stats footer — mirrors `.docs-workspace__stats-footer`, scoped to sheets. */
+.spreadsheet-workspace__stats-footer {
+  @apply flex shrink-0 flex-wrap items-center justify-between gap-1.5;
+  box-sizing: border-box;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  min-height: 3rem;
+  background-color: color-mix(in oklab, #ffffff 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--spreadsheet-border);
+}
+
+.spreadsheet-workspace__stats-tags {
+  @apply flex flex-wrap items-center gap-1.5;
+}
+
+.spreadsheet-workspace__stats-footer .tag {
+  font-variant-numeric: tabular-nums;
+}
+
+.spreadsheet-workspace__parse-banner {
+  @apply px-3 py-2 text-sm;
+  color: var(--spreadsheet-error);
+  background-color: color-mix(in oklab, var(--spreadsheet-error) 10%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--spreadsheet-error) 30%, transparent);
+}
+
+.spreadsheet-workspace__empty,
+.spreadsheet-workspace__error {
+  @apply flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center;
+}
+
+.spreadsheet-workspace__empty-title {
+  @apply text-base font-medium;
+}
+
+.spreadsheet-workspace__empty-description,
+.spreadsheet-workspace__error {
+  @apply text-sm;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-workspace__loading {
+  @apply flex flex-1 items-center justify-center text-sm;
+  color: var(--spreadsheet-muted);
+}
+
+/* ── Grid ─────────────────────────────────────────────────────────────── */
+
+.spreadsheet-grid {
+  @apply relative h-full w-full;
+
+  /* Canvas-resolvable tints for Glide header/selection chrome (match source-toggle / formula bar). */
+  --spreadsheet-grid-accent-light: color-mix(in oklab, var(--spreadsheet-accent) 16%, #ffffff);
+  --spreadsheet-grid-accent-badge-bg: color-mix(
+    in oklab,
+    var(--spreadsheet-accent) 15%,
+    transparent
+  );
+  --spreadsheet-grid-accent-badge-fg: color-mix(
+    in oklab,
+    var(--spreadsheet-accent) 88%,
+    var(--color-ink)
+  );
+}
+
+.spreadsheet-grid__insert-control {
+  @apply absolute z-10 p-0;
+  --button-subtle-background: color-mix(in oklab, var(--spreadsheet-accent) 10%, #ffffff);
+  --button-subtle-hover-background: color-mix(in oklab, var(--spreadsheet-accent) 18%, #ffffff);
+  --button-subtle-color: var(--spreadsheet-accent);
+}
+
+.spreadsheet-grid__insert-control--column {
+  box-shadow: -1px 0 0 var(--spreadsheet-border);
+}
+
+.spreadsheet-grid__insert-control--row {
+  box-shadow: 0 -1px 0 var(--spreadsheet-border);
+}
+
+.spreadsheet-grid--picking {
+  cursor: cell;
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent) 40%, transparent);
+}
+
+.spreadsheet-grid__pick-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  cursor: cell;
+}
+
+/* ── Format bar (reuses text-editor toolbar chrome) ───────────────────── */
+
+.spreadsheet-workspace .spreadsheet-format-bar.text-editor-format-bar {
+  @apply shrink-0;
+  position: static;
+  border-bottom: 1px solid var(--spreadsheet-border);
+  background-color: color-mix(in oklab, #ffffff 92%, transparent);
+}
+
+.spreadsheet-workspace .spreadsheet-format-bar .text-editor-format-bar__btn-icon svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+
+.spreadsheet-format-bar__fill-trigger {
+  @apply inline-flex items-center justify-center gap-1;
+  width: auto !important;
+  min-width: 2.5rem !important;
+  max-width: none !important;
+  padding-inline: 0.375rem !important;
+}
+
+.spreadsheet-format-bar__fill-swatch {
+  @apply block rounded-sm border;
+  width: 1rem;
+  height: 1rem;
+  border-color: var(--spreadsheet-border);
+}
+
+.spreadsheet-format-bar__fill-icon {
+  @apply size-3.5;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-format-bar__fill-menu {
+  @apply min-w-[12rem] p-2;
+}
+
+.spreadsheet-format-bar__swatches {
+  @apply mb-2 grid grid-cols-7 gap-1.5 px-1;
+}
+
+.spreadsheet-format-bar__swatch {
+  @apply size-6 rounded-sm border p-0;
+  border-color: var(--spreadsheet-border);
+}
+
+.spreadsheet-format-bar__swatch--selected {
+  box-shadow: 0 0 0 2px var(--spreadsheet-accent);
+}
+
+.spreadsheet-format-bar__custom-fill {
+  @apply mt-1 flex items-center justify-between gap-2 px-2 py-1 text-xs;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-format-bar__custom-fill input[type="color"] {
+  @apply size-7 cursor-pointer rounded border-0 bg-transparent p-0;
+}
+
+/* ── Formula bar ──────────────────────────────────────────────────────── */
+
+.spreadsheet-formula-bar {
+  @apply flex shrink-0 items-center gap-2 px-2 py-1.5;
+  border-bottom: 1px solid var(--spreadsheet-border);
+  background-color: color-mix(in oklab, #ffffff 92%, transparent);
+}
+
+.spreadsheet-formula-bar__cell {
+  @apply inline-flex h-7 min-w-12 shrink-0 items-center justify-center rounded px-2 text-xs font-medium;
+  font-variant-numeric: tabular-nums;
+  color: var(--spreadsheet-muted);
+  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
+}
+
+.spreadsheet-formula-bar__field {
+  @apply relative min-w-0 flex-1;
+  color: var(--spreadsheet-text);
+}
+
+.spreadsheet-formula-bar__input,
+.spreadsheet-formula-bar__tokens {
+  @apply box-border h-7 w-full overflow-x-auto whitespace-pre px-2 leading-7;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.spreadsheet-formula-bar__tokens {
+  color: var(--spreadsheet-text);
+}
+
+.spreadsheet-formula-bar__input {
+  @apply relative rounded border bg-transparent;
+  border-color: var(--spreadsheet-border);
+  color: var(--spreadsheet-text);
+  caret-color: var(--spreadsheet-text);
+}
+
+.spreadsheet-formula-bar--formula .spreadsheet-formula-bar__input,
+.spreadsheet-formula-bar__input--formula {
+  color: transparent;
+}
+
+.spreadsheet-formula-bar__input::placeholder {
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-formula-bar--picking .spreadsheet-formula-bar__input {
+  border-color: var(--spreadsheet-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent) 24%, transparent);
+}
+
+.spreadsheet-formula-bar__hint {
+  @apply shrink-0 text-xs;
+  color: var(--spreadsheet-accent);
+}
+
+.spreadsheet-formula-bar__selection {
+  @apply flex min-h-7 flex-1 items-center gap-2 px-2 font-mono text-xs;
+  color: var(--spreadsheet-muted);
+}
+
+.spreadsheet-formula-bar__selection-tag {
+  @apply rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider;
+  background-color: color-mix(in oklab, var(--color-ink, #111) 8%, transparent);
+}
+
+.spreadsheet-formula-bar__selection-value {
+  color: var(--spreadsheet-text);
+}
+
+.spreadsheet-formula-bar__suggest {
+  @apply absolute left-0 top-full z-30 mt-1 w-full;
+}
+
+/* ── Formula token overlay (shared by formula bar + cell editor) ───────── */
+/*
+ * Syntax palette (keep suggest badge colors in sync below):
+ *   fn       — functions (SUM, IF, …)           #2563eb blue
+ *   sheetref — cross-sheet refs (sheet!col)    #0d9488 teal (--spreadsheet-accent)
+ *   ref      — column refs on current sheet    #16a34a green
+ *   cellref  — A1-style absolute refs          #c2410c orange
+ *   const    — named defs / constants          #d97706 amber
+ *   string   — quoted literals                 #15803d green (darker)
+ *   number   — numeric literals                #0891b2 cyan
+ *   op       — operators                       #6b7280 gray
+ */
+
+.spreadsheet-formula-tokens {
+  @apply pointer-events-none absolute inset-0 overflow-hidden whitespace-pre;
+}
+
+.spreadsheet-formula-token {
+  white-space: pre;
+}
+
+.spreadsheet-formula-token--fn {
+  color: #2563eb;
+  font-weight: 600;
+}
+.spreadsheet-formula-token--const {
+  color: #d97706;
+}
+.spreadsheet-formula-token--defkey {
+  color: #b45309;
+  font-weight: 500;
+}
+.spreadsheet-formula-token--ref {
+  color: #16a34a;
+}
+.spreadsheet-formula-token--cellref {
+  color: #c2410c;
+}
+.spreadsheet-formula-token--sheetref {
+  color: #0d9488;
+  font-weight: 600;
+}
+.spreadsheet-formula-token--string {
+  color: #15803d;
+}
+.spreadsheet-formula-token--number {
+  color: #0891b2;
+}
+.spreadsheet-formula-token--op {
+  color: #6b7280;
+}
+.spreadsheet-formula-token--ident,
+.spreadsheet-formula-token--ws {
+  color: inherit;
+}
+
+/* ── In-cell editor (rendered inside the Glide overlay) ────────────────── */
+
+/* Glide portals the editor to #portal on document.body — outside
+   .spreadsheet-workspace — so workspace tokens must be defined here (with
+   fallbacks) or copied from the grid at runtime. */
+#portal {
+  --spreadsheet-accent: #0d9488;
+  --spreadsheet-surface: #ffffff;
+  --spreadsheet-border: color-mix(in oklab, #111827 12%, transparent);
+  --spreadsheet-text: #111827;
+  --color-ink: #111827;
+}
+
+/* disableStyling removes Glide's default gdg-style shadow; restore chrome on the
+   overlay wrapper (overflow: hidden would clip the elevation). */
+#portal [class*="gdg-"].gdg-unstyle:has(.spreadsheet-cell-editor),
+#portal [class*="gdg-"].gdg-style:has(.spreadsheet-cell-editor) {
+  overflow: visible !important;
+  border-radius: 0.125rem;
+  background-color: var(--spreadsheet-surface, #ffffff);
+  border: 1px solid
+    color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 36%, var(--spreadsheet-border, #d1d5db));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 24%, transparent),
+    0 2px 8px rgba(17, 24, 39, 0.14);
+}
+
+#portal .gdg-clip-region:has(.spreadsheet-cell-editor) {
+  overflow: visible;
+}
+
+.spreadsheet-cell-editor {
+  @apply relative box-border flex items-center rounded-sm;
+  background-color: var(--spreadsheet-surface, #ffffff);
+  border: 1px solid
+    color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 40%, var(--spreadsheet-border, #d1d5db));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 24%, transparent),
+    0 2px 8px rgba(17, 24, 39, 0.14);
+}
+
+.spreadsheet-cell-editor__input,
+.spreadsheet-cell-editor__tokens {
+  @apply box-border h-full w-full whitespace-pre px-2 leading-7;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.spreadsheet-cell-editor__input {
+  @apply border-0 bg-transparent outline-none;
+  color: var(--spreadsheet-text);
+}
+
+.spreadsheet-cell-editor__input--formula {
+  color: transparent;
+  caret-color: var(--spreadsheet-text);
+}
+
+.spreadsheet-cell-editor__tokens {
+  @apply pointer-events-none absolute inset-0 overflow-hidden;
+}
+
+/* ── Autocomplete popup (rendered to document.body via portal) ─────────── */
+
+.spreadsheet-cell-editor__popup {
+  @apply fixed z-50;
+}
+
+.spreadsheet-suggest {
+  @apply max-h-64 overflow-y-auto rounded-md border bg-white py-1 shadow-lg;
+  border-color: var(--spreadsheet-border, #e5e7eb);
+}
+
+.spreadsheet-suggest__item {
+  @apply flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm;
+}
+
+.spreadsheet-suggest__item--active {
+  background-color: color-mix(in oklab, var(--spreadsheet-accent, #0d9488) 12%, transparent);
+}
+
+.spreadsheet-suggest__label {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+/* Badge colors mirror formula token palette (see comment above). */
+.spreadsheet-suggest__kind {
+  @apply inline-flex shrink-0 items-center rounded px-1 text-[10px] font-medium uppercase;
+  background-color: color-mix(in oklab, var(--color-ink, #111) 8%, transparent);
+}
+
+.spreadsheet-suggest__kind--fn {
+  color: #2563eb;
+  background-color: color-mix(in oklab, #2563eb 12%, transparent);
+}
+.spreadsheet-suggest__kind--def {
+  color: #d97706;
+  background-color: color-mix(in oklab, #d97706 12%, transparent);
+}
+.spreadsheet-suggest__kind--defkey {
+  color: #b45309;
+  background-color: color-mix(in oklab, #b45309 12%, transparent);
+}
+.spreadsheet-suggest__kind--ref {
+  color: #16a34a;
+  background-color: color-mix(in oklab, #16a34a 12%, transparent);
+}
+.spreadsheet-suggest__kind--sheet {
+  color: #0d9488;
+  background-color: color-mix(in oklab, #0d9488 12%, transparent);
+}
+
+.spreadsheet-suggest__name {
+  @apply truncate font-medium;
+}
+
+.spreadsheet-suggest__detail {
+  @apply shrink-0 truncate text-xs;
+  color: #6b7280;
+}
+
+.spreadsheet-dialog-surface {
+  --spreadsheet-accent: #0d9488;
+  --button-primary-bg: var(--spreadsheet-accent);
+  --button-primary-fg: #ffffff;
+  --primary: var(--spreadsheet-accent);
+  --primary-foreground: #ffffff;
+}
