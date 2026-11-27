@@ -719,12 +719,13 @@ with a header in A1 row 1, A1 row 2 is YCSV row 1.
 A fully empty row is valid and has no data meaning; it usually separates
 sections. It is numbered like any other row:
 
-- **What counts as an empty row.** A line in the CSV body that is empty, that
+- **What counts as an empty row.** A record in the CSV body that is empty, that
   holds only spaces or tabs, or that holds only separators (`,,`). All its
   cells are blank.
-- **It keeps its number.** The row number is the line number in the body
-  minus the header offset: with a header, body line 2 is row 1; without
-  one, body line 1 is row 1. Numbers never jump, and typing into an empty
+- **It keeps its number.** The row number is the record number in the body
+  minus the header offset (a quoted field that spans several lines is still
+  one record): with a header, record 2 is row 1; without one, record 1 is
+  row 1. Numbers never jump, and typing into an empty
   row does not renumber the rows below it.
 - **Readers must not skip blank lines.** Many CSV libraries do so by default
   (an option such as `skipEmptyLines`); that must be off.
