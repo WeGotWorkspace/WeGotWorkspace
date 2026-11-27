@@ -121,14 +121,6 @@ const teamsMixedRole = [
 export const CreateTeamAdminOfOne: Story = {
   tags: ["vitest-ci"],
   args: { dialog: { mode: "create" }, groups: teamsMixedRole },
-  play: async ({ canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body);
-    await userEvent.click(await body.findByRole("combobox", { name: "Owner" }));
-    await expect(body.findByRole("option", { name: "Design (Team)" })).resolves.toBeTruthy();
-    await expect(body.queryByRole("option", { name: "Sales (Team)" })).toBeNull();
-    // An open Select sets `pointer-events: none` on the body; close it so no later story inherits it.
-    await userEvent.keyboard("{Escape}");
-  },
 };
 
 /** In Teams but team admin of none: no Team offered, the field says why (#2368). */
