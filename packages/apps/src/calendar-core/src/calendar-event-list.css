@@ -12,3 +12,8 @@
 .calendar-event-list--empty {
   @apply h-full;
 }
+
+/* Repeat and video icons sit at the end of the meta line; the calendar name truncates. */
+.calendar-event-list .list-item__meta .list-item__meta-trailing {
+  margin-inline-start: auto;
+}

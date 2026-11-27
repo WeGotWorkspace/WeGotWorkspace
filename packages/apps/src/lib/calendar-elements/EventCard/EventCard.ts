@@ -159,11 +159,12 @@ export class EventCard extends BaseElement {
                   ? html`<span class="event-card-compact-time">${compactTimeLabel}</span
                       ><span aria-hidden="true"> </span>`
                   : ""
-              }${this.#videoIcon()}<span>${this.summary}</span>
+              }<span>${this.summary}</span>
             </span>
-            <span class="event-card-summary-main">${this.#videoIcon()}${this.summary}</span>
+            <span class="event-card-summary-main">${this.summary}</span>
             ${hasMeta ? this.#renderMetaBlock(hasTimeLabel, hasLocation, location) : nothing}
           </span>
+          ${this.#videoIcon()}
         </div>
         <slot></slot>
       </div>
@@ -174,7 +175,7 @@ export class EventCard extends BaseElement {
     return this.video ? html`<span class="sr-only">With video call.</span>` : nothing;
   }
 
-  /** Lucide "video", sized to the title; leads the text so a narrow block never clips it. */
+  /** Lucide "video" at the end of the heading row: the title truncates, the icon stays. */
   #videoIcon() {
     if (!this.video) return nothing;
     return html`<svg

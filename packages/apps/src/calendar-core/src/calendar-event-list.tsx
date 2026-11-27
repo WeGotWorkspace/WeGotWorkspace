@@ -121,7 +121,12 @@ function sameRowProps(prev: CalendarEventListRowProps, next: CalendarEventListRo
 }
 
 const RECURRING_ICONS = [<Repeat key="repeat" className="size-3.5" aria-hidden />];
-const VIDEO_ICON = <Video key="video" className="size-3.5" aria-hidden />;
+const VIDEO_ICON = (
+  <span key="video" className="inline-flex">
+    <Video className="size-3.5" aria-hidden />
+    <span className="sr-only">With video call.</span>
+  </span>
+);
 const NO_ICONS: ReactNode[] = [];
 const VIDEO_ICONS = [VIDEO_ICON];
 const RECURRING_VIDEO_ICONS = [RECURRING_ICONS[0], VIDEO_ICON];
