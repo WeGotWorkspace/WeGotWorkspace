@@ -148,8 +148,8 @@ final class JmapFileNodesClientContractTest extends WgwDatabaseTestCase
             ['Core/echo', ['ping' => true], 'c1'],
         ], [JmapCapabilities::CORE, JmapCapabilities::FILENODE, JmapCapabilities::CALENDARS])->assertOk();
 
-        // The filenode state is `<seq>.<grantHash>` (#1926): the global sequence plus a hash
-        // of the caller's live member grants — never the count-prefixed codec form the Sabre
+        // The filenode state is `<seq>.<scopeHash>` (#1926, #2063): the global sequence plus a
+        // hash of the caller's account roots and live member grants — never the count-prefixed codec form the Sabre
         // domains use.
         $state = $response->json('methodResponses.0.1.state');
         $this->assertMatchesRegularExpression('/^\d+\.[0-9a-f]{32}$/', $state);

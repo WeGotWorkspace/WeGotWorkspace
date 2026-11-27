@@ -28,6 +28,7 @@ export const liveTierSpecs = [
   "contacts-detail-pass",
   "contacts-first-download",
   "contacts-first-open-count",
+  "contacts-import-retry",
   "contacts-list-windowed",
   "contacts-offline-read-only",
   "contacts-open-draft-merge",

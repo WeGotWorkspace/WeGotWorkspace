@@ -44,9 +44,9 @@ final class FileNodeChangesMethod implements JmapMethodInterface
     }
 
     /**
-     * The state is `<seq>.<grantHash>` ({@see FileNodeSyncState}). A grant that was added,
-     * revoked, hidden or changed since `sinceState` answers cannotCalculateChanges, so the
-     * client resyncs; so does a legacy all-digit state.
+     * The state is `<seq>.<scopeHash>` ({@see FileNodeSyncState}). A Team join or leave, or a
+     * grant that was added, revoked, hidden or changed since `sinceState` answers
+     * cannotCalculateChanges, so the client resyncs; so does a legacy or grant-only state.
      */
     public function handle(string $username, array $args): array
     {

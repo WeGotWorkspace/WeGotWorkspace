@@ -103,6 +103,13 @@
   margin-top: 1.5rem;
 }
 
+/* A section that carries on the one above (Settings): a hairline between, no pause. */
+.workspace-page-section + .workspace-page-section.settings-pane-card--continued,
+.ui-modal-surface .workspace-page-section + .workspace-page-section.settings-pane-card--continued {
+  margin-top: 0;
+  border-top: 1px solid var(--workspace-divider-color);
+}
+
 /* Quiet paragraph under a section title (what the section is for). */
 .workspace-page-section__lead {
   @apply mb-2 text-sm;

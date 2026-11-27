@@ -34,8 +34,22 @@
   --control-border-color: transparent;
   --input-border-focus: transparent;
   --input-shadow: none;
+  /* No fill at rest: the wash comes with hover and focus only. */
+  --input-background: transparent;
+  --input-background-hover: var(--workspace-ghost-hover-background);
+  --input-background-focus: var(--workspace-ghost-hover-background);
   /* Text starts on the row text line: checkbox (20px) plus the row gap (12px). */
   padding-inline-start: calc(var(--list-item-padding-x, 1.25rem) + 2rem);
+}
+
+/* Hover and focus (typing too) take the wash; no ring or border appears once typing
+   starts (a keyboard focus ring would draw a box round the field). */
+.tasks-list-panel__quick-add-input.input:hover:not(:disabled),
+.tasks-list-panel__quick-add-input.input:focus,
+.tasks-list-panel__quick-add-input.input:focus-visible {
+  background-color: var(--workspace-ghost-hover-background);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 @media (min-width: 768px) {
@@ -197,4 +211,81 @@
     transition: none !important;
     transform: none !important;
   }
+}
+
+/* The filter button: a dot while a status or priority filter is on. */
+.tasks-list-panel__filter-icon {
+  @apply relative inline-flex;
+}
+
+.tasks-list-panel__filter-dot {
+  @apply absolute -right-1 -top-1 size-2 rounded-full;
+  background-color: var(--workspace-accent);
+  box-shadow: 0 0 0 2px var(--workspace-surface);
+}
+
+/* The sidebar's Assigned-to rows: the assignee chips' avatar, a little smaller, in the icon slot. */
+/* The icon slot dims its icon (65-90%); an avatar keeps full strength, so its initials
+   stay at the contrast the avatar palette is made for. */
+.sidebar-section .menu-item .menu-item__icon-slot:has(.tasks-sidebar-avatar) {
+  opacity: 1 !important;
+}
+
+.tasks-sidebar-avatar {
+  /* Room for the presence dot and its ring: the row clips (overflow) at the icon's box. */
+  margin: 0.25rem;
+}
+
+.tasks-sidebar-avatar .user-avatar__mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  --user-avatar-font-size: 8px;
+}
+
+/* Quick add in a colleague's view: the icon-only list menu sits at the end of the field. */
+.tasks-list-panel__quick-add-list {
+  @apply absolute top-1/2 -translate-y-1/2;
+  inset-inline-end: 0.375rem;
+}
+
+.tasks-list-panel__quick-add-mark {
+  @apply inline-flex items-center gap-1;
+}
+
+.tasks-list-panel__quick-add-list.icon-button {
+  width: auto;
+  padding-inline: 0.5rem;
+}
+
+.tasks-list-panel__quick-add-dot {
+  @apply inline-block size-2.5 shrink-0 rounded-full;
+}
+
+.tasks-list-panel__quick-add:has(.tasks-list-panel__quick-add-list)
+  .tasks-list-panel__quick-add-input {
+  padding-inline-end: 4.25rem;
+}
+
+/*
+ * A done task's box takes its status colour, the wash of the status icon (completed
+ * green, with a check; cancelled red, with a cross), so the two read apart.
+ */
+:is(.tasks-list-row .tasks-list-row__complete, .tasks-detail-view__complete)[data-status] {
+  --checkbox-mark-fill: color-mix(in oklab, var(--_status-color) 16%, var(--workspace-surface));
+  --checkbox-mark-check: var(--_status-color);
+  --checkbox-checked-border: color-mix(in oklab, var(--_status-color) 60%, transparent);
+}
+
+:is(
+  .tasks-list-row .tasks-list-row__complete,
+  .tasks-detail-view__complete
+)[data-status="completed"] {
+  --_status-color: var(--color-success);
+}
+
+:is(
+  .tasks-list-row .tasks-list-row__complete,
+  .tasks-detail-view__complete
+)[data-status="cancelled"] {
+  --_status-color: var(--color-error);
 }

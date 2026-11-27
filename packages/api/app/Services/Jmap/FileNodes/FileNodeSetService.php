@@ -46,7 +46,7 @@ final class FileNodeSetService
     // (documented deviation: no client-controlled timestamps).
     private const SUPPORTED_CREATE_PROPS = ['parentId', 'name', 'nodeType', 'blobId', 'size', 'type', 'modified'];
 
-    private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size'];
+    private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size', 'tagsAdd', 'tagsRemove'];
 
     /** @var array<string, int> blobId → references left in this request */
     private array $blobReferences = [];
@@ -83,6 +83,7 @@ final class FileNodeSetService
         private readonly FileNodeBlobAttacher $attacher,
         private readonly FileNodeVersionCheck $versionCheck,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     /**
@@ -346,6 +347,15 @@ final class FileNodeSetService
 
         $serverSet = [];
         $note = $this->notes->patch($patch);
+        $tagDelta = $this->tags->patch($patch);
+        if ($tagDelta !== null && ! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayRename']) {
+            throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to change the tags of this node.']);
+        }
+        if ($tagDelta !== null) {
+            // Before any move, rename or content write: a refused tag change
+            // must leave the node untouched.
+            $this->tags->assertFits((string) $node->node_id, $tagDelta['add'], $tagDelta['remove']);
+        }
         // Destroying a replaced sibling and renaming run together, just
         // before the content changes: an attach that is refused leaves both
         // undone.
@@ -464,6 +474,11 @@ final class FileNodeSetService
             if (isset($shape['note'])) {
                 $serverSet['note'] = $shape['note'];
             }
+        }
+
+        if ($tagDelta !== null) {
+            $serverSet['tags'] = $this->tags->apply((string) $node->node_id, $tagDelta['add'], $tagDelta['remove']);
+            $this->index->recordMetadataChange($node);
         }
 
         return $serverSet === [] ? null : $serverSet;

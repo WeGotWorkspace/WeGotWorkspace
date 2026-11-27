@@ -54,7 +54,11 @@ function errorToast(page: Page) {
   return page.locator("[data-sonner-toast]").filter({ hasText: /fail|fetch|error/i });
 }
 
-/** True once the first sync on this device finished (read straight from IndexedDB). */
+/**
+ * True once the first sync on this device finished: the tree walk or, on a
+ * server without the keyset, the crawl; both write the last-pass marker (read
+ * straight from IndexedDB).
+ */
 async function firstSyncDone(page: Page): Promise<boolean> {
   return page.evaluate(async (user) => {
     const db = await new Promise<IDBDatabase | null>((resolve) => {
@@ -64,7 +68,7 @@ async function firstSyncDone(page: Page): Promise<boolean> {
     });
     if (!db || !db.objectStoreNames.contains("meta")) return false;
     const key = await new Promise<IDBValidKey | undefined>((resolve) => {
-      const get = db.transaction("meta").objectStore("meta").getKey("drive:tree-sync:first-done");
+      const get = db.transaction("meta").objectStore("meta").getKey("drive:tree-sync:last-pass");
       get.onsuccess = () => resolve(get.result);
       get.onerror = () => resolve(undefined);
     });
@@ -241,6 +245,7 @@ test.describe("Drive views on the file tree (live app)", () => {
       ["/drive?view=starred", STARRED],
       ["/drive?view=shared", SHARED],
       [folderUrl("Trash"), TRASHED],
+      [folderUrl("Trash"), GONE],
     ] as const) {
       await page.goto(url);
       await expect(row(page, name)).toBeVisible({ timeout: 30_000 });

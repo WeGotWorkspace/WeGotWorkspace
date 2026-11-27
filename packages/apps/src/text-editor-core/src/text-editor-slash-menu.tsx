@@ -7,6 +7,7 @@ import { subscribeEditorLayoutUpdates } from "@/text-editor-core/src/text-editor
 import {
   groupSlashCommands,
   slashCommands,
+  slashCommandsForEditor,
   type SlashCommandOptions,
 } from "@/text-editor-core/src/text-editor-slash-commands";
 
@@ -79,7 +80,7 @@ export function TextEditorSlashMenu({
 
   // Sections in display order: the arrow keys walk this flat order.
   const groups = groupSlashCommands(
-    slashCommands({ onInsertImage, pageBreak }).filter(
+    slashCommandsForEditor(slashCommands({ onInsertImage, pageBreak }), editor).filter(
       (c) =>
         (c.title + " " + c.keywords).toLowerCase().includes(query.toLowerCase()) &&
         (!editor || !c.isAvailable || c.isAvailable(editor)),

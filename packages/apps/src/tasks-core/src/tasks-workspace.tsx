@@ -38,13 +38,10 @@ import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint"
 import { ICS_FILE_ACCEPT, icsFileFromList } from "@/lib/ics-import/ics-file";
 import { TasksListPanel } from "@/tasks-core/src/tasks-list-panel";
 import { TasksDetailActionBar, TasksDetailView } from "@/tasks-core/src/tasks-detail-view";
+import { useQuickAddTarget } from "@/tasks-core/src/use-quick-add-target";
 import { TasksThreadSection } from "@/tasks-core/src/tasks-thread-section";
 import { CollabSessionPresence } from "@/text-editor-core/docs-collab";
-import { emptyTaskForm } from "@/tasks-core/src/tasks-task-form";
-import {
-  composerDefaultDueForView,
-  isProjectOwnedTaskList,
-} from "@/tasks-core/src/tasks-task-utils";
+import { isProjectOwnedTaskList } from "@/tasks-core/src/tasks-task-utils";
 import {
   canWriteTaskList,
   taskListDotColor,
@@ -185,9 +182,12 @@ export function TasksWorkspace({
     createListId,
     hiddenTaskListIds,
     toggleTaskListVisibility,
-    showCompletedTasks,
-    showCompletedToggle,
-    toggleShowCompletedTasks,
+    statusFilter,
+    priorityFilter,
+    statusFilterApplies,
+    assigneePeople,
+    toggleStatusFilter,
+    togglePriorityFilter,
     exitingTaskIds,
     isItemDragging,
     itemDragHandlers,
@@ -207,26 +207,36 @@ export function TasksWorkspace({
     showLiveText,
   } = controller;
 
-  const quickAdd = useCallback(
-    (title: string) => {
-      void createTaskFromForm({
-        ...emptyTaskForm(createListId),
-        due: composerDefaultDueForView(view),
-        title,
-      });
-    },
-    [createListId, createTaskFromForm, view],
-  );
-
   const projectGroups = taskProjectGroupsFromBootstrap(data);
   const ownerLabel = personalOwnerLabel(session);
-  const { topSidebarItems, statusSidebarItems, prioritySidebarItems, ownedLists, sharedLists } =
-    useTasksSidebarModel({
-      labels: L,
-      view,
-      taskLists,
-      selectView,
-    });
+  const meRow = useMemo(
+    () => ({
+      username: session.user.username?.trim() || "me",
+      name: session.user.displayName?.trim() || session.user.username?.trim() || "Me",
+    }),
+    [session.user.displayName, session.user.username],
+  );
+
+  const quickAddTarget = useQuickAddTarget({
+    view,
+    taskLists,
+    defaultListId: createListId,
+    me: {
+      username: meRow.username,
+      displayName: meRow.name,
+      email: session.user.email ?? null,
+    },
+    loadMembers: operations?.listTaskListMembers,
+    createTask: createTaskFromForm,
+  });
+  const { topSidebarItems, assignedToItems, ownedLists, sharedLists } = useTasksSidebarModel({
+    labels: L,
+    view,
+    taskLists,
+    assigneePeople,
+    me: meRow,
+    selectView,
+  });
 
   const writableTaskLists = useMemo(
     () => taskLists.filter((list) => canWriteTaskList(list)),
@@ -325,6 +335,7 @@ export function TasksWorkspace({
             footer={<WorkspaceSidebarAccountFooter session={session} onLogout={onLogout} />}
           >
             <SidebarSection items={topSidebarItems} />
+            <SidebarSection title={L.sidebarAssignedTo} items={assignedToItems} />
             {ownedLists.length > 0 ? (
               <SidebarSection title={L.sidebarProjects}>
                 <TasksSidebarRows
@@ -357,8 +368,6 @@ export function TasksWorkspace({
                 />
               </SidebarSection>
             ) : null}
-            <SidebarSection title={L.sidebarStatus} items={statusSidebarItems} />
-            <SidebarSection title={L.sidebarPriority} items={prioritySidebarItems} />
           </AppSidebar>
         )}
         list={(c) =>
@@ -377,15 +386,21 @@ export function TasksWorkspace({
             searchQuery,
             setSearchQuery,
             searchInputRef,
-            showCompletedToggle,
-            showCompletedTasks,
-            onToggleShowCompleted: toggleShowCompletedTasks,
+            statusFilter,
+            priorityFilter,
+            statusFilterApplies,
+            onToggleStatusFilter: toggleStatusFilter,
+            onTogglePriorityFilter: togglePriorityFilter,
             listRefreshing,
             onRefreshList,
             notice,
-            canCreate: canCreateTask,
+            canCreate: canCreateTask && quickAddTarget.canAdd,
+            quickAddLists: quickAddTarget.lists,
+            quickAddListId: quickAddTarget.listId,
+            onQuickAddListChange: quickAddTarget.setListId,
+            quickAddPlaceholder: quickAddTarget.noSharedList ? L.quickAddNoSharedList : undefined,
             quickAddRef,
-            onQuickAdd: quickAdd,
+            onQuickAdd: quickAddTarget.add,
             handleSelect,
             enterSelectionFor,
             selectionBar,
@@ -438,6 +453,7 @@ export function TasksWorkspace({
               onCreateList={canManageProjects ? openCreateProjectDialog : undefined}
               onConfirmMove={requestMoveTask}
               loadListMembers={operations?.listTaskListMembers}
+              viewerUsername={session.user.username ?? undefined}
               textCollab={liveText.textCollab}
               textAccessLost={liveText.textAccessLost}
               textLookingUp={liveText.textLookingUp}

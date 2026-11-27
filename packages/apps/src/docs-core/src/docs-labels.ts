@@ -106,9 +106,8 @@ export const docsLabels = {
   insertImageError: "Could not insert the image.",
   insertImageTitle: "Insert image",
   insertImageChooserDescription:
-    "Upload a file from your computer, or choose an image already in Drive.",
+    "Upload an image from your computer, or pick one already in Drive.",
   insertImageUpload: "Upload",
-  insertImageChooseFromDrive: "Choose from Drive",
   deleteImage: "Delete image",
   viewSource: "Edit source",
   /** Source toggle when the document cannot be edited (guest view). */
@@ -189,7 +188,9 @@ export const docsLabels = {
    * last-edited tag, so neither becomes a sentence.
    */
   statusSaving: "Saving…",
-  statusOffline: "Offline – changes are kept on this device",
+  statusOffline: "Offline",
+  /** Tooltip on `statusOffline`: the device promise lives here, not in the label. */
+  statusOfflineHint: "Changes are kept on this device",
   /** Stands in for `statusSyncingViaServer` until an HTTP fallback exists. */
   statusChangesSyncWhenSaved: "Changes sync when saved",
   /** Transient phases, only ever shown after a 1.5 s hold (`statusConnecting` is in `docsCollabLabels`). */

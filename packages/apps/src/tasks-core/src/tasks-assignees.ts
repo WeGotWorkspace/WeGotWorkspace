@@ -110,3 +110,37 @@ export function taskParticipantsPatch(
   }
   return Object.keys(patch).length > 0 ? patch : undefined;
 }
+
+export type TaskAssigneePerson = { username: string; name: string };
+
+/**
+ * The colleagues the given tasks are assigned to, by name: the people for the sidebar's
+ * "Assigned to" section. The tasks are the ones the viewer can see, so only shared work
+ * counts. The viewer (`Me`) and people outside the system (`e:` attendees) are left out.
+ */
+export function assigneePeopleOfTasks(
+  tasks: readonly Pick<Task, "participants">[],
+  viewerUsername: string | null | undefined,
+): TaskAssigneePerson[] {
+  const me = viewerUsername?.trim().toLowerCase();
+  const byUsername = new Map<string, TaskAssigneePerson>();
+  for (const task of tasks) {
+    for (const assignee of taskAssignees(task.participants)) {
+      if (!assignee.id.toLowerCase().startsWith("u:")) continue;
+      const username = assignee.id.slice(2);
+      const key = username.toLowerCase();
+      if (key === me || byUsername.has(key)) continue;
+      byUsername.set(key, { username, name: assignee.name });
+    }
+  }
+  return [...byUsername.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Whether the participant id (`u:<username>`) is the signed-in person. */
+export function isViewerParticipant(
+  participantId: string,
+  viewerUsername: string | null | undefined,
+): boolean {
+  const me = viewerUsername?.trim().toLowerCase();
+  return Boolean(me) && participantId.toLowerCase() === `u:${me}`;
+}

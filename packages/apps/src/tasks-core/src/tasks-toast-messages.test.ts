@@ -6,7 +6,10 @@ import {
 } from "@/tasks-core/src/tasks-toast-messages";
 import {
   buildDisplayTasks,
-  filterHiddenCompletedTasks,
+  DEFAULT_TASK_PRIORITY_FILTER,
+  DEFAULT_TASK_STATUS_FILTER,
+  filterTasksByPriorityFilter,
+  filterTasksByStatus,
   shouldApplyCompletedTaskFilter,
   shouldHideCompletedTaskAfterExit,
 } from "@/tasks-core/src/tasks-task-utils";
@@ -58,11 +61,31 @@ describe("completed task visibility filter", () => {
     expect(shouldApplyCompletedTaskFilter("list:inbox")).toBe(true);
     expect(shouldApplyCompletedTaskFilter("state:completed")).toBe(false);
     expect(shouldApplyCompletedTaskFilter("state:cancelled")).toBe(false);
+    expect(shouldApplyCompletedTaskFilter("state:needs-action")).toBe(false);
+    expect(shouldApplyCompletedTaskFilter("state:in-process")).toBe(false);
   });
 
-  it("filterHiddenCompletedTasks removes completed and cancelled tasks", () => {
+  it("the default status filter keeps open work and drops completed and cancelled tasks", () => {
     const tasks = [task("open"), task("done", "completed"), task("dropped", "cancelled")];
-    expect(filterHiddenCompletedTasks(tasks).map((row) => row.id)).toEqual(["open"]);
+    expect(filterTasksByStatus(tasks, DEFAULT_TASK_STATUS_FILTER).map((row) => row.id)).toEqual([
+      "open",
+    ]);
+    expect(filterTasksByStatus(tasks, new Set(["completed"])).map((row) => row.id)).toEqual([
+      "done",
+    ]);
+  });
+
+  it("filters by priority, with none as its own segment row", () => {
+    const tasks = [
+      { ...task("hi"), priority: 1 },
+      { ...task("lo"), priority: 9 },
+      { ...task("none"), priority: 0 },
+    ];
+    const ids = (allowed: ReadonlySet<"high" | "medium" | "low" | "none">) =>
+      filterTasksByPriorityFilter(tasks, allowed).map((row) => row.id);
+    expect(ids(DEFAULT_TASK_PRIORITY_FILTER)).toEqual(["hi", "lo", "none"]);
+    expect(ids(new Set(["high"]))).toEqual(["hi"]);
+    expect(ids(new Set(["low", "none"]))).toEqual(["lo", "none"]);
   });
 });
 

@@ -54,7 +54,7 @@ describe("useTasksSidebarModel", () => {
     );
   });
 
-  it("starts the top nav with All Tasks, keeps time filters and ends with Assigned to me", () => {
+  it("starts the top nav with All Tasks and keeps the time filters", () => {
     const { result } = renderHook(() =>
       useTasksSidebarModel({
         labels: defaultTasksLabels,
@@ -69,27 +69,23 @@ describe("useTasksSidebarModel", () => {
       defaultTasksLabels.stateToday,
       defaultTasksLabels.stateUpcoming,
       defaultTasksLabels.stateOverdue,
-      defaultTasksLabels.stateAssignedToMe,
     ]);
   });
 
-  it("lists none alongside high, medium, and low in Priority", () => {
+  it("opens Assigned to with you first, then the colleagues", () => {
     const { result } = renderHook(() =>
       useTasksSidebarModel({
         labels: defaultTasksLabels,
-        view: "priority:none",
+        view: "assignee:bob",
         taskLists: [],
+        assigneePeople: [{ username: "bob", name: "Bob" }],
+        me: { username: "alice", name: "Alice" },
         selectView: () => undefined,
       }),
     );
 
-    expect(result.current.prioritySidebarItems.map((item) => item.label)).toEqual([
-      defaultTasksLabels.priorityHigh,
-      defaultTasksLabels.priorityMedium,
-      defaultTasksLabels.priorityLow,
-      defaultTasksLabels.priorityNone,
-    ]);
-    expect(result.current.prioritySidebarItems.at(-1)?.selected).toBe(true);
+    expect(result.current.assignedToItems.map((item) => item.label)).toEqual(["Alice (Me)", "Bob"]);
+    expect(result.current.assignedToItems.map((item) => item.selected)).toEqual([false, true]);
   });
 
   it("does not treat a display name Inbox as the owned inbox", () => {

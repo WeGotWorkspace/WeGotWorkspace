@@ -279,13 +279,17 @@ test.describe("Drive first sync on a new device", () => {
     page,
   }) => {
     test.setTimeout(150_000);
-    // The tree walk is a `FileNode/query` with no filter (by id, in pages).
-    // Refuse it for a while; the app bootstrap's folder listing still goes through.
+    // The first sync is the tree walk (a `FileNode/query` with no filter, by id,
+    // in pages) on a keyset server, else the per-folder crawl, which first reads
+    // the state (`FileNode/get` with no ids). Refuse both for a while; the app
+    // bootstrap's folder listing still goes through.
     let refusing = true;
     let refused = 0;
     await page.route("**/api/v1/jmap", async (route) => {
       const body = route.request().postData() ?? "";
-      if (refusing && body.includes("FileNode/query") && body.includes('"filter":null')) {
+      const walk = body.includes("FileNode/query") && body.includes('"filter":null');
+      const crawl = body.includes("FileNode/get") && body.includes('"ids":[]');
+      if (refusing && (walk || crawl)) {
         refused += 1;
         return route.fulfill({
           status: 429,

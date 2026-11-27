@@ -108,8 +108,8 @@ describe("useContactsController vCard import", () => {
     );
 
     const files = [
-      new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf"),
-      new File(["BEGIN:VCARD\nFN:Two\nEND:VCARD"], "two.vcf"),
+      new File(["BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD"], "one.vcf"),
+      new File(["BEGIN:VCARD\nFN:Two\nUID:Two\nEND:VCARD"], "two.vcf"),
     ];
 
     act(() => {
@@ -124,10 +124,10 @@ describe("useContactsController vCard import", () => {
     });
 
     expect(importVcards).toHaveBeenCalledTimes(2);
-    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nEND:VCARD", {
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD", {
       addressBookId: "group-eng",
     });
-    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:Two\nEND:VCARD", {
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:Two\nUID:Two\nEND:VCARD", {
       addressBookId: "group-eng",
     });
     expect(result.current.cards.some((card) => card.id === "card-imported-one")).toBe(true);
@@ -170,7 +170,7 @@ describe("useContactsController vCard import", () => {
 
     act(() => {
       result.current.handleImportVcf(
-        fileListOf(new File(["BEGIN:VCARD\nFN:One\nEND:VCARD"], "one.vcf")),
+        fileListOf(new File(["BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD"], "one.vcf")),
       );
     });
 
@@ -179,7 +179,7 @@ describe("useContactsController vCard import", () => {
     });
 
     expect(onRefreshList).toHaveBeenCalledTimes(1);
-    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nEND:VCARD", {
+    expect(importVcards).toHaveBeenCalledWith("BEGIN:VCARD\nFN:One\nUID:One\nEND:VCARD", {
       addressBookId: "default",
     });
   });

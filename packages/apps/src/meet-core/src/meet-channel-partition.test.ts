@@ -228,6 +228,7 @@ describe("Project channels (#818)", () => {
     expect(meetChannelLockedByProject(web)).toBe(true);
     expect(meetChannelLockedByProject(named)).toBe(false);
     expect(meetChannelLockedByProject({ ...named, myRights: { mayRename: false } })).toBe(true);
+    expect(meetChannelLockedByProject({ ...named, isDefault: true })).toBe(true);
   });
 });
 

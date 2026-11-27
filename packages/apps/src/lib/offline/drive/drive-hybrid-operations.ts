@@ -26,6 +26,7 @@ import {
   migrateDriveEntryPath,
   readDirectoryEntriesFromCache,
   readDriveBootstrapFromCache,
+  readDriveChildNames,
   removeDriveEntriesUnderPrefix,
   searchDriveEntriesFromCache,
   writeDriveBootstrapToCache,
@@ -349,8 +350,8 @@ export function createHybridDriveOperations(
       const from = normalizeApiVirtualPath(input.from);
       let to = input.to;
       if (isTrash) {
-        const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
-        to = resolveFreeName(input.to, trashNames);
+        // Offline the names already in Trash come from the tree (dot names too).
+        to = resolveFreeName(input.to, await readDriveChildNames(username, destination));
         const trashed = nextPathAfterRename(from, destination, to);
         await applyOfflineTrashSideEffects(username, from, trashed);
         moveDocsPageSetupOverride(from, trashed);
