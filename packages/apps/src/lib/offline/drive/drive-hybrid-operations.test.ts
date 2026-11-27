@@ -155,6 +155,29 @@ describe("createHybridDriveOperations writes and the file tree (#2063 C3)", () =
     expect((await driveEntriesTable(db()).get("users/alice/.Trash/plan.md"))?.modifiedAt).toBe(1);
   });
 
+  it("offline, a second dotfile with a title already in Trash keeps the first row", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(
+      username,
+      { ...entry("/users/alice/.Trash/.env", ".env"), nodeId: "n1" },
+      "trash",
+    );
+    await upsertDriveEntry(username, entry("/users/alice/Work/.env", ".env", 7), "home");
+
+    await createHybridDriveOperations(username, bootstrap()).renameItem({
+      from: "/users/alice/Work/.env",
+      destination: "/users/alice/.Trash",
+      to: ".env",
+    });
+
+    const inTrash = await driveEntriesTable(db())
+      .where("parentPath")
+      .equals("users/alice/.Trash")
+      .toArray();
+    expect(inTrash).toHaveLength(2);
+    expect((await driveEntriesTable(db()).get("users/alice/.Trash/.env"))?.nodeId).toBe("n1");
+  });
+
   it("a create that meets a name already there leaves that row as it is", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     await upsertDriveEntry(

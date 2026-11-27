@@ -350,7 +350,9 @@ export function createHybridDriveOperations(
       let to = input.to;
       if (isTrash) {
         // Offline the names already in Trash come from the tree, not the server.
-        const inTrash = await readDirectoryEntriesFromCache(username, destination);
+        const inTrash = await readDirectoryEntriesFromCache(username, destination, {
+          includeHidden: true,
+        });
         to = resolveFreeName(input.to, new Set(inTrash.map((entry) => entry.name)));
         const trashed = nextPathAfterRename(from, destination, to);
         await applyOfflineTrashSideEffects(username, from, trashed);

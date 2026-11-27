@@ -83,32 +83,35 @@ export async function addCreatedDriveEntry(
   name: string,
   type: "dir" | "file",
 ): Promise<void> {
-  const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
   const parentId = normalizeDriveEntryPath(parentApiPath);
   const id = parentId ? `${parentId}/${name}` : name;
-  // The server answers a name that already exists as a success: the row there
-  // (its node id, size, rights) stays as it is.
-  if (await table.get(id)) return;
-  const parent = parentId ? await table.get(parentId) : undefined;
-  const parentEntry = parent ? parseEntryRow(parent) : null;
-  const entry: WgwDriveDirectoryEntry = {
-    type,
-    path: `/${id}`,
-    name,
-    size: 0,
-    time: Math.floor(Date.now() / 1000),
-    permissions: 0,
-    // Under a root there is no parent row: the person just created it there.
-    myRights: parentEntry?.myRights ?? {
-      mayView: true,
-      mayComment: true,
-      mayReview: true,
-      mayEditContent: true,
-      mayManageStructure: true,
-      mayShare: true,
-    },
-  };
-  await table.put(driveEntryRowFromEntry(entry, parent?.area ?? areaFromCrawledPath(id)));
+  await db.transaction("rw", table, async () => {
+    // The server answers a name that already exists as a success: the row there
+    // (its node id, size, rights) stays as it is.
+    if (await table.get(id)) return;
+    const parent = parentId ? await table.get(parentId) : undefined;
+    const parentEntry = parent ? parseEntryRow(parent) : null;
+    const entry: WgwDriveDirectoryEntry = {
+      type,
+      path: `/${id}`,
+      name,
+      size: 0,
+      time: Math.floor(Date.now() / 1000),
+      permissions: 0,
+      // Under a root there is no parent row: the person just created it there.
+      myRights: parentEntry?.myRights ?? {
+        mayView: true,
+        mayComment: true,
+        mayReview: true,
+        mayEditContent: true,
+        mayManageStructure: true,
+        mayShare: true,
+      },
+    };
+    await table.put(driveEntryRowFromEntry(entry, parent?.area ?? areaFromCrawledPath(id)));
+  });
 }
 
 /**
@@ -234,12 +237,14 @@ export async function upsertDriveEntries(
 export async function readDirectoryEntriesFromCache(
   username: string,
   parentPath: string,
+  options?: { includeHidden?: boolean },
 ): Promise<WgwDriveDirectoryEntry[]> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const normalizedParent = normalizeDriveEntryPath(parentPath);
   const rows = await driveEntriesTable(db).where("parentPath").equals(normalizedParent).toArray();
   // The tree also holds `.Trash`; a folder view never lists a dot name.
-  return rows.map(parseEntryRow).filter((entry) => !isDotName(entry.name));
+  const entries = rows.map(parseEntryRow);
+  return options?.includeHidden ? entries : entries.filter((entry) => !isDotName(entry.name));
 }
 
 export async function readDriveEntryFromCache(
