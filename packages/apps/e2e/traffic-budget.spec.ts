@@ -292,11 +292,12 @@ const TREE_QUIET_MS = 90_000;
  * A request that lists files: a JMAP request with `FileNode/query`, the search
  * route Docs home listed through before #2063, and the REST listings.
  */
-function isListingGroup(group: string): boolean {
-  return (
-    (group.startsWith("POST /jmap ") && group.includes("FileNode/query")) ||
-    /^GET \/(search\/results|files\/(children|starred|shared-with-me))\b/.test(group)
-  );
+function isListingRequest(request: Request): boolean {
+  const { pathname } = new URL(request.url());
+  if (pathname.endsWith("/jmap")) {
+    return request.method() === "POST" && (request.postData() ?? "").includes('"FileNode/query"');
+  }
+  return /^\/api\/v1\/(search\/results|files\/(children|starred|shared-with-me))$/.test(pathname);
 }
 
 /**
@@ -344,11 +345,14 @@ for (const [app, route] of [
     // Only for the end of the run; the meter does the counting.
     let lastListing = Date.now();
     const kinds = new Map<string, number>();
+    const groups = new Map<string, number>();
     context.on("request", (request) => {
-      if (!isListingGroup(endpointGroup(request))) return;
+      if (!isListingRequest(request)) return;
       lastListing = Date.now();
       // The page's own requests; a worker that forwards one sends the same body again.
       if (request.serviceWorker()) return;
+      const group = endpointGroup(request);
+      groups.set(group, (groups.get(group) ?? 0) + 1);
       const kind = listingKind(request);
       kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
     });
@@ -362,9 +366,9 @@ for (const [app, route] of [
     }
     const lastListingSeconds = Math.round((lastListing - startedAt) / 1000);
     const report = meter.report(`tree-cold-start-${app}`, { app, lastListingSeconds });
-    const listingGroups = Object.entries(report.byGroup).filter(([group]) => isListingGroup(group));
-    const listingRequests = listingGroups.reduce((sum, [, { total }]) => sum + total, 0);
+    const listingGroups = Object.fromEntries(groups);
     const listingKinds = Object.fromEntries(kinds);
+    const listingRequests = [...kinds.values()].reduce((sum, count) => sum + count, 0);
     writeReport(`tree-cold-start-${app}`, {
       ...report,
       listingRequests,
