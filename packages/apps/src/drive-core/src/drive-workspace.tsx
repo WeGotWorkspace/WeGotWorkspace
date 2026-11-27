@@ -93,6 +93,7 @@ export function DriveWorkspace({
     operations,
     shareOperations,
     listLoading,
+    offlineUsername,
     view,
     onViewChange,
     onOpenDocsFile,

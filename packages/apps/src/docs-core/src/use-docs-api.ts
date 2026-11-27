@@ -12,8 +12,11 @@ import {
 } from "@/lib/offline/drive/drive-file-node-push";
 import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
-import { wgwIsGuestSession } from "@/lib/api/wgw/http";
-import { resolveDocsOfflineUsername } from "@/lib/offline/core/offline-session";
+import { wgwIsGuestSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import {
+  rememberOfflineDocsUsername,
+  resolveDocsOfflineUsername,
+} from "@/lib/offline/core/offline-session";
 import type { DocsAppBootstrap, DocsUIData } from "@/lib/models/docs-types";
 import { createDefaultDocsApiSource, type DocsApiSource } from "@/docs-core/src/docs-api-source";
 import { uploadPendingDocBodies } from "@/docs-core/src/docs-pending-bodies";
@@ -77,6 +80,12 @@ export function useDocsAPI(source?: DocsApiSource) {
   const runBootstrap = useCallback(async () => {
     const bootstrap = await resolvedSource.loadBootstrap();
     cacheDocsBootstrap(bootstrap);
+    // The next cold open reads the file tree with this account before its
+    // bootstrap answers, so Docs home never shows a loading pane (#2063).
+    const accountUsername = bootstrap.session.user.username;
+    if (accountUsername && wgwLiveApiEnabled() && !wgwIsGuestSession()) {
+      rememberOfflineDocsUsername(accountUsername);
+    }
     return bootstrap;
   }, [resolvedSource]);
   const readCache = useCallback(async () => readCachedDocsBootstrap(), []);
