@@ -296,6 +296,7 @@ describe("syncDriveContentFromCache", () => {
       "users/alice/a.png": { attempts: 1, modifiedAt: 7 },
     });
   });
+
   it("keeps a failure a newer run records while the copy is being written", async () => {
     net.fetch.mockResolvedValue(new Response("x"));
     blobPut.mockImplementationOnce(async () => {
