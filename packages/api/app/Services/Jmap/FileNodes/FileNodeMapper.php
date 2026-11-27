@@ -44,7 +44,9 @@ final class FileNodeMapper
     public function toFileNodes(array $nodes, array $principal, ?GetProjection $projection = null): array
     {
         $projection ??= GetProjection::all();
-        $tagMap = $projection->wants('tags')
+        // External (guest) callers never see tags; internal share recipients do (#2402).
+        $showTags = strtolower((string) ($principal['role'] ?? '')) !== 'guest';
+        $tagMap = $showTags && $projection->wants('tags')
             ? $this->tags->forNodes(array_map(static fn (JmapFileNode $node): string => (string) $node->node_id, $nodes))
             : [];
 
@@ -52,7 +54,7 @@ final class FileNodeMapper
             fn (JmapFileNode $node): array => $projection->apply([
                 ...$this->toFileNode($node, $principal, $projection->wants('type')),
                 // WGW extension (#2402): who sees a node sees its tags.
-                'tags' => $tagMap[(string) $node->node_id] ?? [],
+                ...($showTags ? ['tags' => $tagMap[(string) $node->node_id] ?? []] : []),
             ]),
             $nodes,
         );

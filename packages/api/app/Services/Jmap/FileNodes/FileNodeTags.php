@@ -214,4 +214,18 @@ final class FileNodeTags
             JmapFileNodeTag::query()->whereIn('node_id', $chunk)->delete();
         }
     }
+
+    /**
+     * The space a storage key lives in: `users/<name>` (personal) or `groups/<slug>` (a
+     * Team). Tags belong to one space and never cross into another (#2402).
+     */
+    public static function spaceOf(string $storageKey): string
+    {
+        return implode('/', array_slice(explode('/', trim($storageKey, '/')), 0, 2));
+    }
+
+    public static function sameSpace(string $fromKey, string $toKey): bool
+    {
+        return self::spaceOf($fromKey) === self::spaceOf($toKey);
+    }
 }

@@ -13,7 +13,7 @@ A tag is a lowercase label on a file node, exactly like a Notes tag: letters a-z
 
 - Tags on tasks (Product#58); cross-app tags; tag colours; nested tags.
 - A tag admin screen, or creating a tag nobody uses.
-- Tags in WebDAV clients, or on guest/public share links.
+- Tags in WebDAV clients, or on guest/public share links (external callers never see tags).
 - Changing the Notes tag storage (VJOURNAL CATEGORIES stays).
 
 ## Affected packages
@@ -36,10 +36,10 @@ A tag is a lowercase label on a file node, exactly like a Notes tag: letters a-z
 
 ## Edge cases
 
-- **Move between personal and Team space:** the node id is kept, so tags move with the item. A personal file moved into a Team shows its tags to every member; a Team file moved out shows them only to the new owner. The move dialog already warns about access changes (Product#155); it should also say tags go along. Open question for the product lead.
-- **Copy:** the copy gets the same tags (new node id, rows copied). Copy into another space follows the same rule as move.
+- **Move between personal and Team space (decided 2026-11-27):** tags are removed. A personal tag must not travel into a Team, and a Team tag must not follow a file into someone's personal space. The server drops the rows when the source and destination spaces (`users/<name>` or `groups/<slug>`) differ; a move inside one space keeps them. The move dialog says tags are removed.
+- **Copy:** the copy gets the same tags (new node id, rows copied) inside one space. A copy into another space gets none, like a move.
 - **Trash and restore:** rows stay while the node is in trash; trashed nodes are left out of tag views and counts; purge deletes the rows.
-- **File shared to one person (personal sharing only):** the grantee sees the owner's tags, and can edit them if they can rename. There is no separate set per person. Open question for the product lead.
+- **File shared with a person (decided 2026-11-27):** internal recipients (users of the same tenant) see the owner's tags; external callers (public or guest links) never see them: the guest projection omits `tags` and a guest `hasTag` query is refused. Internal recipients are view-only in this build. Whether they may edit tags is an open question for the product lead.
 - **Same name in personal and in a Team:** one entry in the list; the filter matches both (Notes behaves the same).
 - **Folders:** folders can carry tags like files; a tag view lists both.
 - **Hidden trees:** `.notes`, `.Trash` and other hidden paths never appear in tag views; Notes tags stay in Notes.

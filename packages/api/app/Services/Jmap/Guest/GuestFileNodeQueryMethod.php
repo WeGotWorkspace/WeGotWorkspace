@@ -38,6 +38,9 @@ final class GuestFileNodeQueryMethod implements JmapMethodInterface
     public function handle(string $username, array $args): array
     {
         $filter = $args['filter'] ?? null;
+        if (is_array($filter) && array_key_exists('hasTag', $filter)) {
+            throw new JmapMethodException('invalidArguments', 'Guests cannot filter by tag.');
+        }
         $oneFolder = is_array($filter)
             && ! array_key_exists('operator', $filter)
             && ! array_key_exists('ancestorId', $filter)
