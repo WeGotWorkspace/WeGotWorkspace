@@ -58,15 +58,9 @@ function collectVersionSteps(): MergedVersionStep[] {
 }
 
 function mergeSchema(base: OfflineStoreSchema, delta: OfflineStoreSchema): OfflineStoreSchema {
-  const next: OfflineStoreSchema = { ...base };
-  for (const [table, spec] of Object.entries(delta)) {
-    if (spec === null) {
-      delete next[table];
-    } else {
-      next[table] = spec;
-    }
-  }
-  return next;
+  // `null` stays in the schema: Dexie merges every version's stores, so only a
+  // version that says `null` drops a table an earlier version declared.
+  return { ...base, ...delta };
 }
 
 export class WgwOfflineDatabase extends Dexie {

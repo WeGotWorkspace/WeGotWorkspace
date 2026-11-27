@@ -7,6 +7,7 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Drive\DriveShareIndicators;
 use App\Services\Jmap\GetProjection;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapRequestContext;
@@ -33,6 +34,7 @@ final class FileNodeMapper
         private readonly FileNodeContentHasher $hasher,
         private readonly JmapRequestContext $context,
         private readonly ProjectFolderRegistry $projectFolders,
+        private readonly DriveShareIndicators $shareIndicators,
         private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
@@ -47,15 +49,57 @@ final class FileNodeMapper
         $tagMap = $projection->wants('tags')
             ? $this->tags->forNodes(array_map(static fn (JmapFileNode $node): string => (string) $node->node_id, $nodes))
             : [];
+        $shareFlags = $this->context->uses(JmapCapabilities::FILENODE_SHARE_FLAGS) && $projection->wants('shareFlags')
+            ? $this->shareFlagsFor($nodes, $principal)
+            : null;
 
         return array_map(
-            fn (JmapFileNode $node): array => $projection->apply([
-                ...$this->toFileNode($node, $principal, $projection->wants('type')),
-                // WGW extension (#2402): who sees a node sees its tags.
-                'tags' => $tagMap[(string) $node->node_id] ?? [],
-            ]),
+            function (JmapFileNode $node) use ($principal, $projection, $tagMap, $shareFlags): array {
+                $shape = [
+                    ...$this->toFileNode($node, $principal, $projection->wants('type')),
+                    // WGW extension (#2402): who sees a node sees its tags.
+                    'tags' => $tagMap[(string) $node->node_id] ?? [],
+                ];
+                if ($shareFlags !== null) {
+                    $shape['shareFlags'] = $shareFlags[(string) $node->node_id] ?? null;
+                }
+
+                return $projection->apply($shape);
+            },
             $nodes,
         );
+    }
+
+    /**
+     * WGW share-flags extension (#2063), only with its URN in `using`: the caller's own outgoing shares on each node, from
+     * one batch lookup for the whole page, so a tree row can show its badge.
+     * Every node of a member gets an object (all false without a share); a
+     * guest gets null, as it owns nothing.
+     *
+     * @param  list<JmapFileNode>  $nodes
+     * @param  array{username: string, role: string}  $principal
+     * @return array<string, array{hasShares: bool, hasPublicShare: bool, hasTeamShare: bool}|null> node id → flags
+     */
+    private function shareFlagsFor(array $nodes, array $principal): array
+    {
+        if (strtolower($principal['role']) === 'guest' || $nodes === []) {
+            return [];
+        }
+
+        $pathById = [];
+        foreach ($nodes as $node) {
+            $pathById[(string) $node->node_id] = $this->paths->normalizeVirtualPath('/'.$node->storage_key);
+        }
+        $indicators = $this->shareIndicators->forPaths($principal['username'], array_values(array_unique($pathById)));
+
+        $flags = [];
+        foreach ($pathById as $id => $path) {
+            $public = $indicators[$path]['hasPublicShare'] ?? false;
+            $team = $indicators[$path]['hasTeamShare'] ?? false;
+            $flags[$id] = ['hasShares' => $public || $team, 'hasPublicShare' => $public, 'hasTeamShare' => $team];
+        }
+
+        return $flags;
     }
 
     /**

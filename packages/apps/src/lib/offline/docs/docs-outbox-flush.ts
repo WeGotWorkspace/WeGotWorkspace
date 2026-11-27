@@ -17,6 +17,7 @@ import {
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import {
   moveKeptBothDocsCreate,
   retargetDocsOutboxPayload,
@@ -37,6 +38,29 @@ export type OutboxFlushResult = {
 
 function parsePayload(row: OfflineOutboxRow): DocsOutboxPayload | null {
   return parseOutboxPayload<DocsOutboxPayload>(row, DOCS_DOMAIN);
+}
+
+/**
+ * A queued file write of either outbox (#2063 C4): Docs home writes through
+ * Drive's operations into the Drive outbox, the Docs editor queues its
+ * offline creates in the Docs one. Drive's payloads are a subset of Docs'.
+ */
+export function parseFileOutboxPayload(row: OfflineOutboxRow): DocsOutboxPayload | null {
+  if (row.domain !== DOCS_DOMAIN && row.domain !== DRIVE_DOMAIN) return null;
+  try {
+    return JSON.parse(row.payload) as DocsOutboxPayload;
+  } catch {
+    return null;
+  }
+}
+
+/** Every queued file write of this account, Docs and Drive, in queue order. */
+export async function listQueuedFileWriteRows(username: string): Promise<OfflineOutboxRow[]> {
+  const [docs, drive] = await Promise.all([
+    listOutboxMutationsForDomain(username, DOCS_DOMAIN),
+    listOutboxMutationsForDomain(username, DRIVE_DOMAIN),
+  ]);
+  return [...docs, ...drive].sort((a, b) => a.createdAt - b.createdAt);
 }
 
 async function applyRenameSideEffects(
@@ -87,6 +111,7 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
           };
           await moveKeptBothDocsCreate(username, move);
           keptBoth.push(move);
+          await retargetQueuedDriveRows(username, move);
         }
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
@@ -112,6 +137,22 @@ function docsCreateFile(payload: Extract<DocsOutboxPayload, { op: "create" }>): 
     type: isText ? "text/plain" : "text/markdown",
     lastModified: Date.now(),
   });
+}
+
+/**
+ * Docs home queues its renames, trashes and stars in the Drive outbox, so a
+ * write on an offline-created Doc sits there while its create is in the Docs
+ * one. Aim those rows at the name the create got (#1563).
+ */
+async function retargetQueuedDriveRows(username: string, move: DocsKeptBoth): Promise<void> {
+  for (const row of await listOutboxMutationsForDomain(username, DRIVE_DOMAIN)) {
+    const payload = parseFileOutboxPayload(row);
+    // Drive upload rows are not Docs payloads; they pass through unchanged.
+    if (!payload) continue;
+    const next = retargetDocsOutboxPayload(payload, move.from, move.to);
+    if (next !== payload)
+      await putOutboxMutation(username, { ...row, payload: JSON.stringify(next) });
+  }
 }
 
 function retargetQueuedRow(
@@ -147,7 +188,7 @@ export function pathsForDocsOutboxPayload(payload: DocsOutboxPayload): string[] 
 }
 
 export function pathsForDocsOutboxRow(row: OfflineOutboxRow): string[] {
-  const payload = parsePayload(row);
+  const payload = parseFileOutboxPayload(row);
   if (!payload) return [];
   return pathsForDocsOutboxPayload(payload);
 }
@@ -165,12 +206,12 @@ export async function removeOutboxMutationsForDocsPath(
   apiPath: string,
 ): Promise<boolean> {
   const normalized = normalizeDocsAvailabilityPath(apiPath);
-  const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
+  const rows = await listQueuedFileWriteRows(username);
   let removedTrash = false;
   for (const row of rows) {
     const path = docsOutboxApiPath(row);
     if (path !== normalized) continue;
-    const payload = parsePayload(row);
+    const payload = parseFileOutboxPayload(row);
     if (payload?.op === "trash") {
       removedTrash = true;
       // The offline trash moved the page setup under the trash path; put it back.

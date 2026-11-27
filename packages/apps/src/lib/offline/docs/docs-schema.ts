@@ -7,19 +7,6 @@ import { DOCS_OFFLINE_VERSION } from "@/lib/offline/core/offline-version-allocat
 
 export const DOCS_DOMAIN = "docs";
 
-/** Serialized unified-search row for the Docs home browse cache. */
-export type OfflineDocsListingRow = {
-  /** `${cacheKey}::${sourceKey}` */
-  id: string;
-  cacheKey: string;
-  sourceKey: string;
-  /** JSON payload mirroring `WgwUnifiedSearchResult` fields needed for listing. */
-  data: string;
-  modifiedAt: number;
-  /** Stable ordering within a cache snapshot (0 = newest page-1 row). */
-  sortIndex: number;
-};
-
 /**
  * User-pinned document available for offline open.
  * `id` stays the path. `nodeId` is optional until the first crawl.
@@ -41,6 +28,7 @@ export type OfflineDocsAvailabilityRow = {
  * - **v20** introduces `docs_listing_rows` for offline home browse snapshots.
  * - **v21** introduces `docs_availability` for explicit offline pin registry.
  * - **v22** indexes optional `nodeId`. Rows without it stay valid.
+ * - **v23** drops `docs_listing_rows`: Docs home lists the Drive tree (#2063 C4).
  */
 registerOfflineDomainTables({
   domain: DOCS_DOMAIN,
@@ -63,17 +51,14 @@ registerOfflineDomainTables({
         docs_availability: "id, pinnedAt, lastSyncedAt, location, nodeId",
       },
     },
+    {
+      version: DOCS_OFFLINE_VERSION.dropListingTables,
+      stores: {
+        docs_listing_rows: null,
+      },
+    },
   ],
 });
-
-export function docsListingRowsTable(
-  db: WgwOfflineDatabase,
-): EntityTable<OfflineDocsListingRow, "id"> {
-  return db.table<OfflineDocsListingRow, string>("docs_listing_rows") as EntityTable<
-    OfflineDocsListingRow,
-    "id"
-  >;
-}
 
 export function docsAvailabilityTable(
   db: WgwOfflineDatabase,
