@@ -1010,6 +1010,37 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     expect(byKey.get("users/ada/a.md")).toBe(2);
   });
 
+  it("a file deleted inside a folder renamed in the same batch is gone", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/Plans", "fn-plans", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/Plans/keep.md", "fn-keep"));
+    await upsertDriveEntry(username, entry("/users/ada/Plans/gone.md", "fn-gone"));
+    await writeDriveContentBlob(username, "/users/ada/Plans/gone.md", new Blob(["gone"]));
+    const docs = [doc("users/ada/Plans/keep.md", 1), doc("users/ada/Plans/gone.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    installCatalog(
+      new Map<string, JmapFileNode>([
+        [
+          "fn-plans",
+          { ...node("fn-plans", "fn-home", "Archive", "directory"), path: "/users/ada/Archive" },
+        ],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ updated: ["fn-plans"], destroyed: ["fn-gone"], newState: "9" }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await readCachedDriveNodeId(username, "/users/ada/Archive/keep.md")).toBe("fn-keep");
+    expect(await driveEntriesTable(db).get("users/ada/Archive/gone.md")).toBeUndefined();
+    expect(await driveEntriesTable(db).get("users/ada/Plans/gone.md")).toBeUndefined();
+    expect(await db.table("drive_content_blobs").get("users/ada/Archive/gone.md")).toBeUndefined();
+    expect(await db.table("drive_content_blobs").get("users/ada/Plans/gone.md")).toBeUndefined();
+    expect(await listed(all)).toEqual(["users/ada/Archive/keep.md"]);
+    expect(await readDriveSyncToken(username)).toBe("9");
+  });
+
   it("moves a Doc renamed elsewhere in every view when the full crawl finds it", async () => {
     await upsertDriveEntry(username, entry("/users/ada/before.md", "fn-ren"));
     await upsertDriveEntry(username, entry("/users/ada/kept.md", "fn-kept"));

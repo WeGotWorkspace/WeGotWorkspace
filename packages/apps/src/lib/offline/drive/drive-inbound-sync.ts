@@ -273,7 +273,8 @@ async function applyFileNodeChanges(
       moves.push(move);
       placements.push({ node, path, previous: from, move });
     }
-    const prefix = planPrefixMoves(under, moves, batchIds);
+    // A node deleted in this batch is not carried along: it goes from its old path below.
+    const prefix = planPrefixMoves(under, moves, new Set([...batchIds, ...destroyed]));
     const destinations: Set<string> = new Set([
       ...placements.map(({ path }) => normalizePath(path)),
       ...prefix.moved.map(({ id }) => id),
@@ -333,7 +334,13 @@ async function applyFileNodeChanges(
     const paths = await pathsForNodeId(username, id);
     if (paths.length === 0) continue;
     for (const path of paths) {
-      if (landed.has(normalizePath(path))) continue;
+      // Another node of this batch holds that path now: leave its row, blob and
+      // local text; only a pin still naming the deleted node goes.
+      const holder = (await driveRowAt(username, path))?.nodeId;
+      if ((holder && holder !== id) || (!holder && landed.has(normalizePath(path)))) {
+        await removeDocsPinOfNode(username, path, id);
+        continue;
+      }
       const outcome = await retainOrDropLocalDocument(username, path);
       if (outcome === "kept") {
         keptUnsavedPaths.push(normalizePath(path));
@@ -443,6 +450,13 @@ async function finalPathsOf(
   };
   for (const node of ordered) await resolve(node, new Set());
   return paths;
+}
+
+/** Remove the Docs pin at `path` only when it still names `nodeId`. */
+async function removeDocsPinOfNode(username: string, path: string, nodeId: string): Promise<void> {
+  const pins = docsAvailabilityTable(accountDb(username));
+  const id = normalizePath(path);
+  if ((await pins.get(id))?.nodeId === nodeId) await pins.delete(id);
 }
 
 type Placement = {

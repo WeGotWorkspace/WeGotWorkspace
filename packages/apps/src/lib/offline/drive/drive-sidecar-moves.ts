@@ -58,9 +58,10 @@ export async function migrateNodeSidecars(
  * Collects the sidecar moves (blob, pins) of one sync and runs them in two
  * phases: every source is parked first, then every parked set goes to its
  * target. Run `apply` inside {@link inDriveTreeTransaction} with the row
- * writes, so nothing is ever left parked. Sources are paths as they were before the sync, so a rename onto a
- * path another moving node still holds (a swap, a chain) never overwrites that
- * node's blob. The first move from a path wins.
+ * writes, so nothing is ever left parked. Sources are paths as they were
+ * before the sync, so a rename onto a path another moving node still holds (a
+ * swap, a chain) never overwrites that node's blob. The first move from a path
+ * wins.
  */
 export class SidecarMoves {
   private readonly moves: Array<{ from: string; to: string }> = [];
