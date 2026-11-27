@@ -21,6 +21,8 @@ import {
   ownerScopeValueFromDirectory,
   PERSONAL_SCOPE_VALUE,
 } from "@/ui/owner-scope-field";
+import { CollectionDialogActions } from "@/share-ui/collection-dialog-actions";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import { ProjectColorPicker } from "@/project-dialog/src/project-color-picker";
@@ -248,6 +250,7 @@ export function ProjectDialog({
                 knownPrincipals={share.knownPrincipals}
                 online={share.online}
                 noTeam={share.noTeam}
+                recordPending={!unchangedEdit}
                 dialogClassName={contentClassName}
                 copy={{
                   title: labels.shareListSectionTitle,
@@ -288,12 +291,14 @@ export function ProjectDialog({
                 ) : null
               }
             >
-              <Button type="button" variant="outline" onClick={onClose}>
-                {labels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {isCreate ? labels.createButton : labels.saveButton}
-              </Button>
+              <CollectionDialogActions
+                doneOnly={showShare && unchangedEdit}
+                doneLabel={workspaceLabels.dialog.done}
+                cancelLabel={labels.cancel}
+                submitLabel={isCreate ? labels.createButton : labels.saveButton}
+                canSubmit={canSubmit}
+                onClose={onClose}
+              />
             </DialogFooter>
           </form>
         </DialogContent>

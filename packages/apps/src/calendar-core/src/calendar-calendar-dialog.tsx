@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { IconButton } from "@/button/src/icon-button";
@@ -24,6 +25,7 @@ import {
 import { SwatchColorPicker } from "@/ui/swatch-color-picker";
 import { ColorSwatchTrigger } from "@/ui/color-swatch-trigger";
 import { NAME_COLOR_ROW_INPUT_CLASS, NameColorRow } from "@/ui/name-color-row";
+import { CollectionDialogActions } from "@/share-ui/collection-dialog-actions";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import type {
   CalendarDirectoryGroup,
@@ -338,6 +340,7 @@ export function CalendarCalendarDialog({
                 disabled={busy}
                 online={share.online}
                 noTeam={share.noTeam}
+                recordPending={Boolean(showShare && !unchangedEdit)}
                 onSearchPrincipals={share.onSearchPrincipals}
                 onPatchShareWith={share.onPatchShareWith}
               />
@@ -359,12 +362,15 @@ export function CalendarCalendarDialog({
                 ) : null
               }
             >
-              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-                {labels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
-              </Button>
+              <CollectionDialogActions
+                doneOnly={showShare && unchangedEdit}
+                doneLabel={workspaceLabels.dialog.done}
+                cancelLabel={labels.cancel}
+                submitLabel={isSubscribe ? labels.subscribeCalendarSubmit : labels.save}
+                canSubmit={canSubmit}
+                busy={busy}
+                onClose={onClose}
+              />
             </DialogFooter>
           </form>
         </DialogContent>

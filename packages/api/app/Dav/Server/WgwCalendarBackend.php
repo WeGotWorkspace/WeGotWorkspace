@@ -383,6 +383,20 @@ final class WgwCalendarBackend extends CalPDO
     }
 
     /**
+     * MKCOL with `cs:subscribed` (what Apple Calendar sends for "Add Subscription"). The stock
+     * PDO backend would store a Sabre subscription row that nothing here reads and then fail
+     * on its `{cs}source` value; a feed subscription is made in the web app (#2370).
+     *
+     * @param  string  $principalUri
+     * @param  string  $uri
+     * @param  array<string, mixed>  $properties
+     */
+    public function createSubscription($principalUri, $uri, array $properties)
+    {
+        throw new Forbidden('Subscriptions cannot be created from a calendar app yet. Add the feed in the web app.');
+    }
+
+    /**
      * MKCALENDAR. Derives the kind, refuses reserved uri prefixes.
      *
      * @param  array<string, mixed>  $properties

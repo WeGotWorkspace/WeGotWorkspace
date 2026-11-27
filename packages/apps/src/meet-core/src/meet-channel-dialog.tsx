@@ -22,6 +22,8 @@ import {
   PERSONAL_SCOPE_VALUE,
   type OwnerScopeGroupOption,
 } from "@/ui/owner-scope-field";
+import { CollectionDialogActions } from "@/share-ui/collection-dialog-actions";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import { CollectionShareSection } from "@/share-ui/collection-share-section";
 import type { CollectionSharePrincipal, CollectionShareWith } from "@/lib/sharing/collection-share";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
@@ -309,6 +311,7 @@ export function MeetChannelDialog({
                 knownPrincipals={share.knownPrincipals}
                 online={share.online}
                 noTeam={share.noTeam}
+                recordPending={!unchangedEdit}
                 dialogClassName={contentClassName}
                 accessSelect={false}
                 copy={{
@@ -342,12 +345,16 @@ export function MeetChannelDialog({
                 ) : null
               }
             >
-              <Button type="button" variant="outline" onClick={onClose}>
-                {meetLabels.cancel}
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {isCreate ? meetLabels.createChannelButton : meetLabels.saveChannelButton}
-              </Button>
+              <CollectionDialogActions
+                doneOnly={showShare && unchangedEdit}
+                doneLabel={workspaceLabels.dialog.done}
+                cancelLabel={meetLabels.cancel}
+                submitLabel={
+                  isCreate ? meetLabels.createChannelButton : meetLabels.saveChannelButton
+                }
+                canSubmit={canSubmit}
+                onClose={onClose}
+              />
             </DialogFooter>
           </form>
         </DialogContent>

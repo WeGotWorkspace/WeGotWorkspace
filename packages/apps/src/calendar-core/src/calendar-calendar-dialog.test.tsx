@@ -5,6 +5,7 @@ import { CalendarCalendarDialog } from "@/calendar-core/src/calendar-calendar-di
 import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import { defaultCalendarLabels } from "@/calendar-core/src/calendar-labels";
 import { shareLabels } from "@/share-ui/share-labels";
+import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import { TooltipProvider } from "@/ui/tooltip";
 
 function renderDialog(ui: ReactNode) {
@@ -582,6 +583,47 @@ describe("CalendarCalendarDialog", () => {
 
     expect(screen.getByLabelText(defaultCalendarLabels.publishCalendarTitle)).toBeTruthy();
     expect(screen.getByText(defaultCalendarLabels.shareCalendarSectionTitle)).toBeTruthy();
+  });
+
+  it("shows Done alone while only access can change, Save and Cancel once the name is edited", () => {
+    const onClose = vi.fn();
+    renderDialog(
+      <CalendarCalendarDialog
+        dialog={{
+          mode: "edit",
+          calendarId: "default",
+          name: "Personal",
+          color: DEFAULT_CALENDAR_COLOR,
+          mayDelete: true,
+        }}
+        labels={defaultCalendarLabels}
+        share={{
+          calendar: {
+            id: "default",
+            name: "Personal",
+            color: DEFAULT_CALENDAR_COLOR,
+            mayShare: true,
+            shareWith: null,
+          },
+          onSearchPrincipals: vi.fn(async () => []),
+          onPatchShareWith: vi.fn(async () => {}),
+        }}
+        onClose={onClose}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.cancel })).toBeNull();
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.save })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: workspaceLabels.dialog.done }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByLabelText(defaultCalendarLabels.calendarNameLabel), {
+      target: { value: "Personal 2" },
+    });
+    expect(screen.queryByRole("button", { name: workspaceLabels.dialog.done })).toBeNull();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.cancel })).toBeTruthy();
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.save })).toBeTruthy();
   });
 
   it("adds, edits, and revokes team access from the edit calendar surface", async () => {
