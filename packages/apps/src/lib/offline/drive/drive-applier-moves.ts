@@ -3,10 +3,7 @@ import type { DocsInboundChange } from "@/lib/offline/docs/docs-inbound-sync";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { removeDriveAvailability } from "@/lib/offline/drive/drive-availability-store";
 import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
-import {
-  deleteDriveEntryByPath,
-  retainOrDropLocalDocument,
-} from "@/lib/offline/drive/drive-local-document";
+import { deleteDriveEntryByPath } from "@/lib/offline/drive/drive-local-document";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
 import type { SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
@@ -18,8 +15,12 @@ import {
 /**
  * One node of a `FileNode/changes` batch that left its cached path, as row ids
  * (no leading `/`). `to` may be a dot path: the node left the list rows.
+ * `area` is filled in once the node itself is written.
  */
-export type PathMove = { from: string; to: string; area: DriveEntryArea | undefined };
+export type PathMove = { from: string; to: string; area?: DriveEntryArea };
+
+/** A cached row the batch did not list, and the path it moves to. */
+export type PrefixMove = { row: OfflineDriveEntryRow; id: string; move: PathMove };
 
 /**
  * Every cached row under one of `oldPaths`, read before the batch writes
@@ -42,26 +43,16 @@ export async function rowsUnderOldPaths(
 /**
  * The batch's other cached rows (descendants it did not list, upload
  * placeholders): each gets the single longest moved prefix applied once, on
- * its original path (`from + '/'` boundary), and the moved node's `area`
- * (Trash by path). Its blob and pins are queued on `sidecars`. A row whose new
- * path is a dot path is dropped instead (a Doc with unsaved work stays). An
- * original path is deleted only when nothing in this batch lands on it.
+ * its original path (`from + '/'` boundary). A row whose new path is a dot
+ * path leaves the tree instead (`hidden`).
  */
-export async function moveRowsUnderMovedPaths(
-  username: string,
+export function planPrefixMoves(
   under: readonly OfflineDriveEntryRow[],
   moves: readonly PathMove[],
   batchIds: ReadonlySet<string>,
-  destinations: Set<string>,
-  sidecars: SidecarMoves,
-  docsChanges: DocsInboundChange[],
-): Promise<{ kept: string[]; changed: boolean }> {
+): { moved: PrefixMove[]; hidden: string[] } {
   const longestFirst = [...moves].sort((a, b) => b.from.length - a.from.length);
-  const planned: Array<{
-    row: OfflineDriveEntryRow;
-    id: string;
-    area: DriveEntryArea | undefined;
-  }> = [];
+  const moved: PrefixMove[] = [];
   const hidden: string[] = [];
   for (const row of under) {
     if (row.nodeId && batchIds.has(row.nodeId)) continue;
@@ -69,20 +60,29 @@ export async function moveRowsUnderMovedPaths(
     if (!move) continue;
     const id = `${move.to}${row.id.slice(move.from.length)}`;
     if (isHiddenTreePath(id)) hidden.push(row.id);
-    else planned.push({ row, id, area: isTrashTreePath(id) ? "trash" : (move.area ?? row.area) });
+    else moved.push({ row, id, move });
   }
-  for (const { id } of planned) destinations.add(id);
+  return { moved, hidden };
+}
 
-  const kept: string[] = [];
-  for (const path of hidden) {
-    if ((await dropRowLeavingTree(username, path, destinations)) === "kept") kept.push(path);
-    else docsChanges.push({ kind: "removed", path });
-  }
+/**
+ * Write the planned prefix moves: the new row with the moved node's `area`
+ * (Trash by path), its blob and pins queued on `sidecars`, a Docs `moved` per
+ * file. An original path is deleted only when nothing in this batch lands on
+ * it. Run inside the batch's transaction.
+ */
+export async function writePrefixMoves(
+  username: string,
+  planned: readonly PrefixMove[],
+  destinations: ReadonlySet<string>,
+  sidecars: SidecarMoves,
+  docsChanges: DocsInboundChange[],
+): Promise<void> {
   const table = driveEntriesTable(accountDb(username));
   for (const { row } of planned) {
     if (!destinations.has(row.id)) await table.delete(row.id);
   }
-  for (const { row, id, area } of planned) {
+  for (const { row, id, move } of planned) {
     const entry = parseEntry(row.data);
     if (row.type !== "dir") {
       docsChanges.push({
@@ -100,32 +100,30 @@ export async function moveRowsUnderMovedPaths(
       ...row,
       id,
       parentPath: parentAndName(`/${id}`).destination.replace(/^\/+/, ""),
-      area,
+      area: isTrashTreePath(id) ? "trash" : (move.area ?? row.area),
       data: JSON.stringify({ ...entry, path: `/${id}` }),
     });
     sidecars.add(row.id, id);
   }
-  return { kept, changed: hidden.length + planned.length > kept.length };
 }
 
 /**
- * A row that leaves the list rows (moved under a dot folder). A Doc with
- * unsaved work stays. When another node of the batch lands on the same path,
- * only the leaving row's blob and pin go; the new row stays.
+ * Delete a row that left the tree (its Doc already checked for unsaved work).
+ * When another node of the batch lands on the same path, only the leaving
+ * row's blob and pin go; the new row stays. Run inside the batch's transaction,
+ * before the sidecar moves.
  */
-export async function dropRowLeavingTree(
+export async function deleteLeavingRow(
   username: string,
   path: string,
   destinations: ReadonlySet<string>,
-): Promise<"kept" | "dropped"> {
-  if ((await retainOrDropLocalDocument(username, path)) === "kept") return "kept";
+): Promise<void> {
   if (destinations.has(path)) {
     await removeDriveContentBlob(username, path);
     await removeDriveAvailability(username, path);
   } else {
     await deleteDriveEntryByPath(username, path);
   }
-  return "dropped";
 }
 
 function parseEntry(data: string): Record<string, unknown> {

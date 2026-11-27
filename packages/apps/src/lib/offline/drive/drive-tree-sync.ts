@@ -32,7 +32,7 @@ import {
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
-import { SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
+import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
   driveEntriesTable,
   driveTreeStagingTable,
@@ -447,8 +447,12 @@ async function writeResolvedTree(username: string): Promise<string[]> {
   }
 
   await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
-  await moveSidecarsOfMovedNodes(username, finals);
-  await upsertDriveEntriesInBulk(username, finals);
+  // Rows, blobs and pins commit together: a pass stopped halfway resumes from
+  // rows and sidecars that still agree.
+  await inDriveTreeTransaction(username, async () => {
+    await moveSidecarsOfMovedNodes(username, finals);
+    await upsertDriveEntriesInBulk(username, finals);
+  });
   const keep = new Set(finals.map(({ entry }) => normalizeDriveEntryPath(entry.path)));
   const pruned = await pruneDriveEntriesToKeepSet(username, keep);
   await stampDocsAvailabilityNodeIds(

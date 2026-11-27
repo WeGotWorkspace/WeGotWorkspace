@@ -1,6 +1,36 @@
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { migrateDocsAvailabilityPath } from "@/lib/offline/docs/docs-availability-store";
+import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { migrateDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
 import { migrateDriveContentBlobPath } from "@/lib/offline/drive/drive-content-sync";
+import {
+  driveAvailabilityTable,
+  driveContentBlobsTable,
+  driveEntriesTable,
+} from "@/lib/offline/drive/drive-schema";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
+
+/**
+ * One IndexedDB transaction over the rows and their sidecars (blobs, pins), so
+ * moved rows and both phases of {@link SidecarMoves.apply} commit together or
+ * not at all: a sync stopped halfway replays from rows and sidecars that still
+ * agree. `write` may only touch this account's offline database (another
+ * await would commit the transaction early).
+ */
+export function inDriveTreeTransaction<T>(username: string, write: () => Promise<T>): Promise<T> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return db.transaction(
+    "rw",
+    [
+      driveEntriesTable(db),
+      driveUploadItemsTable(db),
+      driveContentBlobsTable(db),
+      driveAvailabilityTable(db),
+      docsAvailabilityTable(db),
+    ],
+    write,
+  );
+}
 
 /** Parking prefix for sidecars between the two phases. No real path starts with a dot. */
 const PARKING_PREFIX = ".wgw-moving";
@@ -27,7 +57,8 @@ export async function migrateNodeSidecars(
 /**
  * Collects the sidecar moves (blob, pins) of one sync and runs them in two
  * phases: every source is parked first, then every parked set goes to its
- * target. Sources are paths as they were before the sync, so a rename onto a
+ * target. Run `apply` inside {@link inDriveTreeTransaction} with the row
+ * writes, so nothing is ever left parked. Sources are paths as they were before the sync, so a rename onto a
  * path another moving node still holds (a swap, a chain) never overwrites that
  * node's blob. The first move from a path wins.
  */

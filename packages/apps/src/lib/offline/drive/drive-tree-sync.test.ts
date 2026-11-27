@@ -1113,3 +1113,71 @@ describe("moves that land on a path another node is leaving", () => {
     expect(await row("/users/bob/Plans 2026/c.md")).toMatchObject({ area: "share" });
   });
 });
+
+describe("a sync stopped between the two phases of a blob move", () => {
+  const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+
+  /** The second blob move throws: the first source is parked, the rest is not done. */
+  async function stopAtSecondBlobMove() {
+    const contentSync = await import("@/lib/offline/drive/drive-content-sync");
+    const real = contentSync.migrateDriveContentBlobPath;
+    let calls = 0;
+    return vi
+      .spyOn(contentSync, "migrateDriveContentBlobPath")
+      .mockImplementation(async (...args) => {
+        calls += 1;
+        if (calls === 2) throw new Error("tab closed");
+        return real(...args);
+      });
+  }
+
+  it("the changes sync replays the swap and each blob lands on its own path", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    const tokenBefore = await readDriveSyncToken(username);
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+
+    const spy = await stopAtSecondBlobMove();
+    await expect(syncDriveInboundFromFileNodes(username)).rejects.toThrow("tab closed");
+    spy.mockRestore();
+    expect(await readDriveSyncToken(username)).toBe(tokenBefore);
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await blobSize("users/ada/a.md")).toBe(1);
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+
+  it("the tree pass resumes and each blob lands on its own path", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-a"));
+    await upsertDriveEntry(username, staleEntry("/users/ada/b.md", "f-b"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    await connect(server);
+
+    const spy = await stopAtSecondBlobMove();
+    await expect(syncDriveTree(username)).rejects.toThrow("tab closed");
+    spy.mockRestore();
+    expect(await blobSize("users/ada/a.md")).toBe(1);
+
+    await syncDriveTree(username);
+
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+});
