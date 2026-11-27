@@ -1,40 +1,31 @@
-import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import { cacheChangedTopic } from "@/lib/offline/core/cache-changed-topic";
-import {
-  listRemovedIds,
-  readPendingWrites,
-  type PendingRowView,
-} from "@/lib/offline/core/inbound-sync";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
+import { readPendingWrites, type PendingRowView } from "@/lib/offline/core/inbound-sync";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   docsRowHiddenByQueuedWrite,
   docsRowOwnedByQueuedWrite,
   docsSourceKey,
-  planDocsListingInbound,
   type DocsInboundChange,
   type DocsPendingField,
   type DocsPendingWrites,
 } from "@/lib/offline/docs/docs-inbound-plan";
-import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
-import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
-import { docsPathAfterMove, moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
-import { DOCS_DOMAIN, docsListingRowsTable } from "@/lib/offline/docs/docs-schema";
-import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
-  docsListingRows,
-  readDocsListingFromCache,
-} from "@/lib/offline/docs/docs-listing-offline-store";
+  listQueuedFileWriteRows,
+  parseFileOutboxPayload,
+  type DocsOutboxPayload,
+} from "@/lib/offline/docs/docs-outbox-flush";
+import { docsPathAfterMove, moveDocsPaths } from "@/lib/offline/docs/docs-path-moves";
+import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { nextPathAfterRename } from "@/lib/offline/shared/drive-sidecar-mutations";
-import { documentHasUnsavedLocalWork } from "@/lib/offline/drive/drive-local-document";
 
 export type { DocsInboundChange, DocsNodeFacts } from "@/lib/offline/docs/docs-inbound-plan";
 
 /**
  * Docs inbound reconciliation (#1563) on the shared inbound engine (#1565).
- * Drive's FileNode inbound reports what happened to each node; this applies
- * it to every cached Docs view and tells every open tab to re-read.
+ * Drive's FileNode inbound reports what happened to each node. Docs home
+ * lists the Drive tree (#2063 C4), so what is left for Docs is the starred
+ * paths and an open editor that follows its file.
  */
 
 const topic = cacheChangedTopic(DOCS_DOMAIN);
@@ -45,17 +36,9 @@ export const notifyDocsCachesChanged = topic.notifyAllTabs;
 /** Hear a Docs cache change for `username` from any tab, this one included. */
 export const subscribeDocsCachesChanged = topic.subscribe;
 
-function parsePayload(row: OfflineOutboxRow): DocsOutboxPayload | null {
-  try {
-    return JSON.parse(row.payload) as DocsOutboxPayload;
-  } catch {
-    return null;
-  }
-}
-
-/** The paths one queued Docs write touches, as the engine reads them. */
+/** The paths one queued file write touches, as the engine reads them. */
 function docsPendingRowViews(row: OfflineOutboxRow): PendingRowView<DocsPendingField>[] {
-  const payload = parsePayload(row);
+  const payload = parseFileOutboxPayload(row);
   switch (payload?.op) {
     case "create":
       return [{ id: docsSourceKey(payload.apiPath), fields: ["location"] }];
@@ -97,19 +80,18 @@ export function docsPathAfterQueuedRenames(
   return moved ? `/${current}` : null;
 }
 
-/** {@link docsPathAfterQueuedRenames} for this account's Docs outbox. */
+/** {@link docsPathAfterQueuedRenames} for this account's queued file writes. */
 export async function readDocsQueuedRenameTarget(
   username: string,
   path: string,
 ): Promise<string | null> {
-  const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
-  return docsPathAfterQueuedRenames(rows.map(parsePayload), path);
+  const rows = await listQueuedFileWriteRows(username);
+  return docsPathAfterQueuedRenames(rows.map(parseFileOutboxPayload), path);
 }
 
-/** Queued Docs writes by listing path, through the shared engine. */
+/** Queued file writes (Docs and Drive outbox) by path, through the shared engine. */
 export async function readDocsPendingWrites(username: string): Promise<DocsPendingWrites> {
-  const rows = await listOutboxMutationsForDomain(username, DOCS_DOMAIN);
-  return readPendingWrites(rows, docsPendingRowViews);
+  return readPendingWrites(await listQueuedFileWriteRows(username), docsPendingRowViews);
 }
 
 async function applyStarredPathChanges(
@@ -147,29 +129,17 @@ async function applyStarredPathChanges(
 }
 
 /**
- * Apply Drive's FileNode outcomes to every cached Docs home view and to the
- * cached starred paths, then tell every tab. Rows a queued write still owns
- * are left alone. Returns whether a Docs cache changed.
+ * Apply Drive's FileNode outcomes to the cached starred paths, then tell every
+ * tab, and let an open editor follow a moved file. Returns whether the stars
+ * changed.
  */
 export async function applyDocsInboundChanges(
   username: string,
   changes: readonly DocsInboundChange[],
 ): Promise<boolean> {
   if (!username || changes.length === 0) return false;
-  // Read before the transaction: an outside await would commit it early.
   const pending = await readDocsPendingWrites(username);
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const table = docsListingRowsTable(db);
-  const listingChanged = await db.transaction("rw", table, async () => {
-    const views = planDocsListingInbound(await table.toArray(), changes, pending);
-    for (const [cacheKey, results] of views) {
-      await table.where("cacheKey").equals(cacheKey).delete();
-      await table.bulkPut(docsListingRows(cacheKey, results));
-    }
-    return views.size > 0;
-  });
-  const starsChanged = await applyStarredPathChanges(username, changes);
-  const changed = listingChanged || starsChanged;
+  const changed = await applyStarredPathChanges(username, changes);
   if (changed) notifyDocsCachesChanged(username);
   await followRemoteMoves(username, changes, pending);
   return changed;
@@ -179,61 +149,23 @@ export async function applyDocsInboundChanges(
  * An editor that has a Doc open at a path that moved elsewhere follows it, and
  * its local text moves along, so unsaved text is saved to the file, not to a
  * new file at the old path. A path a queued local write owns keeps the local
- * name (decision 5).
+ * name (decision 5). A swap moves each editor once, to its own Doc.
  */
 async function followRemoteMoves(
   username: string,
   changes: readonly DocsInboundChange[],
   pending: DocsPendingWrites,
 ): Promise<void> {
+  const moves: { from: string; to: string }[] = [];
   for (const change of changes) {
     if (change.kind !== "moved") continue;
     const from = docsSourceKey(change.from);
     if (docsRowOwnedByQueuedWrite(pending, from) || docsRowHiddenByQueuedWrite(pending, from)) {
       continue;
     }
-    await moveDocsPath(username, from, change.to);
+    moves.push({ from, to: change.to });
   }
-}
-
-/**
- * Whether `next` lists other rows than the view's cache holds. A live listing
- * that rewrites the cache this way tells the other tabs, as the inbound does.
- */
-export async function docsListingRowsDiffer(
-  username: string,
-  filters: DocsListingBrowseFilters,
-  next: readonly WgwUnifiedSearchResult[],
-): Promise<boolean> {
-  const cached = (await readDocsListingFromCache(username, filters))?.results ?? [];
-  const keys = new Set(cached.map((row) => row.sourceKey));
-  return keys.size !== next.length || next.some((row) => !keys.has(row.sourceKey));
-}
-
-/**
- * Merge a view's full live listing with its cached rows instead of replacing
- * them. A cached row the server no longer lists goes, unless a queued write
- * owns it or it has unsaved collab text; a live row a queued trash or rename
- * moved away from stays hidden.
- */
-export async function mergeLiveDocsListing(
-  username: string,
-  filters: DocsListingBrowseFilters,
-  live: readonly WgwUnifiedSearchResult[],
-): Promise<WgwUnifiedSearchResult[]> {
-  const pending = await readDocsPendingWrites(username);
-  const visible = live.filter((row) => !docsRowHiddenByQueuedWrite(pending, row.sourceKey));
-  const cached = (await readDocsListingFromCache(username, filters))?.results ?? [];
-  const listed = new Set(live.map((row) => row.sourceKey));
-  const items = cached.map((row) => ({ id: row.sourceKey, row }));
-  const removed = new Set(
-    listRemovedIds(items, listed, (item) => docsRowOwnedByQueuedWrite(pending, item.id)),
-  );
-  const kept: WgwUnifiedSearchResult[] = [];
-  for (const { id, row } of items) {
-    if (listed.has(id)) continue;
-    if (!removed.has(id) || (await documentHasUnsavedLocalWork(id))) kept.push(row);
-  }
-  // Callers sort for display and for the cache.
-  return [...visible, ...kept];
+  // The changes are the sync's final map (one move per relocated file, read
+  // against the paths before it): moved together, and heard once.
+  await moveDocsPaths(username, moves);
 }

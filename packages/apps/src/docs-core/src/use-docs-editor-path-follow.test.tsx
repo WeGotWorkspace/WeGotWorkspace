@@ -41,7 +41,7 @@ vi.mock("@/lib/offline/docs/docs-inbound-plan", () => ({
   docsRowOwnedByQueuedWrite: (_pending: DocsPendingWrites, key: string) => state.owned.has(key),
 }));
 
-import { publishDocsPathMoved } from "@/lib/offline/docs/docs-path-moves";
+import { publishDocsPathMoved, publishDocsPathMoves } from "@/lib/offline/docs/docs-path-moves";
 import { useDocsEditorPathFollow } from "@/docs-core/src/use-docs-editor-path-follow";
 
 function render(filePath: string | null, onFollow = vi.fn()) {
@@ -68,6 +68,22 @@ describe("useDocsEditorPathFollow", () => {
     act(() => publishDocsPathMoved("alice", "/users/alice/F", "/users/alice/G"));
 
     await waitFor(() => expect(onFollow).toHaveBeenCalledWith("/users/alice/G/Plan.md"));
+  });
+
+  it("two Docs that swap: the editor ends on its own Doc's new path (#2063 C4)", async () => {
+    const onFollow = vi.fn();
+    render("/users/alice/a.md", onFollow);
+
+    act(() =>
+      publishDocsPathMoves("alice", [
+        { from: "/users/alice/a.md", to: "/users/alice/b.md" },
+        { from: "/users/alice/b.md", to: "/users/alice/a.md" },
+      ]),
+    );
+
+    await waitFor(() => expect(onFollow).toHaveBeenCalledWith("/users/alice/b.md"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(onFollow).toHaveBeenCalledTimes(1);
   });
 
   it("ignores moves of other files", async () => {

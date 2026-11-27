@@ -43,8 +43,21 @@ vi.mock("@/lib/offline/core/offline-session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/offline/core/offline-session")>()),
   resolveDocsOfflineUsername: (username?: string) => username,
 }));
-vi.mock("@/lib/offline/docs/docs-hybrid-operations", () => ({
+vi.mock("@/lib/offline/docs/docs-sync-runner", () => ({
   getDocsSyncRunner: () => ({ flush: mockFlush }),
+}));
+vi.mock("@/lib/offline/drive/drive-hybrid-operations", () => ({
+  getDriveSyncRunner: () => ({
+    flush: vi.fn(async () => {
+      order.push("drive-flush");
+    }),
+  }),
+}));
+vi.mock("@/lib/offline/drive/drive-inbound-sync", () => ({
+  syncDriveInboundFromFileNodes: vi.fn(async () => {
+    order.push("tree");
+    return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
+  }),
 }));
 vi.mock("@/docs-core/src/docs-pending-bodies", () => ({
   uploadPendingDocBodies: vi.fn(async () => {
@@ -52,7 +65,7 @@ vi.mock("@/docs-core/src/docs-pending-bodies", () => ({
   }),
 }));
 vi.mock("@/lib/offline/docs/docs-body-sync", () => ({
-  syncDocsBodiesFromHomeListing: mockSyncBodies,
+  requestDocsBodySyncFromTree: mockSyncBodies,
 }));
 vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/offline/core/browser-online")>()),
@@ -85,7 +98,7 @@ describe("useDocsAPI", () => {
   it("sends changes queued offline, then left bodies, on load on any Docs page, before syncing", async () => {
     renderHook(() => useDocsAPI(source()));
 
-    await waitFor(() => expect(order).toEqual(["flush", "bodies", "sync"]));
+    await waitFor(() => expect(order).toEqual(["flush", "drive-flush", "bodies", "tree", "sync"]));
   });
 
   it("keeps changes queued while the browser is offline", async () => {

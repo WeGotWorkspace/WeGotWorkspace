@@ -360,10 +360,12 @@ test("gap 3: Starred and Trash work offline, and what needs a connection says so
   await expect(page.getByText("Deleting permanently needs a connection.")).toBeVisible();
   await expect(docsHomeRow(page, keep)).toBeVisible();
 
+  // Shared with me lists the file tree offline too (#2063 C4): no "not available" notice.
   await sidebarView(page, "Shared with me").click();
-  await expect(page.getByText("Shared documents are not available offline.")).toBeVisible({
+  await expect(page.locator(".docs-home-pane h2").first()).toHaveText("Shared with me", {
     timeout: 15_000,
   });
+  await expect(page.getByText("Not available offline")).toHaveCount(0);
   await sidebarView(page, "All Docs").click();
   await expect(docsHomeRow(page, trash)).toBeVisible({ timeout: 15_000 });
 

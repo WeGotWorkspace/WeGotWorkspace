@@ -4,8 +4,15 @@ import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { subscribeOfflineDeviceContentSettings } from "@/lib/offline/core/offline-device-settings";
-import { syncDocsBodiesFromHomeListing } from "@/lib/offline/docs/docs-body-sync";
-import { getDocsSyncRunner } from "@/lib/offline/docs/docs-hybrid-operations";
+import { requestDocsBodySyncFromTree } from "@/lib/offline/docs/docs-body-sync";
+import { getDocsSyncRunner } from "@/lib/offline/docs/docs-sync-runner";
+import {
+  notifyDriveRemoteChange,
+  subscribeDriveRemoteChanges,
+} from "@/lib/offline/drive/drive-file-node-push";
+import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
+import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { resolveDocsOfflineUsername } from "@/lib/offline/core/offline-session";
 import type { DocsAppBootstrap, DocsUIData } from "@/lib/models/docs-types";
 import { createDefaultDocsApiSource, type DocsApiSource } from "@/docs-core/src/docs-api-source";
@@ -26,17 +33,32 @@ function readCachedDocsBootstrap(): DocsAppBootstrap | null {
 }
 
 /**
- * Send what was queued offline first, on every Docs page (not only the home
- * listing), then bodies typed offline in documents since closed, so the
- * listing synced next already shows those changes.
+ * Send what was queued offline first, on every Docs page (not only Docs
+ * home): the Docs outbox (editor creates) and the Drive outbox (Docs home
+ * writes, #2063 C4); bodies typed offline in documents since closed upload
+ * alongside. Then bring the file tree up to date (FileNode/changes; shared with the
+ * pull Docs home starts) and fetch the changed bodies the tree names.
  */
 async function sendQueuedThenSyncBodies(username: string, signal?: AbortSignal): Promise<void> {
+  let uploads: Promise<void> = Promise.resolve();
   if (readBrowserOnline()) {
     await getDocsSyncRunner(username).flush();
-    await uploadPendingDocBodies(username);
+    await getDriveSyncRunner(username).flush();
+    // Each body upload holds its room's lock, which body sync skips, so the
+    // pull and the fetch of other bodies need not wait for slow saves.
+    uploads = uploadPendingDocBodies(username).catch(() => undefined);
   }
-  if (signal?.aborted) return;
-  await syncDocsBodiesFromHomeListing(username, { signal });
+  try {
+    if (signal?.aborted) return;
+    if (!wgwIsGuestSession()) {
+      const pulled = await syncDriveInboundFromFileNodes(username, { signal });
+      if (pulled.changed || pulled.listedChanges) notifyDriveRemoteChange(username);
+    }
+    if (signal?.aborted) return;
+    await requestDocsBodySyncFromTree(username, { signal });
+  } finally {
+    await uploads;
+  }
 }
 
 function cacheDocsBootstrap(bootstrap: DocsAppBootstrap): void {
@@ -81,9 +103,15 @@ export function useDocsAPI(source?: DocsApiSource) {
     if (phase !== "ready" || !offlineUsername) return;
     const controller = new AbortController();
     return subscribeOfflineDeviceContentSettings(() => {
-      void syncDocsBodiesFromHomeListing(offlineUsername, { signal: controller.signal }).catch(
-        () => undefined,
-      );
+      void requestDocsBodySyncFromTree(offlineUsername, { signal: controller.signal });
+    });
+  }, [offlineUsername, phase]);
+
+  // A Doc the tree learns later (a push, another tab's pull) gets its body too.
+  useEffect(() => {
+    if (phase !== "ready" || !offlineUsername) return undefined;
+    return subscribeDriveRemoteChanges(offlineUsername, () => {
+      void requestDocsBodySyncFromTree(offlineUsername);
     });
   }, [offlineUsername, phase]);
 

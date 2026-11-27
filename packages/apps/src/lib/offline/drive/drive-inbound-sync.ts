@@ -184,8 +184,8 @@ async function fullResync(
       keptUnsavedPaths: tree.keptUnsavedPaths,
     };
   }
-  // A full sync lists, it does not say what moved: the cached Docs views would keep a
-  // renamed Doc at its old name (#1563). Until C4 removes those views, patch moves only.
+  // A full sync lists, it does not say what moved: starred paths, local text and an
+  // open editor still follow a renamed Doc by the moves found here (#1563).
   await applyDocsInboundChanges(username, await movesSince(username, before));
   return {
     changed: true,
@@ -589,6 +589,16 @@ async function cachedPathsByNodeId(username: string): Promise<Map<string, string
   return paths;
 }
 
+async function pathsForNodeId(username: string, nodeId: string): Promise<string[]> {
+  const db = accountDb(username);
+  const driveRows = await driveEntriesTable(db).where("nodeId").equals(nodeId).toArray();
+  const pins = await docsAvailabilityTable(db).where("nodeId").equals(nodeId).toArray();
+  const paths = new Set<string>();
+  for (const row of driveRows) paths.add(row.id);
+  for (const pin of pins) paths.add(pin.id);
+  return [...paths];
+}
+
 /** Files the Drive cache now has at another path than in `before`, as Docs moves. */
 async function movesSince(
   username: string,
@@ -622,16 +632,6 @@ function parseEntry(data: string): Partial<WgwDriveDirectoryEntry> {
   } catch {
     return {};
   }
-}
-
-async function pathsForNodeId(username: string, nodeId: string): Promise<string[]> {
-  const db = accountDb(username);
-  const driveRows = await driveEntriesTable(db).where("nodeId").equals(nodeId).toArray();
-  const pins = await docsAvailabilityTable(db).where("nodeId").equals(nodeId).toArray();
-  const paths = new Set<string>();
-  for (const row of driveRows) paths.add(row.id);
-  for (const pin of pins) paths.add(pin.id);
-  return [...paths];
 }
 
 async function driveRowAt(
