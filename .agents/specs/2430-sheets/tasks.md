@@ -36,5 +36,5 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 - Waves: A + B + C → D + F → E → G + H → I → J + K + L → M; N + O run alongside the grid wave once D, E and F are on main.
 - Chunks A and B agree on shape ids first: `markdown`, `text-fields`, `ycsv`.
 - Chunks I, J, K and L all touch `sheets-core/grid/`: I lands first and fixes the hook seams; J, K and L each own their own hooks and do not edit another chunk's hook files.
-- `chunk-l-grid-touch` does not build the selection gesture until decision 5 is taken (see plan Open decisions).
+- `chunk-l-grid-touch` builds variant B (decision 5): range handles, header-menu moves, fill via callout/menu; no hold-drag on headers in v1.
 - On scope change: update the **issue first**, then re-sync spec/plan/tasks and the `Source:` body-hash in spec.md.

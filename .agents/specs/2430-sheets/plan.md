@@ -31,7 +31,7 @@ Draws from the Docs collab engine (lifted to `src/lib/collab`, not copied) and t
 
 ## Considered
 
-Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) — chosen and lifted to `src/lib/collab` with a shape registry, because spike 5 ran a `ycsv` shape on it unchanged apart from about eight shape branches; a separate Sheets sync stack was rejected as a second copy of transport, offline and save logic. Considered: a canvas grid library — rejected for spike 6's DOM grid with one overlay, which spikes 7 and 8 showed holds touch and screen readers, and spike 4 showed holds 60 fps with windowing. Considered: today's row layout (`Y.Array` of rows) — rejected for spike 9's order + data layout, which lost 0 edits in 1,000 4-peer fuzz runs against 24% lost. Considered: the worker owning the `Y.Doc` — rejected for a worker replica, because the collab session needs `RTCPeerConnection` on the main thread and every keystroke would gain an async hop. Considered: npm `xlsx` — rejected (0.18.5, known CVEs) for SheetJS CE from its CDN tarball; SheetJS and other writers rejected for export in favour of exceljs (135/135 cells after recalculation). Considered: waiting for incremental saves (#2446) — rejected by decision 11; gzip + per-shape caps cover ~250k cells. Considered: the YCSV spec inside `packages/apps/docs/` (where the original lived) — rejected for `docs/architecture/ycsv-spec.md`, because the API, import/export and outside tools read it too.
+Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) — chosen and lifted to `src/lib/collab` with a shape registry, because spike 5 ran a `ycsv` shape on it unchanged apart from about eight shape branches; a separate Sheets sync stack was rejected as a second copy of transport, offline and save logic. Considered: a canvas grid library — rejected for spike 6's DOM grid with one overlay, which spikes 7 and 8 showed holds touch and screen readers, and spike 4 showed holds 60 fps with windowing. Considered: today's row layout (`Y.Array` of rows) — rejected for spike 9's order + data layout, which lost 0 edits in 1,000 4-peer fuzz runs against 24% lost. Considered: the worker owning the `Y.Doc` — rejected for a worker replica, because the collab session needs `RTCPeerConnection` on the main thread and every keystroke would gain an async hop. Considered: npm `xlsx` — rejected (0.18.5, known CVEs) for SheetJS CE from its CDN tarball; SheetJS and other writers rejected for export in favour of exceljs (135/135 cells after recalculation). Considered: waiting for incremental saves (#2446) — rejected by decision 11; gzip + per-shape caps cover ~250k cells. Considered: the YCSV spec inside `packages/apps/docs/` (where the original lived) — rejected for `docs/architecture/ycsv-spec.md`, because the API, import/export and outside tools read it too. Considered for touch (decision 5): variant A (no range handles) — rejected, a block cannot be selected by finger; variant C, Calendar's 160 ms hold-to-drag — rejected, unsafe on a grid (spike 7, `prototypes/ycsv/docs/spike-7-touch.md` section "Variant C"); chosen variant B, range handles like Calendar's touch resize handles. Hold-drag on headers (250 ms) is left out of v1, optional after a real-phone test.
 
 ## Affected packages
 
@@ -46,14 +46,13 @@ Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) —
 3. Chunk E (model) after D.
 4. Chunk G (engine) after E and F. Chunk H (collab shape) after A and E. G and H run in parallel.
 5. Chunk I (grid core) after E, F and G (it can start on `InThreadValues` once G's `ValueSource` interface lands).
-6. After I, parallel: chunk J (grid ops), chunk K (presence + a11y, also needs H), chunk L (touch; its selection-gesture part waits for decision 5).
+6. After I, parallel: chunk J (grid ops), chunk K (presence + a11y, also needs H), chunk L (touch, variant B).
 7. Chunk M (app shell) after B, H and I.
 8. Chunk N (import) and chunk O (export) after D, E and F; parallel with each other and with the grid wave.
 9. Chunk V (cross-chunk verify) last.
 
 ## Open decisions
 
-- [ ] Decision 5, touch v1 selection gesture (A, B range handles, or C hold-to-drag 160 ms), pending Wouter after the trial on `spike/sheets-touch`. Blocks only the selection-gesture part of chunk L (`chunk-l-grid-touch`); the rest of L may start.
 - [ ] Conflict K2 in the spec review: decision 10 renames a duplicate column to `omzet 2` with ref `omzet_2`, but P33 makes the ref the header text, so the spec now writes `'omzet 2'3`. Wouter to confirm. Blocks only the duplicate-name part of chunk D (`chunk-d-file`) and chunk N (`chunk-n-import`); the rest of both may start.
 
 ## Invariants
@@ -188,8 +187,8 @@ Considered: the existing Docs collab engine (`text-editor-core/docs-collab`) —
 - **id:** `chunk-l-grid-touch`
 - **Issue:** #2441
 - **Skill:** apps-ui
-- **Inputs:** spike 7 touch model and 56 emulated touch tests (`prototypes/ycsv/docs/spike-7-touch.md` on `spike/sheets-touch`); decision 5 (Open decisions).
-- **Done when:** #2441 AC hold; the selection gesture follows decision 5 once taken; one real iPhone and Android pass with the spike 7 checklist.
+- **Inputs:** spike 7 touch model and 56 emulated touch tests (`prototypes/ycsv/docs/spike-7-touch.md` on `spike/sheets-touch`); decision 5 = variant B (#2441); variant C hold-drag code on `spike/sheets-touch` stays out of v1.
+- **Done when:** #2441 AC hold: range handles with the start knob clipped to the cell side, header-menu moves, fill via callout/menu, long-press 500 ms; any gesture helper put in `src/lib` takes a hold time per surface; one real iPhone and Android pass with the spike 7 checklist.
 - **Verify with:** `pnpm --dir packages/apps exec playwright test e2e/sheets-touch.spec.ts`.
 - **Parallel with:** `chunk-j-grid-ops`, `chunk-k-grid-presence-a11y`.
 

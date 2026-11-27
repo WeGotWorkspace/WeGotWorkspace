@@ -1,4 +1,4 @@
-Source: #2430 (body-hash: 4304aaa8)
+Source: #2430 (body-hash: a2cf0e1d)
 Goal: WeGotWorkspace/Product#164
 
 # Sheets: live-collaborative spreadsheets on YCSV
@@ -86,7 +86,7 @@ book:       Y.Map{ycsv_version, defs, …}
 - **Size:** ~250k cells: gzip the Yjs sidecar and raise the text cap for the `ycsv` shape; Docs caps stay. Warn from ~150k cells.
 - **Performance:** row + column windowing reusing `workspace-list-window.ts`; the window moves in steps; memoised rows; incremental engine in a worker on a replica `Y.Doc`; save serialisation off the main thread. A typical edit paints within one frame (16.7 ms) at 25k × 10.
 - **Accessibility:** roving focus on the active gridcell; the editor input exists only while editing; one column list for every row; active row and column always rendered; `aria-rowindex` / `aria-colindex` everywhere; one polite live region; decisions 12–14.
-- **Touch:** native panning; only a drag that starts on a handle changes the selection; formula bar docked above the keyboard on phones; grid-only pinch zoom. Selection gesture per decision 5 (pending).
+- **Touch (decision 5: variant B):** a finger on a cell or header always pans natively; tap selects, double-tap edits, long-press (500 ms) opens the menu; range handles are the only selection drag (start knob's hit box clipped to the cell side, as it overlaps row header 1); rows and columns move through the header menu; fill through the callout/menu; formula bar docked above the keyboard on phones; grid-only pinch zoom (0.6×–1.8×); stepped row window plus memoised rows. No hold-drag on headers in v1. A shared gesture helper in `src/lib` takes a hold time per surface (Calendar's 160 ms is unsafe on a grid).
 - **Interop:** SheetJS CE 0.20.3 from the SheetJS CDN tarball (npm `xlsx` 0.18.5 has known CVEs); exceljs for XLSX export; parsers handle caller-supplied files (load the `security` skill).
 - **File size:** no new source file over 800 lines; the spike grid (2,946 lines) is split into hooks before it lands.
 
@@ -100,7 +100,7 @@ Product decisions 1–18 and the spec decisions are listed in #2430. Behaviour-s
 | model | 4 (frozen rows in the file), 6 (fixed row height, format room for per-row height), 10 |
 | formula | P4, 2 (ref shifting), 16 (locale notation) |
 | collab | 8, 9, 15 |
-| grid | 1, 3, 7, 12, 13, 14; 5 (pending) |
+| grid | 1, 3, 5 (variant B), 7, 12, 13, 14 |
 | interop | lossy import accepted, silent loss not (B.7 import report) |
 
 ## Edge cases
