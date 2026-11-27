@@ -10,13 +10,15 @@ import {
   DialogTitle,
 } from "@/ui/dialog";
 import { splitMarkdownDialogDefaultName } from "@/drive-core/src/drive-create-markdown-dialog-utils";
+import { DrivePickerNewFolderButton } from "@/drive-core/src/drive-picker-new-folder";
+import type { DrivePickerNewFolderControl } from "@/drive-core/src/drive-picker-new-folder-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import { drivePickerListingTheme } from "@/drive-core/src/drive-folder-picker-utils";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { joinFileNameForRename } from "@/lib/files/filename-rename";
 import "@/drive-core/src/drive-create-markdown-dialog.css";
 
@@ -40,6 +42,7 @@ export function DriveCreateMarkdownDialog({
   groupPaths,
   view: _view,
   operations,
+  shareOperations,
   currentUsername,
   groupRootNames,
   rootLabels,
@@ -62,6 +65,7 @@ export function DriveCreateMarkdownDialog({
   groupPaths: string[];
   view: ViewKey;
   operations?: DriveAPIOperations;
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   currentUsername: string;
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
@@ -81,6 +85,7 @@ export function DriveCreateMarkdownDialog({
   const [draftBaseName, setDraftBaseName] = useState("");
   const [focusSession, setFocusSession] = useState<string | null>(null);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
+  const [newFolder, setNewFolder] = useState<DrivePickerNewFolderControl | null>(null);
   const nextFocusSession = open ? `${kind}:${defaultName}` : null;
   const pickerRemountKey = `${initialBrowsePath}::${initialSelectedPath ?? ""}`;
 
@@ -115,7 +120,10 @@ export function DriveCreateMarkdownDialog({
         confirm: labels.createMarkdownDialogConfirm,
       };
   const canSubmit =
-    (hideName || draftBaseName.trim().length > 0) && !!destinationPath && !isSubmitting;
+    (hideName || draftBaseName.trim().length > 0) &&
+    !!destinationPath &&
+    !isSubmitting &&
+    !newFolder?.creating;
 
   const handleConfirm = () => {
     if (!canSubmit || !destinationPath) return;
@@ -126,6 +134,10 @@ export function DriveCreateMarkdownDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
         className={dialogSurfaceClassName}
+        // Escape in the folder-name field drops that row, not the dialog.
+        onEscapeKeyDown={(event) => {
+          if (newFolder?.active) event.preventDefault();
+        }}
         {...(copy.description ? {} : { "aria-describedby": undefined })}
       >
         <DialogHeader>
@@ -163,11 +175,13 @@ export function DriveCreateMarkdownDialog({
               initialBrowsePath={initialBrowsePath}
               initialSelectedPath={initialSelectedPath}
               operations={operations}
+              shareOperations={shareOperations}
               currentUsername={currentUsername}
               groupRootNames={groupRootNames}
               rootLabels={rootLabels}
               listingTheme={drivePickerListingTheme(dialogSurfaceClassName)}
               onDestinationChange={handleDestinationChange}
+              onNewFolderChange={setNewFolder}
             />
           ) : null}
           {errorMessage ? (
@@ -178,6 +192,11 @@ export function DriveCreateMarkdownDialog({
         </div>
 
         <DialogFooter>
+          {isFolder ? null : (
+            <div className="mr-auto">
+              <DrivePickerNewFolderButton labels={labels} control={newFolder} />
+            </div>
+          )}
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             {labels.createMarkdownDialogCancel}
           </Button>

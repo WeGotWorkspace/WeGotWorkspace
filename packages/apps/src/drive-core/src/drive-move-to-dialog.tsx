@@ -12,10 +12,12 @@ import {
   drivePickerListingTheme,
   resolveDriveFolderPickerStartPath,
 } from "@/drive-core/src/drive-folder-picker-utils";
+import { DrivePickerNewFolderButton } from "@/drive-core/src/drive-picker-new-folder";
+import type { DrivePickerNewFolderControl } from "@/drive-core/src/drive-picker-new-folder-utils";
 import { DriveFolderPicker } from "@/drive-core/src/drive-folder-picker";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 
 type DriveMoveToDialogShared = {
   open: boolean;
@@ -24,6 +26,7 @@ type DriveMoveToDialogShared = {
   groupPaths: string[];
   view: ViewKey;
   operations?: DriveAPIOperations;
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   currentUsername: string;
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
@@ -61,6 +64,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
     groupPaths,
     view,
     operations,
+    shareOperations,
     currentUsername,
     groupRootNames,
     rootLabels,
@@ -78,6 +82,7 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
   const initialBrowsePath = resolveDriveFolderPickerStartPath(view, singleItemParent);
   const [destinationPath, setDestinationPath] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
+  const [newFolder, setNewFolder] = useState<DrivePickerNewFolderControl | null>(null);
 
   const handleDestinationChange = useCallback((path: string | null) => {
     setDestinationPath(path);
@@ -95,7 +100,13 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={dialogSurfaceClassName}>
+      <DialogContent
+        className={dialogSurfaceClassName}
+        // Escape in the folder-name field drops that row, not the dialog.
+        onEscapeKeyDown={(event) => {
+          if (newFolder?.active) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -111,17 +122,24 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
             moveIds={moveIds}
             initialBrowsePath={initialBrowsePath}
             operations={operations}
+            shareOperations={shareOperations}
             currentUsername={currentUsername}
             groupRootNames={groupRootNames}
             rootLabels={rootLabels}
             listingTheme={docsListingTheme}
             onDestinationChange={handleDestinationChange}
             onSelectedFileChange={handleSelectedFileChange}
+            onNewFolderChange={setNewFolder}
           />
         ) : null}
 
         <DialogFooter>
           {footerStart ? <div className="mr-auto">{footerStart}</div> : null}
+          {fileSelect ? null : (
+            <div className="mr-auto">
+              <DrivePickerNewFolderButton labels={labels} control={newFolder} />
+            </div>
+          )}
           <Button variant="outline" onClick={onClose}>
             {labels.moveDialogCancel}
           </Button>
@@ -139,9 +157,9 @@ export function DriveMoveToDialog(props: DriveMoveToDialogProps) {
           ) : (
             <Button
               variant="primary"
-              disabled={confirmDisabled}
+              disabled={confirmDisabled || Boolean(newFolder?.creating)}
               onClick={() => {
-                if (!destinationPath) return;
+                if (!destinationPath || newFolder?.creating) return;
                 onConfirm?.(destinationPath);
               }}
             >
