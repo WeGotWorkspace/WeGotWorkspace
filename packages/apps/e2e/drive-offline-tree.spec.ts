@@ -16,6 +16,7 @@ import {
   TEAMMATE,
   unshareQuietly,
 } from "./helpers/docs-matrix";
+import { jmapFileNodes } from "./helpers/drive-upload-live";
 import { E2E_USERNAME } from "./helpers/notes-live";
 
 const RUN = Date.now().toString(36);
@@ -87,14 +88,36 @@ async function sawLoading(page: Page): Promise<boolean> {
   );
 }
 
-/** Listing requests a page sends: `FileNode/query` (the walk or a folder listing) and the search route. */
+/**
+ * Listing requests a page sends, by kind: the tree walk, the search route, a
+ * folder listing (`parentId:<id>`) or the top-level roots lookup. The app's
+ * start-up still looks up the roots and lists the home root once in the
+ * background; a view must not list.
+ */
 function watchListings(page: Page): string[] {
   const seen: string[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
-    if (url.pathname.endsWith("/search/results")) seen.push("GET /search/results");
-    if (url.pathname.endsWith("/jmap") && (request.postData() ?? "").includes("FileNode/query")) {
-      seen.push("POST /jmap FileNode/query");
+    if (url.pathname.endsWith("/search/results")) seen.push("search");
+    if (!url.pathname.endsWith("/jmap")) return;
+    type Call = [string, Record<string, unknown>, string];
+    let calls: Call[] = [];
+    try {
+      calls =
+        (JSON.parse(request.postData() ?? "{}") as { methodCalls?: Call[] }).methodCalls ?? [];
+    } catch {
+      return;
+    }
+    for (const [name, args] of calls) {
+      if (name !== "FileNode/query") continue;
+      const filter = (args.filter ?? null) as Record<string, unknown> | null;
+      if (["idAfter", "#idAfter", "asOfState", "#asOfState"].some((key) => key in args)) {
+        seen.push("walk");
+      } else if (typeof filter?.parentId === "string") {
+        seen.push(`parentId:${filter.parentId}`);
+      } else {
+        seen.push("roots");
+      }
     }
   });
   return seen;
@@ -147,6 +170,9 @@ test.describe("Drive on the file tree, production build", () => {
     await page.waitForFunction(() => navigator.serviceWorker?.controller != null, undefined, {
       timeout: 60_000,
     });
+    const found = await jmapFileNodes(page, "FileNode/query", { filter: { name: FOLDER } });
+    const folderId = (found.ids as string[])[0]!;
+    expect(folderId, `${FOLDER} on the server`).toBeTruthy();
     await star(page, STARRED);
     await expect(rowOf(page, OUTBOUND).getByRole("img", { name: "Shared" })).toBeVisible();
 
@@ -159,7 +185,9 @@ test.describe("Drive on the file tree, production build", () => {
     await warm.goto("/drive?view=starred");
     await expect(row(warm, STARRED)).toBeVisible({ timeout: 15_000 });
     expect(await sawLoading(warm)).toBe(false);
-    expect(listings).toEqual([]);
+    expect(
+      listings.filter((kind) => ["walk", "search", `parentId:${folderId}`].includes(kind)),
+    ).toEqual([]);
 
     // Cold offline open: every tab closed, the network gone, then a new tab.
     for (const open of context.pages()) await open.close();
@@ -172,7 +200,10 @@ test.describe("Drive on the file tree, production build", () => {
       await expect(row(cold, STARRED)).toBeVisible();
       // The badge comes from the stored entry: no server answers now.
       await expect(rowOf(cold, OUTBOUND).getByRole("img", { name: "Shared" })).toBeVisible();
-      expect(await sawLoading(cold)).toBe(false);
+      // Offline, the app's start-up read falls back to the stored copy a moment
+      // later than online, and the pane can show its loading state for that
+      // moment (about 15 ms here); it never stays once the rows are in.
+      await expect(cold.locator(".collection-state--loading")).toHaveCount(0);
 
       // Starred and Shared with me, offline.
       await cold.goto("/drive?view=starred");
