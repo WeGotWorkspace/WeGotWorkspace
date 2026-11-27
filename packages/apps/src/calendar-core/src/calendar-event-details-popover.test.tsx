@@ -811,4 +811,16 @@ describe("CalendarEventDetailsPopover notes links", () => {
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(links).toEqual(["https://docs.test/a"]);
   });
+
+  it("shows Join for a meeting URL that is only in the location", () => {
+    cleanup();
+    const base = previewWithNotes("");
+    renderPopover({
+      preview: { ...base, form: { ...base.form, location: "https://meet.test/abc" } },
+    });
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeTruthy();
+    cleanup();
+    renderPopover({ preview: { ...base, form: { ...base.form, location: "Room 4" } } });
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeNull();
+  });
 });

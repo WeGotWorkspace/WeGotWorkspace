@@ -5,8 +5,10 @@
 export type LinkifyPart =
   { type: "text"; text: string } | { type: "link"; text: string; href: string };
 
-// http(s) URLs up to whitespace or an angle bracket, and bare mailto: links.
-const LINK_PATTERN = /\b(?:https?:\/\/|mailto:)[^\s<>"]+/gi;
+// http(s) URLs and mailto: links up to whitespace or an angle bracket, bare `www.` addresses
+// (opened as https://) and bare email addresses (opened as mailto:).
+const LINK_PATTERN =
+  /\b(?:https?:\/\/|mailto:)[^\s<>"]+|\bwww\.[^\s<>"]+|\b[\w.+%-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/gi;
 const TRAILING_PUNCTUATION = /[.,;:!?'"]+$/;
 const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 
@@ -37,13 +39,26 @@ export function safeLinkHref(candidate: string): string | null {
   }
 }
 
+/** The safe href for a matched run: a `www.` address becomes https, a bare email mailto. */
+function hrefForMatch(raw: string): string | null {
+  if (/^www\./i.test(raw)) {
+    const href = safeLinkHref(`https://${raw}`);
+    // `www.` plus a domain and a top-level domain, not "www.something".
+    return href && new URL(href).hostname.split(".").length >= 3 ? href : null;
+  }
+  if (!/^(?:https?:\/\/|mailto:)/i.test(raw) && raw.includes("@")) {
+    return safeLinkHref(`mailto:${raw}`);
+  }
+  return safeLinkHref(raw);
+}
+
 export function linkifyText(text: string): LinkifyPart[] {
   const parts: LinkifyPart[] = [];
   let cursor = 0;
   for (const match of text.matchAll(LINK_PATTERN)) {
     const start = match.index ?? 0;
     const raw = trimUrlEnd(match[0]);
-    const href = safeLinkHref(raw);
+    const href = hrefForMatch(raw);
     if (!href) continue;
     if (start > cursor) parts.push({ type: "text", text: text.slice(cursor, start) });
     parts.push({ type: "link", text: raw, href });

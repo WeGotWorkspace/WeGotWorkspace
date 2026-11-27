@@ -36,4 +36,27 @@ describe("linkifyText", () => {
     expect(linkifyText("no links")).toEqual([{ type: "text", text: "no links" }]);
     expect(linkifyText("")).toEqual([]);
   });
+
+  it("links www. addresses as https and keeps trailing punctuation out", () => {
+    expect(links("see www.example.com/a, or WWW.Example.org.")).toEqual([
+      "https://www.example.com/a",
+      "https://www.example.org/",
+    ]);
+    expect(links("www.something and awww.example.com")).toEqual([]);
+  });
+
+  it("links bare email addresses as mailto and keeps the text", () => {
+    expect(links("mail ada@example.test.")).toEqual(["mailto:ada@example.test"]);
+    const text = "Ask ada.l+x@example.co.uk now";
+    const parts = linkifyText(text);
+    expect(parts.map((p) => p.text).join("")).toBe(text);
+    expect(links("no at sign here, a@b and @mention")).toEqual([]);
+  });
+
+  it("does not double-link an email inside a URL or a mailto: link", () => {
+    expect(links("https://x.test/u@e.test mailto:me@x.test")).toEqual([
+      "https://x.test/u@e.test",
+      "mailto:me@x.test",
+    ]);
+  });
 });

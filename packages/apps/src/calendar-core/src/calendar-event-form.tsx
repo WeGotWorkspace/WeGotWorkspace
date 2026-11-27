@@ -1,7 +1,10 @@
 import { MapPin } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarMeetCard } from "@/calendar-core/src/calendar-meet-card";
-import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
+import {
+  effectiveMeetingUrl,
+  type CalendarMeetOperations,
+} from "@/lib/meetings/calendar-meet-link";
 import type { RecurrenceEditScope } from "@/calendar-core/src/calendar-recurrence-scope";
 import { FieldLabelRow, FieldLabelRowIconLabels } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -201,7 +204,8 @@ export function CalendarEventForm({
   const showInvitationRsvp = answersAtOnce && Boolean(onRsvp);
   const showSaveCancel = !autosave && !invitationMode && (!readOnly || showInviteeRsvp);
   // Same Join button as the read-only popover, in the footer, whenever there is a meeting URL.
-  const showMeetJoin = mode === "edit" && Boolean(form.meetingUrl.trim());
+  const meetingHref = effectiveMeetingUrl(form.meetingUrl, form.location);
+  const showMeetJoin = mode === "edit" && Boolean(meetingHref);
   const showFooter =
     showSaveCancel ||
     showInvitationRsvp ||
@@ -463,7 +467,7 @@ export function CalendarEventForm({
             meetJoin={
               showMeetJoin ? (
                 <CalendarMeetJoin
-                  href={form.meetingUrl}
+                  href={meetingHref}
                   labels={labels}
                   workspaceOrigin={workspaceOrigin}
                   meetOperations={meetOperations}

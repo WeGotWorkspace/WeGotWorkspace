@@ -29,7 +29,10 @@ import {
 import type { CalendarInfo } from "@/lib/models/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import { CalendarMeetJoin } from "@/calendar-core/src/calendar-meet-join";
-import type { CalendarMeetOperations } from "@/lib/meetings/calendar-meet-link";
+import {
+  effectiveMeetingUrl,
+  type CalendarMeetOperations,
+} from "@/lib/meetings/calendar-meet-link";
 import { CalendarRsvpActions } from "@/calendar-core/src/calendar-rsvp-actions";
 import { DEFAULT_CALENDAR_COLOR } from "@/lib/calendar/calendar-colors";
 import type { CalendarSchedulingRespondStatus } from "@/lib/api/wgw/calendar-scheduling";
@@ -137,7 +140,8 @@ export function CalendarEventDetailsPopover({
   const showRsvp = Boolean(onRsvp) && isSessionEventInvitee(form.attendees, sessionEmail);
   const rsvpStatus = sessionEventInviteeStatus(form.attendees, sessionEmail);
   const eventColor = calendar?.color?.trim() || DEFAULT_CALENDAR_COLOR;
-  const showMeet = Boolean(form.meetingUrl.trim());
+  const meetingHref = effectiveMeetingUrl(form.meetingUrl, form.location);
+  const showMeet = Boolean(meetingHref);
   const showFooter = !editable && (showMeet || showDelete || showRsvp);
   const dialogLabel = editable ? edit?.form.title.trim() || title : title;
   // Mobile Dialog shell only — desktop popover stays headerless (event title via aria-label).
@@ -265,7 +269,7 @@ export function CalendarEventDetailsPopover({
                 <>
                   {showMeet ? (
                     <CalendarMeetJoin
-                      href={form.meetingUrl}
+                      href={meetingHref}
                       labels={labels}
                       workspaceOrigin={workspaceOrigin}
                       meetOperations={meetOperations}

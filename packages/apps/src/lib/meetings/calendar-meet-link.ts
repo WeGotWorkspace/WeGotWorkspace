@@ -225,6 +225,21 @@ function linkHref(value: unknown): string {
   return typeof href === "string" ? href.trim() : "";
 }
 
+/**
+ * A location that is only an http(s) URL counts as a meeting link (imported invites often put
+ * the call there). Display only: nothing is written back to the event, and a place name stays
+ * a location.
+ */
+export function meetingHrefFromLocation(location: string | undefined): string {
+  const trimmed = location?.trim() ?? "";
+  return /^https?:\/\/\S+$/i.test(trimmed) && isHttpUrl(trimmed) ? trimmed : "";
+}
+
+/** The dedicated meeting link, else an http(s) URL in the location. */
+export function effectiveMeetingUrl(meetingUrl: string, location: string | undefined): string {
+  return meetingUrl.trim() || meetingHrefFromLocation(location);
+}
+
 export function linksFromMeetingUrl(
   href: string | undefined,
 ): Record<string, JSCalendarLink> | undefined {

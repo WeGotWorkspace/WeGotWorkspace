@@ -20,7 +20,7 @@ import {
   localToPlainDateTime,
   plainDateTimeToLocal,
 } from "./datetime.js";
-import { meetingUrlFromLinks } from "../../meetings/calendar-meet-link.js";
+import { meetingHrefFromLocation, meetingUrlFromLinks } from "../../meetings/calendar-meet-link.js";
 import { internalRecurrenceRuleToJs, jsRecurrenceRuleToInternal } from "./recurrence.js";
 
 export type InternalEventRow = { key: string; event: CalendarEvent };
@@ -180,7 +180,10 @@ function mapJmapEventToInternalRows(
     summary: jmapEvent.title ?? "",
     ...(jmapEvent.color ? { color: jmapEvent.color } : {}),
     ...(primaryLocationName(jmapEvent) ? { location: primaryLocationName(jmapEvent) } : {}),
-    ...(meetingUrlFromLinks(jmapEvent.links) ? { hasMeeting: true } : {}),
+    ...(meetingUrlFromLinks(jmapEvent.links) ||
+    meetingHrefFromLocation(primaryLocationName(jmapEvent))
+      ? { hasMeeting: true }
+      : {}),
     ...(recurrenceRule ? { recurrenceRule } : {}),
     ...(exclusionDates.size ? { exclusionDates } : {}),
   };
@@ -218,7 +221,8 @@ function mapJmapEventToInternalRows(
       ...(resolvePatchLocation(patch, jmapEvent)
         ? { location: resolvePatchLocation(patch, jmapEvent) }
         : {}),
-      ...(meetingUrlFromLinks(patch.links !== undefined ? patch.links : jmapEvent.links)
+      ...(meetingUrlFromLinks(patch.links !== undefined ? patch.links : jmapEvent.links) ||
+      meetingHrefFromLocation(resolvePatchLocation(patch, jmapEvent))
         ? { hasMeeting: true }
         : {}),
     };

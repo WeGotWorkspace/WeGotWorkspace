@@ -19,4 +19,17 @@ describe("jmapEventToInternalRows hasMeeting", () => {
     expect(jmapEventToInternalRows(withLink, {})[0]?.event.data.hasMeeting).toBe(true);
     expect(jmapEventToInternalRows(base, {})[0]?.event.data.hasMeeting).toBeUndefined();
   });
+
+  it("counts an http(s) URL in the location, not a place name", () => {
+    const place = {
+      ...base,
+      locations: { l1: { "@type": "Location", name: "Room 4" } },
+    } as unknown as JmapCalendarEvent;
+    const url = {
+      ...base,
+      locations: { l1: { "@type": "Location", name: "https://meet.test/abc" } },
+    } as unknown as JmapCalendarEvent;
+    expect(jmapEventToInternalRows(place, {})[0]?.event.data.hasMeeting).toBeUndefined();
+    expect(jmapEventToInternalRows(url, {})[0]?.event.data.hasMeeting).toBe(true);
+  });
 });
