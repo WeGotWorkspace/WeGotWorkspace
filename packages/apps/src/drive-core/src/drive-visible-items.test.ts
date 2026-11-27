@@ -28,12 +28,10 @@ describe("filterDriveVisibleItems", () => {
     const visible = filterDriveVisibleItems({
       files,
       liveSearchResults: null,
-      starredItems: null,
       starred: {},
       view: { type: "folder", path: "My Drive" },
       searchQuery: "",
       currentUsername: "demo",
-      operations: undefined,
     });
 
     expect(visible.map((file) => file.id)).toEqual(["a"]);
@@ -48,12 +46,10 @@ describe("filterDriveVisibleItems", () => {
     const visible = filterDriveVisibleItems({
       files,
       liveSearchResults: null,
-      starredItems: null,
       starred: {},
       view: { type: "folder", path: "My Drive" },
       searchQuery: "beta",
       currentUsername: "demo",
-      operations: undefined,
     });
 
     expect(visible.map((file) => file.id)).toEqual(["b"]);
@@ -68,18 +64,16 @@ describe("filterDriveVisibleItems", () => {
     const visible = filterDriveVisibleItems({
       files,
       liveSearchResults: null,
-      starredItems: null,
       starred: {},
       view: { type: "shared" },
       searchQuery: "",
       currentUsername: "demo",
-      operations: undefined,
     });
 
     expect(visible.map((file) => file.id)).toEqual(["shared"]);
   });
 
-  it("uses sharedItems for the live Shared with me view", () => {
+  it("lists the tree rows of the live Shared with me view", () => {
     const files = [sampleFile({ id: "mine", title: "Mine.md", parent: "My Drive" })];
     const sharedItems = [
       sampleFile({
@@ -94,13 +88,11 @@ describe("filterDriveVisibleItems", () => {
     const visible = filterDriveVisibleItems({
       files,
       liveSearchResults: null,
-      starredItems: null,
-      sharedItems,
+      viewItems: sharedItems,
       starred: {},
       view: { type: "shared" },
       searchQuery: "",
       currentUsername: "demo",
-      operations: {},
     });
 
     expect(visible.map((file) => file.id)).toEqual(["/users/bob/deck"]);
@@ -114,11 +106,9 @@ describe("filterDriveVisibleItems", () => {
     const args = {
       files: [sampleFile({ id: "/users/demo/a.txt", title: "a.txt", parent: "My Drive" })],
       liveSearchResults: null,
-      starredItems: null,
       starred: {},
       view: { type: "uploads" } as const,
       currentUsername: "demo",
-      operations: {},
       uploadFiles,
     };
     expect(filterDriveVisibleItems({ ...args, searchQuery: "" }).map((f) => f.id)).toEqual([
@@ -134,28 +124,26 @@ describe("filterDriveVisibleItems", () => {
 describe("filterDriveVisibleItems All Files", () => {
   const base = {
     liveSearchResults: null,
-    starredItems: null,
     starred: {},
     view: { type: "all" } as const,
     currentUsername: "demo",
   };
 
-  it("lists the index rows across drives, filtered by the search box", () => {
-    const allItems = [
+  it("lists the tree rows across drives, filtered by the search box", () => {
+    const viewItems = [
       sampleFile({ id: "a", title: "Alpha.md", parent: "My Drive/Projects" }),
       sampleFile({ id: "b", title: "Budget.xlsx", parent: "Groups/team" }),
     ];
     const visible = filterDriveVisibleItems({
       ...base,
       files: [],
-      allItems,
+      viewItems,
       searchQuery: "budget",
-      operations: {},
     });
     expect(visible.map((file) => file.id)).toEqual(["b"]);
   });
 
-  it("without an index lists every loaded file, never folders or trash", () => {
+  it("without a tree lists every loaded file, never folders or trash", () => {
     const files = [
       sampleFile({ id: "a", parent: "My Drive/Projects" }),
       sampleFile({ id: "dir", kind: "folder", parent: "My Drive" }),
@@ -165,10 +153,22 @@ describe("filterDriveVisibleItems All Files", () => {
     const visible = filterDriveVisibleItems({
       ...base,
       files,
-      allItems: null,
+      viewItems: null,
       searchQuery: "",
-      operations: undefined,
     });
     expect(visible.map((file) => file.id)).toEqual(["a", "b"]);
+  });
+
+  it("drops an unstarred row from the Starred tree rows at once", () => {
+    const viewItems = [sampleFile({ id: "a" }), sampleFile({ id: "b" })];
+    const visible = filterDriveVisibleItems({
+      ...base,
+      view: { type: "starred" },
+      starred: { a: true, b: false },
+      files: [],
+      viewItems,
+      searchQuery: "",
+    });
+    expect(visible.map((file) => file.id)).toEqual(["a"]);
   });
 });

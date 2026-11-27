@@ -121,7 +121,7 @@ describe("useFileTreeView", () => {
     expect((await settled(prefix.result)).status).toBe("not-available");
   });
 
-  it("after a per-folder crawl, only the roots it queued are known; Trash and Shared are not synced", async () => {
+  it("after a per-folder crawl, only the roots it queued are known, plus Trash and Shared", async () => {
     // As crawlFolders leaves it: no roots map, no firstSyncDone, the queued root
     // paths, last pass "crawl".
     await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
@@ -138,11 +138,18 @@ describe("useFileTreeView", () => {
       { kind: "folder", path: `users/${username}/Never` },
       { kind: "folder", path: "groups/other" },
       { kind: "prefix", path: "groups/other" },
-      { kind: "trash" },
-      { kind: "shared" },
     ] as const) {
       const { result } = render(view);
       expect((await settled(result)).status, JSON.stringify(view)).toBe("not-available");
+    }
+    // The crawl stores each root's `.Trash` and the share roots: empty is empty.
+    for (const view of [{ kind: "trash" }, { kind: "shared" }] as const) {
+      const { result } = render(view);
+      expect(await settled(result), view.kind).toEqual({
+        rows: [],
+        status: "ready",
+        settled: true,
+      });
     }
 
     // The crawl's rows are complete for what it lists: All files is ready, never an endless first-sync.

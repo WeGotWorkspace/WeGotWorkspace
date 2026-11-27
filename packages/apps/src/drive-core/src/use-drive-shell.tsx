@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { buildDriveViewBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
 import {
@@ -12,8 +12,9 @@ import {
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
-import { useDriveFolderListingSync } from "@/drive-core/src/use-drive-folder-listing-sync";
-import { useDriveAllFiles } from "@/drive-core/src/use-drive-all-files";
+import { useDriveServerFolder } from "@/drive-core/src/use-drive-server-folder";
+import { useDriveTreeRows, type DriveViewState } from "@/drive-core/src/use-drive-tree-rows";
+import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 import {
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
@@ -23,11 +24,8 @@ import {
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
 import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
-import {
-  driveStarredPathMap,
-  fetchDriveStarredListing,
-} from "@/drive-core/src/drive-starred-listing";
-import { mapDriveSharedWithMeEntries } from "@/drive-core/src/drive-shared-listing";
+import { driveStarredPathMap } from "@/drive-core/src/drive-starred-listing";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import type {
   DriveAPIOperations,
   DriveShareOperations,
@@ -56,7 +54,6 @@ export function useDriveShell({
   data,
   session,
   operations,
-  shareOperations,
   listLoading = false,
   view: controlledView,
   onViewChange,
@@ -83,35 +80,17 @@ export function useDriveShell({
   const [searchQuery, setSearchQuery] = useState("");
   const [liveSearchResults, setLiveSearchResults] = useState<DriveFile[] | null>(null);
   const [starred, setStarred] = useState<Record<string, boolean>>({});
-  const [starredItems, setStarredItems] = useState<DriveFile[] | null>(null);
-  const [sharedItems, setSharedItems] = useState<DriveFile[] | null>(null);
   const [knownGroupRoots, setKnownGroupRoots] = useState<DriveGroupRoot[]>([]);
   const [groupDirectory, setGroupDirectory] = useState<
     readonly { id: string; displayName: string }[]
   >([]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const syncedFolderPathRef = useRef<string | null>(null);
-  const pendingFolderRefetchRef = useRef(false);
   const starredLoadVersionRef = useRef(0);
-  const sharedLoadVersionRef = useRef(0);
-  const [hydratedFolderPath, setHydratedFolderPath] = useState<string | null>(null);
+  const { online } = useConnectivity();
+  /** Members read every view from the device's file tree; guests and mocks have none. */
+  const treeEnabled = operations?.localTree === true;
 
   const folderViewPath = view.type === "folder" ? view.path : null;
-
-  useLayoutEffect(() => {
-    if (!operations || folderViewPath === null || listLoading || !currentUsername.trim()) {
-      return;
-    }
-    const cwdUi = uiPathFromApiPath(data.cwd, currentUsername);
-    if (folderViewPath !== cwdUi) {
-      return;
-    }
-    if (pendingFolderRefetchRef.current) {
-      return;
-    }
-    syncedFolderPathRef.current = folderViewPath;
-    setHydratedFolderPath(folderViewPath);
-  }, [currentUsername, data.cwd, folderViewPath, listLoading, operations]);
 
   useEffect(() => {
     if (!operations) return;
@@ -173,51 +152,58 @@ export function useDriveShell({
     [labeledGroupRoots],
   );
 
+  // The boot listing: guests and mocks paint it; an uncontrolled shell opens its folder.
+  const bootFolderPath =
+    operations && !listLoading && currentUsername.trim()
+      ? uiPathFromApiPath(data.cwd, currentUsername)
+      : null;
+  // Latest values: a caller's fresh callback each render must not repaint the boot listing.
+  const bootViewRef = useRef({ commitView, isViewControlled, inFolder: folderViewPath !== null });
+  bootViewRef.current = { commitView, isViewControlled, inFolder: folderViewPath !== null };
   useEffect(() => {
-    if (!operations || listLoading || !currentUsername.trim()) return;
-    if (folderViewPath === null || pendingFolderRefetchRef.current) return;
-    const cwdPath = uiPathFromApiPath(data.cwd, currentUsername);
-    if (isViewControlled && folderViewPath !== cwdPath) {
-      return;
+    if (!operations || bootFolderPath === null) return;
+    if (!treeEnabled) setFiles(mapDriveListingEntries(data, currentUsername));
+    const latest = bootViewRef.current;
+    if (!latest.isViewControlled && latest.inFolder) {
+      latest.commitView({ type: "folder", path: bootFolderPath });
     }
-    setFiles(mapDriveListingEntries(data, currentUsername));
-    syncedFolderPathRef.current = folderViewPath ?? cwdPath;
-    setHydratedFolderPath(cwdPath);
-    if (!isViewControlled) {
-      commitView({ type: "folder", path: cwdPath });
-    }
-  }, [
-    commitView,
-    currentUsername,
-    data,
-    folderViewPath,
-    isViewControlled,
-    listLoading,
-    operations,
-  ]);
+  }, [bootFolderPath, currentUsername, data, operations, treeEnabled]);
 
-  const { folderListingError, retryFolderListing } = useDriveFolderListingSync({
+  const serverFolder = useDriveServerFolder({
+    enabled: !treeEnabled,
     operations,
     folderViewPath,
-    listLoading,
     currentUsername,
-    groupRootNamesRef,
-    syncedFolderPathRef,
-    pendingFolderRefetchRef,
+    groupRootNames,
     setFiles,
-    setHydratedFolderPath,
     commitView,
     showError,
+    bootFolderPath,
+  });
+
+  useDriveUploadListingRefresh({
+    operations,
+    folderViewPath,
+    currentUsername,
+    groupRootNamesRef,
+    setFiles,
     listing: data,
+  });
+
+  const searchText = searchQuery.trim();
+  const treeRows = useDriveTreeRows({
+    enabled: treeEnabled,
+    view,
+    currentUsername,
+    groupRootNames,
+    rootLabels: folderPickerRootLabels,
+    offlineSearchQuery: online ? "" : searchText,
+    online,
+    setFiles,
   });
 
   const selectView = useCallback(
     (v: ViewKey) => {
-      if (v.type === "folder") {
-        pendingFolderRefetchRef.current = true;
-        syncedFolderPathRef.current = null;
-        setHydratedFolderPath(null);
-      }
       commitView(v);
       setLiveSearchResults(null);
       dismissSidebarOverlay(() => setSidebarOpen(false));
@@ -229,22 +215,29 @@ export function useDriveShell({
     if (!operations) return;
     const requestVersion = starredLoadVersionRef.current + 1;
     starredLoadVersionRef.current = requestVersion;
-    void fetchDriveStarredListing(operations, currentUsername)
-      .then(({ paths, files }) => {
+    // The hybrid operations store the star set on the device; the Starred view reads it there.
+    void operations
+      .listStars()
+      .then((paths) => {
         if (requestVersion !== starredLoadVersionRef.current) return;
         setStarred(driveStarredPathMap(paths));
-        setStarredItems(files);
       })
       .catch((error: unknown) => {
         if (requestVersion !== starredLoadVersionRef.current) return;
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
-  }, [operations, currentUsername, showError]);
+  }, [operations, showError]);
 
+  const viewKey = JSON.stringify(view);
+  // Online search stays a server call (content search); offline the tree filters names.
+  const serverSearch = Boolean(operations) && !(treeEnabled && !online);
   useEffect(() => {
-    if (!operations) return;
-    const query = searchQuery.trim();
+    if (!operations || !serverSearch) {
+      setLiveSearchResults(null);
+      return;
+    }
+    const query = searchText;
     if (!query) {
       setLiveSearchResults(null);
       return;
@@ -271,66 +264,37 @@ export function useDriveShell({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [operations, searchQuery, currentUsername, showError]);
+    // A view change clears the results: search again so the new view settles.
+  }, [operations, serverSearch, searchText, currentUsername, showError, viewKey]);
 
   useEffect(() => {
-    if (!operations) {
-      setStarredItems(null);
-      return;
-    }
+    if (!operations) return;
     if ((data.user.role as string) === "guest") {
       setStarred((previous) => (Object.keys(previous).length === 0 ? previous : {}));
-      setStarredItems((previous) => (previous?.length === 0 ? previous : []));
       return;
     }
     reloadStarredFromServer();
   }, [data.user.role, operations, currentUsername, reloadStarredFromServer]);
 
-  useEffect(() => {
-    if (!shareOperations) {
-      setSharedItems(null);
-      return;
-    }
-    if (view.type !== "shared") return;
-
-    const requestVersion = sharedLoadVersionRef.current + 1;
-    sharedLoadVersionRef.current = requestVersion;
-    const controller = new AbortController();
-
-    void shareOperations
-      .listSharedWithMe({ signal: controller.signal })
-      .then((entries) => {
-        if (requestVersion !== sharedLoadVersionRef.current) return;
-        setSharedItems(mapDriveSharedWithMeEntries(entries, currentUsername));
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted || requestVersion !== sharedLoadVersionRef.current) return;
-        setSharedItems([]);
-        const message = error instanceof Error ? error.message : String(error);
-        showError(message);
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [shareOperations, view.type, currentUsername, showError]);
-
-  const allFiles = useDriveAllFiles({
-    operations,
-    view,
-    currentUsername,
-    rootLabels: folderPickerRootLabels,
-    showError,
-  });
-
   const inTrashView = view.type === "folder" && view.path === DRIVE_TRASH_UI_PATH;
   const isUnderTrash = isDriveUnderTrash;
 
-  const folderListingPending = useMemo(() => {
-    if (!operations || view.type !== "folder") return false;
-    if (listLoading || !currentUsername.trim()) return true;
-    return hydratedFolderPath !== view.path;
-  }, [currentUsername, hydratedFolderPath, listLoading, operations, view]);
+  // What the pane shows instead of rows (`DriveViewState`); null shows the empty
+  // state. A search that is not ready never reads as "no hits".
+  const serverFolderState: DriveViewState = serverFolder.failed
+    ? "error"
+    : (listLoading && view.type === "folder") || serverFolder.pending
+      ? "first-sync"
+      : null;
+  const ownState: DriveViewState = treeRows.viewState ?? serverFolderState;
+  // An online search shows the view's own state until the server answers: a
+  // pending or failed search never reads as "no hits".
+  const searchState: DriveViewState = serverSearch
+    ? liveSearchResults === null
+      ? (ownState ?? "pending")
+      : null
+    : treeRows.offlineSearchState;
+  const viewState: DriveViewState = searchText ? searchState : ownState;
 
   const breadcrumbs = useMemo(
     () => buildDriveViewBreadcrumbs(view, driveLabels, folderPickerRootLabels),
@@ -359,12 +323,14 @@ export function useDriveShell({
     searchQuery,
     setSearchQuery,
     searchInputRef,
-    liveSearchResults,
+    liveSearchResults: treeRows.offlineSearchResults ?? liveSearchResults,
     starred,
     setStarred,
-    starredItems,
-    sharedItems,
-    ...allFiles,
+    /** Rows of the flat views (All Files, Recent, Starred, Shared) from the tree; null otherwise. */
+    viewItems: treeRows.viewItems,
+    /** A write shows on the flat views at once; the next read of the tree replaces it. */
+    patchAllFiles: treeRows.patchViewItems,
+    treeActive: treeRows.treeActive,
     knownGroupRoots,
     groupRootNames,
     sidebarGroupPaths,
@@ -373,9 +339,9 @@ export function useDriveShell({
     breadcrumbs,
     viewLabel,
     viewResetKey,
-    folderListingPending,
-    folderListingError,
-    retryFolderListing,
+    viewState,
+    /** Try the failed server folder listing again (sessions without a local tree). */
+    retryFolder: serverFolder.retry,
     inTrashView,
     isUnderTrash,
     listLoading,

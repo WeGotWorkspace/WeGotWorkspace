@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
-import { driveRowsById } from "@/drive-core/src/use-drive-all-files";
+import { driveRowsById, patchAllFilesRows } from "@/drive-core/src/drive-view-rows";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
@@ -20,6 +20,7 @@ import { useDriveDeleteShortcut } from "@/drive-core/src/use-drive-delete-shortc
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
+import type { DriveUIData } from "@/lib/files/drive-types";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
@@ -61,6 +62,49 @@ export type UseDriveMutationsArgs = {
   list: DriveListState;
   onOpenDocsFile?: (apiPath: string) => void;
 };
+
+type ServerListingTarget = Pick<DriveShellState, "setFiles" | "commitView" | "currentUsername"> & {
+  operations: NonNullable<DriveShellState["operations"]>;
+};
+
+/**
+ * Show the listing a server write answered with. On the local tree the write
+ * already updated the rows and the open view re-reads them; that listing is the
+ * live client's bootstrap folder, not the open one, so it is ignored (#2063 C3).
+ */
+function showServerListing(target: ServerListingTarget, nextData: DriveUIData): void {
+  if (target.operations.localTree) return;
+  const { currentUsername } = target;
+  target.setFiles(
+    nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
+  );
+  target.commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+}
+
+/** Create the folder on the server: its listing replaces the optimistic row, a failure removes it. */
+function createFolderOnServer(input: {
+  operations: NonNullable<DriveShellState["operations"]>;
+  cwd: string;
+  name: string;
+  optimisticId: string;
+  currentUsername: string;
+  setFiles: DriveShellState["setFiles"];
+  commitView: DriveShellState["commitView"];
+  showError: (message: string) => void;
+}): void {
+  const { setFiles } = input;
+  void input.operations
+    .createFolder({ cwd: input.cwd, name: input.name })
+    .then((nextData) => {
+      // On the local tree the operation filed the new row; the open view re-reads it.
+      if (input.operations.localTree) setFiles((p) => p.filter((f) => f.id !== input.optimisticId));
+      showServerListing(input, nextData);
+    })
+    .catch((error: unknown) => {
+      setFiles((p) => p.filter((file) => file.id !== input.optimisticId));
+      input.showError(error instanceof Error ? error.message : String(error));
+    });
+}
 
 export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutationsArgs) {
   const { show, showError } = useAppToast();
@@ -244,9 +288,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       return;
     }
     const previousName = file.title;
-    setFiles((prev) =>
-      prev.map((item) => (item.id === file.id ? { ...item, title: nextName } : item)),
-    );
+    const rename = (rows: DriveFile[]) =>
+      rows.map((item) => (item.id === file.id ? { ...item, title: nextName } : item));
+    setFiles(rename);
+    const restoreFlat = patchAllFilesRows(view, shell.patchAllFiles, rename);
     resetRenameDialog();
     show(`Renamed to “${nextName}”`, { icon: <Pencil className="size-4" /> });
     if (!operations) return;
@@ -258,16 +303,14 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         from: fromPath,
         to: nextName,
       })
-      .then((nextData) => {
-        setFiles(
-          nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-        );
-        commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
-      })
+      .then((nextData) =>
+        showServerListing({ operations, setFiles, commitView, currentUsername }, nextData),
+      )
       .catch((error: unknown) => {
         setFiles((prev) =>
           prev.map((item) => (item.id === file.id ? { ...item, title: previousName } : item)),
         );
+        restoreFlat();
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
@@ -288,7 +331,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     const v = name.trim();
     if (!v) return;
     const targetParent = destinationPath;
-    setFiles((p) => [optimisticDriveFolder(v, targetParent), ...p]);
+    const optimistic = optimisticDriveFolder(v, targetParent);
+    setFiles((p) => [optimistic, ...p]);
     // The new folder opens where it lives (All Files, or another folder picked).
     if (view.type !== "folder" || view.path !== targetParent) {
       commitView({ type: "folder", path: targetParent });
@@ -296,21 +340,16 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     show(`Folder “${v}” created`, { icon: <FolderPlus className="size-4" /> });
     setNewFolderDialogOpen(false);
     if (operations) {
-      void operations
-        .createFolder({
-          cwd: apiPathFromUiPath(targetParent, currentUsername, groupRootNames),
-          name: v,
-        })
-        .then((nextData) => {
-          setFiles(
-            nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-          );
-          commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
-        })
-        .catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : String(error);
-          showError(message);
-        });
+      createFolderOnServer({
+        operations,
+        cwd: apiPathFromUiPath(targetParent, currentUsername, groupRootNames),
+        name: v,
+        optimisticId: optimistic.id,
+        currentUsername,
+        setFiles,
+        commitView,
+        showError,
+      });
     }
   };
 
@@ -342,10 +381,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         void operations
           .createFile({ cwd, name: trimmed })
           .then((nextData) => {
-            setFiles(
-              nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-            );
-            commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+            showServerListing({ operations, setFiles, commitView, currentUsername }, nextData);
             setMarkdownDialogOpen(false);
             setMarkdownDialogSubmitting(false);
             onOpenDocsFile(apiPath);

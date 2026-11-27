@@ -39,6 +39,8 @@ const fileNodeChanges = vi.hoisted(() => vi.fn());
 const getFileNodes = vi.hoisted(() => vi.fn());
 const syncDriveMetadataTree = vi.hoisted(() => vi.fn());
 
+// The crawl fallback reads the share roots; these tests have none.
+vi.mock("@/lib/api/wgw/drive-shares", () => ({ fetchDriveSharedWithMe: async () => [] }));
 vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => true,
 }));

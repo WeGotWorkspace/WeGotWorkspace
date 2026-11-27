@@ -16,45 +16,55 @@ function matchesLocalSearch(file: DriveFile, query: string): boolean {
   return hay.includes(query);
 }
 
+function foldersFirst(items: readonly DriveFile[]): DriveFile[] {
+  return [...items].sort((a, b) => {
+    if (a.kind === "folder" && b.kind !== "folder") return -1;
+    if (b.kind === "folder" && a.kind !== "folder") return 1;
+    return 0;
+  });
+}
+
+/**
+ * Rows the main pane shows. Members' flat views (All Files, Recent, Starred,
+ * Shared) come from the device's file tree as `viewItems`; folder and Trash
+ * rows are `files`. A search shows its hits instead (server online, tree
+ * offline). Without a tree (guests, mocks) the views filter `files`.
+ */
 export function filterDriveVisibleItems({
   files,
   liveSearchResults,
-  starredItems,
-  sharedItems,
-  allItems,
+  viewItems,
   starred,
   view,
   searchQuery,
   currentUsername,
-  operations,
   uploadFiles,
 }: {
   files: DriveFile[];
   liveSearchResults: DriveFile[] | null;
-  starredItems: DriveFile[] | null;
-  sharedItems?: DriveFile[] | null;
-  /** All Files rows from the index; null lists the loaded files instead. */
-  allItems?: readonly DriveFile[] | null;
+  /** Rows of a flat view from the file tree; null for folders and without a tree. */
+  viewItems?: readonly DriveFile[] | null;
   starred: Record<string, boolean>;
   view: ViewKey;
   searchQuery: string;
   currentUsername: string;
-  operations: unknown;
   /** Rows of the Uploads view (every queued, uploading, and failed file). */
   uploadFiles?: readonly DriveFile[] | null;
 }): DriveFile[] {
   const q = searchQuery.trim().toLowerCase();
   // The Uploads view lists the queue across folders, never folder rows or server search.
   if (view.type === "uploads") return (uploadFiles ?? []).filter((f) => matchesLocalSearch(f, q));
-  if (view.type === "all" && allItems && !liveSearchResults) {
-    return allItems.filter((f) => matchesLocalSearch(f, q));
+  if (liveSearchResults)
+    return foldersFirst(liveSearchResults.filter((f) => matchesLocalSearch(f, q)));
+  if (viewItems) {
+    // An unstar shows at once, before the star set on the device changes.
+    const rows =
+      view.type === "starred" ? viewItems.filter((f) => starred[f.id] !== false) : viewItems;
+    return foldersFirst(rows.filter((f) => matchesLocalSearch(f, q)));
   }
-  const sourceFiles = liveSearchResults ?? files;
-  const starredSourceFiles = operations ? (starredItems ?? []) : sourceFiles;
-  const filtered = sourceFiles.filter((f) => {
+  const filtered = files.filter((f) => {
     let inView = false;
-    if (liveSearchResults) inView = true;
-    else if (view.type === "folder")
+    if (view.type === "folder")
       inView =
         f.parent === view.path &&
         !(
@@ -68,31 +78,13 @@ export function filterDriveVisibleItems({
     else if (view.type === "recent" || view.type === "all")
       inView = !isDriveUnderTrash(f.parent) && f.kind !== "folder";
     else if (view.type === "starred") {
-      if (operations) return false;
       inView = !!starred[f.id] && !isDriveUnderTrash(f.parent);
     } else if (view.type === "shared") {
-      if (operations) return false;
       inView =
         f.parent === SHARED_WITH_ME_UI_ROOT || f.parent.startsWith(`${SHARED_WITH_ME_UI_ROOT}/`);
     }
     if (!inView) return false;
     return matchesLocalSearch(f, q);
   });
-  const starredFiltered =
-    view.type === "starred" && operations
-      ? starredSourceFiles.filter((f) => {
-          if (!starred[f.id] || isDriveUnderTrash(f.parent)) return false;
-          return matchesLocalSearch(f, q);
-        })
-      : null;
-  const sharedFiltered =
-    view.type === "shared" && operations
-      ? (sharedItems ?? []).filter((f) => matchesLocalSearch(f, q))
-      : null;
-  const items = sharedFiltered ?? starredFiltered ?? filtered;
-  return items.sort((a, b) => {
-    if (a.kind === "folder" && b.kind !== "folder") return -1;
-    if (b.kind === "folder" && a.kind !== "folder") return 1;
-    return 0;
-  });
+  return foldersFirst(filtered);
 }

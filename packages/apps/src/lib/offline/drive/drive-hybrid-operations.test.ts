@@ -10,6 +10,7 @@ import {
   upsertDriveEntry,
   writeDriveBootstrapToCache,
 } from "@/lib/offline/drive/drive-directory-offline-store";
+import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import { DRIVE_DOMAIN, driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import type { DriveAppBootstrap } from "@/lib/files/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
@@ -25,7 +26,13 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
 vi.mock("@/lib/api/wgw/drive", () => ({
   createWgwDriveOperations: vi.fn(() => ({
     renameItem: vi.fn(),
+    deleteItems: vi.fn(async () => ({
+      user: { username: "alice", name: "alice", role: "user", roots: [] },
+      cwd: "/users/alice",
+      directory: { location: "/users/alice", files: [] },
+    })),
     createFolder: vi.fn(),
+    createFile: vi.fn(),
     listAllDirectoryEntries: vi.fn(async () => []),
     uploadFiles: vi.fn(),
     downloadFile: vi.fn(),
@@ -97,6 +104,161 @@ describe("createHybridDriveOperations offline rename", () => {
     const outbox = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.op).toBe("rename");
+  });
+});
+
+describe("createHybridDriveOperations writes and the file tree (#2063 C3)", () => {
+  const db = () => offlineDbForAccount(offlineAccountKeyFromUsername(username));
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await db().outbox.clear();
+    await driveEntriesTable(db()).clear();
+    await db().meta.clear();
+    await writeDriveBootstrapToCache(username, bootstrap());
+  });
+
+  it("moves a trashed row under Trash, so the folder and Trash both show it at once", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(username, entry("/users/alice/plan.md", "plan.md"), "home");
+    const heard = vi.fn();
+    const stop = subscribeDriveRemoteChanges(username, heard);
+
+    await createHybridDriveOperations(username, bootstrap()).renameItem({
+      from: "/users/alice/plan.md",
+      destination: "/users/alice/.Trash",
+      to: "plan.md",
+    });
+    stop();
+
+    expect(await driveEntriesTable(db()).get("users/alice/plan.md")).toBeUndefined();
+    expect((await driveEntriesTable(db()).get("users/alice/.Trash/plan.md"))?.area).toBe("trash");
+    expect(heard).toHaveBeenCalled();
+  });
+
+  it("offline, a second file with a title already in Trash gets a free name there", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(username, entry("/users/alice/.Trash/plan.md", "plan.md"), "trash");
+    await upsertDriveEntry(username, entry("/users/alice/Work/plan.md", "plan.md", 7), "home");
+
+    await createHybridDriveOperations(username, bootstrap()).renameItem({
+      from: "/users/alice/Work/plan.md",
+      destination: "/users/alice/.Trash",
+      to: "plan.md",
+    });
+
+    const inTrash = await driveEntriesTable(db())
+      .where("parentPath")
+      .equals("users/alice/.Trash")
+      .toArray();
+    expect(inTrash).toHaveLength(2);
+    expect((await driveEntriesTable(db()).get("users/alice/.Trash/plan.md"))?.modifiedAt).toBe(1);
+  });
+
+  it("offline, a second dotfile already in Trash gets a free name there too", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(
+      username,
+      { ...entry("/users/alice/.Trash/.env", ".env"), nodeId: "n1" },
+      "trash",
+    );
+    await upsertDriveEntry(username, entry("/users/alice/Work/.env", ".env", 7), "home");
+
+    await createHybridDriveOperations(username, bootstrap()).renameItem({
+      from: "/users/alice/Work/.env",
+      destination: "/users/alice/.Trash",
+      to: ".env",
+    });
+
+    const inTrash = await driveEntriesTable(db())
+      .where("parentPath")
+      .equals("users/alice/.Trash")
+      .toArray();
+    expect(inTrash).toHaveLength(2);
+    expect((await driveEntriesTable(db()).get("users/alice/.Trash/.env"))?.nodeId).toBe("n1");
+  });
+
+  it("a create that meets a name already there leaves that row as it is", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await upsertDriveEntry(
+      username,
+      { ...entry("/users/alice/notes.md", "notes.md"), nodeId: "n1", size: 12 },
+      "home",
+    );
+    await upsertDriveEntry(
+      username,
+      { ...entry("/groups/team/Plans", "Plans"), type: "dir", nodeId: "n2" },
+      "group",
+    );
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await ops.createFile({ cwd: "/users/alice", name: "notes.md" });
+    await ops.createFolder({ cwd: "/groups/team", name: "Plans" });
+
+    const file = await driveEntriesTable(db()).get("users/alice/notes.md");
+    expect(file?.nodeId).toBe("n1");
+    expect(JSON.parse(file!.data).size).toBe(12);
+    expect((await driveEntriesTable(db()).get("groups/team/Plans"))?.nodeId).toBe("n2");
+  });
+
+  it("a rename keeps the row's view indexes in line with its new name", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertDriveEntry(username, entry("/users/alice/plan.md", "plan.md"), "home");
+
+    await createHybridDriveOperations(username, bootstrap()).renameItem({
+      from: "/users/alice/plan.md",
+      destination,
+      to: "plan.txt",
+    });
+
+    const moved = await driveEntriesTable(db()).get("users/alice/plan.txt");
+    expect(moved).toMatchObject({ area: "home", ext: "txt" });
+  });
+
+  it("a created folder or file joins the tree under its parent and tells the open views", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await upsertDriveEntry(username, entry("/groups/team/Plans", "Plans"), "group");
+    const heard = vi.fn();
+    const stop = subscribeDriveRemoteChanges(username, heard);
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await ops.createFolder({ cwd: "/groups/team/Plans", name: "Q3" });
+    await ops.createFile({ cwd: "/users/alice", name: "notes.md" });
+    stop();
+
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      createFolder: ReturnType<typeof vi.fn>;
+    };
+    expect(live.createFolder).toHaveBeenCalledWith(
+      { cwd: "/groups/team/Plans", name: "Q3" },
+      expect.objectContaining({ refreshState: false }),
+    );
+    expect(await driveEntriesTable(db()).get("groups/team/Plans/Q3")).toMatchObject({
+      type: "dir",
+      area: "group",
+      parentPath: "groups/team/Plans",
+    });
+    expect(await driveEntriesTable(db()).get("users/alice/notes.md")).toMatchObject({
+      type: "file",
+      area: "home",
+      ext: "md",
+    });
+    expect(heard).toHaveBeenCalledTimes(2);
+  });
+
+  it("a permanent delete removes the rows from the tree and tells the open views", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await upsertDriveEntry(username, entry("/users/alice/.Trash/old.md", "old.md"), "trash");
+    const heard = vi.fn();
+    const stop = subscribeDriveRemoteChanges(username, heard);
+
+    await createHybridDriveOperations(username, bootstrap()).deleteItems([
+      "/users/alice/.Trash/old.md",
+    ]);
+    stop();
+
+    expect(await driveEntriesTable(db()).get("users/alice/.Trash/old.md")).toBeUndefined();
+    expect(heard).toHaveBeenCalled();
   });
 });
 
