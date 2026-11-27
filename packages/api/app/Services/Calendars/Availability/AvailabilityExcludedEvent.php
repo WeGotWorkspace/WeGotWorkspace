@@ -43,7 +43,7 @@ final class AvailabilityExcludedEvent
         }
 
         $editable = $this->calendars->instanceMayWrite($located['instance'])
-            && ! $this->calendars->isSubscriptionCalendar($viewer, $located['calendarUri']);
+            && ! $this->calendars->isSubscriptionInstance($located['instance']);
 
         return $editable || $this->takesPart($viewer, $event) ? $uid : null;
     }

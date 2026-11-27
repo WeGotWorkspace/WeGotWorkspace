@@ -53,6 +53,17 @@ return new class extends WgwMigration
             return;
         }
 
+        // The old key is unique on (username, calendar_uri). A personal and a Team subscription of
+        // one member can share a uri, and nothing here may pick which row to drop.
+        $clash = DB::connection('wgw')->table('calendar_subscriptions')
+            ->select('username', 'calendar_uri')
+            ->groupBy('username', 'calendar_uri')
+            ->havingRaw('COUNT(*) > 1')
+            ->exists();
+        if ($clash) {
+            throw new RuntimeException('Cannot restore the old calendar_subscriptions key: a member has two subscriptions with the same calendar uri. Remove one first.');
+        }
+
         $this->wgw()->table('calendar_subscriptions', function (Blueprint $table): void {
             $table->dropUnique(self::NEW_KEY);
             $table->unique(self::OLD_KEY);

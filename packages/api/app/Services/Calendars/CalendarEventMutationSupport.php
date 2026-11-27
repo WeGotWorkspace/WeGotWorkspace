@@ -46,7 +46,7 @@ final class CalendarEventMutationSupport
     public function create(string $username, array $payload): array
     {
         $instance = $this->resolveCalendarFromPayload($username, $payload);
-        $this->assertAcceptsEventWrites($username, $instance);
+        $this->assertAcceptsEventWrites($instance);
         $this->calendars->assertEventWritable($instance);
 
         return DB::connection('wgw')->transaction(function () use ($username, $payload, $instance): array {
@@ -294,7 +294,7 @@ final class CalendarEventMutationSupport
             }
 
             $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
-            $this->assertAcceptsEventWrites($username, $located['instance']);
+            $this->assertAcceptsEventWrites($located['instance']);
 
             return $this->finishDelete($username, $located);
         });
@@ -384,7 +384,7 @@ final class CalendarEventMutationSupport
             $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
 
             $instance = $located['instance'];
-            $this->assertAcceptsEventWrites($username, $instance);
+            $this->assertAcceptsEventWrites($instance);
             $this->calendars->assertEventWritable($instance);
             $object = $located['object'];
             $eventUri = (string) $object->uri;
@@ -503,7 +503,7 @@ final class CalendarEventMutationSupport
         if ($target === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
         }
-        $this->assertAcceptsEventWrites($username, $target);
+        $this->assertAcceptsEventWrites($target);
 
         return $target;
     }
@@ -516,9 +516,9 @@ final class CalendarEventMutationSupport
         }
     }
 
-    private function assertAcceptsEventWrites(string $username, CalendarInstance $instance): void
+    private function assertAcceptsEventWrites(CalendarInstance $instance): void
     {
-        if ($this->calendars->isSubscriptionCalendar($username, $this->calendars->apiIdForInstance($instance))) {
+        if ($this->calendars->isSubscriptionInstance($instance)) {
             throw new ApiHttpException(403, 'Subscription calendars are read-only.', 'forbidden');
         }
     }
