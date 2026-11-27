@@ -16,7 +16,7 @@ import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { FileTreeView } from "@/lib/files/tree-view/tree-view-predicates";
 import type { FileTreeViewStatus } from "@/lib/files/tree-view/tree-view-query";
 import { useFileTreeView, type FileTreeViewState } from "@/lib/files/tree-view/use-file-tree-view";
-import { readDriveTreeFirstSyncDone } from "@/lib/offline/drive/drive-tree-sync";
+import { readDriveFirstPassDone } from "@/lib/offline/drive/drive-first-sync-retry";
 
 /** What the pane shows instead of rows. `null`: the rows (or the empty state). */
 export type DriveViewState =
@@ -156,7 +156,7 @@ export function useDriveTreeRows({
   useEffect(() => {
     if (!askFirstSync) return undefined;
     let current = true;
-    void readDriveTreeFirstSyncDone(username).then((done) => {
+    void readDriveFirstPassDone(username).then((done) => {
       if (current) setFirstSync({ username, done });
     });
     return () => {

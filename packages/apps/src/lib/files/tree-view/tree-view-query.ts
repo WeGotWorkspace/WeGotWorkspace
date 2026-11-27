@@ -101,17 +101,19 @@ async function readViewRows(
  * How much the device knows about a view: `syncing` before the first complete
  * pass, `complete` after it, and `unknown` for a folder or prefix view whose
  * folder the finished pass does not hold (a deep link to a path that does not
- * exist or is not visible to the person), and for Trash and Shared after a
- * per-folder crawl, which does not store them.
+ * exist or is not visible to the person).
  */
 export type FileTreeViewKnowledge = "syncing" | "complete" | "unknown";
 
 async function viewKnowledge(username: string, view: FileTreeView): Promise<FileTreeViewKnowledge> {
-  if (!(await readDriveTreeFirstSyncDone(username))) return "syncing";
-  if (view.kind === "trash" || view.kind === "shared") {
-    // The per-folder crawl stores neither `.Trash` nor share roots.
-    return (await readDriveTreeLastPass(username)) === "crawl" ? "unknown" : "complete";
-  }
+  const [firstSyncDone, lastPass] = await Promise.all([
+    readDriveTreeFirstSyncDone(username),
+    readDriveTreeLastPass(username),
+  ]);
+  // A finished per-folder crawl leaves `firstSyncDone` unset (a keyset server
+  // still walks the tree later), but its rows are complete for what it lists.
+  if (!firstSyncDone && lastPass !== "crawl") return "syncing";
+  // The per-folder crawl also stores each root's `.Trash` and the share roots.
   if (view.kind !== "folder" && view.kind !== "prefix") return "complete";
   const path = treeRowPath(view.path);
   const [folderRow, roots, crawlRoots] = await Promise.all([

@@ -113,9 +113,12 @@ async function applyStarredPathChanges(
     const move = moves.find(({ from }) => key === from || key.startsWith(`${from}/`));
     return move ? `/${move.to}${key.slice(move.from.length)}` : path;
   });
+  // A destroyed path some move landed on is that moved Doc's star now.
+  const landed = new Set(moves.map(({ to }) => to));
   for (const change of changes) {
     if (change.kind !== "removed") continue;
     const key = docsSourceKey(change.path);
+    if (landed.has(key)) continue;
     paths = paths.filter((path) => docsSourceKey(path) !== key);
   }
   if (paths.length === before.length && paths.every((path, at) => path === before[at])) {

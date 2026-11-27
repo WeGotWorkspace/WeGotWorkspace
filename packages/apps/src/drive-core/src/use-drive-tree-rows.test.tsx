@@ -13,7 +13,9 @@ import { driveEntryRowFromEntry } from "@/lib/offline/drive/drive-directory-offl
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import type { DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
 import {
+  DRIVE_TREE_CRAWL_ROOTS_KEY,
   DRIVE_TREE_FIRST_SYNC_DONE_KEY,
+  DRIVE_TREE_LAST_PASS_KEY,
   DRIVE_TREE_ROOTS_KEY,
 } from "@/lib/offline/drive/drive-tree-sync";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
@@ -211,6 +213,15 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
   it("shows a never-synced folder as not available offline after the first sync, without the hint", async () => {
     connectivity.online = false;
     await finishFirstSync();
+    const { result } = renderShell({ type: "folder", path: "My Drive/Nowhere" });
+
+    await waitFor(() => expect(result.current.viewState).toBe("not-synced"));
+  });
+
+  it("after a finished crawl (no keyset), a never-synced folder offline is not synced, not first-sync", async () => {
+    connectivity.online = false;
+    await writeMeta(user, DRIVE_TREE_LAST_PASS_KEY, "crawl");
+    await writeMeta(user, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify([`/users/${user}`]));
     const { result } = renderShell({ type: "folder", path: "My Drive/Nowhere" });
 
     await waitFor(() => expect(result.current.viewState).toBe("not-synced"));
