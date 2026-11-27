@@ -349,8 +349,9 @@ export function createHybridDriveOperations(
       const from = normalizeApiVirtualPath(input.from);
       let to = input.to;
       if (isTrash) {
-        const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
-        to = resolveFreeName(input.to, trashNames);
+        // Offline the names already in Trash come from the tree, not the server.
+        const inTrash = await readDirectoryEntriesFromCache(username, destination);
+        to = resolveFreeName(input.to, new Set(inTrash.map((entry) => entry.name)));
         const trashed = nextPathAfterRename(from, destination, to);
         await applyOfflineTrashSideEffects(username, from, trashed);
         moveDocsPageSetupOverride(from, trashed);
