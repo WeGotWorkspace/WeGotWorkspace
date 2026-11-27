@@ -29,6 +29,14 @@ export const BLOB_ASSEMBLY_CAPABILITY = "https://wegotworkspace.org/jmap/blob-as
 /** WGW extension (#1500): `expectedBlobId` on FileNode/set update, SetError `versionMismatch`. */
 export const FILENODE_VERSION_CHECK_CAPABILITY =
   "https://wegotworkspace.org/jmap/filenode-version-check";
+/**
+ * WGW extension (#2063 S1): `FileNode/query` takes a `node_id` keyset
+ * (`idAfter`, sort on `id`) and `asOfState`; `FileNode/get` returns `path`.
+ */
+export const FILENODE_TREE_CAPABILITY = "https://wegotworkspace.org/jmap/filenode-tree";
+/** WGW extension (#2063 S3): `FileNode/get` returns `shareFlags` for nodes the caller owns. */
+export const FILENODE_SHARE_FLAGS_CAPABILITY =
+  "https://wegotworkspace.org/jmap/filenode-share-flags";
 /** RFC 9425 Quota/get: one Drive quota per writable root (#1500). */
 export const QUOTA_CAPABILITY = "urn:ietf:params:jmap:quota";
 

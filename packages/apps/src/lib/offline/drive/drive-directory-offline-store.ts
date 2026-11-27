@@ -12,6 +12,13 @@ import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-s
 import type { DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
+import {
+  areaFromCrawledPath,
+  fileExtension,
+  isDotName,
+  isTrashTreePath,
+  type DriveEntryArea,
+} from "@/lib/offline/drive/drive-tree-rows";
 
 const DRIVE_BOOTSTRAP_META_KEY = "drive:bootstrap";
 
@@ -44,27 +51,43 @@ export async function readDriveBootstrapFromCache(
 }
 
 /** The `drive_entries` row for a listing entry. */
-export function driveEntryRowFromEntry(entry: WgwDriveDirectoryEntry): OfflineDriveEntryRow {
+export function driveEntryRowFromEntry(
+  entry: WgwDriveDirectoryEntry,
+  area?: DriveEntryArea,
+): OfflineDriveEntryRow {
   const id = normalizeDriveEntryPath(entry.path);
   const parentPath = normalizeDriveEntryPath(parentAndName(`/${id}`).destination);
   const nodeId = entry.nodeId?.trim();
+  const type = entry.type === "dir" ? "dir" : "file";
   return {
     id,
     parentPath: parentPath || "",
-    type: entry.type === "dir" ? "dir" : "file",
+    type,
     modifiedAt: entry.time ?? 0,
     data: JSON.stringify(entry),
     ...(nodeId ? { nodeId } : {}),
+    ...(type === "file" ? { ext: fileExtension(entry.name || (id.split("/").pop() ?? "")) } : {}),
+    ...(area ? { area } : {}),
   };
 }
 
+/**
+ * Upsert one listing entry. Without `area`, the row keeps the area it had at
+ * this path, or takes its parent folder's: writers other than the tree sync
+ * (operations, uploads, folder listings) do not know it.
+ */
 export async function upsertDriveEntry(
   username: string,
   entry: WgwDriveDirectoryEntry,
+  area?: DriveEntryArea,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = driveEntriesTable(db);
-  const row = driveEntryRowFromEntry(entry);
+  const row = driveEntryRowFromEntry(entry, area);
+  if (!row.area) {
+    const known = (await table.get(row.id))?.area ?? (await table.get(row.parentPath))?.area;
+    if (known) row.area = known;
+  }
   if (row.type !== "dir") {
     await table.put(row);
     return;
@@ -87,6 +110,46 @@ export async function upsertDriveEntry(
       return;
     }
     await table.put(row);
+  });
+}
+
+/**
+ * Upsert many entries in one transaction, with the same rules as
+ * {@link upsertDriveEntry}: a row without `area` keeps the one it had, and a
+ * folder still taking an upload keeps its marker. With `skipOtherNodes`, a path
+ * whose row belongs to another FileNode is left alone (the tree walk writes it
+ * at the end of the pass, after that node's blob and pins have moved).
+ */
+export async function upsertDriveEntriesInBulk(
+  username: string,
+  items: readonly { entry: WgwDriveDirectoryEntry; area?: DriveEntryArea }[],
+  options?: { skipOtherNodes?: boolean },
+): Promise<void> {
+  if (items.length === 0) return;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
+  const uploads = driveUploadItemsTable(db);
+  await db.transaction("rw", table, uploads, async () => {
+    const rows = items.map(({ entry, area }) => driveEntryRowFromEntry(entry, area));
+    const existing = await table.bulkGet(rows.map((row) => row.id));
+    const writes: OfflineDriveEntryRow[] = [];
+    for (const [index, row] of rows.entries()) {
+      const previous = existing[index];
+      if (options?.skipOtherNodes && previous?.nodeId && previous.nodeId !== row.nodeId) continue;
+      if (!row.area && previous?.area) row.area = previous.area;
+      if (
+        row.type === "dir" &&
+        previous?.type === "dir" &&
+        previous.uploadId &&
+        (await uploads.get(previous.uploadId))
+      ) {
+        const { upload } = parseEntryRow(previous);
+        row.uploadId = previous.uploadId;
+        row.data = JSON.stringify({ ...items[index]!.entry, upload });
+      }
+      writes.push(row);
+    }
+    await table.bulkPut(writes);
   });
 }
 
@@ -135,7 +198,8 @@ export async function readDirectoryEntriesFromCache(
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const normalizedParent = normalizeDriveEntryPath(parentPath);
   const rows = await driveEntriesTable(db).where("parentPath").equals(normalizedParent).toArray();
-  return rows.map(parseEntryRow);
+  // The tree also holds `.Trash`; a folder view never lists a dot name.
+  return rows.map(parseEntryRow).filter((entry) => !isDotName(entry.name));
 }
 
 export async function readDriveEntryFromCache(
@@ -180,7 +244,8 @@ export async function migrateDriveEntryPath(
   entry.path = newId.startsWith("/") ? newId : `/${newId}`;
   entry.name = newId.split("/").pop() ?? entry.name;
   const newParent = normalizeDriveEntryPath(parentAndName(`/${newId}`).destination);
-  await table.put({ ...row, id: newId, parentPath: newParent, data: JSON.stringify(entry) });
+  const area = await areaAfterMove(table, username, row, newId, newParent);
+  await table.put({ ...row, id: newId, parentPath: newParent, area, data: JSON.stringify(entry) });
   await table.delete(oldId);
 
   const descendants = await table
@@ -197,10 +262,36 @@ export async function migrateDriveEntryPath(
       ...descendant,
       id: migratedId,
       parentPath: migratedParent,
+      area: isTrashTreePath(migratedId) ? "trash" : (area ?? descendant.area),
       data: JSON.stringify(migratedEntry),
     });
     await table.delete(descendant.id);
   }
+}
+
+/**
+ * `area` of a row a local move puts at `newId`: Trash by path; else its new
+ * parent row's; else, under an account root (home or a team drive), the
+ * root's; else the row keeps its own (a renamed share root stays `share`),
+ * unless it comes out of Trash.
+ */
+async function areaAfterMove(
+  table: ReturnType<typeof driveEntriesTable>,
+  username: string,
+  row: OfflineDriveEntryRow,
+  newId: string,
+  newParent: string,
+): Promise<DriveEntryArea | undefined> {
+  if (isTrashTreePath(newId)) return "trash";
+  const parentArea = newParent ? (await table.get(newParent))?.area : undefined;
+  if (parentArea) return parentArea;
+  const parts = newParent.split("/");
+  const underAccountRoot =
+    parts.length === 2 &&
+    ((parts[0] === "users" && parts[1]?.toLowerCase() === username.trim().toLowerCase()) ||
+      parts[0] === "groups");
+  if (underAccountRoot || row.area === "trash") return areaFromCrawledPath(newId);
+  return row.area;
 }
 
 export async function searchDriveEntriesFromCache(
@@ -214,7 +305,7 @@ export async function searchDriveEntriesFromCache(
   const rows = await driveEntriesTable(db).toArray();
   const matches: WgwDriveDirectoryEntry[] = [];
   for (const row of rows) {
-    if (row.uploadId) continue;
+    if (row.uploadId || isHiddenDrivePath(row.id)) continue;
     const entry = parseEntryRow(row);
     if (entry.name.toLowerCase().includes(needle)) {
       matches.push(entry);
@@ -251,8 +342,10 @@ export function buildOfflineDriveUIData(
 export async function listAllCachedDriveEntryPaths(username: string): Promise<string[]> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const rows = await driveEntriesTable(db).toArray();
-  // Upload placeholders have no server content to sync yet.
-  return rows.filter((row) => row.type === "file" && !row.uploadId).map((row) => row.id);
+  // Upload placeholders have no server content to sync yet; Trash bodies are not synced.
+  return rows
+    .filter((row) => row.type === "file" && !row.uploadId && !isHiddenDrivePath(row.id))
+    .map((row) => row.id);
 }
 
 /** A dot segment (`.Trash`, app data) keeps a path out of All Files, as on the server. */
