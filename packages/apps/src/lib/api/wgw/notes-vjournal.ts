@@ -91,9 +91,11 @@ async function requestNotesJson(
   const res = await wgwFetch(path, init);
   if (!res.ok) {
     let code: string | undefined;
+    let detail: string | undefined;
     try {
-      const body = (await res.json()) as { code?: string };
+      const body = (await res.json()) as { code?: unknown; error?: unknown };
       if (typeof body.code === "string") code = body.code;
+      if (typeof body.error === "string") detail = body.error;
     } catch {
       // Status alone is enough when the body is not JSON.
     }
@@ -101,6 +103,7 @@ async function requestNotesJson(
       `${method} ${path} failed (${res.status})`,
       res.status,
       code,
+      detail,
     );
   }
   if (res.status === 204) return undefined;

@@ -57,13 +57,20 @@ async function requestTasksJson(
   const res = await wgwFetch(path, init);
   if (!res.ok) {
     let code: string | undefined;
+    let detail: string | undefined;
     try {
-      const errorBody = (await res.json()) as { code?: unknown };
+      const errorBody = (await res.json()) as { code?: unknown; error?: unknown };
       if (typeof errorBody.code === "string") code = errorBody.code;
+      if (typeof errorBody.error === "string") detail = errorBody.error;
     } catch {
       // Status alone is enough when the body is not JSON.
     }
-    throw new TasksRequestError(`${method} ${path} failed (${res.status})`, res.status, code);
+    throw new TasksRequestError(
+      `${method} ${path} failed (${res.status})`,
+      res.status,
+      code,
+      detail,
+    );
   }
   if (res.status === 204) return undefined;
   return wgwReadJson(res);
