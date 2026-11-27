@@ -56,7 +56,8 @@
     },
     "test:storybook:ci": {
       "outputs": [],
-      "env": ["CI", "STORYBOOK_A11Y_GATE", "STORYBOOK_VITEST_SMOKE"]
+      "env": ["CI", "STORYBOOK_A11Y_GATE", "STORYBOOK_VITEST_SMOKE"],
+      "passThroughEnv": ["DEBUG", "VITEST_PW_DEBUG"]
     },
     "dev": {
       "cache": false,

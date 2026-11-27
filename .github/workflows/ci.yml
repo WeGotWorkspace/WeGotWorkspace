@@ -231,7 +231,8 @@ jobs:
           # Local pre-push skips unit + jsdom. CI runs both; jsdom shards
           # pool themselves from CPU and memory (see jsdom-concurrency.mjs).
           APPS_DONE_GATE_FULL: "1"
-          DEBUG: "vitest:browser:gc,vitest:browser:pool"
+          DEBUG: "vitest:browser:pool,vitest:browser:playwright,pw:browser*"
+          VITEST_PW_DEBUG: "1"
         run: pnpm run ci:quality:apps
 
       - name: "DIAG #2266: resource samples"
