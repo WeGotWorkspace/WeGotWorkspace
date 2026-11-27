@@ -8,7 +8,11 @@ import type { Collection, InsertType } from "dexie";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { readDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
-import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
+import {
+  backfillDriveEntryTags,
+  driveEntriesTable,
+  type OfflineDriveEntryRow,
+} from "@/lib/offline/drive/drive-schema";
 import {
   readDriveTreeCrawlRoots,
   readDriveTreeFirstSyncDone,
@@ -41,8 +45,12 @@ type EntryCollection = Collection<
   InsertType<OfflineDriveEntryRow, "id">
 >;
 
+function database(username: string) {
+  return offlineDbForAccount(offlineAccountKeyFromUsername(username));
+}
+
 function table(username: string) {
-  return driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  return driveEntriesTable(database(username));
 }
 
 /** The view's starting collection: always an index range, never the whole table. */
@@ -95,6 +103,7 @@ async function readViewRows(
     const sharePaths = new Set(shared.map((row) => row.id));
     return shared.filter((row) => isShareRootRow(row, sharePaths) && keep(row));
   }
+  if (view.kind === "tag") await backfillDriveEntryTags(database(username));
   const collection = viewCollection(username, view, filter).filter(keep);
   if (view.kind === "recent")
     return collection.limit(view.limit ?? FILE_TREE_RECENT_LIMIT).toArray();
@@ -176,6 +185,7 @@ export async function queryFileTreeView(
  */
 export async function queryFileTreeTags(username: string): Promise<string[]> {
   const found = new Set<string>();
+  await backfillDriveEntryTags(database(username));
   await table(username)
     .where("tags")
     .startsWith("")

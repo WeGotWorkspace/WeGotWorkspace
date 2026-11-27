@@ -147,23 +147,35 @@ registerOfflineDomainTables({
       stores: {
         drive_entries: "id, parentPath, type, modifiedAt, nodeId, uploadId, ext, area, *tags",
       },
-      upgrade: (tx) =>
-        tx
-          .table<OfflineDriveEntryRow, string>("drive_entries")
-          .toCollection()
-          .modify((row) => {
-            try {
-              const tags = (JSON.parse(row.data) as { tags?: unknown }).tags;
-              if (Array.isArray(tags) && tags.length > 0) {
-                row.tags = tags.filter((tag): tag is string => typeof tag === "string");
-              }
-            } catch {
-              // A row whose body is not JSON has no tags to index.
-            }
-          }),
     },
   ],
 });
+
+const META_TAGS_BACKFILLED = "drive_entry_tags_backfilled";
+
+/**
+ * Copy `tags` out of `data` for rows cached before the `*tags` index existed (#2402).
+ * Not a Dexie upgrade: Dexie skips upgrade functions below a database's current
+ * version, and other domains register higher ones. Runs once per account, guarded
+ * by a `meta` key; await it before reading the `tags` index.
+ */
+export async function backfillDriveEntryTags(db: WgwOfflineDatabase): Promise<void> {
+  if (await db.meta.get(META_TAGS_BACKFILLED)) return;
+  await driveEntriesTable(db)
+    .toCollection()
+    .modify((row) => {
+      if (row.tags) return;
+      try {
+        const tags = (JSON.parse(row.data) as { tags?: unknown }).tags;
+        if (Array.isArray(tags) && tags.length > 0) {
+          row.tags = tags.filter((tag): tag is string => typeof tag === "string");
+        }
+      } catch {
+        // A row whose body is not JSON has no tags to index.
+      }
+    });
+  await db.meta.put({ key: META_TAGS_BACKFILLED, value: "1" });
+}
 
 export function driveEntriesTable(db: WgwOfflineDatabase): EntityTable<OfflineDriveEntryRow, "id"> {
   return db.table<OfflineDriveEntryRow, string>("drive_entries") as EntityTable<
