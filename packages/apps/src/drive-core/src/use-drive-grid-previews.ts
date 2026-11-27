@@ -18,6 +18,13 @@ import {
   TILE_TEXT_PREVIEW_MAX_CHARS,
 } from "@/lib/file-preview/file-preview-utils";
 import { DRIVE_READ_BLOB_MAX_BYTES } from "@/lib/files/read-blob-limit";
+import {
+  previewBlobCacheKey,
+  readPreviewBlob,
+  writePreviewBlob,
+} from "@/lib/files/preview-blob-cache";
+import { readOfflineDriveUsername } from "@/lib/offline/core/offline-session";
+import { readStoredDriveFileBlobForPreview } from "@/lib/offline/drive/drive-offline-read";
 
 const MAX_CONCURRENT_FETCHES = 4;
 
@@ -61,6 +68,37 @@ function buildExcerptPreviews(items: readonly DriveFile[]): Record<string, Previ
     if (entry) out[file.id] = entry;
   }
   return out;
+}
+
+/**
+ * A preview's bytes: this tab's preview cache, then the copy stored on the
+ * device, then the server (#2063 measurement 5). The stored copy is read only
+ * for a member's local-tree operations, never for a share-link guest.
+ */
+export async function loadDrivePreviewBlob(
+  file: DriveFile,
+  operations: DriveAPIOperations,
+): Promise<Blob> {
+  const apiPath = file.apiPath!;
+  const username = operations.localTree ? readOfflineDriveUsername() : null;
+  // Guests and mocks share one scope; a member's cache is never read by another account.
+  const key = previewBlobCacheKey(username ?? "live", apiPath, file.modifiedMs);
+  const cached = readPreviewBlob(key);
+  if (cached) return cached;
+  if (username) {
+    const stored = await readStoredDriveFileBlobForPreview(
+      username,
+      apiPath,
+      file.modifiedMs,
+    ).catch(() => null);
+    if (stored) {
+      writePreviewBlob(key, stored);
+      return stored;
+    }
+  }
+  const blob = await operations.readFileBlob(apiPath);
+  writePreviewBlob(key, blob);
+  return blob;
 }
 
 export type UseDriveGridPreviewsArgs = {
@@ -226,8 +264,7 @@ export function useDriveGridPreviews({
           return;
         }
         inFlightRef.current += 1;
-        void operations
-          .readFileBlob(file.apiPath!)
+        void loadDrivePreviewBlob(file, operations)
           .then(async (blob) => {
             const url = URL.createObjectURL(blob);
             if (fetchedPreviewsRef.current[file.id]?.kind === "blob-url") {
@@ -266,8 +303,7 @@ export function useDriveGridPreviews({
 
       enqueue(() => {
         inFlightRef.current += 1;
-        void operations
-          .readFileBlob(file.apiPath!)
+        void loadDrivePreviewBlob(file, operations)
           .then(async (blob) => {
             const slice = blob.slice(0, TILE_TEXT_FETCH_BYTES);
             const buffer = await slice.arrayBuffer();
@@ -300,8 +336,7 @@ export function useDriveGridPreviews({
 
       enqueue(() => {
         inFlightRef.current += 1;
-        void operations
-          .readFileBlob(file.apiPath!)
+        void loadDrivePreviewBlob(file, operations)
           .then(async (blob) => {
             if (!previewTargetIdsRef.current.has(file.id)) return;
             if (blob.size > DOCS_PREVIEW_MAX_BYTES) return;

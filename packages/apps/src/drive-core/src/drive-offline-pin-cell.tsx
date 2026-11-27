@@ -10,6 +10,7 @@ export function DriveFileOfflinePinCell({
   offlineEnabled,
   isOfflineAvailable,
   isOfflinePendingSync,
+  isOfflineFailed = false,
   isPinning,
   canPinOffline,
   onMakeOfflineAvailable,
@@ -19,6 +20,8 @@ export function DriveFileOfflinePinCell({
   offlineEnabled: boolean;
   isOfflineAvailable: boolean;
   isOfflinePendingSync: boolean;
+  /** The automatic offline copy failed for this file. */
+  isOfflineFailed?: boolean;
   isPinning: boolean;
   canPinOffline: boolean;
   onMakeOfflineAvailable?: (file: DriveFile) => void;
@@ -32,6 +35,7 @@ export function DriveFileOfflinePinCell({
       labels={labels}
       isAvailable={isOfflineAvailable}
       isPending={isOfflinePendingSync}
+      isFailed={isOfflineFailed}
       isPinning={isPinning}
       canPin={canPinOffline}
       onPin={onMakeOfflineAvailable ? () => onMakeOfflineAvailable(file) : undefined}

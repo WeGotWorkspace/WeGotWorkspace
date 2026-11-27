@@ -137,6 +137,29 @@ describe("hydrateDocsCollabForOffline", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("drops a late answer once shouldWrite turns false", async () => {
+    const apiPath = nextPath();
+    let current = true;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        await gate;
+        return new Response(sidecarBytes() as BodyInit, { status: 200 });
+      }),
+    );
+
+    const pending = hydrateDocsCollabForOffline({ apiPath, shouldWrite: () => current });
+    current = false;
+    release();
+    await pending;
+
+    expect(await localDocIsEmpty(apiPath)).toBe(true);
+  });
+
   it("still fetches a kept copy that is empty", async () => {
     const apiPath = nextPath();
     const fetchMock = stubFetch({

@@ -39,6 +39,14 @@ final class JmapCapabilities
     public const FILENODE_VERSION_CHECK = 'https://wegotworkspace.org/jmap/filenode-version-check';
 
     /**
+     * WGW extension to draft-ietf-jmap-filenode-14 (#2063): the FileNode/query
+     * arguments `idAfter` (node id keyset) and `asOfState` (nodes that existed at
+     * a state), and the FileNode property `path` (the node's virtual path), so a
+     * client can page the whole visible tree in a few chained requests.
+     */
+    public const FILENODE_TREE = 'https://wegotworkspace.org/jmap/filenode-tree';
+
+    /**
      * Vendor Notes envelope over CalDAV VJOURNAL. There is no IETF Notes
      * datatype — do not advertise urn:ietf:params:jmap:notes.
      */
@@ -158,7 +166,7 @@ final class JmapCapabilities
             // rejected via forbiddenNodeNames.
             'forbiddenNameChars' => "/\\\0",
             'forbiddenNodeNames' => ['.', '..'],
-            'fileNodeQuerySortOptions' => ['name', 'nodeType'],
+            'fileNodeQuerySortOptions' => ['name', 'nodeType', 'id'],
             // Roots are fixed (the personal home + member group trees).
             'mayCreateTopLevelFileNode' => false,
             'webTrashUrl' => null,
