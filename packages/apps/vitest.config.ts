@@ -20,6 +20,45 @@ const storybookVitestTags =
  */
 const nodeWebStorageExecArgv = ["--no-experimental-webstorage"];
 
+/** DIAG #2266: temporary — log page crash/close and browser disconnect events. */
+function diag2266Provider<T extends { providerFactory: (project: never) => unknown }>(
+  provider: T,
+): T {
+  const factory = provider.providerFactory.bind(provider);
+  provider.providerFactory = ((project: never) => {
+    const instance = factory(project) as {
+      openBrowserPage: (sessionId: string, options: unknown) => Promise<unknown>;
+    };
+    const open = instance.openBrowserPage.bind(instance);
+    instance.openBrowserPage = async (sessionId, options) => {
+      const page = (await open(sessionId, options)) as {
+        on: (event: string, cb: (...args: unknown[]) => void) => void;
+        context: () => { browser: () => { on: (e: string, cb: () => void) => void } | null };
+      };
+      const stamp = () => new Date().toISOString();
+      page.on("crash", () =>
+        console.error(`[diag-2266 ${stamp()}] PAGE CRASH session=${sessionId}`),
+      );
+      page.on("close", () =>
+        console.error(`[diag-2266 ${stamp()}] page close session=${sessionId}`),
+      );
+      page.on("pageerror", (err) =>
+        console.error(
+          `[diag-2266 ${stamp()}] pageerror session=${sessionId} ${String(err).slice(0, 300)}`,
+        ),
+      );
+      page.on("frameattached", () => undefined);
+      page
+        .context()
+        .browser()
+        ?.on("disconnected", () => console.error(`[diag-2266 ${stamp()}] BROWSER DISCONNECTED`));
+      return page;
+    };
+    return instance;
+  }) as T["providerFactory"];
+  return provider;
+}
+
 export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
@@ -153,11 +192,13 @@ export default defineConfig({
             headless: true,
             // Avoid Chromium /dev/shm OOM crashes that surface as Vitest
             // "Browser connection was closed" drops in CI (#1037).
-            provider: playwright({
-              launch: {
-                args: ["--disable-dev-shm-usage"],
-              },
-            }),
+            provider: diag2266Provider(
+              playwright({
+                launch: {
+                  args: ["--disable-dev-shm-usage"],
+                },
+              }),
+            ),
             instances: [{ browser: "chromium" }],
           },
         },

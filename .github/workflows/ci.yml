@@ -218,7 +218,8 @@ jobs:
             tf=$(find /tmp -maxdepth 1 -name '.org.chromium*' 2>/dev/null | wc -l)
             tfs=$(du -smc /tmp/.org.chromium* 2>/dev/null | tail -1 | cut -f1)
             load=$(cut -d' ' -f1 /proc/loadavg)
-            echo "$(date +%T) tmp_avail=${tmp}M shm_used=${shm}M mem_avail=${mem}M swap_used=${swp}M chrome_rss=${crss}M chrome_procs=${cn} node_rss=${nrss}M tmp_chromium_files=${tf}/${tfs:-0}M load=${load}"
+            rend=$(ps -eo rss,args | grep -- '--type=renderer' | grep -v grep | awk '{printf "%d,", $1/1024}')
+            echo "$(date +%T) renderers=${rend} tmp_avail=${tmp}M shm_used=${shm}M mem_avail=${mem}M swap_used=${swp}M chrome_rss=${crss}M chrome_procs=${cn} node_rss=${nrss}M tmp_chromium_files=${tf}/${tfs:-0}M load=${load}"
             sleep 3
           done
           SH
@@ -240,7 +241,7 @@ jobs:
         run: |
           cat "$RUNNER_TEMP/sampler.log" || true
           df -h / /tmp /dev/shm; free -m
-          sudo dmesg -T | grep -i -E 'oom|killed process|segfault|chrom|headless|out of memory' | tail -60 || true
+          sudo dmesg -T | tail -80 || true
 
   # Source, test and other line changes of a pull request (#1633), in the job
   # summary and in one PR comment that each push updates. A signal, never a
