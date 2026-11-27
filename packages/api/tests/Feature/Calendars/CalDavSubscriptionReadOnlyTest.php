@@ -68,7 +68,7 @@ final class CalDavSubscriptionReadOnlyTest extends WgwDatabaseTestCase
         $this->assertSame(403, $this->dav('bob', 'MKCOL', '/calendars/bob/feed/sub')['status']);
         $this->assertSame(403, $this->dav('bob', 'DELETE', '/calendars/bob/feed')['status']);
 
-        $this->assertSame('Holiday', $this->summary('feed', 'holiday.ics'));
+        $this->assertSame('Holiday', $this->summary('holiday.ics'));
         $this->assertSame(404, $this->dav('bob', 'GET', '/calendars/bob/feed/new.ics')['status']);
         $this->assertSame('Holidays', $this->displayName('feed'));
     }
@@ -176,7 +176,7 @@ final class CalDavSubscriptionReadOnlyTest extends WgwDatabaseTestCase
         return $matches[1];
     }
 
-    private function summary(string $calendarUri, string $object): string
+    private function summary(string $object): string
     {
         $row = CalendarObject::query()->where('uri', $object)->firstOrFail();
         preg_match('/SUMMARY:(.*)/', (string) $row->calendardata, $m);
