@@ -10,6 +10,8 @@ import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  FILENODE_SHARE_FLAGS_CAPABILITY,
+  FILENODE_TREE_CAPABILITY,
   JmapClient,
   QUOTA_CAPABILITY,
   JmapFileNodePathCache,
@@ -95,6 +97,14 @@ export type DriveJmapSession = {
   uploadCapabilities: DriveUploadCapabilities;
   /** The Session advertises `urn:ietf:params:jmap:quota` (Drive free space per root). */
   quota?: boolean;
+  /** The server pages the tree by `node_id` keyset and returns `path` (#2063 S1). */
+  treeKeyset?: boolean;
+  /** `FileNode/get` returns `shareFlags` (#2063 S3). */
+  shareFlags?: boolean;
+  /** `maxCallsInRequest` from the core capability. */
+  maxCallsInRequest?: number;
+  /** `maxObjectsInGet` from the core capability. */
+  maxObjectsInGet?: number;
   uploadUrl: string;
   downloadUrl: string;
   sharedRootPaths: Set<string>;
@@ -158,7 +168,8 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
   if (!(FILENODE_CAPABILITY in session.capabilities)) {
     throw new UnexpectedApiResponseError("JMAP session does not advertise FileNode.");
   }
-  const core = session.capabilities[CORE_CAPABILITY] as { maxSizeUpload?: number } | undefined;
+  const core = session.capabilities[CORE_CAPABILITY] as
+    { maxSizeUpload?: number; maxCallsInRequest?: number; maxObjectsInGet?: number } | undefined;
   const accountId = client.primaryAccountId(FILENODE_CAPABILITY);
   const uploadCapabilities = readDriveUploadCapabilities(session, accountId);
   if (session.username) rememberDriveSessionCapabilities(session.username, uploadCapabilities);
@@ -171,6 +182,10 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
       typeof core?.maxSizeUpload === "number" ? core.maxSizeUpload : JMAP_MAX_SIZE_UPLOAD_DEFAULT,
     uploadCapabilities,
     quota: QUOTA_CAPABILITY in session.capabilities,
+    treeKeyset: FILENODE_TREE_CAPABILITY in session.capabilities,
+    shareFlags: FILENODE_SHARE_FLAGS_CAPABILITY in session.capabilities,
+    maxCallsInRequest: positiveInt(core?.maxCallsInRequest, DEFAULT_MAX_CALLS_IN_REQUEST),
+    maxObjectsInGet: positiveInt(core?.maxObjectsInGet, DEFAULT_MAX_OBJECTS_IN_GET),
     uploadUrl: session.uploadUrl,
     downloadUrl: session.downloadUrl,
     sharedRootPaths: new Set(),
@@ -195,6 +210,7 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
       ? { blobId: node.blobId }
       : {}),
     ...(node.contentHashPending === true ? { contentHashPending: true } : {}),
+    ...shareFlagsOf(node),
     myRights: {
       mayView: rights?.mayRead !== false,
       mayComment: false,
@@ -205,6 +221,35 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
       mayShare: rights?.mayShare === true,
     },
   };
+}
+
+/** `shareFlags` of a `FileNode/get` answer (#2063 S3) as entry fields; none without them. */
+function shareFlagsOf(
+  node: JmapFileNode,
+): Pick<WgwDriveDirectoryEntry, "hasShares" | "hasPublicShare" | "hasTeamShare"> {
+  const flags = node.shareFlags;
+  if (!flags || typeof flags !== "object") return {};
+  const { hasShares, hasPublicShare, hasTeamShare } = flags as Record<string, unknown>;
+  return {
+    hasShares: hasShares === true,
+    hasPublicShare: hasPublicShare === true,
+    hasTeamShare: hasTeamShare === true,
+  };
+}
+
+/** The virtual path `FileNode/get` returned (#2063 S1), with a leading slash; null without it. */
+export function fileNodeVirtualPath(node: JmapFileNode): string | null {
+  const path = node.path;
+  if (typeof path !== "string" || path.trim() === "") return null;
+  return normalizePath(path);
+}
+
+export const DEFAULT_MAX_CALLS_IN_REQUEST = 32;
+export const DEFAULT_MAX_OBJECTS_IN_GET = 500;
+
+function positiveInt(value: unknown, fallback: number): number {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.floor(number) : fallback;
 }
 
 function guestRoot(): { guestRootPath?: string } {

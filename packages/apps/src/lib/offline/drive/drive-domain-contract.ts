@@ -21,7 +21,7 @@ import { readDriveSyncToken, writeDriveSyncToken } from "@/lib/offline/drive/dri
 export const driveOfflineDomainStore = {
   readBootstrap: readDriveBootstrapFromCache,
   writeBootstrap: writeDriveBootstrapToCache,
-  upsertEntity: upsertDriveEntry,
+  upsertEntity: (username, entry) => upsertDriveEntry(username, entry),
   removeEntity: removeDriveEntry,
   readSyncToken: (username, _scope) => readDriveSyncToken(username),
   writeSyncToken: (username, _scope, token) => writeDriveSyncToken(username, token),

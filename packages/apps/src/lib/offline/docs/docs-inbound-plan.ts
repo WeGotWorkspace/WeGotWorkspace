@@ -146,28 +146,48 @@ function applyRemoved(planner: Planner, path: string): void {
   }
 }
 
-function applyMoved(planner: Planner, change: Extract<DocsInboundChange, { kind: "moved" }>): void {
-  const from = docsSourceKey(change.from);
-  const to = docsSourceKey(change.to);
-  if (from === to) return;
-  let seen = false;
+/**
+ * Every move of one sync at once: each cached row takes the longest matching
+ * `from` (itself or a folder above it), on the paths as they were before the
+ * sync, so a swap or a rename onto a vacated name keeps every row.
+ */
+function applyMovedOnce(
+  planner: Planner,
+  changes: readonly Extract<DocsInboundChange, { kind: "moved" }>[],
+): void {
+  const moves = changes
+    .map((change) => ({
+      from: docsSourceKey(change.from),
+      to: docsSourceKey(change.to),
+      node: change.node,
+    }))
+    .filter((move) => move.from !== move.to)
+    .sort((a, b) => b.from.length - a.from.length);
+  if (moves.length === 0) return;
+  const seen = new Set<number>();
   for (const view of planner.views.values()) {
+    const landed: Array<[string, WgwUnifiedSearchResult]> = [];
     for (const [key, result] of [...view.results]) {
-      if (key !== from && !key.startsWith(`${from}/`)) continue;
-      seen = true;
+      const at = moves.findIndex(({ from }) => key === from || key.startsWith(`${from}/`));
+      if (at < 0) continue;
+      seen.add(at);
       // The local name stays until the queued write settles.
       if (docsRowOwnedByQueuedWrite(planner.pending, key)) continue;
+      const move = moves[at]!;
       view.results.delete(key);
       view.changed = true;
-      const next = `${to}${key.slice(from.length)}`;
+      const next = `${move.to}${key.slice(move.from.length)}`;
       if (docsRowHiddenByQueuedWrite(planner.pending, next)) continue;
       if (docsRowOwnedByQueuedWrite(planner.pending, next)) continue;
-      const moved = movedResult(result, next, key === from ? change.node : undefined);
-      if (docsViewIncludesPath(view.filters, next)) view.results.set(next, moved);
+      const moved = movedResult(result, next, key === move.from ? move.node : undefined);
       planner.arrived.set(next, moved);
+      if (docsViewIncludesPath(view.filters, next)) landed.push([next, moved]);
     }
+    for (const [next, moved] of landed) view.results.set(next, moved);
   }
-  if (!seen && !change.node.directory) applyUpserted(planner, change.to, change.node);
+  moves.forEach((move, at) => {
+    if (!seen.has(at) && !move.node.directory) applyUpserted(planner, move.to, move.node);
+  });
 }
 
 function applyUpserted(planner: Planner, path: string, node: DocsNodeFacts): void {
@@ -204,10 +224,26 @@ export function planDocsListingInbound(
   pending: DocsPendingWrites,
 ): Map<string, WgwUnifiedSearchResult[]> {
   const planner: Planner = { views: readViews(rows), pending, arrived: new Map() };
+  const moved = changes.filter((change) => change.kind === "moved");
+  applyMovedOnce(planner, moved);
   for (const change of changes) {
-    if (change.kind === "removed") applyRemoved(planner, change.path);
-    else if (change.kind === "moved") applyMoved(planner, change);
-    else applyUpserted(planner, change.path, change.node);
+    if (change.kind === "upserted") applyUpserted(planner, change.path, change.node);
+  }
+  // After the writes: every `from` and destroyed path that no row moved onto
+  // goes; a path some change wrote stays (a swap, a rename onto a deleted
+  // file's path, a new file on a path this batch vacated).
+  const landed = new Set([
+    ...moved.map((change) => docsSourceKey(change.to)),
+    ...changes.flatMap((change) =>
+      change.kind === "upserted" && !change.node.directory ? [docsSourceKey(change.path)] : [],
+    ),
+  ]);
+  const vacated = [
+    ...moved.map((change) => change.from),
+    ...changes.flatMap((change) => (change.kind === "removed" ? [change.path] : [])),
+  ];
+  for (const path of vacated) {
+    if (!landed.has(docsSourceKey(path))) applyRemoved(planner, path);
   }
   for (const [key, result] of planner.arrived) {
     for (const view of planner.views.values()) {
