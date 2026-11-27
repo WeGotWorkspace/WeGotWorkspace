@@ -22,6 +22,9 @@ import { useDriveUploadAction } from "@/drive-core/src/use-drive-upload-action";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
+import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
+import { fullDriveMyRights } from "@/lib/api/mock/drive-mock-my-rights";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 
 /**
@@ -62,6 +65,28 @@ export type UseDriveMutationsArgs = {
   onOpenDocsFile?: (apiPath: string) => void;
 };
 
+/**
+ * On a local tree the write's reply lists the client's cwd (the bootstrap root), not the folder
+ * the user has open: the new row goes into the tree under its parent, the view stays put.
+ */
+async function recordLocalCreate(
+  username: string,
+  cwd: string,
+  name: string,
+  type: "dir" | "file",
+): Promise<void> {
+  await upsertDriveEntry(username, {
+    type,
+    path: normalizeApiVirtualPath(`${cwd}/${name}`),
+    name,
+    size: 0,
+    time: Math.floor(Date.now() / 1000),
+    permissions: 0,
+    myRights: fullDriveMyRights,
+  });
+  notifyDriveRemoteChange(username);
+}
+
 /** Create the folder on the server: its listing replaces the optimistic row, a failure removes it. */
 function createFolderOnServer(input: {
   operations: NonNullable<DriveShellState["operations"]>;
@@ -76,7 +101,12 @@ function createFolderOnServer(input: {
   const { currentUsername, setFiles } = input;
   void input.operations
     .createFolder({ cwd: input.cwd, name: input.name })
-    .then((nextData) => {
+    .then(async (nextData) => {
+      if (input.operations.localTree) {
+        await recordLocalCreate(currentUsername, input.cwd, input.name, "dir");
+        setFiles((p) => p.filter((file) => file.id !== input.optimisticId));
+        return;
+      }
       setFiles(nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)));
       input.commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
     })
@@ -284,6 +314,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         to: nextName,
       })
       .then((nextData) => {
+        // The tree rows follow the migrated `drive_entries` row; the open folder stays.
+        if (operations.localTree) return;
         setFiles(
           nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
         );
@@ -363,11 +395,18 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         setMarkdownDialogError(null);
         void operations
           .createFile({ cwd, name: trimmed })
-          .then((nextData) => {
-            setFiles(
-              nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-            );
-            commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+          .then(async (nextData) => {
+            if (operations.localTree) {
+              await recordLocalCreate(currentUsername, cwd, trimmed, "file");
+            } else {
+              setFiles(
+                nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
+              );
+              commitView({
+                type: "folder",
+                path: uiPathFromApiPath(nextData.cwd, currentUsername),
+              });
+            }
             setMarkdownDialogOpen(false);
             setMarkdownDialogSubmitting(false);
             onOpenDocsFile(apiPath);

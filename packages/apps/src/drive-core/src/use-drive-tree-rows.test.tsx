@@ -124,7 +124,10 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
     connectivity.online = true;
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it("an online search keeps the first-sync state until the server answers", async () => {
     const ops = operations();
@@ -154,6 +157,23 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
     expect(result.current.viewState).toBe("missing");
 
     act(() => answer([]));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+  });
+
+  it("switching views with search text searches again and settles for the new view", async () => {
+    await finishFirstSync();
+    const ops = operations();
+    ops.search = vi.fn().mockResolvedValue([]);
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    const { result, rerender } = renderShell({ type: "all" }, ops);
+
+    act(() => result.current.setSearchQuery("x"));
+    await waitFor(() => expect(ops.search).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+
+    act(() => result.current.selectView({ type: "starred" }));
+    rerender({ v: { type: "starred" } });
+    await waitFor(() => expect(ops.search).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.viewState).toBeNull());
   });
 

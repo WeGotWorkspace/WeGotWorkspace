@@ -231,6 +231,8 @@ export function useDriveShell({
 
   // Online search stays a server call (content search); offline the tree filters names.
   const serverSearch = Boolean(operations) && !(treeEnabled && !online);
+  // A view change clears the results (`selectView`), so the search settles again for it.
+  const searchViewKey = view.type === "folder" ? `folder:${view.path}` : view.type;
   useEffect(() => {
     if (!operations || !serverSearch) {
       setLiveSearchResults(null);
@@ -263,7 +265,7 @@ export function useDriveShell({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [operations, serverSearch, searchText, currentUsername, showError]);
+  }, [operations, serverSearch, searchText, searchViewKey, currentUsername, showError]);
 
   useEffect(() => {
     if (!operations) return;
