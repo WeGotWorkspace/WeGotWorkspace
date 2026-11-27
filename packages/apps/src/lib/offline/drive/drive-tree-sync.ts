@@ -431,6 +431,7 @@ async function moveSidecarsOfMovedNodes(
     list.push(row.id);
     previous.set(row.nodeId!, list);
   }
+  await SidecarMoves.recover(username);
   const moves = new SidecarMoves();
   for (const { entry } of finals) {
     if (!entry.nodeId) continue;

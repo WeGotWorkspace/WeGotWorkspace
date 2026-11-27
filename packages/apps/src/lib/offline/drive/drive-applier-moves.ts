@@ -72,11 +72,14 @@ export async function moveRowsUnderMovedPaths(
     else planned.push({ row, id, area: isTrashTreePath(id) ? "trash" : (move.area ?? row.area) });
   }
   for (const { id } of planned) destinations.add(id);
+  // Journaled before any row moves: a stop after the rows must still find the sidecars.
+  for (const { row, id } of planned) sidecars.add(row.id, id);
+  await sidecars.persist(username);
 
   const kept: string[] = [];
   for (const path of hidden) {
     if ((await dropRowLeavingTree(username, path, destinations)) === "kept") kept.push(path);
-    else docsChanges.push({ kind: "removed", path });
+    else if (!destinations.has(path)) docsChanges.push({ kind: "removed", path });
   }
   const table = driveEntriesTable(accountDb(username));
   for (const { row } of planned) {
@@ -103,7 +106,6 @@ export async function moveRowsUnderMovedPaths(
       area,
       data: JSON.stringify({ ...entry, path: `/${id}` }),
     });
-    sidecars.add(row.id, id);
   }
   return { kept, changed: hidden.length + planned.length > kept.length };
 }

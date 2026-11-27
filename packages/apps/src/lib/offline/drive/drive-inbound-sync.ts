@@ -189,6 +189,7 @@ async function applyFileNodeChanges(
   changes: { created: string[]; updated: string[]; destroyed: string[] },
   signal?: AbortSignal,
 ): Promise<{ changed: boolean; keptUnsavedPaths: string[]; blocked: boolean }> {
+  await SidecarMoves.recover(username);
   const destroyed = new Set(changes.destroyed);
   const upsertIds = [...new Set([...changes.created, ...changes.updated])].filter(
     (id) => !destroyed.has(id),
@@ -223,6 +224,15 @@ async function applyFileNodeChanges(
     const destinations = new Set<string>();
     const leftTree: string[] = [];
     const sidecars = new SidecarMoves();
+    // Journaled before the first row moves: a stop after the rows must still find the sidecars.
+    for (const node of ordered) {
+      const before = snapshot.get(node.id);
+      const after = finalPaths.get(node.id);
+      if (before && after && !isHiddenTreePath(after)) {
+        sidecars.add(normalizePath(before), normalizePath(after));
+      }
+    }
+    await sidecars.persist(username);
     const placed: Array<{ path: string; nodeId: string }> = [];
     for (const node of ordered) {
       const path = finalPaths.get(node.id);
@@ -248,6 +258,7 @@ async function applyFileNodeChanges(
         sidecars,
       });
       if (placement === "blocked") {
+        if (previous) sidecars.drop(normalizePath(previous));
         keptUnsavedPaths.push(normalizePath(path));
         blocked = true;
         continue;
@@ -282,7 +293,7 @@ async function applyFileNodeChanges(
     for (const path of leftTree) {
       const outcome = await dropRowLeavingTree(username, path, destinations);
       if (outcome === "kept") keptUnsavedPaths.push(path);
-      else docsChanges.push({ kind: "removed", path });
+      else if (!destinations.has(path)) docsChanges.push({ kind: "removed", path });
       changed ||= outcome === "dropped";
     }
     await sidecars.apply(username);
