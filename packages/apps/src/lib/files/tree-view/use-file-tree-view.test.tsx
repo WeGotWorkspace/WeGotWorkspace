@@ -122,8 +122,8 @@ describe("useFileTreeView", () => {
   });
 
   it("after a per-folder crawl, only the roots it queued are known; Trash and Shared are not synced", async () => {
-    // As crawlFolders leaves it: no roots map, the queued root paths, last pass "crawl".
-    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
+    // As crawlFolders leaves it: no roots map, no firstSyncDone, the queued root
+    // paths, last pass "crawl".
     await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
     await writeMeta(
       username,
@@ -144,6 +144,13 @@ describe("useFileTreeView", () => {
       const { result } = render(view);
       expect((await settled(result)).status, JSON.stringify(view)).toBe("not-available");
     }
+
+    // The crawl's rows are complete for what it lists: All files is ready, never an endless first-sync.
+    await put(`users/${username}/a.md`, "home");
+    const all = render({ kind: "all" });
+    const state = await settled(all.result);
+    expect(state.status).toBe("ready");
+    expect(paths(state.rows)).toEqual([`/users/${username}/a.md`]);
   });
 
   it("first sync with no rows online is the full-pane first-sync state", async () => {

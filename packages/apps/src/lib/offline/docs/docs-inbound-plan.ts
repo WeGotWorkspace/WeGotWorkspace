@@ -224,13 +224,26 @@ export function planDocsListingInbound(
   pending: DocsPendingWrites,
 ): Map<string, WgwUnifiedSearchResult[]> {
   const planner: Planner = { views: readViews(rows), pending, arrived: new Map() };
-  applyMovedOnce(
-    planner,
-    changes.filter((change) => change.kind === "moved"),
-  );
+  const moved = changes.filter((change) => change.kind === "moved");
+  applyMovedOnce(planner, moved);
   for (const change of changes) {
-    if (change.kind === "removed") applyRemoved(planner, change.path);
-    else if (change.kind !== "moved") applyUpserted(planner, change.path, change.node);
+    if (change.kind === "upserted") applyUpserted(planner, change.path, change.node);
+  }
+  // After the writes: every `from` and destroyed path that no row moved onto
+  // goes; a path some change wrote stays (a swap, a rename onto a deleted
+  // file's path, a new file on a path this batch vacated).
+  const landed = new Set([
+    ...moved.map((change) => docsSourceKey(change.to)),
+    ...changes.flatMap((change) =>
+      change.kind === "upserted" && !change.node.directory ? [docsSourceKey(change.path)] : [],
+    ),
+  ]);
+  const vacated = [
+    ...moved.map((change) => change.from),
+    ...changes.flatMap((change) => (change.kind === "removed" ? [change.path] : [])),
+  ];
+  for (const path of vacated) {
+    if (!landed.has(docsSourceKey(path))) applyRemoved(planner, path);
   }
   for (const [key, result] of planner.arrived) {
     for (const view of planner.views.values()) {

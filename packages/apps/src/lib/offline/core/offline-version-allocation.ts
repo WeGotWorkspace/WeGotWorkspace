@@ -49,7 +49,7 @@ export const DRIVE_OFFLINE_VERSION = {
   availabilityTables: 32,
   entryNodeId: 33,
   uploadQueue: 34,
-  /** #2063 C1: indexed `ext` and `area`, plus the tree walk staging table. */
+  /** #2063 C1: indexed `ext` and `area`, plus the tree walk staging and pre-pass tables. */
   treeSync: 35,
 } as const;
 
