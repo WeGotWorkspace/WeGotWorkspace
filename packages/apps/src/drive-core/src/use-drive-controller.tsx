@@ -10,6 +10,7 @@ import type {
 import { driveParentFolderPath } from "@/drive-core/src/drive-breadcrumbs";
 import { useDriveList } from "@/drive-core/src/use-drive-list";
 import { useDriveMutations } from "@/drive-core/src/use-drive-mutations";
+import { useDriveTags } from "@/drive-core/src/use-drive-tags";
 import { useDriveShell } from "@/drive-core/src/use-drive-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 
@@ -49,6 +50,7 @@ export function useDriveController({
   });
   const list = useDriveList({ shell, onOpenDocsFile });
   const mutations = useDriveMutations({ shell, list, onOpenDocsFile });
+  const tags = useDriveTags({ shell, list });
   const resetRenameRef = useRef(mutations.resetRenameDialog);
   resetRenameRef.current = mutations.resetRenameDialog;
 
@@ -117,6 +119,7 @@ export function useDriveController({
   });
 
   return {
+    tags,
     labels: shell.labels,
     currentUsername: shell.currentUsername,
     files: shell.files,

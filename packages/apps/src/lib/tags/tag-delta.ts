@@ -1,3 +1,5 @@
+import { normalizeTag } from "@/lib/tags/tag-rules";
+
 /** Tag adds and removes a metadata write carries instead of a full tag list. */
 export type TagDelta = {
   tagsAdd?: string[];
@@ -36,6 +38,31 @@ export function mergeTagDeltas(existing: TagDelta, incoming: TagDelta): TagDelta
     tagsRemove = without(tagsRemove, tag);
     if (!tagsAdd.includes(tag)) tagsAdd = [...tagsAdd, tag];
   }
+  return {
+    ...(tagsAdd.length > 0 ? { tagsAdd } : {}),
+    ...(tagsRemove.length > 0 ? { tagsRemove } : {}),
+  };
+}
+
+/** The tags after a delta: removes first, then adds, each normalised and without repeats. */
+export function tagsAfterDelta(tags: readonly string[], delta: TagDelta): string[] {
+  const removed = new Set((delta.tagsRemove ?? []).map(normalizeTag));
+  const next = tags.filter((tag) => !removed.has(normalizeTag(tag)));
+  for (const tag of delta.tagsAdd ?? []) {
+    const normalized = normalizeTag(tag);
+    if (normalized && !next.some((current) => normalizeTag(current) === normalized)) {
+      next.push(normalized);
+    }
+  }
+  return next;
+}
+
+/** The delta that turns `after` back into `before`: for Undo. */
+export function invertTagDelta(before: readonly string[], after: readonly string[]): TagDelta {
+  const had = new Set(before.map(normalizeTag));
+  const has = new Set(after.map(normalizeTag));
+  const tagsAdd = before.filter((tag) => !has.has(normalizeTag(tag)));
+  const tagsRemove = after.filter((tag) => !had.has(normalizeTag(tag)));
   return {
     ...(tagsAdd.length > 0 ? { tagsAdd } : {}),
     ...(tagsRemove.length > 0 ? { tagsRemove } : {}),

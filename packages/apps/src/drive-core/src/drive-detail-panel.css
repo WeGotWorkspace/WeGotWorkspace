@@ -110,3 +110,7 @@
   @apply min-w-0 truncate text-right tabular-nums;
   color: var(--workspace-item-color, var(--workspace-foreground));
 }
+
+.drive-detail-panel__tags {
+  @apply mb-4;
+}

@@ -10,24 +10,10 @@ import {
   readDriveEntryFromCache,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
-import { mergeTagDeltas, type TagDelta } from "@/lib/tags/tag-delta";
-import { normalizeTag } from "@/lib/tags/tag-rules";
+import { mergeTagDeltas, tagsAfterDelta, type TagDelta } from "@/lib/tags/tag-delta";
 
 /** A tag edit waiting in the Drive or Docs outbox (#2402): one row per path, merged. */
 export type DriveTagsOutboxPayload = { op: "tags"; path: string } & TagDelta;
-
-/** The tags after a delta: removes first, then adds, each normalised and without repeats. */
-export function tagsAfterDelta(tags: readonly string[], delta: TagDelta): string[] {
-  const removed = new Set((delta.tagsRemove ?? []).map(normalizeTag));
-  const next = tags.filter((tag) => !removed.has(normalizeTag(tag)));
-  for (const tag of delta.tagsAdd ?? []) {
-    const normalized = normalizeTag(tag);
-    if (normalized && !next.some((current) => normalizeTag(current) === normalized)) {
-      next.push(normalized);
-    }
-  }
-  return next;
-}
 
 /** Writes the tags of a cached tree row, if the row is cached. Returns the tags written. */
 async function writeCachedEntryTags(

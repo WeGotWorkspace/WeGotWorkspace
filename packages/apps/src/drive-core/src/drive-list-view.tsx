@@ -16,6 +16,7 @@ import {
   DriveLocationLabel,
   DriveShareIndicators,
 } from "@/drive-core/src/drive-browser-indicators";
+import { DriveRowTags } from "@/drive-core/src/drive-row-tags";
 import { DriveFileAvatar } from "@/drive-core/src/drive-file-avatar";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
@@ -231,6 +232,7 @@ export function DriveListView({
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <span className="min-w-0 truncate font-medium">{f.title}</span>
               <DriveShareIndicators file={f} labels={labels} />
+              <DriveRowTags tags={f.tags} />
               <DriveUploadStatus file={f} />
               {starred[f.id] ? (
                 <Star className="size-3 shrink-0 drive-list-folder-icon" fill="currentColor" />

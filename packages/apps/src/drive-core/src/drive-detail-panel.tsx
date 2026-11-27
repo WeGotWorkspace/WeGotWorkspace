@@ -1,5 +1,6 @@
 import { HardDrive } from "lucide-react";
-import { Tag } from "@/tag/src/tag";
+import { Tag, TagGroup } from "@/tag/src/tag";
+import { isValidNewTag } from "@/lib/tags/tag-rules";
 import { DriveDetailActionBar } from "@/drive-core/src/drive-detail-action-bar";
 import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
 import type { DriveFile } from "@/lib/files/drive-models";
@@ -39,6 +40,10 @@ export type DriveDetailPanelProps = {
   /** More than one selected: the panel shows the selection summary and its actions. */
   selectedCount?: number;
   selectionActions?: MultiSelectionViewAction[];
+  /** Tags of the file (#2402). Editable when `onAddTag` and `onRemoveTag` are set. */
+  onAddTag?: (label: string) => void;
+  onRemoveTag?: (label: string) => void;
+  tagSuggestions?: string[];
 };
 
 /**
@@ -65,7 +70,11 @@ export function DriveDetailPanel({
   locationLabel,
   selectedCount = 0,
   selectionActions = [],
+  onAddTag,
+  onRemoveTag,
+  tagSuggestions,
 }: DriveDetailPanelProps) {
+  const tagsEditable = Boolean(onAddTag && onRemoveTag);
   const multiSelect = selectedCount > 1;
   const isEmpty = file == null && !multiSelect;
   const canDownload = useCanDownloadDriveItem(file, inTrash);
@@ -134,6 +143,22 @@ export function DriveDetailPanel({
             />
           </div>
           <h1 className="drive-detail-panel__title">{file.title}</h1>
+          {tagsEditable || file.tags.length > 0 ? (
+            <section className="drive-detail-panel__tags" aria-label={labels.detailTags}>
+              <TagGroup
+                tags={file.tags}
+                readonly={!tagsEditable}
+                suggestions={tagSuggestions}
+                acceptTag={isValidNewTag}
+                rejectHint={labels.tagRejectHint}
+                addPlaceholder={labels.tagAdd}
+                addAriaLabel={labels.tagAddAria}
+                removeAriaLabelFor={labels.tagRemoveAria}
+                onAddTag={tagsEditable ? onAddTag : undefined}
+                onRemoveTag={tagsEditable ? onRemoveTag : undefined}
+              />
+            </section>
+          ) : null}
           <dl className="drive-detail-panel__meta">
             <Row label={labels.listColumnKind} value={DRIVE_KIND_LABEL[file.kind]} />
             {file.kind === "folder" ? null : (

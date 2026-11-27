@@ -165,6 +165,12 @@ export const driveLabels = {
   cancel: workspaceLabels.dialog.cancel,
   detailMove: workspaceLabels.dialog.move,
   detailShare: "Share",
+  /** Details panel: the tags on the file or folder (#2402). */
+  detailTags: "Tags",
+  tagAdd: "New tag",
+  tagAddAria: "Add a tag",
+  tagRemoveAria: (label: string) => `Remove tag ${label}`,
+  tagRejectHint: "Tags use the letters a to z and hyphens.",
   detailDelete: workspaceLabels.dialog.delete,
   folderPickerDrivesRoot: "Drives",
   moveDialogTitle: "Move to folder",

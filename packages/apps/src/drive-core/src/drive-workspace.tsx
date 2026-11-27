@@ -287,6 +287,7 @@ export function DriveWorkspace({
   const detailLayout = useDocsCommentsLayout();
   const useDetailDrawer = detailLayout === "drawer";
   const {
+    tags,
     labels,
     active,
     detailOpen,
@@ -366,6 +367,17 @@ export function DriveWorkspace({
             activeMayManageStructure,
           })
         }
+        onAddTag={
+          tags.canEditTags(active)
+            ? (label) => tags.changeTags([active.id], { tagsAdd: [label] })
+            : undefined
+        }
+        onRemoveTag={
+          tags.canEditTags(active)
+            ? (label) => tags.changeTags([active.id], { tagsRemove: [label] })
+            : undefined
+        }
+        tagSuggestions={tags.tagSuggestions}
         onShare={
           shareEnabled && active.apiPath
             ? () => handleOpenShareForFile(active.apiPath!, active.title)
@@ -396,6 +408,7 @@ export function DriveWorkspace({
     showError,
     starred,
     structureEnabled,
+    tags,
     toggleStar,
   ]);
 
