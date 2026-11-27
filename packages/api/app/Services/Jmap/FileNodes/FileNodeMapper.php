@@ -45,7 +45,7 @@ final class FileNodeMapper
     {
         $projection ??= GetProjection::all();
         // External (guest) callers never see tags; internal share recipients do (#2402).
-        $showTags = strtolower((string) ($principal['role'] ?? '')) !== 'guest';
+        $showTags = strtolower($principal['role']) !== 'guest';
         $tagMap = $showTags && $projection->wants('tags')
             ? $this->tags->forNodes(array_map(static fn (JmapFileNode $node): string => (string) $node->node_id, $nodes))
             : [];
