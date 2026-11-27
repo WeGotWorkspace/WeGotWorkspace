@@ -60,7 +60,9 @@ vi.mock("@/lib/api/wgw/drive", () => ({
   })),
 }));
 
-const liveSearch = vi.hoisted(() => vi.fn(async () => ({ results: [], hasMore: false, total: 0 })));
+const liveSearch = vi.hoisted(() =>
+  vi.fn(async (_params: { q?: string }) => ({ results: [], hasMore: false, total: 0 })),
+);
 vi.mock("@/lib/api/wgw/search", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/wgw/search")>()),
   fetchWgwUnifiedSearch: liveSearch,

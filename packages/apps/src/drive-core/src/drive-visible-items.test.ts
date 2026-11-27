@@ -32,7 +32,6 @@ describe("filterDriveVisibleItems", () => {
       view: { type: "folder", path: "My Drive" },
       searchQuery: "",
       currentUsername: "demo",
-      operations: undefined,
     });
 
     expect(visible.map((file) => file.id)).toEqual(["a"]);
@@ -51,7 +50,6 @@ describe("filterDriveVisibleItems", () => {
       view: { type: "folder", path: "My Drive" },
       searchQuery: "beta",
       currentUsername: "demo",
-      operations: undefined,
     });
 
     expect(visible.map((file) => file.id)).toEqual(["b"]);
@@ -70,7 +68,6 @@ describe("filterDriveVisibleItems", () => {
       view: { type: "shared" },
       searchQuery: "",
       currentUsername: "demo",
-      operations: undefined,
     });
 
     expect(visible.map((file) => file.id)).toEqual(["shared"]);
@@ -96,7 +93,6 @@ describe("filterDriveVisibleItems", () => {
       view: { type: "shared" },
       searchQuery: "",
       currentUsername: "demo",
-      operations: {},
     });
 
     expect(visible.map((file) => file.id)).toEqual(["/users/bob/deck"]);
@@ -113,7 +109,6 @@ describe("filterDriveVisibleItems", () => {
       starred: {},
       view: { type: "uploads" } as const,
       currentUsername: "demo",
-      operations: {},
       uploadFiles,
     };
     expect(filterDriveVisibleItems({ ...args, searchQuery: "" }).map((f) => f.id)).toEqual([
@@ -144,7 +139,6 @@ describe("filterDriveVisibleItems All Files", () => {
       files: [],
       viewItems,
       searchQuery: "budget",
-      operations: {},
     });
     expect(visible.map((file) => file.id)).toEqual(["b"]);
   });
@@ -161,7 +155,6 @@ describe("filterDriveVisibleItems All Files", () => {
       files,
       viewItems: null,
       searchQuery: "",
-      operations: undefined,
     });
     expect(visible.map((file) => file.id)).toEqual(["a", "b"]);
   });
@@ -175,7 +168,6 @@ describe("filterDriveVisibleItems All Files", () => {
       files: [],
       viewItems,
       searchQuery: "",
-      operations: {},
     });
     expect(visible.map((file) => file.id)).toEqual(["a"]);
   });

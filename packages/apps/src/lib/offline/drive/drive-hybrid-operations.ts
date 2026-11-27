@@ -30,7 +30,6 @@ import {
   readDirectoryEntriesFromCache,
   readDriveBootstrapFromCache,
   readDriveEntryFromCache,
-  removeDriveEntry,
   removeDriveEntriesUnderPrefix,
   searchDriveEntriesFromCache,
   writeDriveBootstrapToCache,
@@ -48,6 +47,7 @@ import {
   fetchDriveFolderOncePerBrowser,
   listenForSharedDriveFolderFetches,
 } from "@/lib/offline/drive/drive-folder-fetch-share";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
@@ -75,7 +75,6 @@ import {
   driveUploadQueueOperations,
   queueOfflineDriveUploadFiles,
 } from "@/lib/offline/drive/upload/drive-upload-operations";
-import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
@@ -214,13 +213,20 @@ async function clearTrashedLocalState(username: string, room: string): Promise<v
   await removeDocsAvailability(username, room);
 }
 
-/** After a trash the server applied: its FileNode change brings the Trash row. */
-async function applyTrashSideEffects(username: string, from: string): Promise<void> {
+/**
+ * A trash the server applied: the tree rows move under Trash (`area:
+ * "trash"`), so the folder and the Trash view both show it at once (#2063
+ * C3). Its offline copy, pending writes and collab room go.
+ */
+async function applyTrashSideEffects(
+  username: string,
+  from: string,
+  trashedPath: string,
+): Promise<void> {
   const apiPath = normalizeApiVirtualPath(from);
   const room = normalizeDriveAvailabilityPath(apiPath);
   await removeOutboxMutationsForDrivePath(username, apiPath);
-  await removeDriveEntry(username, apiPath);
-  await removeDriveEntriesUnderPrefix(username, room);
+  await migrateDriveEntryPath(username, apiPath, normalizeApiVirtualPath(trashedPath));
   await removeDriveContentBlob(username, apiPath);
   await clearTrashedLocalState(username, room);
 }
@@ -414,12 +420,14 @@ export function createHybridDriveOperations(
           }
           const data = await live.renameItem({ ...input, to }, opts);
           if (isTrash) {
-            await applyTrashSideEffects(username, input.from);
-            moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
+            const trashed = nextPathAfterRename(input.from, destination, to);
+            await applyTrashSideEffects(username, input.from, trashed);
+            moveDocsPageSetupOverride(input.from, trashed);
           } else {
             await applyDriveSidecarPathMigration(username, input.from, input.destination, input.to);
             await hooks.onMoved?.(input.from, nextPathAfterRename(input.from, destination, to));
           }
+          notifyDriveRemoteChange(username);
           return data;
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -434,15 +442,13 @@ export function createHybridDriveOperations(
           trashNames.add(entry.name);
         }
         to = resolveFreeName(input.to, trashNames);
-        await applyQueuedTrashSideEffects(
-          username,
-          from,
-          nextPathAfterRename(from, destination, to),
-        );
-        moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
+        const trashed = nextPathAfterRename(from, destination, to);
+        await applyQueuedTrashSideEffects(username, from, trashed);
+        moveDocsPageSetupOverride(from, trashed);
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
       }
+      notifyDriveRemoteChange(username);
       const payload: DriveOutboxPayload = isTrash
         ? { op: "trash", from, destination, to }
         : { op: "rename", from, destination, to: input.to };
@@ -468,7 +474,13 @@ export function createHybridDriveOperations(
     deleteItems: async (paths, opts) => {
       if (!readBrowserOnline()) throw new Error(DRIVE_DELETE_NEEDS_CONNECTION);
       try {
-        return await live.deleteItems(paths, opts);
+        const data = await live.deleteItems(paths, opts);
+        // Its rows leave the tree at once.
+        for (const path of paths) {
+          await removeDriveEntriesUnderPrefix(username, normalizeApiVirtualPath(path));
+        }
+        notifyDriveRemoteChange(username);
+        return data;
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
         throw new Error(DRIVE_DELETE_NEEDS_CONNECTION);

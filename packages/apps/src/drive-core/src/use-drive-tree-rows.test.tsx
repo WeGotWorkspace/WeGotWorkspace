@@ -126,6 +126,37 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
 
   afterEach(() => cleanup());
 
+  it("an online search keeps the first-sync state until the server answers", async () => {
+    const ops = operations();
+    let answer!: (entries: WgwDriveDirectoryEntry[]) => void;
+    ops.search = vi.fn(() => new Promise<WgwDriveDirectoryEntry[]>((r) => (answer = r)));
+    const { result } = renderShell({ type: "all" }, ops);
+    await waitFor(() => expect(result.current.viewState).toBe("first-sync"));
+
+    act(() => result.current.setSearchQuery("x"));
+    await waitFor(() => expect(ops.search).toHaveBeenCalled());
+    expect(result.current.viewState).toBe("first-sync");
+
+    act(() => answer([]));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+  });
+
+  it("an online search keeps a missing folder missing until the server answers", async () => {
+    await finishFirstSync();
+    const ops = operations();
+    let answer!: (entries: WgwDriveDirectoryEntry[]) => void;
+    ops.search = vi.fn(() => new Promise<WgwDriveDirectoryEntry[]>((r) => (answer = r)));
+    const { result } = renderShell({ type: "folder", path: "My Drive/Nowhere" }, ops);
+    await waitFor(() => expect(result.current.viewState).toBe("missing"));
+
+    act(() => result.current.setSearchQuery("x"));
+    await waitFor(() => expect(ops.search).toHaveBeenCalled());
+    expect(result.current.viewState).toBe("missing");
+
+    act(() => answer([]));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+  });
+
   it("opens a synced folder from the tree with no folder listing and no loading state", async () => {
     await put(`users/${user}/Projects`, "home");
     await put(`users/${user}/Projects/plan.md`, "home");
@@ -159,12 +190,40 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
     await waitFor(() => expect(result.current.viewState).toBe("not-available"));
   });
 
-  it("shows a never-synced folder as not available offline after the first sync", async () => {
+  it("shows a never-synced folder as not available offline after the first sync, without the hint", async () => {
     connectivity.online = false;
     await finishFirstSync();
     const { result } = renderShell({ type: "folder", path: "My Drive/Nowhere" });
 
+    await waitFor(() => expect(result.current.viewState).toBe("not-synced"));
+  });
+
+  it("shows a folder the finished tree does not hold as missing online, never loading", async () => {
+    await put(`users/${user}/Kept`, "home");
+    await finishFirstSync();
+    const { result, ops } = renderShell({ type: "folder", path: "My Drive/Nowhere" });
+
+    await waitFor(() => expect(result.current.viewState).toBe("missing"));
+    expect(ops.changeDir).not.toHaveBeenCalled();
+  });
+
+  it("an offline search before the first sync is not available, never no hits", async () => {
+    connectivity.online = false;
+    const { result } = renderShell({ type: "all" });
+
+    act(() => result.current.setSearchQuery("budg"));
     await waitFor(() => expect(result.current.viewState).toBe("not-available"));
+  });
+
+  it("a flat view never shows another view's rows while its read is pending", async () => {
+    await put(`users/${user}/Projects`, "home");
+    await put(`users/${user}/Projects/plan.md`, "home");
+    await finishFirstSync();
+    const { result, rerender } = renderShell({ type: "folder", path: "My Drive/Projects" });
+    await waitFor(() => expect(titles(result.current.files)).toEqual(["plan.md"]));
+
+    rerender({ v: { type: "starred" } });
+    expect(result.current.viewItems).toEqual([]);
   });
 
   it("reads All Files, Starred, Shared and Trash from the tree", async () => {

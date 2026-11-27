@@ -41,8 +41,6 @@ async function finishDriveRestore(input: {
   setFiles: Dispatch<SetStateAction<DriveFile[]>>;
   show: (message: string) => void;
   showError: (message: string) => void;
-  /** All Files: reload once the files are back. */
-  reloadAllFiles?: () => void;
 }): Promise<void> {
   try {
     const { restored, failures } = await restoreCompletedDriveMoves({
@@ -63,7 +61,6 @@ async function finishDriveRestore(input: {
       input.groupRoots,
       input.setFiles,
     );
-    input.reloadAllFiles?.();
   }
 }
 
@@ -88,8 +85,8 @@ type UseDriveBatchActionsArgs = {
   view: ViewKey;
   /** Finds a row in any view, including All Files, Shared with me and Starred. */
   fileById: (id: string) => DriveFile | null;
-  /** All Files keeps its own rows: a write shows there at once, then they reload. */
-  allFiles?: { patchAllFiles?: DriveAllFilesPatch; reloadAllFiles?: () => void };
+  /** The flat views keep their own rows: a write shows there at once, then the tree re-reads. */
+  allFiles?: { patchAllFiles?: DriveAllFilesPatch };
 };
 
 export function useDriveBatchActions({
@@ -116,7 +113,6 @@ export function useDriveBatchActions({
 }: UseDriveBatchActionsArgs) {
   const viewType = view.type;
   const patchAllFiles = allFiles?.patchAllFiles;
-  const reloadAllFiles = allFiles?.reloadAllFiles;
   const { show, showError } = useAppToast();
   const clearSelectionForIds = useCallback(
     (ids: string[]) => {
@@ -130,11 +126,11 @@ export function useDriveBatchActions({
     [activeId, setActiveId, setDetailOpen, setSelectedIds, setSelectionMode],
   );
 
-  // After a write: the open folder, or All Files, shows what the server now holds.
+  // After a write: the open folder shows what the server now holds. On the
+  // local tree the write already updated the rows and the view re-reads them.
   const refreshOpenFolder = useCallback(
     async (signal?: AbortSignal) => {
-      if (view.type === "all") reloadAllFiles?.();
-      if (!operations || view.type !== "folder") return;
+      if (!operations || operations.localTree || view.type !== "folder") return;
       await reloadDriveFolderListing(
         operations,
         view.path,
@@ -144,7 +140,7 @@ export function useDriveBatchActions({
         signal,
       );
     },
-    [currentUsername, groupRootNames, operations, reloadAllFiles, setFiles, view],
+    [currentUsername, groupRootNames, operations, setFiles, view],
   );
 
   const restoreMoves = useCallback(
@@ -160,10 +156,9 @@ export function useDriveBatchActions({
         setFiles,
         show,
         showError,
-        reloadAllFiles: view.type === "all" ? reloadAllFiles : undefined,
       });
     },
-    [currentUsername, groupRootNames, operations, reloadAllFiles, setFiles, show, showError, view],
+    [currentUsername, groupRootNames, operations, setFiles, show, showError, view],
   );
 
   const moveToTrash = useCallback(
@@ -189,7 +184,7 @@ export function useDriveBatchActions({
           ids.includes(file.id) ? { ...file, parent: DRIVE_TRASH_UI_PATH } : file,
         ),
       );
-      const restoreAll = patchAllFilesRows(view, patchAllFiles, reloadAllFiles, (all) =>
+      const restoreAll = patchAllFilesRows(view, patchAllFiles, (all) =>
         all.filter((file) => !ids.includes(file.id)),
       );
       clearSelectionForIds(ids);
@@ -257,7 +252,6 @@ export function useDriveBatchActions({
       patchAllFiles,
       queueMutation,
       refreshOpenFolder,
-      reloadAllFiles,
       restoreMoves,
       selectedIds,
       setFiles,
@@ -277,7 +271,7 @@ export function useDriveBatchActions({
       const previousSelectedIds = selectedIds;
 
       setFiles((prev) => prev.filter((file) => !ids.includes(file.id)));
-      const restoreAll = patchAllFilesRows(view, patchAllFiles, reloadAllFiles, (all) =>
+      const restoreAll = patchAllFilesRows(view, patchAllFiles, (all) =>
         all.filter((file) => !ids.includes(file.id)),
       );
       clearSelectionForIds(ids);
@@ -316,7 +310,6 @@ export function useDriveBatchActions({
       patchAllFiles,
       queueMutation,
       refreshOpenFolder,
-      reloadAllFiles,
       selectedIds,
       setFiles,
       setSelectedIds,
@@ -404,7 +397,6 @@ export function useDriveBatchActions({
     view,
     fileById,
     patchAllFiles,
-    reloadAllFiles,
     refreshOpenFolder,
     restoreMoves,
   });

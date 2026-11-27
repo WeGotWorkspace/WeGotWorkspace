@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
-import { driveRowsById } from "@/drive-core/src/drive-view-rows";
+import { driveRowsById, patchAllFilesRows } from "@/drive-core/src/drive-view-rows";
 import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
@@ -244,9 +244,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       return;
     }
     const previousName = file.title;
-    setFiles((prev) =>
-      prev.map((item) => (item.id === file.id ? { ...item, title: nextName } : item)),
-    );
+    const rename = (rows: DriveFile[]) =>
+      rows.map((item) => (item.id === file.id ? { ...item, title: nextName } : item));
+    setFiles(rename);
+    const restoreFlat = patchAllFilesRows(view, shell.patchAllFiles, rename);
     resetRenameDialog();
     show(`Renamed to “${nextName}”`, { icon: <Pencil className="size-4" /> });
     if (!operations) return;
@@ -268,6 +269,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
         setFiles((prev) =>
           prev.map((item) => (item.id === file.id ? { ...item, title: previousName } : item)),
         );
+        restoreFlat();
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
@@ -288,7 +290,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     const v = name.trim();
     if (!v) return;
     const targetParent = destinationPath;
-    setFiles((p) => [optimisticDriveFolder(v, targetParent), ...p]);
+    const optimistic = optimisticDriveFolder(v, targetParent);
+    setFiles((p) => [optimistic, ...p]);
     // The new folder opens where it lives (All Files, or another folder picked).
     if (view.type !== "folder" || view.path !== targetParent) {
       commitView({ type: "folder", path: targetParent });
@@ -308,6 +311,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
           commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
         })
         .catch((error: unknown) => {
+          // A folder that was not created leaves no row behind.
+          setFiles((p) => p.filter((file) => file.id !== optimistic.id));
           const message = error instanceof Error ? error.message : String(error);
           showError(message);
         });

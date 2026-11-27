@@ -96,34 +96,54 @@ async function readViewRows(
 }
 
 /**
- * After a complete pass, a folder or prefix view is ready only for a folder the
- * pass knows; any other view is ready. Before it, nothing is known complete.
+ * How much the device knows about a view: `syncing` before the first complete
+ * pass, `complete` after it, and `unknown` for a folder or prefix view whose
+ * folder the finished pass does not hold (a deep link to a path that does not
+ * exist or is not visible to the person).
  */
-async function viewIsComplete(username: string, view: FileTreeView): Promise<boolean> {
-  if (!(await readDriveTreeFirstSyncDone(username))) return false;
-  if (view.kind !== "folder" && view.kind !== "prefix") return true;
+export type FileTreeViewKnowledge = "syncing" | "complete" | "unknown";
+
+async function viewKnowledge(username: string, view: FileTreeView): Promise<FileTreeViewKnowledge> {
+  if (!(await readDriveTreeFirstSyncDone(username))) return "syncing";
+  if (view.kind !== "folder" && view.kind !== "prefix") return "complete";
   const path = treeRowPath(view.path);
   const [folderRow, roots] = await Promise.all([
     path ? table(username).get(path) : Promise.resolve(undefined),
     readDriveTreeRoots(username),
   ]);
-  return isKnownTreeFolder(path, folderRow, roots.values());
+  const rootPaths = roots ? [...roots.values()] : crawledRootPaths(username, path);
+  return isKnownTreeFolder(path, folderRow, rootPaths) ? "complete" : "unknown";
 }
 
 /**
- * The status rules of the spec: `ready` once the view is known complete (a
- * folder synced with zero entries is known-empty). Otherwise `first-sync`:
- * the rows that already arrived, or the full-pane loading state when there are
- * none and the device is online. Offline with no rows it is `not-available`,
- * never empty. Area-indexed views find no rows during a first sync (rows get
- * `area` after the pass), so they stay in the first-sync state until it ends.
+ * Account roots after a per-folder crawl, which stores no roots map: the
+ * person's home, and a team drive by its path shape (`groups/<slug>`).
+ */
+function crawledRootPaths(username: string, path: string): string[] {
+  const parts = path.split("/");
+  const teamDrive = parts.length === 2 && parts[0] === "groups" ? [path] : [];
+  return [`users/${username}`, ...teamDrive];
+}
+
+/**
+ * The status rules of the spec:
+ * - `complete`: `ready`; a folder synced with zero entries is known-empty.
+ * - `syncing`: `first-sync` with the rows that already arrived, or the
+ *   full-pane loading state when there are none and the device is online.
+ *   Offline with no rows it is `not-available`, never empty. Area-indexed views
+ *   find no rows during a first sync (rows get `area` after the pass), so they
+ *   stay in the first-sync state until it ends.
+ * - `unknown`: the finished pass does not hold the folder, so no sync will
+ *   fill it: `not-available` online too, never a spinner that does not end.
+ *   Rows under it still show (the tree holds them), as `ready`.
  */
 export function fileTreeViewStatus(
-  complete: boolean,
+  knowledge: FileTreeViewKnowledge,
   rowCount: number,
   online: boolean,
 ): FileTreeViewStatus {
-  if (complete) return "ready";
+  if (knowledge === "complete") return "ready";
+  if (knowledge === "unknown") return rowCount > 0 ? "ready" : "not-available";
   if (rowCount > 0 || online) return "first-sync";
   return "not-available";
 }
@@ -135,12 +155,12 @@ export async function queryFileTreeView(
   filter: FileTreeEntryFilter | undefined,
   online: boolean,
 ): Promise<FileTreeViewResult> {
-  const [rows, complete] = await Promise.all([
+  const [rows, knowledge] = await Promise.all([
     readViewRows(username, view, filter),
-    viewIsComplete(username, view),
+    viewKnowledge(username, view),
   ]);
   return {
     rows: rows.map((row) => JSON.parse(row.data) as WgwDriveDirectoryEntry),
-    status: fileTreeViewStatus(complete, rows.length, online),
+    status: fileTreeViewStatus(knowledge, rows.length, online),
   };
 }

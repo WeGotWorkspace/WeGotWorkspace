@@ -6,7 +6,7 @@ import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
+import { applyDocsStarToggle, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntryRowFromEntry } from "@/lib/offline/drive/drive-directory-offline-store";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
@@ -110,6 +110,25 @@ describe("useFileTreeView", () => {
     expect((await settled(after.result)).status).toBe("not-available");
   });
 
+  it("a deep link to a folder the finished tree does not hold is not-available online", async () => {
+    await finishFirstSync();
+    const { result } = render({ kind: "folder", path: "users/ada/Never" });
+    expect(await settled(result)).toEqual({ rows: [], status: "not-available", settled: true });
+
+    const prefix = render({ kind: "prefix", path: "groups/gone" });
+    expect((await settled(prefix.result)).status).toBe("not-available");
+  });
+
+  it("after a per-folder crawl (no roots map), empty account roots are known-empty", async () => {
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
+    for (const path of [`users/${username}`, "groups/team"]) {
+      const { result } = render({ kind: "folder", path });
+      expect(await settled(result), path).toEqual({ rows: [], status: "ready", settled: true });
+    }
+    const unknown = render({ kind: "folder", path: `users/${username}/Never` });
+    expect((await settled(unknown.result)).status).toBe("not-available");
+  });
+
   it("first sync with no rows online is the full-pane first-sync state", async () => {
     const { result } = render({ kind: "folder", path: "users/ada" });
     expect(await settled(result)).toMatchObject({ rows: [], status: "first-sync" });
@@ -203,6 +222,39 @@ describe("useFileTreeView", () => {
     await put("users/ada/new.md", "home");
     act(() => notifyDriveRemoteChange(username));
     await waitFor(() => expect(paths(result.current.rows)).toEqual(["/users/ada/new.md"]));
+  });
+
+  it("re-reads the starred view when the star set changes, with no drive notify", async () => {
+    await finishFirstSync();
+    await put("users/ada/a.md", "home");
+    const { result } = render({ kind: "starred" });
+    expect((await settled(result)).rows).toEqual([]);
+
+    // As Drive's setStar writes it: the star store alone, no drive cache notify.
+    await act(() => applyDocsStarToggle(username, "/users/ada/a.md", true));
+    await waitFor(() => expect(paths(result.current.rows)).toEqual(["/users/ada/a.md"]));
+  });
+
+  it("a failed re-read keeps the list on screen", async () => {
+    await finishFirstSync();
+    await put("users/ada/a.md", "home");
+    const { result } = render({ kind: "folder", path: "users/ada" });
+    expect(paths((await settled(result)).rows)).toEqual(["/users/ada/a.md"]);
+
+    const broken = driveEntryRowFromEntry(entry("users/ada/b.md"), "home");
+    await table().put({ ...broken, data: "{" });
+    act(() => notifyDriveRemoteChange(username));
+    // Give the failing read time to answer; the list stays.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current).toMatchObject({ status: "ready", settled: true });
+    expect(paths(result.current.rows)).toEqual(["/users/ada/a.md"]);
+  });
+
+  it("an unreadable cache with nothing shown is not-available, online too", async () => {
+    const broken = driveEntryRowFromEntry(entry("users/ada/b.md"));
+    await table().put({ ...broken, data: "{" });
+    const { result } = render({ kind: "folder", path: "users/ada" });
+    expect(await settled(result)).toEqual({ rows: [], status: "not-available", settled: true });
   });
 
   it("re-reads the status when connectivity flips", async () => {

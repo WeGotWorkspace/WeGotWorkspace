@@ -86,6 +86,10 @@
   padding-bottom: var(--floating-dock-clearance);
 }
 
+.drive-workspace .drive-main-pane__retry {
+  @apply mt-3;
+}
+
 .drive-workspace .drive-main-pane__hint {
   @apply mt-1 max-w-sm text-sm opacity-80;
 }

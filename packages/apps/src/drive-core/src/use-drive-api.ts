@@ -18,6 +18,7 @@ import {
 } from "@/lib/offline/drive/drive-hybrid-operations";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
+import { syncUntilFirstSyncDone } from "@/lib/offline/drive/drive-first-sync-retry";
 import {
   guestUploadQueueOperations,
   resolveGuestUploadAccount,
@@ -119,10 +120,17 @@ export function useDriveAPI(source?: DriveApiSource) {
     const generation = syncGenerationRef.current + 1;
     syncGenerationRef.current = generation;
     const controller = new AbortController();
-    void runDriveOfflineSync(username, controller.signal)
-      .then(() => flushDriveOutboxForAccount(username))
-      .catch(() => undefined);
+    const cancelRetry = syncUntilFirstSyncDone(
+      username,
+      () =>
+        runDriveOfflineSync(username, controller.signal).then(() =>
+          flushDriveOutboxForAccount(username),
+        ),
+      // A newer trigger (reconnect, settings change) owns the retries then.
+      { signal: controller.signal, isCurrent: () => syncGenerationRef.current === generation },
+    );
     return () => {
+      cancelRetry();
       if (syncGenerationRef.current === generation) {
         controller.abort();
       }

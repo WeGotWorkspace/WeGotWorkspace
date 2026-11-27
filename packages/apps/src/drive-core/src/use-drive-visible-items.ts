@@ -35,19 +35,8 @@ export function useDriveVisibleItems(shell: DriveShellState) {
         view,
         searchQuery,
         currentUsername,
-        operations,
         uploadFiles,
       }),
-    [
-      currentUsername,
-      files,
-      liveSearchResults,
-      operations,
-      searchQuery,
-      starred,
-      uploadFiles,
-      view,
-      viewItems,
-    ],
+    [currentUsername, files, liveSearchResults, searchQuery, starred, uploadFiles, view, viewItems],
   );
 }
