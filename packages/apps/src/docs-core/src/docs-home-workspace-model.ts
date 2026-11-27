@@ -24,6 +24,8 @@ export function docsHomeHeaderTitle(
   if (view.type === "recent") return labels.homeRecent;
   if (view.type === "starred") return labels.homeStarred;
   if (view.type === "trash") return labels.homeTrash;
+  // A tag view is titled by its tag.
+  if (view.type === "tag") return view.tag;
   if (view.type === "drive") {
     return drives.find((drive) => drive.pathPrefix === view.pathPrefix)?.label ?? labels.homeTitle;
   }

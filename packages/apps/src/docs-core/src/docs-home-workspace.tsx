@@ -35,6 +35,7 @@ import {
 } from "@/docs-core/src/docs-home-workspace-model";
 import { DocsHomePane } from "@/docs-core/src/docs-home-pane";
 import { DocsHomeModals } from "@/docs-core/src/docs-home-modals";
+import { DocsSidebarTags } from "@/docs-core/src/docs-sidebar-tags";
 import { DocsHomeSidebar } from "@/docs-core/src/docs-home-sidebar";
 import { docsHomeEmptyIcon } from "@/docs-core/src/docs-home-empty-icon";
 import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
@@ -421,6 +422,17 @@ export function DocsHomeWorkspace({
             drivesSectionLabel={labels.homeDrivesSection}
             projectItems={projectItems}
             projectsSectionLabel={labels.homeProjectsSection}
+            tagsSection={
+              wgwIsGuestSession() ? null : (
+                <DocsSidebarTags
+                  username={username}
+                  title={labels.homeTagsSection}
+                  entryFilter={config.entryFilter}
+                  view={view}
+                  selectView={selectView}
+                />
+              )
+            }
           />
         }
         main={

@@ -105,3 +105,16 @@ describe("the tag view of the file tree (#2402)", () => {
     expect(view.rows.map((row) => row.name)).toEqual(["old.md"]);
   });
 });
+
+describe("the tag list narrowed to an app's files (#2402)", () => {
+  it("lists only tags of files the filter keeps", async () => {
+    const user = freshUser();
+    await put(user, `users/${user}/doc.md`, "home", ["in-docs"]);
+    await put(user, `users/${user}/photo.png`, "home", ["only-drive"]);
+
+    expect(await queryFileTreeTags(user, { extensions: ["md"], filesOnly: true })).toEqual([
+      "in-docs",
+    ]);
+    expect(await queryFileTreeTags(user)).toEqual(["in-docs", "only-drive"]);
+  });
+});

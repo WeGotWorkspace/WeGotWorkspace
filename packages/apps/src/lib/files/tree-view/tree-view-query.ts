@@ -181,9 +181,13 @@ export async function queryFileTreeView(
 
 /**
  * The tags in use on the device's file tree (#2402), sorted: every tag of a listable item
- * outside Trash. Reads the `tags` index, so it touches only tagged rows.
+ * outside Trash, narrowed by an app's entry filter (Docs lists only its file types). Reads
+ * the `tags` index, so it touches only tagged rows.
  */
-export async function queryFileTreeTags(username: string): Promise<string[]> {
+export async function queryFileTreeTags(
+  username: string,
+  filter?: FileTreeEntryFilter,
+): Promise<string[]> {
   const found = new Set<string>();
   await backfillDriveEntryTags(database(username));
   await table(username)
@@ -191,6 +195,7 @@ export async function queryFileTreeTags(username: string): Promise<string[]> {
     .startsWith("")
     .each((row) => {
       if (!isListableTreeRow(row) || row.area === "trash" || isTrashTreePath(row.id)) return;
+      if (!matchesEntryFilter(row, filter)) return;
       for (const tag of row.tags ?? []) found.add(tag);
     });
   return [...found].sort((a, b) => a.localeCompare(b));

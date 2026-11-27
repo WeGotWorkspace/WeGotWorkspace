@@ -46,6 +46,8 @@ export function docsHomeTreeView(view: DocsHomeView): FileTreeView {
       return { kind: "shared" };
     case "trash":
       return { kind: "trash" };
+    case "tag":
+      return { kind: "tag", tag: view.tag };
     case "drive":
       return { kind: "prefix", path: view.pathPrefix };
   }
