@@ -76,7 +76,7 @@ final class FileNodeTreeScope
         self::underRoots($query, $roots);
         foreach ($roots as $root) {
             // Only a Team root (`groups/{slug}`) holds an archived Project tree.
-            if (preg_match('#^groups/([^/]+)$#', $root, $matches) !== 1) {
+            if (preg_match('#^groups/[^/]+$#', $root) !== 1) {
                 continue;
             }
             $archive = $root.'/'.ProjectArchivePaths::DIR;

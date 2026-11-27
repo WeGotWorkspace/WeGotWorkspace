@@ -11,7 +11,7 @@ namespace App\Services\Jmap;
  *
  * It also remembers per-account reads every method call repeats (visible
  * roots, member grants, the change sequence) for the length of one batch
- * (#2063). The dispatcher forgets them after every call that may write, and
+ * (#2063). The dispatcher forgets them before and after every call that may write, and
  * outside a batch nothing is remembered.
  */
 final class JmapRequestContext

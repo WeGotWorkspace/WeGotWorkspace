@@ -245,8 +245,7 @@ final class FileNodeAccountSupport
     }
 
     /**
-     * Reconcile the whole visible tree (used by get-all and unfiltered
-     * queries): BFS from the roots, reconciling each directory's children.
+     * Reconcile the whole visible tree (used by get-all): BFS from the roots, reconciling each directory's children.
      * Bounded in practice by maxObjectsInGet on the caller side.
      *
      * @param  list<string>  $roots  from {@see ensureAccountIndexed}
