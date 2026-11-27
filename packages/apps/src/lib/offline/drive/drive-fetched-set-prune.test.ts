@@ -199,6 +199,26 @@ describe("applyFetchedDirectorySnapshot", () => {
     expect(paths).toEqual(["/users/alice/after.md"]);
   });
 
+  it("drops a synced path-keyed copy at a pruned path whose node lives elsewhere", async () => {
+    await upsertDriveEntry(username, entry("/users/alice/F/x.md", "file", "fn-x"));
+    await upsertDriveEntry(username, entry("/users/alice/G/x.md", "file", "fn-x"));
+    await seedIdentityDatabase("fn-x", false);
+    const stale = docsCollabIndexedDbKey(docsCollabRoomKey("/users/alice/F/x.md"));
+    const ydoc = new Y.Doc();
+    ydoc.getText("body").insert(0, "synced copy");
+    const persistence = new IndexeddbPersistence(stale, ydoc);
+    await persistence.whenSynced;
+    await persistence.destroy();
+    ydoc.destroy();
+
+    const result = await applyFetchedDirectorySnapshot(username, "/users/alice/F", []);
+
+    // The next Doc opened at F/x.md by path must not load fn-x's old text.
+    expect(result.removedPaths).toEqual(["users/alice/F/x.md"]);
+    expect(await databaseNames()).not.toContain(stale);
+    expect(await databaseNames()).toContain(identityDatabaseName("fn-x"));
+  });
+
   it("moves the offline pin to the new path when the crawl sees a remote rename", async () => {
     await upsertDriveEntry(username, entry("/users/alice/old-name.md", "file", "fn-pin"));
     await writeDocsAvailability(username, {

@@ -182,7 +182,12 @@ async function fullResync(
   let docsFollowed = false;
   const followDocs = async () => {
     docsFollowed = true;
-    await applyDocsInboundChanges(username, await movesSince(username, before));
+    try {
+      await applyDocsInboundChanges(username, await movesSince(username, before));
+    } catch (error) {
+      // The rows are written: a failure here must not hold back the prune and token.
+      console.warn("[drive-inbound] could not move Docs path state with the tree", error);
+    }
   };
   const tree = await syncDriveTree(username, {
     signal,
@@ -197,7 +202,9 @@ async function fullResync(
       keptUnsavedPaths: tree.keptUnsavedPaths,
     };
   }
-  if (!docsFollowed) await followDocs();
+  // Unchanged: another tab finished the pass while this one waited for the
+  // lock, and it already applied this final map; applying it again would undo it.
+  if (!docsFollowed && tree.changed) await followDocs();
   return {
     changed: true,
     listedChanges: true,

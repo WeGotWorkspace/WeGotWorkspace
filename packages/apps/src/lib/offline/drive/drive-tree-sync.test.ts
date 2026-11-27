@@ -27,6 +27,7 @@ import {
   docsCollabRoomKey,
 } from "@/lib/collab/docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
+import { FakeWebLocks } from "@/lib/jmap-client/push/mock/fake-web-locks";
 import { readDocsStarredPaths, writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
   readDriveEntryFromCache,
@@ -1724,5 +1725,42 @@ describe("Docs path state follows a full resync (#2063 C7)", () => {
       "/users/ada/b.md",
       "/users/ada/d.md",
     ]);
+  });
+
+  it("a second tab's overlapping full resync does not apply the final map again", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "x.md");
+    server.add("f-b", "r-home", "y.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeLocalText("/users/ada/x.md", "text of x");
+    await writeLocalText("/users/ada/y.md", "text of y");
+    await writeDocsStarredPaths(username, ["/users/ada/x.md"]);
+    server.move("f-a", { name: "y.md" });
+    server.move("f-b", { name: "x.md" });
+    // Both tabs hold the old token and both get cannotCalculateChanges.
+    server.cannotCalculate = 2;
+    // One browser: both tabs share the tree-sync lock. The second tab is a
+    // second copy of the sync module, as another tab runs its own.
+    const locks = new FakeWebLocks();
+    Object.defineProperty(navigator, "locks", { value: locks.client("tab"), configurable: true });
+    // The JMAP client stays shared: the session's errors are its classes.
+    const jmapClient = await import("@/lib/jmap-client");
+    vi.resetModules();
+    vi.doMock("@/lib/jmap-client", () => jmapClient);
+    const otherTab = await import("@/lib/offline/drive/drive-inbound-sync");
+    try {
+      await Promise.all([
+        syncDriveInboundFromFileNodes(username),
+        otherTab.syncDriveInboundFromFileNodes(username),
+      ]);
+    } finally {
+      Reflect.deleteProperty(navigator, "locks");
+      vi.doUnmock("@/lib/jmap-client");
+    }
+
+    expect(await readDocsStarredPaths(username)).toEqual(["/users/ada/y.md"]);
+    expect(await localText("/users/ada/y.md")).toBe("text of x");
+    expect(await localText("/users/ada/x.md")).toBe("text of y");
   });
 });

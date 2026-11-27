@@ -2,6 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import {
+  collabIndexedDbHasPendingServerSave,
   docsCollabRoomKey,
   indexedDbNamesForRoom,
   listExistingIndexedDatabaseNames,
@@ -65,26 +66,39 @@ function roomOf(path: string): string | null {
  * that is no destination is cleared only after the writes. Exact paths only:
  * the batch lists every relocated file, so a folder is never prefix-expanded.
  * So two Docs that swap paths keep their own local text.
+ *
+ * A destination that is no source of the batch and holds unsaved text (a Doc
+ * created offline on that path) is never cleared or written: that move's
+ * source stays where it is too, so neither Doc loses its text.
  */
 export async function moveDocsCollabPathDatabasesInBatch(
   moves: readonly DocsCollabPathMove[],
 ): Promise<void> {
   const existing = await listExistingIndexedDatabaseNames();
   const exists = (name: string) => !existing || existing.has(name);
-  const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
+  const pairs: Array<{ fromName: string; toName: string; toRoom: string }> = [];
   const sources = new Map<string, string>();
   for (const move of moves) {
     const fromRoom = roomOf(move.from);
     const toRoom = roomOf(move.to);
     if (!fromRoom || !toRoom || fromRoom === toRoom) continue;
-    const fromNames = indexedDbNamesForRoom(fromRoom);
     const toNames = indexedDbNamesForRoom(toRoom);
-    for (const name of fromNames) sources.set(name, fromRoom);
-    for (const [index, fromName] of fromNames.entries()) {
+    for (const [index, fromName] of indexedDbNamesForRoom(fromRoom).entries()) {
+      sources.set(fromName, fromRoom);
       const toName = toNames[index];
-      if (!toName) continue;
-      plan.push({ toName, toRoom, state: exists(fromName) ? await capture(fromName) : null });
+      if (toName) pairs.push({ fromName, toName, toRoom });
     }
+  }
+  const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
+  const stays = new Set<string>();
+  for (const { fromName, toName, toRoom } of pairs) {
+    const unsavedOccupant =
+      !sources.has(toName) && exists(toName) && (await collabIndexedDbHasPendingServerSave(toName));
+    if (unsavedOccupant) {
+      stays.add(fromName);
+      continue;
+    }
+    plan.push({ toName, toRoom, state: exists(fromName) ? await capture(fromName) : null });
   }
   const written = new Set<string>();
   for (const { toName, toRoom, state } of plan) {
@@ -99,7 +113,7 @@ export async function moveDocsCollabPathDatabasesInBatch(
     }
   }
   for (const [name, room] of sources) {
-    if (written.has(name) || !exists(name)) continue;
+    if (written.has(name) || stays.has(name) || !exists(name)) continue;
     await clear(name);
     setCollabRoomPendingServerSave(room, false);
   }
