@@ -139,7 +139,34 @@ Spikes 4 and 5 both fixed the same quadratic `fileToDoc`. This is prototype code
 - npm `xlsx` is stuck at 0.18.5 with known CVEs; SheetJS CE must come from the SheetJS CDN tarball (spike 11).
 - Renaming a column ref leaves formulas naming the old ref, because formulas store `ref@rowId`. Store `colId` in formulas instead (integration slice).
 
-## Product decisions needed (from the spikes)
+## Product decisions (Wouter, 2026-11-27)
+
+Taken one by one on 2026-11-27. The original questions follow below the table.
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Enter on a selected cell | Edits (suite keymap). No Excel setting. |
+| 2 | Fill / paste right | Column names shift like A1 (`=jan*1.21` → `=feb*1.21`); `$` locks. |
+| 3 | Cut + paste | References from other cells follow the moved cells. |
+| 4 | Frozen rows | Shared, stored in the file. |
+| 5 | Touch v1 | **Open.** Variant C (Calendar's hold-to-drag, 160 ms) is being tried on `spike/sheets-touch` first; then Wouter picks A, B or C. |
+| 6 | Row height | Fixed in v1; keep room in the format for an optional per-row height later; no wrap. |
+| 7 | Multi-range copy | Refused with a clear message (like Google Sheets). |
+| 8 | Undo of a row insert others typed in | Blocked: the step is skipped with a message ("Can't undo: Anna typed in this row"). Undo never silently removes someone else's work. |
+| 9 | Same cell edited concurrently | One value wins silently (no toast, no marker) in v1. |
+| 10 | Concurrent columns with the same name | The second (by column id) gets a number: `omzet 2` / ref `omzet_2`. Same rule on import with duplicate headers. |
+| 11 | Supported size | ~250k cells in v1: gzip the sidecar and raise the text cap for sheets; warn from ~150k. Incremental saves + epoch compaction are a separate suite project (Docs + Sheets); Sheets v1 does not wait for it. |
+| 12 | Announce collaborators' edits to screen readers | On by default: my cell and joins/leaves at once, the rest as a 10 s digest, carets on request only, a setting to turn it off. Candidate for suite-wide. |
+| 13 | Keys ⌥⇧P, Ctrl+G, F6 | Accepted, suite-wide (suite keymap). |
+| 14 | Screen-reader row numbers | Accept the off-by-one from the header row; row header and cell name read the right number; add `aria-rowindextext` where supported. |
+| 15 | Undo of a move a peer overrode | Skipped, with the same message as decision 8. |
+| 16 | Formula notation | Input and display follow the browser locale (`=ROUND(3,27;1)` in nl-NL); the file stays canonical; function names stay English. |
+| 17 | Spec proposals | P33, P34, P4, P5, P6, P22 accepted; P29 accepted as "frontmatter addresses use exactly the formula refs (names + rows, header = row 0), no letters, no `header:` key"; the rest of Appendix B accepted in bulk unless it conflicts with a decision. Writers emit block-style YAML; a quoted ref used as a YAML key is double-quoted. A clean spec goes to main later. |
+| 18 | Compaction trigger | Only on open or close, by the browser that is alone in the document, past a size threshold. Nobody loses undo history mid-work. |
+
+Spec decisions taken earlier the same day are in "Spec decisions" above.
+
+### Original questions
 
 1. **Enter = edit** (suite rule, Google Sheets) vs Enter = move down (Excel habit). Spike 6 chose edit, with F2 also editing. Do we want a setting for Excel muscle memory?
 2. **Column names shift on fill right / paste right** like A1 (`=aantal*2` → `=prijs*2`), or stay put like Excel table refs?
