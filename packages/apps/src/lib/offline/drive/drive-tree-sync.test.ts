@@ -1268,6 +1268,7 @@ describe("the walk catch-up relocates in two phases", () => {
 
     await expect(syncDriveTree(username)).rejects.toThrow("tab closed");
     spy.mockRestore();
+    expect(await driveTreePrepassTable(db()).count()).toBe(0);
     await syncDriveTree(username);
 
     const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
