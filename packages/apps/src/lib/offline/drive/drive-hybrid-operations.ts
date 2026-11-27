@@ -53,6 +53,7 @@ import {
 import { getDocsSyncRunner } from "@/lib/offline/docs/docs-sync-runner";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
+import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
   flushDriveOutbox,
@@ -105,6 +106,29 @@ async function flushDriveOutboxTask(username: string): Promise<DriveOutboxFlushR
   // rename of its file (#2063 C4), reads again: the writes are on the server.
   if (result.flushed > 0) notifyDriveRemoteChange(username);
   return result;
+}
+
+/**
+ * A Doc created offline whose create is still queued sits at `path` (or under
+ * it). That name may belong to another device's file until the create lands
+ * and keeps both; a write sent now would hit that file. It queues behind the
+ * create instead: the Drive flush sends the Docs outbox first, which aims it
+ * at the name the create got (#2063 C4).
+ */
+async function waitsForQueuedDocsCreate(username: string, path: string): Promise<boolean> {
+  const target = normalizeApiVirtualPath(path);
+  for (const row of await listOutboxMutationsForDomain(username, DOCS_DOMAIN)) {
+    let payload: { op?: string; apiPath?: string } | null = null;
+    try {
+      payload = JSON.parse(row.payload) as { op?: string; apiPath?: string };
+    } catch {
+      continue;
+    }
+    if (payload?.op !== "create" || !payload.apiPath) continue;
+    const created = normalizeApiVirtualPath(payload.apiPath);
+    if (created === target || created.startsWith(`${target}/`)) return true;
+  }
+  return false;
 }
 
 function runnerFor(username: string): ConnectivitySyncRunner<DriveOutboxFlushResult> {
@@ -441,7 +465,7 @@ export function createHybridDriveOperations(
     renameItem: async (input, opts) => {
       const destination = normalizeApiVirtualPath(input.destination);
       const isTrash = isDriveTrashApiPath(destination, username);
-      if (readBrowserOnline()) {
+      if (readBrowserOnline() && !(await waitsForQueuedDocsCreate(username, input.from))) {
         try {
           if (isTrash) {
             await ensureTrashFolder(live, username, new Set(), opts?.signal);
@@ -572,7 +596,7 @@ export function createHybridDriveOperations(
     },
     setStar: async (input, opts) => {
       const path = normalizeApiVirtualPath(input.path);
-      if (readBrowserOnline()) {
+      if (readBrowserOnline() && !(await waitsForQueuedDocsCreate(username, path))) {
         try {
           await live.setStar({ path, starred: input.starred }, opts);
           await applyDocsStarToggle(username, path, input.starred);

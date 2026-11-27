@@ -5,7 +5,10 @@ import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
-import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
+import {
+  createHybridDriveOperations,
+  getDriveSyncRunner,
+} from "@/lib/offline/drive/drive-hybrid-operations";
 
 const renameItem = vi.fn();
 const setStar = vi.fn();
@@ -13,6 +16,11 @@ const calls: string[] = [];
 
 vi.mock("@/lib/api/wgw/drive", () => ({
   createWgwDriveOperations: vi.fn(() => ({ renameItem, setStar })),
+}));
+
+vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/browser-online")>()),
+  readBrowserOnline: vi.fn(() => true),
 }));
 
 const createDriveFileKeepingBoth = vi.fn();
@@ -90,5 +98,35 @@ describe("a Drive outbox flush and a queued Docs create (#2063 C4)", () => {
 
     expect(calls).toEqual(["create", "rename"]);
     expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
+  });
+  it("online, a rename of a Doc whose create is queued waits for the create (#2063 C4)", async () => {
+    await queueCreate();
+
+    // Online: sent now, it would rename the server's own Plan.md.
+    await createHybridDriveOperations(username, null).renameItem({
+      from: "/users/alice/Plan.md",
+      destination: "/users/alice",
+      to: "Renamed.md",
+    });
+    await getDriveSyncRunner(username).flush();
+
+    expect(calls).toEqual(["create", "rename"]);
+    expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
+  });
+
+  it("online, a star of a Doc whose create is queued waits for the create (#2063 C4)", async () => {
+    await queueCreate();
+    setStar.mockImplementation(async () => {
+      calls.push("star");
+    });
+
+    await createHybridDriveOperations(username, null).setStar({
+      path: "/users/alice/Plan.md",
+      starred: true,
+    });
+    await getDriveSyncRunner(username).flush();
+
+    expect(calls).toEqual(["create", "star"]);
+    expect(setStar.mock.calls[0]![0]).toMatchObject({ path: "/users/alice/Plan (1).md" });
   });
 });
