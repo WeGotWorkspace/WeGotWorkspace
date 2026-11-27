@@ -1,7 +1,6 @@
 import { useMemo, useRef } from "react";
-import { Cloud, CloudAlert, Download } from "lucide-react";
+import { Cloud, CloudAlert, CloudOff, Download, FolderX } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { DriveListLoadMore } from "@/drive-core/src/drive-list-load-more";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { CollectionState } from "@/collection-state/src/collection-state";
@@ -97,24 +96,14 @@ export function DriveMainPane({
     active,
     selectionBar,
     searchQuery,
-    folderListingPending,
-    folderListingError,
-    retryFolderListing,
-    listLoading,
-    allLoading,
-    allHasMore,
-    allLoadingMore,
-    loadMoreAll,
+    viewState,
+    retryFolder,
   } = controller;
 
-  const showFolderListingBusy =
-    view.type === "folder" && !searchQuery.trim() && (folderListingPending || listLoading);
-  // A failed load with no rows to show must not read as an empty folder.
-  const showFolderListingFailed =
-    view.type === "folder" &&
-    !searchQuery.trim() &&
-    folderListingError?.path === view.path &&
-    visibleItems.length === 0;
+  // The view's own state shows only while there are no rows: a first sync with
+  // rows lists them, and a known-empty folder shows the empty state. While
+  // searching, `viewState` is the search's state.
+  const paneState = view.type !== "uploads" && visibleItems.length === 0 ? viewState : null;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Grid previews load only for tiles on (or near) screen.
@@ -273,59 +262,46 @@ export function DriveMainPane({
 
       <div className="drive-main-pane__body">
         <div ref={scrollRef} className="drive-main-pane__scroll collection-state-host">
-          {showFolderListingBusy ? (
-            <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
-          ) : showFolderListingFailed ? (
+          {paneState === "pending" ? null : paneState === "first-sync" ? (
+            <CollectionState variant="loading">{labels.allFilesLoading}</CollectionState>
+          ) : paneState === "not-available" || paneState === "not-synced" ? (
+            <CollectionState icon={<CloudOff className="size-12" />}>
+              <p role="status">{labels.notAvailableOffline}</p>
+              {paneState === "not-available" ? (
+                <p className="drive-main-pane__hint">{labels.notAvailableOfflineHint}</p>
+              ) : null}
+            </CollectionState>
+          ) : paneState === "missing" ? (
+            <CollectionState icon={<FolderX className="size-12" />}>
+              <p role="status">{labels.folderMissing}</p>
+              <p className="drive-main-pane__hint">{labels.folderMissingHint}</p>
+            </CollectionState>
+          ) : paneState === "error" ? (
             <CollectionState icon={<CloudAlert className="size-12" />}>
               <p role="alert">{labels.folderListingFailed}</p>
               <Button
                 className="drive-main-pane__retry"
                 variant="secondary"
                 size="sm"
-                onClick={retryFolderListing}
+                onClick={retryFolder}
               >
                 {labels.folderListingRetry}
               </Button>
             </CollectionState>
-          ) : allLoading && !searchQuery.trim() ? (
-            <CollectionState variant="loading">{labels.allFilesLoading}</CollectionState>
           ) : view.type === "uploads" ? (
             <DriveUploadsPane
               files={visibleItems}
               searchActive={searchActive}
               onOpenFolder={(path) => selectView({ type: "folder", path })}
             />
-          ) : visibleItems.length === 0 &&
-            view.type === "all" &&
-            allHasMore &&
-            !searchQuery.trim() ? (
-            <>
-              <CollectionState variant="loading">{labels.allFilesLoading}</CollectionState>
-              <DriveListLoadMore
-                hasMore
-                loadingMore={allLoadingMore}
-                onLoadMore={loadMoreAll}
-                loadingLabel={labels.listLoadingMore}
-              />
-            </>
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
               {view.type === "all" ? labels.allFilesEmpty : labels.emptyFolder}
             </CollectionState>
+          ) : viewMode === "grid" ? (
+            <DriveGridView {...gridBrowserProps} activeId={activeId} />
           ) : (
-            <>
-              {viewMode === "grid" ? (
-                <DriveGridView {...gridBrowserProps} activeId={activeId} />
-              ) : (
-                <DriveListView {...sharedBrowserProps} activeId={activeId} />
-              )}
-              <DriveListLoadMore
-                hasMore={allHasMore && !searchQuery.trim()}
-                loadingMore={allLoadingMore}
-                onLoadMore={loadMoreAll}
-                loadingLabel={labels.listLoadingMore}
-              />
-            </>
+            <DriveListView {...sharedBrowserProps} activeId={activeId} />
           )}
         </div>
       </div>

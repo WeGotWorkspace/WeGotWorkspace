@@ -3,6 +3,8 @@ import type { JmapClient } from "../core/JmapClient.js";
 import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  FILENODE_SHARE_FLAGS_CAPABILITY,
+  FILENODE_TREE_CAPABILITY,
   FILENODE_VERSION_CHECK_CAPABILITY,
   type ChangesResponse,
   type GetResponse,
@@ -21,16 +23,23 @@ const DEFAULT_MAX_OBJECTS_IN_GET = 500;
 
 export const FILENODE_USING = [CORE_CAPABILITY, FILENODE_CAPABILITY];
 
+/** Optional FileNode extensions, listed in `using` only when the server advertises them. */
+const FILENODE_EXTENSIONS = [
+  FILENODE_VERSION_CHECK_CAPABILITY,
+  FILENODE_TREE_CAPABILITY,
+  FILENODE_SHARE_FLAGS_CAPABILITY,
+];
+
 /**
- * `using` for FileNode calls. When the server advertises the version check
- * (#1500), it is listed too: reads then carry `contentHashPending`, and an
- * update may carry `expectedBlobId`. Never listed when it is not advertised.
+ * `using` for FileNode calls. Each extension the server advertises is listed
+ * too: the version check (#1500, reads carry `contentHashPending` and an update
+ * may carry `expectedBlobId`), the tree keyset and `path` (#2063 S1), and share
+ * flags on get (#2063 S3). Never listed when not advertised.
  */
 export function fileNodeUsing(client: JmapClient): string[] {
   if (!client.isConnected) return FILENODE_USING;
-  return FILENODE_VERSION_CHECK_CAPABILITY in client.session.capabilities
-    ? [...FILENODE_USING, FILENODE_VERSION_CHECK_CAPABILITY]
-    : FILENODE_USING;
+  const advertised = FILENODE_EXTENSIONS.filter((urn) => urn in client.session.capabilities);
+  return advertised.length > 0 ? [...FILENODE_USING, ...advertised] : FILENODE_USING;
 }
 
 function assertSetSucceeded<T>(response: SetResponse<T>): void {

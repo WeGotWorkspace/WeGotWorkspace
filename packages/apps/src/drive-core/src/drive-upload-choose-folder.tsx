@@ -3,6 +3,7 @@ import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { apiPathFromUiPath } from "@/lib/files/drive-path-utils";
 import { driveUploadIssueLabels as L } from "@/drive-core/src/drive-upload-issue-labels";
 import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
+import type { DriveShareOperations } from "@/lib/files/drive-types";
 import type { DriveControllerState } from "@/drive-core/src/use-drive-controller";
 
 type ChooseFolderController = Pick<
@@ -28,6 +29,7 @@ export function useDriveUploadChooseFolder(
   show: (message: string) => void,
   showError: (message: string) => void,
   retarget = controller.operations?.retargetQueuedUpload,
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">,
 ) {
   const [itemId, setItemId] = useState<string | null>(null);
   const item = itemId ? snapshot?.items.find((candidate) => candidate.id === itemId) : undefined;
@@ -60,6 +62,7 @@ export function useDriveUploadChooseFolder(
       moveIds={[]}
       view={controller.view}
       operations={controller.operations}
+      shareOperations={shareOperations}
       currentUsername={controller.currentUsername}
       groupRootNames={controller.groupRootNames}
       rootLabels={controller.folderPickerRootLabels}

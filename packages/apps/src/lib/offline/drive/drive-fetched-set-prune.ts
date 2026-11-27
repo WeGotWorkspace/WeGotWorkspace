@@ -25,6 +25,7 @@ import {
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
+import { isDotName } from "@/lib/offline/drive/drive-tree-rows";
 import { uploadPlaceholderProtectedPaths } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
   collabIndexedDbHasPendingServerSave,
@@ -94,7 +95,10 @@ export async function pruneDriveEntriesMissingFromFetch(
   const rows = await table.where("parentPath").equals(normalizedParent).toArray();
   const removedPaths: string[] = [];
   const keptUnsavedPaths: string[] = [];
-  const missing = rows.filter((row) => !fetchedIds.has(row.id));
+  // A folder listing never returns dot names; `.Trash` rows belong to the tree sync.
+  const missing = rows.filter(
+    (row) => !fetchedIds.has(row.id) && !isDotName(row.id.split("/").pop() ?? ""),
+  );
   if (missing.length === 0) return { removedPaths, keptUnsavedPaths };
 
   const protectedPaths = await prunerProtectedPaths(username);
@@ -115,6 +119,63 @@ export async function pruneDriveEntriesMissingFromFetch(
     reportDriveSyncConflicts(keptUnsavedPaths);
   }
 
+  return { removedPaths, keptUnsavedPaths };
+}
+
+/**
+ * The prune of a complete tree pass (#2063): every `drive_entries` row whose
+ * path is not in `keep` goes, with its blob and pins. Call it only after the
+ * walk and its `FileNode/changes` catch-up both succeeded.
+ *
+ * Kept anyway: rows `prunerProtectedPaths` covers (open outbox paths and their
+ * targets, upload placeholders) and the folders above them, and Docs with a
+ * pending server save (or a collab database that will not delete) and the
+ * folders above them.
+ */
+export async function pruneDriveEntriesToKeepSet(
+  username: string,
+  keep: ReadonlySet<string>,
+): Promise<FetchedDirectorySnapshotResult> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
+  const protectedPaths = await prunerProtectedPaths(username);
+  const keepIds = new Set(keep);
+  for (const path of protectedPaths) keepWithAncestors(keepIds, path, "");
+  const missing = (await table.toArray()).filter(
+    (row) => !keepIds.has(row.id) && !isProtectedFromPrune(row.id, protectedPaths),
+  );
+  const removedPaths: string[] = [];
+  const keptUnsavedPaths: string[] = [];
+  if (missing.length === 0) return { removedPaths, keptUnsavedPaths };
+
+  let databaseNames: ReadonlySet<string> | null | undefined;
+  const namesForPendingSave = async (): Promise<ReadonlySet<string> | null> => {
+    if (databaseNames === undefined) databaseNames = await listExistingIndexedDatabaseNames();
+    return databaseNames;
+  };
+  for (const row of missing) {
+    if (row.type === "dir") continue;
+    if (await documentHasPendingServerSave(row, table, namesForPendingSave)) {
+      keptUnsavedPaths.push(row.id);
+      keepWithAncestors(keepIds, row.id, "");
+      continue;
+    }
+    if (await removePrunedFile(username, row, table)) removedPaths.push(row.id);
+    else keepWithAncestors(keepIds, row.id, "");
+  }
+  for (const row of missing) {
+    if (row.type !== "dir" || keepIds.has(row.id)) continue;
+    await table.delete(row.id);
+    await removeDriveContentBlob(username, row.id);
+    await removeDriveAvailability(username, row.id);
+    removedPaths.push(row.id);
+  }
+
+  if (keptUnsavedPaths.length > 0) {
+    await rememberKeptUnsavedDocuments(username, keptUnsavedPaths);
+    reportDocsSyncConflicts(keptUnsavedPaths);
+    reportDriveSyncConflicts(keptUnsavedPaths);
+  }
   return { removedPaths, keptUnsavedPaths };
 }
 
@@ -236,11 +297,14 @@ async function dropMissingDirectory(
   }
 }
 
-/** Keep `id` and each directory from its parent up through `rootId`. */
+/** Keep `id` and each directory from its parent up through `rootId` (`""`: every ancestor). */
 function keepWithAncestors(keepIds: Set<string>, id: string, rootId: string): void {
   keepIds.add(id);
   let current = parentId(id);
-  while (current.length > 0 && (current === rootId || current.startsWith(`${rootId}/`))) {
+  while (
+    current.length > 0 &&
+    (rootId === "" || current === rootId || current.startsWith(`${rootId}/`))
+  ) {
     keepIds.add(current);
     if (current === rootId) break;
     current = parentId(current);

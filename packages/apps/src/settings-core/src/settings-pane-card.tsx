@@ -6,6 +6,7 @@ export function SettingsPaneCard({
   title,
   titleTag,
   action,
+  continued = false,
   children,
 }: {
   title?: string;
@@ -15,11 +16,15 @@ export function SettingsPaneCard({
   icon?: ReactNode;
   /** End of the title row, such as a status tag. */
   action?: ReactNode;
+  /** An untitled card that carries on the one above: a hairline instead of a pause. */
+  continued?: boolean;
   children: ReactNode;
 }) {
   return (
     <WorkspacePageSection
-      className="settings-pane-card"
+      className={
+        continued ? "settings-pane-card settings-pane-card--continued" : "settings-pane-card"
+      }
       title={title}
       titleTag={titleTag}
       action={action}

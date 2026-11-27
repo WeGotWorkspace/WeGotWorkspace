@@ -204,6 +204,51 @@ export function moveDocsPageSetupOverride(from: string, to: string): boolean {
   return moved && writeOverrides(next);
 }
 
+/**
+ * Drop the page setups of documents that left these paths (another file now
+ * sits there). Idempotent.
+ */
+export function removeDocsPageSetupOverrides(paths: readonly string[]): boolean {
+  const keys = new Set(paths.map(docsPageSetupDocKey));
+  if (keys.size === 0) return false;
+  const current = readDocsPageSetupOverrides();
+  if (!Object.keys(current).some((key) => keys.has(key))) return false;
+  return writeOverrides(
+    Object.fromEntries(Object.entries(current).filter(([key]) => !keys.has(key))),
+  );
+}
+
+/**
+ * Several moves of one sync at once: every stored key gets the single longest
+ * matching `from` (itself or a folder above it) applied once, on the paths as
+ * they were before the sync. A rename onto a name another move vacates then
+ * keeps both setups.
+ */
+export function moveDocsPageSetupOverrides(
+  moves: readonly { from: string; to: string }[],
+): boolean {
+  const pairs = moves
+    .map((move) => ({ from: docsPageSetupDocKey(move.from), to: docsPageSetupDocKey(move.to) }))
+    .filter((move) => move.from !== move.to)
+    .sort((a, b) => b.from.length - a.from.length);
+  if (pairs.length === 0) return false;
+  const current = readDocsPageSetupOverrides();
+  const next: DocsPageSetupOverrides = {};
+  let moved = false;
+  for (const [key, entry] of Object.entries(current)) {
+    const move = pairs.find((pair) => key === pair.from || key.startsWith(`${pair.from}/`));
+    if (!move) continue;
+    next[`${move.to}${key.slice(move.from.length)}`] = entry;
+    moved = true;
+  }
+  if (!moved) return false;
+  for (const [key, entry] of Object.entries(current)) {
+    const left = pairs.some((pair) => key === pair.from || key.startsWith(`${pair.from}/`));
+    if (!left && !(key in next)) next[key] = entry;
+  }
+  return writeOverrides(next);
+}
+
 function browserLocales(): readonly string[] {
   if (typeof navigator === "undefined") return [];
   return navigator.languages?.length ? navigator.languages : [navigator.language ?? ""];

@@ -32,6 +32,7 @@ import {
   SettingsNotesPane,
   SettingsTasksPane,
 } from "@/settings-core/src/settings-default-collection-pane";
+import { SettingsTasksNewTaskPane } from "@/settings-core/src/settings-tasks-new-task-pane";
 import { SettingsIncomingEmailPane } from "@/settings-core/src/settings-incoming-email-pane";
 import { incomingEmailLabels } from "@/settings-core/src/settings-incoming-email-labels";
 import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
@@ -228,6 +229,11 @@ export function registerBuiltinSettings(): void {
     id: "tasks-default-collection",
     panelIds: ["tasks"],
     render: () => <SettingsTasksPane />,
+  });
+  registerSlice({
+    id: "tasks-new-task-defaults",
+    panelIds: ["tasks"],
+    render: () => <SettingsTasksNewTaskPane />,
   });
   registerSlice({
     id: "contacts-default-collection",

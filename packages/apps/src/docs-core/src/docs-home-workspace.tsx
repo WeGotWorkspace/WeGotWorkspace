@@ -522,6 +522,7 @@ export function DocsHomeWorkspace({
         username={username}
         groupRoots={labeledGroupRoots}
         operations={listingOperations}
+        shareOperations={shareOperations}
         createDialog={createDialog}
       />
       {saveAsMarkdown.dialogs}

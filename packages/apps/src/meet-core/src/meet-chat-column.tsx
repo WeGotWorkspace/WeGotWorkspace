@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { ChatComposer } from "@/chat-ui/src/chat-composer";
+import { CHAT_COMPOSER_RICH } from "@/chat-ui/src/chat-composer-allow";
 import { ChatMessageList } from "@/chat-ui/src/chat-message-list";
 import { useChatDock } from "@/chat-ui/src/use-chat-dock";
 import type {
@@ -71,6 +72,7 @@ export const MeetChatColumn = memo(function MeetChatColumn({
         editingMessageId={editingMessageId}
         editComposer={(message) => (
           <ChatComposer
+            allow={CHAT_COMPOSER_RICH}
             key={message.id}
             principals={principals}
             initialContent={message.body}
@@ -108,6 +110,7 @@ export const MeetChatColumn = memo(function MeetChatColumn({
         </div>
         <div className="meet-workspace__chat-composer">
           <ChatComposer
+            allow={CHAT_COMPOSER_RICH}
             principals={principals}
             placeholder={placeholder}
             onSend={onSend}

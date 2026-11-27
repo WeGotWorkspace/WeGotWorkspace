@@ -15,7 +15,7 @@ import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdow
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
 import { driveLabels, type DriveUILabels } from "@/drive-core/src/drive-labels";
 import { driveGroupUiPath } from "@/lib/files/drive-path-utils";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import { docxImportLabels } from "@/docs-core/src/docx-import/docx-import-labels";
@@ -35,6 +35,7 @@ type DocsHomeModalsProps = {
   /** Labeled group roots (SST) — slugs for paths, labels for picker chrome. */
   groupRoots: readonly DocsHomeGroupRoot[];
   operations?: DriveAPIOperations;
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   createDialog?: DocsHomeCreateDialogState;
 };
 
@@ -68,6 +69,7 @@ export function DocsHomeModals({
   username,
   groupRoots,
   operations,
+  shareOperations,
   createDialog,
 }: DocsHomeModalsProps) {
   const {
@@ -153,6 +155,7 @@ export function DocsHomeModals({
         view={{ type: "folder", path: DOCS_DRIVE_UI_PERSONAL_PATH }}
         singleItemParent={moveTarget?.parent}
         operations={operations}
+        shareOperations={shareOperations}
         currentUsername={username}
         groupRootNames={groupRootNames}
         rootLabels={folderPickerRootLabels}
@@ -176,6 +179,7 @@ export function DocsHomeModals({
           groupPaths={groupPaths}
           view={createDialog.createDialogView}
           operations={operations}
+          shareOperations={shareOperations}
           currentUsername={username}
           groupRootNames={groupRootNames}
           rootLabels={folderPickerRootLabels}

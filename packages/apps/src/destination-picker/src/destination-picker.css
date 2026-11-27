@@ -69,3 +69,24 @@
 .destination-picker__body .collection-state__icon {
   margin-bottom: 0.75rem;
 }
+
+/* The folder being named: a row above the list, with the list's own row padding. */
+.destination-picker__new-folder {
+  @apply flex shrink-0 items-start gap-3;
+  padding: 0.375rem var(--list-row-padding-x, 1rem);
+}
+
+.destination-picker__new-folder-icon {
+  @apply shrink-0;
+  margin-top: 0.5rem;
+  color: var(--muted-foreground);
+}
+
+.destination-picker__new-folder-field {
+  @apply flex min-w-0 flex-1 flex-col gap-1;
+}
+
+.destination-picker__new-folder-error {
+  @apply text-sm;
+  color: var(--destructive);
+}

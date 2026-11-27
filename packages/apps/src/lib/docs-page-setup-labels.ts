@@ -19,6 +19,11 @@ export const docsPageSetupLabels = {
   settingsPaperDescription: "Sets the starting sheet format for new docs",
   settingsOrientation: "Default orientation",
   settingsOrientationDescription: "Portrait or landscape view",
+  settingsFormatBar: "Formatting bar",
+  settingsFormatBarDescription:
+    "On top of the page, or floating over selected text. Touch screens keep it on top",
+  settingsFormatBarTop: "On top",
+  settingsFormatBarSelection: "Over selection",
   settingsSaveError: "Could not save Docs settings",
 } as const;
 

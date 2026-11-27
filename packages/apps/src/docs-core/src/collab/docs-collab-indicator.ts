@@ -46,6 +46,8 @@ export type DocsCollabIndicatorInput = {
 export type DocsCollabIndicator = {
   kind: DocsCollabIndicatorKind;
   label: string;
+  /** Longer explanation shown as a tooltip on the label. */
+  hint?: string;
 };
 
 const PHASE_LABEL_KEYS = {
@@ -65,7 +67,8 @@ export function deriveDocsCollabIndicator(
   input: DocsCollabIndicatorInput,
   labels: DocsUILabels = docsLabels,
 ): DocsCollabIndicator {
-  if (!input.online) return { kind: "offline", label: labels.statusOffline };
+  if (!input.online)
+    return { kind: "offline", label: labels.statusOffline, hint: labels.statusOfflineHint };
   if (input.phase) {
     return { kind: input.phase, label: labels[PHASE_LABEL_KEYS[input.phase]] };
   }
