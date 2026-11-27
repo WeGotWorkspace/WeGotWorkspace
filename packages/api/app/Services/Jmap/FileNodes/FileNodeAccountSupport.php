@@ -79,34 +79,55 @@ final class FileNodeAccountSupport
     }
 
     /**
-     * {@see rootsFor()} and {@see memberGrantPairs()} from one read of the member grants, for
-     * the JMAP push check (#2243).
+     * {@see rootsFor()} plus {@see accountRootsAndGrantPairs()} from one read of the member Teams
+     * and grants, for the JMAP push check (#2243).
      *
-     * @return array{roots: list<string>, grantPairs: string}
+     * @return array{roots: list<string>, accountRoots: list<string>, grantPairs: string}
      */
     public function rootsAndGrantPairs(string $username): array
     {
-        $guest = $this->guests->find($username);
-        if ($guest !== null) {
-            return ['roots' => [$guest->rootKey], 'grantPairs' => ''];
-        }
-        $grants = $this->liveMemberGrantsOf($username);
+        $scope = $this->scopeOf($username);
 
-        return ['roots' => $this->rootsWith($username, $grants), 'grantPairs' => $this->grantPairsOf($grants)];
+        return [
+            'roots' => $scope['grants'] === null ? $scope['accountRoots'] : $this->rootsWith($username, $scope['grants']),
+            'accountRoots' => $scope['accountRoots'],
+            'grantPairs' => $this->grantPairsOf($scope['grants'] ?? []),
+        ];
     }
 
     /**
-     * Sorted `grantId:access` lines of the user's live, visible member grants. The FileNode
-     * state and push basis carry their hash, because hiding a grant or changing its access in
+     * The account roots (own tree + member Teams) and the sorted `grantId:access` lines of the
+     * user's live, visible member grants, from one read of the member Teams. The FileNode state
+     * carries their hash (#2063): a Team join or leave, hiding a grant or changing its access in
      * place moves neither the global change sequence nor the root markers (#1926).
+     *
+     * @return array{accountRoots: list<string>, grantPairs: string}
      */
-    public function memberGrantPairs(string $username): string
+    public function accountRootsAndGrantPairs(string $username): array
     {
-        if ($this->guests->find($username) !== null) {
-            return '';
-        }
+        $scope = $this->scopeOf($username);
 
-        return $this->grantPairsOf($this->liveMemberGrantsOf($username));
+        return ['accountRoots' => $scope['accountRoots'], 'grantPairs' => $this->grantPairsOf($scope['grants'] ?? [])];
+    }
+
+    /**
+     * A guest has its one share root and no grants (null); a member has its own tree, its
+     * member Teams and its live member grants.
+     *
+     * @return array{accountRoots: list<string>, grants: list<DriveShareGrant>|null}
+     */
+    private function scopeOf(string $username): array
+    {
+        $guest = $this->guests->find($username);
+        if ($guest !== null) {
+            return ['accountRoots' => [$guest->rootKey], 'grants' => null];
+        }
+        $slugs = $this->groups->allowedGroupSlugs($username);
+
+        return [
+            'accountRoots' => FileNodeVisibility::roots($username, $slugs),
+            'grants' => $this->grants->liveMemberGrants($username, $slugs),
+        ];
     }
 
     /**

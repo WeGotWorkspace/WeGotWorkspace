@@ -690,11 +690,14 @@ final class FileNodeIndexService
                 $updated[] = $nodeId;
             }
         }
-        // Nodes that moved out of sight are destroyed for this caller (#2036).
-        array_push($destroyed, ...$this->departures->destroyedSince(
+        // Nodes that moved out of sight are destroyed for this caller (#2036); nodes that moved
+        // into sight, with every descendant of a moved folder, are updated (#2063).
+        $moved = $this->departures->movedSince(
             $since,
             fn (string $key): bool => FileNodeVisibility::isVisibleKey($key, $roots),
-        ));
+        );
+        array_push($destroyed, ...$moved['destroyed']);
+        array_push($updated, ...$moved['arrived']);
 
         return [
             'created' => array_values(array_unique($created)),
