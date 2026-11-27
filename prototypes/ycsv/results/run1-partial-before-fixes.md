@@ -3,6 +3,7 @@
 - Machine: Apple M5 Pro, 15 cores, 24 GB, darwin 25.6.0, Now drawing from 'AC Power'
 - Browser: Chromium 158.0.8127.18 headless (Playwright), production Storybook build, StrictMode off
 - Load at start: `0:06  up 16 days,  9:53, 1 user, load averages: 8.75 14.14 16.65`
+- Load at end: `1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72`
 - Runs per configuration: 3 (fresh page each). Load metrics: median over runs. Interaction metrics: samples pooled over runs, median / p95.
 
 ## Load and model
@@ -28,6 +29,17 @@
 | 1000×30 | baseline | 5.8 | 39.6 | 1322 KB | 970 KB | 17.2 | — (in render) | 36.5 / 39.0 | 232.7 | 43.4 MB | 31159 | 8.2 / 10.6 |
 | 1000×30 | win-full | 6.7 | 42.3 | 1322 KB | 970 KB | 20.6 | 55.9 (6.2/0.0/49.6) | 39.9 / 59.8 | 90.1 | 23.0 MB | 483 | 9.4 / 13.1 |
 | 1000×30 | win-incr | 7.5 | 51.8 | 1322 KB | 970 KB | 22.8 | 112.9 (7.6/39.2/68.6) | 51.6 / 61.5 | 149.2 | 30.4 MB | 483 | 11.7 / 15.2 |
+| 5000×30 | baseline | FAILED: page.evaluate: Target page, context or browser has been closed |||||||||||
+| 5000×30 | win-full | FAILED: browser.newContext: Target page, context or browser has been closed |||||||||||
+| 5000×30 | win-incr | FAILED: browser.newContext: Target page, context or browser has been closed |||||||||||
+| 10000×30 | baseline | a smaller size of this variant failed |||||||||||
+| 10000×30 | win-full | a smaller size of this variant failed |||||||||||
+| 10000×30 | win-incr | a smaller size of this variant failed |||||||||||
+| 25000×30 | win-full | a smaller size of this variant failed |||||||||||
+| 25000×30 | win-incr | a smaller size of this variant failed |||||||||||
+| 50000×30 | win-full | a smaller size of this variant failed |||||||||||
+| 50000×30 | win-incr | a smaller size of this variant failed |||||||||||
+| 100000×30 | win-incr | a smaller size of this variant failed |||||||||||
 
 All times ms. `open→paint` = applyUpdate + engine build + mount + first frame.
 
@@ -78,3 +90,21 @@ Sync part of the same interactions (mutation + Yjs observers + engine; baseline 
 | 1000×30 | baseline | 0.10 / 0.20 | 0.10 / 0.20 | 0.10 / 0.20 | 0.10 / 0.30 | 1.20 / 2.40 |
 | 1000×30 | win-full | 45.25 / 61.40 | 44.10 / 71.00 | 43.05 / 63.00 | 42.85 / 66.20 | 44.80 / 75.90 |
 | 1000×30 | win-incr | 0.20 / 0.40 | 2.30 / 4.50 | 1.10 / 2.70 | 1.00 / 1.80 | 14.90 / 39.40 |
+
+## Yjs layouts
+
+| rows×cols | notation | layout | build | Yjs v1 | Yjs v2 | applyUpdate | heap (doc) | bytes/edit | after edits |
+|---|---|---|---|---|---|---|---|---|---|
+| 10000×10 | absolute | FAILED: browser.newContext: Target page, context or browser has been closed |||||||
+| 10000×30 | absolute | FAILED: browser.newContext: Target page, context or browser has been closed |||||||
+| 50000×10 | absolute | FAILED: browser.newContext: Target page, context or browser has been closed |||||||
+| 10000×10 | current | FAILED: browser.newContext: Target page, context or browser has been closed |||||||
+| 10000×30 | current | FAILED: browser.newContext: Target page, context or browser has been closed |||||||
+
+## Worker (incremental engine in a Web Worker)
+
+| rows×cols | init wall | worker build | main receive | formula values | edit wall | edit main | edit worker | worst wall | worst main | worst worker | worst changed |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10000×10 | FAILED: browser.newContext: Target page, context or browser has been closed |||||||||||
+| 50000×10 | FAILED: browser.newContext: Target page, context or browser has been closed |||||||||||
+| 50000×30 | FAILED: browser.newContext: Target page, context or browser has been closed |||||||||||

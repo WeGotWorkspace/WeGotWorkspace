@@ -37,7 +37,9 @@
    "baselineMaxCells": 300000,
    "fullMaxCells": 1500000,
    "stepBudgetMs": 15000
-  }
+  },
+  "uptimeEnd": "1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72",
+  "finishedAt": "2026-11-27T00:08:58.098Z"
  },
  "results": [
   {
@@ -26079,8 +26081,152 @@
     },
     "errors": []
    }
+  },
+  {
+   "config": {
+    "rows": 5000,
+    "cols": 30,
+    "variant": "baseline"
+   },
+   "loadBefore": "1:08  up 16 days, 10:55, 1 user, load averages: 9.17 7.78 10.65",
+   "loadAfter": "1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72",
+   "failure": "page.evaluate: Target page, context or browser has been closed",
+   "runs": [],
+   "summary": null
+  },
+  {
+   "config": {
+    "rows": 5000,
+    "cols": 30,
+    "variant": "win-full"
+   },
+   "loadBefore": "1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72",
+   "loadAfter": "1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72",
+   "failure": "browser.newContext: Target page, context or browser has been closed",
+   "runs": [],
+   "summary": null
+  },
+  {
+   "config": {
+    "rows": 5000,
+    "cols": 30,
+    "variant": "win-incr"
+   },
+   "loadBefore": "1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72",
+   "loadAfter": "1:08  up 16 days, 10:55, 1 user, load averages: 10.42 8.13 10.72",
+   "failure": "browser.newContext: Target page, context or browser has been closed",
+   "runs": [],
+   "summary": null
+  },
+  {
+   "config": {
+    "rows": 10000,
+    "cols": 30,
+    "variant": "baseline"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 10000,
+    "cols": 30,
+    "variant": "win-full"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 10000,
+    "cols": 30,
+    "variant": "win-incr"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 25000,
+    "cols": 30,
+    "variant": "win-full"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 25000,
+    "cols": 30,
+    "variant": "win-incr"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 50000,
+    "cols": 30,
+    "variant": "win-full"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 50000,
+    "cols": 30,
+    "variant": "win-incr"
+   },
+   "skipped": "a smaller size of this variant failed"
+  },
+  {
+   "config": {
+    "rows": 100000,
+    "cols": 30,
+    "variant": "win-incr"
+   },
+   "skipped": "a smaller size of this variant failed"
   }
  ],
- "layouts": null,
- "worker": null
+ "layouts": [
+  {
+   "rows": 10000,
+   "cols": 10,
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  },
+  {
+   "rows": 10000,
+   "cols": 30,
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  },
+  {
+   "rows": 50000,
+   "cols": 10,
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  },
+  {
+   "rows": 10000,
+   "cols": 10,
+   "notation": "current",
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  },
+  {
+   "rows": 10000,
+   "cols": 30,
+   "notation": "current",
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  }
+ ],
+ "worker": [
+  {
+   "rows": 10000,
+   "cols": 10,
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  },
+  {
+   "rows": 50000,
+   "cols": 10,
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  },
+  {
+   "rows": 50000,
+   "cols": 30,
+   "failure": "browser.newContext: Target page, context or browser has been closed"
+  }
+ ]
 }
