@@ -1,0 +1,7 @@
+Post;Bedrag;Betaald;Datum;Aandeel;Notitie
+Huur;€ 1250,50;TRUE;5-1-26;82,8584680625497%;vast
+Stroom;€ 89,95;FALSE;31-1-26;5,96011131725417%;007
+Internet;€ 45,00;TRUE;28-2-26;2,98171216538563%;'=tekst
+Verzekering;€ 120,25;FALSE;29-2-24;7,96779750861384%;"a, b ""c"""
+Koffie;€ 3,50;TRUE;31-12-26;0,23191094619666%;regel1
+Totaal;€ 1509,20;3;31-12-26;;

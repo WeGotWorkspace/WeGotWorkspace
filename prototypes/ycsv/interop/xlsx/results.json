@@ -1030,11 +1030,51 @@
         "feature": "conditional formatting",
         "outcome": "lost",
         "detail": "Q1 overzicht: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B6 =VLOOKUP(\"fruit\",cats,3,FALSE): source 0.1, engine \"#N/A\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!id2:id4,categorieën!korting2:korting4,\"?\"): source 0.05, engine \"#NAME?\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B10 =SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,\"fruit\",producten!actief2:actief6,TRUE): source 9.9, engine 0"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B13 =SUM(producten!totaal:totaal)-producten!totaal7: source 27.95, engine \"#PARSE!\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B17 =50%*B4: source 13.975, engine \"#PARSE!\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B20 =EOMONTH(producten!datum2,0): source 46053, engine 46052.958333333336"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B22 =TEXT(producten!datum2,\"dd-mm-yyyy\"): source \"05-01-2026\", engine \"46027\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B26 =TODAY(): source 46353, engine 46352.958333333336"
       }
     ],
     "tally": {
       "survives": 48,
-      "degrades": 3,
+      "degrades": 11,
       "lost": 15
     },
     "formulas": {
@@ -1656,11 +1696,51 @@
         "feature": "conditional formatting",
         "outcome": "lost",
         "detail": "Q1 overzicht: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B6 =VLOOKUP(\"fruit\",cats,3,FALSE): source 0.1, engine \"#N/A\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!id2:id4,categorieën!korting2:korting4,\"?\"): source 0.05, engine \"#NAME?\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B10 =SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,\"fruit\",producten!actief2:actief6,TRUE): source 9.9, engine 0"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B13 =SUM(producten!totaal:totaal)-producten!totaal7: source 27.95, engine \"#PARSE!\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B17 =50%*B4: source 13.975, engine \"#PARSE!\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B20 =EOMONTH(producten!datum2,0): source 46053, engine 46052.958333333336"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B22 =TEXT(producten!datum2,\"dd-mm-yyyy\"): source \"05-01-2026\", engine \"46027\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B26 =TODAY(): source 46353, engine 46352.958333333336"
       }
     ],
     "tally": {
       "survives": 23,
-      "degrades": 2,
+      "degrades": 10,
       "lost": 18
     },
     "formulas": {
@@ -2041,6 +2121,1800 @@
           "formattedCells": 0,
           "notes": 1,
           "merges": 0
+        }
+      }
+    },
+    "libre": {}
+  },
+  "numbers/native-full.numbers": {
+    "log": [
+      {
+        "feature": "1904 date system",
+        "outcome": "survives",
+        "detail": "serials shifted by 1462 days before converting to ISO dates"
+      },
+      {
+        "feature": "formulas",
+        "outcome": "lost",
+        "detail": ".numbers via SheetJS CE: values only. Every formula cell is imported as its last computed value and will not update. Fallback: in Numbers, File → Export To → Excel keeps formulas"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "degrades",
+        "detail": ".numbers via SheetJS CE: only dates keep a format; currency, percent and decimals become plain numbers"
+      },
+      {
+        "feature": "Numbers tables",
+        "outcome": "degrades",
+        "detail": ".numbers: each table becomes a sheet; table names are lost (second table on a sheet becomes '<sheet>_1')"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget!A1 \"Post\" → ref post + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget!B1 \"Bedrag\" → ref bedrag + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget!C1 \"Betaald\" → ref betaald + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget!D1 \"Datum\" → ref datum + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget!E1 \"Aandeel\" → ref aandeel + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget!F1 \"Notitie\" → ref notitie + name"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Budget: 5 per-cell formats (P9, mixed-type column)"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "degrades",
+        "detail": "Budget.datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Budget: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Budget: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Budget: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Budget: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget_1!A1 \"Kengetal\" → ref kengetal + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Budget_1!B1 \"Waarde\" → ref waarde + name"
+      },
+      {
+        "feature": "error values",
+        "outcome": "degrades",
+        "detail": "Budget_1!B6 error without code → =NA()"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Budget_1: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Budget_1: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Budget_1: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Budget_1: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Tweede blad: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Tweede blad: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Tweede blad: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Tweede blad: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      }
+    ],
+    "tally": {
+      "survives": 10,
+      "degrades": 4,
+      "lost": 13
+    },
+    "formulas": {
+      "total": 0,
+      "textRoundTrip": 0,
+      "withCachedValue": 0,
+      "engineMatchesCached": 0,
+      "mismatches": [],
+      "notRoundTripped": []
+    },
+    "readBackOk": true,
+    "reimport": {
+      "sheetjsXlsx": {
+        "lostLines": [
+          "Stroom,89.95,false,2026-01-31,0.0596011131725417,007"
+        ],
+        "probe": {
+          "sheets": "Budget | Budget_1 | Tweede blad",
+          "hidden": "",
+          "names": "",
+          "formulas": 1,
+          "formattedCells": 6,
+          "notes": 0,
+          "merges": 0
+        }
+      },
+      "sheetjsOds": {
+        "lostLines": [
+          "        excel_format: m/d/yy",
+          "Stroom,89.95,false,2026-01-31,0.0596011131725417,007",
+          "Fout,=NA()"
+        ],
+        "probe": {
+          "sheets": "Budget | Budget_1 | Tweede blad",
+          "hidden": "",
+          "names": "",
+          "formulas": 0,
+          "formattedCells": 6,
+          "notes": 0,
+          "merges": 0
+        }
+      },
+      "exceljsXlsx": {
+        "lostLines": [
+          "Stroom,89.95,false,2026-01-31,0.0596011131725417,007"
+        ],
+        "probe": {
+          "sheets": "Budget | Budget_1 | Tweede blad",
+          "hidden": "",
+          "names": "",
+          "formulas": 1,
+          "formattedCells": 6,
+          "notes": 0,
+          "merges": 0
+        }
+      }
+    },
+    "libre": {}
+  },
+  "numbers/native-full.xlsx": {
+    "log": [
+      {
+        "feature": "Numbers export summary sheet",
+        "outcome": "lost",
+        "detail": "dropped; tables: Uitgaven → Budget - Uitgaven, Samenvatting → Budget - Samenvatting, Table 1 → Tweede blad"
+      },
+      {
+        "feature": "Numbers: some formulas in error",
+        "outcome": "lost",
+        "detail": "Numbers' XLSX export writes some error formulas as empty cells (seen: TEXT(date), NA()); =1/0 is kept without a value. Not detectable on import"
+      },
+      {
+        "feature": "Numbers: named ranges and hidden sheets",
+        "outcome": "lost",
+        "detail": "Numbers' XLSX export inlines ranges and shows hidden sheets"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven: 22 per-cell formats (P9, mixed-type column)"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven.A 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven.B 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven.C 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven.D 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven.E 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven.F 229px"
+      },
+      {
+        "feature": "bold",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven: 12 cells (raw XML, not SheetJS CE)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Budget - Uitgaven: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "merged cells",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven: A1:F1 (P10)"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "survives",
+        "detail": "Budget - Uitgaven: rows 2, columns 0 (P11)"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Budget - Uitgaven: 8 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Budget - Uitgaven: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Budget - Samenvatting: 1 per-cell formats (P9, mixed-type column)"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Samenvatting.A 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Budget - Samenvatting.B 229px"
+      },
+      {
+        "feature": "bold",
+        "outcome": "survives",
+        "detail": "Budget - Samenvatting: 7 cells (raw XML, not SheetJS CE)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Budget - Samenvatting: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "merged cells",
+        "outcome": "survives",
+        "detail": "Budget - Samenvatting: A1:B1 (P10)"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "survives",
+        "detail": "Budget - Samenvatting: rows 2, columns 1 (P11)"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Budget - Samenvatting: 7 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Budget - Samenvatting: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Tweede blad.A 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Tweede blad.B 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Tweede blad.C 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Tweede blad.D 229px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Tweede blad.E 229px"
+      },
+      {
+        "feature": "bold",
+        "outcome": "survives",
+        "detail": "Tweede blad: 14 cells (raw XML, not SheetJS CE)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Tweede blad: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "merged cells",
+        "outcome": "survives",
+        "detail": "Tweede blad: A1:E1 (P10)"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "survives",
+        "detail": "Tweede blad: rows 2, columns 1 (P11)"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Tweede blad: 11 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Tweede blad: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Budget - Uitgaven!C8 =COUNTIF(C3:C7,TRUE): source 3, engine 0"
+      }
+    ],
+    "tally": {
+      "survives": 24,
+      "degrades": 1,
+      "lost": 12
+    },
+    "formulas": {
+      "total": 13,
+      "textRoundTrip": 13,
+      "withCachedValue": 12,
+      "engineMatchesCached": 11,
+      "mismatches": [
+        {
+          "where": "Budget - Uitgaven!C8",
+          "ycsv": "=COUNTIF(C3:C7,TRUE)",
+          "cached": 3,
+          "engine": 0
+        }
+      ],
+      "notRoundTripped": []
+    },
+    "readBackOk": true,
+    "reimport": {
+      "sheetjsXlsx": {
+        "lostLines": [
+          "    freeze:",
+          "      rows: 2",
+          "      columns: 0",
+          "        style:",
+          "          bold: true",
+          "        style:",
+          "          bold: true",
+          "      A2:",
+          "        style:",
+          "          bold: true",
+          "      B2:",
+          "        style:",
+          "          bold: true",
+          "      C2:",
+          "        style:",
+          "          bold: true",
+          "      D2:",
+          "        style:",
+          "          bold: true",
+          "      E2:",
+          "        style:",
+          "          bold: true",
+          "      F2:",
+          "        style:",
+          "          bold: true",
+          "      A8:",
+          "        style:",
+          "          bold: true",
+          "      C8:",
+          "        style:",
+          "          bold: true",
+          "      E8:",
+          "        style:",
+          "          bold: true",
+          "      F8:",
+          "        style:",
+          "          bold: true",
+          "    freeze:",
+          "      rows: 2",
+          "      columns: 1",
+          "      A2:",
+          "        style:",
+          "          bold: true",
+          "      B2:",
+          "        style:",
+          "          bold: true",
+          "      A3:",
+          "        style:",
+          "          bold: true",
+          "      A4:",
+          "        style:",
+          "          bold: true",
+          "      A5:",
+          "        style:",
+          "          bold: true",
+          "      A6:",
+          "        style:",
+          "          bold: true",
+          "      A7:",
+          "        style:",
+          "          bold: true",
+          "    freeze:",
+          "      rows: 2",
+          "      columns: 1",
+          "      A2:",
+          "        style:",
+          "          bold: true",
+          "      B2:",
+          "        style:",
+          "          bold: true",
+          "      C2:",
+          "        style:",
+          "          bold: true",
+          "      D2:",
+          "        style:",
+          "          bold: true",
+          "      E2:",
+          "        style:",
+          "          bold: true",
+          "      A3:",
+          "        style:",
+          "          bold: true",
+          "      A4:",
+          "        style:",
+          "          bold: true",
+          "      A5:",
+          "        style:",
+          "          bold: true",
+          "      A6:",
+          "        style:",
+          "          bold: true",
+          "      A7:",
+          "        style:",
+          "          bold: true",
+          "      A8:",
+          "        style:",
+          "          bold: true",
+          "      A9:",
+          "        style:",
+          "          bold: true",
+          "      A10:",
+          "        style:",
+          "          bold: true",
+          "      A11:",
+          "        style:",
+          "          bold: true",
+          "Stroom,89.95,false,2026-01-31,=B4/SUM(B3:B7),007",
+          "Table 1,,,,"
+        ],
+        "probe": {
+          "sheets": "Budget - Uitgaven | Budget - Samenvatting | Tweede blad",
+          "hidden": "",
+          "names": "",
+          "formulas": 13,
+          "formattedCells": 18,
+          "notes": 0,
+          "merges": 3
+        }
+      },
+      "sheetjsOds": {
+        "lostLines": [
+          "    freeze:",
+          "      rows: 2",
+          "      columns: 0",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "        excel_format: General",
+          "        excel_format: d-m-yy",
+          "        type: percent",
+          "        excel_format: 0.0############%",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "        excel_format: General",
+          "        excel_format: d-m-yy",
+          "        type: percent",
+          "        excel_format: 0.0#############%",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "        excel_format: General",
+          "        excel_format: d-m-yy",
+          "        type: percent",
+          "        excel_format: 0.0#############%",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "        excel_format: General",
+          "        excel_format: d-m-yy",
+          "        type: percent",
+          "        excel_format: 0.0#############%",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "        excel_format: General",
+          "        excel_format: d-m-yy",
+          "        type: percent",
+          "        excel_format: 0.0#############%",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "        style:",
+          "          bold: true",
+          "        excel_format: d-m-yy",
+          "        style:",
+          "          bold: true",
+          "      A2:",
+          "        style:",
+          "          bold: true",
+          "      B2:",
+          "        style:",
+          "          bold: true",
+          "      C2:",
+          "        style:",
+          "          bold: true",
+          "      D2:",
+          "        style:",
+          "          bold: true",
+          "      E2:",
+          "        style:",
+          "          bold: true",
+          "      F2:",
+          "        style:",
+          "          bold: true",
+          "      A8:",
+          "        style:",
+          "          bold: true",
+          "      C8:",
+          "        style:",
+          "          bold: true",
+          "      E8:",
+          "        style:",
+          "          bold: true",
+          "      F8:",
+          "        style:",
+          "          bold: true",
+          "    freeze:",
+          "      rows: 2",
+          "      columns: 1",
+          "        width: 229",
+          "        width: 229",
+          "        type: currency",
+          "        currency: EUR",
+          "        excel_format: \"[$€-2] 0.00\"",
+          "      A2:",
+          "        style:",
+          "          bold: true",
+          "      B2:",
+          "        style:",
+          "          bold: true",
+          "      A3:",
+          "        style:",
+          "          bold: true",
+          "      A4:",
+          "        style:",
+          "          bold: true",
+          "      A5:",
+          "        style:",
+          "          bold: true",
+          "      A6:",
+          "        style:",
+          "          bold: true",
+          "      A7:",
+          "        style:",
+          "          bold: true",
+          "    freeze:",
+          "      rows: 2",
+          "      columns: 1",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "      A2:",
+          "        style:",
+          "          bold: true",
+          "      B2:",
+          "        style:",
+          "          bold: true",
+          "      C2:",
+          "        style:",
+          "          bold: true",
+          "      D2:",
+          "        style:",
+          "          bold: true",
+          "      E2:",
+          "        style:",
+          "          bold: true",
+          "      A3:",
+          "        style:",
+          "          bold: true",
+          "      A4:",
+          "        style:",
+          "          bold: true",
+          "      A5:",
+          "        style:",
+          "          bold: true",
+          "      A6:",
+          "        style:",
+          "          bold: true",
+          "      A7:",
+          "        style:",
+          "          bold: true",
+          "      A8:",
+          "        style:",
+          "          bold: true",
+          "      A9:",
+          "        style:",
+          "          bold: true",
+          "      A10:",
+          "        style:",
+          "          bold: true",
+          "      A11:",
+          "        style:",
+          "          bold: true",
+          "Stroom,89.95,false,2026-01-31,=B4/SUM(B3:B7),007",
+          "Fout,=1/0",
+          "Table 1,,,,"
+        ],
+        "probe": {
+          "sheets": "Budget - Uitgaven | Budget - Samenvatting | Tweede blad",
+          "hidden": "",
+          "names": "",
+          "formulas": 12,
+          "formattedCells": 18,
+          "notes": 0,
+          "merges": 3
+        }
+      },
+      "exceljsXlsx": {
+        "lostLines": [
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "      E8:",
+          "      F8:",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "        width: 229",
+          "      A9:",
+          "      A10:",
+          "      A11:",
+          "Stroom,89.95,false,2026-01-31,=B4/SUM(B3:B7),007"
+        ],
+        "probe": {
+          "sheets": "Budget - Uitgaven | Budget - Samenvatting | Tweede blad",
+          "hidden": "",
+          "names": "",
+          "formulas": 13,
+          "formattedCells": 18,
+          "notes": 0,
+          "merges": 3
+        }
+      }
+    },
+    "libre": {}
+  },
+  "numbers/studio.from-xlsx.numbers": {
+    "log": [
+      {
+        "feature": "1904 date system",
+        "outcome": "survives",
+        "detail": "serials shifted by 1462 days before converting to ISO dates"
+      },
+      {
+        "feature": "formulas",
+        "outcome": "lost",
+        "detail": ".numbers via SheetJS CE: values only. Every formula cell is imported as its last computed value and will not update. Fallback: in Numbers, File → Export To → Excel keeps formulas"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "degrades",
+        "detail": ".numbers via SheetJS CE: only dates keep a format; currency, percent and decimals become plain numbers"
+      },
+      {
+        "feature": "Numbers tables",
+        "outcome": "degrades",
+        "detail": ".numbers: each table becomes a sheet; table names are lost (second table on a sheet becomes '<sheet>_1')"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!A1 \"Product\" → ref product + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!F1 \"BTW\" → ref btw + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!G1 \"Datum\" → ref datum + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!H1 \"Marge\" → ref marge + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!I1 \"Actief\" → ref actief + name"
+      },
+      {
+        "feature": "comments / notes",
+        "outcome": "survives",
+        "detail": "Producten!C2 as plain-text note (P14)"
+      },
+      {
+        "feature": "comment authors",
+        "outcome": "lost",
+        "detail": "Producten!C2 author \"Author\" dropped"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "degrades",
+        "detail": "Producten.datum: m/d/yy → type date (exact pattern only via excel_format; display follows reader locale)"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.actief: boolean → type boolean"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Producten: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Producten: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Producten: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Categorieën!A1 \"Id\" → ref id + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Categorieën!B1 \"Label\" → ref label + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Categorieën: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Categorieën: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Categorieën: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Categorieën: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Instellingen: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Instellingen: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Instellingen: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Instellingen: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "comments / notes",
+        "outcome": "survives",
+        "detail": "Q1 overzicht!A20 as plain-text note (P14)"
+      },
+      {
+        "feature": "comment authors",
+        "outcome": "lost",
+        "detail": "Q1 overzicht!A20 author \"Author\" dropped"
+      },
+      {
+        "feature": "error values",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B24 error without code → =NA()"
+      },
+      {
+        "feature": "dates and times",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B30 date-formatted value with a time part → time"
+      },
+      {
+        "feature": "hyperlinks",
+        "outcome": "survives",
+        "detail": "Q1 overzicht!B31 → =HYPERLINK(…)"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Q1 overzicht: 4 per-cell formats (P9, mixed-type column)"
+      },
+      {
+        "feature": "bold",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: not readable (SheetJS CE gives no fonts)"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "merged cells",
+        "outcome": "survives",
+        "detail": "Q1 overzicht: A1:D1 (P10)"
+      },
+      {
+        "feature": "frozen panes",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: not readable via SheetJS CE"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      }
+    ],
+    "tally": {
+      "survives": 19,
+      "degrades": 5,
+      "lost": 19
+    },
+    "formulas": {
+      "total": 0,
+      "textRoundTrip": 0,
+      "withCachedValue": 0,
+      "engineMatchesCached": 0,
+      "mismatches": [],
+      "notRoundTripped": []
+    },
+    "readBackOk": true,
+    "reimport": {
+      "sheetjsXlsx": {
+        "lostLines": [
+          "      - ref: C",
+          "      - ref: D",
+          "Overzicht Q1 2026,,,",
+          ",,,",
+          "Kengetal,Waarde,,",
+          "Omzet (SUM over tab),27.95,,",
+          "\"Omzet incl. BTW, afgerond\",33.82,,",
+          "Korting fruit (VLOOKUP),0.1,,",
+          "Korting zuivel (XLOOKUP),0.05,,",
+          "Label via INDEX/MATCH,Zuivel,,",
+          "Aantal fruit (COUNTIF),2,,",
+          "Omzet fruit actief (SUMIFS),9.9,,",
+          "Gemiddelde prijs,2.746,,",
+          "SUMPRODUCT prijs x aantal,27.95,,",
+          "Hele kolom SUM(E:E) min totaal,27.95,,",
+          "Absolute ref $C$2*D2,2.7,,",
+          "Concat &,Appels (fruit),,",
+          "TEXTJOIN,\"Appels, Brood, Melk\",,",
+          "Percent literal 50%*B4,13.975,,",
+          "Eerste datum,2026-01-05,,",
+          "Dagen tussen eerste en laatste,85,,",
+          "Einde maand (EOMONTH),2026-01-31,,",
+          "Werkdagen (NETWORKDAYS),62,,",
+          "Datum als tekst (TEXT),,,",
+          "IF/AND,ok,,",
+          "Deling door nul,=NA(),,",
+          "IFERROR rond deling,n.v.t.,,",
+          "Vandaag (volatile),2026-11-27,,",
+          "Tekst die op een getal lijkt,'007,,",
+          "Groot getal,100000000000000000000,,",
+          "\"Negatief, boekhoudnotatie\",-1234.5,,",
+          "Tijd,09:30:00,,",
+          "Hyperlink,\"=HYPERLINK(\"\"https://example.org/\"\",\"\"WeGotWorkspace\"\")\",,",
+          "Rich text,vet en cursief,,",
+          "Fout als waarde,,,"
+        ],
+        "probe": {
+          "sheets": "Producten | Categorieën | Instellingen | Q1 overzicht",
+          "hidden": "",
+          "names": "",
+          "formulas": 2,
+          "formattedCells": 9,
+          "notes": 2,
+          "merges": 1
+        }
+      },
+      "sheetjsOds": {
+        "lostLines": [
+          "        excel_format: m/d/yy",
+          "      - ref: C",
+          "      - ref: D",
+          "        excel_format: m/d/yy",
+          "        excel_format: m/d/yy",
+          "        excel_format: m/d/yy",
+          "        excel_format: m/d/yy",
+          "Overzicht Q1 2026,,,",
+          ",,,",
+          "Kengetal,Waarde,,",
+          "Omzet (SUM over tab),27.95,,",
+          "\"Omzet incl. BTW, afgerond\",33.82,,",
+          "Korting fruit (VLOOKUP),0.1,,",
+          "Korting zuivel (XLOOKUP),0.05,,",
+          "Label via INDEX/MATCH,Zuivel,,",
+          "Aantal fruit (COUNTIF),2,,",
+          "Omzet fruit actief (SUMIFS),9.9,,",
+          "Gemiddelde prijs,2.746,,",
+          "SUMPRODUCT prijs x aantal,27.95,,",
+          "Hele kolom SUM(E:E) min totaal,27.95,,",
+          "Absolute ref $C$2*D2,2.7,,",
+          "Concat &,Appels (fruit),,",
+          "TEXTJOIN,\"Appels, Brood, Melk\",,",
+          "Percent literal 50%*B4,13.975,,",
+          "Eerste datum,2026-01-05,,",
+          "Dagen tussen eerste en laatste,85,,",
+          "Einde maand (EOMONTH),2026-01-31,,",
+          "Werkdagen (NETWORKDAYS),62,,",
+          "Datum als tekst (TEXT),,,",
+          "IF/AND,ok,,",
+          "Deling door nul,=NA(),,",
+          "IFERROR rond deling,n.v.t.,,",
+          "Vandaag (volatile),2026-11-27,,",
+          "Tekst die op een getal lijkt,'007,,",
+          "Groot getal,100000000000000000000,,",
+          "\"Negatief, boekhoudnotatie\",-1234.5,,",
+          "Tijd,09:30:00,,",
+          "Hyperlink,\"=HYPERLINK(\"\"https://example.org/\"\",\"\"WeGotWorkspace\"\")\",,",
+          "Rich text,vet en cursief,,",
+          "Fout als waarde,,,"
+        ],
+        "probe": {
+          "sheets": "Producten | Categorieën | Instellingen | Q1 overzicht",
+          "hidden": "",
+          "names": "",
+          "formulas": 0,
+          "formattedCells": 9,
+          "notes": 2,
+          "merges": 1
+        }
+      },
+      "exceljsXlsx": {
+        "lostLines": [],
+        "probe": {
+          "sheets": "Producten | Categorieën | Instellingen | Q1 overzicht",
+          "hidden": "",
+          "names": "",
+          "formulas": 2,
+          "formattedCells": 9,
+          "notes": 2,
+          "merges": 1
+        }
+      }
+    },
+    "libre": {}
+  },
+  "numbers/studio.from-xlsx.numbers.xlsx": {
+    "log": [
+      {
+        "feature": "Numbers export summary sheet",
+        "outcome": "lost",
+        "detail": "dropped; tables: Table 1 → Producten, Table 1 → Categorieën, Table 1 → Instellingen, Table 1 → Q1 overzicht"
+      },
+      {
+        "feature": "Numbers: some formulas in error",
+        "outcome": "lost",
+        "detail": "Numbers' XLSX export writes some error formulas as empty cells (seen: TEXT(date), NA()); =1/0 is kept without a value. Not detectable on import"
+      },
+      {
+        "feature": "Numbers: named ranges and hidden sheets",
+        "outcome": "lost",
+        "detail": "Numbers' XLSX export inlines ranges and shows hidden sheets"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!A1 \"Product\" → ref product + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!B1 \"Categorie\" → ref categorie + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!C1 \"Prijs\" → ref prijs + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!D1 \"Aantal\" → ref aantal + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!E1 \"Totaal\" → ref totaal + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!F1 \"BTW\" → ref btw + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!G1 \"Datum\" → ref datum + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!H1 \"Marge\" → ref marge + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Producten!I1 \"Actief\" → ref actief + name"
+      },
+      {
+        "feature": "comments / notes",
+        "outcome": "survives",
+        "detail": "Producten!C2 as plain-text note (P14)"
+      },
+      {
+        "feature": "comment authors",
+        "outcome": "lost",
+        "detail": "Producten!C2 author \"Author\" dropped"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.product 308px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.categorie 196px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.prijs: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.prijs 168px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.aantal: 0 → type number"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.aantal 126px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.totaal: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.totaal 196px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.btw: \"€ \"#,##0.00;\"-€ \"#,##0.00 → type currency"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.btw 168px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "degrades",
+        "detail": "Producten.datum: dd-mm-yyyy → type date (exact pattern only via excel_format; display follows reader locale)"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.datum 168px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.marge: 0.0% → type percent"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.marge 126px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Producten.actief: boolean → type boolean"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Producten.actief 112px"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Producten: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "data validation",
+        "outcome": "survives",
+        "detail": "Producten: 1 rules (list from range, whole-number range) (P15)"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Producten: 10 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Producten: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Categorieën!A1 \"Id\" → ref id + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Categorieën!B1 \"Label\" → ref label + name"
+      },
+      {
+        "feature": "header text",
+        "outcome": "survives",
+        "detail": "Categorieën!C1 \"Korting\" → ref korting + name"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Categorieën.id 124px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Categorieën.label 124px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Categorieën.korting: 0% → type percent"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Categorieën.korting 126px"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Categorieën: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Categorieën: 10 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Categorieën: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Instellingen.A 124px"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Instellingen.B: 0% → type percent"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Instellingen.B 124px"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Instellingen: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Instellingen: 10 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Instellingen: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "formulas",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B17 postfix % (spec §8.6 reads % as modulo)"
+      },
+      {
+        "feature": "comments / notes",
+        "outcome": "survives",
+        "detail": "Q1 overzicht!A20 as plain-text note (P14)"
+      },
+      {
+        "feature": "comment authors",
+        "outcome": "lost",
+        "detail": "Q1 overzicht!A20 author \"Author\" dropped"
+      },
+      {
+        "feature": "hyperlinks",
+        "outcome": "survives",
+        "detail": "Q1 overzicht!B31 → =HYPERLINK(…)"
+      },
+      {
+        "feature": "rich text",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B32 formatting runs dropped, text kept"
+      },
+      {
+        "feature": "number formats",
+        "outcome": "survives",
+        "detail": "Q1 overzicht: 18 per-cell formats (P9, mixed-type column)"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Q1 overzicht.A 476px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Q1 overzicht.B 252px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Q1 overzicht.C 126px"
+      },
+      {
+        "feature": "column widths",
+        "outcome": "survives",
+        "detail": "Q1 overzicht.D 124px"
+      },
+      {
+        "feature": "fonts, sizes, italic, alignment, borders",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: spec has bold/fill/color/border only; CE exposes none of font size/colour/italic/alignment"
+      },
+      {
+        "feature": "merged cells",
+        "outcome": "survives",
+        "detail": "Q1 overzicht: A1:D1 (P10)"
+      },
+      {
+        "feature": "row heights",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: 33 rows (fixed row height, product decision 6)"
+      },
+      {
+        "feature": "conditional formatting",
+        "outcome": "lost",
+        "detail": "Q1 overzicht: not read (cellIs rules could map to column style IF(); not built in the spike)"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B6 =VLOOKUP(\"fruit\",categorieën!$id$2:$korting$4,3,FALSE): source 0.1, engine \"#N/A\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B7 =XLOOKUP(\"zuivel\",categorieën!id2:id4,categorieën!korting2:korting4,\"?\"): source 0.05, engine \"#NAME?\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B10 =SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,\"fruit\",producten!actief2:actief6,TRUE): source 9.9, engine 0"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B17 =50%*B4: source 13.975, engine \"#PARSE!\""
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B20 =EOMONTH(producten!datum2,0): source 46053, engine 46052.958333333336"
+      },
+      {
+        "feature": "formula result differs from source app",
+        "outcome": "degrades",
+        "detail": "Q1 overzicht!B26 =TODAY(): source 46353, engine 46352.958333333336"
+      }
+    ],
+    "tally": {
+      "survives": 44,
+      "degrades": 9,
+      "lost": 17
+    },
+    "formulas": {
+      "total": 35,
+      "textRoundTrip": 13,
+      "withCachedValue": 34,
+      "engineMatchesCached": 28,
+      "mismatches": [
+        {
+          "where": "Q1 overzicht!B6",
+          "ycsv": "=VLOOKUP(\"fruit\",categorieën!$id$2:$korting$4,3,FALSE)",
+          "cached": 0.1,
+          "engine": "#N/A"
+        },
+        {
+          "where": "Q1 overzicht!B7",
+          "ycsv": "=XLOOKUP(\"zuivel\",categorieën!id2:id4,categorieën!korting2:korting4,\"?\")",
+          "cached": 0.05,
+          "engine": "#NAME?"
+        },
+        {
+          "where": "Q1 overzicht!B10",
+          "ycsv": "=SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,\"fruit\",producten!actief2:actief6,TRUE)",
+          "cached": 9.9,
+          "engine": 0
+        },
+        {
+          "where": "Q1 overzicht!B17",
+          "ycsv": "=50%*B4",
+          "cached": 13.975,
+          "engine": "#PARSE!"
+        },
+        {
+          "where": "Q1 overzicht!B20",
+          "ycsv": "=EOMONTH(producten!datum2,0)",
+          "cached": 46053,
+          "engine": 46052.958333333336
+        },
+        {
+          "where": "Q1 overzicht!B26",
+          "ycsv": "=TODAY()",
+          "cached": 46353,
+          "engine": 46352.958333333336
+        }
+      ],
+      "notRoundTripped": [
+        {
+          "where": "Producten!F2",
+          "original": "=E2*'Instellingen'!$B$1",
+          "back": "=E2*Instellingen!$B$1"
+        },
+        {
+          "where": "Producten!F3",
+          "original": "=E3*'Instellingen'!$B$1",
+          "back": "=E3*Instellingen!$B$1"
+        },
+        {
+          "where": "Producten!F4",
+          "original": "=E4*'Instellingen'!$B$1",
+          "back": "=E4*Instellingen!$B$1"
+        },
+        {
+          "where": "Producten!F5",
+          "original": "=E5*'Instellingen'!$B$1",
+          "back": "=E5*Instellingen!$B$1"
+        },
+        {
+          "where": "Producten!F6",
+          "original": "=E6*'Instellingen'!$B$1",
+          "back": "=E6*Instellingen!$B$1"
+        },
+        {
+          "where": "Q1 overzicht!B4",
+          "original": "=SUM('Producten'!E2:E6)",
+          "back": "=SUM(Producten!E2:E6)"
+        },
+        {
+          "where": "Q1 overzicht!B5",
+          "original": "=ROUND(B4*(1+'Instellingen'!$B$1),2)",
+          "back": "=ROUND(B4*(1+Instellingen!$B$1),2)"
+        },
+        {
+          "where": "Q1 overzicht!B6",
+          "original": "=VLOOKUP(\"fruit\",'Categorieën'!$A$2:$C$4,3,FALSE)",
+          "back": "=VLOOKUP(\"fruit\",Categorieën!$A$2:$C$4,3,FALSE)"
+        },
+        {
+          "where": "Q1 overzicht!B7",
+          "original": "=XLOOKUP(\"zuivel\",'Categorieën'!A2:A4,'Categorieën'!C2:C4,\"?\")",
+          "back": "=XLOOKUP(\"zuivel\",Categorieën!A2:A4,Categorieën!C2:C4,\"?\")"
+        },
+        {
+          "where": "Q1 overzicht!B8",
+          "original": "=IFERROR(INDEX('Categorieën'!$B$2:$B$4,MATCH(\"zuivel\",'Categorieën'!$A$2:$A$4,0)),\"-\")",
+          "back": "=IFERROR(INDEX(Categorieën!$B$2:$B$4,MATCH(\"zuivel\",Categorieën!$A$2:$A$4,0)),\"-\")"
+        },
+        {
+          "where": "Q1 overzicht!B9",
+          "original": "=COUNTIF('Producten'!B2:B6,\"fruit\")",
+          "back": "=COUNTIF(Producten!B2:B6,\"fruit\")"
+        },
+        {
+          "where": "Q1 overzicht!B10",
+          "original": "=SUMIFS('Producten'!E2:E6,'Producten'!B2:B6,\"fruit\",'Producten'!I2:I6,TRUE)",
+          "back": "=SUMIFS(Producten!E2:E6,Producten!B2:B6,\"fruit\",Producten!I2:I6,TRUE)"
+        },
+        {
+          "where": "Q1 overzicht!B11",
+          "original": "=AVERAGE('Producten'!C2:C6)",
+          "back": "=AVERAGE(Producten!C2:C6)"
+        },
+        {
+          "where": "Q1 overzicht!B12",
+          "original": "=SUMPRODUCT('Producten'!C2:C6,'Producten'!D2:D6)",
+          "back": "=SUMPRODUCT(Producten!C2:C6,Producten!D2:D6)"
+        },
+        {
+          "where": "Q1 overzicht!B13",
+          "original": "=SUM('Producten'!E1:E10)-'Producten'!E7",
+          "back": "=SUM(Producten!E1:E10)-Producten!E7"
+        },
+        {
+          "where": "Q1 overzicht!B14",
+          "original": "='Producten'!$C$2*'Producten'!D2",
+          "back": "=Producten!$C$2*Producten!D2"
+        },
+        {
+          "where": "Q1 overzicht!B15",
+          "original": "='Producten'!A2&\" (\"&'Producten'!B2&\")\"",
+          "back": "=Producten!A2&\" (\"&Producten!B2&\")\""
+        },
+        {
+          "where": "Q1 overzicht!B16",
+          "original": "=TEXTJOIN(\", \",TRUE,'Producten'!A2:A4)",
+          "back": "=TEXTJOIN(\", \",TRUE,Producten!A2:A4)"
+        },
+        {
+          "where": "Q1 overzicht!B18",
+          "original": "=MIN('Producten'!G2:G6)",
+          "back": "=MIN(Producten!G2:G6)"
+        },
+        {
+          "where": "Q1 overzicht!B19",
+          "original": "=MAX('Producten'!G2:G6)-MIN('Producten'!G2:G6)",
+          "back": "=MAX(Producten!G2:G6)-MIN(Producten!G2:G6)"
+        },
+        {
+          "where": "Q1 overzicht!B20",
+          "original": "=EOMONTH('Producten'!G2,0)",
+          "back": "=EOMONTH(Producten!G2,0)"
+        },
+        {
+          "where": "Q1 overzicht!B21",
+          "original": "=NETWORKDAYS('Producten'!G2,'Producten'!G6)",
+          "back": "=NETWORKDAYS(Producten!G2,Producten!G6)"
+        }
+      ]
+    },
+    "readBackOk": true,
+    "reimport": {
+      "sheetjsXlsx": {
+        "lostLines": [
+          "    validate:",
+          "      - range: B2:B6",
+          "        list:",
+          "          - fruit",
+          "          - bakkerij",
+          "          - zuivel",
+          "      - ref: C",
+          "      - ref: D",
+          "      B33:",
+          "Overzicht Q1 2026,,,",
+          ",,,",
+          "Kengetal,Waarde,,",
+          "Omzet (SUM over tab),=SUM(producten!totaal2:totaal6),,",
+          "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+instellingen!$B$1),2)\",,",
+          "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",categorieën!$id$2:$korting$4,3,FALSE)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id2:id4,categorieën!korting2:korting4,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$2:$label$4,MATCH(\"\"zuivel\"\",categorieën!$id$2:$id$4,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie2:categorie6,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,\"\"fruit\"\",producten!actief2:actief6,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!prijs2:prijs6),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs2:prijs6,producten!aantal2:aantal6)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal1:totaal10)-producten!totaal7,,",
+          "Absolute ref $C$2*D2,=producten!$prijs$2*producten!aantal2,,",
+          "Concat &,\"=producten!product2&\"\" (\"\"&producten!categorie2&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product2:product4)\",,",
+          "Percent literal 50%*B4,=50%*B4,,",
+          "Eerste datum,=MIN(producten!datum2:datum6),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!datum2:datum6)-MIN(producten!datum2:datum6),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum2,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum2,producten!datum6)\",,",
+          "Datum als tekst (TEXT),,,",
+          "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
+          "Deling door nul,=1/0,,",
+          "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\",,",
+          "Vandaag (volatile),=TODAY(),,",
+          "Tekst die op een getal lijkt,'007,,",
+          "Groot getal,100000000000000000000,,",
+          "\"Negatief, boekhoudnotatie\",-1234.5,,",
+          "Tijd,09:30:00,,",
+          "Hyperlink,\"=HYPERLINK(\"\"https://example.org/\"\",\"\"WeGotWorkspace\"\")\",,",
+          "Rich text,vet en cursief,,",
+          "Fout als waarde,,,"
+        ],
+        "probe": {
+          "sheets": "Producten | Categorieën | Instellingen | Q1 overzicht",
+          "hidden": "",
+          "names": "",
+          "formulas": 36,
+          "formattedCells": 54,
+          "notes": 2,
+          "merges": 1
+        }
+      },
+      "sheetjsOds": {
+        "lostLines": [
+          "        width: 308",
+          "        width: 196",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        width: 168",
+          "        width: 126",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        width: 196",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        width: 168",
+          "        excel_format: dd-mm-yyyy",
+          "        width: 168",
+          "        minimumFractionDigits: 1",
+          "        maximumFractionDigits: 1",
+          "        excel_format: 0.0%",
+          "        width: 126",
+          "        width: 112",
+          "    validate:",
+          "      - range: B2:B6",
+          "        list:",
+          "          - fruit",
+          "          - bakkerij",
+          "          - zuivel",
+          "        width: 124",
+          "        width: 124",
+          "        width: 126",
+          "        width: 124",
+          "        width: 124",
+          "        width: 476",
+          "        width: 252",
+          "      - ref: C",
+          "        width: 126",
+          "      - ref: D",
+          "        width: 124",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "      B6:",
+          "      B7:",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "      B17:",
+          "        excel_format: '\"€ \"#,##0.00;\"-€ \"#,##0.00'",
+          "        excel_format: dd-mm-yyyy",
+          "        excel_format: dd-mm-yyyy",
+          "        excel_format: dd-mm-yyyy",
+          "        excel_format: \"0.00E+00\"",
+          "        excel_format: \"#,##0.00;(#,##0.00)\"",
+          "        excel_format: hh:mm",
+          "      B33:",
+          "Overzicht Q1 2026,,,",
+          ",,,",
+          "Kengetal,Waarde,,",
+          "Omzet (SUM over tab),=SUM(producten!totaal2:totaal6),,",
+          "\"Omzet incl. BTW, afgerond\",\"=ROUND(B4*(1+instellingen!$B$1),2)\",,",
+          "Korting fruit (VLOOKUP),\"=VLOOKUP(\"\"fruit\"\",categorieën!$id$2:$korting$4,3,FALSE)\",,",
+          "Korting zuivel (XLOOKUP),\"=XLOOKUP(\"\"zuivel\"\",categorieën!id2:id4,categorieën!korting2:korting4,\"\"?\"\")\",,",
+          "Label via INDEX/MATCH,\"=IFERROR(INDEX(categorieën!$label$2:$label$4,MATCH(\"\"zuivel\"\",categorieën!$id$2:$id$4,0)),\"\"-\"\")\",,",
+          "Aantal fruit (COUNTIF),\"=COUNTIF(producten!categorie2:categorie6,\"\"fruit\"\")\",,",
+          "Omzet fruit actief (SUMIFS),\"=SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,\"\"fruit\"\",producten!actief2:actief6,TRUE)\",,",
+          "Gemiddelde prijs,=AVERAGE(producten!prijs2:prijs6),,",
+          "SUMPRODUCT prijs x aantal,\"=SUMPRODUCT(producten!prijs2:prijs6,producten!aantal2:aantal6)\",,",
+          "Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal1:totaal10)-producten!totaal7,,",
+          "Absolute ref $C$2*D2,=producten!$prijs$2*producten!aantal2,,",
+          "Concat &,\"=producten!product2&\"\" (\"\"&producten!categorie2&\"\")\"\"\",,",
+          "TEXTJOIN,\"=TEXTJOIN(\"\", \"\",TRUE,producten!product2:product4)\",,",
+          "Percent literal 50%*B4,=50%*B4,,",
+          "Eerste datum,=MIN(producten!datum2:datum6),,",
+          "Dagen tussen eerste en laatste,=MAX(producten!datum2:datum6)-MIN(producten!datum2:datum6),,",
+          "Einde maand (EOMONTH),\"=EOMONTH(producten!datum2,0)\",,",
+          "Werkdagen (NETWORKDAYS),\"=NETWORKDAYS(producten!datum2,producten!datum6)\",,",
+          "Datum als tekst (TEXT),,,",
+          "IF/AND,\"=IF(AND(B4>10,B9<5),\"\"ok\"\",\"\"check\"\")\",,",
+          "Deling door nul,=1/0,,",
+          "IFERROR rond deling,\"=IFERROR(1/0,\"\"n.v.t.\"\")\",,",
+          "Vandaag (volatile),=TODAY(),,",
+          "Tekst die op een getal lijkt,'007,,",
+          "Groot getal,100000000000000000000,,",
+          "\"Negatief, boekhoudnotatie\",-1234.5,,",
+          "Tijd,09:30:00,,",
+          "Hyperlink,\"=HYPERLINK(\"\"https://example.org/\"\",\"\"WeGotWorkspace\"\")\",,",
+          "Rich text,vet en cursief,,",
+          "Fout als waarde,,,"
+        ],
+        "probe": {
+          "sheets": "Producten | Categorieën | Instellingen | Q1 overzicht",
+          "hidden": "",
+          "names": "",
+          "formulas": 31,
+          "formattedCells": 51,
+          "notes": 2,
+          "merges": 1
+        }
+      },
+      "exceljsXlsx": {
+        "lostLines": [
+          "        width: 308",
+          "        width: 196",
+          "        width: 168",
+          "        width: 126",
+          "        width: 196",
+          "        width: 168",
+          "        width: 168",
+          "        width: 126",
+          "        width: 112",
+          "        width: 124",
+          "        width: 124",
+          "        width: 126",
+          "        width: 124",
+          "        width: 124",
+          "        width: 476",
+          "        width: 126",
+          "        width: 124",
+          "      B33:"
+        ],
+        "probe": {
+          "sheets": "Producten | Categorieën | Instellingen | Q1 overzicht",
+          "hidden": "",
+          "names": "",
+          "formulas": 36,
+          "formattedCells": 54,
+          "notes": 2,
+          "merges": 1
         }
       }
     },

@@ -58,6 +58,9 @@ const fmtKey = (f: Fmt | null) => (f ? JSON.stringify(f) : "");
 
 const EPOCH = Date.UTC(1899, 11, 30);
 
+/** Days between the 1900 and 1904 date systems (Numbers files use 1904). */
+export const DATE1904_OFFSET = 1462;
+
 export function serialToIso(serial: number, type: string): string {
   const ms = Math.round(serial * 86_400_000);
   const d = new Date(EPOCH + ms);
@@ -74,9 +77,10 @@ export function escapeText(v: string, columnIsText: boolean): string {
   return v;
 }
 
+/** Excel keeps 15 significant digits; this also removes float noise (.numbers gives 0.6000000000000001). */
 function canonicalNumber(n: number): string {
   if (Object.is(n, -0)) return "0";
-  return String(n);
+  return String(Number(n.toPrecision(15)));
 }
 
 // --- raw XLSX parts (frozen panes, validation, bold) -----------------------------------------
@@ -138,18 +142,54 @@ function unique(base: string, taken: Set<string>): string {
 // --- main ------------------------------------------------------------------------------------
 
 export function importWorkbook(data: Uint8Array, opts: { source: string }): ImportResult {
-  const wb = XLSX.read(data, { cellFormula: true, cellNF: true, cellStyles: true, cellDates: false, bookFiles: true });
+  // sheetStubs: without it SheetJS drops formula cells that have no cached value (Numbers writes =1/0 that way).
+  const wb = XLSX.read(data, { cellFormula: true, cellNF: true, cellStyles: true, cellDates: false, bookFiles: true, sheetStubs: true });
   const isOds = wb.bookType === "ods" || opts.source.endsWith(".ods");
-  const raws = rawParts(wb);
+  const isNumbers = (wb.bookType as string) === "numbers" || opts.source.endsWith(".numbers");
+  const allRaws = rawParts(wb);
   const log: LogEntry[] = [];
   const L = (feature: string, outcome: Outcome, detail: string) => log.push({ feature, outcome, detail });
+  // 1904 date system (every .numbers file): serials are 1462 days smaller than in 1900 files.
+  const dateOffset = wb.Workbook?.WBProps?.date1904 ? DATE1904_OFFSET : 0;
+  if (dateOffset) L("1904 date system", "survives", "serials shifted by 1462 days before converting to ISO dates");
+
+  // Numbers XLSX export: a leading "Export Summary" sheet maps Numbers sheet/table → worksheet.
+  const first = wb.Sheets[wb.SheetNames[0]!];
+  const numbersXlsx = !isNumbers && /^This document was exported from Numbers/.test(String((first?.B3 as XLSX.CellObject | undefined)?.v ?? ""));
+  const keep = wb.SheetNames.map((_, i) => !(numbersXlsx && i === 0));
+  if (numbersXlsx) {
+    const rows = XLSX.utils.sheet_to_json<string[]>(first!, { header: 1, defval: "" });
+    const tables = rows.filter((r) => r.some(Boolean) && r[2]).slice(1).map((r) => `${r[1]} → ${r[2]}`);
+    L("Numbers export summary sheet", "lost", `dropped; tables: ${tables.join(", ")}`);
+    L("Numbers: some formulas in error", "lost", "Numbers' XLSX export writes some error formulas as empty cells (seen: TEXT(date), NA()); =1/0 is kept without a value. Not detectable on import");
+    L("Numbers: named ranges and hidden sheets", "lost", "Numbers' XLSX export inlines ranges and shows hidden sheets");
+  }
+  if (isNumbers) {
+    L("formulas", "lost", ".numbers via SheetJS CE: values only. Every formula cell is imported as its last computed value and will not update. Fallback: in Numbers, File → Export To → Excel keeps formulas");
+    L("number formats", "degrades", ".numbers via SheetJS CE: only dates keep a format; currency, percent and decimals become plain numbers");
+    L("Numbers tables", "degrades", ".numbers: each table becomes a sheet; table names are lost (second table on a sheet becomes '<sheet>_1')");
+  }
+  const sheetNames = wb.SheetNames.filter((_, i) => keep[i]);
+  const raws = allRaws.filter((_, i) => keep[i]);
 
   // Sheet refs + header detection + column refs, before any formula is translated.
   const takenSheets = new Set<string>();
-  const meta = wb.SheetNames.map((name, si) => {
+  const meta = sheetNames.map((name, si) => {
     const ws = wb.Sheets[name]!;
     const range = ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]) : { s: { r: 0, c: 0 }, e: { r: -1, c: -1 } };
-    const width = range.e.c + 1;
+    // Trailing columns without any value (Numbers tables carry spare columns) are not part of the sheet.
+    let lastCol = -1;
+    for (const [k, c] of Object.entries(ws)) {
+      if (k.startsWith("!")) continue;
+      const cell = c as XLSX.CellObject;
+      if (cell.t !== "z" || cell.f) lastCol = Math.max(lastCol, XLSX.utils.decode_cell(k).c);
+    }
+    // Keep columns that carry meaning without a value: inside a merge, or hidden.
+    for (const g of ws["!merges"] ?? []) lastCol = Math.max(lastCol, g.e.c);
+    (ws["!cols"] ?? []).forEach((info, c) => {
+      if (info?.hidden) lastCol = Math.max(lastCol, c);
+    });
+    const width = Math.min(range.e.c, lastCol) + 1;
     const height = range.e.r + 1;
     const row1 = Array.from({ length: width }, (_, c) => ws[XLSX.utils.encode_cell({ r: 0, c })] as XLSX.CellObject | undefined);
     const merged1 = (ws["!merges"] ?? []).some((m) => m.s.r === 0 && m.e.c > m.s.c);
@@ -187,7 +227,7 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
   const grids: string[][][] = [];
   const frontSheets: Record<string, unknown>[] = [];
   const bodies: string[] = [];
-  const hiddenInfo = wb.Workbook?.Sheets ?? [];
+  const hiddenInfo = (wb.Workbook?.Sheets ?? []).filter((_, i) => keep[i]);
 
   meta.forEach((m, si) => {
     const raw = raws[si];
@@ -260,14 +300,22 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
           continue;
         }
         if (cell.t === "e") {
-          grid[r]![c] = cell.w === "#N/A" ? "=NA()" : `'${cell.w}`;
-          L("error values", cell.w === "#N/A" ? "survives" : "degrades", `${m.name}!${addr} ${cell.w}`);
+          // Error literal (P20). .numbers errors come without a code; keep "an error" as =NA().
+          const code = cell.w;
+          grid[r]![c] = code === undefined || code === "#N/A" ? "=NA()" : `'${code}`;
+          L("error values", code === "#N/A" ? "survives" : "degrades", `${m.name}!${addr} ${code ?? "error without code → =NA()"}`);
           continue;
         }
         if (cell.t === "b") grid[r]![c] = cell.v ? "true" : "false";
         else if (cell.t === "n") {
           const v = cell.v as number;
-          if (fmt && (fmt.type === "date" || fmt.type === "time" || fmt.type === "datetime")) grid[r]![c] = serialToIso(v, fmt.type);
+          if (fmt && (fmt.type === "date" || fmt.type === "time" || fmt.type === "datetime")) {
+            const serial = v + dateOffset;
+            // A "date" with a time part on day 0/1 is a time of day (Numbers stores times as 1900-01-01 hh:mm).
+            const type = fmt.type === "date" && serial % 1 !== 0 ? (Math.floor(serial) <= 1 ? "time" : "datetime") : fmt.type;
+            if (type !== fmt.type) L("dates and times", "degrades", `${m.name}!${addr} date-formatted value with a time part → ${type}`);
+            grid[r]![c] = serialToIso(type === "time" ? serial % 1 : serial, type);
+          }
           else grid[r]![c] = canonicalNumber(v);
         } else if (cell.t === "s") {
           const v = String(cell.v);

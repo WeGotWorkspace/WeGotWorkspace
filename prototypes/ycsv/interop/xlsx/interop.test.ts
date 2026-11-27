@@ -92,19 +92,28 @@ const lineDiff = (a: string, b: string) => {
 
 test("xlsx / ods import, evaluation and export", async () => {
   mkdirSync(OUT, { recursive: true });
-  const fixtures = ["studio.exceljs.xlsx", "studio.libreoffice.xlsx", "studio.libreoffice.ods", "google-shape.xlsx"];
+  const fixtures = [
+    "studio.exceljs.xlsx", "studio.libreoffice.xlsx", "studio.libreoffice.ods", "google-shape.xlsx",
+    // Apple Numbers (made with Numbers 15.1 via osascript; see docs/spike-11-interop.md)
+    "numbers/native-full.numbers", "numbers/native-full.xlsx", "numbers/studio.from-xlsx.numbers", "numbers/studio.from-xlsx.numbers.xlsx",
+  ];
   const results: Record<string, unknown> = {};
   // LibreOffice's own values for the studio workbook: the reference every export is held to.
   const reference = libreCsv(join(FILES, "studio.libreoffice.ods"));
 
   for (const fx of fixtures) {
     const imp = importWorkbook(readFileSync(join(FILES, fx)), { source: fx });
-    const base = fx.replace(/\./g, "_");
+    const base = fx.replace(/[./]/g, "_");
     writeFileSync(join(OUT, `${base}.ycsv`), imp.text);
     const fm = YAML.parse(imp.text.slice(4, imp.text.indexOf("\n---\n", 4)));
     const defs = new Map<string, string>(Object.entries(fm.defs ?? {}));
     fm.sheets.forEach((s: { defs?: Record<string, string> }) => Object.entries(s.defs ?? {}).forEach(([k, v]) => defs.set(k, v)));
     const { checks, values } = evaluateImportFull(imp, defs);
+    // No silent wrong values: every formula whose result differs from the producing app's
+    // cached value is reported (fallback: keep the formula, flag the cell, show both values).
+    for (const c of checks)
+      if (c.cached !== undefined && !c.match)
+        imp.log.push({ feature: "formula result differs from source app", outcome: "degrades", detail: `${c.where} ${c.ycsv}: source ${JSON.stringify(c.cached)}, engine ${JSON.stringify(c.engine)}` });
 
     // Our reader must read back exactly what the importer wrote.
     const parsed = readAmended(imp.text);
@@ -165,5 +174,5 @@ test("xlsx / ods import, evaluation and export", async () => {
     };
   }
   writeFileSync(here("./results.json"), `${JSON.stringify(results, null, 2)}\n`);
-  expect(Object.keys(results)).toHaveLength(4);
+  expect(Object.keys(results)).toHaveLength(fixtures.length);
 }, 600_000);

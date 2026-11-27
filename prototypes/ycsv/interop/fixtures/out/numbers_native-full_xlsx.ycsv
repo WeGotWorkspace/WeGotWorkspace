@@ -1,0 +1,279 @@
+---
+ycsv_version: 1
+sheets:
+  - ref: budget_uitgaven
+    name: Budget - Uitgaven
+    header: false
+    freeze:
+      rows: 2
+      columns: 0
+    columns:
+      - ref: A
+        type: string
+        width: 229
+      - ref: B
+        width: 229
+      - ref: C
+        width: 229
+      - ref: D
+        width: 229
+      - ref: E
+        width: 229
+      - ref: F
+        type: string
+        width: 229
+    merges:
+      - A1:F1
+    cells:
+      B3:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+      C3:
+        type: boolean
+        excel_format: General
+      D3:
+        type: date
+        excel_format: d-m-yy
+      E3:
+        type: percent
+        minimumFractionDigits: 13
+        maximumFractionDigits: 13
+        excel_format: 0.0############%
+      B4:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+      C4:
+        type: boolean
+        excel_format: General
+      D4:
+        type: date
+        excel_format: d-m-yy
+      E4:
+        type: percent
+        minimumFractionDigits: 14
+        maximumFractionDigits: 14
+        excel_format: 0.0#############%
+      B5:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+      C5:
+        type: boolean
+        excel_format: General
+      D5:
+        type: date
+        excel_format: d-m-yy
+      E5:
+        type: percent
+        minimumFractionDigits: 14
+        maximumFractionDigits: 14
+        excel_format: 0.0#############%
+      B6:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+      C6:
+        type: boolean
+        excel_format: General
+      D6:
+        type: date
+        excel_format: d-m-yy
+      E6:
+        type: percent
+        minimumFractionDigits: 14
+        maximumFractionDigits: 14
+        excel_format: 0.0#############%
+      B7:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+      C7:
+        type: boolean
+        excel_format: General
+      D7:
+        type: date
+        excel_format: d-m-yy
+      E7:
+        type: percent
+        minimumFractionDigits: 14
+        maximumFractionDigits: 14
+        excel_format: 0.0#############%
+      B8:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+        style:
+          bold: true
+      D8:
+        type: date
+        excel_format: d-m-yy
+        style:
+          bold: true
+      A2:
+        style:
+          bold: true
+      B2:
+        style:
+          bold: true
+      C2:
+        style:
+          bold: true
+      D2:
+        style:
+          bold: true
+      E2:
+        style:
+          bold: true
+      F2:
+        style:
+          bold: true
+      A8:
+        style:
+          bold: true
+      C8:
+        style:
+          bold: true
+      E8:
+        style:
+          bold: true
+      F8:
+        style:
+          bold: true
+  - ref: budget_samenvatting
+    name: Budget - Samenvatting
+    header: false
+    freeze:
+      rows: 2
+      columns: 1
+    columns:
+      - ref: A
+        type: string
+        width: 229
+      - ref: B
+        width: 229
+    merges:
+      - A1:B1
+    cells:
+      B3:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: "[$€-2] 0.00"
+      A2:
+        style:
+          bold: true
+      B2:
+        style:
+          bold: true
+      A3:
+        style:
+          bold: true
+      A4:
+        style:
+          bold: true
+      A5:
+        style:
+          bold: true
+      A6:
+        style:
+          bold: true
+      A7:
+        style:
+          bold: true
+  - ref: tweede_blad
+    name: Tweede blad
+    header: false
+    freeze:
+      rows: 2
+      columns: 1
+    columns:
+      - ref: A
+        type: string
+        width: 229
+      - ref: B
+        width: 229
+      - ref: C
+        width: 229
+      - ref: D
+        width: 229
+      - ref: E
+        width: 229
+    merges:
+      - A1:E1
+    cells:
+      A2:
+        style:
+          bold: true
+      B2:
+        style:
+          bold: true
+      C2:
+        style:
+          bold: true
+      D2:
+        style:
+          bold: true
+      E2:
+        style:
+          bold: true
+      A3:
+        style:
+          bold: true
+      A4:
+        style:
+          bold: true
+      A5:
+        style:
+          bold: true
+      A6:
+        style:
+          bold: true
+      A7:
+        style:
+          bold: true
+      A8:
+        style:
+          bold: true
+      A9:
+        style:
+          bold: true
+      A10:
+        style:
+          bold: true
+      A11:
+        style:
+          bold: true
+---
+Uitgaven,,,,,
+Post,Bedrag,Betaald,Datum,Aandeel,Notitie
+Huur,1250.5,true,2026-01-05,=B3/SUM(B3:B7),vast
+Stroom,89.95,false,2026-01-31,=B4/SUM(B3:B7),007
+Internet,45,true,2026-02-28,=B5/SUM(B3:B7),''=tekst
+Verzekering,120.25,false,2024-02-29,=B6/SUM(B3:B7),"a, b ""c"""
+Koffie,3.5,true,2026-12-31,=B7/SUM(B3:B7),regel1
+Totaal,=SUM(B3:B7),"=COUNTIF(C3:C7,TRUE)",=MAX(D3:D7),,
+---
+Samenvatting,
+Kengetal,Waarde
+Totaal,=SUM(budget_uitgaven!B3:B7)
+Grootste post,"=INDEX(budget_uitgaven!A3:A7,MATCH(MAX(budget_uitgaven!B3:B7),budget_uitgaven!B3:B7,0))"
+Afgerond,"=ROUND(B3*1.21,2)"
+Tekst,"=budget_uitgaven!A3&"" ""&YEAR(budget_uitgaven!D3)"
+Fout,=1/0
+---
+Table 1,,,,

@@ -1,4 +1,4 @@
-# Spike 11 — YCSV interop with Excel, Google Sheets and LibreOffice
+# Spike 11 — YCSV interop with Excel, Google Sheets, LibreOffice and Apple Numbers
 
 Branch `spike/sheets-interop`. Nothing here is on main, and nothing changes
 `src/ycsv-model` or the grid.
@@ -50,7 +50,24 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
    and LibreOffice. The prototype converter (`interop/notation/`) passes
    2,000 random round trips. One case cannot be detected safely: a canonical
    formula typed in nl-NL. The editor can flag it, but cannot always fix it.
-6. **Spec.** 28 proposals, P1–P28, in Appendix B. The ones that matter most:
+6. **Apple Numbers.**
+   - **Reading `.numbers`:** SheetJS CE reads them in the browser or a worker,
+     but **values only**. Formulas are frozen at their last result; the
+     importer says so and suggests exporting from Numbers as Excel, which
+     keeps formulas.
+   - **Numbers' own XLSX export:** usable, but it inlines named ranges, shows
+     hidden sheets, drops some formulas that are in error, and moves times by
+     one day. The importer now handles 1904 dates, float noise, Numbers'
+     spare columns and times.
+   - **Exporting to Numbers:** use our XLSX. Numbers recalculates an
+     exceljs XLSX to LibreOffice's values in 131 of 135 cells; it has no
+     TEXT().
+   - **Notation:** Numbers in nl-NL accepts only `;` and the decimal comma
+     in formulas, with English function names.
+7. **Lossy import is fine; silent loss is not.** The fidelity table gives a
+   fallback per lost feature. The import report logs every loss, including
+   every formula whose result differs from the source app's.
+8. **Spec.** 28 proposals, P1–P28, in Appendix B. The ones that matter most:
    - **P1**: grid row numbering, so the header is row 1.
    - **P6**: percent stored as a fraction.
    - **P4**: Excel formula grammar: `$`, ranges, `&`, postfix `%`, precedence.
@@ -157,39 +174,57 @@ The fixtures were not produced by real Excel or real Google Sheets (see
 
 ### Fidelity per feature
 
-Import log per fixture: `interop/xlsx/results.json`. Imported YCSV:
-`interop/fixtures/out/*.ycsv`.
+**Lossy import is accepted.** YCSV has fewer features than the
+applications it imports from, so losing things is expected. This table is
+the deliverable: what survives, what degrades, and what is lost, each with a
+fallback. Every degraded or lost item is written to the import log, which
+becomes the import report the user sees (`interop/xlsx/results.json`, field
+`log`). The one rule: a value the user cares about is never lost or changed
+silently. See [No silent loss](#no-silent-loss).
 
-| Feature | XLSX (exceljs-made) | XLSX (LibreOffice-made) | ODS (LibreOffice) | Google shape | YCSV field |
-|---|---|---|---|---|---|
-| Values, text, numbers, booleans | survives | survives | survives | survives | body |
-| Dates / times | survives (ISO) | survives | survives | — | body, P7 |
-| Header row → refs + names | survives | survives | survives | survives | `columns`, P2 |
-| Formulas (text) | 36/36 | 37/37 | 37/37 | 2/2 | body, P4 |
-| Formulas (value, core engine vs cached) | no cached values | 29/37 | 29/37 | 2/2 | — |
-| Postfix `%` | degrades (needs P4) | degrades | degrades | — | P4 |
-| Named ranges | survives | survives | survives | — | `defs`, P13 |
-| Number formats → type | survives | survives | percent display lost | survives | `type`, P9 |
-| Exact format code | `excel_format` | `excel_format` | `m/d/yy` (SheetJS) | — | P9 |
-| Per-cell formats in report sheets | survives | survives | survives | — | `cells`, P9 |
-| Bold | survives (raw XML) | survives (raw XML) | **lost** | — | `style.bold` |
-| Fill colour | survives | survives | lost | — | `style.fill` |
-| Italic, font size, alignment, borders | lost | lost | lost | lost | P16 |
-| Rich text runs | degrades (plain text) | degrades | degrades | — | — |
-| Merged cells | survives | survives | survives | — | P10 |
-| Frozen panes | survives | lost (LibreOffice did not write them) | lost | — | P11 |
-| Column widths / hidden columns | survives | survives | lost | survives | P11 |
-| Row heights | lost (decision 6) | lost | lost | — | — |
-| Hidden sheets | survives | survives | lost | — | P17 |
-| Tab colour | survives | survives | lost | — | P17 |
-| Data validation (list from range, whole numbers) | survives | survives | lost | — | P15 |
-| Conditional formatting | lost (not built) | lost | lost | lost | — |
-| Notes | survives (author dropped) | survives | survives | survives | P14 |
-| Hyperlinks | survives as `=HYPERLINK()` | survives | survives | — | P18 |
-| Error values | survives as `=NA()` | survives | survives | — | P20 |
-| Autofilter / print areas | — | lost | — | — | — |
-| Google-only functions | — | — | — | degrades: cached value + `source_formula` | P21 |
-| Charts, images, pivots | not in fixtures | | | | — |
+Columns:
+- **XLSX**: files written by exceljs and by LibreOffice. They behave the
+  same unless the cell says otherwise.
+- **ODS**: LibreOffice.
+- **Google**: the shape of a Google Sheets XLSX export.
+- **.numbers**: a native Numbers file read with SheetJS CE.
+- **Numbers XLSX**: Numbers' own File → Export To → Excel.
+
+The imported YCSV is in `interop/fixtures/out/*.ycsv`.
+
+| Feature | XLSX | ODS | Google | .numbers | Numbers XLSX | Fallback when not surviving |
+|---|---|---|---|---|---|---|
+| Values: text, numbers, booleans | survives | survives | survives | survives (checkbox → boolean) | survives | — |
+| Dates | survives (ISO) | survives | — | survives after 1904 fix | survives | — |
+| Times of day | survives | survives | — | **degrades** → fixed: a date-formatted value on day 0/1 becomes `time` | survives after fix (Numbers adds one day) | logged |
+| Header row → refs + names | survives | survives | survives | survives (after trimming Numbers' spare columns) | degrades when the table title is shown: title in row 1, header in row 2, A-Z refs | logged; refs fall back to A-Z |
+| Formulas (text) | 36/36, 37/37 | 37/37 | 2/2 | **lost**: values only | survives (13/13; studio 35 of 42) | .numbers: keep the last value, log once per file: "export from Numbers as Excel to keep formulas" |
+| Formula result = source app's cached value | 29/37 | 29/37 | 2/2 | — | 11/12, 28/34 | each difference logged with both values (see below) |
+| Unsupported function | — | — | degrades: cached value + `source_formula` | — | Numbers drops some error formulas (`TEXT(date)`, `NA()`) | keep the cached value; store the original in `source_formula` |
+| Postfix `%` | degrades (needs P4) | degrades | — | — | degrades | logged |
+| Named ranges | survives | survives | — | lost | lost (Numbers inlines them) | the inlined range still works |
+| Number format → type | survives | percent display lost | survives | **degrades**: dates only; currency and percent become plain numbers | survives | value kept; column becomes `number` |
+| Exact format code | `excel_format` | `m/d/yy` | — | — | `excel_format` | Intl defaults for the type |
+| Per-cell formats (report sheets) | survives | survives | — | — | survives | — |
+| Bold | survives (raw XML) | lost | — | lost | lost (Numbers re-styles tables) | drop, log |
+| Fill colour | survives | lost | — | lost | lost (indexed colours, not read) | drop, log |
+| Italic, sizes, alignment, borders | lost | lost | lost | lost | lost | drop, log (P16 would keep italic and alignment) |
+| Rich text runs | degrades: plain text | degrades | — | degrades | degrades | text kept |
+| Merged cells | survives | survives | — | survives | survives (also the table title row) | — |
+| Frozen panes | survives (exceljs file) | lost | — | lost | lost | drop |
+| Column widths, hidden columns | survives | lost | survives | lost | widths survive | renderer default |
+| Row heights | lost (decision 6) | lost | — | lost | lost | fixed row height |
+| Hidden sheets | survives | lost | — | — | lost (Numbers shows them) | sheet visible |
+| Tab colour | survives | lost | — | — | lost | drop |
+| Data validation | survives (2 rules) | lost | — | lost | 1 of 2 rules | drop the rule, keep values |
+| Conditional formatting | lost (not built) | lost | lost | lost | lost | drop, log |
+| Notes | survives (author dropped) | survives | survives | survives | survives | — |
+| Hyperlinks | survives as `=HYPERLINK()` | survives | — | survives | survives | — |
+| Error values | survives as `=NA()` | survives | — | degrades: no error code → `=NA()` | `=1/0` kept without a value; others dropped | logged |
+| Several tables on one sheet (Numbers) | — | — | — | degrades: one sheet per table; names lost (`Budget_1`) | degrades: one sheet per table, named `Sheet - Table` | logged with the table names |
+| Header column / footer row (Numbers) | — | — | — | degrades: plain cells | degrades: plain cells | — |
+| Autofilter, print areas | lost | — | — | — | — | drop |
+| Charts, images, pivots | not in the fixtures | | | | | drop, log (not built) |
 
 The 8 formulas where the core engine differs from LibreOffice's cached values:
 - VLOOKUP on a 2-D range def (the engine flattens ranges);
@@ -212,6 +247,112 @@ The importer:
 Plain functions come through like any XLSX file. One gap: `source_formula` is
 not written back on export, so a Google → YCSV → Google round trip loses
 those formulas.
+
+### Apple Numbers
+
+**Fixtures** (`interop/fixtures/files/numbers/`), made with Numbers 15.1
+("Numbers Creator Studio") through osascript, in a temp folder:
+- `native-*.numbers` is built in Numbers itself:
+  - sheet "Budget" with two tables, "Uitgaven" (header row, footer row) and
+    "Samenvatting" (header column);
+  - currency, percent, checkbox and text formats, dates, cross-table formulas
+    (`Uitgaven::B2:B6`), INDEX/MATCH, ROUND, `&`, an error (`=1/0`), and an
+    empty second sheet;
+  - variants `plain`, `formats`, `checkbox` and `full` add the features one
+    by one;
+  - each comes with Numbers' own `.xlsx` and `.csv` exports.
+- `studio.from-xlsx.numbers` is the studio workbook opened in Numbers and
+  saved as `.numbers`, with Numbers' `.xlsx` and `.csv` exports.
+
+**Reading `.numbers`.** A `.numbers` file is a zip of IWA files, which are
+Snappy-compressed protobuf.
+
+| Library | Reads | Writes |
+|---|---|---|
+| SheetJS CE 0.20.3 | yes: values, dates, booleans, merges, notes, hyperlinks. No formulas, no number formats except dates, no styles, no table names. Dates come in the 1904 system (`date1904`), so serials are 1,462 days smaller, and the importer must shift them. | yes, values only (number, boolean, text; no formulas, formats or dates), and only with the 127 KB "zahl" template (59 KB gzip) |
+| exceljs, LibreOffice | no | no |
+| Others | No maintained JS reader found besides SheetJS. Apple publishes no spec; the format changes between Numbers versions. | |
+
+In the browser or a worker, reading `.numbers` is realistic. It is the same
+SheetJS code path as XLSX (pure JS, zip + Snappy + protobuf), with no
+server. The cost is the loss above: **a `.numbers` file imports as values
+only**, so every formula is frozen at its last result. The importer says so
+once per file and points to the fallback: in Numbers, choose File → Export
+To → Excel, then import that file, which keeps the formulas.
+
+One early fixture crashed SheetJS CE (`throw 5`, "data list type 5"). I
+built it with formulas Numbers had rejected (see notation, below). After a
+rebuild, all four variants read fine. I did not find out what caused it, so
+the importer must catch reader errors and show "this Numbers file could not
+be read; export it as Excel".
+
+**Numbers' XLSX export:**
+- **Sheets:** a first sheet "Export Summary" maps each Numbers sheet and
+  table to a worksheet. The importer drops it and logs the table names.
+- **Tables:** each table becomes its own worksheet, named `Sheet - Table`
+  when a sheet has several tables. When the table title is shown, it is in
+  row 1 (merged) and the header moves to row 2.
+- **Formulas:** they survive as array formulas (`t="array"`), and
+  cross-table refs become sheet refs.
+- **Named ranges:** inlined.
+- **Hidden sheets:** made visible.
+- **Freeze:** dropped.
+- **Styles:** bold mostly dropped; fills written as indexed colours.
+- **Formulas in error:** some are written as empty cells, so both the
+  formula and the error are gone (`TEXT(date)`, `NA()`). `=1/0` is kept, but
+  without a value, and SheetJS only reads it with `sheetStubs: true` (fixed in
+  the importer). An importer cannot detect the dropped ones; the report says
+  so for every Numbers XLSX.
+- **Times:** a time of day is written with day 1 included (09:30 became
+  1.3958, that is 1900-01-01 09:30). The importer keeps only the time part
+  for `time` cells.
+- **Values:** Numbers' cached values match LibreOffice's for 131 of 135
+  studio cells. The four differences are those formulas in error and the
+  time.
+
+**Numbers' CSV export** is a folder with one file per table (`Sheet-Table.csv`):
+- `;` separator, decimal comma;
+- display formats: `€ 1250,50`, `5-1-26`, `82,8584680625497%`;
+- no BOM;
+- errors written as empty cells.
+
+It needs the same locale-aware CSV import as Dutch Excel CSV, and it is
+lossier than Numbers' XLSX export.
+
+**Formula notation in Numbers** (nl-NL, checked by setting cell formulas
+through AppleScript):
+- Function names stay English (`SUM`, `ROUND`; Dutch names such as
+  `AFRONDEN` are not recognised).
+- Arguments take `;` and the decimal comma: `=ROUND(1,255;2)` works.
+  `=ROUND(1.255,2)` and `=IF(1>0,"ja","nee")` are rejected, and the cell
+  stays empty.
+- Numbers follows Excel on precedence and `%` (`-2^2` = 4, `2^3^2` = 64,
+  `50%*10` = 5, `"a"="A"` is true) and has XLOOKUP.
+
+This supports the notation recommendation in §5: canonical in the file,
+locale in the editor.
+
+### No silent loss
+
+These are the cases where an import could change a value the user cares
+about without saying so, each with what the spike importer now does:
+
+| Case | Without care | Now |
+|---|---|---|
+| Our engine computes a formula differently from the source app (VLOOKUP on a 2-D range, XLOOKUP, SUMIFS with `TRUE`, `50%`, whole columns, EOMONTH/TODAY, TEXT(date)) | the cell silently shows another number than in Excel | every difference is logged with both values. Proposed UI: keep the formula, flag the cell, show "Excel showed 0.1". Fixing the engine (§4) makes the list shrink. |
+| `.numbers` formulas | values look right but no longer update | logged once per file, with the Excel-export fallback |
+| `.numbers` dates (1904 system) | every date 4 years early | fixed: shifted by 1,462 days |
+| `.numbers` float noise (`0.6000000000000001`) | ugly values | fixed: 15 significant digits on import (as Excel) |
+| Times stored as day 1 + time (Numbers) | time shown as the date 1899-12-31 | fixed: becomes a `time` cell, logged |
+| Numbers' spare empty columns | header not detected, A-Z refs | fixed: trailing empty columns trimmed (merged and hidden columns kept) |
+| Formula cells without a cached value | dropped by SheetJS | fixed: read with `sheetStubs` |
+| Numbers XLSX dropping error formulas | cell empty | not detectable; logged as a warning for every Numbers XLSX |
+| Dutch CSV read with library defaults | `0,45` → 45, `05-01-2026` → 1 May | CSV import must ask for or detect the locale (B.7) |
+| Google-only functions | cached value only | `source_formula` kept, logged |
+
+`interop/xlsx/interop.test.ts` adds a log entry for every formula whose
+engine result differs from the cached value. Across all fixtures, that is
+the complete list above.
 
 ## 3. Export (YCSV → XLSX / ODS / CSV)
 
@@ -261,6 +402,39 @@ and `'` removed. Two problems with CSV coming the other way:
     top of SheetJS CE.
 - **CSV:** per sheet.
 - **ODS:** not in v1. LibreOffice opens our XLSX at 135/135.
+- **Numbers:** export XLSX (exceljs), not `.numbers`. See below.
+
+### Export to Apple Numbers
+
+- **`.numbers` via SheetJS:** it writes a valid file (`numbersWritesNumbers`
+  in `interop/xlsx/numbers-results.json`), but values only. There are no
+  formulas, formats or date type, and it needs the zahl template. Not worth
+  it.
+- **XLSX:** Numbers opens XLSX and recalculates it. The evidence is the
+  studio workbook written by exceljs with no cached values, the same writer
+  and shape as our export. Numbers opened it and got LibreOffice's values in
+  131 of 135 cells. The four differences:
+  - `TEXT(date)`: Numbers has no TEXT function, so `=TEXT(…)` breaks in
+    Numbers;
+  - two formulas in error (`=1/0` and `=NA()`), which Numbers leaves without
+    a value;
+  - one time cell, which Numbers' re-export moves by one day.
+
+  What Numbers keeps from that XLSX: formulas, number formats, merges,
+  notes, hyperlinks, widths and a list validation. What it loses: named
+  ranges (inlined), hidden sheets, freeze, tab colour and the whole-number
+  validation rule.
+- **Not verified:** opening *our* export file in Numbers. Driving Numbers
+  from the test was unreliable:
+  - AppleScript's `open` never returns for an XLSX;
+  - a second installed Numbers (14.5) took the `open -a` call;
+  - later opens produced no document at all.
+
+  The step is in `interop/xlsx/numbers.test.ts` behind `NUMBERS_E2E=1`.
+  It needs a manual check.
+- **Advice for v1:** offer "Excel (.xlsx)" and say it opens in Numbers. If
+  Numbers users matter, avoid TEXT() in templates, or add a Numbers-safe
+  export that writes TEXT() results as values.
 
 ## 4. Formulas
 
@@ -430,6 +604,16 @@ one ships.
   DUMMYFUNCTION shape; it is not a real Google export. Excel's own
   behaviour (its CSV, its recalculation, its reading of our exports) was not
   checked.
+- **Apple Numbers:**
+  - Our own XLSX export was not opened in Numbers (automation failed; see
+    "Export to Apple Numbers"). The claim that Numbers opens it well rests on
+    the same-shape exceljs file.
+  - The Numbers fixtures are small. Numbers features outside them were not
+    tried: charts, pop-up menus, sliders, steppers, ratings, durations,
+    categories, pivot tables, and mixed-content tables.
+  - The `.numbers` reader crash seen once was not reproduced or explained.
+  - Only Numbers 15.1 was checked. Numbers 14.5 is also installed on this
+    Mac and was not compared.
 - **Real Dutch Excel CSV:** the CSV case was built to match what Excel nl-NL
   writes (`;`, decimal comma, `dd-mm-yyyy`), not taken from Excel itself.
 - **LibreOffice headless:**
@@ -462,6 +646,8 @@ one ships.
 | `interop/xlsx/` | Probe, A1 ↔ YCSV translator, importer, evaluator, exporter, end-to-end test |
 | `interop/formulas/` | v1 function set vs LibreOffice; formulajs direct calls |
 | `interop/notation/` | Canonical ↔ locale formula converter and tests |
+| `interop/fixtures/files/numbers/` | Numbers 15.1 fixtures: `.numbers`, Numbers' XLSX and CSV exports |
+| `interop/xlsx/numbers.test.ts` | Numbers values vs LibreOffice, `.numbers` read/write; opening in Numbers is opt-in (`NUMBERS_E2E=1`) |
 
 Run (from `prototypes/ycsv`, LibreOffice must be installed):
 

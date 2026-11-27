@@ -34,6 +34,11 @@ export function readAmended(text: string): Parsed {
   let cell = "";
   let q = false;
   let i = 0;
+  // P26: trailing all-empty rows carry no meaning (also makes an empty body read as no rows).
+  const trim = (rs: string[][]) => {
+    while (rs.length && rs[rs.length - 1]!.every((v) => v === "")) rs.pop();
+    return rs;
+  };
   const endRow = () => {
     row.push(cell);
     rows.push(row);
@@ -52,7 +57,7 @@ export function readAmended(text: string): Parsed {
     else if (ch === ",") row.push(cell), (cell = ""), (i += 1);
     else if (ch === "\n") {
       if (row.length === 0 && cell === "---") {
-        bodies.push(rows);
+        bodies.push(trim(rows));
         rows = [];
         cell = "";
       } else endRow();
@@ -60,7 +65,7 @@ export function readAmended(text: string): Parsed {
     } else (cell += ch), (i += 1);
   }
   if (cell !== "" || row.length) endRow();
-  bodies.push(rows);
+  bodies.push(trim(rows));
   return { fm, bodies };
 }
 

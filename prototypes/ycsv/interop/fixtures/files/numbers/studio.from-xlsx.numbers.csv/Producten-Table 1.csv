@@ -1,0 +1,7 @@
+Product;Categorie;Prijs;Aantal;Totaal;BTW;Datum;Marge;Actief
+Appels;fruit;€ 0,45;6;€ 2,70;€ 0,57;05-01-2026;18,0%;TRUE
+Brood;bakkerij;€ 2,99;2;€ 5,98;€ 1,26;06-01-2026;32,0%;TRUE
+Melk;zuivel;€ 1,19;3;€ 3,57;€ 0,75;01-02-2026;25,0%;FALSE
+Kaas;zuivel;€ 8,50;1;€ 8,50;€ 1,79;28-02-2026;41,0%;TRUE
+Peren;fruit;€ 0,60;12;€ 7,20;€ 1,51;31-03-2026;20,0%;TRUE
+Totaal;;;;€ 27,95;€ 5,87;;27,2%;

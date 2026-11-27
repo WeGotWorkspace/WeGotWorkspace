@@ -1319,6 +1319,14 @@ It must not let a library guess: a Dutch Excel CSV (`;`, `0,45`,
 `05-01-2026`) read with default settings turned `0,45` into 45 and
 `05-01-2026` into 1 May.
 
+**Import report.** Import may lose features; it must not lose them
+silently. An importer produces a report listing every feature that degrades
+or is lost, with the cells involved. Every formula whose evaluated result
+differs from the value the source application cached is listed with both
+values, and the cell is flagged until the user accepts it. A file read
+without formulas (for example `.numbers` through SheetJS) says so once, with
+the way to keep them.
+
 **Cached values on export.** An XLSX or ODS export writes either correct
 cached values for every formula, or none at all plus "recalculate on load".
 It never writes values the engine got wrong, because LibreOffice (and Excel

@@ -1,0 +1,36 @@
+{
+  "numbersComputes": {
+    "cells": 135,
+    "same": 131,
+    "diffs": [
+      "Q1 overzicht!B22: \"05-01-2026\" → undefined",
+      "Q1 overzicht!B24: \"#ERR\" → undefined",
+      "Q1 overzicht!B30: 0.395833333333333 → 1.395833333333333",
+      "Q1 overzicht!B33: \"#ERR\" → undefined"
+    ],
+    "formulasKept": 34,
+    "formulasInOriginal": 42
+  },
+  "sheetjsReadsNumbers": {
+    "cells": 135,
+    "same": 124,
+    "diffs": [
+      "Producten!G2: 46027 → 44565",
+      "Producten!G3: 46028 → 44566",
+      "Producten!G4: 46054 → 44592",
+      "Producten!G5: 46081 → 44619",
+      "Producten!G6: 46112 → 44650",
+      "Q1 overzicht!B18: 46027 → 44565",
+      "Q1 overzicht!B20: 46053 → 44591",
+      "Q1 overzicht!B22: \"05-01-2026\" → undefined",
+      "Q1 overzicht!B26: 46353 → 44891",
+      "Q1 overzicht!B30: 0.395833333333333 → -1460.6041666666642",
+      "Q1 overzicht!B33: \"#ERR\" → undefined"
+    ],
+    "formulas": 0
+  },
+  "sheetjsWritesNumbers": {
+    "bytes": 180669
+  },
+  "openedInNumbers": "skipped (set NUMBERS_E2E=1 with Numbers 15 installed)"
+}

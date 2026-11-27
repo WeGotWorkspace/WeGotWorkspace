@@ -1,0 +1,8 @@
+Uitgaven,,,,,
+Post,Bedrag,Betaald,Datum,Aandeel,Notitie
+Huur,1250.5,true,2026-01-05,0.828584680625497,vast
+Stroom,89.95,false,2026-01-31,0.05960111317254174,007
+Internet,45,true,2026-02-28,0.029817121653856346,'=tekst
+Verzekering,120.25,false,2024-02-29,0.07967797508613834,"a, b ""c"""
+Koffie,3.5,true,2026-12-31,0.002319109461966605,regel1
+Totaal,1509.2,0,2026-12-31,,

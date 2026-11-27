@@ -1,0 +1,64 @@
+---
+ycsv_version: 1
+sheets:
+  - ref: budget
+    name: Budget
+    header: true
+    columns:
+      - ref: post
+        name: Post
+        type: string
+      - ref: bedrag
+        name: Bedrag
+      - ref: betaald
+        name: Betaald
+      - ref: datum
+        name: Datum
+        type: date
+        excel_format: m/d/yy
+      - ref: aandeel
+        name: Aandeel
+      - ref: notitie
+        name: Notitie
+        type: string
+    cells:
+      C2:
+        type: boolean
+      C3:
+        type: boolean
+      C4:
+        type: boolean
+      C5:
+        type: boolean
+      C6:
+        type: boolean
+  - ref: budget_1
+    name: Budget_1
+    header: true
+    columns:
+      - ref: kengetal
+        name: Kengetal
+        type: string
+      - ref: waarde
+        name: Waarde
+  - ref: tweede_blad
+    name: Tweede blad
+    header: false
+    columns: []
+---
+post,bedrag,betaald,datum,aandeel,notitie
+Huur,1250.5,true,2026-01-05,0.828584680625497,vast
+Stroom,89.95,false,2026-01-31,0.0596011131725417,007
+Internet,45,true,2026-02-28,0.0298171216538563,''=tekst
+Verzekering,120.25,false,2024-02-29,0.0796779750861384,"a, b ""c"""
+Koffie,3.5,true,2026-12-31,0.0023191094619666,regel1
+Totaal,1509.2,3,2026-12-31,,
+---
+kengetal,waarde
+Totaal,1509.2
+Grootste post,Huur
+Afgerond,1826.13
+Tekst,Huur 2026
+Fout,=NA()
+---
+
