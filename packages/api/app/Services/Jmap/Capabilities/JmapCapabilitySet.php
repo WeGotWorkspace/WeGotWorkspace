@@ -43,6 +43,7 @@ final class JmapCapabilitySet
         QuotaCapabilityProvider::class,
         FileNodeVersionCheckCapabilityProvider::class,
         FileNodeShareFlagsCapabilityProvider::class,
+        FileNodeTreeCapabilityProvider::class,
     ];
 
     /** @var list<JmapCapabilityProviderInterface> */

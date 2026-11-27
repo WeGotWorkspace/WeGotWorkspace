@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+} from "react";
 import { Cloud } from "lucide-react";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import {
@@ -6,7 +14,14 @@ import {
   DRIVE_FOLDER_PICKER_ROOT,
 } from "@/drive-core/src/drive-breadcrumbs";
 import { DriveListView } from "@/drive-core/src/drive-list-view";
-import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
+import { driveFileFromEntry, optimisticDriveFolder } from "@/drive-core/src/drive-file-utils";
+import { DrivePickerNewFolderRow } from "@/drive-core/src/drive-picker-new-folder";
+import {
+  DRIVE_PICKER_NEW_FOLDER_DEFAULT_NAME,
+  drivePickerFolderNameError,
+  suggestDrivePickerFolderName,
+  type DrivePickerNewFolderControl,
+} from "@/drive-core/src/drive-picker-new-folder-utils";
 import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import {
   browsePathForDrivePickerFile,
@@ -39,7 +54,7 @@ import { useProjectFolders } from "@/drive-core/src/drive-project-folder";
 import { DriveViewIcon, withDriveRootIcons } from "@/drive-core/src/drive-view-icons";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
-import type { DriveAPIOperations } from "@/lib/files/drive-types";
+import type { DriveAPIOperations, DriveShareOperations } from "@/lib/files/drive-types";
 import { PathBreadcrumb } from "@/path-breadcrumb/src/path-breadcrumb";
 import { DestinationPickerFrame } from "@/destination-picker/src/destination-picker-frame";
 import "@/drive-core/src/drive-folder-picker.css";
@@ -205,6 +220,7 @@ export function DriveFolderPicker({
   initialBrowsePath,
   initialSelectedPath,
   operations,
+  shareOperations,
   currentUsername,
   groupRootNames,
   rootLabels,
@@ -212,6 +228,7 @@ export function DriveFolderPicker({
   mode = "folder-destination",
   onDestinationChange,
   onSelectedFileChange,
+  onNewFolderChange,
 }: {
   labels: DriveUILabels;
   /** Items being moved (for destination validation). */
@@ -225,6 +242,11 @@ export function DriveFolderPicker({
    */
   initialSelectedPath?: string | null;
   operations?: DriveAPIOperations;
+  /**
+   * Reads the open folder's own rights when its parent cannot be listed (the top folder
+   * of a share the viewer was given).
+   */
+  shareOperations?: Pick<DriveShareOperations, "getAtPath">;
   currentUsername: string;
   groupRootNames: Set<string>;
   /** Optional UI-path → display label for drive roots (Docs: Personal / principal names). */
@@ -235,13 +257,18 @@ export function DriveFolderPicker({
   mode?: DrivePickerMode;
   onDestinationChange?: (path: string | null) => void;
   onSelectedFileChange?: (file: DriveFile | null) => void;
+  /**
+   * Reports the *New folder* control for the dialog footer (folder pickers only):
+   * whether a folder can be added where the picker is, and how to start it.
+   */
+  onNewFolderChange?: (control: DrivePickerNewFolderControl | null) => void;
 }) {
   const fileSelect = mode === "file-select";
   const [browsePath, setBrowsePath] = useState(initialBrowsePath);
   const [listingFiles, setListingFiles] = useState<DriveFile[]>([]);
   const [listingLoading, setListingLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
-  const [highlightedPath, setHighlightedPath] = useState<string | null>(() => {
+  const [highlightedPath, setHighlightedPathState] = useState<string | null>(() => {
     if (fileSelect) return null;
     if (initialSelectedPath && canPickDriveFolderDestination(files, moveIds, initialSelectedPath)) {
       return initialSelectedPath;
@@ -251,9 +278,31 @@ export function DriveFolderPicker({
       : null;
   });
 
+  // Once the person picks (or makes) a destination, a refreshed `files` list must not
+  // snap the choice back to the preselection.
+  const highlightChosen = useRef(false);
+  const setHighlightedPath = (next: string | null | ((prev: string | null) => string | null)) => {
+    highlightChosen.current = true;
+    setHighlightedPathState(next);
+  };
+  const [newFolderDraft, setNewFolderDraft] = useState<string | null>(null);
+  const [newFolderError, setNewFolderError] = useState<string | null>(null);
+  // What each opened folder says about the viewer's right to add to it (from its row).
+  const folderRights = useRef(new Map<string, boolean>());
+  // Folders whose rights were looked up in their parent's listing (found or not).
+  const rightsResolved = useRef(new Set<string>());
+  const [, setRightsVersion] = useState(0);
+  // Bumped when a create writes the listing, so an older browse response cannot undo it.
+  const listingEpoch = useRef(0);
+  const [creatingCount, setCreatingCount] = useState(0);
+
   useEffect(() => {
     setBrowsePath(initialBrowsePath);
   }, [initialBrowsePath]);
+
+  useEffect(() => {
+    highlightChosen.current = false;
+  }, [initialBrowsePath, initialSelectedPath]);
 
   useEffect(() => {
     if (fileSelect) return;
@@ -263,15 +312,26 @@ export function DriveFolderPicker({
         : canPickDriveFolderDestination(files, moveIds, initialBrowsePath)
           ? initialBrowsePath
           : null;
-    setHighlightedPath((prev) => {
-      // A new files/moveIds array must not clear a drive the user already chose
-      // when nothing was preselected (next is null).
-      if (next === null && prev && canPickDriveFolderDestination(files, moveIds, prev)) {
+    setHighlightedPathState((prev) => {
+      // A new files/moveIds array must not clear or replace a destination the user
+      // already chose.
+      if (highlightChosen.current && prev === null) return prev;
+      if (
+        prev &&
+        (highlightChosen.current || next === null) &&
+        canPickDriveFolderDestination(files, moveIds, prev)
+      ) {
         return prev;
       }
       return prev === next ? prev : next;
     });
   }, [fileSelect, files, initialBrowsePath, initialSelectedPath, moveIds]);
+
+  // A name being typed belongs to the folder it was started in.
+  useEffect(() => {
+    setNewFolderDraft(null);
+    setNewFolderError(null);
+  }, [browsePath]);
 
   useEffect(() => {
     if (browsePath === DRIVE_FOLDER_PICKER_ROOT || browsePath === GROUPS_ROOT) {
@@ -290,19 +350,21 @@ export function DriveFolderPicker({
     }
 
     const controller = new AbortController();
+    const epoch = listingEpoch.current;
     setListingLoading(true);
     void operations
       .listDirectory(apiPathFromUiPath(browsePath, currentUsername, groupRootNames), {
         signal: controller.signal,
       })
       .then((data) => {
+        if (controller.signal.aborted || epoch !== listingEpoch.current) return;
         const mapped = data.directory.files.map((entry) =>
           driveFileFromEntry(entry, currentUsername),
         );
         setListingFiles(applyPickerListingFilter(mapped, browsePath, currentUsername, mode));
       })
       .catch(() => {
-        if (!controller.signal.aborted) setListingFiles([]);
+        if (!controller.signal.aborted && epoch === listingEpoch.current) setListingFiles([]);
       })
       .finally(() => {
         if (!controller.signal.aborted) setListingLoading(false);
@@ -310,6 +372,78 @@ export function DriveFolderPicker({
 
     return () => controller.abort();
   }, [browsePath, operations, currentUsername, groupRootNames, mode]);
+
+  const noteFolderRights = (listing: DriveFile[]) => {
+    for (const file of listing) {
+      if (file.kind === "folder" && file.mayManageStructure !== undefined) {
+        folderRights.current.set(driveFolderUiPath(file), file.mayManageStructure);
+      }
+    }
+  };
+  noteFolderRights(listingFiles);
+
+  // The folder the picker opens in (or a drive root's descendant reached by breadcrumb)
+  // was never a child row here: its rights come from its parent's listing.
+  const parentOfBrowsePath = browsePath.includes("/")
+    ? browsePath.slice(0, browsePath.lastIndexOf("/"))
+    : null;
+  if (!operations && parentOfBrowsePath) {
+    noteFolderRights(DRIVE_MOCK_FILES.filter((file) => file.parent === parentOfBrowsePath));
+  }
+  const rightsLookupPending =
+    Boolean(operations) &&
+    parentOfBrowsePath !== null &&
+    parentOfBrowsePath !== DRIVE_FOLDER_PICKER_ROOT &&
+    parentOfBrowsePath !== GROUPS_ROOT &&
+    browsePath !== "My Drive" &&
+    !groupPaths.includes(browsePath) &&
+    folderRights.current.get(browsePath) === undefined &&
+    !rightsResolved.current.has(browsePath);
+
+  useEffect(() => {
+    if (!operations || !parentOfBrowsePath || !rightsLookupPending) return;
+    const controller = new AbortController();
+    const { signal } = controller;
+    void operations
+      .listDirectory(apiPathFromUiPath(parentOfBrowsePath, currentUsername, groupRootNames), {
+        signal,
+      })
+      .then((data) => {
+        noteFolderRights(
+          data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
+        );
+      })
+      .catch(() => {})
+      .then(async () => {
+        if (signal.aborted || folderRights.current.has(browsePath) || !shareOperations) return;
+        // No grant on the parent (a share's top folder): ask for the folder's own rights.
+        try {
+          const share = await shareOperations.getAtPath(
+            apiPathFromUiPath(browsePath, currentUsername, groupRootNames),
+            { signal },
+          );
+          if (!signal.aborted) {
+            folderRights.current.set(browsePath, share.myRights.mayManageStructure);
+          }
+        } catch {
+          // Unknown rights: leave the button on; the server still refuses a forbidden create.
+        }
+      })
+      .finally(() => {
+        if (signal.aborted) return;
+        rightsResolved.current.add(browsePath);
+        setRightsVersion((version) => version + 1);
+      });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    browsePath,
+    operations,
+    shareOperations,
+    currentUsername,
+    groupRootNames,
+    rightsLookupPending,
+  ]);
 
   const rows = useMemo(
     () =>
@@ -465,6 +599,103 @@ export function DriveFolderPicker({
     }
   };
 
+  // ---- New folder: made where the picker is, picked once named ----
+  const browsePathRef = useRef(browsePath);
+  browsePathRef.current = browsePath;
+  const canAddFolder = !fileSelect && !atPickerRoots;
+  const newFolderDisabledReason = !canAddFolder
+    ? labels.pickerNewFolderOpenFolder
+    : listingLoading || rightsLookupPending
+      ? labels.folderListingLoading
+      : folderRights.current.get(browsePath) === false
+        ? labels.pickerNewFolderReadOnly
+        : null;
+  const naming = newFolderDraft !== null;
+
+  const startNewFolder = useCallback(() => {
+    if (!canAddFolder || newFolderDisabledReason !== null) return;
+    setNewFolderError(null);
+    setNewFolderDraft(
+      suggestDrivePickerFolderName(DRIVE_PICKER_NEW_FOLDER_DEFAULT_NAME, listingFiles),
+    );
+  }, [canAddFolder, listingFiles, newFolderDisabledReason]);
+
+  const cancelNewFolder = () => {
+    setNewFolderDraft(null);
+    setNewFolderError(null);
+  };
+
+  const submitNewFolder = () => {
+    if (newFolderDraft === null) return;
+    const name = newFolderDraft.trim();
+    if (!name) {
+      cancelNewFolder();
+      return;
+    }
+    const nameError = drivePickerFolderNameError(name, listingFiles, labels);
+    if (nameError) {
+      setNewFolderError(nameError);
+      return;
+    }
+    const parent = browsePath;
+    const optimistic = optimisticDriveFolder(name, parent);
+    const newPath = driveFolderUiPath(optimistic);
+    setNewFolderDraft(null);
+    setNewFolderError(null);
+    // The folder is there at once and picked, so one click on the dialog's button finishes.
+    listingEpoch.current += 1;
+    setListingFiles((prev) => [...prev, optimistic]);
+    setHighlightedPath(canPickDriveFolderDestination(files, moveIds, newPath) ? newPath : null);
+    if (!operations) return;
+    const apiParent = apiPathFromUiPath(parent, currentUsername, groupRootNames);
+    // Drive's own create action, so offline it queues like a folder made in Drive.
+    setCreatingCount((count) => count + 1);
+    void operations
+      .createFolder({ cwd: apiParent, name })
+      .then(() => {
+        const refreshEpoch = listingEpoch.current;
+        return (
+          operations
+            .listDirectory(apiParent)
+            .then((data) => {
+              // A later create wrote its own row since this refresh started.
+              if (browsePathRef.current !== parent || refreshEpoch !== listingEpoch.current) return;
+              listingEpoch.current += 1;
+              const mapped = data.directory.files.map((entry) =>
+                driveFileFromEntry(entry, currentUsername),
+              );
+              setListingFiles(applyPickerListingFilter(mapped, parent, currentUsername, mode));
+            })
+            // Offline or slow: the folder row stays as made.
+            .catch(() => {})
+        );
+      })
+      .catch(() => {
+        if (browsePathRef.current !== parent) return;
+        setListingFiles((prev) => prev.filter((file) => file.id !== optimistic.id));
+        setHighlightedPath((prev) => (prev === newPath ? parent : prev));
+        setNewFolderError(labels.pickerNewFolderFailed);
+      })
+      .finally(() => setCreatingCount((count) => count - 1));
+  };
+
+  useEffect(() => {
+    if (fileSelect || !onNewFolderChange) return;
+    onNewFolderChange({
+      disabledReason: newFolderDisabledReason,
+      active: naming,
+      creating: creatingCount > 0,
+      start: startNewFolder,
+    });
+  }, [
+    creatingCount,
+    fileSelect,
+    naming,
+    newFolderDisabledReason,
+    onNewFolderChange,
+    startNewFolder,
+  ]);
+
   const breadcrumb = (
     <PathBreadcrumb
       className="destination-picker__breadcrumbs"
@@ -485,13 +716,30 @@ export function DriveFolderPicker({
       onBodyKeyDown={handleListKeyDown}
       breadcrumbs={breadcrumb}
     >
+      {newFolderDraft !== null ? (
+        <DrivePickerNewFolderRow
+          labels={labels}
+          value={newFolderDraft}
+          error={newFolderError}
+          onChange={(value) => {
+            setNewFolderDraft(value);
+            setNewFolderError(null);
+          }}
+          onSubmit={submitNewFolder}
+          onCancel={cancelNewFolder}
+        />
+      ) : newFolderError ? (
+        <p className="destination-picker__new-folder-error px-4" role="alert">
+          {newFolderError}
+        </p>
+      ) : null}
       {showListingLoading ? (
         <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
-      ) : showEmpty ? (
+      ) : showEmpty && !naming ? (
         <CollectionState icon={<Cloud className="size-12" />}>
           {fileSelect ? labels.fileSelectEmpty : labels.emptyFolder}
         </CollectionState>
-      ) : listItems.length === 0 ? null : (
+      ) : listItems.length === 0 || (showEmpty && naming) ? null : (
         <DriveListView
           items={listItems}
           sort={atPickerRoots ? undefined : listSort}

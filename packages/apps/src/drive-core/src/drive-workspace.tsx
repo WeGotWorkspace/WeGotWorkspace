@@ -152,7 +152,14 @@ export function DriveWorkspace({
   });
 
   const uploadQueue = useDriveUploadQueue(operations);
-  const chooseUploadFolder = useDriveUploadChooseFolder(controller, uploadQueue, show, showError);
+  const chooseUploadFolder = useDriveUploadChooseFolder(
+    controller,
+    uploadQueue,
+    show,
+    showError,
+    undefined,
+    shareOperations,
+  );
   const uploadModel = useDriveUploadQueueModel(
     uploadQueue,
     operations,

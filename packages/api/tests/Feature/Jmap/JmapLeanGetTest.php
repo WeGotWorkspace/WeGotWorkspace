@@ -125,10 +125,11 @@ final class JmapLeanGetTest extends WgwDatabaseTestCase
     {
         $disk = app(WgwStorage::class)->files();
         $disk->put('users/bob/lean/a.md', '# hi');
-        $nodes = $this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
+        // Written past the app: get-all picks it up (an unfiltered query reads the index alone, #2063).
+        $nodes = array_column($this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
             'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
-            'methodCalls' => [['FileNode/query', ['accountId' => 'bob'], 'q']],
-        ])->assertOk()->json('methodResponses.0.1.ids');
+            'methodCalls' => [['FileNode/get', ['accountId' => 'bob', 'ids' => null, 'properties' => ['id']], 'g']],
+        ])->assertOk()->json('methodResponses.0.1.list'), 'id');
         $get = fn (?array $props) => $this->withBearer($this->userBearerToken())->postJson('/api/v1/jmap', [
             'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
             'methodCalls' => [['FileNode/get', ['accountId' => 'bob', 'ids' => $nodes] + ($props === null ? [] : ['properties' => $props]), 'c']],

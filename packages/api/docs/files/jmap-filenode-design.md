@@ -56,9 +56,20 @@ Out-of-band writes (direct disk access, admin operations, the `patch()` fopen pa
 
 1. **Lazy self-heal:** `FileNode/get`/`query` listings compare the index against the disk for the directories they touch; missing rows are minted (new ids), stale rows tombstoned — same best-effort posture as search.
 2. **Full backfill/reconcile command:** `wgw:jmap:filenodes-reindex` walks the tree (the `reindexAll()` pattern), keyed by `storage_key`: existing keys keep their `node_id`, new keys are minted, vanished keys are tombstoned. Doubles as the initial backfill (hash computation for `content_sha256` happens here; expensive but one-time and resumable — hash lazily on first read if the walk is interrupted).
+   A keyset `FileNode/query` page (below) never reconciles: every write through the app already updates the index, so the walk is one SQL query of ids. Drift from writes past the app heals when that folder is listed (a `parentId` query) or with the reindex command — run it after a restore or a migration. The unfiltered non-keyset query reads the index alone as well (the spec's query-cost constraint). The remaining tree reconcile, `FileNode/get` without ids, loads the visible tree in one query and lists each folder on disk; a folder costs SQL only when its listing differs from the index.
 3. **Documented limitation:** an out-of-band rename is indistinguishable from delete+create → the node id changes. Every remote-FS protocol on top of a plain filesystem shares this; it goes in the deviations section of the envelope docs.
 
 The plugin work also surfaces two **pre-existing** drive bugs this design does not fix but the build should file issues for: WebDAV MOVE leaves `drive_shares.path` and stars stale (REST rename already rewrites shares).
+
+### Paging the whole tree (#2063)
+
+The WGW extension `https://wegotworkspace.org/jmap/filenode-tree` (listed in `using`) lets a client copy the account's whole visible tree in a few chained requests ([2063-one-file-tree](../../../../.agents/specs/2063-one-file-tree/plan.md), chunk S1):
+
+- `FileNode/query` takes two top-level arguments next to `position`, `limit` and `depth`. `idAfter` is a `node_id` keyset: ids greater than it, in ascending `node_id` order (`sort` empty or `[{property: "id"}]`, no filter, no position). `asOfState` keeps only nodes created at or before that state's sequence; its grant hash is not checked, because the client's `FileNode/changes` catch-up from that state notices a grant change. The scope is the unfiltered one (home, member Teams, live member-grant share roots), without the archived Project tree, all in SQL, so a page is short only at the end. `total` is returned only with `calculateTotal: true`.
+- Because both arguments are top-level, `#idAfter` references `/ids/{limit-1}` of the previous query and `#asOfState` the `/state` of a `FileNode/get` with `ids: []` at the start of the request. With `maxCallsInRequest` 32 the first request holds that state get plus 15 query+get pairs, later requests 16 pairs.
+- `FileNode/get` returns `path`, the node's virtual path (`/` plus the storage key, the inverse of `StoragePaths::virtualToStorageKey`). A share root keeps its owner's `parentId` and path, so two share roots with the same name stay apart.
+- `fileNodeQuerySortOptions` includes `id`; without the extension an `id` sort orders the usual candidate set in PHP.
+- Within one JMAP request every FileNode call reuses the account's roots, member grants and change sequence from the first call (`JmapRequestContext::remember`). Any call that is not a `/get`, `/query`, `/changes` or `/queryChanges`, and every sequence bump, makes later calls read them again. A first request of state get plus 15 pairs costs about 40 SQL queries instead of 191.
 
 ## Decision 4 — surface scope: what is a FileNode
 
