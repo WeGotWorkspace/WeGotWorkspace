@@ -77,7 +77,12 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
    header row is unnumbered. Two open questions for Wouter: should empty
    rows keep their number (P30), and how is the header row labelled in the
    grid? See [Open questions](#open-questions).
-9. **Spec.** 30 proposals in Appendix B (P1 rejected). The ones that matter
+9. **Header flag accepted (P2/P27).** Every sheet states `header:
+   true|false`. Detection (rules D1–D7, now in spec §4.1) runs only when the
+   flag is missing, as on a plain CSV, and its result is written back. Users
+   can toggle "first row is header", which renumbers only the file form. See
+   [Header flag and detection](#header-flag-and-detection).
+10. **Spec.** 30 proposals in Appendix B (P1 rejected, P2/P27 accepted). The ones that matter
    most:
    - **P29**: frontmatter addresses (`cells`, `merges`, `notes`) use the same
      row numbers as formulas, with the header as row 0.
@@ -633,7 +638,7 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 | P1 | ~~Grid row numbering: header = row 1~~ **Rejected** (Wouter): spec §7.1 stands | Import/export map rows instead; `spreadsheet-core` row counting is a bug |
 | P29 | Frontmatter addresses use YCSV rows; header = row 0 (`A0:D0`) | `B3` must mean one cell in `cells` and in formulas; changes example 9.3 |
 | P30 | Empty rows keep their number (**open question 1**) | §7.2 renumbers formulas on every Excel import with blank rows; neither parser follows it |
-| P2 / P27 | Explicit `header: true\|false` | A-Z files misread by proto; detection guesses |
+| P2 / P27 | Explicit `header: true\|false` — **accepted** (Wouter); detection rules D1–D7 in §4.1 | A-Z files misread by proto; detection guesses |
 | P3 / P17 | Sheet refs: Unicode grammar; `hidden`, `tab_color`, array order | Example 9.4 fails in core; fixtures |
 | P4 | Excel grammar: `$`, rectangular ranges, whole columns, `&`, postfix `%`, Excel precedence, case-insensitive compare, same-row refs | 37 fixture formulas; precedence and `%` tests |
 | P5 | Leading `'` = literal text | No other way to store `=text` or `'007` |
@@ -665,6 +670,58 @@ Row numbering is decided: P1 is rejected and §7.1 stands. What is still open:
 - **P29:** confirming that frontmatter addresses use the same numbering,
   which changes example 9.3 to `A0:D0`;
 - **fixing `spreadsheet-core`**, whose engine counts rows against §7.1.
+
+### Header flag and detection
+
+**Decision (Wouter):** "header true lijkt me een mooie aanpak". P2/P27 is
+accepted and written into spec §3, §3.1, §4.1 and A.5.
+
+- **The flag:** `header: true|false`, at the top level of a single-sheet file
+  and per entry in `sheets`. The flag wins; writers always write it. The
+  spike importer already writes it for every XLSX, ODS and Numbers sheet.
+- **Detection:** it only runs when the flag is missing, for example on a
+  plain CSV, which counts as valid YCSV. Its result is recorded as the flag.
+  Rules, first match wins:
+
+  | Rule | When | Result |
+  |---|---|---|
+  | D1 | Row 1 missing or fully empty | no header |
+  | D2 | `columns` defined: every row-1 value matches a column `ref` or `name` | header, else no |
+  | D3 | Fewer than two non-empty rows | no header |
+  | D4 | A row-1 value is empty, a number, an ISO date/time, a boolean, a formula or a `'` literal | no header |
+  | D5 | Duplicate row-1 values | no header |
+  | D6 | A column has numbers, dates, booleans or formulas below row 1 | header |
+  | D7 | All text: header unless a row-1 value repeats in its column | header / no |
+
+  The prototype is `interop/csv/detect-header.ts`, with 13 cases in
+  `detect-header.test.ts`. They include:
+  - spec 9.1 (no header, A-Z);
+  - `Totaal,2026,2027` as a first row;
+  - an empty header cell;
+  - duplicate names;
+  - an all-text contact list;
+  - `columns` matched by ref or display name.
+- **Known weak spots:**
+  - An Excel export with one empty header cell (D4) is read as no header.
+  - An all-text list without a header whose first row never repeats (D7) is
+    read as having one.
+  - Both are cases where the user toggles. The XLSX importer uses the same
+    idea plus "no merged cell in row 1".
+- **Toggling "first row is header"** renumbers only the file form:
+  - On: data row 1 becomes the header and the rest moves up by one.
+  - Off: the header becomes row 1 and the rest moves down by one.
+
+  Formulas in the Yjs model point at row ids, so what they point at does not
+  change; the writer only prints new numbers. When the header is switched
+  off, the writer keeps the column refs in `columns`, with the old header
+  text as `name`, so `prijs3` keeps working instead of turning into `C4`.
+  Neither the model nor the toggle was built in this spike; the grid is owned
+  by the sheets-integration session.
+- **Still open, decided separately by Wouter (not marked here):**
+  - whether the header moves out of the CSV body into `columns`;
+  - P30, whether empty rows keep their number;
+  - whether a `.csv` edited in our editor stays CSV until a YCSV-only
+    feature is used.
 
 ## Open questions
 
@@ -729,6 +786,7 @@ Row numbering is decided: P1 is rejected and §7.1 stands. What is still open:
 | `interop/xlsx/` | Probe, A1 ↔ YCSV translator, importer, evaluator, exporter, end-to-end test |
 | `interop/formulas/` | v1 function set vs LibreOffice; formulajs direct calls |
 | `interop/notation/` | Canonical ↔ locale formula converter and tests |
+| `interop/csv/` | Header detection (rules D1–D7) and tests |
 | `interop/fixtures/files/numbers/` | Numbers 15.1 fixtures: `.numbers`, Numbers' XLSX and CSV exports |
 | `interop/xlsx/numbers.test.ts` | Numbers values vs LibreOffice, `.numbers` read/write; opening in Numbers is opt-in (`NUMBERS_E2E=1`) |
 

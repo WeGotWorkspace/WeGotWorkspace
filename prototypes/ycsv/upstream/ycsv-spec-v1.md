@@ -85,10 +85,13 @@ LF (`\n`) preferred. CRLF (`\r\n`) tolerated.
 | `defs`        | mapping | Named values (scalars or mappings) referenceable in formulas and validation. See §3.3. |
 | `cells`       | mapping | Cell-specific formatting overrides. See §3.5.                                          |
 | `charts`      | array   | Vega-Lite chart definitions. See §12.                                                  |
+| `header`      | boolean | Whether the first CSV row is a header (row 0). See §4.1. Writers always write it.      |
 
 ### 3.1 Multi-sheet files
 
-> **Proposal (spike 11):** add `header`, `hidden`, `tab_color`, `freeze`, `merges`, `notes`, `validate` per sheet; Unicode ref grammar (P2, P3, P10, P11, P14, P15, P17).
+> **Decision (spike 11):** `header: true|false` per sheet is accepted (P2/P27, §4.1).
+>
+> **Proposal (spike 11):** add `hidden`, `tab_color`, `freeze`, `merges`, `notes`, `validate` per sheet; Unicode ref grammar (P3, P10, P11, P14, P15, P17).
 
 When a file contains multiple sheets, define them in a `sheets` array in the
 frontmatter. Each entry has a `ref` (required) and may include all the fields
@@ -99,6 +102,7 @@ and `charts`.
 | --------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
 | `ref`     | no       | string  | Sheet identifier. Used in cross-sheet formula references. Defaults to `sheet1`, `sheet2`, etc. if omitted. |
 | `name`    | no       | string  | Display name. Defaults to `ref` if omitted.                                                                |
+| `header`  | no       | boolean | Whether this sheet's first CSV row is a header (row 0). See §4.1. Writers always write it.                |
 | `columns` | no       | array   | Column definitions. See §3.2.                                                                              |
 | `defs`    | no       | mapping | Sheet-local defs. Merged with top-level defs; sheet-level takes precedence.                                |
 | `cells`   | no       | mapping | Cell-specific overrides. See §3.5.                                                                         |
@@ -343,12 +347,52 @@ YCSV resolves column identity in the following order:
 
 ### 4.1 Header row
 
-> **Proposal (spike 11):** an explicit `header: true|false` per sheet overrides detection (P2).
+> **Decision (spike 11):** P2/P27 **accepted** (Wouter). The explicit `header` flag and the detection rules below replace the old text of this section, which read: "A header row is the first CSV row where all values are non-numeric strings matching known `ref` names (or any strings when no `columns` is defined)."
 
-A header row is the first CSV row where all values are non-numeric strings
-matching known `ref` names (or any strings when no `columns` is defined).
-Parsers use the header row to match columns by name rather than position,
-making column reordering safe.
+Whether the first CSV row is a header is stated by the `header` field:
+`header: true` or `header: false`. It sits at the top level of a
+single-sheet file and on each entry of `sheets` (§3.1).
+
+- **The flag wins.** When `header` is present, parsers use it and never
+  guess.
+- **Detection only when it is missing.** This covers a plain CSV file
+  without frontmatter, and older files. The parser applies the rules below.
+- **Writers always write the flag.** Whenever a file is written, a
+  conversion from CSV or an import from XLSX, ODS or Numbers included, the
+  result of detection is recorded as `header: true|false`. After that the
+  file never depends on detection again.
+- **A header row is row 0** (§7.1). It holds column names, not data. With a
+  header, parsers match CSV columns to `columns` by name, so reordering
+  columns in the CSV is safe.
+
+**Detection rules.** Apply them in order; the first rule that decides wins.
+"Row 1" is the first line of the CSV body.
+
+| Rule | When | Result |
+| ---- | ---- | ------ |
+| D1 | Row 1 is missing or fully empty | no header |
+| D2 | `columns` is defined: every non-empty value in row 1 matches a column `ref` or `name` (trimmed, case-insensitive) | header; otherwise no header |
+| D3 | Fewer than two non-empty rows | no header |
+| D4 | A value in row 1 is empty, a number (§7.3, P8), an ISO date or time, `true`/`false`, a formula (`=`) or a literal (`'`) | no header |
+| D5 | Two values in row 1 are equal (trimmed, case-insensitive) | no header |
+| D6 | Some column has a number, date, boolean or formula below row 1 | header |
+| D7 | All text: header unless a row-1 value occurs again in its own column below | header / no header |
+
+D7 is the weakest guess. A list of names with a header ("Naam,Plaats")
+gives a header; a list whose first row repeats further down does not.
+
+**Toggling.** Users can switch "first row is header" on and off. That only
+changes how the file numbers its rows (P1 decision: the header is row 0):
+- **On:** the former data row 1 becomes the header and every other row moves
+  up by one.
+- **Off:** the header becomes data row 1 and the other rows move down by one.
+
+Editors that keep formulas by row identity (for example row ids in a Yjs
+document) rewrite only the row numbers when they write the file form; what
+each formula points at does not change. Column refs keep their names. When
+the header is switched off, the writer keeps the refs in `columns` (with the
+former header text as `name`), so formulas such as `prijs3` keep working and
+do not fall back to A-Z.
 
 ### 4.2 A-Z fallback
 
@@ -1025,11 +1069,9 @@ if columns is non-empty:
   assign ref to each column definition position:
     if column has no ref: assign A-Z fallback by position
 
-  check if first data_row is a header row:
-    a row is a header row if ALL of its values are strings
-    that match known ref names (case-insensitive)
+  header = frontmatter `header` if present, else detection rules D1–D7 (§4.1)
 
-  if header row detected:
+  if header:
     use header row to map CSV columns to refs by name (order-independent)
     first data row index = 1 (header is row 0, not counted)
   else:
@@ -1037,10 +1079,9 @@ if columns is non-empty:
     first data row index = 1
 
 else:
-  check if first data_row looks like a header row:
-    a row is a header row if ALL values are non-numeric strings
+  header = frontmatter `header` if present, else detection rules D1–D7 (§4.1)
 
-  if header row detected:
+  if header:
     use header values as ref names
     assign type: string, no formatting to all columns
   else:
@@ -1187,10 +1228,12 @@ empty rows no number. Under P1's rejection this means:
 Both parsers ignore §7.2 today. Proposal: empty rows are numbered like any
 other row; only trailing empty rows are insignificant (P26).
 
-**P2 / P27 — Explicit `header`.** A sheet may say `header: true` or
-`header: false`. When it is missing, the §4.1 detection applies. Importers
-always write it. This stops a first row such as `Totaal,2026,…` from being
-taken for data, or a data row of text from being taken for a header.
+**P2 / P27 — Explicit `header`. Accepted** (Wouter: "header true lijkt me
+een mooie aanpak"). Every sheet states `header: true|false`. Detection
+(rules D1–D7, §4.1) runs only when the flag is missing, for example on a
+plain CSV, and its result is written back as the flag. Users can toggle
+"first row is header"; that renumbers the file form only (§4.1, Toggling).
+Written into §3, §4.1 and A.5.
 
 **P22 — Quote-aware split.** The body splitter (§2, A.2) must only split on a
 `---` line that is outside a quoted CSV field. Today a cell value containing
@@ -1215,7 +1258,7 @@ meaning and may be dropped by writers. Readers must not rely on them.
 
 | Field       | Type    | Description                                   |
 | ----------- | ------- | --------------------------------------------- |
-| `header`    | boolean | See P2.                                       |
+| `header`    | boolean | Accepted (P2/P27); rules in §4.1.             |
 | `hidden`    | boolean | Hidden sheet (Excel "hidden" and "very hidden" both map here). |
 | `tab_color` | string  | Hex colour of the sheet tab.                  |
 
