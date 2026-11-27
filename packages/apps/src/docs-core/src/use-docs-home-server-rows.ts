@@ -68,12 +68,10 @@ export function mapDocsHomeResults(
   return files;
 }
 
-type ServerPage = { files: DriveFile[]; hasMore: boolean };
-
-/** One server listing: `key` names it, `loadPage` reads the page at `offset`. */
+/** One server listing: `key` names it, `load` reads all of it. */
 type ServerSource = {
   key: string;
-  loadPage: (offset: number, signal: AbortSignal) => Promise<ServerPage>;
+  load: (signal: AbortSignal) => Promise<DriveFile[]>;
 };
 
 export type DocsHomeServerRowsArgs = {
@@ -100,7 +98,7 @@ function browseSource(args: DocsHomeServerRowsArgs): ServerSource | null {
     key: JSON.stringify(["browse", pathPrefix ?? "", query]),
     // Every page at once, as the listing did: the pane sorts the rows (by
     // name, say), so a later page may hold the first row.
-    loadPage: async (_offset, signal) => {
+    load: async (signal) => {
       const results: WgwUnifiedSearchResult[] = [];
       for (;;) {
         const data = await fetcher({
@@ -117,7 +115,7 @@ function browseSource(args: DocsHomeServerRowsArgs): ServerSource | null {
         results.push(...page);
         if (signal.aborted || !data.hasMore || page.length === 0) break;
       }
-      return { files: mapDocsHomeResults(results, args.username, args), hasMore: false };
+      return mapDocsHomeResults(results, args.username, args);
     },
   };
 }
@@ -127,10 +125,7 @@ function viewSource(args: DocsHomeServerRowsArgs): ServerSource | null {
   const { view, username, operations, shareOperations } = args;
   const whole = (load: (signal: AbortSignal) => Promise<DriveFile[]>): ServerSource => ({
     key: view.type,
-    loadPage: async (_offset, signal) => ({
-      files: (await load(signal)).filter(isDocsHomeCompatibleSharedFile),
-      hasMore: false,
-    }),
+    load: async (signal) => (await load(signal)).filter(isDocsHomeCompatibleSharedFile),
   });
   switch (view.type) {
     case "starred":
@@ -159,6 +154,8 @@ export function docsHomeViewSearchesContent(view: DocsHomeView): boolean {
   return view.type === "all" || view.type === "recent" || view.type === "drive";
 }
 
+function noop(): void {}
+
 export function useDocsHomeServerRows(args: DocsHomeServerRowsArgs) {
   const { enabled, searchOnly, query, view } = args;
   const source = useMemo(
@@ -172,63 +169,36 @@ export function useDocsHomeServerRows(args: DocsHomeServerRowsArgs) {
   sourceRef.current = source;
 
   const [files, setFiles] = useState<DriveFile[]>([]);
-  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(source !== null);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const filesRef = useRef(files);
-  filesRef.current = files;
 
   useEffect(() => {
     const current = sourceRef.current;
     if (!current) {
       setFiles((previous) => (previous.length === 0 ? previous : []));
-      setHasMore(false);
       setLoading(false);
-      setLoadingMore(false);
       setError(null);
       return undefined;
     }
     const controller = new AbortController();
     setLoading(true);
-    setLoadingMore(false);
     setError(null);
-    current.loadPage(0, controller.signal).then(
-      (page) => {
+    current.load(controller.signal).then(
+      (loaded) => {
         if (controller.signal.aborted) return;
-        setFiles(page.files);
-        setHasMore(page.hasMore);
+        setFiles(loaded);
         setLoading(false);
       },
       (err: unknown) => {
         if (controller.signal.aborted) return;
         setFiles([]);
-        setHasMore(false);
         setLoading(false);
         setError(err instanceof Error ? err.message : "Failed to load documents");
       },
     );
     return () => controller.abort();
   }, [sourceKey, reloadToken]);
-
-  const loadMore = useCallback(() => {
-    const current = sourceRef.current;
-    if (!current || loading || loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    const controller = new AbortController();
-    current.loadPage(filesRef.current.length, controller.signal).then(
-      (page) => {
-        setFiles((previous) => [...previous, ...page.files]);
-        setHasMore(page.hasMore);
-        setLoadingMore(false);
-      },
-      (err: unknown) => {
-        setLoadingMore(false);
-        setError(err instanceof Error ? err.message : "Failed to load documents");
-      },
-    );
-  }, [hasMore, loading, loadingMore]);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
@@ -241,5 +211,14 @@ export function useDocsHomeServerRows(args: DocsHomeServerRowsArgs) {
     [files, query, searchOnly, view],
   );
 
-  return { files: shown, loading, loadingMore, hasMore, error, loadMore, reload };
+  // Every source lists whole: there is never a next page.
+  return {
+    files: shown,
+    loading,
+    loadingMore: false,
+    hasMore: false,
+    error,
+    loadMore: noop,
+    reload,
+  };
 }

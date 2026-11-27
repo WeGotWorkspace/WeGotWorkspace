@@ -5,6 +5,7 @@ import {
   resolveFreeName,
 } from "@/lib/files/drive-entry-names";
 import { normalizeApiVirtualPath, isDriveTrashApiPath } from "@/lib/files/drive-path-utils";
+import { readDriveTreeRoots } from "@/lib/offline/drive/drive-tree-sync";
 import type { DriveAPIOperations, DriveAppBootstrap, DriveUIData } from "@/lib/files/drive-types";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
@@ -189,6 +190,15 @@ async function readCachedDriveState(username: string, cwd: string): Promise<Driv
   return buildOfflineDriveUIData(bootstrap, cwd, entries);
 }
 
+/** The tree has a row for `cwd`, or it is an account root (those have no row; an empty one is still known). */
+async function isKnownTreeFolder(username: string, cwd: string): Promise<boolean> {
+  if (await readDriveEntryFromCache(username, cwd)) return true;
+  const path = normalizeApiVirtualPath(cwd);
+  if (path === normalizeApiVirtualPath(`/users/${username}`)) return true;
+  const roots = await readDriveTreeRoots(username);
+  return [...(roots?.values() ?? [])].some((root) => normalizeApiVirtualPath(root) === path);
+}
+
 /**
  * One folder from the tree for an app that has no Drive bootstrap (Docs home
  * offline: the Move and New document dialogs), or null when the tree does not
@@ -199,7 +209,7 @@ async function readTreeFolderWithoutBootstrap(
   cwd: string,
 ): Promise<DriveUIData | null> {
   const entries = await readDirectoryEntriesFromCache(username, cwd);
-  if (entries.length === 0 && !(await readDriveEntryFromCache(username, cwd))) return null;
+  if (entries.length === 0 && !(await isKnownTreeFolder(username, cwd))) return null;
   return {
     user: { username, name: username, role: "user", roots: [] },
     cwd,

@@ -308,7 +308,6 @@ export function useDocsHomeActions({
     const ids = rows.map((file) => file.id);
     setHiddenFileIds((prev) => {
       const next = new Map(prev);
-      // The file this row is now; another file that later takes its path shows.
       for (const file of rows) next.set(file.id, file.nodeId);
       return next;
     });
