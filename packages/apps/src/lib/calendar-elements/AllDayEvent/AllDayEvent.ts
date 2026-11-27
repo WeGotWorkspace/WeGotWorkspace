@@ -513,6 +513,7 @@ export class AllDayEvent extends EventBase {
         .time=${isFirst ? this.displayTime : ""}
         .recurring=${this.isRecurring}
         .exception=${this.isException}
+        ?video=${isFirst && this.hasMeeting}
         ?past=${this.isPast}
         .rsvp=${this.rsvp}
         .overlay=${this.overlay}

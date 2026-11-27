@@ -4,7 +4,7 @@ import { useNoteTitleCarets } from "@/note-detail-view/src/use-note-title-carets
 import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
 import { TEXT_FIELDS_BODY } from "@/lib/collab/docs-collab-text-fields-shape";
 import type { CollabTextField } from "@/text-editor-core/docs-collab/docs-collab-title-selection";
-import { TextareaAutosize } from "@/ui/textarea-autosize";
+import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import { TASK_DESCRIPTION_MAX_LENGTH } from "@/tasks-core/src/task-text-session";
 
 /** The description's `Y.Text` and the awareness field its carets travel in. */
@@ -45,7 +45,7 @@ export function TaskDescriptionField({
   const carets = useNoteTitleCarets(ref, { publish: editable, field: TASK_DESCRIPTION_FIELD });
   return (
     <div className="tasks-detail-view__notes-field note-detail-view__title-field">
-      <TextareaAutosize
+      <LinkifiedTextarea
         ref={ref}
         className="tasks-detail-view__notes note-detail-view__notes note-detail-view__body-start"
         value={field.value}

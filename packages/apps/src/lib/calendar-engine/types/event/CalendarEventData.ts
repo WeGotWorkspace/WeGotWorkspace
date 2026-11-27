@@ -11,6 +11,8 @@ export type CalendarEventData = {
   /** When omitted or empty, consumers resolve display color from the parent calendar. */
   color?: string;
   location?: string;
+  /** True when the event carries a meeting URL (the dedicated link, not text in the notes). */
+  hasMeeting?: boolean;
   recurrenceRule?: CalendarRecurrenceRule;
   exclusionDates?: CalendarExclusionDates;
 } & CalendarEventTimeSpan;

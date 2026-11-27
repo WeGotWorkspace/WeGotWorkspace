@@ -219,6 +219,15 @@
   @apply block min-w-0 max-w-full truncate;
 }
 
+:host .event-card-video {
+  display: inline-block;
+  flex: none;
+  width: 0.85em;
+  height: 0.85em;
+  align-self: center;
+  opacity: 0.8;
+}
+
 :host .event-card-time {
   @apply flex min-w-0 max-w-full items-baseline gap-1 overflow-hidden text-start font-light leading-tight tabular-nums;
   font-size: var(--_lc-time-label-font-size, 0.75rem);

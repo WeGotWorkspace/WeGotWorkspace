@@ -1082,8 +1082,6 @@ export class CalendarTimelineView extends CalendarViewBase {
     const timelineEvent = event as CalendarTimelineEvent;
     const selected = this.selectedEventKey === timelineEvent.key;
     const timeLabel = this.#timelineEventTimeLabel(variant, timelineEvent, preview);
-    // The card renders inside <time-line>'s shadow root. Selection has no persistent ring
-    // (grid parity); it is exposed via aria-pressed and the event-card-selected part.
     return html`
       <event-card
         layout="flow"
@@ -1097,6 +1095,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?past=${timelineEvent.past}
         ?recurring=${timelineEvent.recurring}
         ?exception=${timelineEvent.exception}
+        ?video=${timelineEvent.hasMeeting}
         .rsvp=${timelineEvent.rsvp}
         .overlay=${timelineEvent.overlayKind ?? ""}
         .summary=${timelineEvent.summary}
@@ -2127,6 +2126,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         allDay: event.data.allDay === true,
         rsvp: timelineRsvp(event),
         overlayKind: event.overlayKind,
+        hasMeeting: event.data.hasMeeting === true,
       };
       for (const dayKey of occurrenceDayKeys(displayStart, displayEnd)) {
         const bucket = byDay.get(dayKey);

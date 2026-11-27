@@ -93,4 +93,30 @@ describe("CalendarEventList", () => {
     );
     expect(getByText("No events")).toBeTruthy();
   });
+
+  it("shows a video icon on rows whose event has a meeting URL", () => {
+    const withMeeting = calendarPeriodDays(events, ["work", "default"], week, "UTC").map((day) => ({
+      ...day,
+      items: day.items.map((item) =>
+        item.event.data.summary === "Design review"
+          ? { ...item, event: { ...item.event, data: { ...item.event.data, hasMeeting: true } } }
+          : item,
+      ),
+    }));
+    const { container } = render(
+      <CalendarEventList
+        days={withMeeting}
+        calendars={bootstrap.data.calendars}
+        locale="en-GB"
+        onItemClick={vi.fn()}
+        emptyLabel="No events"
+        untitledLabel="Untitled"
+      />,
+    );
+    const rows = [...container.querySelectorAll("[data-list-item-id]")];
+    const review = rows.find((row) => row.textContent?.includes("Design review"));
+    const other = rows.find((row) => !row.textContent?.includes("Design review"));
+    expect(review?.querySelector("svg.lucide-video")).not.toBeNull();
+    expect(other?.querySelector("svg.lucide-video")).toBeNull();
+  });
 });

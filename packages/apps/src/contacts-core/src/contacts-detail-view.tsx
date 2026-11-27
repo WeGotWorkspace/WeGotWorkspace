@@ -36,7 +36,7 @@ import { DropdownMenu, type DropdownMenuItemProps } from "@/menu-dropdown/src/dr
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { Switch } from "@/ui/switch";
-import { TextareaAutosize } from "@/ui/textarea-autosize";
+import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import { cn } from "@/lib/utils";
 import { TagGroup, type TagItem } from "@/tag/src/tag";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
@@ -621,7 +621,7 @@ export function ContactsDetailView({
       {locked && !draft.notes.trim() ? null : (
         <DetailFieldList className="contacts-detail-view__fields">
           <DetailFieldRow icon={<StickyNote />} title={labels.sectionNotes} stacked>
-            <TextareaAutosize
+            <LinkifiedTextarea
               id="contact-notes"
               className="textarea textarea--size-sm textarea--ghost contacts-detail-view__notes"
               value={draft.notes}

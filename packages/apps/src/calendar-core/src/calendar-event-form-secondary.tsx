@@ -9,7 +9,7 @@ import { useInviteeAvailability } from "@/calendar-core/src/use-invitee-availabi
 import type { ContactCard } from "@/lib/models/contacts-types";
 import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";
-import { TextareaAutosize } from "@/ui/textarea-autosize";
+import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import "@/note-detail-view/src/note-detail-view.css";
 
 type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(
@@ -127,7 +127,7 @@ export function CalendarEventFormSecondary({
             labelIcon={<StickyNote aria-hidden />}
             htmlFor={notesId}
           >
-            <TextareaAutosize
+            <LinkifiedTextarea
               id={notesId}
               className="note-detail-view__notes calendar-event-dialog__notes"
               value={form.description}

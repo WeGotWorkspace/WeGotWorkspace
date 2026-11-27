@@ -54,6 +54,38 @@ export const Default: Story = {
   },
 };
 
+const linkNotesForm = {
+  ...lunchForm,
+  description:
+    "Join https://meet.example.test/very/long/path/that/keeps/going/and/going/abcdefghijklmnopqrstuvwxyz?token=0123456789 or mail host@example.test. javascript:alert(1)",
+};
+
+export const NotesWithLinks: Story = {
+  tags: ["vitest-ci"],
+  args: { preview: { eventId: "lunch", form: linkNotesForm } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    const link = canvas.getByRole("link", { name: /^https:\/\/meet\.example\.test/ });
+    await expect(link.getAttribute("target")).toBe("_blank");
+    await expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    await expect(canvas.queryByRole("link", { name: /javascript/ })).toBeNull();
+  },
+};
+
+export const MeetingUrlAndNotesLink: Story = {
+  args: {
+    preview: {
+      eventId: "lunch",
+      form: {
+        ...lunchForm,
+        meetingUrl: "https://meet.example.test/room-abc",
+        description:
+          "Agenda at https://docs.example.test/agenda. Call: https://meet.example.test/room-abc",
+      },
+    },
+  },
+};
+
 export const InteractiveEdit: Story = {
   tags: ["vitest-ci"],
   args: {

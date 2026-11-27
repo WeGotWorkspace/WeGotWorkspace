@@ -67,6 +67,10 @@ export class EventCard extends BaseElement {
   @property({ type: Boolean, reflect: true })
   exception = false;
 
+  /** The event has a meeting URL: a small video icon ends the heading row (decorative; announced). */
+  @property({ type: Boolean, reflect: true })
+  video = false;
+
   /** Attendee RSVP on the grid: dashed+tint for needs-action / tentative. */
   @property({ type: String, reflect: true })
   rsvp: "" | "needs-action" | "tentative" = "";
@@ -144,7 +148,7 @@ export class EventCard extends BaseElement {
         })}
         dir=${this.dir}
       >
-        ${this.#srPast()} ${this.#srRecurrence()}
+        ${this.#srPast()} ${this.#srRecurrence()} ${this.#srVideo()}
         <!-- WGW a11y: was <h6> — inside the workspace document that skips heading
              levels (axe heading-order). Card titles are not structural headings. -->
         <div class="event-card-heading">
@@ -160,10 +164,33 @@ export class EventCard extends BaseElement {
             <span class="event-card-summary-main">${this.summary}</span>
             ${hasMeta ? this.#renderMetaBlock(hasTimeLabel, hasLocation, location) : nothing}
           </span>
+          ${this.#videoIcon()}
         </div>
         <slot></slot>
       </div>
     `;
+  }
+
+  #srVideo() {
+    return this.video ? html`<span class="sr-only">With video call.</span>` : nothing;
+  }
+
+  /** Lucide "video" at the end of the heading row: the title truncates, the icon stays. */
+  #videoIcon() {
+    if (!this.video) return nothing;
+    return html`<svg
+      class="event-card-video"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+    </svg>`;
   }
 
   #srPast() {

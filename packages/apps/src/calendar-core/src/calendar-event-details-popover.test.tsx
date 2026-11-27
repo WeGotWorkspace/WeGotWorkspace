@@ -776,3 +776,51 @@ describe("CalendarEventDetailsPopover", () => {
     },
   );
 });
+
+describe("CalendarEventDetailsPopover notes links", () => {
+  function previewWithNotes(description: string) {
+    const base = resolveCalendarEventPreview("dentist", { events: bootstrap.data.events });
+    expect(base).not.toBeNull();
+    return { ...base!, form: { ...base!.form, description } };
+  }
+
+  it("renders URLs in notes as safe links and leaves javascript: as text", () => {
+    cleanup();
+    renderPopover({
+      preview: previewWithNotes("Call https://meet.test/abc or javascript:alert(1)"),
+    });
+    const link = screen.getByRole("link", { name: "https://meet.test/abc" });
+    expect(link.getAttribute("href")).toBe("https://meet.test/abc");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
+  });
+
+  it("shows the meeting URL field as the Join button, not a link, while notes URLs stay links", () => {
+    cleanup();
+    renderPopover({
+      preview: {
+        ...previewWithNotes("Agenda https://docs.test/a"),
+        form: {
+          ...previewWithNotes("Agenda https://docs.test/a").form,
+          meetingUrl: "https://meet.test/room-abc",
+        },
+      },
+    });
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeTruthy();
+    const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(links).toEqual(["https://docs.test/a"]);
+  });
+
+  it("shows Join for a meeting URL that is only in the location", () => {
+    cleanup();
+    const base = previewWithNotes("");
+    renderPopover({
+      preview: { ...base, form: { ...base.form, location: "https://meet.test/abc" } },
+    });
+    expect(screen.getByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeTruthy();
+    cleanup();
+    renderPopover({ preview: { ...base, form: { ...base.form, location: "Room 4" } } });
+    expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetJoin })).toBeNull();
+  });
+});

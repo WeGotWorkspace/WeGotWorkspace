@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import { linkifyText } from "@/lib/linkify/linkify-text";
 import { readCalendarDisplayPrefs } from "@/lib/calendar-display-prefs";
 import {
   defaultPickerCalendarId,
@@ -298,7 +299,16 @@ export function eventPreviewNotesExcerpt(description: string): string | null {
   const trimmed = description.trim();
   if (!trimmed) return null;
   if (trimmed.length <= NOTES_PREVIEW_MAX) return trimmed;
-  return `${trimmed.slice(0, NOTES_PREVIEW_MAX).trimEnd()}…`;
+  // Never cut inside a URL: a clipped link would open the wrong address.
+  let cut = NOTES_PREVIEW_MAX;
+  let at = 0;
+  for (const part of linkifyText(trimmed)) {
+    const end = at + part.text.length;
+    if (part.type === "link" && at < cut && end > cut) cut = end;
+    at = end;
+  }
+  if (cut >= trimmed.length) return trimmed;
+  return `${trimmed.slice(0, cut).trimEnd()}…`;
 }
 
 export function eventPreviewInviteeNames(

@@ -1,5 +1,5 @@
 import { memo, useMemo, type MouseEvent, type ReactNode } from "react";
-import { CalendarDays, Repeat } from "lucide-react";
+import { CalendarDays, Repeat, Video } from "lucide-react";
 import { ListItem } from "@/list-item/src/list-item";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
 import { CollectionState } from "@/collection-state/src/collection-state";
@@ -121,7 +121,21 @@ function sameRowProps(prev: CalendarEventListRowProps, next: CalendarEventListRo
 }
 
 const RECURRING_ICONS = [<Repeat key="repeat" className="size-3.5" aria-hidden />];
+const VIDEO_ICON = (
+  <span key="video" className="inline-flex">
+    <Video className="size-3.5" aria-hidden />
+    <span className="sr-only">With video call.</span>
+  </span>
+);
 const NO_ICONS: ReactNode[] = [];
+const VIDEO_ICONS = [VIDEO_ICON];
+const RECURRING_VIDEO_ICONS = [RECURRING_ICONS[0], VIDEO_ICON];
+
+/** A repeat icon for a series, a video icon when the event has a meeting URL. */
+function rowIcons(recurring: boolean, hasMeeting: boolean): ReactNode[] {
+  if (recurring) return hasMeeting ? RECURRING_VIDEO_ICONS : RECURRING_ICONS;
+  return hasMeeting ? VIDEO_ICONS : NO_ICONS;
+}
 
 /** One occurrence on its day. */
 const CalendarEventListRow = memo(function CalendarEventListRow({
@@ -152,7 +166,7 @@ const CalendarEventListRow = memo(function CalendarEventListRow({
           </span>
         ) : null
       }
-      icons={isCalendarEventRecurring(event) ? RECURRING_ICONS : NO_ICONS}
+      icons={rowIcons(isCalendarEventRecurring(event), event.data.hasMeeting === true)}
       isActive={false}
       isSelected={false}
       selectionMode={false}

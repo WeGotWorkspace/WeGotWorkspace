@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/button/src/button";
 import { CalendarRsvpActions, CalendarRsvpSelect } from "@/calendar-core/src/calendar-rsvp-actions";
@@ -28,6 +29,8 @@ export type CalendarEventFormFooterProps = {
   ) => void | boolean | Promise<void | boolean>;
   onDelete?: () => void;
   onDismiss: () => void;
+  /** The shared Join button when the event has a meeting URL (edit mode). */
+  meetJoin?: ReactNode;
 };
 
 /** RSVP, delete, and save/cancel actions for the shared event form. */
@@ -50,6 +53,7 @@ export function CalendarEventFormFooter({
   onRsvp,
   onDelete,
   onDismiss,
+  meetJoin,
 }: CalendarEventFormFooterProps) {
   const rsvpSelect = showInviteeRsvp ? (
     <CalendarRsvpSelect
@@ -73,8 +77,9 @@ export function CalendarEventFormFooter({
       />
     ) : null;
   const start =
-    rsvpSelect || deleteButton ? (
+    meetJoin || rsvpSelect || deleteButton ? (
       <>
+        {meetJoin}
         {rsvpSelect}
         {deleteButton}
       </>

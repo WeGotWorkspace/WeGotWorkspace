@@ -35,6 +35,7 @@ export type CalendarTimelineEvent = TimelineEvent & {
   past: boolean;
   recurring: boolean;
   exception: boolean;
+  hasMeeting: boolean;
   rsvp: "" | "needs-action" | "tentative";
   locked?: boolean;
   overlayKind?: "task" | "availability";
@@ -43,7 +44,15 @@ export type CalendarTimelineEvent = TimelineEvent & {
 /** A year-view day chip: what its day list needs. */
 export type YearDayChip = Pick<
   CalendarTimelineEvent,
-  "key" | "summary" | "color" | "displayStart" | "displayEnd" | "allDay" | "rsvp" | "overlayKind"
+  | "key"
+  | "summary"
+  | "color"
+  | "displayStart"
+  | "displayEnd"
+  | "allDay"
+  | "rsvp"
+  | "overlayKind"
+  | "hasMeeting"
 >;
 
 /** Popover payload for a day's events (shared by the overflow footer and compact header). */
@@ -57,6 +66,7 @@ export function dayOverflowPopoverEvents(events: YearDayChip[]): DayOverflowPopo
     hidden: false,
     rsvp: ev.rsvp,
     overlay: ev.overlayKind ?? "",
+    hasMeeting: ev.hasMeeting,
   }));
 }
 
@@ -111,6 +121,7 @@ export function mapTimelineOccurrenceEvents(
       past: Temporal.PlainDateTime.compare(displayEnd, args.now) <= 0,
       recurring: isCalendarEventRecurring(event),
       exception: isCalendarEventException(event),
+      hasMeeting: event.data.hasMeeting === true,
       rsvp: timelineRsvp(event),
       locked: isRenderOnlyOverlayEvent(event),
       overlayKind: event.overlayKind,

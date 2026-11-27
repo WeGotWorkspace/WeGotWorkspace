@@ -52,6 +52,10 @@ export abstract class EventBase extends BaseElement {
   @property({ type: String, reflect: true })
   rsvp: "" | "needs-action" | "tentative" = "";
 
+  /** The event has a meeting URL: its first card segment shows a video icon. */
+  @property({ type: Boolean, attribute: "has-meeting" })
+  hasMeeting = false;
+
   /** Render-only overlay kind, passed to the inner event card (`data-overlay`). */
   @property({ type: String })
   overlay = "";
