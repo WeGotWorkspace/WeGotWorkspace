@@ -96,6 +96,47 @@ export default defineConfig({
           },
         },
         plugins: [
+          {
+            // DIAG #2266: temporary — find what drops every Vite WebSocket mid-run.
+            name: "diag-2266-vite-lifecycle",
+            configureServer(server) {
+              const t0 = Date.now();
+              const log = (msg: string) =>
+                console.error(`[diag-2266 +${((Date.now() - t0) / 1000).toFixed(1)}s] ${msg}`);
+              const origRestart = server.restart.bind(server);
+              server.restart = async (...args) => {
+                log(`server.restart called\n${new Error("restart").stack}`);
+                return origRestart(...args);
+              };
+              const origClose = server.close.bind(server);
+              server.close = async () => {
+                log(`server.close called\n${new Error("close").stack}`);
+                return origClose();
+              };
+              server.watcher?.on("all", (event, file) => log(`watcher ${event} ${file}`));
+              server.httpServer?.on("close", () => log("httpServer close"));
+              server.httpServer?.on("clientError", (err) =>
+                log(`httpServer clientError ${String(err)}`),
+              );
+              const hot = server.hot as unknown as { send: (...a: unknown[]) => void };
+              const origSend = hot.send.bind(hot);
+              hot.send = (...a: unknown[]) => {
+                const payload = a[0] as { type?: string } | string;
+                const type = typeof payload === "string" ? payload : payload?.type;
+                if (type !== "custom") log(`hot.send ${JSON.stringify(payload).slice(0, 300)}`);
+                return origSend(...a);
+              };
+              server.ws.on(
+                "connection",
+                (socket: { on: (e: string, f: (...x: unknown[]) => void) => void }) => {
+                  socket.on("close", (code: unknown, reason: unknown) =>
+                    log(`vite ws client close code=${String(code)} reason=${String(reason)}`),
+                  );
+                },
+              );
+              process.on("warning", (w) => log(`process warning ${w.name}: ${w.message}`));
+            },
+          },
           // Same CSS as Storybook dev and Chromatic: without it every `@apply`
           // body is empty and the a11y gate checks half-styled components.
           tailwindcss(),
