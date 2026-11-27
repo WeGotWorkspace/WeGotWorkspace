@@ -9,7 +9,7 @@ export const FIRST_SYNC_RETRY_BASE_MS = 2_000;
 export const FIRST_SYNC_RETRY_MAX_MS = 60_000;
 
 /**
- * True once this device finished a pass: the tree walk, or on a server without
+ * True once this device finished the tree walk, or on a server without
  * the keyset the per-folder crawl. The crawl leaves `firstSyncDone` unset (a
  * keyset server still walks later) but its rows are what that server offers.
  */
@@ -18,7 +18,7 @@ export async function readDriveFirstPassDone(username: string): Promise<boolean>
     readDriveTreeFirstSyncDone(username),
     readDriveTreeLastPass(username),
   ]);
-  return firstSyncDone || lastPass !== null;
+  return firstSyncDone || lastPass === "crawl";
 }
 
 /**

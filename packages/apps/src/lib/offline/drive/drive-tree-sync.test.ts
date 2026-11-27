@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DriveJmapSession } from "@/lib/api/wgw/drive-jmap";
+import { FileNodeNotFoundError, type DriveJmapSession } from "@/lib/api/wgw/drive-jmap";
 import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
@@ -952,6 +952,10 @@ describe("syncDriveTree", () => {
         await upsertDriveEntry(username, staleEntry("/groups/team/b.md", "n-b"));
         return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
       });
+    const jmap = await import("@/lib/api/wgw/drive-jmap");
+    const list = vi.spyOn(jmap, "listFileNodeEntries").mockImplementation(async (_s, dir) => {
+      throw new FileNodeNotFoundError(dir);
+    });
 
     const result = await syncDriveTree(username);
 
@@ -964,6 +968,7 @@ describe("syncDriveTree", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());
+    list.mockRestore();
     spy.mockRestore();
   });
 
@@ -982,7 +987,7 @@ describe("syncDriveTree", () => {
     const listed: string[] = [];
     const list = vi.spyOn(jmap, "listFileNodeEntries").mockImplementation(async (_s, dir) => {
       listed.push(dir);
-      if (dir === "/groups/team/.Trash") throw new Error("no Trash");
+      if (dir === "/groups/team/.Trash") throw new FileNodeNotFoundError(dir);
       return [staleEntry("/users/ada/.Trash/gone.md", "n-gone")];
     });
 
@@ -992,6 +997,36 @@ describe("syncDriveTree", () => {
     expect(listed).toEqual(["/users/ada/.Trash", "/groups/team/.Trash"]);
     expect(await row("/users/ada/.Trash/gone.md")).toMatchObject({ area: "trash" });
     expect(await row("/users/ada/.Trash/purged.md")).toBeUndefined();
+    list.mockRestore();
+    spy.mockRestore();
+  });
+
+  it("a failed Trash listing leaves the crawl unfinished until a listing succeeds", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi
+      .spyOn(crawl, "syncDriveMetadataTree")
+      .mockImplementation(async (_u, _b, options) => {
+        options?.onRoots?.(["/users/ada"]);
+        return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+      });
+    const jmap = await import("@/lib/api/wgw/drive-jmap");
+    let failing = true;
+    const list = vi.spyOn(jmap, "listFileNodeEntries").mockImplementation(async () => {
+      if (failing) throw new Error("429");
+      return [staleEntry("/users/ada/.Trash/gone.md", "n-gone")];
+    });
+
+    const first = await syncDriveTree(username);
+    expect(first.completed).toBe(false);
+    expect(await readDriveTreeLastPass(username)).toBeNull();
+
+    failing = false;
+    const second = await syncDriveTree(username);
+    expect(second.completed).toBe(true);
+    expect(await readDriveTreeLastPass(username)).toBe("crawl");
+    expect(await row("/users/ada/.Trash/gone.md")).toMatchObject({ area: "trash" });
     list.mockRestore();
     spy.mockRestore();
   });

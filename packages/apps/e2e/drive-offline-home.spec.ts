@@ -244,9 +244,8 @@ test.describe("Drive views on the file tree (live app)", () => {
       ["/drive?view=recent", RENAMED],
       ["/drive?view=starred", STARRED],
       ["/drive?view=shared", SHARED],
-      // Trash holds what this device trashed: a server without the keyset
-      // crawls folders, not `.Trash`.
       [folderUrl("Trash"), GONE],
+      [folderUrl("Trash"), TRASHED],
     ] as const) {
       await page.goto(url);
       await expect(row(page, name)).toBeVisible({ timeout: 30_000 });

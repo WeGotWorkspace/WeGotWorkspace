@@ -1,5 +1,6 @@
 import {
   driveJmapSession,
+  FileNodeNotFoundError,
   fileNodeToDirectoryEntry,
   fileNodeVirtualPath,
   listFileNodeEntries,
@@ -222,8 +223,12 @@ async function crawlFolders(
   } catch {
     if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
-  await crawlTrash(username, session, queued.roots ?? [], signal);
-  if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
+  // A failed Trash listing leaves the crawl unfinished: no token, no last-pass,
+  // so the first-sync retry crawls again (the changes feed never replays old Trash).
+  const trashListed = await crawlTrash(username, session, queued.roots ?? [], signal);
+  if (signal?.aborted || !trashListed) {
+    return { completed: false, changed: true, keptUnsavedPaths: [] };
+  }
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
@@ -242,17 +247,17 @@ async function crawlFolders(
 /**
  * The crawl skips dot folders, so Trash would hold only what this device
  * trashed. List each root's `.Trash` (its top level: what the Trash view
- * shows) and store it, pruning what is gone. A root with no `.Trash`, or a
- * failing listing, keeps the rows it had.
+ * shows) and store it, pruning what is gone. A root with no `.Trash` keeps the
+ * rows it had. Returns false when a listing failed for any other reason.
  */
 async function crawlTrash(
   username: string,
   session: DriveJmapSession,
   roots: readonly string[],
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
   for (const root of roots) {
-    if (signal?.aborted) return;
+    if (signal?.aborted) return false;
     const trash = `${normalizePath(root)}/.Trash`;
     try {
       const entries = await listFileNodeEntries(session, trash, username, {
@@ -260,10 +265,12 @@ async function crawlTrash(
         signal,
       });
       await applyFetchedDirectorySnapshot(username, trash, entries);
-    } catch {
-      // No `.Trash` yet, or the listing failed: the next crawl tries again.
+    } catch (error) {
+      // No `.Trash` yet: nothing to store. Any other error must not finish the crawl.
+      if (!(error instanceof FileNodeNotFoundError)) return false;
     }
   }
+  return true;
 }
 
 /**
