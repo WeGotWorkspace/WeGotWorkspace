@@ -188,6 +188,8 @@ export function NotesWorkspace({
     searchInputRef,
     moveDialog,
     visibleNotes,
+    listSort,
+    setListSort,
     workspaceLayoutRef,
     isTouch,
     confirmDialog,
@@ -549,6 +551,8 @@ export function NotesWorkspace({
             onEditTag: selectedTag ? () => openRenameTagDialog(selectedTag) : undefined,
             pendingNoteIds,
             notebookCollections,
+            listSort,
+            onListSortChange: setListSort,
           }),
           listTop: <NoticeBar label={L.noticeBarLabel} notices={[syncNotice]} />,
         })}

@@ -20,6 +20,15 @@ import {
 export type NotesUILabels = WorkspaceDestructiveDialogLabels & {
   listLoading: string;
   refreshList: string;
+  sortMenu: string;
+  sortBy: string;
+  sortOrder: string;
+  sortModified: string;
+  sortTitle: string;
+  sortNewestFirst: string;
+  sortOldestFirst: string;
+  sortAToZ: string;
+  sortZToA: string;
   searchPlaceholder: string;
   sidebarAllItems: string;
   sidebarStarred: string;
@@ -162,6 +171,15 @@ export const defaultNotesLabels: NotesUILabels = {
   ...workspaceDestructiveDialogLabels,
   listLoading: "Loading notes…",
   refreshList: "Refresh notes",
+  sortMenu: "Sort notes",
+  sortBy: "Sort by",
+  sortOrder: "Order",
+  sortModified: "Date modified",
+  sortTitle: "Title",
+  sortNewestFirst: "Newest first",
+  sortOldestFirst: "Oldest first",
+  sortAToZ: "A to Z",
+  sortZToA: "Z to A",
   searchPlaceholder: "Search notes...",
   sidebarAllItems: "All Items",
   sidebarStarred: "Starred",
