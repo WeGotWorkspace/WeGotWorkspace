@@ -32,6 +32,7 @@ vi.mock("@/lib/api/wgw/drive", () => ({
       directory: { location: "/users/alice", files: [] },
     })),
     createFolder: vi.fn(),
+    createFile: vi.fn(),
     listAllDirectoryEntries: vi.fn(async () => []),
     uploadFiles: vi.fn(),
     downloadFile: vi.fn(),
@@ -147,6 +148,37 @@ describe("createHybridDriveOperations writes and the file tree (#2063 C3)", () =
 
     const moved = await driveEntriesTable(db()).get("users/alice/plan.txt");
     expect(moved).toMatchObject({ area: "home", ext: "txt" });
+  });
+
+  it("a created folder or file joins the tree under its parent and tells the open views", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await upsertDriveEntry(username, entry("/groups/team/Plans", "Plans"), "group");
+    const heard = vi.fn();
+    const stop = subscribeDriveRemoteChanges(username, heard);
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await ops.createFolder({ cwd: "/groups/team/Plans", name: "Q3" });
+    await ops.createFile({ cwd: "/users/alice", name: "notes.md" });
+    stop();
+
+    const live = vi.mocked(createWgwDriveOperations).mock.results.at(-1)?.value as {
+      createFolder: ReturnType<typeof vi.fn>;
+    };
+    expect(live.createFolder).toHaveBeenCalledWith(
+      { cwd: "/groups/team/Plans", name: "Q3" },
+      expect.objectContaining({ refreshState: false }),
+    );
+    expect(await driveEntriesTable(db()).get("groups/team/Plans/Q3")).toMatchObject({
+      type: "dir",
+      area: "group",
+      parentPath: "groups/team/Plans",
+    });
+    expect(await driveEntriesTable(db()).get("users/alice/notes.md")).toMatchObject({
+      type: "file",
+      area: "home",
+      ext: "md",
+    });
+    expect(heard).toHaveBeenCalledTimes(2);
   });
 
   it("a permanent delete removes the rows from the tree and tells the open views", async () => {

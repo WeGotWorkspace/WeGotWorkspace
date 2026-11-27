@@ -72,6 +72,43 @@ export function driveEntryRowFromEntry(
 }
 
 /**
+ * A folder or file this device just created on the server (#2063 C3): filed
+ * under its parent with the parent's `area` (or, under an account root, the
+ * root's) and the parent's rights, so the tree views show it before the push.
+ * The next change for its node fills in the rest.
+ */
+export async function addCreatedDriveEntry(
+  username: string,
+  parentApiPath: string,
+  name: string,
+  type: "dir" | "file",
+): Promise<void> {
+  const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
+  const parentId = normalizeDriveEntryPath(parentApiPath);
+  const id = parentId ? `${parentId}/${name}` : name;
+  const parent = parentId ? await table.get(parentId) : undefined;
+  const parentEntry = parent ? parseEntryRow(parent) : null;
+  const entry: WgwDriveDirectoryEntry = {
+    type,
+    path: `/${id}`,
+    name,
+    size: 0,
+    time: Math.floor(Date.now() / 1000),
+    permissions: 0,
+    // Under a root there is no parent row: the person just created it there.
+    myRights: parentEntry?.myRights ?? {
+      mayView: true,
+      mayComment: true,
+      mayReview: true,
+      mayEditContent: true,
+      mayManageStructure: true,
+      mayShare: true,
+    },
+  };
+  await table.put(driveEntryRowFromEntry(entry, parent?.area ?? areaFromCrawledPath(id)));
+}
+
+/**
  * Upsert one listing entry. Without `area`, the row keeps the area it had at
  * this path, or takes its parent folder's: writers other than the tree sync
  * (operations, uploads, folder listings) do not know it.
@@ -301,7 +338,8 @@ async function areaAfterMove(
   const parts = newParent.split("/");
   const underAccountRoot =
     parts.length === 2 &&
-    ((parts[0] === "users" && parts[1] === username) || parts[0] === "groups");
+    ((parts[0] === "users" && parts[1]?.toLowerCase() === username.trim().toLowerCase()) ||
+      parts[0] === "groups");
   if (underAccountRoot || row.area === "trash") return areaFromCrawledPath(newId);
   return row.area;
 }
