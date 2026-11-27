@@ -67,7 +67,7 @@ export class EventCard extends BaseElement {
   @property({ type: Boolean, reflect: true })
   exception = false;
 
-  /** The event has a meeting URL: a small video icon leads the title (decorative; announced). */
+  /** The event has a meeting URL: a small video icon ends the heading row (decorative; announced). */
   @property({ type: Boolean, reflect: true })
   video = false;
 

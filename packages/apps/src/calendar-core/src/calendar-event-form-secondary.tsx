@@ -1,4 +1,3 @@
-import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import { Bell, StickyNote } from "lucide-react";
 import { useId } from "react";
 import { AlarmsRows } from "@/alarms-card/src/alarms-card";
@@ -10,6 +9,7 @@ import { useInviteeAvailability } from "@/calendar-core/src/use-invitee-availabi
 import type { ContactCard } from "@/lib/models/contacts-types";
 import type { ControlSize } from "@/ui/control-size";
 import { FieldLabelRow } from "@/ui/field-label-row";
+import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import "@/note-detail-view/src/note-detail-view.css";
 
 type CalendarEventFormFieldChange = <K extends keyof CalendarEventFormValue>(

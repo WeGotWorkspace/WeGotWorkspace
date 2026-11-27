@@ -1,4 +1,3 @@
-import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import {
   useLayoutEffect,
   useMemo,
@@ -37,6 +36,7 @@ import { DropdownMenu, type DropdownMenuItemProps } from "@/menu-dropdown/src/dr
 import { Input } from "@/ui/input";
 import { LocaleDatePicker } from "@/ui/locale-date-picker";
 import { Switch } from "@/ui/switch";
+import { LinkifiedTextarea } from "@/ui/linkified-textarea";
 import { cn } from "@/lib/utils";
 import { TagGroup, type TagItem } from "@/tag/src/tag";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
