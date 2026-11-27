@@ -9,7 +9,9 @@ export { DocsWorkspace } from "@/docs-core/src/docs-workspace";
 export type { DocsWorkspaceProps } from "@/docs-core/src/docs-workspace-props";
 export { DocsHomeWorkspace } from "@/docs-core/src/docs-home-workspace";
 export type { DocsHomeWorkspaceProps } from "@/docs-core/src/docs-home-workspace";
-export { useDocsHomeList, mapDocsHomeResults } from "@/docs-core/src/use-docs-home-list";
+export { mapDocsHomeResults } from "@/docs-core/src/use-docs-home-server-rows";
+export { useDocsHomeRows } from "@/docs-core/src/use-docs-home-rows";
+export { docsHomeWorkspaceConfig } from "@/docs-core/src/docs-home-config";
 export { sortDocsHomeResults, type DocsHomeFetcher } from "@/lib/files/docs-home-listing";
 export {
   applyDocsHomeGroupDisplayNames,

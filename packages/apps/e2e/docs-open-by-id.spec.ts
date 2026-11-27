@@ -153,7 +153,7 @@ test.describe("Docs open by id (live app)", () => {
     expect(nodeLookups).toEqual([]);
   });
 
-  test("a row still opens by id after another tab refreshes the list from the cache", async ({
+  test("a row still opens by id after another tab refreshes the list from the tree", async ({
     page,
     context,
   }) => {
@@ -165,34 +165,13 @@ test.describe("Docs open by id (live app)", () => {
     await gotoDocsHome(page);
     await expect(docsHomeRow(page, fileName)).toBeVisible({ timeout: 30_000 });
 
-    // Tab B: wait until its live listings (rows with ids) have landed and no
-    // other listing request followed for a while.
+    // Tab B lists the device's file tree (#2063 C4): every row carries its id.
     const tabB = await context.newPage();
-    const isSearch = (url: string) => new URL(url).pathname.endsWith("/api/v1/search/results");
-    let searchesInFlight = 0;
-    let lastSearchAt = 0;
-    tabB.on("request", (request) => {
-      if (!isSearch(request.url())) return;
-      searchesInFlight += 1;
-      lastSearchAt = Date.now();
-    });
-    for (const event of ["requestfinished", "requestfailed"] as const) {
-      tabB.on(event, (request) => {
-        if (!isSearch(request.url())) return;
-        searchesInFlight -= 1;
-        lastSearchAt = Date.now();
-      });
-    }
     await gotoDocsHome(tabB);
     await expect(docsHomeRow(tabB, fileName)).toBeVisible({ timeout: 30_000 });
-    await expect
-      .poll(() => lastSearchAt > 0 && searchesInFlight === 0 && Date.now() - lastSearchAt > 2_000, {
-        timeout: 30_000,
-      })
-      .toBe(true);
 
-    // Tab A lists a new Doc, rewrites the cache and tells tab B, whose list
-    // now comes from cached rows. Cached rows carry no id (#1976).
+    // Tab A pulls a new Doc into the tree and tells tab B, whose list re-reads
+    // the tree. Before #2063 C4 this was a cached listing whose rows carried no id (#1976).
     await seedDocAtPath(`/${myDriveDocSearchPath(laterName)}`, `# Later ${stamp}\n`);
     await page.reload();
     await expect(docsHomeRow(page, laterName)).toBeVisible({ timeout: 30_000 });

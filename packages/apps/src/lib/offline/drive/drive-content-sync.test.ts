@@ -29,7 +29,9 @@ vi.mock("@/lib/offline/core/meta-store", () => ({
     meta.values.set(key, value);
   },
 }));
-vi.mock("@/lib/offline/core/offline-db", () => ({
+vi.mock("@/lib/offline/core/offline-db", async (importOriginal) => ({
+  // Partial: docs-schema registers its tables on import (#2063 C4).
+  ...(await importOriginal<typeof import("@/lib/offline/core/offline-db")>()),
   offlineAccountKeyFromUsername: (user: string) => user,
   offlineDbForAccount: () => ({}),
 }));

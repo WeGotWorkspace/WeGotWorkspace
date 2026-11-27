@@ -5,11 +5,11 @@ import type { DriveAPIOperations, DriveUIData } from "@/lib/files/drive-types";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import {
-  captureOfflineDocsTrashSnapshot,
-  DOCS_DELETE_NEEDS_CONNECTION,
-  undoOfflineDocsTrash,
-} from "@/lib/offline/docs/docs-hybrid-operations";
-import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
+  captureDocsTrashSnapshot,
+  restoreDocsTrashSnapshot,
+  undoQueuedDocsTrash,
+} from "@/lib/offline/docs/docs-trash-undo";
+import { DRIVE_DELETE_NEEDS_CONNECTION } from "@/lib/offline/drive/drive-hybrid-operations";
 import { useDocsHomeActions } from "@/docs-core/src/use-docs-home-actions";
 import type { QueuedMutationArgs } from "@/hooks/use-queued-mutation";
 
@@ -43,30 +43,17 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/offline/docs/docs-outbox-flush", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/offline/docs/docs-outbox-flush")>();
+vi.mock("@/lib/offline/docs/docs-trash-undo", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/docs/docs-trash-undo")>();
   return {
     ...actual,
-    removeOutboxMutationsForDocsPath: vi.fn(async () => false),
-  };
-});
-
-vi.mock("@/lib/offline/docs/docs-hybrid-operations", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/offline/docs/docs-hybrid-operations")>();
-  return {
-    ...actual,
-    captureOfflineDocsTrashSnapshot: vi.fn(async (_username: string, apiPath: string) => ({
+    captureDocsTrashSnapshot: vi.fn(async (_username: string, apiPath: string) => ({
       apiPath,
-      listingResult: {
-        id: 1,
-        sourceType: "file",
-        sourceKey: apiPath.replace(/^\/+/, ""),
-        title: apiPath.split("/").pop() ?? apiPath,
-        size: 1,
-      },
       availability: { id: apiPath.replace(/^\/+/, ""), location: "My Drive" },
     })),
-    undoOfflineDocsTrash: vi.fn(async () => undefined),
+    // No queued trash by default: the trash reached the server.
+    undoQueuedDocsTrash: vi.fn(async () => false),
+    restoreDocsTrashSnapshot: vi.fn(async () => undefined),
   };
 });
 
@@ -460,14 +447,14 @@ describe("useDocsHomeActions", () => {
       await executeQueued();
     });
 
-    expect(captureOfflineDocsTrashSnapshot).toHaveBeenCalledWith("alice", "/users/alice/B.md");
+    expect(captureDocsTrashSnapshot).toHaveBeenCalledWith("alice", "/users/alice/B.md");
 
     await act(async () => {
       await undoQueued();
     });
-    await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalled());
+    await waitFor(() => expect(restoreDocsTrashSnapshot).toHaveBeenCalled());
 
-    expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+    expect(restoreDocsTrashSnapshot).toHaveBeenCalledWith(
       "alice",
       expect.objectContaining({ apiPath: "/users/alice/B.md" }),
     );
@@ -608,8 +595,8 @@ describe("useDocsHomeActions", () => {
       await undoQueued();
     });
 
-    await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalledTimes(1));
-    expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+    await waitFor(() => expect(restoreDocsTrashSnapshot).toHaveBeenCalledTimes(1));
+    expect(restoreDocsTrashSnapshot).toHaveBeenCalledWith(
       "alice",
       expect.objectContaining({ apiPath: "/users/alice/A.md" }),
     );
@@ -664,26 +651,27 @@ describe("useDocsHomeActions", () => {
     });
 
     await waitFor(() =>
-      expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+      expect(restoreDocsTrashSnapshot).toHaveBeenCalledWith(
         "alice",
         expect.objectContaining({
           apiPath: "/users/alice/B 2.md",
-          listingResult: expect.objectContaining({
-            sourceKey: "users/alice/B 2.md",
-            title: "B 2.md",
-          }),
           availability: expect.objectContaining({ id: "users/alice/B 2.md" }),
         }),
       ),
     );
-    expect(removeOutboxMutationsForDocsPath).toHaveBeenCalledWith("alice", "/users/alice/B.md");
-    const outboxOrder = vi.mocked(removeOutboxMutationsForDocsPath).mock.invocationCallOrder[0];
-    const cacheOrder = vi.mocked(undoOfflineDocsTrash).mock.invocationCallOrder[0];
+    // The queued trash is looked for first, at the path the Doc had.
+    expect(undoQueuedDocsTrash).toHaveBeenCalledWith(
+      "alice",
+      expect.objectContaining({ apiPath: "/users/alice/B.md" }),
+      "/users/alice/.Trash/B.md",
+    );
+    const outboxOrder = vi.mocked(undoQueuedDocsTrash).mock.invocationCallOrder[0];
+    const cacheOrder = vi.mocked(restoreDocsTrashSnapshot).mock.invocationCallOrder[0];
     expect(outboxOrder).toBeLessThan(cacheOrder);
   });
 
   it("undoes a still-queued trash locally when the browser is online again", async () => {
-    vi.mocked(removeOutboxMutationsForDocsPath).mockResolvedValueOnce(true);
+    vi.mocked(undoQueuedDocsTrash).mockResolvedValueOnce(true);
     const operations = createMockOperations();
     const { result } = renderActions(operations, vi.fn(), { offlineUsername: "alice" });
 
@@ -699,11 +687,13 @@ describe("useDocsHomeActions", () => {
     });
 
     await waitFor(() =>
-      expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+      expect(undoQueuedDocsTrash).toHaveBeenCalledWith(
         "alice",
         expect.objectContaining({ apiPath: "/users/alice/B.md" }),
+        "/users/alice/.Trash/B.md",
       ),
     );
+    expect(restoreDocsTrashSnapshot).not.toHaveBeenCalled();
     const restores = operations.renameItem.mock.calls.filter(
       (call) => call[0].from.includes("/.Trash/") && call[0].destination === "/users/alice",
     );
@@ -738,12 +728,12 @@ describe("useDocsHomeActions", () => {
       await undoQueued();
     });
 
-    await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalledTimes(1));
-    expect(undoOfflineDocsTrash).toHaveBeenCalledWith(
+    await waitFor(() => expect(restoreDocsTrashSnapshot).toHaveBeenCalledTimes(1));
+    expect(restoreDocsTrashSnapshot).toHaveBeenCalledWith(
       "alice",
       expect.objectContaining({ apiPath: "/users/alice/B 2.md" }),
     );
-    expect(undoOfflineDocsTrash).not.toHaveBeenCalledWith(
+    expect(restoreDocsTrashSnapshot).not.toHaveBeenCalledWith(
       "alice",
       expect.objectContaining({ apiPath: "/users/alice/A.md" }),
     );
@@ -839,7 +829,7 @@ describe("useDocsHomeActions", () => {
     await act(async () => {
       await undoQueued();
     });
-    await waitFor(() => expect(undoOfflineDocsTrash).toHaveBeenCalled());
+    await waitFor(() => expect(undoQueuedDocsTrash).toHaveBeenCalled());
 
     expect(operations.renameItem).toHaveBeenCalledTimes(trashCalls);
     expect(onAvailabilityChanged).toHaveBeenCalled();
@@ -907,7 +897,7 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.onTrash(trashFile));
     act(() => result.current.confirmTrash());
 
-    expect(showErrorToast).toHaveBeenCalledWith(DOCS_DELETE_NEEDS_CONNECTION);
+    expect(showErrorToast).toHaveBeenCalledWith(DRIVE_DELETE_NEEDS_CONNECTION);
     expect(queueMutation).not.toHaveBeenCalled();
     expect(result.current.hiddenFileIds.size).toBe(0);
   });
@@ -930,5 +920,27 @@ describe("useDocsHomeActions", () => {
     act(() => result.current.confirmMove("My Drive"));
 
     await waitFor(() => expect(result.current.hiddenFileIds.has(FILES[0]!.id)).toBe(false));
+  });
+
+  it("shows a tree row again once it is moved back out of Trash (#2063 C4)", async () => {
+    const operations = createMockOperations();
+    // Tree rows are keyed by their API path.
+    const doc = file({ id: "/users/alice/A.md", title: "A.md", apiPath: "/users/alice/A.md" });
+    const trashFile = file({
+      id: "/users/alice/.Trash/A.md",
+      title: "A.md",
+      apiPath: "/users/alice/.Trash/A.md",
+      parent: "Trash",
+    });
+    const { result } = renderActions(operations, vi.fn(), { files: [doc, trashFile] });
+
+    act(() => result.current.onTrash(doc));
+    act(() => result.current.confirmTrash());
+    expect(result.current.hiddenFileIds.has(doc.id)).toBe(true);
+
+    act(() => result.current.onMove(trashFile));
+    act(() => result.current.confirmMove("My Drive"));
+
+    await waitFor(() => expect(result.current.hiddenFileIds.has(doc.id)).toBe(false));
   });
 });

@@ -65,8 +65,10 @@ function viewCollection(
       return entries.where("area").equals("trash");
     case "prefix": {
       const prefix = treeRowPath(view.path);
-      return prefix
-        ? entries.where("id").startsWith(`${prefix}/`)
+      if (prefix) return entries.where("id").startsWith(`${prefix}/`);
+      // Docs home lists a few extensions of the whole tree: the `ext` index is the small range.
+      return filter?.extensions
+        ? entries.where("ext").anyOf([...filter.extensions])
         : entries.where("area").anyOf(["home", "group", "share"]);
     }
   }
