@@ -1,0 +1,33 @@
+Overzicht Q1 2026,
+,
+Kengetal,Waarde
+Omzet (SUM over tab),27.95
+"Omzet incl. BTW, afgerond",33.82
+Korting fruit (VLOOKUP),10%
+Korting zuivel (XLOOKUP),5%
+Label via INDEX/MATCH,Zuivel
+Aantal fruit (COUNTIF),2
+Omzet fruit actief (SUMIFS),9.9
+Gemiddelde prijs,2.746
+SUMPRODUCT prijs x aantal,27.95
+Hele kolom SUM(E:E) min totaal,27.95
+Absolute ref $C$2*D2,2.7
+Concat &,Appels (fruit)
+TEXTJOIN,"Appels, Brood, Melk"
+Percent literal 50%*B4,13.975
+Eerste datum,01/05/2026
+Dagen tussen eerste en laatste,85
+Einde maand (EOMONTH),01/31/2026
+Werkdagen (NETWORKDAYS),62
+Datum als tekst (TEXT),05-01-2026
+IF/AND,ok
+Deling door nul,#DIV/0!
+IFERROR rond deling,n.v.t.
+Vandaag (volatile),11/27/2026
+Tekst die op een getal lijkt,007
+Groot getal,1E+020
+"Negatief, boekhoudnotatie",-1234.5
+Tijd,09:30:00 AM
+Hyperlink,WeGotWorkspace
+Rich text,vet en cursief
+Fout als waarde,#N/A
