@@ -184,6 +184,14 @@ export type DriveAPIOperations = {
     input: { path: string; starred: boolean },
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
+  /**
+   * Add and remove tags on one file or folder (#2402), as a delta. Resolves with the
+   * tags it has now. Absent where tags are not offered (guests, the mock API).
+   */
+  setTags?: (
+    input: { path: string; tagsAdd?: string[]; tagsRemove?: string[] },
+    opts?: { signal?: AbortSignal },
+  ) => Promise<string[]>;
   uploadFiles: (
     input: { cwd: string; files: File[] },
     opts?: {

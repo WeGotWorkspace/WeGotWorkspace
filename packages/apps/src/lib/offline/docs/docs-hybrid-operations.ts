@@ -45,6 +45,7 @@ import {
 } from "@/lib/offline/docs/docs-offline-entries";
 import { moveDocsPath } from "@/lib/offline/docs/docs-path-moves";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
+import { createHybridSetTags } from "@/lib/offline/shared/drive-tag-operations";
 import type { WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import {
   buildOfflineDocsSearchResult,
@@ -374,6 +375,10 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
       }
       return readDocsStarredPaths(username);
     },
+    setTags: createHybridSetTags(username, live, DOCS_DOMAIN, () => {
+      notifyDriveRemoteChange(username);
+      notifyDocsCachesChanged(username);
+    }),
     setStar: async (input, opts) => {
       const path = normalizeApiVirtualPath(input.path);
       if (readBrowserOnline()) {

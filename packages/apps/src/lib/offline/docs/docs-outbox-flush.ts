@@ -16,6 +16,7 @@ import {
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
+import type { DriveTagsOutboxPayload } from "@/lib/offline/shared/drive-tag-operations";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
   moveKeptBothDocsCreate,
@@ -27,7 +28,8 @@ export type DocsOutboxPayload =
   | { op: "rename"; from: string; destination: string; to: string }
   | { op: "trash"; from: string; destination: string; to: string }
   | { op: "create"; apiPath: string; content: string }
-  | { op: "star"; path: string; starred: boolean };
+  | { op: "star"; path: string; starred: boolean }
+  | DriveTagsOutboxPayload;
 
 export type OutboxFlushResult = {
   flushed: number;
@@ -90,6 +92,12 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
         }
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
+      } else if (payload.op === "tags") {
+        await drive.setTags?.({
+          path: payload.path,
+          tagsAdd: payload.tagsAdd,
+          tagsRemove: payload.tagsRemove,
+        });
       }
     },
     onFailure: (failure) => {
@@ -138,6 +146,7 @@ export function pathsForDocsOutboxPayload(payload: DocsOutboxPayload): string[] 
     case "create":
       return [normalizeDocsAvailabilityPath(payload.apiPath)];
     case "star":
+    case "tags":
       return [normalizeDocsAvailabilityPath(payload.path)];
     default: {
       const unreachable: never = payload;

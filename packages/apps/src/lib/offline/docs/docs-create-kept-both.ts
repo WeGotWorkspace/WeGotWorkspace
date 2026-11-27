@@ -42,7 +42,8 @@ export function retargetDocsOutboxPayload(
       const moved = retarget(payload.apiPath, from, to);
       return moved === payload.apiPath ? payload : { ...payload, apiPath: moved };
     }
-    case "star": {
+    case "star":
+    case "tags": {
       const moved = retarget(payload.path, from, to);
       return moved === payload.path ? payload : { ...payload, path: moved };
     }
