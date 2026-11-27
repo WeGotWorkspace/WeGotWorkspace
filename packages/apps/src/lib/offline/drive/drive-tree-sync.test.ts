@@ -60,6 +60,7 @@ import {
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
 import {
+  DRIVE_TREE_CRAWL_ROOTS_KEY,
   DRIVE_TREE_LAST_PASS_KEY,
   readDriveTreeCrawlRoots,
   readDriveTreeFirstSyncDone,
@@ -863,6 +864,19 @@ describe("review fixes (#2063 C1)", () => {
       return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
     });
   }
+
+  it("a crawl that returns before queueing roots keeps the stored root list", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(["/users/ada"]));
+    // As syncDriveMetadataTree returns when the device went offline: no onRoots call.
+    const spy = await mockCrawl();
+
+    await syncDriveTree(username);
+    spy.mockRestore();
+
+    expect(await readDriveTreeCrawlRoots(username)).toEqual(["/users/ada"]);
+  });
 
   it("a file written while the per-folder crawl runs arrives on the next sync", async () => {
     const server = standardTree();

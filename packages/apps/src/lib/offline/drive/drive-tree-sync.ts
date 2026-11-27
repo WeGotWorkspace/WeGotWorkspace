@@ -174,7 +174,8 @@ async function crawlFolders(
 ): Promise<DriveTreeSyncResult> {
   const before = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
-  let crawlRoots: readonly string[] = [];
+  // Null when the crawl returned before queueing roots (it went offline first).
+  let crawlRoots: readonly string[] | null = null;
   const progress = await syncDriveMetadataTree(username, bootstrap, {
     signal,
     onRoots: (roots) => {
@@ -187,7 +188,11 @@ async function crawlFolders(
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await stampCrawledAreas(username);
-  await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(crawlRoots));
+  // A crawl that returned before queueing roots keeps the list it had: an empty
+  // one would make every account root not-available until the next crawl.
+  if (crawlRoots) {
+    await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(crawlRoots));
+  }
   await writeDriveSyncToken(username, before.state);
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
