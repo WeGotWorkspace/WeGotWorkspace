@@ -1,0 +1,898 @@
+[
+  {
+    "group": "math",
+    "formula": "=SUM(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 11,
+    "engine": 11,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=SUMIF(B2:B6,\"a\",A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 6,
+    "match": false
+  },
+  {
+    "group": "math",
+    "formula": "=SUMIFS(A2:A6,B2:B6,\"a\",D2:D6,TRUE)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 0,
+    "match": false
+  },
+  {
+    "group": "math",
+    "formula": "=SUMPRODUCT(A2:A6,A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 39,
+    "engine": 39,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=ROUND(2.675,2)",
+    "inFormulajs": true,
+    "libreoffice": 2.68,
+    "engine": 2.68,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=ROUND(-2.5,0)",
+    "inFormulajs": true,
+    "libreoffice": -3,
+    "engine": -3,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=ROUNDUP(2.1,0)",
+    "inFormulajs": true,
+    "libreoffice": 3,
+    "engine": 3,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=ROUNDDOWN(-2.9,0)",
+    "inFormulajs": true,
+    "libreoffice": -2,
+    "engine": -2,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=INT(-2.5)",
+    "inFormulajs": true,
+    "libreoffice": -3,
+    "engine": -3,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=MOD(-7,3)",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=ABS(-3)",
+    "inFormulajs": true,
+    "libreoffice": 3,
+    "engine": 3,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=PRODUCT(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 30,
+    "engine": 30,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=POWER(2,10)",
+    "inFormulajs": true,
+    "libreoffice": 1024,
+    "engine": 1024,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=SQRT(16)",
+    "inFormulajs": true,
+    "libreoffice": 4,
+    "engine": 4,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=CEILING(2.1,0.5)",
+    "inFormulajs": true,
+    "libreoffice": 2.5,
+    "engine": 2.5,
+    "match": true
+  },
+  {
+    "group": "math",
+    "formula": "=FLOOR(2.9,0.5)",
+    "inFormulajs": true,
+    "libreoffice": 2.5,
+    "engine": 2.5,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=AVERAGE(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 2.75,
+    "engine": 2.75,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=AVERAGEIF(B2:B6,\"a\",A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 3,
+    "match": false
+  },
+  {
+    "group": "stat",
+    "formula": "=COUNT(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 4,
+    "engine": 4,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=COUNTA(B2:B6)",
+    "inFormulajs": true,
+    "libreoffice": 4,
+    "engine": 4,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=COUNTBLANK(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 0,
+    "match": false
+  },
+  {
+    "group": "stat",
+    "formula": "=COUNTIF(B2:B6,\"a\")",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=COUNTIFS(B2:B6,\"a\",D2:D6,TRUE)",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 0,
+    "match": false
+  },
+  {
+    "group": "stat",
+    "formula": "=MIN(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 1,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=MAX(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 5,
+    "engine": 5,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=MEDIAN(A2:A6)",
+    "inFormulajs": true,
+    "libreoffice": 2.5,
+    "engine": 2.5,
+    "match": true
+  },
+  {
+    "group": "stat",
+    "formula": "=MAXIFS(A2:A6,D2:D6,TRUE)",
+    "inFormulajs": true,
+    "libreoffice": 3,
+    "engine": 0,
+    "match": false
+  },
+  {
+    "group": "stat",
+    "formula": "=MINIFS(A2:A6,D2:D6,TRUE)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 0,
+    "match": false
+  },
+  {
+    "group": "logic",
+    "formula": "=IF(A2>1,\"yes\",\"no\")",
+    "inFormulajs": true,
+    "libreoffice": "no",
+    "engine": "no",
+    "match": true
+  },
+  {
+    "group": "logic",
+    "formula": "=IFS(A3=1,\"one\",A3=2,\"two\")",
+    "inFormulajs": true,
+    "libreoffice": "two",
+    "engine": "two",
+    "match": true
+  },
+  {
+    "group": "logic",
+    "formula": "=AND(D2,D4)",
+    "inFormulajs": true,
+    "libreoffice": true,
+    "engine": true,
+    "match": true
+  },
+  {
+    "group": "logic",
+    "formula": "=OR(D3,D6)",
+    "inFormulajs": true,
+    "libreoffice": false,
+    "engine": false,
+    "match": true
+  },
+  {
+    "group": "logic",
+    "formula": "=NOT(D2)",
+    "inFormulajs": true,
+    "libreoffice": false,
+    "engine": false,
+    "match": true
+  },
+  {
+    "group": "logic",
+    "formula": "=IFERROR(1/0,\"err\")",
+    "inFormulajs": true,
+    "libreoffice": "err",
+    "engine": "err",
+    "match": true
+  },
+  {
+    "group": "logic",
+    "formula": "=IFNA(NA(),\"na\")",
+    "inFormulajs": true,
+    "libreoffice": "na",
+    "engine": "#N/A",
+    "match": false
+  },
+  {
+    "group": "logic",
+    "formula": "=SWITCH(A4,1,\"a\",3,\"c\",\"?\")",
+    "inFormulajs": true,
+    "libreoffice": "c",
+    "engine": "c",
+    "match": true
+  },
+  {
+    "group": "lookup",
+    "formula": "=VLOOKUP(\"c\",B2:D6,2,FALSE)",
+    "inFormulajs": true,
+    "libreoffice": 46081,
+    "engine": "#REF!",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=VLOOKUP(2.5,A2:B4,2,TRUE)",
+    "inFormulajs": true,
+    "libreoffice": "B",
+    "engine": "#N/A",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=HLOOKUP(\"t\",A1:E3,3,FALSE)",
+    "inFormulajs": true,
+    "libreoffice": "B",
+    "engine": "matrix[0].map is not a function",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=XLOOKUP(\"c\",B2:B6,A2:A6,\"none\")",
+    "inFormulajs": false,
+    "libreoffice": 3,
+    "engine": "#NAME?",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=INDEX(A2:B6,3,2)",
+    "inFormulajs": true,
+    "libreoffice": "c",
+    "engine": "#REF!",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=MATCH(\"c\",B2:B6,0)",
+    "inFormulajs": true,
+    "libreoffice": 3,
+    "engine": 3,
+    "match": true
+  },
+  {
+    "group": "lookup",
+    "formula": "=XMATCH(3,A2:A6)",
+    "inFormulajs": false,
+    "libreoffice": 3,
+    "engine": "#NAME?",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=CHOOSE(2,\"x\",\"y\",\"z\")",
+    "inFormulajs": true,
+    "libreoffice": "y",
+    "engine": "y",
+    "match": true
+  },
+  {
+    "group": "lookup",
+    "formula": "=ROW(A4)",
+    "inFormulajs": true,
+    "libreoffice": 4,
+    "engine": "#N/A",
+    "match": false
+  },
+  {
+    "group": "lookup",
+    "formula": "=COLUMN(C1)",
+    "inFormulajs": true,
+    "libreoffice": 3,
+    "engine": "#N/A",
+    "match": false
+  },
+  {
+    "group": "text",
+    "formula": "=CONCAT(B2,B3)",
+    "inFormulajs": true,
+    "libreoffice": "aB",
+    "engine": "aB",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=CONCATENATE(B2,\"-\",A2)",
+    "inFormulajs": true,
+    "libreoffice": "a-1",
+    "engine": "a-1",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=TEXTJOIN(\",\",TRUE,B2:B6)",
+    "inFormulajs": true,
+    "libreoffice": "a,B,c,a",
+    "engine": "a,B,c,a",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=LEFT(\"abcdef\",2)",
+    "inFormulajs": true,
+    "libreoffice": "ab",
+    "engine": "ab",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=RIGHT(\"abcdef\",2)",
+    "inFormulajs": true,
+    "libreoffice": "ef",
+    "engine": "ef",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=MID(\"abcdef\",2,3)",
+    "inFormulajs": true,
+    "libreoffice": "bcd",
+    "engine": "bcd",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=LEN(\"héllo\")",
+    "inFormulajs": true,
+    "libreoffice": 5,
+    "engine": 5,
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=UPPER(\"straße\")",
+    "inFormulajs": true,
+    "libreoffice": "STRAẞE",
+    "engine": "STRASSE",
+    "match": false
+  },
+  {
+    "group": "text",
+    "formula": "=LOWER(\"ABC\")",
+    "inFormulajs": true,
+    "libreoffice": "abc",
+    "engine": "abc",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=PROPER(\"jan de vries\")",
+    "inFormulajs": true,
+    "libreoffice": "Jan De Vries",
+    "engine": "Jan De Vries",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=TRIM(\"  a   b \")",
+    "inFormulajs": true,
+    "libreoffice": "a b",
+    "engine": "a b",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=SUBSTITUTE(\"a-b-c\",\"-\",\"+\")",
+    "inFormulajs": true,
+    "libreoffice": "a+b+c",
+    "engine": "a+b+c",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=FIND(\"b\",\"abc\")",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=SEARCH(\"B\",\"abc\")",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=TEXT(1234.5,\"0.00\")",
+    "inFormulajs": true,
+    "libreoffice": "1234.50",
+    "engine": "1234.50",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=TEXT(C2,\"yyyy-mm-dd\")",
+    "inFormulajs": true,
+    "libreoffice": "2026-01-05",
+    "engine": "46027",
+    "match": false
+  },
+  {
+    "group": "text",
+    "formula": "=VALUE(\"12.5\")",
+    "inFormulajs": true,
+    "libreoffice": 12.5,
+    "engine": 12.5,
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=REPT(\"ab\",3)",
+    "inFormulajs": true,
+    "libreoffice": "ababab",
+    "engine": "ababab",
+    "match": true
+  },
+  {
+    "group": "text",
+    "formula": "=EXACT(\"a\",\"A\")",
+    "inFormulajs": true,
+    "libreoffice": false,
+    "engine": false,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=DATE(2026,2,30)",
+    "inFormulajs": true,
+    "libreoffice": 46083,
+    "engine": 46082.958333333336,
+    "match": false
+  },
+  {
+    "group": "date",
+    "formula": "=YEAR(C2)",
+    "inFormulajs": true,
+    "libreoffice": 2026,
+    "engine": 2026,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=MONTH(C3)",
+    "inFormulajs": true,
+    "libreoffice": 1,
+    "engine": 1,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=DAY(C4)",
+    "inFormulajs": true,
+    "libreoffice": 28,
+    "engine": 28,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=WEEKDAY(C2)",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=WEEKNUM(C2)",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=ISOWEEKNUM(C2)",
+    "inFormulajs": true,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=EDATE(C3,1)",
+    "inFormulajs": true,
+    "libreoffice": 46081,
+    "engine": 46080.958333333336,
+    "match": false
+  },
+  {
+    "group": "date",
+    "formula": "=EOMONTH(C2,0)",
+    "inFormulajs": true,
+    "libreoffice": 46053,
+    "engine": 46052.958333333336,
+    "match": false
+  },
+  {
+    "group": "date",
+    "formula": "=DATEDIF(C2,C6,\"m\")",
+    "inFormulajs": true,
+    "libreoffice": 11,
+    "engine": 11,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=NETWORKDAYS(C2,C3)",
+    "inFormulajs": true,
+    "libreoffice": 20,
+    "engine": 20,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=WORKDAY(C2,10)",
+    "inFormulajs": true,
+    "libreoffice": 46041,
+    "engine": 46040.958333333336,
+    "match": false
+  },
+  {
+    "group": "date",
+    "formula": "=DAYS(C6,C2)",
+    "inFormulajs": true,
+    "libreoffice": 360,
+    "engine": 360,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=C3-C2",
+    "inFormulajs": null,
+    "libreoffice": 26,
+    "engine": 26,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=C2+1",
+    "inFormulajs": null,
+    "libreoffice": 46028,
+    "engine": 46028,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=TIME(9,30,0)",
+    "inFormulajs": true,
+    "libreoffice": 0.3958333333333333,
+    "engine": 0.3958333333333333,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=HOUR(0.75)",
+    "inFormulajs": true,
+    "libreoffice": 18,
+    "engine": 18,
+    "match": true
+  },
+  {
+    "group": "date",
+    "formula": "=DATEVALUE(\"2026-01-05\")",
+    "inFormulajs": true,
+    "libreoffice": 46027,
+    "engine": 46027,
+    "match": true
+  },
+  {
+    "group": "info",
+    "formula": "=ISBLANK(A5)",
+    "inFormulajs": true,
+    "libreoffice": true,
+    "engine": true,
+    "match": true
+  },
+  {
+    "group": "info",
+    "formula": "=ISNUMBER(A2)",
+    "inFormulajs": true,
+    "libreoffice": true,
+    "engine": true,
+    "match": true
+  },
+  {
+    "group": "info",
+    "formula": "=ISTEXT(B2)",
+    "inFormulajs": true,
+    "libreoffice": true,
+    "engine": true,
+    "match": true
+  },
+  {
+    "group": "info",
+    "formula": "=ISERROR(1/0)",
+    "inFormulajs": true,
+    "libreoffice": true,
+    "engine": "#DIV/0!",
+    "match": false
+  },
+  {
+    "group": "info",
+    "formula": "=ISNA(NA())",
+    "inFormulajs": true,
+    "libreoffice": true,
+    "engine": "#N/A",
+    "match": false
+  },
+  {
+    "group": "finance",
+    "formula": "=PMT(0.05/12,60,10000)",
+    "inFormulajs": true,
+    "libreoffice": -188.712336440109,
+    "engine": -188.7123364401099,
+    "match": true
+  },
+  {
+    "group": "edge: blank",
+    "formula": "=A5+1",
+    "inFormulajs": null,
+    "libreoffice": 1,
+    "engine": 1,
+    "match": true
+  },
+  {
+    "group": "edge: blank",
+    "formula": "=A5=0",
+    "inFormulajs": null,
+    "libreoffice": true,
+    "engine": true,
+    "match": true
+  },
+  {
+    "group": "edge: blank",
+    "formula": "=A5=\"\"",
+    "inFormulajs": null,
+    "libreoffice": true,
+    "engine": false,
+    "match": false
+  },
+  {
+    "group": "edge: blank",
+    "formula": "=LEN(A5)",
+    "inFormulajs": true,
+    "libreoffice": 0,
+    "engine": 0,
+    "match": true
+  },
+  {
+    "group": "edge: text→number",
+    "formula": "=E2+1",
+    "inFormulajs": null,
+    "libreoffice": 4,
+    "engine": 4,
+    "match": true
+  },
+  {
+    "group": "edge: text→number",
+    "formula": "=E3+1",
+    "inFormulajs": null,
+    "libreoffice": 5,
+    "engine": 5,
+    "match": true
+  },
+  {
+    "group": "edge: text→number",
+    "formula": "=SUM(E2:E6)",
+    "inFormulajs": true,
+    "libreoffice": 0,
+    "engine": 1007,
+    "match": false
+  },
+  {
+    "group": "edge: text→number",
+    "formula": "=\"3\"*2",
+    "inFormulajs": null,
+    "libreoffice": 6,
+    "engine": 6,
+    "match": true
+  },
+  {
+    "group": "edge: text→number",
+    "formula": "=E6*1",
+    "inFormulajs": null,
+    "libreoffice": 1000,
+    "engine": 1000,
+    "match": true
+  },
+  {
+    "group": "edge: text compare",
+    "formula": "=\"a\"=\"A\"",
+    "inFormulajs": null,
+    "libreoffice": true,
+    "engine": false,
+    "match": false
+  },
+  {
+    "group": "edge: text compare",
+    "formula": "=\"a\"<\"B\"",
+    "inFormulajs": null,
+    "libreoffice": true,
+    "engine": true,
+    "match": true
+  },
+  {
+    "group": "edge: bool math",
+    "formula": "=TRUE+TRUE",
+    "inFormulajs": null,
+    "libreoffice": 2,
+    "engine": 2,
+    "match": true
+  },
+  {
+    "group": "edge: bool math",
+    "formula": "=SUM(D2:D6)",
+    "inFormulajs": true,
+    "libreoffice": 3,
+    "engine": 0,
+    "match": false
+  },
+  {
+    "group": "edge: float",
+    "formula": "=0.1+0.2",
+    "inFormulajs": null,
+    "libreoffice": 0.3,
+    "engine": 0.30000000000000004,
+    "match": true
+  },
+  {
+    "group": "edge: float",
+    "formula": "=0.1+0.2=0.3",
+    "inFormulajs": null,
+    "libreoffice": true,
+    "engine": false,
+    "match": false
+  },
+  {
+    "group": "edge: float",
+    "formula": "=1-0.9",
+    "inFormulajs": null,
+    "libreoffice": 0.1,
+    "engine": 0.09999999999999998,
+    "match": true
+  },
+  {
+    "group": "edge: precedence",
+    "formula": "=-2^2",
+    "inFormulajs": null,
+    "libreoffice": 4,
+    "engine": 4,
+    "match": true
+  },
+  {
+    "group": "edge: precedence",
+    "formula": "=2^3^2",
+    "inFormulajs": null,
+    "libreoffice": 64,
+    "engine": 512,
+    "match": false
+  },
+  {
+    "group": "edge: precedence",
+    "formula": "=50%*10",
+    "inFormulajs": null,
+    "libreoffice": 5,
+    "engine": "#PARSE!",
+    "match": false
+  },
+  {
+    "group": "edge: concat",
+    "formula": "=1&2",
+    "inFormulajs": null,
+    "libreoffice": "12",
+    "engine": "12",
+    "match": true
+  },
+  {
+    "group": "edge: concat",
+    "formula": "=B2&C2",
+    "inFormulajs": null,
+    "libreoffice": "a46027",
+    "engine": "a46027",
+    "match": true
+  },
+  {
+    "group": "edge: errors",
+    "formula": "=SUM(A2:A6,1/0)",
+    "inFormulajs": true,
+    "libreoffice": "#DIV/0!",
+    "engine": "#DIV/0!",
+    "match": true
+  },
+  {
+    "group": "edge: errors",
+    "formula": "=#N/A",
+    "inFormulajs": null,
+    "libreoffice": "#N/A",
+    "engine": "#PARSE!",
+    "match": false
+  }
+]

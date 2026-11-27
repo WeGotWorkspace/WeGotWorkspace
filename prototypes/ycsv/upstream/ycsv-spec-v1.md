@@ -18,6 +18,8 @@ workflows. YCSV adds exactly what CSV is missing — nothing more.
 
 ## 2. File format
 
+> **Proposal (spike 11):** split only on a `---` line outside quoted fields (P22). See Appendix B.
+
 A YCSV file consists of one frontmatter block followed by one or more CSV
 blocks, all separated by `---`.
 
@@ -51,9 +53,13 @@ Cross-file references are not supported — all sheets must be in the same file.
 
 ### 2.2 Encoding
 
+> **Proposal (spike 11):** readers strip a leading BOM; writers never write one (P24).
+
 UTF-8. No BOM.
 
 ### 2.3 Line endings
+
+> **Proposal (spike 11):** CR/CRLF inside a quoted cell is normalised to LF (P23).
 
 LF (`\n`) preferred. CRLF (`\r\n`) tolerated.
 
@@ -81,6 +87,8 @@ LF (`\n`) preferred. CRLF (`\r\n`) tolerated.
 | `charts`      | array   | Vega-Lite chart definitions. See §12.                                                  |
 
 ### 3.1 Multi-sheet files
+
+> **Proposal (spike 11):** add `header`, `hidden`, `tab_color`, `freeze`, `merges`, `notes`, `validate` per sheet; Unicode ref grammar (P2, P3, P10, P11, P14, P15, P17).
 
 When a file contains multiple sheets, define them in a `sheets` array in the
 frontmatter. Each entry has a `ref` (required) and may include all the fields
@@ -291,6 +299,8 @@ defs:
 
 ### 3.5 Cell overrides
 
+> **Proposal (spike 11):** cells may carry `type`, format options and `excel_format`; add `italic`, `underline`, `align`, `wrap` (P9, P16).
+
 `cells` is a YAML mapping of cell references to style objects. Keys may be
 single cells (`A1`), ranges (`A1:H1`), or column refs (`totaalwaarde`).
 Cell-level overrides take precedence over column-level styling.
@@ -332,6 +342,8 @@ YCSV resolves column identity in the following order:
 | No `columns`, no header row              | position, A-Z fallback (`A`, `B`, `C`...) |
 
 ### 4.1 Header row
+
+> **Proposal (spike 11):** an explicit `header: true|false` per sheet overrides detection (P2).
 
 A header row is the first CSV row where all values are non-numeric strings
 matching known `ref` names (or any strings when no `columns` is defined).
@@ -415,6 +427,8 @@ If neither `dateStyle` nor `timeStyle` is specified, the renderer uses the
 
 ### 6.3 Percent
 
+> **Proposal (spike 11):** store percent as a fraction, 0.21 = 21% (P6).
+
 Stored as display value (50 = 50%). Renderer divides by 100 before passing
 to `Intl.NumberFormat` with `style: 'percent'`.
 
@@ -434,10 +448,14 @@ The CSV body follows the YAML frontmatter. Standard RFC 4180 rules apply:
 
 ### 7.1 Row numbering
 
+> **Proposal (spike 11):** grid numbering: the header is row 1, the first data row is row 2 (P1).
+
 Rows are numbered starting at **1** for the first data row. The header row
 (if present) is row 0 and is not counted as a data row.
 
 ### 7.2 Empty rows
+
+> **Proposal (spike 11):** empty rows keep their row number; trailing empty rows carry no meaning (P1, P26).
 
 A fully empty row (all cells empty) is valid and has no data meaning. It
 serves as a visual separator between sections. Empty rows are skipped during
@@ -476,6 +494,8 @@ spreadsheet syntax with one extension: **named column references**.
 
 ### 8.1 Formula library
 
+> **Proposal (spike 11):** an explicit v1 function list; `_xlfn.` handling; `source_formula` for unsupported functions (P21).
+
 The YCSV reference implementation uses
 [`@formulajs/formulajs`](https://github.com/formulajs/formulajs) (MIT) as
 its formula evaluation engine. This library implements the full set of
@@ -493,6 +513,8 @@ this when evaluating date arithmetic.
 
 ### 8.2 Named column references
 
+> **Proposal (spike 11):** Unicode refs, quoted refs (`'Zo Doen'2`), `$` absolute refs, same-row bare refs (P4, P12).
+
 Formulas reference columns by their `ref` identifier (or A-Z fallback),
 suffixed with a row number:
 
@@ -505,6 +527,8 @@ Both styles are valid and may be mixed. Named refs are preferred for
 readability.
 
 ### 8.3 Aggregate functions
+
+> **Proposal (spike 11):** rectangular ranges across columns and whole columns (`totaal:totaal`) (P4).
 
 Standard aggregate functions operating over a column range:
 
@@ -558,11 +582,15 @@ may be unavailable.
 
 ### 8.6 Supported operators
 
+> **Proposal (spike 11):** `%` is postfix percent, `&` concatenates, Excel precedence (`-2^2` = 4, `2^3^2` = 64), case-insensitive text comparison (P4).
+
 `+` `-` `*` `/` `^` (power) `%` (modulo)
 
 Comparison: `=` `<>` `<` `>` `<=` `>=`
 
 ### 8.7 Formula evaluation order
+
+> **Proposal (spike 11):** circular references are a per-cell error, not a file error (B.5).
 
 Formulas are evaluated in dependency order (topological sort).
 Circular references are an error.
@@ -1097,6 +1125,8 @@ for each chart in charts:
 
 ### A.10 Error handling summary
 
+> **Proposal (spike 11):** unknown sheet refs and circular references become per-cell errors (B.5).
+
 | Error                           | Behaviour                                      |
 | ------------------------------- | ---------------------------------------------- |
 | Missing `ycsv_version`          | Hard error, abort                              |
@@ -1107,3 +1137,189 @@ for each chart in charts:
 | Cross-sheet sheet ref not found | Hard error                                     |
 | Formula evaluation error        | Cell returns error value; `IFERROR` can handle |
 | Validation failure              | Renderer-defined; not a parse error            |
+
+---
+
+## Appendix B: Proposed amendments (spike 11)
+
+> **Status: Proposal (spike 11).** Nothing in this appendix is part of v1 yet.
+> These proposals come from the interop spike (Excel, Google Sheets,
+> LibreOffice). Evidence for each one is in
+> `prototypes/ycsv/docs/spike-11-interop.md` and the conformance results in
+> `prototypes/ycsv/docs/spike-11-conformance-results.md`. The sections they
+> would change carry a short "Proposal (spike 11)" note.
+
+Each proposal has an id (P1…P28). The ids match the spike report.
+
+### B.1 Rows, header and body
+
+**P1 — Grid row numbering.** Row numbers are the line numbers of the CSV
+body. When a header row is present, it is row 1 and the first data row is
+row 2. Empty rows keep their number. This replaces §7.1 and the "assigned no
+row number" rule in §7.2.
+
+- Why: Excel, LibreOffice and Google Sheets all number this way, so an
+  imported `=C2*D2` becomes `=prijs2*aantal2` with the same digits, and an
+  export needs no renumbering. Example 9.3 (`cells: A1:H1` for the header)
+  already assumes it. The upstream engine (`spreadsheet-core`) already counts
+  this way; the `prototypes/ycsv` model does not.
+- Change for existing files: refs shift by one. A one-off rewrite at load is
+  possible only if the file states which numbering it uses, so the
+  alternative is to fold this into `ycsv_version: 2`.
+
+**P2 / P27 — Explicit `header`.** A sheet may say `header: true` or
+`header: false`. When it is missing, the §4.1 detection applies. Importers
+always write it. This stops a first row such as `Totaal,2026,…` from being
+taken for data, or a data row of text from being taken for a header.
+
+**P22 — Quote-aware split.** The body splitter (§2, A.2) must only split on a
+`---` line that is outside a quoted CSV field. Today a cell value containing
+a line `---` cuts the sheet in two in both parsers.
+
+**P23 — Line breaks inside cells.** A CR or CRLF inside a quoted field is
+normalised to LF on read. Writers emit LF.
+
+**P24 — BOM.** Readers strip a leading UTF-8 BOM (Excel writes one in its
+"CSV UTF-8" output). Writers never write one. §2.2 stays "No BOM" for writers.
+
+**P25 — YAML 1.2.** The frontmatter is YAML 1.2 core schema, so `no`, `on`,
+`010` are strings or decimal numbers, not booleans or octal.
+
+**P26 / P19 — Trailing empty rows.** Empty rows at the end of a body carry no
+meaning and may be dropped by writers. Readers must not rely on them.
+
+### B.2 Sheets
+
+**P3 / P17 — Sheet fields.** A `ref` follows the same grammar as a column
+`ref` (B.4, P12). Sheet entries gain:
+
+| Field       | Type    | Description                                   |
+| ----------- | ------- | --------------------------------------------- |
+| `header`    | boolean | See P2.                                       |
+| `hidden`    | boolean | Hidden sheet (Excel "hidden" and "very hidden" both map here). |
+| `tab_color` | string  | Hex colour of the sheet tab.                  |
+
+Sheet order is the order of the `sheets` array.
+
+**P10 — Merges.** `merges: [A1:D1, …]` per sheet. The top-left cell holds the
+value; the others must be empty.
+
+**P11 — Freeze and sizes.** `freeze: {rows, columns}` per sheet. Columns gain
+`width` (CSS pixels) and `hidden`. Row heights are not stored (product
+decision 6: fixed row height).
+
+**P14 — Notes.** `notes: {A1: "text"}` per sheet, plain text. Comment
+authors and threads are not kept.
+
+### B.3 Values
+
+**P5 — Literal text.** A cell value starting with `'` is text, and the `'` is
+not part of the value. This is the only way to store text that starts with
+`=`, or text that looks like a number or date (`'007`, `'2026-01-05`).
+Readers that do not know YCSV will show the apostrophe.
+
+**P6 — Percent is a fraction.** A `percent` cell stores `0.21` for 21%, the
+same as every spreadsheet application. This replaces §6.3 ("50 = 50%"). With
+§6.3 as written, `=200*marge2` gives 10000 for a 50% margin, and an import or
+export has to multiply or divide every value.
+
+**P7 — Dates in formulas.** Date, time and datetime cells keep their ISO text
+in the file (`2026-01-05`, `09:30:00`, `2026-01-05T09:30:00`). In formulas
+they evaluate to spreadsheet serial numbers (days since 1899-12-30, the
+fraction is the time of day). Datetimes are floating local times: no time
+zone, no DST shift. `TODAY()` and `EOMONTH()` must not return JS `Date`
+objects in local time (an import test showed a one-hour offset).
+
+**P8 — Number grammar.** Numbers in the body use `.` as the decimal mark and
+no grouping: `-?\d+(\.\d+)?([eE][+-]?\d+)?`. Accounting notation `(9.99)`
+(§7.3) is accepted on read; writers use `-9.99`. A value outside this
+grammar is text.
+
+**P20 — Error values.** An error value is stored as a formula (`=NA()`,
+`=1/0`), never as the literal text `#N/A`.
+
+### B.4 Columns, cells and formats
+
+**P9 — Per-cell type and format.** `cells.<A1>` may carry `type` and the
+format options of §6, not only `style`. Report sheets mix currency, percent
+and dates in one column. Any column or cell may carry `excel_format` (the
+original Excel or ODF number format code) as a passthrough: renderers ignore
+it, exporters write it back.
+
+**P16 — More style fields.** `italic`, `underline`, `align`
+(`left`/`center`/`right`) and `wrap` join `bold`, `fill`, `color` and
+`border` (§3.5).
+
+**P12 / P28 — Ref grammar.** A `ref` is a Unicode identifier: a letter or
+`_`, then letters, digits or `_` (`[\p{L}_][\p{L}\p{N}_]*`). A ref that does
+not fit, or ends in a digit, is quoted in formulas: `'Zo Doen'2`,
+`'kw1'2`. Refs are case-sensitive in the file and must be unique per sheet;
+duplicates are an error, not a silent rename.
+
+**P13 — Range defs.** A def value may be a formula that yields a range:
+`cats: =categorieën!$id$2:$korting$4`. This is how Excel named ranges
+import.
+
+**P15 — Validation.** A `list` rule may point to a range
+(`list: =categorieën!$id$2:$id$4`) or give an array. A new `range_value`
+rule covers Excel's whole-number and decimal limits:
+`range_value: {min: 0, max: 1000, integer: true}`. Rules apply to a `range`
+of cells as well as to a column.
+
+### B.5 Formulas
+
+**P4 — Formula grammar.** v1 formulas follow Excel's grammar, with named
+refs in place of column letters:
+
+- Absolute refs: `$prijs$2`, `$prijs2`, `prijs$2`. `$` has no effect on
+  evaluation; it matters when a formula is copied or filled.
+- Rectangular ranges across columns: `$id$2:$korting$4`, and the start and
+  end refs may name different columns (§8.3 now requires the same ref).
+- Whole columns: `totaal:totaal`, `producten!totaal:totaal`.
+- Cross-sheet ranges: `producten!totaal2:totaal6` (the sheet prefix once).
+- Operators: `&` (concatenation), `%` as **postfix percent** (`50%` = 0.5).
+  Modulo is only `MOD()`. This replaces §8.6, where `%` is modulo.
+- Precedence as Excel: unary minus binds tighter than `^` (`-2^2` = 4), and
+  `^` is left-associative (`2^3^2` = 64).
+- Text comparison (`=`, `<`, …) is case-insensitive, as in Excel.
+- A bare ref without a row number (`prijs`) means the same row.
+
+**P18 — Hyperlinks.** A hyperlink cell is a formula:
+`=HYPERLINK("https://…","label")`.
+
+**P21 — Function set.** §8.1 stops deferring to "whatever formulajs
+supports". v1 lists its functions (the list in the spike report, 100+ names
+across math, statistics, logic, lookup, text, date and info). Import rules:
+
+- `_xlfn.` and `_xlws.` prefixes are stripped on read and added back on
+  write.
+- A function outside the list keeps the cell's cached value as a plain value
+  and stores the original formula in `cells.<A1>.source_formula`. The import
+  log says so. Google `__xludf.DUMMYFUNCTION` wrappers (functions such as
+  `GOOGLEFINANCE` that Excel does not know) follow this rule.
+
+**Errors, not aborts.** A ref to an unknown sheet and a circular reference
+are per-cell errors (`#REF!`, `#CIRC!`), not hard errors that stop the whole
+file (A.10, §8.7, §11.2). One broken formula in an imported workbook must not
+make the other sheets unreadable.
+
+### B.6 Formula notation and locale
+
+**Canonical in the file, locale in the editor.** The file always uses `.`
+as the decimal mark and `,` between arguments (`=ROUND(3.27,1)`). The formula
+editor shows and accepts the user's locale notation: in a locale whose
+decimal mark is `,` (nl-NL, de-DE, fr-FR) that is `=ROUND(3,27;1)`. Strings
+and quoted refs are never changed. Excel and LibreOffice work this way.
+
+### B.7 Import and export
+
+**CSV import needs a locale.** Plain CSV import (not YCSV) asks for, or
+detects, the separator and number locale, and parses the raw text with it.
+It must not let a library guess: a Dutch Excel CSV (`;`, `0,45`,
+`05-01-2026`) read with default settings turned `0,45` into 45 and
+`05-01-2026` into 1 May.
+
+**Cached values on export.** An XLSX or ODS export writes either correct
+cached values for every formula, or none at all plus "recalculate on load".
+It never writes values the engine got wrong, because LibreOffice (and Excel
+in manual-calculation mode) show cached values as they are.

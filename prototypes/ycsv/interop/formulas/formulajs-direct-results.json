@@ -1,0 +1,72 @@
+[
+  {
+    "what": "SUMIF(B,\"a\",A)",
+    "formulajs": 1,
+    "excel": 1
+  },
+  {
+    "what": "SUMIFS(A,B,\"a\",D,TRUE)",
+    "formulajs": 0,
+    "excel": 1
+  },
+  {
+    "what": "COUNTIFS(B,\"a\",D,TRUE)",
+    "formulajs": 0,
+    "excel": 2
+  },
+  {
+    "what": "MAXIFS(A,D,TRUE)",
+    "formulajs": 0,
+    "excel": 3
+  },
+  {
+    "what": "COUNTBLANK(A)",
+    "formulajs": 1,
+    "excel": 1
+  },
+  {
+    "what": "VLOOKUP(\"c\",2-D,2,FALSE)",
+    "formulajs": 46081,
+    "excel": 46081
+  },
+  {
+    "what": "INDEX(2-D,3,2)",
+    "formulajs": 46081,
+    "excel": 46081
+  },
+  {
+    "what": "IFNA(#N/A,\"na\")",
+    "formulajs": "#N/A",
+    "excel": "na"
+  },
+  {
+    "what": "ISERROR(DIV/0 error)",
+    "formulajs": false,
+    "excel": true
+  },
+  {
+    "what": "TEXT(46027,\"yyyy-mm-dd\")",
+    "formulajs": "46027",
+    "excel": "2026-01-05"
+  },
+  {
+    "what": "DATE(2026,2,30)",
+    "formulajs": "Date(2026-03-01T23:00:00.000Z)",
+    "excel": "serial 46083"
+  },
+  {
+    "what": "EOMONTH(46027,0)",
+    "formulajs": "Date(2026-01-30T23:00:00.000Z)",
+    "excel": "serial 46053"
+  },
+  {
+    "what": "SUM with text numbers",
+    "formulajs": 1007,
+    "excel": 0
+  },
+  {
+    "what": "UPPER(\"straße\")",
+    "formulajs": "STRASSE",
+    "excel": "STRAẞE (LibreOffice)"
+  }
+]
