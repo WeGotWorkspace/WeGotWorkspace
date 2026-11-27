@@ -184,6 +184,9 @@ test.describe("Drive on the file tree, production build", () => {
     await expect(rowOf(warm, OUTBOUND).getByRole("img", { name: "Shared" })).toBeVisible();
     await warm.goto("/drive?view=starred");
     await expect(row(warm, STARRED)).toBeVisible({ timeout: 15_000 });
+    // A listing sent after the rows show counts too. The push stream keeps a
+    // request open, so the network never goes idle: watch a fixed while instead.
+    await warm.waitForTimeout(5_000);
     expect(await sawLoading(warm)).toBe(false);
     expect(
       listings.filter((kind) => ["walk", "search", `parentId:${folderId}`].includes(kind)),

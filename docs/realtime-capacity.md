@@ -207,11 +207,11 @@ A fresh browser opens one app alone, Drive or Docs, on an account whose home hol
 
 | App alone | Before: listing requests | After: listing requests | Before: all requests per minute (busiest 10 s) | After: all requests per minute (busiest 10 s) |
 | --- | --- | --- | --- | --- |
-| Drive | 1,239: 1,224 folder listings, 8 search, 7 roots; the last after 76 s | 8: walk 3 (15 + 16 + 16 pages), 4 roots, 1 folder; the last after 6 s | 900 / 450 / 25 (570) | 63 / 25 (36) |
-| Docs | 473: 407 folder listings, 64 search, 2 roots; the last after 16 s | 5: walk 3, 1 roots, 1 search; the last after 9 s | 553 / 35 (357) | 68 / 20 (38) |
+| Drive | 1,244: 1,224 folder listings, 7 search, 7 roots, 4 name lookups, 2 starred; the last after 74 s | 10: walk 3 (15 + 16 + 16 pages), 4 roots, 2 starred, 1 folder; the last after 6 s | 903 / 450 / 23 (583) | 65 / 25 (37) |
+| Docs | 479: 407 folder listings, 64 search, 3 starred, 3 shared with me, 2 roots; the last after 15 s | 7: walk 3, 2 starred, 1 roots, 1 search; the last after 7 s | 553 / 35 (365) | 70 / 18 (40) |
 
 - **Met:** the first sync of the tree takes 3 listing requests in both apps (the bound is at most 3 for 20,000 nodes), and it is the same walk whichever app opens first.
-- **Left over** (not part of the walk, sent once per open): Drive sends the top-level roots lookup four times in parallel, plus one listing of the open folder; Docs sends one browse `GET /search/results` before it reads the tree, plus one roots lookup. Each is one request and does not grow with the tree.
+- **Left over** (not part of the walk, sent once per open): Drive sends the top-level roots lookup four times in parallel, plus one listing of the open folder; Docs sends one browse `GET /search/results` before it reads the tree, plus one roots lookup; both read `GET /files/starred` twice. Each is one request and does not grow with the tree.
 - The "after" minutes still hold the other start-up requests (session, settings, push) and the paced offline downloads; the per-minute columns are all requests, not only listings.
 
 To repeat it: write the folders straight into a copy of the data directory (`<data>/files/users/<user>/…`), then build the file and search indexes once per checkout with `SearchReindexRunner::run()` (it runs the FileNode reindex first), so both builds meet the same index. Run `-g "large tree"` with `WGW_TRAFFIC_TREE_MAX_MINUTES` (default 30) as the upper bound per app.
