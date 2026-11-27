@@ -86,6 +86,9 @@ export async function addCreatedDriveEntry(
   const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
   const parentId = normalizeDriveEntryPath(parentApiPath);
   const id = parentId ? `${parentId}/${name}` : name;
+  // The server accepts a create on an existing name as success: that row is
+  // the real node, so a stub must not replace it.
+  if (await table.get(id)) return;
   const parent = parentId ? await table.get(parentId) : undefined;
   const parentEntry = parent ? parseEntryRow(parent) : null;
   const entry: WgwDriveDirectoryEntry = {

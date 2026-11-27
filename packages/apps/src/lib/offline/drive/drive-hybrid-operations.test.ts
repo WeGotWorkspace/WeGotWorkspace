@@ -181,6 +181,33 @@ describe("createHybridDriveOperations writes and the file tree (#2063 C3)", () =
     expect(heard).toHaveBeenCalledTimes(2);
   });
 
+  it("creating a name that already exists leaves its row untouched", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    await upsertDriveEntry(
+      username,
+      { ...entry("/users/alice/notes.md", "notes.md"), size: 12, nodeId: "n1" },
+      "home",
+    );
+    await upsertDriveEntry(
+      username,
+      { ...entry("/groups/team/Plans/Q3", "Q3"), type: "dir", nodeId: "n2" },
+      "group",
+    );
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await ops.createFile({ cwd: "/users/alice", name: "notes.md" });
+    await ops.createFolder({ cwd: "/groups/team/Plans", name: "Q3" });
+
+    expect(await driveEntriesTable(db()).get("users/alice/notes.md")).toMatchObject({
+      nodeId: "n1",
+      data: expect.stringContaining('"size":12'),
+    });
+    expect(await driveEntriesTable(db()).get("groups/team/Plans/Q3")).toMatchObject({
+      nodeId: "n2",
+      type: "dir",
+    });
+  });
+
   it("a permanent delete removes the rows from the tree and tells the open views", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     await upsertDriveEntry(username, entry("/users/alice/.Trash/old.md", "old.md"), "trash");
