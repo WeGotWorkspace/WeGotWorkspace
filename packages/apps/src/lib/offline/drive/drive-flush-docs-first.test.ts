@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
+import { writeDocsAvailability } from "@/lib/offline/docs/docs-availability-store";
+import {
+  readCachedDriveNodeId,
+  upsertDriveEntry,
+} from "@/lib/offline/drive/drive-directory-offline-store";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import {
   createHybridDriveOperations,
@@ -111,6 +117,53 @@ describe("a Drive outbox flush and a queued Docs create (#2063 C4)", () => {
     await getDriveSyncRunner(username).flush();
 
     expect(calls).toEqual(["create", "rename"]);
+    expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
+  });
+
+  async function seedServerFile() {
+    await upsertDriveEntry(username, {
+      type: "file",
+      path: "/users/alice/Plan.md",
+      name: "Plan.md",
+      size: 1,
+      time: 1,
+      permissions: 0,
+      nodeId: "fn-server",
+    } as WgwDriveDirectoryEntry);
+    await writeDocsAvailability(username, {
+      id: "/users/alice/Plan.md",
+      location: "",
+      nodeId: "fn-server",
+    });
+  }
+
+  it("online, a rename leaves the server's file on its row while the create is queued (#2063 C4)", async () => {
+    await seedServerFile();
+    await queueCreate();
+
+    await createHybridDriveOperations(username, null).renameItem({
+      from: "/users/alice/Plan.md",
+      destination: "/users/alice",
+      to: "Renamed.md",
+    });
+    await getDriveSyncRunner(username).flush();
+
+    expect(await readCachedDriveNodeId(username, "users/alice/Plan.md")).toBe("fn-server");
+    expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
+  });
+
+  it("online, a trash leaves the server's file on its row while the create is queued (#2063 C4)", async () => {
+    await seedServerFile();
+    await queueCreate();
+
+    await createHybridDriveOperations(username, null).renameItem({
+      from: "/users/alice/Plan.md",
+      destination: "/users/alice/.Trash",
+      to: "Plan.md",
+    });
+    await getDriveSyncRunner(username).flush();
+
+    expect(await readCachedDriveNodeId(username, "users/alice/Plan.md")).toBe("fn-server");
     expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
   });
 

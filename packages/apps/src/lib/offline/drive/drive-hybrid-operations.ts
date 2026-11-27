@@ -30,6 +30,7 @@ import {
   listAllCachedDriveFiles,
   migrateDriveEntryPath,
   readDirectoryEntriesFromCache,
+  readCachedDriveNodeId,
   readDriveBootstrapFromCache,
   readDriveChildNames,
   readDriveEntryFromCache,
@@ -465,7 +466,8 @@ export function createHybridDriveOperations(
     renameItem: async (input, opts) => {
       const destination = normalizeApiVirtualPath(input.destination);
       const isTrash = isDriveTrashApiPath(destination, username);
-      if (readBrowserOnline() && !(await waitsForQueuedDocsCreate(username, input.from))) {
+      const waitsForCreate = await waitsForQueuedDocsCreate(username, input.from);
+      if (readBrowserOnline() && !waitsForCreate) {
         try {
           if (isTrash) {
             await ensureTrashFolder(live, username, new Set(), opts?.signal);
@@ -491,14 +493,20 @@ export function createHybridDriveOperations(
         }
       }
       const from = normalizeApiVirtualPath(input.from);
+      // A pull already put another device's file on the queued create's path:
+      // its row stays there, so the kept-both flush leaves it on that name and
+      // the queued write moves this device's own file (#2063 C4).
+      const holdsServerFile = waitsForCreate && !!(await readCachedDriveNodeId(username, from));
       let to = input.to;
       if (isTrash) {
         // Offline the names already in Trash come from the tree (dot names too).
         to = resolveFreeName(input.to, await readDriveChildNames(username, destination));
-        const trashed = nextPathAfterRename(from, destination, to);
-        await applyQueuedTrashSideEffects(username, from, trashed);
-        moveDocsPageSetupOverride(from, trashed);
-      } else {
+        if (!holdsServerFile) {
+          const trashed = nextPathAfterRename(from, destination, to);
+          await applyQueuedTrashSideEffects(username, from, trashed);
+          moveDocsPageSetupOverride(from, trashed);
+        }
+      } else if (!holdsServerFile) {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
       }
       notifyDriveRemoteChange(username);
