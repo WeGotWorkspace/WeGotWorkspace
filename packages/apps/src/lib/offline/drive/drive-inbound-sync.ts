@@ -128,10 +128,13 @@ async function runDriveInbound(
   const session = await driveJmapSession();
   // A token from before this device's first tree walk (a device that synced
   // before the walk existed, or one that only crawled): walk the tree once,
-  // when the server offers the keyset. A server without it crawls only on a
-  // missing token or `cannotCalculateChanges`, never on every sync.
-  if (session.treeKeyset && !(await readDriveTreeFirstSyncDone(username))) {
-    return fullResync(username, since, options?.signal);
+  // when the server offers the keyset. A server without it crawls once, while
+  // no pass has been recorded; the crawl writes the last pass, so it does not
+  // repeat on every sync.
+  if (!(await readDriveTreeFirstSyncDone(username))) {
+    if (session.treeKeyset || (await readDriveTreeLastPass(username)) === null) {
+      return fullResync(username, since, options?.signal);
+    }
   }
   try {
     const drained = await drainFileNodeChanges(session, since, options?.signal);

@@ -417,7 +417,6 @@ describe("syncDriveTree", () => {
     await writeDriveSyncToken(username, server.state());
     await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
-    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     server.add("a2", "r-home", "new.md");
 
     await syncDriveInboundFromFileNodes(username);
@@ -1152,6 +1151,25 @@ describe("review fixes (#2063 C1)", () => {
 
     await syncDriveInboundFromFileNodes(username);
     expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("crawls once on a keyset-less server for a token from before the walk existed", async () => {
+    const server = standardTree();
+    server.add("a1", "r-home", "a.md");
+    await connect(server, { keyset: false });
+    await writeDriveSyncToken(username, server.state());
+    const spy = await mockCrawl();
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(await readDriveTreeLastPass(username)).toBe("crawl");
+
+    server.requests.length = 0;
+    await syncDriveInboundFromFileNodes(username);
+    expect(spy).toHaveBeenCalledTimes(1);
+    const methods = server.requests.flatMap((r) => r.methodCalls.map(([name]) => name));
+    expect(new Set(methods)).toEqual(new Set(["FileNode/changes"]));
     spy.mockRestore();
   });
 
