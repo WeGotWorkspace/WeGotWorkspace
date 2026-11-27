@@ -144,10 +144,9 @@ async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blo
  */
 async function isCollabCopyCurrent(
   username: string,
-  apiPath: string,
+  room: string,
   entryModifiedAt: number,
 ): Promise<boolean> {
-  const room = normalizeApiVirtualPath(apiPath).replace(/^\/+/, "");
   const modifiedAtMs = listingModifiedAtMs(entryModifiedAt);
   const lastSyncedAt = (await readDocsAvailability(username, room))?.lastSyncedAt ?? null;
   if (lastSyncedAt == null || modifiedAtMs == null || lastSyncedAt < modifiedAtMs) return false;
@@ -167,7 +166,7 @@ async function needsContentResync(
 ): Promise<boolean> {
   const room = normalizeApiVirtualPath(apiPath).replace(/^\/+/, "");
   if (isDocsCollabEditablePath(room)) {
-    return !(await isCollabCopyCurrent(username, apiPath, entryModifiedAt));
+    return !(await isCollabCopyCurrent(username, room, entryModifiedAt));
   }
   const cached = await readCachedBlob(username, apiPath);
   if (!cached) return true;
@@ -184,6 +183,8 @@ export async function syncDriveFileContent(
     signal?: AbortSignal;
     /** Background sync paces every request through this. */
     beforeRequest?: () => Promise<void>;
+    /** False once a newer run replaced this one: the late answer is dropped. */
+    shouldWrite?: () => boolean;
   },
 ): Promise<void> {
   const normalized = normalizeApiVirtualPath(apiPath);
@@ -198,6 +199,7 @@ export async function syncDriveFileContent(
       // Background sync skips a document whose local copy is newer than the file.
       modifiedAtMs: background ? listingModifiedAtMs(entryModifiedAt) : undefined,
     });
+    if (options?.shouldWrite && !options.shouldWrite()) return;
     await writeDriveAvailability(username, {
       id: room,
       source: options?.source ?? "auto",
@@ -210,6 +212,8 @@ export async function syncDriveFileContent(
 
   await options?.beforeRequest?.();
   const blob = await fetchFileBlob(normalized, options?.signal);
+  // A slow answer for a replaced run must not overwrite the newer run's copy.
+  if (options?.shouldWrite && !options.shouldWrite()) return;
   await writeDriveContentBlob(username, normalized, blob, entryModifiedAt);
   if (options?.source === "manual") {
     await writeDriveAvailability(username, { id: room, source: "manual", entryModifiedAt });
@@ -265,6 +269,7 @@ export async function syncDriveContentFromCache(
             source: "auto",
             signal,
             beforeRequest: () => pacer.acquire(signal),
+            shouldWrite: () => isCurrentDriveContentRun(run),
           });
         } catch (error) {
           if (isRateLimitedError(error)) {

@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { makeDocsOfflineAvailable, readDriveEntryFromCache, net, meta, docs } = vi.hoisted(() => ({
-  makeDocsOfflineAvailable: vi.fn(),
-  readDriveEntryFromCache: vi.fn(),
-  docs: {
-    lastSyncedAt: new Map<string, number>(),
-    persisted: new Set<string>(),
-  },
-  net: { online: true, fetch: vi.fn() },
-  meta: { values: new Map<string, string>() },
-}));
+const { makeDocsOfflineAvailable, readDriveEntryFromCache, net, meta, docs, blobPut } = vi.hoisted(
+  () => ({
+    makeDocsOfflineAvailable: vi.fn(),
+    readDriveEntryFromCache: vi.fn(),
+    docs: {
+      lastSyncedAt: new Map<string, number>(),
+      persisted: new Set<string>(),
+    },
+    net: { online: true, fetch: vi.fn() },
+    meta: { values: new Map<string, string>() },
+    blobPut: vi.fn(),
+  }),
+);
 
 vi.mock("@/lib/api/wgw/http", () => ({ wgwFetch: (...args: unknown[]) => net.fetch(...args) }));
 vi.mock("@/lib/offline/core/browser-online", () => ({ getConnectivitySnapshot: () => net.online }));
@@ -31,7 +34,7 @@ vi.mock("@/lib/offline/core/offline-db", () => ({
   offlineDbForAccount: () => ({}),
 }));
 vi.mock("@/lib/offline/drive/drive-schema", () => ({
-  driveContentBlobsTable: () => ({ get: async () => undefined, put: async () => {} }),
+  driveContentBlobsTable: () => ({ get: async () => undefined, put: blobPut }),
 }));
 vi.mock("@/lib/offline/core/background-sync-pacer", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/offline/core/background-sync-pacer")>();
@@ -269,5 +272,28 @@ describe("syncDriveContentFromCache", () => {
     refuse!();
     await older;
     expect(await readDriveContentFailures("alice")).toEqual({});
+  });
+
+  it("drops a late answer for a replaced run: no copy written, the newer failure kept", async () => {
+    let answerOld: (() => void) | null = null;
+    net.fetch.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          answerOld = () => resolve(new Response("old bytes"));
+        }),
+    );
+    const older = syncDriveContentFromCache("alice", ["/users/alice/a.png"]);
+    await vi.waitFor(() => expect(answerOld).not.toBeNull());
+    beginDriveContentRun("alice", ["/users/alice/a.png"]);
+    meta.values.set(
+      "drive:auto-sync:content-failures",
+      JSON.stringify({ "users/alice/a.png": { attempts: 1, modifiedAt: 7 } }),
+    );
+    answerOld!();
+    await older;
+    expect(blobPut).not.toHaveBeenCalled();
+    expect(await readDriveContentFailures("alice")).toEqual({
+      "users/alice/a.png": { attempts: 1, modifiedAt: 7 },
+    });
   });
 });
