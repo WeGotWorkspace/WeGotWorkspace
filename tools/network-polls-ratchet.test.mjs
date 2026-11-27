@@ -105,10 +105,6 @@ const ALLOWED = {
     "open comment thread refresh in the thread UI",
   "thread-ui/src/use-thread.ts::setInterval":
     "thread refresh at THREAD_POLL_MS",
-  "drive-core/src/use-drive-offline-availability.ts::SYNC_POLL_INTERVAL_MS":
-    "offline availability sync status; reads the local cache, no network",
-  "drive-core/src/use-drive-offline-availability.ts::setInterval":
-    "offline availability status read; no network",
   "lib/offline/drive/upload/drive-upload-runner.ts::DRIVE_UPLOAD_SPACE_POLL_MS":
     "storage space probe while an upload is blocked on quota",
   "lib/offline/drive/upload/drive-upload-leave-warning.ts::setInterval":

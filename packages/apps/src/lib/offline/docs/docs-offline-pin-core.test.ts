@@ -136,6 +136,19 @@ describe("docs offline pin core", () => {
     );
   });
 
+  it("leaves the existing lastSyncedAt when the run was replaced", async () => {
+    await writeDocsAvailability(username, {
+      id: apiPath,
+      location: "My Drive",
+      lastSyncedAt: 5_000,
+    });
+
+    await makeDocsOfflineAvailable(username, apiPath, "My Drive", { shouldWrite: () => false });
+
+    const rows = await listDocsAvailability(username);
+    expect(rows.find((row) => row.id === apiPath)?.lastSyncedAt).toBe(5_000);
+  });
+
   it("remove clears persistence and availability row", async () => {
     await writeDocsAvailability(username, { id: apiPath, location: "My Drive" });
     await removeDocsOfflineCopy(username, apiPath);

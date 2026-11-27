@@ -26,6 +26,17 @@ export const driveLabels = {
   listColumnLocation: "Location",
   /** Caption of the folder path row in the New, Move and image pickers. */
   pickerLocationLabel: "Location",
+  /** *New folder* in the footer of every folder picker (Move, Save, Choose folder). */
+  pickerNewFolder: "New folder",
+  /** Name field of the folder being created in the list. */
+  pickerNewFolderNameLabel: "New folder name",
+  /** Why *New folder* is off where the viewer cannot add folders. */
+  pickerNewFolderReadOnly: "You can't add folders here",
+  /** Why *New folder* is off above a drive (no folder is open yet). */
+  pickerNewFolderOpenFolder: "Open a drive or folder first",
+  pickerNewFolderExists: (name: string) => `A folder named “${name}” already exists here`,
+  pickerNewFolderInvalid: "A folder name can't contain a slash",
+  pickerNewFolderFailed: "The folder could not be created. Check your connection and try again.",
   gridSectionFolders: "Folders",
   gridSectionFiles: "Files",
   listColumnLastModified: "Last modified",
@@ -181,6 +192,7 @@ export const driveLabels = {
   offlineMakeAvailable: "Make available offline",
   offlineRemoveCopy: "Remove offline copy",
   offlineDownloading: "Downloading for offline use",
+  offlineDownloadFailed: "Couldn't save for offline use. Try again",
   offlineAvailable: "Available offline",
   offlinePendingSync: workspaceLabels.sync.pending,
   toastSynced: workspaceLabels.sync.changesSynced,

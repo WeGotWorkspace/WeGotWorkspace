@@ -136,6 +136,7 @@ export function DriveWorkspace({
   const {
     offlineAvailableIds: rowOfflineAvailableIds,
     offlinePendingSyncIds: rowOfflinePendingSyncIds,
+    offlineFailedIds: rowOfflineFailedIds,
     refresh,
   } = useDriveOfflineAvailability(controller.visibleItems, offlineEnabled, offlineUsername);
 
@@ -152,7 +153,14 @@ export function DriveWorkspace({
   });
 
   const uploadQueue = useDriveUploadQueue(operations);
-  const chooseUploadFolder = useDriveUploadChooseFolder(controller, uploadQueue, show, showError);
+  const chooseUploadFolder = useDriveUploadChooseFolder(
+    controller,
+    uploadQueue,
+    show,
+    showError,
+    undefined,
+    shareOperations,
+  );
   const uploadModel = useDriveUploadQueueModel(
     uploadQueue,
     operations,
@@ -422,6 +430,7 @@ export function DriveWorkspace({
                 offlineEnabled={offlineEnabled}
                 offlineAvailableIds={rowOfflineAvailableIds}
                 offlinePendingSyncIds={rowOfflinePendingSyncIds}
+                offlineFailedIds={rowOfflineFailedIds}
                 onMakeOfflineAvailable={handleMakeOfflineAvailable}
                 pinLoadingId={pinLoadingId}
                 extraFileActions={fileExtraActions}

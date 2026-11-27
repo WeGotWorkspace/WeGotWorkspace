@@ -36,6 +36,7 @@ export type DriveMainPaneProps = {
   offlineEnabled?: boolean;
   offlineAvailableIds?: ReadonlySet<string>;
   offlinePendingSyncIds?: ReadonlySet<string>;
+  offlineFailedIds?: ReadonlySet<string>;
   onMakeOfflineAvailable?: (file: DriveFile) => void;
   pinLoadingId?: string | null;
   extraFileActions?: (file: DriveFile) => ActionBarAction[];
@@ -53,6 +54,7 @@ export function DriveMainPane({
   offlineEnabled = false,
   offlineAvailableIds,
   offlinePendingSyncIds,
+  offlineFailedIds,
   onMakeOfflineAvailable,
   pinLoadingId,
   extraFileActions,
@@ -202,6 +204,7 @@ export function DriveMainPane({
     offlineEnabled,
     offlineAvailableIds,
     offlinePendingSyncIds,
+    offlineFailedIds,
     onMakeOfflineAvailable,
     canPinOffline: online,
     pinLoadingId,

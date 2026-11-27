@@ -9,8 +9,10 @@ use App\Services\Jmap\FileNodes\FileNodeAccountSupport;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeSyncState;
 use App\Services\Jmap\FileNodes\FileNodeTags;
+use App\Services\Jmap\FileNodes\FileNodeTreeScope;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
+use App\Services\Jmap\JmapRequestContext;
 use App\Storage\ProjectArchivePaths;
 
 /**
@@ -21,17 +23,23 @@ use App\Storage\ProjectArchivePaths;
  * sorts are name and nodeType (directories first); the draft's `depth`
  * argument recurses below a parentId filter. Everything else →
  * unsupportedFilter / unsupportedSort instead of silently wrong results.
+ *
+ * With the WGW tree extension (#2063, {@see JmapCapabilities::FILENODE_TREE}) an
+ * unfiltered query also pages by `node_id` keyset: `idAfter` and `asOfState` are
+ * top-level arguments, so `#idAfter` can reference `/ids/499` of the previous page.
  */
 final class FileNodeQueryMethod implements JmapMethodInterface
 {
     private const SUPPORTED_FILTER_CONDITIONS = ['isTopLevel', 'parentId', 'ancestorId', 'nodeType', 'name', 'nameMatch', 'hasTag'];
 
-    private const SUPPORTED_SORT_PROPERTIES = ['name', 'nodeType'];
+    private const SUPPORTED_SORT_PROPERTIES = ['name', 'nodeType', 'id'];
 
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly FileNodeAccountSupport $accounts,
         private readonly FileNodeSyncState $syncState,
+        private readonly FileNodeTreeScope $tree,
+        private readonly JmapRequestContext $context,
         private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
@@ -89,6 +97,10 @@ final class FileNodeQueryMethod implements JmapMethodInterface
         }
 
         $roots = $this->accounts->ensureAccountIndexed($username);
+        $keyset = $this->keysetArguments($args, $filter, $sort, $position);
+        if ($keyset !== null) {
+            return $this->keysetPage($username, $roots, $keyset, $limit, ($args['calculateTotal'] ?? false) === true);
+        }
         $candidates = $this->candidates($username, $filter, $roots, $depth ?? 0);
 
         $tagged = null;
@@ -117,6 +129,79 @@ final class FileNodeQueryMethod implements JmapMethodInterface
             'ids' => array_slice($ids, $position, $limit),
             'total' => count($ids),
         ];
+        if ($limit !== null) {
+            $response['limit'] = $limit;
+        }
+
+        return $response;
+    }
+
+    /**
+     * `idAfter` and `asOfState`, or null for a query that does not page by keyset. A keyset
+     * page walks the whole visible tree in `node_id` order, so it takes no filter, no sort
+     * other than `id` ascending, and no position.
+     *
+     * @param  array<string, mixed>  $args
+     * @param  array<string, mixed>  $filter
+     * @param  list<mixed>  $sort
+     * @return array{idAfter: ?string, asOfSeq: ?int}|null
+     */
+    private function keysetArguments(array $args, array $filter, array $sort, int $position): ?array
+    {
+        if (! array_key_exists('idAfter', $args) && ! array_key_exists('asOfState', $args)) {
+            return null;
+        }
+        if (! $this->context->uses(JmapCapabilities::FILENODE_TREE)) {
+            throw new JmapMethodException('invalidArguments', 'idAfter and asOfState need '.JmapCapabilities::FILENODE_TREE.' in using.');
+        }
+        $idAfter = $args['idAfter'] ?? null;
+        if ($idAfter !== null && (! is_string($idAfter) || $idAfter === '')) {
+            throw new JmapMethodException('invalidArguments', 'idAfter must be null or a FileNode id.');
+        }
+        $asOfState = $args['asOfState'] ?? null;
+        if ($asOfState !== null && ! is_string($asOfState)) {
+            throw new JmapMethodException('invalidArguments', 'asOfState must be null or a FileNode state.');
+        }
+        if ($filter !== []) {
+            throw new JmapMethodException('invalidArguments', 'idAfter and asOfState page the unfiltered tree; filter must be null.');
+        }
+        foreach ($sort as $comparator) {
+            if (! is_array($comparator) || ($comparator['property'] ?? null) !== 'id' || ($comparator['isAscending'] ?? true) === false) {
+                throw new JmapMethodException('unsupportedSort', 'A keyset page is sorted by id ascending.');
+            }
+        }
+        if ($position !== 0) {
+            throw new JmapMethodException('invalidArguments', 'A keyset page takes no position.');
+        }
+
+        return [
+            'idAfter' => $idAfter,
+            'asOfSeq' => $asOfState === null ? null : $this->syncState->seqOf($asOfState),
+        ];
+    }
+
+    /**
+     * One keyset page of the visible tree, in `node_id` order: one SQL query of ids
+     * from the index, never a disk walk. Every write through the app already updates
+     * the index; drift from writes past the app heals when that folder is listed
+     * (a `parentId` query) or with `wgw:jmap:filenodes-reindex` (#2063).
+     *
+     * @param  list<string>  $roots
+     * @param  array{idAfter: ?string, asOfSeq: ?int}  $keyset
+     * @return array<string, mixed>
+     */
+    private function keysetPage(string $username, array $roots, array $keyset, ?int $limit, bool $calculateTotal): array
+    {
+        $response = [
+            'accountId' => $username,
+            'queryState' => $this->syncState->current($username),
+            'canCalculateChanges' => false,
+            'position' => 0,
+            'ids' => $this->tree->idsAfter($roots, $keyset['idAfter'], $keyset['asOfSeq'], $limit),
+        ];
+        if ($calculateTotal) {
+            $response['total'] = $this->tree->count($roots, $keyset['asOfSeq']);
+        }
         if ($limit !== null) {
             $response['limit'] = $limit;
         }
@@ -166,10 +251,10 @@ final class FileNodeQueryMethod implements JmapMethodInterface
             return $this->descendantsOf($ancestor, PHP_INT_MAX);
         }
 
-        // Unfiltered (or attribute-only) query: the whole visible set.
-        $this->accounts->reconcileVisibleTree($roots);
-
-        return $this->index->liveVisible($roots);
+        // Unfiltered (or attribute-only) query: the whole visible set, from the index alone.
+        // Writes through the app keep it current; a parentId listing or get-all heals drift (#2063).
+        // Only what the filter and the sort read: no hydration of whole rows (#2063).
+        return $this->index->liveVisible($roots, ['node_id', 'parent_node_id', 'name', 'is_dir']);
     }
 
     /**
@@ -245,6 +330,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
                 $result = match ($property) {
                     // Directories sort before files (§3.2.5 nodeType sort).
                     'nodeType' => ((int) $b->is_dir) <=> ((int) $a->is_dir),
+                    'id' => strcmp((string) $a->node_id, (string) $b->node_id),
                     default => strcasecmp((string) $a->name, (string) $b->name),
                 };
                 if ($result !== 0) {

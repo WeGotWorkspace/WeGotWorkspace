@@ -152,20 +152,19 @@ final class FileNodeIndexService
      * All live rows under the visible roots, ordered by key.
      *
      * @param  list<string>  $roots
+     * @param  list<string>  $columns  `storage_key` is always loaded
      * @return list<JmapFileNode>
      */
-    public function liveVisible(array $roots): array
+    public function liveVisible(array $roots, array $columns = ['*']): array
     {
+        if ($columns !== ['*'] && ! in_array('storage_key', $columns, true)) {
+            $columns[] = 'storage_key';
+        }
         $query = JmapFileNode::query()->whereNull('deleted_at');
-        $query->where(function ($outer) use ($roots): void {
-            foreach ($roots as $root) {
-                $outer->orWhere('storage_key', $root)
-                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($root).'/%']);
-            }
-        });
+        FileNodeTreeScope::underRoots($query, $roots);
 
         // The archived Project tree keeps its nodes but no client lists it (#819).
-        return array_values($query->orderBy('storage_key')->get()
+        return array_values($query->orderBy('storage_key')->get($columns)
             ->reject(static fn (JmapFileNode $node): bool => ProjectArchivePaths::isUnder((string) $node->storage_key))
             ->all());
     }
