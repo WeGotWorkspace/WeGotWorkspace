@@ -10,7 +10,7 @@ import { api, dav, makeFolder, putDoc, TEAMMATE, unshareQuietly } from "./helper
 import { E2E_USERNAME } from "./helpers/notes-live";
 import {
   API,
-  findNode,
+  jmapFileNodes,
   goOfflineKeepingShell,
   goOnlineAgain,
   installOnlineFlag,
@@ -23,6 +23,7 @@ const GONE = `Tree gone ${RUN}`;
 const FILE = `tree-file-${RUN}.md`;
 const RENAMED = `tree-renamed-${RUN}.md`;
 const STARRED = `tree-starred-${RUN}.md`;
+const NEW_FOLDER = `Tree new ${RUN}`;
 const TRASHED = `tree-trashed-${RUN}.md`;
 const SHARED = `tree-shared-${RUN}.md`;
 const SHARED_PATH = `/users/${TEAMMATE}/${SHARED}`;
@@ -170,8 +171,10 @@ test.describe("Drive views on the file tree (live app)", () => {
     await rowAction(page, STARRED, "Star");
 
     // 5. Reload online: the rows show at once, with no spinner and no server listing.
-    const folderNode = await findNode(page, FOLDER);
-    const listings = watchListingRequests(page, folderNode.id);
+    const found = await jmapFileNodes(page, "FileNode/query", { filter: { name: FOLDER } });
+    const folderId = (found.ids as string[])[0]!;
+    expect(folderId, `${FOLDER} on the server`).toBeTruthy();
+    const listings = watchListingRequests(page, folderId);
     await page.reload();
     await expect(row(page, FILE)).toBeVisible({ timeout: 15_000 });
     // All Files holds the whole drive (windowed); Recent and Starred are short.
@@ -193,6 +196,20 @@ test.describe("Drive views on the file tree (live app)", () => {
     await tabB.getByRole("dialog").getByRole("button", { name: "Rename" }).click();
     await expect(row(page, RENAMED)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(FILE, { exact: true })).toHaveCount(0);
+    // The renaming tab stays in its folder (the live reply lists another one).
+    const tabBPath = () => decodeURIComponent(tabB.url().replace(/\+/g, " "));
+    await expect.poll(tabBPath).toContain(FOLDER);
+
+    // 6b. A folder created inside FOLDER stays there, and the tab stays in FOLDER.
+    await tabB.getByRole("button", { name: "New folder", exact: true }).click();
+    await tabB.getByPlaceholder("Folder name").fill(NEW_FOLDER);
+    await tabB.getByRole("button", { name: "Create folder" }).click();
+    await expect(row(tabB, NEW_FOLDER)).toBeVisible({ timeout: 20_000 });
+    await expect(row(tabB, RENAMED)).toBeVisible();
+    await expect(row(page, NEW_FOLDER)).toBeVisible({ timeout: 20_000 });
+    expect(tabBPath()).toContain(FOLDER);
+    await tabB.reload();
+    await expect(row(tabB, NEW_FOLDER)).toBeVisible({ timeout: 20_000 });
 
     // 7. Tab B deletes the folder tab A has open: tab A says so, with no spinner.
     await page.goto(folderUrl(`My Drive/${GONE}`));

@@ -12,7 +12,9 @@ import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-pus
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import type { DriveEntryArea } from "@/lib/offline/drive/drive-tree-rows";
 import {
+  DRIVE_TREE_CRAWL_ROOTS_KEY,
   DRIVE_TREE_FIRST_SYNC_DONE_KEY,
+  DRIVE_TREE_LAST_PASS_KEY,
   DRIVE_TREE_ROOTS_KEY,
 } from "@/lib/offline/drive/drive-tree-sync";
 import type { FileTreeEntryFilter, FileTreeView } from "@/lib/files/tree-view/tree-view-predicates";
@@ -119,14 +121,29 @@ describe("useFileTreeView", () => {
     expect((await settled(prefix.result)).status).toBe("not-available");
   });
 
-  it("after a per-folder crawl (no roots map), empty account roots are known-empty", async () => {
+  it("after a per-folder crawl, only the roots it queued are known; Trash and Shared are not synced", async () => {
+    // As crawlFolders leaves it: no roots map, the queued root paths, last pass "crawl".
     await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
+    await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
+    await writeMeta(
+      username,
+      DRIVE_TREE_CRAWL_ROOTS_KEY,
+      JSON.stringify([`/users/${username}`, "/groups/team"]),
+    );
     for (const path of [`users/${username}`, "groups/team"]) {
       const { result } = render({ kind: "folder", path });
       expect(await settled(result), path).toEqual({ rows: [], status: "ready", settled: true });
     }
-    const unknown = render({ kind: "folder", path: `users/${username}/Never` });
-    expect((await settled(unknown.result)).status).toBe("not-available");
+    for (const view of [
+      { kind: "folder", path: `users/${username}/Never` },
+      { kind: "folder", path: "groups/other" },
+      { kind: "prefix", path: "groups/other" },
+      { kind: "trash" },
+      { kind: "shared" },
+    ] as const) {
+      const { result } = render(view);
+      expect((await settled(result)).status, JSON.stringify(view)).toBe("not-available");
+    }
   });
 
   it("first sync with no rows online is the full-pane first-sync state", async () => {

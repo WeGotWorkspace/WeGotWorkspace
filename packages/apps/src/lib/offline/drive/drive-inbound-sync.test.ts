@@ -843,6 +843,30 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
     expect((await blobs.get("users/ada/b.md"))?.size).toBe(1);
   });
 
+  it("a file renamed onto a deleted path keeps its offline blob", async () => {
+    await upsertDriveEntry(username, entry("/users/ada/draft.md", "fn-draft"));
+    await upsertDriveEntry(username, entry("/users/ada/report.md", "fn-report"));
+    await writeDriveContentBlob(username, "/users/ada/draft.md", new Blob(["draft"]));
+    await writeDriveContentBlob(username, "/users/ada/report.md", new Blob(["RR"]));
+    installCatalog(
+      new Map([
+        ["fn-draft", withPath(node("fn-draft", "fn-home", "report.md"), "/users/ada/report.md")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ updated: ["fn-draft"], destroyed: ["fn-report"], newState: "13" }),
+    );
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await readCachedDriveNodeId(username, "/users/ada/report.md")).toBe("fn-draft");
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect((await blobs.get("users/ada/report.md"))?.size).toBe(5);
+    expect(await blobs.get("users/ada/draft.md")).toBeUndefined();
+  });
+
   it("updated ids are fetched in maxObjectsInGet batches", async () => {
     const ids = Array.from({ length: 1200 }, (_, index) => `fn-${index}`);
     installCatalog(new Map());

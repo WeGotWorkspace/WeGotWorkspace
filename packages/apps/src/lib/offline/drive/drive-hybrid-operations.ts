@@ -24,6 +24,7 @@ import {
 } from "@/lib/offline/docs/docs-stars-store";
 import { removeDocsAvailability } from "@/lib/offline/docs/docs-availability-store";
 import {
+  addCreatedDriveEntry,
   buildOfflineDriveUIData,
   listAllCachedDriveFiles,
   migrateDriveEntryPath,
@@ -404,6 +405,20 @@ export function createHybridDriveOperations(
         }
       }
       return searchDriveEntriesFromCache(username, query, opts?.limit);
+    },
+    // The live client answers a create with its bootstrap folder's listing; the
+    // tree views read the new row from the tree instead (#2063 C3).
+    createFolder: async (input, opts) => {
+      const data = await live.createFolder(input, { ...opts, refreshState: false });
+      await addCreatedDriveEntry(username, input.cwd, input.name, "dir");
+      notifyDriveRemoteChange(username);
+      return data;
+    },
+    createFile: async (input, opts) => {
+      const data = await live.createFile(input, { ...opts, refreshState: false });
+      await addCreatedDriveEntry(username, input.cwd, input.name, "file");
+      notifyDriveRemoteChange(username);
+      return data;
     },
     renameItem: async (input, opts) => {
       const destination = normalizeApiVirtualPath(input.destination);

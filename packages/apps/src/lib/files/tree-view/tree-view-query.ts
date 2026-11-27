@@ -10,7 +10,9 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { readDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
 import {
+  readDriveTreeCrawlRoots,
   readDriveTreeFirstSyncDone,
+  readDriveTreeLastPass,
   readDriveTreeRoots,
 } from "@/lib/offline/drive/drive-tree-sync";
 import {
@@ -99,30 +101,27 @@ async function readViewRows(
  * How much the device knows about a view: `syncing` before the first complete
  * pass, `complete` after it, and `unknown` for a folder or prefix view whose
  * folder the finished pass does not hold (a deep link to a path that does not
- * exist or is not visible to the person).
+ * exist or is not visible to the person), and for Trash and Shared after a
+ * per-folder crawl, which does not store them.
  */
 export type FileTreeViewKnowledge = "syncing" | "complete" | "unknown";
 
 async function viewKnowledge(username: string, view: FileTreeView): Promise<FileTreeViewKnowledge> {
   if (!(await readDriveTreeFirstSyncDone(username))) return "syncing";
+  if (view.kind === "trash" || view.kind === "shared") {
+    // The per-folder crawl stores neither `.Trash` nor share roots.
+    return (await readDriveTreeLastPass(username)) === "crawl" ? "unknown" : "complete";
+  }
   if (view.kind !== "folder" && view.kind !== "prefix") return "complete";
   const path = treeRowPath(view.path);
-  const [folderRow, roots] = await Promise.all([
+  const [folderRow, roots, crawlRoots] = await Promise.all([
     path ? table(username).get(path) : Promise.resolve(undefined),
     readDriveTreeRoots(username),
+    readDriveTreeCrawlRoots(username),
   ]);
-  const rootPaths = roots ? [...roots.values()] : crawledRootPaths(username, path);
+  // A tree pass stores the roots map; the per-folder crawl stores the root paths it queued.
+  const rootPaths = roots ? [...roots.values()] : (crawlRoots ?? []);
   return isKnownTreeFolder(path, folderRow, rootPaths) ? "complete" : "unknown";
-}
-
-/**
- * Account roots after a per-folder crawl, which stores no roots map: the
- * person's home, and a team drive by its path shape (`groups/<slug>`).
- */
-function crawledRootPaths(username: string, path: string): string[] {
-  const parts = path.split("/");
-  const teamDrive = parts.length === 2 && parts[0] === "groups" ? [path] : [];
-  return [`users/${username}`, ...teamDrive];
 }
 
 /**

@@ -67,9 +67,12 @@ import {
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
 import {
+  DRIVE_TREE_CRAWL_ROOTS_KEY,
   DRIVE_TREE_FIRST_SYNC_DONE_KEY,
   DRIVE_TREE_LAST_PASS_KEY,
+  readDriveTreeCrawlRoots,
   readDriveTreeFirstSyncDone,
+  readDriveTreeRoots,
   syncDriveTree,
 } from "@/lib/offline/drive/drive-tree-sync";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
@@ -800,18 +803,24 @@ describe("syncDriveTree", () => {
     const server = standardTree();
     await connect(server, { keyset: false });
     const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
-    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async () => {
-      // As the crawl writes: no area, since account roots have no row to take it from.
-      await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "n-a"));
-      await upsertDriveEntry(username, staleEntry("/groups/team/b.md", "n-b"));
-      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
-    });
+    const spy = vi
+      .spyOn(crawl, "syncDriveMetadataTree")
+      .mockImplementation(async (_u, _b, options) => {
+        options?.onRoots?.(["/users/ada", "/groups/team"]);
+        // As the crawl writes: no area, since account roots have no row to take it from.
+        await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "n-a"));
+        await upsertDriveEntry(username, staleEntry("/groups/team/b.md", "n-b"));
+        return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+      });
 
     const result = await syncDriveTree(username);
 
     expect(result.completed).toBe(true);
     expect(await row("/users/ada/a.md")).toMatchObject({ area: "home" });
     expect(await row("/groups/team/b.md")).toMatchObject({ area: "group" });
+    expect(await readDriveTreeCrawlRoots(username)).toEqual(["/users/ada", "/groups/team"]);
+    // Not the roots map: a non-null map tells the applier a keyset pass ran.
+    expect(await readDriveTreeRoots(username)).toBeNull();
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());
@@ -915,6 +924,19 @@ describe("review fixes (#2063 C1)", () => {
       return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
     });
   }
+
+  it("a crawl that returns before queueing roots keeps the stored root list", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(["/users/ada"]));
+    // As syncDriveMetadataTree returns when the device went offline: no onRoots call.
+    const spy = await mockCrawl();
+
+    await syncDriveTree(username);
+    spy.mockRestore();
+
+    expect(await readDriveTreeCrawlRoots(username)).toEqual(["/users/ada"]);
+  });
 
   it("a file written while the per-folder crawl runs arrives on the next sync", async () => {
     const server = standardTree();
@@ -1163,5 +1185,100 @@ describe("moves that land on a path another node is leaving", () => {
 
     expect(await row("/users/bob/Plans 2026")).toMatchObject({ area: "share" });
     expect(await row("/users/bob/Plans 2026/c.md")).toMatchObject({ area: "share" });
+  });
+});
+
+describe("a sync stopped between the two phases of a blob move", () => {
+  const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+
+  /** The second blob move throws: the first source is parked, the rest is not done. */
+  async function stopAtSecondBlobMove() {
+    const contentSync = await import("@/lib/offline/drive/drive-content-sync");
+    const real = contentSync.migrateDriveContentBlobPath;
+    let calls = 0;
+    return vi
+      .spyOn(contentSync, "migrateDriveContentBlobPath")
+      .mockImplementation(async (...args) => {
+        calls += 1;
+        if (calls === 2) throw new Error("tab closed");
+        return real(...args);
+      });
+  }
+
+  it("the changes sync replays the swap and each blob lands on its own path", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    const tokenBefore = await readDriveSyncToken(username);
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+
+    const spy = await stopAtSecondBlobMove();
+    await expect(syncDriveInboundFromFileNodes(username)).rejects.toThrow("tab closed");
+    spy.mockRestore();
+    expect(await readDriveSyncToken(username)).toBe(tokenBefore);
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await blobSize("users/ada/a.md")).toBe(1);
+
+    await syncDriveInboundFromFileNodes(username);
+
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+
+  it("the tree pass resumes and each blob lands on its own path", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-a"));
+    await upsertDriveEntry(username, staleEntry("/users/ada/b.md", "f-b"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    await connect(server);
+
+    const spy = await stopAtSecondBlobMove();
+    await expect(syncDriveTree(username)).rejects.toThrow("tab closed");
+    spy.mockRestore();
+    expect(await blobSize("users/ada/a.md")).toBe(1);
+
+    await syncDriveTree(username);
+
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+});
+
+describe("the walk catch-up relocates in two phases", () => {
+  it("two files that swap paths during the walk keep their own blobs", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    for (let i = 0; i < 40; i += 1)
+      server.add(`n${String(i).padStart(3, "0")}`, "r-home", `f${i}.md`);
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    // A new pass; the swap lands after its first listing request.
+    server.after.set(server.requests.length + 1, () => {
+      server.move("f-a", { name: "b.md" });
+      server.move("f-b", { name: "a.md" });
+    });
+
+    await syncDriveTree(username);
+
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await row("/users/ada/b.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
   });
 });

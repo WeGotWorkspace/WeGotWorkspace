@@ -141,6 +141,24 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
     await waitFor(() => expect(result.current.viewState).toBeNull());
   });
 
+  it("switching views with text in the search box searches again and settles", async () => {
+    await finishFirstSync();
+    const ops = operations();
+    ops.search = vi.fn().mockResolvedValue([]);
+    const { result, rerender } = renderShell({ type: "all" }, ops);
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+
+    act(() => result.current.setSearchQuery("x"));
+    await waitFor(() => expect(ops.search).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+
+    window.matchMedia = vi.fn(() => ({ matches: false }) as MediaQueryList);
+    act(() => result.current.selectView({ type: "starred" }));
+    rerender({ v: { type: "starred" } });
+    await waitFor(() => expect(ops.search).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+  });
+
   it("an online search keeps a missing folder missing until the server answers", async () => {
     await finishFirstSync();
     const ops = operations();
