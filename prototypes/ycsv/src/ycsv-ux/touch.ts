@@ -5,7 +5,19 @@ import { useEffect, useState } from "react";
  * browser plumbing; the grid model (selection, overlay, one input) is unchanged.
  */
 
-export type TouchVariant = "a" | "b";
+export type TouchVariant = "a" | "b" | "c";
+
+/**
+ * Variant C (Calendar parity). A finger that stays within HOLD_CANCEL_PX for
+ * HOLD_MS arms a drag; travel past HOLD_CANCEL_PX before that is a pan and the
+ * browser keeps it. Still at MENU_MS opens the context menu. Same numbers as
+ * TimeLine.ts on main (TOUCH_GESTURE_ACTIVATION_MS / _CANCEL_DISTANCE_PX).
+ */
+export const HOLD_MS = 160;
+export const HOLD_CANCEL_PX = 10;
+export const MENU_MS = 500;
+/** Travel after arming that turns the hold into a drag (below it the finger is still "holding"). */
+export const HOLD_DRAG_PX = 4;
 
 /** `(pointer: coarse)`: a finger is the main pointer (phone, tablet without trackpad). */
 export function useCoarsePointer(): boolean {

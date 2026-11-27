@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { test, type Page } from "@playwright/test";
 import { center } from "./helpers";
-import { boxOf, doubleTap, drag, fakeKeyboard, isChromium, longPress, openTouch, phone, pinch, tap, tapCell } from "./touch-helpers";
+import { boxOf, doubleTap, drag, fakeKeyboard, fingerDown, fingerMove, fingerUp, holdDrag, isChromium, longPress, openTouch, phone, pinch, tap, tapCell } from "./touch-helpers";
 
 /**
  * Spike 7 screenshots → docs/spike-7-touch/<project>-<name>.png
@@ -106,4 +106,33 @@ test("dark B", async ({ page }) => {
   await tapCell(page, 1, 1);
   await drag(page, await boxOf(page, "handle-end"), await center(page, 3, 2));
   await shot(page, "b-dark");
+});
+
+test("C: hold arms, drag selects, header drag moves", async ({ page }) => {
+  await openTouch(page, "variant-c");
+  const a = await center(page, 1, 0);
+  const b = await center(page, 3, 1);
+  await fingerDown(page, a);
+  await page.waitForTimeout(260);
+  await shot(page, "c-armed");
+  await fingerMove(page, a, b);
+  await shot(page, "c-hold-drag");
+  await fingerUp(page, b);
+  await shot(page, "c-after-lift");
+  await page.waitForTimeout(400);
+  const h = await boxOf(page, "colhead-0");
+  const t = await boxOf(page, "colhead-2");
+  await fingerDown(page, h);
+  await page.waitForTimeout(260);
+  await fingerMove(page, h, { x: t.box.x + t.box.width - 6, y: t.y });
+  await shot(page, "c-column-move");
+  await fingerUp(page, { x: t.box.x + t.box.width - 6, y: t.y });
+});
+
+test("C: resize from the header edge", async ({ page }) => {
+  await openTouch(page, "variant-c");
+  const h = await boxOf(page, "colhead-1");
+  const edge = { x: h.box.x + h.box.width - 4, y: h.y };
+  await holdDrag(page, edge, { x: edge.x + 60, y: edge.y });
+  await shot(page, "c-after-resize");
 });

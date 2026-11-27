@@ -92,6 +92,39 @@ export async function drag(page: Page, a: Pt, b: Pt, { steps = 8, hold = 0 } = {
   else await synth(page, "pointerup", b);
 }
 
+/**
+ * Variant C gesture: finger down, rest `hold` ms, then move to `b` in `steps`
+ * moves `stepMs` apart, then lift. With hold < the grid's holdMs it is a pan.
+ */
+export async function holdDrag(page: Page, a: Pt, b: Pt, { hold = 260, steps = 8, stepMs = 16 } = {}) {
+  const chromium = isChromium(page);
+  if (chromium) await cdpTouch(page, "touchStart", [a]);
+  else await synth(page, "pointerdown", a);
+  await page.waitForTimeout(hold);
+  for (let i = 1; i <= steps; i += 1) {
+    const p = { x: a.x + ((b.x - a.x) * i) / steps, y: a.y + ((b.y - a.y) * i) / steps };
+    if (chromium) await cdpTouch(page, "touchMove", [p]);
+    else await synth(page, "pointermove", p);
+    if (stepMs) await page.waitForTimeout(stepMs);
+  }
+  if (chromium) await cdpTouch(page, "touchEnd", []);
+  else await synth(page, "pointerup", b);
+}
+
+/** Chromium only: one finger rests `hold` ms, then a second lands and the two pinch d0 → d1. */
+export async function holdThenPinch(page: Page, c: Pt, hold: number, d0: number, d1: number, steps = 8) {
+  const pts = (d: number) => [
+    { x: c.x - d / 2, y: c.y },
+    { x: c.x + d / 2, y: c.y },
+  ];
+  const first = pts(d0)[0]!;
+  await cdpTouch(page, "touchStart", [first]);
+  await page.waitForTimeout(hold);
+  await cdpTouch(page, "touchStart", pts(d0));
+  for (let i = 1; i <= steps; i += 1) await cdpTouch(page, "touchMove", pts(d0 + ((d1 - d0) * i) / steps));
+  await cdpTouch(page, "touchEnd", []);
+}
+
 /** Chromium only: a real touch pinch (two fingers) around `c`, finger distance d0 → d1. */
 export async function pinch(page: Page, c: Pt, d0: number, d1: number, steps = 8) {
   const pts = (d: number) => [
@@ -133,3 +166,21 @@ export async function fakeKeyboard(page: Page, px: number) {
 
 export const phone = (page: Page) => (page.viewportSize()?.width ?? 1000) < 600;
 export { isChromium };
+
+/** Low-level single finger, for screenshots in the middle of a gesture. */
+export async function fingerDown(page: Page, p: Pt) {
+  if (isChromium(page)) await cdpTouch(page, "touchStart", [p]);
+  else await synth(page, "pointerdown", p);
+}
+export async function fingerMove(page: Page, a: Pt, b: Pt, steps = 8) {
+  for (let i = 1; i <= steps; i += 1) {
+    const p = { x: a.x + ((b.x - a.x) * i) / steps, y: a.y + ((b.y - a.y) * i) / steps };
+    if (isChromium(page)) await cdpTouch(page, "touchMove", [p]);
+    else await synth(page, "pointermove", p);
+    await page.waitForTimeout(16);
+  }
+}
+export async function fingerUp(page: Page, p: Pt) {
+  if (isChromium(page)) await cdpTouch(page, "touchEnd", []);
+  else await synth(page, "pointerup", p);
+}

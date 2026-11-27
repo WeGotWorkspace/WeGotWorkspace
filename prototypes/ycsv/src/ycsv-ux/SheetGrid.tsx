@@ -78,7 +78,11 @@ import {
   clampZoom,
   edgeSpeed,
   FORMULA_KEYS,
+  HOLD_CANCEL_PX,
+  HOLD_DRAG_PX,
+  HOLD_MS,
   loadZoom,
+  MENU_MS,
   saveZoom,
   useCoarsePointer,
   useVisualViewport,
@@ -96,8 +100,14 @@ type Props = {
   /**
    * Spike 7. "a": tap, double-tap, long-press menu, finger fill handle.
    * "b": A plus draggable range handles (fill moves into the menu).
+   * "c": B plus hold-to-drag (Calendar parity): hold, then drag selects a range,
+   * moves a row or column, or resizes a column from its header edge.
    */
   touchVariant?: TouchVariant;
+  /** Variant C hold time before a drag arms. Default HOLD_MS (160, as Calendar). */
+  holdMs?: number;
+  /** Variant C travel (px) before the hold arms that makes it a pan. Default HOLD_CANCEL_PX (10, as Calendar). */
+  holdSlop?: number;
   /** Rows rendered above and below the visible ones. Default: 4, or 12 with a finger. */
   overscan?: number;
 };
@@ -123,13 +133,29 @@ type Drag =
   | { kind: "headers"; axis: "row" | "col"; anchor: number; add: boolean }
   | { kind: "move"; axis: "row" | "col"; from: number; count: number; startX: number; startY: number; moved: boolean; hit: number }
   | { kind: "resize"; col: number; colIds: string[]; startX: number; startW: number }
-  | { kind: "touch"; startX: number; startY: number; cell: Cell; zone: Hit["zone"]; moved: boolean; timer: number }
+  | {
+      kind: "touch";
+      startX: number;
+      startY: number;
+      cell: Cell;
+      zone: Hit["zone"];
+      moved: boolean;
+      timer: number;
+      /** Variant C: the hold timer, and whether it fired (the finger now owns the gesture). */
+      hold: number;
+      armed: boolean;
+      pointerId: number;
+      /** Hit position in content coordinates, for the header-edge resize check. */
+      x: number;
+    }
   /** Spike 7 variant B: a range handle. `fixed` is the opposite corner; `dx/dy` keep the handle under the finger's grab point. */
   | { kind: "handle"; axis: "cell" | "row" | "col"; end: boolean; fixed: Cell; dx: number; dy: number };
 
 type Hit = { zone: "cell" | "colhead" | "rowhead" | "corner"; r: number; c: number; x: number; y: number };
 
 const HEADER_H = 30;
+/** Variant C: a hold-drag that starts this close (content px) to a column header edge resizes. */
+const RESIZE_EDGE = 12;
 const DEFAULT_W = 120;
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 const modKey = (e: { metaKey: boolean; ctrlKey: boolean }) => (isMac ? e.metaKey : e.ctrlKey);
@@ -248,7 +274,7 @@ const GridRow = memo(function GridRow(props: {
   );
 });
 
-export function SheetGrid({ doc, theme = "light", height = "100%", awareness, user, touchVariant = "a", overscan }: Props) {
+export function SheetGrid({ doc, theme = "light", height = "100%", awareness, user, touchVariant = "a", overscan, holdMs = HOLD_MS, holdSlop = HOLD_CANCEL_PX }: Props) {
   const { columns, rows, values } = useSheet(doc);
   const gridId = useId().replaceAll(":", "");
   const rowCount = rows.length;
@@ -305,6 +331,10 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   const barRef = useRef<HTMLInputElement | null>(null);
   const drag = useRef<Drag | null>(null);
   const lastPointer = useRef<string>("mouse");
+  /** Variant C: set while a hold owns the finger; the touchmove listener then blocks native panning. */
+  const holdLock = useRef(false);
+  const [armed, setArmed] = useState<{ zone: Hit["zone"]; r: number; c: number } | null>(null);
+  const handlesOn = touchVariant === "b" || touchVariant === "c";
   const clipRef = useRef<YcsvClip | null>(null);
   const valuesOnlyNext = useRef(false);
   const caretSync = useRef(false);
@@ -992,7 +1022,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     ];
     if (coarse && kind === "cell") {
       // No ⌘D / ⌘R on a phone keyboard; variant B also has no always-on fill handle.
-      if (touchVariant === "b") items.push({ id: "fill-drag", label: "Fill…", onSelect: () => setFillFor(lastRange(selRef.current)) });
+      if (handlesOn) items.push({ id: "fill-drag", label: "Fill…", onSelect: () => setFillFor(lastRange(selRef.current)) });
       items.push(
         { id: "fill-down", label: "Fill down", disabled: range.r1 === range.r2 && range.r1 === 0, onSelect: () => fillCopy("down") },
         { id: "fill-right", label: "Fill right", disabled: range.c1 === range.c2 && range.c1 === 0, onSelect: () => fillCopy("right") },
@@ -1354,6 +1384,73 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   };
   useEffect(() => () => cancelAnimationFrame(edgeFrame.current), []);
 
+  /** Variant C: the hold is over (lifted, cancelled, pinched or turned into a menu). */
+  const endHold = () => {
+    holdLock.current = false;
+    setArmed(null);
+  };
+  const endHoldRef = useRef(endHold);
+  endHoldRef.current = endHold;
+
+  /**
+   * Variant C: an armed hold moved. Turn it into the drag the press point asks for:
+   * a cell extends a range from that cell, a header moves its row or column (the
+   * selected block when it is inside one), a column header edge resizes.
+   */
+  const startHoldDrag = (d: Extract<Drag, { kind: "touch" }>, clientX: number, clientY: number) => {
+    window.clearTimeout(d.timer);
+    setArmed(null);
+    if (editRef.current) commit(null);
+    setCallout(null);
+    setFillFor(null);
+    if ("vibrate" in navigator) navigator.vibrate?.(8);
+    const s = selRef.current;
+    const range = lastRange(s);
+    if (d.zone === "cell") {
+      const next = single(d.cell);
+      selRef.current = next;
+      setSel(next);
+      drag.current = { kind: "select" };
+    } else if (d.zone === "colhead" || d.zone === "rowhead") {
+      const axis = d.zone === "colhead" ? "col" : "row";
+      if (axis === "col") {
+        // Within RESIZE_EDGE of a column's right edge (or the previous column's): resize.
+        const c = d.cell.c;
+        const right = (lefts[c] ?? 0) + (widths[c] ?? 0);
+        const left = lefts[c] ?? 0;
+        const edgeCol = right - d.x <= RESIZE_EDGE ? c : d.x - left <= RESIZE_EDGE && c > 0 ? c - 1 : -1;
+        if (edgeCol >= 0) {
+          const cs = isWholeCols(range, bounds) && edgeCol >= range.c1 && edgeCol <= range.c2 ? Array.from({ length: range.c2 - range.c1 + 1 }, (_, i) => range.c1 + i) : [edgeCol];
+          drag.current = { kind: "resize", col: edgeCol, colIds: cs.map((i) => columns[i]?.colId ?? ""), startX: d.startX, startW: (widths[edgeCol] ?? DEFAULT_W) / zoom };
+          const w = Math.round(Math.max(32, (widths[edgeCol] ?? DEFAULT_W) / zoom + (clientX - d.startX) / zoom));
+          setLiveWidths(Object.fromEntries(cs.map((i) => [columns[i]?.colId ?? "", w])));
+          return;
+        }
+      }
+      const idx = axis === "col" ? d.cell.c : d.cell.r;
+      const whole = axis === "col" ? isWholeCols(range, bounds) && !isWholeRows(range, bounds) : isWholeRows(range, bounds) && !isWholeCols(range, bounds);
+      const inside = axis === "col" ? idx >= range.c1 && idx <= range.c2 : idx >= range.r1 && idx <= range.r2;
+      let from = idx;
+      let count = 1;
+      if (whole && inside && s.ranges.length === 1) {
+        from = axis === "col" ? range.c1 : range.r1;
+        count = axis === "col" ? range.c2 - range.c1 + 1 : range.r2 - range.r1 + 1;
+      } else {
+        const next = axis === "col" ? selectCols(idx, idx, bounds, 0) : selectRows(idx, idx, bounds, 0);
+        selRef.current = next;
+        setSel(next);
+      }
+      drag.current = { kind: "move", axis, from, count, startX: d.startX, startY: d.startY, moved: true, hit: idx };
+    } else {
+      drag.current = null;
+      endHold();
+      return;
+    }
+    dragPos.current = { x: clientX, y: clientY, alt: false };
+    moveDrag(clientX, clientY);
+    kickEdgeLoop();
+  };
+
   /**
    * Start editing from a touch. The focus() must happen synchronously inside the
    * touch handler: iOS only raises the keyboard for a focus made during the gesture.
@@ -1393,16 +1490,37 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     if (e.pointerType === "touch" && !handleEl && !target.closest(".sx-fill-handle, .sx-resize")) {
       const prev = drag.current;
       if (prev?.kind === "touch") {
-        // A second finger: a pinch, not a tap.
+        // A second finger: a pinch, not a tap (and not a hold-drag either).
         window.clearTimeout(prev.timer);
+        window.clearTimeout(prev.hold);
         drag.current = null;
+        endHold();
         return;
       }
       const zone = hit.zone;
+      const hold =
+        touchVariant === "c" && zone !== "corner"
+          ? window.setTimeout(() => {
+              const d = drag.current;
+              if (d?.kind !== "touch" || d.moved) return;
+              // From here the finger owns the gesture: native panning is blocked
+              // (see the touchmove listener) and movement drags instead of scrolls.
+              d.armed = true;
+              holdLock.current = true;
+              try {
+                el.setPointerCapture(d.pointerId);
+              } catch {
+                // Synthetic pointers (tests) have no capturable id.
+              }
+              setArmed({ zone: d.zone, r: d.cell.r, c: d.cell.c });
+            }, holdMs)
+          : 0;
       const timer = window.setTimeout(() => {
         const d = drag.current;
         if (d?.kind !== "touch" || d.moved) return;
         drag.current = null;
+        endHold();
+        if ("vibrate" in navigator) navigator.vibrate?.(15);
         if (editRef.current) commit(null);
         setCallout(null);
         const s = selRef.current;
@@ -1417,8 +1535,20 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           if (!isSelected(s, d.cell.r, d.cell.c)) setSel(single(d.cell));
           openMenuAt(d.startX, d.startY, "cell");
         }
-      }, 500);
-      drag.current = { kind: "touch", startX: e.clientX, startY: e.clientY, cell: { r: hit.r, c: hit.c }, zone, moved: false, timer };
+      }, MENU_MS);
+      drag.current = {
+        kind: "touch",
+        startX: e.clientX,
+        startY: e.clientY,
+        cell: { r: hit.r, c: hit.c },
+        zone,
+        moved: false,
+        timer,
+        hold,
+        armed: false,
+        pointerId: e.pointerId,
+        x: hit.x,
+      };
       return;
     }
 
@@ -1520,9 +1650,16 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     const d = drag.current;
     if (!d) return;
     if (d.kind === "touch") {
-      if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 8) {
+      const dist = Math.hypot(e.clientX - d.startX, e.clientY - d.startY);
+      if (d.armed) {
+        if (dist > HOLD_DRAG_PX) startHoldDrag(d, e.clientX, e.clientY);
+        return;
+      }
+      if (dist > (touchVariant === "c" ? holdSlop : 8)) {
+        // Travel before the hold armed: a pan. The browser already owns it.
         d.moved = true;
         window.clearTimeout(d.timer);
+        window.clearTimeout(d.hold);
       }
       return;
     }
@@ -1545,8 +1682,10 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     drag.current = null;
     dragPos.current = null;
     if (!d) return;
+    endHold();
     if (d.kind === "touch") {
       window.clearTimeout(d.timer);
+      window.clearTimeout(d.hold);
       if (d.moved) return;
       const cur = editRef.current;
       const cell = d.cell;
@@ -1590,6 +1729,12 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     if (d.kind === "handle") {
       // Variant B: offer the common actions right where the finger lifted.
       setCallout(lastHandleRange.current);
+      focusGrid();
+      return;
+    }
+    if (d.kind === "select" && e.pointerType === "touch") {
+      // Variant C hold-drag ended: the B handles adjust it, the callout acts on it.
+      setCallout(lastRange(selRef.current));
       focusGrid();
       return;
     }
@@ -1703,8 +1848,12 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
     const start = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
       const d = drag.current;
-      if (d?.kind === "touch") window.clearTimeout(d.timer);
+      if (d?.kind === "touch") {
+        window.clearTimeout(d.timer);
+        window.clearTimeout(d.hold);
+      }
       if (d && d.kind !== "fill" && d.kind !== "handle") drag.current = null;
+      endHoldRef.current();
       const m = mid(e.touches);
       const rect = el.getBoundingClientRect();
       const L = live.current;
@@ -1717,6 +1866,8 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       };
     };
     const move = (e: TouchEvent) => {
+      // Variant C: an armed hold or a hold-drag owns the finger; the page must not pan under it.
+      if (holdLock.current && e.cancelable) e.preventDefault();
       const p = pinch.current;
       if (!p || e.touches.length !== 2) return;
       e.preventDefault();
@@ -1783,7 +1934,7 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
   useLayoutEffect(() => {
     if (needExact) readScroll.current();
   }, [needExact]);
-  const showHandles = coarse && touchVariant === "b" && !edit && !fillMode && sel.ranges.length === 1 && !(hWholeRows && hWholeCols);
+  const showHandles = coarse && handlesOn && !edit && !fillMode && sel.ranges.length === 1 && !(hWholeRows && hWholeCols);
   const showFillHandle = !coarse || touchVariant === "a" || fillMode;
   const handle = (end: boolean, axis: "cell" | "row" | "col", style: React.CSSProperties) => (
     <div
@@ -2104,7 +2255,11 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
           onPointerUp={onPointerUp}
           onPointerCancel={() => {
             const d = drag.current;
-            if (d?.kind === "touch") window.clearTimeout(d.timer);
+            if (d?.kind === "touch") {
+              window.clearTimeout(d.timer);
+              window.clearTimeout(d.hold);
+            }
+            endHold();
             drag.current = null;
             setFillPreview(null);
             setDrop(null);
@@ -2282,7 +2437,22 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
             <div className="sx-sig-summary">{sigHelp.sig.summary}</div>
           </div>
         ) : null}
-        {showCallout && coarse && touchVariant === "b" && !edit ? (
+        {armed ? (
+          // Variant C: the hold armed. Shown only while the finger rests; a drag replaces it.
+          <div
+            className={`sx-armed is-${armed.zone}`}
+            data-testid="armed"
+            aria-hidden="true"
+            style={
+              armed.zone === "colhead"
+                ? { left: rowHeadW + (lefts[armed.c] ?? 0) - liveLeft(), top: 0, width: widths[armed.c] ?? DEFAULT_W, height: HEADER_H }
+                : armed.zone === "rowhead"
+                  ? { left: 0, top: rowTopInView(armed.r), width: rowHeadW, height: rowH }
+                  : { left: rowHeadW + (lefts[armed.c] ?? 0) - liveLeft(), top: rowTopInView(armed.r), width: widths[armed.c] ?? DEFAULT_W, height: rowH }
+            }
+          />
+        ) : null}
+        {showCallout && coarse && handlesOn && !edit ? (
           <div className="sx-callout" role="toolbar" aria-label="Selection actions" data-testid="callout" style={{ left: calloutLeft, top: calloutTop }} onMouseDown={(e) => e.preventDefault()}>
             {(
               [

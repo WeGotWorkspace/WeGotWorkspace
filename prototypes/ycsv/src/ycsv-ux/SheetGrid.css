@@ -826,3 +826,23 @@
     min-width: 0;
   }
 }
+
+/* Spike 7 variant C: the hold armed (the finger now drags instead of pans). */
+.sx-armed {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 2px var(--sx-brand),
+    0 4px 14px rgb(0 0 0 / 0.18);
+  background: color-mix(in srgb, var(--sx-brand) 10%, transparent);
+  animation: sx-armed-in 120ms ease-out;
+}
+
+@keyframes sx-armed-in {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}

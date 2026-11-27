@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { center, nameBox, rows } from "./helpers";
-import { boxOf, doubleTap, drag, fakeKeyboard, fling, isChromium, longPress, openTouch, phone, pinch, tap, tapCell } from "./touch-helpers";
+import { boxOf, doubleTap, drag, fakeKeyboard, fling, holdDrag, holdThenPinch, isChromium, longPress, openTouch, phone, pinch, tap, tapCell } from "./touch-helpers";
 
 /**
  * Spike 7 — touch. Runs in four projects: Android phone + tablet (Chromium,
@@ -8,6 +8,18 @@ import { boxOf, doubleTap, drag, fakeKeyboard, fling, isChromium, longPress, ope
  */
 
 const rowHeader = (page: Page, n: number) => page.locator('[role="rowheader"]').filter({ hasText: new RegExp(`^${n}$`) });
+
+async function settle(page: Page) {
+  let last = -1;
+  await expect
+    .poll(async () => {
+      const now = await page.getByTestId("grid").evaluate((el) => el.scrollTop);
+      const same = now === last;
+      last = now;
+      return same;
+    }, { intervals: [150] })
+    .toBe(true);
+}
 
 async function waitTapWindow(page: Page) {
   // Let the double-tap window (350 ms) pass so the next tap is a new tap.
@@ -242,6 +254,71 @@ test.describe("8 · touch — variant B", () => {
   });
 });
 
+test.describe("8 · touch — variant C (hold-to-drag)", () => {
+  test("hold, then drag selects a range; the B handles and callout take over after the lift", async ({ page }) => {
+    await openTouch(page, "variant-c");
+    await holdDrag(page, await center(page, 1, 0), await center(page, 2, 1));
+    expect(await nameBox(page)).toBe("product2:aantal3");
+    await expect(page.getByTestId("armed")).toHaveCount(0);
+    await expect(page.getByTestId("callout")).toBeVisible();
+    await expect(page.getByTestId("handle-end")).toBeVisible();
+    await drag(page, await boxOf(page, "handle-end"), await center(page, 3, 1));
+    expect(await nameBox(page)).toBe("product2:aantal4");
+  });
+
+  test("a hold that does not move is still a tap, and double-tap still edits", async ({ page }) => {
+    await openTouch(page, "variant-c");
+    // 260 ms rest arms the drag; lifting without moving selects like a tap.
+    await holdDrag(page, await center(page, 2, 0), await center(page, 2, 0), { hold: 260, steps: 0 });
+    expect(await nameBox(page)).toBe("product3");
+    await expect(page.getByTestId("armed")).toHaveCount(0);
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await page.waitForTimeout(400);
+    await doubleTap(page, await center(page, 1, 0));
+    if (phone(page)) await expect(page.getByTestId("formula-bar")).toBeFocused();
+    else await expect(page.getByTestId("cell-input")).toBeFocused();
+  });
+
+  test("holding still opens the menu after the drag would have armed", async ({ page }) => {
+    await openTouch(page, "variant-c");
+    await longPress(page, await center(page, 1, 1));
+    await expect(page.getByRole("menu", { name: "Cell actions" })).toBeVisible();
+    await expect(page.getByTestId("armed")).toHaveCount(0);
+    expect(await nameBox(page)).toBe("aantal2");
+  });
+
+  test("hold, then drag a column header moves the column", async ({ page }) => {
+    await openTouch(page, "variant-c");
+    const before = (await rows(page))[0]!;
+    const from = await boxOf(page, "colhead-0");
+    const to = await boxOf(page, "colhead-2");
+    await holdDrag(page, from, { x: to.box.x + to.box.width - 6, y: to.y });
+    const after = (await rows(page))[0]!;
+    expect(after.slice(0, 3)).toEqual([before[1], before[2], before[0]]);
+    expect(await nameBox(page)).toMatch(/^product1:product\d+$/);
+  });
+
+  test("hold, then drag a row header moves the row", async ({ page }) => {
+    await openTouch(page, "variant-c");
+    const before = await rows(page);
+    // Row 2, not row 1: the start handle of the default A1 selection overlaps row header 1.
+    const rh = (await rowHeader(page, 2).boundingBox())!;
+    const target = (await rowHeader(page, 4).boundingBox())!;
+    await holdDrag(page, { x: rh.x + rh.width / 2, y: rh.y + rh.height / 2 }, { x: rh.x + rh.width / 2, y: target.y + target.height - 4 });
+    const after = await rows(page);
+    expect(after.slice(0, 4)).toEqual([before[0], before[2], before[3], before[1]]);
+  });
+
+  test("hold, then drag a column header edge resizes the column", async ({ page }) => {
+    await openTouch(page, "variant-c");
+    const h = await boxOf(page, "colhead-1");
+    const edge = { x: h.box.x + h.box.width - 4, y: h.y };
+    await holdDrag(page, edge, { x: edge.x + 60, y: edge.y });
+    const w = (await boxOf(page, "colhead-1")).box.width;
+    expect(Math.round(w - h.box.width)).toBeGreaterThanOrEqual(50);
+  });
+});
+
 test.describe("8 · touch — Chromium-only gestures (real touch input)", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "needs CDP touch input");
 
@@ -254,6 +331,37 @@ test.describe("8 · touch — Chromium-only gestures (real touch input)", () => 
       await expect.poll(() => page.getByTestId("grid").evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
       expect(await nameBox(page)).toBe("naam4");
     }
+  });
+
+  test("variant C: a quick swipe still pans (no hold), and only a rested finger selects", async ({ page }) => {
+    await openTouch(page, "frozen-c");
+    await tapCell(page, 3, 1);
+    const from = await center(page, 8, 1);
+    await holdDrag(page, from, { x: from.x, y: from.y - 300 }, { hold: 0, steps: 10, stepMs: 8 });
+    await expect.poll(() => page.getByTestId("grid").evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+    expect(await nameBox(page)).toBe("naam4");
+    // Let the momentum stop first: a finger that lands on a moving list catches the fling, it does not arm.
+    await settle(page);
+    const top = await page.getByTestId("grid").evaluate((el) => el.scrollTop);
+    // Middle of the grid, away from the edge auto-scroll bands.
+    const g = (await page.getByTestId("grid").boundingBox())!;
+    const a = { x: (await center(page, 8, 1)).x, y: g.y + g.height / 2 - 40 };
+    await holdDrag(page, a, { x: a.x, y: a.y + 2 * 36 }, { hold: 260 });
+    expect(await page.getByTestId("grid").evaluate((el) => el.scrollTop)).toBe(top);
+    expect(await nameBox(page)).toMatch(/^[a-z]+\d+:[a-z]+\d+$/);
+  });
+
+  test("variant C: a second finger after a hold pinches, it does not select", async ({ page }) => {
+    await openTouch(page, "frozen-c");
+    await page.evaluate(() => localStorage.removeItem("ycsv-grid-zoom"));
+    await tapCell(page, 3, 1);
+    const g = (await page.getByTestId("grid").boundingBox())!;
+    await holdThenPinch(page, { x: g.x + g.width / 2, y: g.y + g.height / 2 }, 260, 100, 180);
+    expect(Number(await page.getByTestId("body").getAttribute("data-row-h"))).toBeGreaterThan(55);
+    expect(await nameBox(page)).toBe("naam4");
+    await expect(page.getByTestId("armed")).toHaveCount(0);
+    expect(await page.evaluate(() => window.visualViewport?.scale)).toBe(1);
+    await page.evaluate(() => localStorage.removeItem("ycsv-grid-zoom"));
   });
 
   test("pinch zooms the grid, not the page, around the fingers", async ({ page }) => {

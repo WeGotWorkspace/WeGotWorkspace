@@ -92,3 +92,88 @@ test("momentum scroll and pinch at 10k rows", async ({ page }) => {
   mkdirSync("docs/spike-7-touch", { recursive: true });
   writeFileSync("docs/spike-7-touch/perf-results.json", JSON.stringify({ at: new Date().toISOString(), device: "Pixel 7 emulation, headless Chromium", results }, null, 2));
 });
+
+/**
+ * Variant C next to B at 10k rows: flings (does the extra non-passive hold
+ * check cost frames?) and a hold-drag range selection that rests on the bottom
+ * edge for 2 s (edge auto-scroll while the selection grows).
+ *   PERF=1 SB_PORT=6027 pnpm exec playwright test e2e/touch-perf.spec.ts --project=touch-perf -g "variant C"
+ */
+test("variant C next to B: flings and a hold-drag into the edge", async ({ page }) => {
+  type R = { variant: string; cpu: number; kind: string; frames: number; fps: number; p95: number; worst: number; over20: number; blank: number; scrolled: number };
+  const results: R[] = [];
+  const rec = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { __gaps: number[]; __stop: boolean };
+      w.__gaps = [];
+      w.__stop = false;
+      let prev = 0;
+      const tick = (t: number) => {
+        if (prev) w.__gaps.push(t - prev);
+        prev = t;
+        if (!w.__stop) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  const stop = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { __gaps: number[]; __stop: boolean };
+      w.__stop = true;
+      const g = w.__gaps.slice(1);
+      const s = [...g].sort((a, b) => a - b);
+      return { frames: g.length, fps: Math.round((g.length / g.reduce((a, b) => a + b, 0)) * 1000), p95: Math.round(s[Math.floor(s.length * 0.95)] ?? 0), worst: Math.round(s[s.length - 1] ?? 0), over20: g.filter((x) => x > 20).length };
+    });
+  for (const cpu of [1, 4]) {
+    for (const [variant, story] of [
+      ["b", "ten-thousand-rows"],
+      ["c", "ten-thousand-rows-c"],
+    ] as const) {
+      await page.goto(`/iframe.html?id=spike-7-touch--${story}&viewMode=story`);
+      await expect(page.getByTestId("grid")).toBeVisible();
+      await page.evaluate(() => localStorage.removeItem("ycsv-grid-zoom"));
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpu });
+      const grid = page.getByTestId("grid");
+      const g = (await grid.boundingBox())!;
+      const at = { x: g.x + Math.min(g.width - 40, 200), y: g.y + g.height * 0.7 };
+      for (const dy of [-2500, -2500]) {
+        await page.evaluate(() => window.__touchHud?.reset());
+        const top0 = await grid.evaluate((el) => el.scrollTop);
+        await cdp.send("Input.synthesizeScrollGesture", { x: at.x, y: at.y, yDistance: dy, speed: 6000, gestureSourceType: "touch", preventFling: false });
+        let last = -1;
+        for (let i = 0; i < 40; i += 1) {
+          await page.waitForTimeout(200);
+          const t = await grid.evaluate((el) => el.scrollTop);
+          if (t === last) break;
+          last = t;
+        }
+        const hud = await page.evaluate(() => ({ ...window.__touchHud! }));
+        results.push({ variant, cpu, kind: "fling", frames: hud.frames, fps: hud.fps, p95: hud.p95, worst: hud.worst, over20: hud.over20, blank: hud.gaps, scrolled: Math.round(Math.abs(last - top0)) });
+      }
+      if (variant === "c") {
+        // Hold on a cell, drag to the bottom edge, rest there 2 s while the grid auto-scrolls.
+        const top0 = await grid.evaluate((el) => el.scrollTop);
+        const from = { x: at.x, y: g.y + g.height * 0.4 };
+        const edge = { x: at.x, y: g.y + g.height - 8 };
+        const send = (type: string, p?: { x: number; y: number }) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ ...p, id: 0 }] : [] } as never);
+        await send("touchStart", from);
+        await page.waitForTimeout(260);
+        await rec();
+        for (let i = 1; i <= 10; i += 1) {
+          await send("touchMove", { x: from.x, y: from.y + ((edge.y - from.y) * i) / 10 });
+          await page.waitForTimeout(16);
+        }
+        await page.waitForTimeout(2000);
+        const r = await stop();
+        await send("touchEnd");
+        const scrolled = Math.round((await grid.evaluate((el) => el.scrollTop)) - top0);
+        results.push({ variant, cpu, kind: "hold-drag to edge", ...r, blank: 0, scrolled });
+        expect(await page.getByTestId("namebox").textContent()).toMatch(/:/);
+      }
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+      await cdp.detach();
+    }
+  }
+  console.table(results);
+  writeFileSync("docs/spike-7-touch/perf-c-results.json", JSON.stringify({ at: new Date().toISOString(), device: "Pixel 7 emulation, headless Chromium", results }, null, 2));
+});
