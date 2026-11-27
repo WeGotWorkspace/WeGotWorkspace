@@ -1,15 +1,15 @@
 import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
-import {
-  enqueueOutboxMutation,
-  listOutboxMutationsForDomain,
-  putOutboxMutation,
-} from "@/lib/offline/core/outbox-store";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   readDriveEntryFromCache,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
+import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import { DRIVE_DOMAIN, driveEntriesTable } from "@/lib/offline/drive/drive-schema";
+import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
 import { mergeTagDeltas, type TagDelta } from "@/lib/tags/tag-delta";
 import { normalizeTag } from "@/lib/tags/tag-rules";
 
@@ -29,48 +29,65 @@ export function tagsAfterDelta(tags: readonly string[], delta: TagDelta): string
   return next;
 }
 
-/** Writes the tags of a cached tree row, if the row is cached. Returns the tags written. */
-async function writeCachedEntryTags(
-  username: string,
-  path: string,
-  next: (current: readonly string[]) => string[],
-): Promise<string[] | null> {
-  const entry = await readDriveEntryFromCache(username, path);
-  if (!entry) return null;
-  const tags = next(entry.tags ?? []);
-  const { tags: _previous, ...rest } = entry;
-  await upsertDriveEntry(username, tags.length > 0 ? { ...rest, tags } : rest);
-  return tags;
+/** The domains whose outbox can hold a tag row: Drive and Docs share the one tree. */
+const TAG_DOMAINS: readonly string[] = [DRIVE_DOMAIN, DOCS_DOMAIN];
+
+function queuedTagsPath(row: OfflineOutboxRow): string | null {
+  if (row.op !== "tags" || !TAG_DOMAINS.includes(row.domain)) return null;
+  try {
+    return (JSON.parse(row.payload) as DriveTagsOutboxPayload).path;
+  } catch {
+    return null;
+  }
 }
 
-async function queueTagsMutation(
+/**
+ * Applies the delta to the cached row and queues it, in one transaction: a flush
+ * settling the row (`settleSentOutboxMutation`) sees the merged delta or the old one,
+ * never a lost write, and two tabs cannot overwrite each other's merge. One row is
+ * kept per path, in whichever of Drive and Docs queued it first, so a later remove
+ * is never undone by an older add sitting in the other app's outbox.
+ */
+async function applyAndQueueTags(
   username: string,
   domain: string,
-  payload: DriveTagsOutboxPayload,
-): Promise<void> {
-  const queued = (await listOutboxMutationsForDomain(username, domain)).find((row) => {
-    if (row.op !== "tags") return false;
-    try {
-      return (JSON.parse(row.payload) as DriveTagsOutboxPayload).path === payload.path;
-    } catch {
-      return false;
-    }
-  });
-  if (!queued) {
-    await enqueueOutboxMutation(username, {
-      id: crypto.randomUUID(),
-      domain,
-      op: "tags",
-      payload: JSON.stringify(payload),
-    });
-    return;
-  }
-  const merged = mergeTagDeltas(JSON.parse(queued.payload) as TagDelta, payload);
-  await putOutboxMutation(username, {
-    ...queued,
-    payload: JSON.stringify({ op: "tags", path: payload.path, ...merged }),
-    retries: 0,
-  });
+  path: string,
+  delta: TagDelta,
+): Promise<string[] | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return db.transaction(
+    "rw",
+    [driveEntriesTable(db), driveUploadItemsTable(db), db.outbox],
+    async () => {
+      const entry = await readDriveEntryFromCache(username, path);
+      let tags: string[] | null = null;
+      if (entry) {
+        tags = tagsAfterDelta(entry.tags ?? [], delta);
+        const { tags: _previous, ...rest } = entry;
+        await upsertDriveEntry(username, tags.length > 0 ? { ...rest, tags } : rest);
+      }
+      const queued = (await db.outbox.toArray()).find((row) => queuedTagsPath(row) === path);
+      if (!queued) {
+        const newest = await db.outbox.orderBy("createdAt").last();
+        await db.outbox.put({
+          id: crypto.randomUUID(),
+          domain,
+          op: "tags",
+          payload: JSON.stringify({ op: "tags", path, ...delta }),
+          createdAt: Math.max(Date.now(), (newest?.createdAt ?? 0) + 1),
+          retries: 0,
+        });
+        return tags;
+      }
+      const merged = mergeTagDeltas(JSON.parse(queued.payload) as TagDelta, delta);
+      await db.outbox.put({
+        ...queued,
+        payload: JSON.stringify({ op: "tags", path, ...merged }),
+        retries: 0,
+      });
+      return tags;
+    },
+  );
 }
 
 /**
@@ -83,6 +100,8 @@ export function createHybridSetTags(
   live: DriveAPIOperations,
   domain: string,
   notify: () => void,
+  /** Sends the queued edit now: the browser may be online, so no reconnect will. */
+  flushAfterQueue: () => void,
 ): NonNullable<DriveAPIOperations["setTags"]> {
   return async (input, opts) => {
     const path = normalizeApiVirtualPath(input.path);
@@ -90,21 +109,26 @@ export function createHybridSetTags(
       ...(input.tagsAdd?.length ? { tagsAdd: input.tagsAdd } : {}),
       ...(input.tagsRemove?.length ? { tagsRemove: input.tagsRemove } : {}),
     };
+    if (!delta.tagsAdd && !delta.tagsRemove) {
+      return (await readDriveEntryFromCache(username, path))?.tags ?? [];
+    }
     if (readBrowserOnline() && live.setTags) {
       try {
         const tags = await live.setTags({ path, ...delta }, opts);
-        await writeCachedEntryTags(username, path, () => tags);
+        const entry = await readDriveEntryFromCache(username, path);
+        if (entry) {
+          const { tags: _previous, ...rest } = entry;
+          await upsertDriveEntry(username, tags.length > 0 ? { ...rest, tags } : rest);
+        }
         notify();
         return tags;
       } catch (error) {
         if (opts?.signal?.aborted || !isFetchNetworkError(error)) throw error;
       }
     }
-    const tags = await writeCachedEntryTags(username, path, (current) =>
-      tagsAfterDelta(current, delta),
-    );
-    await queueTagsMutation(username, domain, { op: "tags", path, ...delta });
+    const tags = await applyAndQueueTags(username, domain, path, delta);
     notify();
+    if (readBrowserOnline()) flushAfterQueue();
     return tags ?? [];
   };
 }

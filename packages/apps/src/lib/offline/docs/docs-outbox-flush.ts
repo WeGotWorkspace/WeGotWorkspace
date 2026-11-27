@@ -8,6 +8,7 @@ import {
   listOutboxMutationsForDomain,
   putOutboxMutation,
   removeOutboxMutation,
+  settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { normalizeDocsAvailabilityPath } from "@/lib/offline/docs/docs-availability-store";
@@ -65,7 +66,7 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
       return row;
     },
     parse: parsePayload,
-    send: async (payload, row) => {
+    send: async (payload, row, context) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -93,11 +94,15 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
       } else if (payload.op === "tags") {
-        await drive.setTags?.({
+        if (!drive.setTags) throw new Error("Tags are not offered");
+        await drive.setTags({
           path: payload.path,
           tagsAdd: payload.tagsAdd,
           tagsRemove: payload.tagsRemove,
         });
+        // A delta merged in while this was sent stays queued and is sent again.
+        context.resend(await settleSentOutboxMutation(username, row));
+        return "handled";
       }
     },
     onFailure: (failure) => {

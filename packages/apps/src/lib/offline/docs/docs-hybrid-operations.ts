@@ -375,10 +375,16 @@ export function createHybridDocsDriveOperations(username: string): DriveAPIOpera
       }
       return readDocsStarredPaths(username);
     },
-    setTags: createHybridSetTags(username, live, DOCS_DOMAIN, () => {
-      notifyDriveRemoteChange(username);
-      notifyDocsCachesChanged(username);
-    }),
+    setTags: createHybridSetTags(
+      username,
+      live,
+      DOCS_DOMAIN,
+      () => {
+        notifyDriveRemoteChange(username);
+        notifyDocsCachesChanged(username);
+      },
+      () => void runnerFor(username).flushAfterWrite(),
+    ),
     setStar: async (input, opts) => {
       const path = normalizeApiVirtualPath(input.path);
       if (readBrowserOnline()) {

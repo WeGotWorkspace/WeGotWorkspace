@@ -388,8 +388,12 @@ export function createHybridDriveOperations(
       await queueOfflineDriveUploadFiles(username, input);
       return offlineQueuedDriveData(username, cwd);
     },
-    setTags: createHybridSetTags(username, live, DRIVE_DOMAIN, () =>
-      notifyDriveRemoteChange(username),
+    setTags: createHybridSetTags(
+      username,
+      live,
+      DRIVE_DOMAIN,
+      () => notifyDriveRemoteChange(username),
+      () => void runnerFor(username).flushAfterWrite(),
     ),
     ...driveUploadQueueOperations(username),
     downloadFile: async (path, opts) => {

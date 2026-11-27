@@ -4,6 +4,7 @@ import { parseOutboxPayload, runOutboxFlush } from "@/lib/offline/core/outbox-fl
 import {
   listOutboxMutationsForDomain,
   removeOutboxMutation,
+  settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
@@ -56,7 +57,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
     // An old upload whose folder is not known yet: it stays until it moves to the queue.
     prepare: async (row) => (readLegacyDriveOutboxUpload(row) ? null : row),
     parse: parsePayload,
-    send: async (payload) => {
+    send: async (payload, row, context) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -79,11 +80,15 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         const paths = await drive.listStars();
         await writeDocsStarredPaths(username, paths);
       } else if (payload.op === "tags") {
-        await drive.setTags?.({
+        if (!drive.setTags) throw new Error("Tags are not offered");
+        await drive.setTags({
           path: payload.path,
           tagsAdd: payload.tagsAdd,
           tagsRemove: payload.tagsRemove,
         });
+        // A delta merged in while this was sent stays queued and is sent again.
+        context.resend(await settleSentOutboxMutation(username, row));
+        return "handled";
       }
     },
     onFailure: (failure) => {
