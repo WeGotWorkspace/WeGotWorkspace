@@ -88,7 +88,14 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
     ref equals header text first, then position (C1–C5). Build consequence:
     `.csv` needs a Yjs sidecar and Sheets routing. See
     [CSV first](#csv-first-header-in-the-body-csv-stays-csv).
-11. **Spec.** 32 proposals in Appendix B (P1 rejected; P2/P27, P31, P32
+11. **Named header columns without frontmatter (P33, P34, proposals).**
+    Frontmatter becomes optional in `.ycsv` too (first line exactly `---`
+    or not). Refs then come from the header text alone: the text itself,
+    quoted when it is not an identifier or ends in a digit
+    (`'Prijs incl. BTW'3`, `'kw1'2`), case-insensitive, no name for empty
+    or duplicate headers. Renaming a header by hand breaks formulas; our
+    editor is safe. See [Refs from the header text](#refs-from-the-header-text-p33-p34).
+12. **Spec.** 34 proposals in Appendix B (P1 rejected; P2/P27, P31, P32
     accepted). The ones that matter
    most:
    - **P29**: frontmatter addresses (`cells`, `merges`, `notes`) use the same
@@ -754,7 +761,7 @@ checked the suggested pure-position rule (header text = display name,
 | Hand-typed, a column moved in the source | types, validation and formula targets move to the wrong column, silently | columns follow their header |
 | Outside tool (CSV editor, script, Excel over DAV) reorders columns | silently wrong | follows, except for columns whose header text is not their ref; those attach by position **with a warning** |
 | Outside tool renames a header | still right (position unchanged) | falls back to position, so still right |
-| Outside tool adds a column | the new column takes the next definition if it sits in the middle (wrong) | untyped new column, ref = slug(header) |
+| Outside tool adds a column | the new column takes the next definition if it sits in the middle (wrong) | untyped new column, ref = header text (P33) |
 | Outside tool removes a column | the definitions after it shift onto the wrong columns | the definition is unused, with a warning; formulas using it give `#REF!` |
 
 So I propose:
@@ -767,8 +774,8 @@ So I propose:
   warning.
 - **C5:** without a header, position only, and `name` is the display name.
 
-Writers give a new column `ref` = slug(header text) so that C2 keeps
-working; renaming a header later keeps the ref.
+Writers give a new column `ref` = its header text (P33, below), so C2
+keeps working and the writer need not write `ref` at all.
 
 Prototype: `interop/csv/resolve-columns.ts`. Its 9 cases cover hand-typed,
 reordered, display-name, renamed, added and removed columns, `name` under a
@@ -796,6 +803,77 @@ with display-name headers is the one weak spot, and it warns.
 - **Dialect preservation:** see the last point above.
 - **`=` is text in a plain `.csv`:** a value starting with `=` is text,
   because CSV has no formulas; typing a formula is the trigger.
+
+### Refs from the header text (P33, P34)
+
+Wouter: "de koprij bovenaan was ook fijn omdat je dan named header rows hebt
+zonder frontmatter, waarnaar je kunt verwijzen in formules." Both parts are
+written into the spec as proposals.
+
+**P34: frontmatter is optional in `.ycsv` too** (spec §2, A.2). A file has
+frontmatter only when its first line, after an optional BOM, is exactly
+`---`. Otherwise the whole file is one CSV body with a detected header,
+refs from the header text and formulas allowed:
+
+```
+product,prijs,aantal,totaal
+Appels,0.45,6,=prijs1*aantal1
+Brood,2.99,2,=prijs2*aantal2
+```
+
+In such a file a `---` line is data (writers quote it as `"---"`), and a
+second sheet needs frontmatter. Today the spec makes frontmatter mandatory
+and a missing `---` an error.
+
+**P33: refs from the header text alone** (spec §4.4, folded into P12/P28).
+There is nowhere to store a generated ref, so every reader must derive the
+same ref from the text. Two options:
+
+| | Normalise (slug) | Text as ref, quoted when needed (proposed) |
+|---|---|---|
+| `Prijs incl. BTW` | `prijs_incl_btw3`: not what the user sees | `'Prijs incl. BTW'3` |
+| `kw1` | still ends in a digit, so needs a suffix (`kw1_`) or quoting anyway | `'kw1'3` |
+| `Prijs-incl` and `Prijs incl` | collide after slugging | distinct |
+| `categorieën` | needs a choice: keep letters or transliterate (differs per library) | `categorieën3` as is |
+| Hand-typed `prijs` | `prijs3` | `prijs3` |
+
+So the proposal keeps the text (H1: NFC, trimmed, whitespace folded) and
+uses the existing quoted-ref syntax of P12/P28 (H2). Refs compare
+case-insensitively (H3), like Excel and LibreOffice names; that changes
+"case-sensitive" in P12/P28. Empty headers (H4) and duplicate headers (H5,
+all of them, not "first wins") get no name and fall back to their letter
+(H6) with a warning. A positional suffix for duplicates (`naam_2`) was
+rejected: when a column moves, formulas would silently follow the wrong
+column.
+
+**Tests** (`interop/csv/header-refs.ts`, 14 cases):
+- the H1–H6 cases above, each checked as A1 → YCSV → A1 through the
+  importer's translator (`a1ToYcsv`, `ycsvToA1`);
+- the corpus: every header row of every CSV in `interop/fixtures/` (studio
+  workbook from Excel, LibreOffice and Numbers, the Google shape, the
+  Numbers natives, hand-made CSVs). All round-trip. Headers that need
+  quoting there: `BTW tarief`, `Overzicht Q1 2026`, `Table 1`, and `0.21` and
+  `21%` (rows 1 that detection rejects as headers anyway);
+- the hand-typing case (`product,prijs,aantal` → `prijs3`), and
+  `prijs3` finding the header `Prijs`.
+
+`resolve-columns.ts` (C2) now compares refs with the same rule, and still
+accepts a slug match, because the XLSX importer writes slugged refs
+(`btw_tarief`) in `columns`. Changing the importer to write the header text
+is left for when P33 is decided.
+
+**Renaming a header** (spec §4.4):
+- **Hand-edited file, no `columns`:** formulas with the old name give
+  `#REF!` with a warning. The reader cannot tell a rename from a removed
+  plus an added column. This is tested.
+- **With `columns`:** the ref stays pinned; the column attaches by position
+  with a warning, and formulas keep working.
+- **Our editor:** safe. Yjs keeps formulas by column id, and the writer
+  writes the new name into every formula. Proposal: always do this, so a
+  file reads the same with and without frontmatter.
+- **Outside tool renames:** like hand-editing. Proposal: when exactly one
+  header changed at the same position since the last version the editor
+  saw, offer to rename the ref in the formulas; never do it unasked.
 
 ## Open questions
 
@@ -888,7 +966,7 @@ with display-name headers is the one weak spot, and it warns.
 | `interop/xlsx/` | Probe, A1 ↔ YCSV translator, importer, evaluator, exporter, end-to-end test |
 | `interop/formulas/` | v1 function set vs LibreOffice; formulajs direct calls |
 | `interop/notation/` | Canonical ↔ locale formula converter and tests |
-| `interop/csv/` | Header detection (rules D1–D7), `columns` matching (C1–C5), tests |
+| `interop/csv/` | Header detection (rules D1–D7), `columns` matching (C1–C5), refs from header text (H1–H6), tests |
 | `interop/fixtures/files/numbers/` | Numbers 15.1 fixtures: `.numbers`, Numbers' XLSX and CSV exports |
 | `interop/xlsx/numbers.test.ts` | Numbers values vs LibreOffice, `.numbers` read/write; opening in Numbers is opt-in (`NUMBERS_E2E=1`) |
 

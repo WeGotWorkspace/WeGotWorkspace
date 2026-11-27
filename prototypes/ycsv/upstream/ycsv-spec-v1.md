@@ -47,6 +47,26 @@ The first `---`...`---` block is always YAML frontmatter. Every subsequent
 `---`-separated block is a CSV body, in the same order as the `sheets` array.
 Cross-file references are not supported — all sheets must be in the same file.
 
+> **Proposal (spike 11, P34): frontmatter is optional, in `.ycsv` too.**
+> Wouter: "de koprij bovenaan was ook fijn omdat je dan named header rows hebt zonder frontmatter, waarnaar je kunt verwijzen in formules."
+> - **How to tell.** A file has frontmatter when its first line, after an
+>   optional BOM, is exactly `---` (trailing spaces or tabs allowed, LF or
+>   CRLF). Otherwise the whole file is one CSV body.
+> - **Without frontmatter** the file is a single sheet: `header` is detected
+>   (§4.1, D1–D7), `columns` is absent, refs come from the header text
+>   (§4.4), and formulas are allowed (`=prijs1*aantal1`). This is what makes
+>   a hand-typed file with named columns work without any YAML.
+> - **A `---` line in a file without frontmatter is data** (a one-cell row),
+>   not a sheet separator. A second sheet needs frontmatter. A writer that
+>   writes a file without frontmatter quotes a cell whose value is `---`
+>   (`"---"`), so the file cannot be read as having frontmatter.
+> - **`.ycsv` vs `.csv` without frontmatter** have the same content. The
+>   extension decides what the editor may add without asking (§2.4): a
+>   `.ycsv` may gain frontmatter freely, a `.csv` asks first.
+> - **Writers add frontmatter only when needed:** for `header` when the
+>   detected value is not the wanted one, for `columns`, defs, cells,
+>   styles, charts or a second sheet.
+
 ### 2.1 File extension
 
 `.ycsv`
@@ -372,7 +392,7 @@ YCSV resolves column identity in the following order:
 | ---------------------------------------- | ----------------------------------------- |
 | `columns` with `ref` + header row in CSV | `ref` names, matched by name              |
 | `columns` with `ref`, no header row      | position, `ref` from frontmatter          |
-| No `columns`, header row present         | header values used as refs, no types      |
+| No `columns`, header row present         | header values used as refs, no types (§4.4, P33) |
 | No `columns`, no header row              | position, A-Z fallback (`A`, `B`, `C`...) |
 
 ### 4.1 Header row
@@ -442,19 +462,21 @@ With a header row:
   the header text. Writers do not write `name` for a sheet with
   `header: true`.
 - **C2 — Match by ref first.** A definition whose `ref` equals a header text
-  (trimmed, case-insensitive, compared as slugs) attaches to that column,
+  (compared as in §4.4: NFC, trimmed, whitespace folded, case-insensitive;
+  a slug match also counts, for refs that older importers slugged) attaches
+  to that column,
   wherever it is in the CSV. When a hand-typed or tool-edited CSV moves
   columns, they keep their type and their formulas.
 - **C3 — Then by position.** Definitions that matched nothing attach to the
   remaining columns in order, with a warning (header text ≠ ref).
 - **C4 — Count differences.**
   - More CSV columns than definitions: the extra columns are untyped, and
-    their ref is the slug of the header text.
+    their ref is the header text (§4.4).
   - More definitions than CSV columns: the extra definitions are unused and
     the reader warns. Formulas that use their refs give `#REF!`.
-- **Writers keep C2 working.** A new column gets `ref` = slug of its header
-  text. Renaming the header later keeps the ref, so formulas do not change,
-  and the column falls back to C3.
+- **Writers keep C2 working.** A new column gets `ref` = its header text
+  (§4.4), so a writer need not write `ref` at all when it equals the header.
+  When a header is renamed in our editor, see §4.4 "Renaming a header".
 
 Without a header row:
 
@@ -465,6 +487,73 @@ Trade-off: a pure position rule is simpler, but when an outside tool
 reorders the columns, types, validation and formula targets silently move to
 the wrong column. With C2, that only happens to columns whose header text is
 not their ref, and then the reader warns.
+
+### 4.4 Refs from the header text
+
+> **Proposal (spike 11, P33).** Not decided. Folds into P12/P28 (Appendix B.4). Prototype and cases: `prototypes/ycsv/interop/csv/header-refs.ts`.
+
+A file without frontmatter (§2, P34), or a sheet with a header and no
+`columns`, has nowhere to store a generated ref. So the ref follows from the
+header text alone, by a fixed rule that every reader applies the same way.
+The rule keeps the text as it is and uses the quoted-ref syntax of P12/P28
+for anything that is not a plain identifier. It does not slug.
+
+- **H1 — The ref is the header text,** in Unicode NFC, trimmed, with every
+  run of whitespace replaced by one space. `  BTW   tarief ` gives
+  `BTW tarief`.
+- **H2 — Bare or quoted in formulas.** The ref is written bare when it is an
+  identifier (`[\p{L}_][\p{L}\p{N}_]*`) that does not end in a digit, and
+  quoted otherwise, with `'` doubled inside:
+
+  | Header | Formula, row 3 | Why |
+  | ------ | -------------- | --- |
+  | `prijs` | `prijs3` | identifier |
+  | `categorieën`, `Größe`, `数量` | `categorieën3` … | Unicode letters are identifier letters |
+  | `Prijs incl. BTW` | `'Prijs incl. BTW'3` | space and dot |
+  | `kw1` | `'kw1'3` | ends in a digit: `kw13` would read as `kw` row 13 |
+  | `Q1` | `'Q1'3` | ends in a digit (and looks like A1) |
+  | `Jan's uren` | `'Jan''s uren'3` | apostrophe doubled |
+
+- **H3 — Case-insensitive.** Refs compare case-insensitively (Unicode lower
+  case), like names in Excel and LibreOffice: `prijs3` finds the header
+  `Prijs`. Writers keep the header's own spelling. This replaces "case-
+  sensitive" in P12/P28.
+- **H4 — An empty header cell gives no ref.**
+- **H5 — Duplicate header texts give no ref,** all of them, compared after
+  H1 and H3 (`naam`, `Naam`). Not "the first one wins" and not a suffix by
+  position: when a column moves, a positional suffix would make formulas
+  point at another column without any sign.
+- **H6 — Columns without a ref use their letter** (§4.2), unless that letter
+  is the ref of another column (a header `A`); then the column has no ref
+  and formulas can only reach it after it gets a header. Header refs win.
+- **Never silent.** Each column that loses its name under H4–H6 is a reader
+  warning, and a formula that uses a name with no column gives `#REF!`
+  (`#NAME?` in Excel terms) with a warning.
+
+Letters are refs only for columns without a ref (§4.2). With a header row,
+`B3` is not column B when column B has a header; it is the column whose
+header is `B`, or `#REF!`.
+
+**Renaming a header.**
+- **In a hand-edited file it breaks formulas.** The ref is the text, so
+  after renaming `prijs` to `stukprijs` in the source, `=prijs3` gives
+  `#REF!` with a warning. The reader cannot tell a rename from a removed
+  column plus a new one. People who type source rename the header and the
+  formulas together, as with any name in a text file.
+- **In a file with `columns`,** the ref can stay pinned: a definition with
+  `ref: prijs` and header `stukprijs` attaches by position (C3, with a
+  warning), and `=prijs3` keeps working.
+- **In our editor it is safe.** The Yjs document keeps formulas by column
+  and row id, so a rename changes the header only. When the editor writes
+  the file form, it writes formulas with the new ref (`=stukprijs3`).
+  Proposal: the editor always does this, so the file stays readable without
+  `columns.ref` and behaves the same with and without frontmatter.
+- **An outside tool that renames a header** (Excel over DAV, a script) is
+  the hand-edited case: formulas with the old name give `#REF!` after the
+  next read, with a warning. Proposal: when a read finds a ref that is
+  unknown and exactly one header disappeared at the same position since the
+  last version our editor saw, the editor offers to rename the ref in the
+  formulas. It must not do that by itself.
 
 ---
 
@@ -1085,6 +1174,10 @@ Implementations must produce equivalent results.
 
 ### A.2 Step 1 — Split frontmatter and body
 
+> **Proposal (spike 11, P34):** a file whose first line (after an optional
+> BOM) is not exactly `---` has no frontmatter: `frontmatter = {}` and the
+> whole file is one CSV body. The error below then never applies.
+
 ```
 if file does not start with "---\n":
   error: "missing frontmatter opening marker"
@@ -1255,7 +1348,7 @@ for each chart in charts:
 > `prototypes/ycsv/docs/spike-11-conformance-results.md`. The sections they
 > would change carry a short "Proposal (spike 11)" note.
 
-Each proposal has an id (P1…P32). The ids match the spike report.
+Each proposal has an id (P1…P34). The ids match the spike report.
 P1 was rejected; P2/P27, P31 and P32 were accepted (details per entry).
 
 ### B.1 Rows, header and body
@@ -1335,6 +1428,15 @@ normalised to LF on read. Writers emit LF.
 **P26 / P19 — Trailing empty rows.** Empty rows at the end of a body carry no
 meaning and may be dropped by writers. Readers must not rely on them.
 
+**P34 — Frontmatter is optional, in `.ycsv` too** (§2, A.2, proposal).
+Wouter wants named header columns usable in formulas without any YAML. A
+file has frontmatter only when its first line (after an optional BOM) is
+exactly `---`; otherwise it is one sheet whose whole content is the CSV
+body, with `header` detected (§4.1) and refs from the header text (§4.4,
+P33). In such a file a `---` line is data, and writers quote it. Writers
+add frontmatter only when something needs it. Today §2 and A.2 make
+frontmatter mandatory and a missing opening marker an error.
+
 ### B.2 Sheets
 
 **P3 / P17 — Sheet fields.** A `ref` follows the same grammar as a column
@@ -1402,6 +1504,21 @@ it, exporters write it back.
 not fit, or ends in a digit, is quoted in formulas: `'Zo Doen'2`,
 `'kw1'2`. Refs are case-sensitive in the file and must be unique per sheet;
 duplicates are an error, not a silent rename.
+*Amended by P33:* a ref may be any non-empty text (it is quoted when it is
+not an identifier), refs compare case-insensitively, and they must be
+unique per sheet case-insensitively. Refs from header text follow §4.4
+(H1–H6); duplicate header texts lose their name with a warning instead of
+being an error, since the CSV body must stay readable.
+
+**P33 — Refs from the header text alone** (§4.4, proposal). Needed by P34
+and by every sheet with a header and no `columns`. The ref is the header
+text (NFC, trimmed, whitespace folded), quoted in formulas when it is not an
+identifier or ends in a digit, compared case-insensitively. Empty and
+duplicate headers get no name (letter fallback, warning). Renaming a header
+in the source breaks formulas that use the old name; the editor is safe
+because it rewrites refs from Yjs ids. Prototype:
+`prototypes/ycsv/interop/csv/header-refs.ts`; the fixture corpus (every
+header row in `interop/fixtures/`) round-trips A1 → YCSV → A1.
 
 **P13 — Range defs.** A def value may be a formula that yields a range:
 `cats: =categorieën!$id$2:$korting$4`. This is how Excel named ranges

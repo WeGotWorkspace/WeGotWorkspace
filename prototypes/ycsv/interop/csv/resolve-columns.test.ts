@@ -36,7 +36,7 @@ describe("columns as enrichment of a CSV header (C1–C5)", () => {
   });
 
   test("extra CSV column (outside writer appended one)", () => {
-    expect(refs(resolveColumns(["product", "prijs", "aantal", "Opmerking"], 4, defs))).toEqual(["product:string:name", "prijs:currency:name", "aantal:number:name", "opmerking:-:none"]);
+    expect(refs(resolveColumns(["product", "prijs", "aantal", "Opmerking"], 4, defs))).toEqual(["product:string:name", "prijs:currency:name", "aantal:number:name", "Opmerking:-:none"]);
   });
 
   test("CSV column removed: the definition is unused, warned", () => {
