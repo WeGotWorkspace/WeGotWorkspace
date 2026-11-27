@@ -431,12 +431,13 @@ final class FileNodeIndexService
             $descendant->save();
         }
 
-        $this->tags->dropOnSpaceChange($fromKey, $toKey, array_column($moved, 'node_id'));
+        $seq = $this->seq->next();
+        $this->tags->dropOnSpaceChange($fromKey, $toKey, array_column($moved, 'node_id'), (string) $row->node_id, $seq);
+
         $isDir = (bool) $row->is_dir;
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
-        $seq = $this->seq->next();
         $row->change_seq = $seq;
         $row->save();
         if ($fromKey !== $toKey) {

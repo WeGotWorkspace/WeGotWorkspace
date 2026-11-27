@@ -69,6 +69,31 @@ final class JmapFileNodeTagsScopeTest extends WgwDatabaseTestCase
         $this->assertSame([], $after[$theirs]['tags']);
     }
 
+    public function test_a_folder_move_across_spaces_reports_tagged_descendants_in_changes(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/dir/a.txt', 'a');
+        $disk->put('users/bob/dir/plain.txt', 'b');
+        $nodes = $this->fileNodeGetAll();
+        $child = $this->fileNodeIdByName($nodes, 'a.txt');
+        $plain = $this->fileNodeIdByName($nodes, 'plain.txt');
+        $this->tag($child, 'personal-tag');
+
+        $state = (string) $this->fileNodeJmap([
+            ['FileNode/get', ['accountId' => 'bob', 'ids' => []], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.state');
+
+        $disk->move('users/bob/dir', 'groups/team/dir');
+        app(FileNodeIndexService::class)->recordMove('users/bob/dir', 'groups/team/dir');
+
+        $this->assertSame([], $this->fileNodeGetAll()[$child]['tags']);
+        $changes = (array) $this->fileNodeJmap([
+            ['FileNode/changes', ['accountId' => 'bob', 'sinceState' => $state], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.0', 'FileNode/changes')->json('methodResponses.0.1');
+        $this->assertContains($child, $changes['updated']);
+        $this->assertNotContains($plain, $changes['updated']);
+    }
+
     public function test_a_move_inside_one_space_keeps_the_tags(): void
     {
         $disk = app(WgwStorage::class)->files();

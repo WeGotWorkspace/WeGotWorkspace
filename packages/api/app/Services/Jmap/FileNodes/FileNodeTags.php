@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeTag;
 
 /**
@@ -207,12 +208,20 @@ final class FileNodeTags
 
     /**
      * @param  list<string>  $nodeIds
+     * @return list<string> the node ids that had tag rows deleted
      */
-    public function dropFor(array $nodeIds): void
+    public function dropFor(array $nodeIds): array
     {
+        $dropped = [];
         foreach (array_chunk($nodeIds, 500) as $chunk) {
-            JmapFileNodeTag::query()->whereIn('node_id', $chunk)->delete();
+            $query = JmapFileNodeTag::query()->whereIn('node_id', $chunk);
+            foreach ($query->distinct()->pluck('node_id') as $id) {
+                $dropped[] = (string) $id;
+            }
+            $query->delete();
         }
+
+        return $dropped;
     }
 
     /**
@@ -243,14 +252,20 @@ final class FileNodeTags
 
     /**
      * A personal tag must not travel into a Team, nor the other way round: a move
-     * across spaces removes the tags of the moved nodes.
+     * across spaces removes the tags of the moved nodes. Descendants that lost tags
+     * changed, so they get `$seq` and FileNode/changes reports them; the moved node
+     * itself is stamped by the caller.
      *
      * @param  list<string>  $nodeIds
      */
-    public function dropOnSpaceChange(string $fromKey, string $toKey, array $nodeIds): void
+    public function dropOnSpaceChange(string $fromKey, string $toKey, array $nodeIds, string $rootId, int $seq): void
     {
-        if (! self::sameSpace($fromKey, $toKey)) {
-            $this->dropFor($nodeIds);
+        if (self::sameSpace($fromKey, $toKey)) {
+            return;
+        }
+        $descendants = array_values(array_diff($this->dropFor($nodeIds), [$rootId]));
+        foreach (array_chunk($descendants, 500) as $chunk) {
+            JmapFileNode::query()->whereIn('node_id', $chunk)->update(['change_seq' => $seq]);
         }
     }
 }
