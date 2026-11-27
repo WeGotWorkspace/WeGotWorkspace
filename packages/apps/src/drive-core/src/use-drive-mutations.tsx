@@ -62,6 +62,30 @@ export type UseDriveMutationsArgs = {
   onOpenDocsFile?: (apiPath: string) => void;
 };
 
+/** Create the folder on the server: its listing replaces the optimistic row, a failure removes it. */
+function createFolderOnServer(input: {
+  operations: NonNullable<DriveShellState["operations"]>;
+  cwd: string;
+  name: string;
+  optimisticId: string;
+  currentUsername: string;
+  setFiles: DriveShellState["setFiles"];
+  commitView: DriveShellState["commitView"];
+  showError: (message: string) => void;
+}): void {
+  const { currentUsername, setFiles } = input;
+  void input.operations
+    .createFolder({ cwd: input.cwd, name: input.name })
+    .then((nextData) => {
+      setFiles(nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)));
+      input.commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
+    })
+    .catch((error: unknown) => {
+      setFiles((p) => p.filter((file) => file.id !== input.optimisticId));
+      input.showError(error instanceof Error ? error.message : String(error));
+    });
+}
+
 export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutationsArgs) {
   const { show, showError } = useAppToast();
 
@@ -299,23 +323,16 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     show(`Folder “${v}” created`, { icon: <FolderPlus className="size-4" /> });
     setNewFolderDialogOpen(false);
     if (operations) {
-      void operations
-        .createFolder({
-          cwd: apiPathFromUiPath(targetParent, currentUsername, groupRootNames),
-          name: v,
-        })
-        .then((nextData) => {
-          setFiles(
-            nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),
-          );
-          commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
-        })
-        .catch((error: unknown) => {
-          // A folder that was not created leaves no row behind.
-          setFiles((p) => p.filter((file) => file.id !== optimistic.id));
-          const message = error instanceof Error ? error.message : String(error);
-          showError(message);
-        });
+      createFolderOnServer({
+        operations,
+        cwd: apiPathFromUiPath(targetParent, currentUsername, groupRootNames),
+        name: v,
+        optimisticId: optimistic.id,
+        currentUsername,
+        setFiles,
+        commitView,
+        showError,
+      });
     }
   };
 

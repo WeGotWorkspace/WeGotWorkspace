@@ -10,7 +10,7 @@ import { api, dav, makeFolder, putDoc, TEAMMATE, unshareQuietly } from "./helper
 import { E2E_USERNAME } from "./helpers/notes-live";
 import {
   API,
-  findNode,
+  jmapFileNodes,
   goOfflineKeepingShell,
   goOnlineAgain,
   installOnlineFlag,
@@ -170,8 +170,10 @@ test.describe("Drive views on the file tree (live app)", () => {
     await rowAction(page, STARRED, "Star");
 
     // 5. Reload online: the rows show at once, with no spinner and no server listing.
-    const folderNode = await findNode(page, FOLDER);
-    const listings = watchListingRequests(page, folderNode.id);
+    const found = await jmapFileNodes(page, "FileNode/query", { filter: { name: FOLDER } });
+    const folderId = (found.ids as string[])[0]!;
+    expect(folderId, `${FOLDER} on the server`).toBeTruthy();
+    const listings = watchListingRequests(page, folderId);
     await page.reload();
     await expect(row(page, FILE)).toBeVisible({ timeout: 15_000 });
     // All Files holds the whole drive (windowed); Recent and Starred are short.
