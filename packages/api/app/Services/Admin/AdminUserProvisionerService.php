@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Dav\Server\WgwCardBackend;
+use App\Models\CalendarAvailabilityLink;
 use App\Models\CalendarReplyMailbox;
 use App\Models\GroupMember;
 use App\Models\Principal;
@@ -188,6 +189,7 @@ final class AdminUserProvisionerService
         $this->sessions->revokeAll($username);
         User::query()->where('username', $username)->delete();
         CalendarReplyMailbox::query()->where('username', $username)->delete();
+        CalendarAvailabilityLink::query()->where('principal_uri', 'principals/'.$username)->delete();
         $this->appPasswords->forgetUser($username);
         $this->mfa->forget($username);
 

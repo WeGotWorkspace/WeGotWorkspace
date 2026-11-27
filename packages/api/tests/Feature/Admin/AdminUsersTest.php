@@ -81,6 +81,35 @@ final class AdminUsersTest extends WgwDatabaseTestCase
         $this->assertNotContains('dave', $usernames);
     }
 
+    public function test_deleting_a_user_ends_their_public_availability_link(): void
+    {
+        $admin = $this->adminBearerToken();
+        $create = fn () => $this->withBearer($admin)->postJson('/api/v1/admin/users', [
+            'username' => 'dave',
+            'password' => 'dave-secret',
+            'displayName' => 'Dave',
+            'email' => 'dave@example.test',
+            'groups' => [],
+        ])->assertOk();
+        $login = fn () => (string) $this->postJson('/api/v1/auth/token', [
+            'username' => 'dave',
+            'password' => 'dave-secret',
+        ])->assertOk()->json('access_token');
+
+        $create();
+        $link = '/api/v1/calendars/availability/public-link';
+        $url = $this->withBearer($login())->postJson($link)->assertCreated()->json('httpsUrl');
+        $feed = '/api/v1/calendars/availability/feeds/'.basename($url);
+        $this->get($feed)->assertOk();
+
+        $this->withBearer($admin)->deleteJson('/api/v1/admin/users/dave')->assertOk();
+        $this->get($feed)->assertNotFound();
+
+        $create();
+        $this->get($feed)->assertNotFound();
+        $this->assertSame(['enabled' => false], $this->withBearer($login())->getJson($link)->assertOk()->json());
+    }
+
     public function test_username_is_immutable_on_update(): void
     {
         $token = $this->adminBearerToken();

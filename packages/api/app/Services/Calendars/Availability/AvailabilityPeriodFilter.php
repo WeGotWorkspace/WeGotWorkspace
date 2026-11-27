@@ -21,8 +21,9 @@ final class AvailabilityPeriodFilter
     /**
      * @param  array<int, array{occurrences: list<Occurrence>, complete: bool}>  $weeks  week start => entry
      * @param  array<int, array{include: bool, detail: string}>  $prefs
+     * @param  bool  $timeOnly  never output a title or location, whatever the calendar's detail level (public link)
      */
-    public function apply(array $weeks, array $prefs, ?string $excludeUidHmac): AvailabilityResult
+    public function apply(array $weeks, array $prefs, ?string $excludeUidHmac, bool $timeOnly = false): AvailabilityResult
     {
         /** @var array<string, array{occurrence: Occurrence, details: bool, team: bool}> $chosen */
         $chosen = [];
@@ -35,7 +36,8 @@ final class AvailabilityPeriodFilter
                     || ($excludeUidHmac !== null && hash_equals($occurrence['uid'], $excludeUidHmac))) {
                     continue;
                 }
-                $details = $occurrence['kind'] === AvailabilityOccurrenceReader::KIND_PERSONAL
+                $details = ! $timeOnly
+                    && $occurrence['kind'] === AvailabilityOccurrenceReader::KIND_PERSONAL
                     && AvailabilitySettings::detail($prefs, $calendarId) === AvailabilitySettings::DETAIL_DETAILS
                     && ! $occurrence['private'];
                 $key = $occurrence['uid'].'|'.$occurrence['utcStart'];
