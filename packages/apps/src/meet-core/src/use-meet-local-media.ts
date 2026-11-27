@@ -12,11 +12,6 @@ import {
 } from "@/meet-core/src/meet-screen-optimize";
 import { screenContentHint, type ScreenOptimize } from "@/meet-core/src/meet-video-sender";
 
-/** Screen share is always optimized for detail. There is no user choice. */
-const SCREEN_MODE: ScreenOptimize = "text";
-/** The camera is optimized for motion. */
-const CAMERA_CONTENT_HINT = "motion";
-const SCREEN_CONTENT_HINT = screenContentHint(SCREEN_MODE);
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import {
   buildMeetAudioConstraints,
@@ -25,6 +20,12 @@ import {
 } from "@/meet-core/src/meet-media-constraints";
 import type { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
 import { useMeetMediaDevices } from "@/meet-core/src/use-meet-media-devices";
+
+/** Screen share is always optimized for detail. There is no user choice. */
+const SCREEN_MODE: ScreenOptimize = "text";
+/** The camera is optimized for motion. */
+const CAMERA_CONTENT_HINT = "motion";
+const SCREEN_CONTENT_HINT = screenContentHint(SCREEN_MODE);
 
 type MeetRtc = ReturnType<typeof useMeetRtc>;
 
