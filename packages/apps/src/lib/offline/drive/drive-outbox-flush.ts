@@ -4,7 +4,6 @@ import { parseOutboxPayload, runOutboxFlush } from "@/lib/offline/core/outbox-fl
 import {
   listOutboxMutationsForDomain,
   removeOutboxMutation,
-  settleSentOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
@@ -14,7 +13,10 @@ import {
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
-import type { DriveTagsOutboxPayload } from "@/lib/offline/shared/drive-tag-operations";
+import {
+  sendQueuedTagsRow,
+  type DriveTagsOutboxPayload,
+} from "@/lib/offline/shared/drive-tag-operations";
 import { writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
   legacyDriveOutboxUploadPath,
@@ -81,18 +83,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         await writeDocsStarredPaths(username, paths);
       } else if (payload.op === "tags") {
         if (!drive.setTags) throw new Error("Tags are not offered");
-        await drive.setTags({
-          path: payload.path,
-          tagsAdd: payload.tagsAdd,
-          tagsRemove: payload.tagsRemove,
-        });
-        // A delta merged in while this was sent stays queued and is sent again.
-        const settlement = await settleSentOutboxMutation(username, row);
-        // A row that moved to the other app is sent by it: here it would parse as null and be dropped.
-        if (settlement.kind !== "changed" || settlement.row.domain === DRIVE_DOMAIN) {
-          context.resend(settlement);
-        }
-        return "handled";
+        return sendQueuedTagsRow(username, DRIVE_DOMAIN, row, drive.setTags, context);
       }
     },
     onFailure: (failure) => {

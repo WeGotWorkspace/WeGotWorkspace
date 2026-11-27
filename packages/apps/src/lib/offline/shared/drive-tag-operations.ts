@@ -1,7 +1,10 @@
 import { normalizeApiVirtualPath } from "@/lib/files/drive-path-utils";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import type { OutboxFlushContext } from "@/lib/offline/core/outbox-flush";
+import { getOutboxMutation, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   readDriveEntryFromCache,
@@ -90,6 +93,34 @@ async function applyAndQueueTags(
       return tags;
     },
   );
+}
+
+/**
+ * Sends a queued tag row for the Drive or Docs flush. Both apps send under one lock:
+ * the row moves to the app of the latest edit while the other may still be sending
+ * it, and two requests in flight could land out of order. The row is read again
+ * inside the lock; one that is gone or has moved to the other app is left alone.
+ */
+export function sendQueuedTagsRow(
+  username: string,
+  domain: string,
+  row: OfflineOutboxRow,
+  setTags: NonNullable<DriveAPIOperations["setTags"]>,
+  context: OutboxFlushContext,
+): Promise<"handled"> {
+  return withCrossTabLock<"handled">(`wgw-outbox-tags:${username}`, async () => {
+    const current = await getOutboxMutation(username, row.id);
+    if (!current || current.domain !== domain) return "handled";
+    const payload = JSON.parse(current.payload) as DriveTagsOutboxPayload;
+    await setTags({ path: payload.path, tagsAdd: payload.tagsAdd, tagsRemove: payload.tagsRemove });
+    // A delta merged in while this was sent stays queued and is sent again.
+    const settlement = await settleSentOutboxMutation(username, current);
+    // A row that moved to the other app is sent by it: here it would parse as null and be dropped.
+    if (settlement.kind !== "changed" || settlement.row.domain === domain) {
+      context.resend(settlement);
+    }
+    return "handled";
+  });
 }
 
 async function hasQueuedTags(username: string, path: string): Promise<boolean> {

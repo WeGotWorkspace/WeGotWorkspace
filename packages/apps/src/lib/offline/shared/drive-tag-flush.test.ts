@@ -17,9 +17,25 @@ vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
 });
 
 const setTagsSpy = vi.fn();
+const setStarSpy = vi.fn();
 vi.mock("@/lib/api/wgw/drive", () => ({
-  createWgwDriveOperations: () => ({ setTags: setTagsSpy }),
+  createWgwDriveOperations: () => ({ setTags: setTagsSpy, setStar: setStarSpy }),
 }));
+
+/** Exclusive Web Locks, queued per name. */
+function installQueuedLocks(): void {
+  const tails = new Map<string, Promise<unknown>>();
+  const request = (name: string, _options: LockOptions, task: () => Promise<unknown>) => {
+    const before = tails.get(name) ?? Promise.resolve();
+    const run = before.then(() => task());
+    tails.set(
+      name,
+      run.catch(() => undefined),
+    );
+    return run;
+  };
+  Object.defineProperty(navigator, "locks", { configurable: true, value: { request } });
+}
 
 const username = "alice";
 const path = "/users/alice/plan.md";
@@ -30,6 +46,7 @@ describe("tag rows across Drive and Docs flushes", () => {
     createHybridSetTags(username, {} as DriveAPIOperations, domain, vi.fn(), vi.fn());
 
   beforeEach(async () => {
+    installQueuedLocks();
     vi.clearAllMocks();
     vi.mocked(readBrowserOnline).mockReturnValue(false);
     await db().outbox.clear();
@@ -112,5 +129,65 @@ describe("tag rows across Drive and Docs flushes", () => {
     expect(flushAfterQueue).toHaveBeenCalledTimes(1);
     await flushDriveOutbox(username);
     expect(setTagsSpy.mock.calls.flatMap((call) => call[0].tagsAdd ?? [])).not.toContain("work");
+  });
+
+  it("a remove made online while Docs sends an add waits for it and is sent after it", async () => {
+    await hybrid(DOCS_DOMAIN)({ path, tagsAdd: ["a"] });
+    let release: () => void = () => undefined;
+    setTagsSpy.mockImplementationOnce(
+      () =>
+        new Promise<string[]>((resolve) => {
+          release = () => resolve([]);
+        }),
+    );
+    const docsFlush = flushDocsOutbox(username);
+    await vi.waitFor(() => expect(setTagsSpy).toHaveBeenCalledTimes(1));
+
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    let driveFlush: Promise<unknown> = Promise.resolve();
+    await createHybridSetTags(username, {} as DriveAPIOperations, DRIVE_DOMAIN, vi.fn(), () => {
+      driveFlush = flushDriveOutbox(username);
+    })({ path, tagsRemove: ["a"] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(setTagsSpy).toHaveBeenCalledTimes(1);
+
+    release();
+    await Promise.all([docsFlush, driveFlush]);
+
+    expect(setTagsSpy).toHaveBeenCalledTimes(2);
+    const last = setTagsSpy.mock.calls[1]?.[0];
+    expect(last.tagsRemove).toEqual(["a"]);
+    expect(last.tagsAdd).toBeUndefined();
+    expect(await db().outbox.count()).toBe(0);
+  });
+
+  it("a row Drive sent meanwhile is not sent again from a Docs flush that had listed it", async () => {
+    await db().outbox.put({
+      id: "star-1",
+      domain: DOCS_DOMAIN,
+      op: "star",
+      payload: JSON.stringify({ op: "star", path, starred: true }),
+      createdAt: 1,
+      retries: 0,
+    });
+    await hybrid(DOCS_DOMAIN)({ path, tagsAdd: ["a"] });
+    let release: () => void = () => undefined;
+    setStarSpy.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const docsFlush = flushDocsOutbox(username);
+    await vi.waitFor(() => expect(setStarSpy).toHaveBeenCalledTimes(1));
+
+    await hybrid(DRIVE_DOMAIN)({ path, tagsRemove: ["a"] });
+    await flushDriveOutbox(username);
+    release();
+    await docsFlush;
+
+    expect(setTagsSpy).toHaveBeenCalledTimes(1);
+    expect(setTagsSpy.mock.calls[0]?.[0].tagsAdd).toBeUndefined();
+    expect(await db().outbox.count()).toBe(0);
   });
 });
