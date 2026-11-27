@@ -1,0 +1,8 @@
+---
+ycsv_version: 1
+columns:
+  - ref: c
+    type: currency
+---
+c
+3.5

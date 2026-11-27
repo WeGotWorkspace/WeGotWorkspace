@@ -1,0 +1,5 @@
+---
+ycsv_version: 1
+---
+a,b,c
+0,=1/a1,"=IFERROR(b1,""x"")"

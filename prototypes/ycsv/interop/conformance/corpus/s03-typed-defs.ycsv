@@ -1,0 +1,24 @@
+---
+ycsv_version: 1
+defs:
+  btw: 0.21
+  min_voorraad: 5
+columns:
+  - ref: product
+    type: string
+  - ref: aantal
+    type: number
+  - ref: prijs
+    type: currency
+    currency: EUR
+    locale: nl-NL
+  - ref: totaal
+    type: currency
+    currency: EUR
+    locale: nl-NL
+---
+product,aantal,prijs,totaal
+Appels,6,0.45,=prijs1*aantal1*(1+btw)
+Brood,2,2.99,=prijs2*aantal2*(1+btw)
+Melk,3,1.19,=prijs3*aantal3*(1+btw)
+,,Totaal,=SUM(totaal1:totaal3)

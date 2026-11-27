@@ -1,0 +1,10 @@
+---
+ycsv_version: 1
+columns:
+  - ref: q
+  - ref: q1
+  - ref: r
+---
+q,q1,r
+1,10,0
+2,20,=q12

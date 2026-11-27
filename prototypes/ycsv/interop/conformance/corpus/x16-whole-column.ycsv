@@ -1,0 +1,6 @@
+---
+ycsv_version: 1
+---
+v,s
+1,=SUM(v:v)
+2,

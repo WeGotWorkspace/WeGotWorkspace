@@ -1,0 +1,5 @@
+---
+ycsv_version: 1
+---
+a,b,c,d,e
+,=a1+1,=a1=0,"=a1=""""",=COUNTA(a1:a1)

@@ -1,0 +1,6 @@
+---
+ycsv_version: 1
+---
+Appels,6,0.45,=A1*B1*C1
+Brood,2,2.99,=B2*C2
+Melk,3,1.19,=B3*C3

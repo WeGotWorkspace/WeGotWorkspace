@@ -1,0 +1,14 @@
+---
+ycsv_version: 1
+columns:
+  - ref: n
+    type: number
+  - ref: x
+---
+n,x
+1e3,=n1+0
+.5,=n2+0
++5,=n3+0
+(9.99),=n4+0
+-0,=n5+0
+007,=n6+0

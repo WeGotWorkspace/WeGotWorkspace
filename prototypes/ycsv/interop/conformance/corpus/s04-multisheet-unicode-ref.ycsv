@@ -1,0 +1,25 @@
+---
+ycsv_version: 1
+defs:
+  btw: 0.21
+sheets:
+  - ref: producten
+    columns:
+      - ref: product
+      - ref: categorie
+      - ref: prijs
+        type: currency
+        currency: EUR
+      - ref: label
+  - ref: categorieën
+    columns:
+      - ref: id
+      - ref: label
+---
+product,categorie,prijs,label
+Appels,fruit,0.45,=categorieën!label1
+Brood,bakkerij,2.99,=categorieën!label2
+---
+id,label
+fruit,Fruit
+bakkerij,Bakkerij

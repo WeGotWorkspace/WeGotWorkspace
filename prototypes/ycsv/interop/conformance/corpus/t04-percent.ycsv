@@ -1,0 +1,9 @@
+---
+ycsv_version: 1
+columns:
+  - ref: p
+    type: percent
+  - ref: x
+---
+p,x
+50,=200*p1

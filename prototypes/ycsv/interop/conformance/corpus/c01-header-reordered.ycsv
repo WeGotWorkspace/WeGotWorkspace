@@ -1,0 +1,9 @@
+---
+ycsv_version: 1
+columns:
+  - ref: product
+  - ref: prijs
+    type: number
+---
+prijs,product
+2.5,Appels

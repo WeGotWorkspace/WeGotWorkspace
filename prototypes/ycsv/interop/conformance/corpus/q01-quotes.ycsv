@@ -1,0 +1,6 @@
+---
+ycsv_version: 1
+---
+a,b,c
+"x, y","say ""hi""","two
+lines"

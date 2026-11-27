@@ -1,0 +1,11 @@
+---
+ycsv_version: 1
+columns:
+  - ref: n
+    type: number
+  - ref: x
+---
+n,x
+"1.234,56",=n1+0
+"€ 3,27",=n2+0
+50%,=n3+0

@@ -1,0 +1,5 @@
+---
+ycsv_version: 1
+---
+a,b,c
+=b1,=a1,=c1

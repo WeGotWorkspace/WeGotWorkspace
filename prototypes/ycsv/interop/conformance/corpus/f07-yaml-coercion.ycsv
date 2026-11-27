@@ -1,0 +1,9 @@
+---
+ycsv_version: 1
+columns:
+  - ref: no
+  - ref: on
+    name: 2024-01-01
+---
+no,on
+1,2

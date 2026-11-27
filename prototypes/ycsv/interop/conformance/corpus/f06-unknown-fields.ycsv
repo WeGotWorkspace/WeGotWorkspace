@@ -1,0 +1,9 @@
+---
+ycsv_version: 1
+future_thing: 3
+columns:
+  - ref: a
+    future_col: x
+---
+a
+1

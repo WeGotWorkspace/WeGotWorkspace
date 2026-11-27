@@ -1,0 +1,8 @@
+---
+ycsv_version: 1
+columns:
+  - ref: a
+  - ref: a
+---
+a,a
+1,2

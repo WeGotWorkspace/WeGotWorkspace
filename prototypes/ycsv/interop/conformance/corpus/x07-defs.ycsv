@@ -1,0 +1,10 @@
+---
+ycsv_version: 1
+defs:
+  btw: 0.21
+  cat:
+    z: Zuivel
+  a: 99
+---
+a,b,c
+100,=a1*(1+btw),=cat.z

@@ -1,0 +1,11 @@
+---
+ycsv_version: 1
+columns:
+  - ref: b
+    type: boolean
+  - ref: x
+---
+b,x
+true,"=IF(b1,1,0)"
+TRUE,"=IF(b2,1,0)"
+True,"=IF(b3,1,0)"

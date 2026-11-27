@@ -1,0 +1,456 @@
+{
+  "properties": [
+    {
+      "property": "P1 data survives",
+      "impl": "core",
+      "ok": false,
+      "runs": 4,
+      "counterexample": {
+        "refs": [
+          "a",
+          "b",
+          "a_",
+          "b_"
+        ],
+        "rows": [
+          [
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P2 byte-stable",
+      "impl": "core",
+      "ok": false,
+      "runs": 4,
+      "counterexample": {
+        "refs": [
+          "a",
+          "b",
+          "a_",
+          "b_"
+        ],
+        "rows": [
+          [
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P1 data survives",
+      "impl": "proto",
+      "ok": false,
+      "runs": 2,
+      "counterexample": {
+        "refs": [
+          "a"
+        ],
+        "rows": [
+          [
+            ""
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P2 byte-stable",
+      "impl": "proto",
+      "ok": false,
+      "runs": 2,
+      "counterexample": {
+        "refs": [
+          "a"
+        ],
+        "rows": [
+          [
+            ""
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P1 data survives (no all-empty rows, no --- lines)",
+      "impl": "core",
+      "ok": true,
+      "runs": 400
+    },
+    {
+      "property": "P1 data survives (no all-empty rows, no --- lines)",
+      "impl": "proto",
+      "ok": false,
+      "runs": 13,
+      "counterexample": {
+        "refs": [
+          "a",
+          "a_",
+          "aa"
+        ],
+        "rows": [
+          [
+            "\r\n",
+            "",
+            ""
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P1 data survives (no all-empty rows)",
+      "impl": "core",
+      "ok": false,
+      "runs": 4,
+      "counterexample": {
+        "refs": [
+          "a",
+          "b",
+          "a_",
+          "b_"
+        ],
+        "rows": [
+          [
+            "",
+            "",
+            "",
+            "\n---\n"
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P1 data survives (no all-empty rows)",
+      "impl": "proto",
+      "ok": false,
+      "runs": 2,
+      "counterexample": {
+        "refs": [
+          "a"
+        ],
+        "rows": [
+          [
+            "\n---\n"
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P2 byte-stable (no all-empty rows)",
+      "impl": "core",
+      "ok": false,
+      "runs": 4,
+      "counterexample": {
+        "refs": [
+          "a",
+          "b",
+          "a_",
+          "b_"
+        ],
+        "rows": [
+          [
+            "",
+            "",
+            "",
+            "\n---\n"
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P2 byte-stable (no all-empty rows)",
+      "impl": "proto",
+      "ok": false,
+      "runs": 2,
+      "counterexample": {
+        "refs": [
+          "a"
+        ],
+        "rows": [
+          [
+            "\n---\n"
+          ]
+        ]
+      }
+    },
+    {
+      "property": "P1 data survives (plain cells, no all-empty rows)",
+      "impl": "core",
+      "ok": true,
+      "runs": 400
+    },
+    {
+      "property": "P1 data survives (plain cells, no all-empty rows)",
+      "impl": "proto",
+      "ok": true,
+      "runs": 400
+    }
+  ],
+  "corpus": {
+    "c01-header-reordered": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "c02-columns-no-header": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "c03-numeric-header": {
+      "core": "NOT idempotent",
+      "proto": "byte-identical"
+    },
+    "c04-data-looks-like-header": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "c05-header-with-spaces": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "c06-duplicate-refs": {
+      "core": "byte-identical",
+      "proto": "does not parse"
+    },
+    "c07-ref-digit-suffix": {
+      "core": "byte-identical",
+      "proto": "byte-identical"
+    },
+    "c08-header-mismatch": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "c09-az-beyond-z": {
+      "core": "NOT idempotent",
+      "proto": "byte-identical"
+    },
+    "e01-crlf": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "e02-crlf-multisheet": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "e03-bom": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "e04-quoted-crlf-in-cell": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "e05-unicode": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "f01-missing-version": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "f02-higher-version": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "f03-no-frontmatter": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "f04-unterminated": {
+      "core": "NOT idempotent",
+      "proto": "does not parse"
+    },
+    "f05-bad-yaml": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "f06-unknown-fields": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "f07-yaml-coercion": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "q01-quotes": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "q02-separator-in-cell": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "q03-quote-mid-field": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "q04-ragged-rows": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "q05-trailing-comma": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "q06-whitespace": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "r01-empty-row-numbering": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "r02-row-zero": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "r03-row-out-of-range": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "s01-minimal-az": {
+      "core": "NOT idempotent",
+      "proto": "byte-identical"
+    },
+    "s02-header-no-columns": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "s03-typed-defs": {
+      "core": "byte-identical",
+      "proto": "stable after 1st write"
+    },
+    "s04-multisheet-unicode-ref": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "s05-multisheet-cross-range": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "s06-multisheet-excel-range": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "s07-multisheet-missing-sheet": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "s08-multisheet-block-count": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "s09-multisheet-no-sheets-array": {
+      "core": "stable after 1st write",
+      "proto": "does not parse"
+    },
+    "s10-empty-body": {
+      "core": "NOT idempotent",
+      "proto": "stable after 1st write"
+    },
+    "s11-no-trailing-newline": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "t01-numbers": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "t02-locale-number-in-file": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "t03-booleans": {
+      "core": "byte-identical",
+      "proto": "byte-identical"
+    },
+    "t04-percent": {
+      "core": "byte-identical",
+      "proto": "byte-identical"
+    },
+    "t05-dates": {
+      "core": "byte-identical",
+      "proto": "byte-identical"
+    },
+    "t06-time-datetime": {
+      "core": "byte-identical",
+      "proto": "byte-identical"
+    },
+    "t07-currency-no-code": {
+      "core": "byte-identical",
+      "proto": "byte-identical"
+    },
+    "t08-literal-equals": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "x01-precedence": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x02-percent-operator": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x03-concat": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x04-absolute-refs": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x05-rect-range": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x06-same-row-ref": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x07-defs": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x08-circular": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x09-blank-semantics": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x10-text-to-number": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x11-float": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x12-string-compare": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x13-errors-propagate": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x14-unknown-function": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x15-xlookup-sumifs": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "x16-whole-column": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    }
+  }
+}

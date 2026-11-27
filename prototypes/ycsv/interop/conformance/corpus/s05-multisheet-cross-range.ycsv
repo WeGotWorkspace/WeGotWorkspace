@@ -1,0 +1,13 @@
+---
+ycsv_version: 1
+sheets:
+  - ref: totaal
+  - ref: data
+---
+som
+=SUM(data!n1:data!n3)
+---
+n
+1
+2
+3

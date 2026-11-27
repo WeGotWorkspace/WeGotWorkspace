@@ -1,0 +1,7 @@
+---
+ycsv_version: 1
+---
+product,aantal,prijs,totaal
+Appels,6,0.45,=prijs1*aantal1
+Brood,2,2.99,=prijs2*aantal2
+Melk,3,1.19,=prijs3*aantal3

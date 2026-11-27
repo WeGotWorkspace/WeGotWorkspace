@@ -1,0 +1,6 @@
+---
+ycsv_version: 1
+---
+a,b,c
+1,2,=SUM(a1:b2)
+3,4,

@@ -1,0 +1,7 @@
+---
+ycsv_version: 1
+columns:
+  - ref: a
+  - ref: b
+---
+1,=a1+1

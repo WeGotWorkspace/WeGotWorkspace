@@ -1,0 +1,5 @@
+---
+ycsv_version: 1
+---
+aantal,prijs,totaal
+2,3,=aantal*prijs

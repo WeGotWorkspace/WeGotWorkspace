@@ -1,0 +1,11 @@
+---
+ycsv_version: 1
+sheets:
+  - ref: a
+  - ref: b
+---
+x
+1
+---
+y
+=a!x1+1

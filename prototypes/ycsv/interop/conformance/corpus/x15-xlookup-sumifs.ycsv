@@ -1,0 +1,7 @@
+---
+ycsv_version: 1
+---
+k,v,out
+a,1,"=SUMIF(k1:k3,""a"",v1:v3)"
+b,2,"=COUNTIF(k1:k3,""a"")"
+a,3,"=XLOOKUP(""b"",k1:k3,v1:v3)"
