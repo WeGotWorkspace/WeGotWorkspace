@@ -17,11 +17,12 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `C3` | builder (apps) | workspace, apps-ui | `packages/apps/src/drive-core/src/use-drive-shell.tsx`, `drive-main-pane.tsx`, `drive-visible-items.ts`; delete `use-drive-all-files.ts`, `use-drive-folder-listing-sync.ts`, `use-drive-{starred,shared,trash}-list.ts` | `pnpm --dir packages/apps exec vitest run src/drive-core` |
 | `C4` | builder (apps) | workspace | `packages/apps/src/docs-core/src/docs-home-*`, `use-docs-home-*`, `lib/offline/docs/docs-listing-*`, `docs-hybrid-operations.ts` (removed), `docs-domain-contract.ts`, `docs-offline-entries.ts`, `docs-body-sync.ts`, `lib/offline/drive/drive-hybrid-operations.ts`, `drive-inbound-sync.ts` | `pnpm --dir packages/apps exec vitest run src/docs-core src/lib/offline/docs` |
 | `C5` | builder (apps) | apps-ui | `packages/apps/src/drive-core/src/use-drive-grid-previews.ts`, `drive-offline-pin-cell.tsx`, team label store | `pnpm --dir packages/apps exec vitest run src/drive-core` |
+| `C7` | builder (apps) | workspace | `packages/apps/src/lib/offline/docs/docs-inbound-sync.ts`, `docs-collab-persistence.ts`, `lib/offline/drive/drive-inbound-sync.ts`, `drive-fetched-set-prune.ts`, `drive-tree-sync.ts` | `pnpm --dir packages/apps exec vitest run src/lib/offline/drive src/lib/offline/docs` |
 | `C6` | builder (apps) | testing, document | `packages/apps/e2e/`, `packages/apps/docs/offline-platform.md` | `pnpm --dir packages/apps exec playwright test -c playwright.config.mjs` |
 | `V` | verifier | — | read-only | verifier verdict |
 
 ## Notes
 
 - Chunk ids match `plan.md`.
-- S1–S3 and C1 can run in parallel worktrees; C2 → C3 → C4/C5 → C6 run in order.
+- S1–S3 and C1 can run in parallel worktrees; C2 → C3 → C4/C5 → C7 → C6 run in order.
 - On scope change: update #2063 first, then re-sync these files and the `Source:` body-hash.
