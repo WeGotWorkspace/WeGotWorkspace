@@ -153,6 +153,35 @@ describe("public availability link in Settings → Calendar", () => {
     expect(address().value).toBe(before);
   });
 
+  it("starts no read while a new link is in flight, so the old address never comes back", async () => {
+    const link = (id: string) => ({
+      enabled: true,
+      httpsUrl: `https://workspace.example/api/v1/calendars/availability/feeds/${id}`,
+      webcalUrl: `webcal://workspace.example/api/v1/calendars/availability/feeds/${id}`,
+    });
+    const operations = createMockCalendarAvailabilityPublicLinkOperations(link("old"));
+    let finish: (value: ReturnType<typeof link>) => void = () => {};
+    vi.spyOn(operations, "regenerate").mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const load = vi.spyOn(operations, "load");
+    renderSection(operations);
+    await waitFor(() => expect(address().value).toBe(link("old").httpsUrl));
+
+    fireEvent.click(screen.getByRole("button", { name: labels.publicLinkNew }));
+    fireEvent.click(await screen.findByRole("button", { name: labels.newLinkConfirm }));
+    const reads = load.mock.calls.length;
+    fireEvent.focus(window);
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(load.mock.calls.length).toBe(reads);
+
+    finish(link("new"));
+    await waitFor(() => expect(address().value).toBe(link("new").httpsUrl));
+    expect(load.mock.calls.length).toBe(reads);
+  });
+
   it("puts the public link below the calendar list", async () => {
     renderSection(createMockCalendarAvailabilityPublicLinkOperations());
     fireEvent.click(await toggle());

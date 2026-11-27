@@ -95,8 +95,8 @@ test.describe("Public availability link", () => {
     await expect(page.getByRole("textbox", { name: "Public link address" })).toHaveValue(first);
 
     // A new link: confirm, then the old address shows nothing.
-    await page.getByRole("button", { name: "Make a new link" }).click();
-    await page.getByRole("button", { name: "Make a new link" }).last().click();
+    await page.getByRole("button", { name: "Regenerate URL" }).click();
+    await page.getByRole("button", { name: "Regenerate URL" }).last().click();
     await expect(address).not.toHaveValue(first);
     const second = await address.inputValue();
     expect((await stranger(first)).status).toBe(404);

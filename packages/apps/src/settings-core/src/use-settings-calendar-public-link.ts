@@ -79,6 +79,7 @@ export function useSettingsCalendarPublicLink(
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const refresh = useCallback(() => {
+    if (busyRef.current) return;
     if (phaseRef.current === "ready") void load(true);
     else if (phaseRef.current !== "loading") void load(false);
   }, [load]);
@@ -104,6 +105,8 @@ export function useSettingsCalendarPublicLink(
         if (!getConnectivitySnapshot()) throw new PublicLinkOfflineError();
         requestRef.current += 1;
         const next = await action();
+        // A read that started during the request may carry the pre-mutation body.
+        requestRef.current += 1;
         apply(next ?? { enabled: false });
         if (success) showSuccess(success);
       } catch (error) {
