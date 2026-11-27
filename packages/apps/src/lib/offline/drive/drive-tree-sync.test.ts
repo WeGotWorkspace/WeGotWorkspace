@@ -70,6 +70,7 @@ import {
   DRIVE_TREE_LAST_PASS_KEY,
   readDriveTreeCrawlRoots,
   readDriveTreeFirstSyncDone,
+  readDriveTreeLastPass,
   readDriveTreeRoots,
   syncDriveTree,
 } from "@/lib/offline/drive/drive-tree-sync";
@@ -1017,6 +1018,24 @@ describe("review fixes (#2063 C1)", () => {
     spy.mockRestore();
 
     expect(await readDriveTreeCrawlRoots(username)).toEqual(["/users/ada"]);
+  });
+
+  it("a crawl that did not run (offline before it started) writes no token and no last pass", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    await writeDriveSyncToken(username, "old-token");
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    // syncDriveMetadataTree's offline return: emptyProgress(), no onRoots call.
+    const spy = vi
+      .spyOn(crawl, "syncDriveMetadataTree")
+      .mockResolvedValue({ running: false, total: 0, synced: 0, failed: 0, updatedAt: 1 });
+
+    const result = await syncDriveTree(username);
+    spy.mockRestore();
+
+    expect(result.completed).toBe(false);
+    expect(await readDriveSyncToken(username)).toBe("old-token");
+    expect(await readDriveTreeLastPass(username)).toBeNull();
   });
 
   it("a file written while the per-folder crawl runs arrives on the next sync", async () => {

@@ -203,6 +203,10 @@ async function crawlFolders(
   if (signal?.aborted || progress.failed > 0) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
+  // `total` 0: the crawl did not run (offline before it queued anything). Write
+  // nothing: a token and last-pass marker here would mark an empty tree as
+  // complete, and a server without the keyset would not crawl again.
+  if (progress.total === 0) return { completed: false, changed: false, keptUnsavedPaths: [] };
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
