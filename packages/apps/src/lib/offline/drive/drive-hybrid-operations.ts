@@ -116,8 +116,12 @@ async function flushDriveOutboxTask(username: string): Promise<DriveOutboxFlushR
  * create instead: the Drive flush sends the Docs outbox first, which aims it
  * at the name the create got (#2063 C4).
  */
-async function waitsForQueuedDocsCreate(username: string, path: string): Promise<boolean> {
+async function waitsForQueuedDocsCreate(
+  username: string,
+  path: string,
+): Promise<"exact" | "under" | null> {
   const target = normalizeApiVirtualPath(path);
+  let found: "under" | null = null;
   for (const row of await listOutboxMutationsForDomain(username, DOCS_DOMAIN)) {
     let payload: { op?: string; apiPath?: string } | null = null;
     try {
@@ -127,9 +131,10 @@ async function waitsForQueuedDocsCreate(username: string, path: string): Promise
     }
     if (payload?.op !== "create" || !payload.apiPath) continue;
     const created = normalizeApiVirtualPath(payload.apiPath);
-    if (created === target || created.startsWith(`${target}/`)) return true;
+    if (created === target) return "exact";
+    if (created.startsWith(`${target}/`)) found = "under";
   }
-  return false;
+  return found;
 }
 
 function runnerFor(username: string): ConnectivitySyncRunner<DriveOutboxFlushResult> {
@@ -496,18 +501,20 @@ export function createHybridDriveOperations(
       // A pull already put another device's file on the queued create's path:
       // its row stays there, so the kept-both flush leaves it on that name and
       // the queued write moves this device's own file (#2063 C4).
-      const holdsServerFile = waitsForCreate && !!(await readCachedDriveNodeId(username, from));
+      // Only the create's own path can collide, not a folder above it.
+      const holdsServerFile =
+        waitsForCreate === "exact" && !!(await readCachedDriveNodeId(username, from));
       let to = input.to;
       if (isTrash) {
         // Offline the names already in Trash come from the tree (dot names too).
         to = resolveFreeName(input.to, await readDriveChildNames(username, destination));
-        if (!holdsServerFile) {
-          const trashed = nextPathAfterRename(from, destination, to);
-          await applyQueuedTrashSideEffects(username, from, trashed);
-          moveDocsPageSetupOverride(from, trashed);
-        }
+        const trashed = nextPathAfterRename(from, destination, to);
+        if (!holdsServerFile) await applyQueuedTrashSideEffects(username, from, trashed);
+        moveDocsPageSetupOverride(from, trashed);
       } else if (!holdsServerFile) {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
+      } else {
+        moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, input.to));
       }
       notifyDriveRemoteChange(username);
       const payload: DriveOutboxPayload = isTrash

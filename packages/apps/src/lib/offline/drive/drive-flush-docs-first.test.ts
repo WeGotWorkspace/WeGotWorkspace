@@ -10,6 +10,8 @@ import {
   readCachedDriveNodeId,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { readDocsPageSetupOverrides, writeDocsPageSetupOverride } from "@/lib/docs-page-setup";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import {
   createHybridDriveOperations,
@@ -45,6 +47,8 @@ describe("a Drive outbox flush and a queued Docs create (#2063 C4)", () => {
   beforeEach(async () => {
     renameItem.mockReset();
     setStar.mockReset();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    localStorage.clear();
     createDriveFileKeepingBoth.mockReset();
     calls.length = 0;
     await offlineDbForAccount(offlineAccountKeyFromUsername(username)).outbox.clear();
@@ -140,6 +144,11 @@ describe("a Drive outbox flush and a queued Docs create (#2063 C4)", () => {
   it("online, a rename leaves the server's file on its row while the create is queued (#2063 C4)", async () => {
     await seedServerFile();
     await queueCreate();
+    writeDocsPageSetupOverride(
+      "/users/alice/Plan.md",
+      { format: "a3", orientation: "portrait" },
+      5,
+    );
 
     await createHybridDriveOperations(username, null).renameItem({
       from: "/users/alice/Plan.md",
@@ -150,11 +159,17 @@ describe("a Drive outbox flush and a queued Docs create (#2063 C4)", () => {
 
     expect(await readCachedDriveNodeId(username, "users/alice/Plan.md")).toBe("fn-server");
     expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
+    expect(Object.keys(readDocsPageSetupOverrides())).toEqual(["/users/alice/Renamed.md"]);
   });
 
   it("online, a trash leaves the server's file on its row while the create is queued (#2063 C4)", async () => {
     await seedServerFile();
     await queueCreate();
+    writeDocsPageSetupOverride(
+      "/users/alice/Plan.md",
+      { format: "a3", orientation: "portrait" },
+      5,
+    );
 
     await createHybridDriveOperations(username, null).renameItem({
       from: "/users/alice/Plan.md",
@@ -165,6 +180,54 @@ describe("a Drive outbox flush and a queued Docs create (#2063 C4)", () => {
 
     expect(await readCachedDriveNodeId(username, "users/alice/Plan.md")).toBe("fn-server");
     expect(renameItem.mock.calls[0]![0]).toMatchObject({ from: "/users/alice/Plan (1).md" });
+    expect(Object.keys(readDocsPageSetupOverrides())).toEqual(["/users/alice/.Trash/Plan.md"]);
+  });
+
+  async function seedFolderWithQueuedCreate() {
+    await upsertDriveEntry(username, {
+      type: "dir",
+      path: "/users/alice/Projects",
+      name: "Projects",
+      size: 0,
+      time: 1,
+      permissions: 0,
+      nodeId: "fn-folder",
+    } as WgwDriveDirectoryEntry);
+    await enqueueOutboxMutation(username, {
+      id: "create-under",
+      domain: DOCS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        op: "create",
+        apiPath: "/users/alice/Projects/Plan.md",
+        content: "# mine",
+      }),
+    });
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+  }
+
+  it("offline, a folder rename moves its row although a Doc create is queued under it", async () => {
+    await seedFolderWithQueuedCreate();
+
+    await createHybridDriveOperations(username, null).renameItem({
+      from: "/users/alice/Projects",
+      destination: "/users/alice",
+      to: "Archive",
+    });
+
+    expect(await readCachedDriveNodeId(username, "users/alice/Archive")).toBe("fn-folder");
+  });
+
+  it("offline, a folder trash moves its row although a Doc create is queued under it", async () => {
+    await seedFolderWithQueuedCreate();
+
+    await createHybridDriveOperations(username, null).renameItem({
+      from: "/users/alice/Projects",
+      destination: "/users/alice/.Trash",
+      to: "Projects",
+    });
+
+    expect(await readCachedDriveNodeId(username, "users/alice/.Trash/Projects")).toBe("fn-folder");
   });
 
   it("online, a star of a Doc whose create is queued waits for the create (#2063 C4)", async () => {
