@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ online: true, firstSyncDone: false }));
+const state = vi.hoisted(() => ({
+  online: true,
+  firstSyncDone: false,
+  lastPass: null as "tree" | "crawl" | null,
+}));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: () => state.online,
 }));
 vi.mock("@/lib/offline/drive/drive-tree-sync", () => ({
   readDriveTreeFirstSyncDone: async () => state.firstSyncDone,
+  readDriveTreeLastPass: async () => state.lastPass,
 }));
 
 import {
@@ -19,6 +24,7 @@ describe("syncUntilFirstSyncDone (#2063 C3)", () => {
     vi.useFakeTimers();
     state.online = true;
     state.firstSyncDone = false;
+    state.lastPass = null;
   });
   afterEach(() => vi.useRealTimers());
 
@@ -44,6 +50,19 @@ describe("syncUntilFirstSyncDone (#2063 C3)", () => {
   it("never runs again once the first sync is done", async () => {
     state.firstSyncDone = true;
     const sync = vi.fn().mockRejectedValue(new Error("content sync failed"));
+    syncUntilFirstSyncDone("ada", sync, {
+      signal: new AbortController().signal,
+      isCurrent: () => true,
+    });
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(sync).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops after a finished crawl on a server without the keyset", async () => {
+    const sync = vi.fn().mockImplementation(async () => {
+      // The crawl finished: last pass "crawl", `firstSyncDone` stays unset.
+      state.lastPass = "crawl";
+    });
     syncUntilFirstSyncDone("ada", sync, {
       signal: new AbortController().signal,
       isCurrent: () => true,

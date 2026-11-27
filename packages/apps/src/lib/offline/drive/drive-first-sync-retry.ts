@@ -1,9 +1,25 @@
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import { readDriveTreeFirstSyncDone } from "@/lib/offline/drive/drive-tree-sync";
+import {
+  readDriveTreeFirstSyncDone,
+  readDriveTreeLastPass,
+} from "@/lib/offline/drive/drive-tree-sync";
 
 /** A first sync that did not finish runs again after this, doubling up to the max (#2063 C3). */
 export const FIRST_SYNC_RETRY_BASE_MS = 2_000;
 export const FIRST_SYNC_RETRY_MAX_MS = 60_000;
+
+/**
+ * True once this device finished a pass: the tree walk, or on a server without
+ * the keyset the per-folder crawl. The crawl leaves `firstSyncDone` unset (a
+ * keyset server still walks later) but its rows are what that server offers.
+ */
+export async function readDriveFirstPassDone(username: string): Promise<boolean> {
+  const [firstSyncDone, lastPass] = await Promise.all([
+    readDriveTreeFirstSyncDone(username),
+    readDriveTreeLastPass(username),
+  ]);
+  return firstSyncDone || lastPass !== null;
+}
 
 /**
  * Runs `sync` now and, while the first sync on this device has not finished,
@@ -24,7 +40,7 @@ export function syncUntilFirstSyncDone(
 
   const retryIfUnfinished = async () => {
     if (stopped() || !getConnectivitySnapshot()) return;
-    if (await readDriveTreeFirstSyncDone(username).catch(() => true)) return;
+    if (await readDriveFirstPassDone(username).catch(() => true)) return;
     if (stopped()) return;
     const delay = Math.min(FIRST_SYNC_RETRY_BASE_MS * 2 ** attempt, FIRST_SYNC_RETRY_MAX_MS);
     attempt += 1;

@@ -2,6 +2,7 @@ import {
   driveJmapSession,
   fileNodeToDirectoryEntry,
   fileNodeVirtualPath,
+  listFileNodeEntries,
   type DriveJmapSession,
 } from "@/lib/api/wgw/drive-jmap";
 import { fetchFileNodeTreeBatch, type FileNodeTreePage } from "@/lib/api/wgw/drive-jmap-tree";
@@ -42,6 +43,7 @@ import {
   documentHasUnsavedLocalWork,
   retainOrDropLocalDocument,
 } from "@/lib/offline/drive/drive-local-document";
+import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
@@ -220,6 +222,8 @@ async function crawlFolders(
   } catch {
     if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
+  await crawlTrash(username, session, queued.roots ?? [], signal);
+  if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await clearPrepass(username);
@@ -233,6 +237,33 @@ async function crawlFolders(
   // Not `firstSyncDone`: the device walks the tree once the server offers the keyset.
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
   return { completed: true, changed: true, keptUnsavedPaths: [] };
+}
+
+/**
+ * The crawl skips dot folders, so Trash would hold only what this device
+ * trashed. List each root's `.Trash` (its top level: what the Trash view
+ * shows) and store it, pruning what is gone. A root with no `.Trash`, or a
+ * failing listing, keeps the rows it had.
+ */
+async function crawlTrash(
+  username: string,
+  session: DriveJmapSession,
+  roots: readonly string[],
+  signal?: AbortSignal,
+): Promise<void> {
+  for (const root of roots) {
+    if (signal?.aborted) return;
+    const trash = `${normalizePath(root)}/.Trash`;
+    try {
+      const entries = await listFileNodeEntries(session, trash, username, {
+        includeHidden: true,
+        signal,
+      });
+      await applyFetchedDirectorySnapshot(username, trash, entries);
+    } catch {
+      // No `.Trash` yet, or the listing failed: the next crawl tries again.
+    }
+  }
 }
 
 /**

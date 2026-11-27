@@ -417,7 +417,6 @@ describe("syncDriveTree", () => {
     await writeDriveSyncToken(username, server.state());
     await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
-    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     server.add("a2", "r-home", "new.md");
 
     await syncDriveInboundFromFileNodes(username);
@@ -968,6 +967,35 @@ describe("syncDriveTree", () => {
     spy.mockRestore();
   });
 
+  it("the crawl stores each root's Trash and prunes what is gone from it", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    await upsertDriveEntry(username, staleEntry("/users/ada/.Trash/purged.md", "n-purged"));
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi
+      .spyOn(crawl, "syncDriveMetadataTree")
+      .mockImplementation(async (_u, _b, options) => {
+        options?.onRoots?.(["/users/ada", "/groups/team"]);
+        return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+      });
+    const jmap = await import("@/lib/api/wgw/drive-jmap");
+    const listed: string[] = [];
+    const list = vi.spyOn(jmap, "listFileNodeEntries").mockImplementation(async (_s, dir) => {
+      listed.push(dir);
+      if (dir === "/groups/team/.Trash") throw new Error("no Trash");
+      return [staleEntry("/users/ada/.Trash/gone.md", "n-gone")];
+    });
+
+    const result = await syncDriveTree(username);
+
+    expect(result.completed).toBe(true);
+    expect(listed).toEqual(["/users/ada/.Trash", "/groups/team/.Trash"]);
+    expect(await row("/users/ada/.Trash/gone.md")).toMatchObject({ area: "trash" });
+    expect(await row("/users/ada/.Trash/purged.md")).toBeUndefined();
+    list.mockRestore();
+    spy.mockRestore();
+  });
+
   it("a failing shared-with-me list does not hold the crawl's first sync back", async () => {
     const server = standardTree();
     await connect(server, { keyset: false });
@@ -1152,6 +1180,25 @@ describe("review fixes (#2063 C1)", () => {
 
     await syncDriveInboundFromFileNodes(username);
     expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("without the keyset, a token from before any finished pass crawls once", async () => {
+    const server = standardTree();
+    server.add("a1", "r-home", "a.md");
+    await connect(server, { keyset: false });
+    await writeDriveSyncToken(username, server.state());
+    const spy = await mockCrawl();
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(await readMeta(username, DRIVE_TREE_LAST_PASS_KEY)).toBe("crawl");
+
+    server.requests.length = 0;
+    await syncDriveInboundFromFileNodes(username);
+    expect(spy).toHaveBeenCalledTimes(1);
+    const methods = server.requests.flatMap((r) => r.methodCalls.map(([name]) => name));
+    expect(methods).toEqual(["FileNode/changes"]);
     spy.mockRestore();
   });
 
