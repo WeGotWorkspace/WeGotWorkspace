@@ -114,7 +114,10 @@ export type TabCache = {
 /** The tab's Docs offline cache. */
 export async function tabCache(tab: Tab): Promise<TabCache> {
   return tab.evaluate(async () => {
-    const user = localStorage.getItem("wgw.offline.docs.username");
+    // Docs home lists the Drive tree (#2063 C4): an empty home has only the Drive account key.
+    const user =
+      localStorage.getItem("wgw.offline.docs.username") ??
+      localStorage.getItem("wgw.offline.drive.username");
     const empty = { missingDb: true, outbox: [], views: {}, stars: [] };
     if (!user) return empty;
     const db = await new Promise<IDBDatabase | null>((resolve) => {
@@ -130,13 +133,15 @@ export async function tabCache(tab: Tab): Promise<TabCache> {
         request.onsuccess = () => resolve(request.result as T[]);
         request.onerror = () => resolve([]);
       });
-    const hasListing = db.objectStoreNames.contains("docs_listing_rows");
+    // Docs home lists the file tree (#2063 C4); its writes queue in the Drive outbox.
+    const hasTree = db.objectStoreNames.contains("drive_entries");
     const outbox = (await all<{ domain: string; payload: string }>("outbox"))
-      .filter((row) => row.domain === "docs")
+      .filter((row) => row.domain === "docs" || row.domain === "drive")
       .map((row) => row.payload);
     const views: Record<string, string[]> = {};
-    for (const row of await all<{ cacheKey: string; sourceKey: string }>("docs_listing_rows")) {
-      (views[row.cacheKey] ??= []).push(row.sourceKey.replace(/^\/+/, ""));
+    for (const row of await all<{ id: string; type?: string }>("drive_entries")) {
+      if (row.type === "dir" || row.id.split("/").includes(".Trash")) continue;
+      (views.tree ??= []).push(row.id.replace(/^\/+/, ""));
     }
     const meta = await all<{ key: string; value: string }>("meta");
     db.close();
@@ -148,7 +153,7 @@ export async function tabCache(tab: Tab): Promise<TabCache> {
       stars = [];
     }
     return {
-      missingDb: !hasListing,
+      missingDb: !hasTree,
       outbox,
       views,
       stars: stars.map((path) => `/${path.replace(/^\/+/, "").replace(/\/+$/, "")}`),

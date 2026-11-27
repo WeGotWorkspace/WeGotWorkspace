@@ -40,6 +40,8 @@ export const DOCS_OFFLINE_VERSION = {
   listingTables: 20,
   availabilityTables: 21,
   availabilityNodeId: 22,
+  /** #2063 C4: Docs home lists the Drive tree; the per-filter listing cache goes. */
+  dropListingTables: 23,
 } as const;
 
 /** Drive version steps within the drive block (30–39). */

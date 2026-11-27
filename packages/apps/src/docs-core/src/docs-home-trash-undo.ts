@@ -1,12 +1,12 @@
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { parentAndName } from "@/lib/files/api-path";
 import {
-  captureOfflineDocsTrashSnapshot,
-  undoOfflineDocsTrash,
+  captureDocsTrashSnapshot,
+  docsTrashSnapshotAt,
+  restoreDocsTrashSnapshot,
+  undoQueuedDocsTrash,
   type DocsTrashUndoSnapshot,
-} from "@/lib/offline/docs/docs-hybrid-operations";
-import { removeOutboxMutationsForDocsPath } from "@/lib/offline/docs/docs-outbox-flush";
-import { renamedDocsSearchResult } from "@/lib/offline/docs/docs-listing-offline-store";
+} from "@/lib/offline/docs/docs-trash-undo";
 import type { DriveFile } from "@/lib/files/drive-models";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import {
@@ -57,7 +57,7 @@ export async function moveDocsRowsToTrash(
       await Promise.all(
         rows.map(async (file) => ({
           id: file.id,
-          snapshot: await captureOfflineDocsTrashSnapshot(offlineUsername, file.apiPath!),
+          snapshot: await captureDocsTrashSnapshot(offlineUsername, file.apiPath!),
         })),
       ),
     );
@@ -82,16 +82,7 @@ function snapshotOnRestoredPath(
   to: string,
 ): DocsTrashUndoSnapshot {
   const { destination } = parentAndName(snapshot.apiPath);
-  const apiPath = normalizeApiVirtualPath(destination === "/" ? `/${to}` : `${destination}/${to}`);
-  const listingResult = renamedDocsSearchResult(snapshot.listingResult, apiPath);
-  return {
-    ...snapshot,
-    apiPath,
-    listingResult,
-    availability: snapshot.availability
-      ? { ...snapshot.availability, id: listingResult.sourceKey }
-      : undefined,
-  };
+  return docsTrashSnapshotAt(snapshot, destination === "/" ? `/${to}` : `${destination}/${to}`);
 }
 
 /**
@@ -115,22 +106,16 @@ export async function revertDocsHomeTrash(input: {
   reload: () => void;
   onAvailabilityChanged?: () => void;
 }): Promise<void> {
+  const trashDirectory = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, input.username, input.groupRoots);
   try {
-    // Offline trash never reached the server. Local cache undo is enough.
-    if (!readBrowserOnline()) {
-      await undoCompletedOfflineSnapshots(input, (snapshot) => snapshot);
-      return;
-    }
-
-    const queuedLocally = await takeQueuedLocalTrashes(input);
-    await undoCompletedOfflineSnapshots(input, (snapshot, id) =>
-      queuedLocally.has(id) ? snapshot : undefined,
-    );
+    // A trash still in the outbox never reached the server: undo it on this device.
+    const queuedLocally = await undoQueuedLocalTrashes(input, trashDirectory);
+    // Offline nothing else can have landed.
+    if (!readBrowserOnline()) return;
 
     const serverCompleted = new Set(
       [...input.completedKeys].filter((id) => !queuedLocally.has(id)),
     );
-    const trashDirectory = apiPathFromUiPath(DRIVE_TRASH_UI_PATH, input.username, input.groupRoots);
     const moves: DriveRestoreMove[] = [];
     for (const file of input.rows) {
       if (!serverCompleted.has(file.id)) continue;
@@ -154,56 +139,53 @@ export async function revertDocsHomeTrash(input: {
     if (restoredMessage) input.show(restoredMessage);
     if (failures > 0) input.showError(unrestoredDriveFilesMessage(failures));
 
-    await undoCompletedOfflineSnapshots(input, (snapshot, id) => {
-      const to = restoredToById.get(id);
-      return to ? snapshotOnRestoredPath(snapshot, to) : undefined;
-    });
+    // The server rename moved the tree row back; the pin and local text follow it.
+    if (input.offlineUsername) {
+      for (const entry of input.offlineSnapshots) {
+        const to = restoredToById.get(entry.id);
+        if (!to) continue;
+        try {
+          await restoreDocsTrashSnapshot(
+            input.offlineUsername,
+            snapshotOnRestoredPath(entry.snapshot, to),
+          );
+        } catch (error) {
+          console.error("Docs home trash undo failed", error);
+        }
+      }
+    }
   } finally {
     input.reload();
     input.onAvailabilityChanged?.();
   }
 }
 
-/** Ids whose trash was still queued, so the file never reached the server. */
-async function takeQueuedLocalTrashes(input: {
-  offlineUsername: string | null;
-  offlineSnapshots: readonly DocsHomeTrashOfflineSnapshot[];
-  completedKeys: ReadonlySet<string>;
-}): Promise<Set<string>> {
+/** Undo the trashes still queued on this device; returns their ids. */
+async function undoQueuedLocalTrashes(
+  input: {
+    offlineUsername: string | null;
+    offlineSnapshots: readonly DocsHomeTrashOfflineSnapshot[];
+    completedKeys: ReadonlySet<string>;
+    trashedNameById: ReadonlyMap<string, string>;
+  },
+  trashDirectory: string,
+): Promise<Set<string>> {
   const queuedLocally = new Set<string>();
   if (!input.offlineUsername) return queuedLocally;
   for (const entry of input.offlineSnapshots) {
     if (!input.completedKeys.has(entry.id)) continue;
+    const trashedName = input.trashedNameById.get(entry.id);
+    if (!trashedName) continue;
     try {
-      const removedTrash = await removeOutboxMutationsForDocsPath(
+      const undone = await undoQueuedDocsTrash(
         input.offlineUsername,
-        entry.snapshot.apiPath,
+        entry.snapshot,
+        normalizeApiVirtualPath(`${trashDirectory}/${trashedName}`),
       );
-      if (removedTrash) queuedLocally.add(entry.id);
+      if (undone) queuedLocally.add(entry.id);
     } catch (error) {
       console.error("Docs home trash undo failed", error);
     }
   }
   return queuedLocally;
-}
-
-async function undoCompletedOfflineSnapshots(
-  input: {
-    offlineUsername: string | null;
-    offlineSnapshots: readonly DocsHomeTrashOfflineSnapshot[];
-    completedKeys: ReadonlySet<string>;
-  },
-  rebase: (snapshot: DocsTrashUndoSnapshot, id: string) => DocsTrashUndoSnapshot | undefined,
-): Promise<void> {
-  if (!input.offlineUsername) return;
-  for (const entry of input.offlineSnapshots) {
-    if (!input.completedKeys.has(entry.id)) continue;
-    const snapshot = rebase(entry.snapshot, entry.id);
-    if (!snapshot) continue;
-    try {
-      await undoOfflineDocsTrash(input.offlineUsername, snapshot);
-    } catch (error) {
-      console.error("Docs home trash undo failed", error);
-    }
-  }
 }

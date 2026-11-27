@@ -31,7 +31,6 @@ describe("offline db multi-domain registry", () => {
         "contacts_address_books",
         "contacts_cards",
         "docs_availability",
-        "docs_listing_rows",
         "drive_availability",
         "drive_content_blobs",
         "drive_entries",
@@ -113,7 +112,8 @@ describe("offline db multi-domain registry", () => {
     expect(await db.outbox.get("legacy-op")).toBeTruthy();
     expect(db.tables.map((t) => t.name)).toContain("contacts_cards");
     expect(db.tables.map((t) => t.name)).toContain("notes_notes");
-    expect(db.tables.map((t) => t.name)).toContain("docs_listing_rows");
+    // Docs home lists the Drive tree since #2063 C4: the listing cache is dropped.
+    expect(db.tables.map((t) => t.name)).not.toContain("docs_listing_rows");
     expect(db.tables.map((t) => t.name)).toContain("docs_availability");
 
     await db.delete();
