@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { TooltipProvider } from "@/ui/tooltip";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
 import { cn } from "@/lib/utils";
@@ -249,6 +250,7 @@ export function DocsHomeWorkspace({
     [offlineUsername],
   );
 
+  const bodySyncDoneRef = useRef(-1);
   const readBodySyncProgress = useCallback(() => {
     if (!offlineUsername) {
       return Promise.resolve({
@@ -259,8 +261,17 @@ export function DocsHomeWorkspace({
         updatedAt: 0,
       });
     }
-    return readDocsBodySyncProgress(offlineUsername);
-  }, [offlineUsername]);
+    return readDocsBodySyncProgress(offlineUsername).then((progress) => {
+      // A run over many Docs takes a while: each body it stores drops that
+      // row's "Syncing offline" badge now, not when the whole run ends.
+      const done = progress.synced + progress.failed;
+      if (done !== bodySyncDoneRef.current) {
+        bodySyncDoneRef.current = done;
+        refresh();
+      }
+      return progress;
+    });
+  }, [offlineUsername, refresh]);
 
   const docsBodySyncRunning = useOfflineBodySyncRunning({
     enabled: Boolean(offlineUsername),
@@ -286,6 +297,7 @@ export function DocsHomeWorkspace({
   const canOpenOffline = useDocsHomeOpenGuard({
     isOfflineListing: listing.isOfflineListing,
     offlineAvailableIds,
+    username: offlineUsername,
     onUnavailable: () => showError(labels.homeNotAvailableOffline),
   });
 
@@ -341,11 +353,16 @@ export function DocsHomeWorkspace({
         show(action.message);
         return;
       }
-      if (!canOpenOffline(file)) return;
       if (!file.apiPath) return;
-      // Offline the tree is all there is, so its id is the best answer.
-      const trustId = treePulled || !online || !offlineUsername;
-      onOpenFile?.(file.apiPath, trustId ? file.nodeId : undefined);
+      const apiPath = file.apiPath;
+      // Offline the tree is all there is, so its id is the best answer. The
+      // snapshot counts too: right after the connection drops, `online` may
+      // still say true, and an open by path then needs the server.
+      const offlineNow = !online || !getConnectivitySnapshot();
+      const trustId = treePulled || offlineNow || !offlineUsername;
+      void canOpenOffline(file).then((open) => {
+        if (open) onOpenFile?.(apiPath, trustId ? file.nodeId : undefined);
+      });
     },
     [canOpenOffline, config, offlineUsername, online, onOpenFile, show, treePulled],
   );
