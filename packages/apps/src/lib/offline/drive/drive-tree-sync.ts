@@ -25,13 +25,17 @@ import {
   readDriveBootstrapFromCache,
   upsertDriveEntriesInBulk,
 } from "@/lib/offline/drive/drive-directory-offline-store";
-import { pruneDriveEntriesToKeepSet } from "@/lib/offline/drive/drive-fetched-set-prune";
+import {
+  pruneDriveEntriesToKeepSet,
+  rememberKeptUnsavedDocuments,
+} from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   drainFileNodeChanges,
   isCannotCalculateChanges,
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
+import { documentHasUnsavedLocalWork } from "@/lib/offline/drive/drive-local-document";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { inDriveTreeTransaction, SidecarMoves } from "@/lib/offline/drive/drive-sidecar-moves";
 import {
@@ -242,7 +246,13 @@ async function runTreePass(
   await applyCatchUp(username, session, drained, paced, signal);
   if (signal?.aborted) return { ...NOTHING, changed };
 
-  const keptUnsavedPaths = await writeResolvedTree(username);
+  const written = await writeResolvedTree(username);
+  // An unsaved document holds a final path: nothing was written; the cursor and
+  // the token stay, so the next sync replays the catch-up and retries.
+  if (written.blocked) {
+    return { completed: false, changed, keptUnsavedPaths: written.keptUnsavedPaths };
+  }
+  const keptUnsavedPaths = written.keptUnsavedPaths;
   // Cursor first: a crash before the token is written starts a fresh pass.
   await clearCursor(username);
   await writeDriveSyncToken(username, drained.newState);
@@ -432,7 +442,9 @@ export function resolveTreePaths(
  * (except `.Trash`), move each node's blob and pins from its previous path,
  * upsert the rows with their `area`, then prune everything else.
  */
-async function writeResolvedTree(username: string): Promise<string[]> {
+async function writeResolvedTree(
+  username: string,
+): Promise<{ blocked: boolean; keptUnsavedPaths: string[] }> {
   const staged = await stagingTable(username).toArray();
   const resolved = resolveTreePaths(staged);
   const finals: Array<{ entry: WgwDriveDirectoryEntry; area: DriveEntryArea }> = [];
@@ -451,6 +463,12 @@ async function writeResolvedTree(username: string): Promise<string[]> {
       entry: { ...parseEntry(row.data), path: node.path, name: row.name },
       area: areaForRoot(node.path, node.root),
     });
+  }
+
+  const blockedPaths = await pathsHeldByUnsavedDocuments(username, finals);
+  if (blockedPaths.length > 0) {
+    await rememberKeptUnsavedDocuments(username, blockedPaths);
+    return { blocked: true, keptUnsavedPaths: blockedPaths };
   }
 
   await writeMeta(username, DRIVE_TREE_ROOTS_KEY, JSON.stringify(roots));
@@ -472,7 +490,35 @@ async function writeResolvedTree(username: string): Promise<string[]> {
     username,
     finals.map(({ entry }) => ({ path: entry.path, nodeId: entry.nodeId })),
   );
-  return pruned.keptUnsavedPaths;
+  return { blocked: false, keptUnsavedPaths: pruned.keptUnsavedPaths };
+}
+
+/**
+ * Final paths whose current row belongs to another node that the pass does not
+ * move to a different final path, while that row has unsaved collab work. A
+ * node that is in `finals` elsewhere is moving away; a same-node refresh is fine.
+ * Only reads, so a blocked pass writes nothing.
+ */
+async function pathsHeldByUnsavedDocuments(
+  username: string,
+  finals: readonly { entry: WgwDriveDirectoryEntry }[],
+): Promise<string[]> {
+  const targets = new Map<string, string>();
+  for (const { entry } of finals) {
+    if (entry.nodeId) targets.set(entry.nodeId, normalizeDriveEntryPath(entry.path));
+  }
+  const paths = finals.map(({ entry }) => normalizeDriveEntryPath(entry.path));
+  const rows = await driveEntriesTable(accountDb(username)).bulkGet(paths);
+  const blocked: string[] = [];
+  for (const [index, row] of rows.entries()) {
+    const occupant = row?.nodeId;
+    const nodeId = finals[index]!.entry.nodeId;
+    if (!row || !occupant || !nodeId || occupant === nodeId) continue;
+    const movesTo = targets.get(occupant);
+    if (movesTo !== undefined && movesTo !== paths[index]) continue;
+    if (await documentHasUnsavedLocalWork(row.id)) blocked.push(row.id);
+  }
+  return blocked;
 }
 
 /**

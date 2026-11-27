@@ -21,7 +21,11 @@ import { findUploadPlaceholder } from "@/lib/offline/drive/upload/drive-upload-p
 import { enqueueDriveUploadBatch } from "@/lib/offline/drive/upload/drive-upload-store";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { docsCollabIndexedDbKey, docsCollabRoomKey } from "@/lib/collab/docs-collab-persistence";
+import {
+  clearDocsCollabPendingServerSave,
+  docsCollabIndexedDbKey,
+  docsCollabRoomKey,
+} from "@/lib/collab/docs-collab-persistence";
 import { PENDING_SERVER_SAVE_KEY } from "@/lib/collab/pending-server-save-key";
 import {
   readDriveEntryFromCache,
@@ -792,6 +796,60 @@ describe("syncDriveTree", () => {
     expect(await row("/users/ada/Drafts/unsaved.md")).toBeDefined();
     expect(await row("/users/ada/Drafts")).toBeDefined();
     expect(result.keptUnsavedPaths).toEqual(["users/ada/Drafts/unsaved.md"]);
+  });
+
+  describe("unsaved documents on a final path", () => {
+    async function seedTwo(): Promise<TreeServer> {
+      const server = standardTree();
+      server.add("f-a", "r-home", "notes.md");
+      server.add("f-b", "r-home", "other.md");
+      await connect(server);
+      await syncDriveTree(username);
+      await writeDriveContentBlob(username, "/users/ada/notes.md", new Blob(["local"]));
+      await writeDriveContentBlob(username, "/users/ada/other.md", new Blob(["other-body"]));
+      await seedPendingSave("/users/ada/notes.md");
+      return server;
+    }
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+
+    it("a full pass writes nothing over a node's pending save", async () => {
+      const server = await seedTwo();
+      const token = await readDriveSyncToken(username);
+      server.remove("f-a");
+      server.move("f-b", { name: "notes.md" });
+      await connect(server);
+
+      const result = await syncDriveTree(username);
+
+      expect(result.completed).toBe(false);
+      expect(result.keptUnsavedPaths).toContain("users/ada/notes.md");
+      expect((await row("/users/ada/notes.md"))?.nodeId).toBe("f-a");
+      expect(await blobSize("users/ada/notes.md")).toBe(5);
+      expect((await row("/users/ada/other.md"))?.nodeId).toBe("f-b");
+      expect(await readDriveSyncToken(username)).toBe(token);
+
+      await clearDocsCollabPendingServerSave("/users/ada/notes.md");
+      const again = await syncDriveTree(username);
+
+      expect(again.completed).toBe(true);
+      expect((await row("/users/ada/notes.md"))?.nodeId).toBe("f-b");
+      expect(await readDriveSyncToken(username)).toBe(server.state());
+    });
+
+    it("places both when the unsaved node moves away itself", async () => {
+      const server = await seedTwo();
+      server.move("f-a", { name: "notes-v2.md" });
+      server.move("f-b", { name: "notes.md" });
+      await connect(server);
+
+      const result = await syncDriveTree(username);
+
+      expect(result.completed).toBe(true);
+      expect((await row("/users/ada/notes-v2.md"))?.nodeId).toBe("f-a");
+      expect(await blobSize("users/ada/notes-v2.md")).toBe(5);
+      expect((await row("/users/ada/notes.md"))?.nodeId).toBe("f-b");
+      expect(await blobSize("users/ada/notes.md")).toBe(10);
+    });
   });
 
   it("a node already cached at another path takes its blob to the final path", async () => {
