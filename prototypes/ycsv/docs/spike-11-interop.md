@@ -17,14 +17,15 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
 
 ## Answers in short
 
-1. **Conformance.** The spec decides 35 of the 65 corpus cases.
-   `spreadsheet-core` passes 12 of them and the prototype passes 15. The two
-   parsers agree on only 16 of the 65. The largest single cause is row
+1. **Conformance.** The spec decides 40 of the 70 corpus cases (with
+   P30 accepted, six empty-row cases are decided). `spreadsheet-core`
+   passes 12 of them and the prototype passes 19. The two parsers agree on
+   only 16 of the 70. The largest single cause is row
    numbering:
    - **The prototype follows the spec**: the first data row is row 1.
    - **The core engine counts the header as row 1.** That is a bug against
      §7.1 (Wouter's decision, see [Row numbering](#row-numbering-decision)).
-     With that bug simulated as fixed (refs shifted by one), it passes 20.
+     With that bug simulated as fixed (refs shifted by one), it passes 25.
 
    Both parsers lose:
    - trailing empty rows;
@@ -70,13 +71,14 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
    every formula whose result differs from the source app's.
 8. **Row numbering.** P1 is **rejected**: the spec keeps the first data row
    as row 1. Import and export now map A1 rows to YCSV rows (Excel row 2 = YCSV
-   row 1 under a header; §7.2 empty rows shift further). All checks still
-   hold: 37/37 formulas round-trip as identical text, 29/37 engine values
-   match, and the exceljs export gives 135/135 in LibreOffice. The constraint
-   that matters: the grid shows the same number as the formulas use, so the
-   header row is unnumbered. Two open questions for Wouter: should empty
-   rows keep their number (P30), and how is the header row labelled in the
-   grid? See [Open questions](#open-questions).
+   row 1 under a header). **P30 is accepted**: empty rows keep their
+   number, so that header offset is the whole mapping and blank rows need no
+   renumbering. All checks still hold: 37/37 formulas round-trip as
+   identical text, 29/37 engine values match, and the exceljs export gives
+   135/135 in LibreOffice. The constraint that matters: the grid shows the
+   same number as the formulas use, so the header row is unnumbered. Still
+   open for Wouter: how is the header row labelled in the grid? See
+   [Open questions](#open-questions).
 9. **Header flag accepted (P2/P27).** Every sheet states `header:
    true|false`. Detection (rules D1–D7, now in spec §4.1) runs only when the
    flag is missing, as on a plain CSV, and its result is written back. Users
@@ -114,11 +116,11 @@ The full table is in [spike-11-conformance-results.md](spike-11-conformance-resu
 
 | | core (`spreadsheet-core`) | proto (`prototypes/ycsv`) |
 |---|---|---|
-| Spec-decided cases passed (of 35) | 12 (20 with its header-as-row-1 bug simulated as fixed) | 15 |
-| Agree with each other | 16 of 65 | |
+| Spec-decided cases passed (of 40) | 12 (25 with its header-as-row-1 bug simulated as fixed) | 19 |
+| Agree with each other | 16 of 70 | |
 | Spec example 9.4 (`categorieën`) | fails: ASCII-only refs | fails: single-sheet only |
 | `---` line inside a quoted cell | splits the sheet | splits the sheet |
-| Empty-row numbering (§7.2) | not followed | not followed |
+| Empty rows keep their number (§7.2, P30) | yes (with the shift); keeps trailing empty rows | yes, but skips blank lines and keeps trailing empty rows |
 | Header reordered vs `columns` | matched by position | matched by position |
 | Quote in mid-field | swallows the rest of the file | ok |
 | Missing `ycsv_version` / frontmatter | accepted | accepted |
@@ -133,7 +135,7 @@ The full table is in [spike-11-conformance-results.md](spike-11-conformance-resu
 | Property | core | proto |
 |---|---|---|
 | Plain values, no fully empty rows | pass | pass |
-| A trailing fully empty row survives | **fail** (dropped) | **fail** (dropped) |
+| A trailing fully empty row survives | dropped (P26: correct) | dropped (P26: correct) |
 | A cell containing `\n---\n` survives | **fail** | **fail** |
 | `\r` inside a cell survives | pass | **fail** |
 
@@ -521,10 +523,10 @@ formulas round-trip as identical text.
 | `C2:C6` | `prijs1:prijs5` |
 | `A2:C4` | `id1:korting3` (rectangular, P4) |
 | `E:E` | `totaal:totaal` |
-| `'Q1 overzicht'!B4` (no header, row 2 empty) | `q1_overzicht!B3` (A-Z refs; §7.2: the empty row has no number) |
+| `'Q1 overzicht'!B4` (no header, row 2 empty) | `q1_overzicht!B4` (A-Z refs; the empty row keeps its number, P30) |
 | `Producten!E2:E6` | `producten!totaal1:totaal5` |
 | `C1` (the header cell itself) | `prijs0` |
-| a ref to a fully empty row | `#REF!`, logged (§7.2 gives it no number) |
+| a ref to a fully empty row | the same row, a blank cell (P30) |
 | a column whose name ends in a digit or has spaces | `'kw1'1`, `'Zo Doen'1` (P12) |
 | `BTW_TARIEF` (named range) | `btw_tarief` (def, P13) |
 | `_xlfn.XLOOKUP(…)` | `XLOOKUP(…)` (prefix added back on export) |
@@ -537,19 +539,20 @@ from 1 in the spec; in the CSV source the header can be line 1, and the grid
 can start its visible numbering at the data. So:
 
 - **The spec stands.** The first data row is row 1, the header is row 0
-  (§7.1), and fully empty rows get no number (§7.2).
+  (§7.1). Fully empty rows keep their number (§7.2 as replaced by P30,
+  accepted after this decision).
 - **`spreadsheet-core` has a bug.** Its engine counts the header as row 1,
   against §7.1. It is not an alternative numbering, and it must be fixed
   before it ships. Its corpus score with that bug simulated as fixed is 20 of
   35.
 - **Import and export map row numbers per sheet** (`rows` in
   `interop/xlsx/translate.ts`, `rowNumbers` / `toYRow` / `toA1Row`):
-  - With a header in source row 1, Excel row 2 = YCSV row 1.
-  - Each fully empty row above a ref lowers it by one more (Q1 sheet: Excel
-    `B4` → `B3`).
-  - On an empty row, a range start moves to the next row and a range end to
-    the previous one. A single ref to an empty row becomes `#REF!` and is
-    logged.
+  - With a header in source row 1, Excel row 2 = YCSV row 1. Without a
+    header, the numbers are the same.
+  - **No renumbering for blank rows** since P30: an empty row keeps its
+    number, so the header offset is the whole mapping. (Before P30 every
+    empty row above a ref lowered it by one more: Q1 sheet Excel `B4` →
+    `B3`, next to its own label "50%*B4". Now it stays `B4`.)
   - Export applies the inverse.
 - **The checks still hold with the mapping:**
   - 37/37 formulas round-trip A1 → YCSV → A1 as identical text;
@@ -559,8 +562,8 @@ can start its visible numbering at the data. So:
   - re-import is line-identical apart from tab colour;
   - the Numbers fixtures keep the same scores.
 - **Frontmatter addresses (P29)** follow the same numbering. Header cells are
-  row 0 (`cells: A0: …`). Styles on a fully empty row have no address; they
-  are dropped and logged.
+  row 0 (`cells: A0: …`). Styles on a fully empty row keep their address
+  (before P30 they were dropped and logged).
 
 **The one constraint that matters.** The number the grid shows next to a row
 must be the number a formula uses for it. Otherwise `totaal3` points at a
@@ -571,21 +574,45 @@ different row than the one labelled 3.
   like the column header band in Excel). Number data rows from 1. The
   formula bar, the name box (`prijs3`) and error messages use the same
   number.
-- Empty separator rows, while §7.2 stands, show no number either. The next
-  data row continues the count.
+- Empty separator rows are numbered like any other row (P30), so numbers
+  never jump.
 - Copying cells to Excel or exporting is where the numbers change (Excel
   adds the header row). That is expected, and the export does the mapping.
 
-**Open question 1 (Wouter): should empty rows keep their number?** §7.2
-costs a lot for little:
-- every Excel import with a blank row renumbers formulas; even the label
-  text "50%*B4" in the studio sheet now sits next to `=50%*B3`;
-- the grid skips numbers;
-- typing a value into an empty row renumbers every row below it, and every
-  formula pointing there must be rewritten.
+**Empty rows: decided (P30 accepted, Wouter: "A!").** Empty rows keep
+their number; spec §7.2 is replaced. The rules:
+- an empty line, a whitespace-only line and an all-separators line (`,,`)
+  are all empty rows, and parsers must not skip blank lines;
+- row number = body line number minus the header offset;
+- a blank line inside a quoted field is part of the value;
+- the final newline is not a row, and trailing empty rows are not stored
+  (P26);
+- cells of an empty row are blank cells: aggregates ignore them as in Excel,
+  and charts skip empty rows.
 
-Both parsers ignore §7.2 today. I recommend numbering empty rows like any
-other row (P30). This is separate from the rejected header part of P1.
+The old §7.2 said empty rows are "skipped during formula evaluation". With
+numbered rows that only means: an empty row has no formulas, and its blank
+cells are ignored by `SUM`, `AVERAGE`, `COUNT`, `COUNTA`, `MIN` and `MAX`
+(`COUNTBLANK` and `ROWS` count them). A reference to such a cell is a blank,
+not an error. The spec now says this in §7.2.
+
+What changed in the spike code: `rowNumbers` numbers every row
+(`interop/xlsx/translate.ts`); re-import shows the Q1 sheet's formulas at
+their Excel row numbers again and keeps the bold styles on its blank rows.
+The 37/37 text round trip and the 135/135 export are unchanged.
+
+Conformance cases for it (`r01`, `r04`–`r08`):
+
+| Case | core (+1 shift) | proto |
+|---|---|---|
+| `,` row keeps its number | pass | pass |
+| blank line is a row | pass | **fail**: skips blank lines |
+| whitespace-only line is a row | pass | pass |
+| final newline / trailing empty rows not stored | **fail**: keeps them | **fail**: keeps one |
+| blank line inside quotes is part of the value | pass | pass |
+| aggregates ignore an empty row | pass | pass |
+
+Without the shift, core fails all six because of its header-as-row-1 bug.
 
 ### Edge semantics proposed for v1
 
@@ -653,7 +680,7 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 | P29 | Frontmatter addresses use YCSV rows; header = row 0 (`A0:D0`) | `B3` must mean one cell in `cells` and in formulas; changes example 9.3 |
 | P31 | Header in the CSV body; `columns` is enrichment — **accepted**. Matching rule C1–C5 is a proposal | Wouter; see "CSV first" |
 | P32 | `.csv` stays CSV until a YCSV-only feature; editor asks — **accepted**. Dialect kept, `=` is text in CSV: proposals | Wouter; needs collab for `.csv` |
-| P30 | Empty rows keep their number (**open question 1**) | §7.2 renumbers formulas on every Excel import with blank rows; neither parser follows it |
+| P30 | Empty rows keep their number (**accepted**) | §7.2 renumbered formulas on every Excel import with blank rows; now replaced |
 | P2 / P27 | Explicit `header: true\|false` — **accepted** (Wouter); detection rules D1–D7 in §4.1 | A-Z files misread by proto; detection guesses |
 | P3 / P17 | Sheet refs: Unicode grammar; `hidden`, `tab_color`, array order | Example 9.4 fails in core; fixtures |
 | P4 | Excel grammar: `$`, rectangular ranges, whole columns, `&`, postfix `%`, Excel precedence, case-insensitive compare, same-row refs | 37 fixture formulas; precedence and `%` tests |
@@ -682,7 +709,7 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 | — | Export: correct cached values or none | LibreOffice shows cached values as they are |
 
 Row numbering is decided: P1 is rejected and §7.1 stands. What is still open:
-- **Open question 1:** P30, whether empty rows keep their number;
+- ~~P30~~ decided: empty rows keep their number;
 - **P29:** confirming that frontmatter addresses use the same numbering,
   which changes example 9.3 to `A0:D0`;
 - **fixing `spreadsheet-core`**, whose engine counts rows against §7.1.
@@ -735,8 +762,8 @@ accepted and written into spec §3, §3.1, §4.1 and A.5.
   by the sheets-integration session.
 - **Since decided:** the header stays in the body (P31), and a `.csv` stays
   CSV until a YCSV-only feature is used (P32). See
-  [CSV first](#csv-first-header-in-the-body-csv-stays-csv). P30 is still
-  open.
+  [CSV first](#csv-first-header-in-the-body-csv-stays-csv). P30 is
+  accepted too (empty rows keep their number).
 
 ### CSV first: header in the body, `.csv` stays CSV
 
@@ -877,36 +904,20 @@ is left for when P33 is decided.
 
 ## Open questions
 
-1. **Should empty rows keep their row number (P30)?** Recommended: yes.
-   Details are under [Row numbering decision](#row-numbering-decision).
-
-   What a blank row looks like in the source: a line with only commas
-   (`,,`), or an empty line. Both are a fully empty row. An example with a
-   header and one blank separator line:
+1. ~~Should empty rows keep their row number (P30)?~~ **Decided: yes**
+   (Wouter: "A!"). See [Row numbering decision](#row-numbering-decision).
+   The example he compared, now the rule:
 
    ```
    post,bedrag
    Huur,1250
    Stroom,90
    ,
-   Totaal,=SUM(bedrag1:bedrag2)
+   Totaal,=SUM(bedrag1:bedrag3)
    ```
 
-   | Line in the source | §7.2 as written | P30 (blank rows numbered) |
-   |---|---|---|
-   | `post,bedrag` | header (row 0) | header (row 0) |
-   | `Huur,1250` | row 1 | row 1 |
-   | `Stroom,90` | row 2 | row 2 |
-   | `,` | no number | row 3 |
-   | `Totaal,…` | row 3: `bedrag3` is the total | row 4: `bedrag4` is the total |
-
-   - **Under §7.2:** the grid shows 1, 2, (blank), 3.
-     - Typing anything into the blank line turns it into row 3, and every
-       row below it, and every formula that points there, moves up by one.
-     - An Excel import with blank rows needs renumbering: Excel calls the
-       total row 5.
-   - **Under P30:** the numbering is the line number minus the header line,
-     and it never jumps.
+   The blank line is row 3 and the total is row 4 (`bedrag4`), as Excel
+   numbers it minus the header. `SUM` over the blank row ignores it.
 2. **How does the grid label the header row?** Wouter's decision mentions
    that the visible numbering "can start at 2". That works only if formulas
    also say 2 for that row, which is P1, now rejected. With §7.1, a grid that

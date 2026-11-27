@@ -1,0 +1,8 @@
+---
+ycsv_version: 1
+---
+a,b
+4,=SUM(a1:a4)
+,
+8,=AVERAGE(a1:a4)
+6,=COUNT(a1:a4)

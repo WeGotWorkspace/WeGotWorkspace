@@ -1,9 +1,9 @@
 // Formula translation between Excel A1 syntax and YCSV column-ref syntax (spike 11).
 //
 // Row numbers follow the spec (§7.1, Wouter's decision on P1): the first data row is row 1,
-// a header row is row 0, and (§7.2) fully empty rows get no number. A1 row numbers are
-// mapped per sheet (`SheetCols.rows`): with a header in source row 1, Excel row 2 = YCSV
-// row 1, and every empty row above a ref lowers its number by one more.
+// a header row is row 0, and (§7.2, P30 accepted) fully empty rows keep their number. A1 row
+// numbers are mapped per sheet (`SheetCols.rows`): with a header in source row 1, Excel row
+// 2 = YCSV row 1, and every row is one less; without a header, A1 row = YCSV row.
 // Also assumes these spike 11 proposals in upstream/ycsv-spec-v1.md:
 //   P4  `$` absolute markers, rectangular ranges, whole-column ranges `x:x`, `sheet!a1:b2`
 //   P12 refs that are not plain identifiers, or that end in a digit, are quoted: 'Q1'2
@@ -16,10 +16,13 @@
  */
 export type SheetCols = { name: string; ref: string; refs: string[]; rows?: (number | null)[] };
 
-/** YCSV row numbers for a grid (spec §7.1, §7.2). */
+/**
+ * YCSV row numbers for a grid (spec §7.1, §7.2 with P30 accepted): the header is row 0 and
+ * every other row, empty or not, is numbered. Before P30 empty rows got null (no number); the
+ * null paths below stay for rows maps built by hand.
+ */
 export function rowNumbers(grid: string[][], header: boolean): (number | null)[] {
-  let n = 0;
-  return grid.map((row, i) => (header && i === 0 ? 0 : row.every((v) => v === "") ? null : ++n));
+  return grid.map((_, i) => (header ? i : i + 1));
 }
 
 /**
@@ -164,7 +167,7 @@ export function a1ToYcsv(formula: string, ctx: A1Context): { text: string; issue
       const side = formula[last] === ":" ? "start" : formula[m.index! - 1] === ":" ? "end" : "single";
       const y = toYRow(ctx.sheets[target]!.rows, Number(row), side);
       if (y === null) {
-        issues.push({ kind: "lost", what: `reference to empty separator row ${row} (spec §7.2 gives it no number)` });
+        issues.push({ kind: "lost", what: `reference to row ${row}, which has no YCSV number` });
         out += "#REF!";
       } else out += `${ac}${emitRef(ref)}${ar}${y}`;
       lastTarget = target;

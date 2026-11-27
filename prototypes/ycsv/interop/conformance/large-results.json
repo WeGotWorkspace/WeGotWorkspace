@@ -4,51 +4,51 @@
     "10k x 10, no formulas": {
       "bytes": 932346,
       "core": {
-        "ms": 41,
+        "ms": 37,
         "status": "ok, 10000 rows"
       },
       "proto": {
-        "ms": 142,
+        "ms": 92,
         "status": "ok, 10000 rows"
       }
     },
     "10k x 10, 1 formula column": {
       "bytes": 1002340,
       "core": {
-        "ms": 72,
+        "ms": 50,
         "status": "ok, 10000 rows"
       },
       "proto": {
-        "ms": 130,
+        "ms": 116,
         "status": "ok, 10000 rows"
       }
     },
     "100k x 10, 1 formula column": {
       "bytes": 10422644,
       "core": {
-        "ms": 1528,
+        "ms": 1424,
         "status": "ok, 100000 rows"
       },
       "proto": {
-        "ms": 2413,
+        "ms": 2046,
         "status": "ok, 100000 rows"
       }
     },
     "1 cell of 5 MB": {
       "bytes": 5242909,
       "core": {
-        "ms": 114,
+        "ms": 116,
         "status": "ok, 1 rows"
       },
       "proto": {
-        "ms": 131,
+        "ms": 120,
         "status": "ok, 1 rows"
       }
     },
     "50 sheets x 200 rows, chained cross-sheet refs": {
       "bytes": 147368,
       "core": {
-        "ms": 46,
+        "ms": 28,
         "status": "ok, 10000 rows"
       },
       "proto": {

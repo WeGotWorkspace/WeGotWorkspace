@@ -215,6 +215,49 @@ sheets:
         width: 229
     merges:
       - A1:E1
+    cells:
+      A2:
+        style:
+          bold: true
+      B2:
+        style:
+          bold: true
+      C2:
+        style:
+          bold: true
+      D2:
+        style:
+          bold: true
+      E2:
+        style:
+          bold: true
+      A3:
+        style:
+          bold: true
+      A4:
+        style:
+          bold: true
+      A5:
+        style:
+          bold: true
+      A6:
+        style:
+          bold: true
+      A7:
+        style:
+          bold: true
+      A8:
+        style:
+          bold: true
+      A9:
+        style:
+          bold: true
+      A10:
+        style:
+          bold: true
+      A11:
+        style:
+          bold: true
 ---
 Uitgaven,,,,,
 Post,Bedrag,Betaald,Datum,Aandeel,Notitie

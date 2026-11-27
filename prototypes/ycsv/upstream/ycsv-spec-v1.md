@@ -653,11 +653,34 @@ Rows are numbered starting at **1** for the first data row. The header row
 
 ### 7.2 Empty rows
 
-> **Proposal (spike 11):** trailing empty rows carry no meaning (P26). **Open question 1:** should empty rows keep their row number? See Appendix B, P30.
+> **Decision (spike 11, P30):** accepted (Wouter, after comparing both options on source examples). Empty rows keep their row number. This section replaces the old text, which read: "A fully empty row (all cells empty) is valid and has no data meaning. It serves as a visual separator between sections. Empty rows are skipped during formula evaluation and chart data injection. They are assigned no row number."
 
-A fully empty row (all cells empty) is valid and has no data meaning. It
-serves as a visual separator between sections. Empty rows are skipped during
-formula evaluation and chart data injection. They are assigned no row number.
+A fully empty row is valid and has no data meaning; it usually separates
+sections. It is a row like any other for numbering:
+
+- **What counts as an empty row.** A line in the CSV body that is empty, that
+  holds only spaces or tabs, or that holds only separators (`,,`). All its
+  cells are blank.
+- **It keeps its number.** The row number is the line number in the body
+  minus the header offset: with a header, body line 2 is row 1; without
+  one, body line 1 is row 1. Numbers never jump, and typing into an empty
+  row does not renumber the rows below it.
+- **Parsers must not skip blank lines.** Many CSV libraries do so by
+  default (an option such as `skipEmptyLines`); that must be off.
+- **A blank line inside a quoted field is part of the value,** not a row.
+- **The final newline of the file is not a row.** Trailing empty rows carry
+  no meaning, may be dropped by writers and are not stored (P26). Readers
+  must not rely on them.
+- **In formulas, cells of an empty row are blank cells,** like any other
+  empty cell. As in Excel: a blank is `0` in arithmetic and `""` in text,
+  and `SUM`, `AVERAGE`, `COUNT`, `COUNTA`, `MIN` and `MAX` ignore blanks,
+  so a range across an empty row gives the same result as without it.
+  `COUNTBLANK` and `ROWS` do count it. (The old text said empty rows are
+  "skipped during formula evaluation". With numbered rows there is nothing
+  to skip: an empty row has no formulas, and aggregates ignore its blank
+  cells. A reference to a blank cell is not an error.)
+- **Charts skip empty rows** when the data rows are injected (A.9), so a
+  separator does not become a data point.
 
 ### 7.3 Negative numbers
 
@@ -1215,13 +1238,15 @@ result: list of rows, each row a list of cell strings
 
 for each row:
   if all cells are empty:
-    mark as EMPTY_ROW (skip for data, preserve for display)
+    mark as EMPTY_ROW (it keeps its number; see §7.2)
+    (an empty or whitespace-only line is an EMPTY_ROW; do not skip blank lines)
+drop trailing EMPTY_ROWs (P26); the final newline is not a row
 ```
 
 ### A.5 Step 4 — Resolve column identity
 
 ```
-data_rows = non-empty rows
+data_rows = all rows after the header, EMPTY_ROWs included (§7.2)
 
 if columns is non-empty:
   assign ref to each column definition position:
@@ -1245,7 +1270,7 @@ else:
   else:
     assign A-Z fallback refs by position
 
-number data rows from 1 upward, skipping EMPTY_ROWs
+number data rows from 1 upward, EMPTY_ROWs included (§7.2, P30)
 ```
 
 ### A.6 Step 5 — Evaluate formulas
@@ -1317,7 +1342,7 @@ when a formula contains <sheetref>!<columnref><row>:
 for each chart in charts:
   build Vega-Lite data.values array from evaluated data rows:
     each row → object keyed by ref name, value is the evaluated cell value
-    skip EMPTY_ROWs
+    skip EMPTY_ROWs (they keep their number, but are not data points)
   inject as chart.spec.data = { values: [...] }
   pass completed spec to Vega-Lite compiler
 ```
@@ -1349,7 +1374,7 @@ for each chart in charts:
 > would change carry a short "Proposal (spike 11)" note.
 
 Each proposal has an id (P1…P34). The ids match the spike report.
-P1 was rejected; P2/P27, P31 and P32 were accepted (details per entry).
+P1 was rejected; P2/P27, P30, P31 and P32 were accepted (details per entry).
 
 ### B.1 Rows, header and body
 
@@ -1361,12 +1386,12 @@ start its visible numbering at the first data row. Consequences:
 - The `spreadsheet-core` engine, which counts the header as row 1, has a bug
   against §7.1. It is not an alternative numbering.
 - Import and export map row numbers: with a header in source row 1, Excel
-  row 2 = YCSV row 1 (and every fully empty row above a ref shifts it one
-  more while §7.2 stands, see P30).
+  row 2 = YCSV row 1. Empty rows keep their number (P30, accepted), so this
+  one-row offset is the whole mapping.
 - **The one constraint:** the row number the grid shows and the row number
   typed in formulas are the same number. The grid shows no number on the
   header row (Numbers shows its header rows the same way), shows 1 on the
-  first data row, and follows §7.2 for empty rows.
+  first data row, and numbers empty rows like any other (§7.2, P30).
 
 **P29 — Frontmatter addresses use YCSV rows.** `cells`, `merges`, `notes`
 and `validate` ranges use the same row numbers as formulas: the first data
@@ -1375,16 +1400,23 @@ keeps `B3` meaning one cell everywhere. Example 9.3 (`cells: A1:D1` for the
 header) changes to `A0:D0`. Alternative: a `header:` style key instead of
 row 0 addresses.
 
-**P30 — Empty rows keep their number (open question 1).** §7.2 gives fully
-empty rows no number. Under P1's rejection this means:
-- every import from Excel renumbers formulas around blank rows, so in the
-  spike's Q1 sheet, Excel `B4` becomes YCSV `B3`;
-- the grid must skip a number at each empty row;
-- typing in an empty row changes the number of every row below it, and every
-  formula that points there must be rewritten.
-
-Both parsers ignore §7.2 today. Proposal: empty rows are numbered like any
-other row; only trailing empty rows are insignificant (P26).
+**P30 — Empty rows keep their number. Accepted** (Wouter: "A!", after
+comparing both options on source examples). Written into §7.2, A.4, A.5 and
+A.9. A fully empty line (empty, whitespace only, or only separators) is a
+row and keeps its number; row number = body line number minus the header
+offset. Parsers must not skip blank lines; a blank line inside a quoted
+field is part of the value; the final newline is not a row, and trailing
+empty rows are not stored (P26). Cells of an empty row are blank cells
+(Excel semantics; aggregates ignore them), and charts still skip empty
+rows. Consequences:
+- An Excel import needs no renumbering for blank rows; the only mapping is
+  the header offset (Excel row 2 = YCSV row 1).
+- The grid numbers every row; typing into an empty row changes nothing
+  below it.
+- Before the decision, §7.2 gave empty rows no number: Excel `B4` in the
+  spike's Q1 sheet became YCSV `B3`. Both parsers already numbered empty
+  rows; see the conformance cases `r01`, `r04`–`r08` for where they still
+  differ (skipped blank lines, stored trailing rows).
 
 **P2 / P27 — Explicit `header`. Accepted** (Wouter: "header true lijkt me
 een mooie aanpak"). Every sheet states `header: true|false`. Detection

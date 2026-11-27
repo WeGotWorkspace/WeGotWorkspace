@@ -312,6 +312,26 @@
       "core": "stable after 1st write",
       "proto": "byte-identical"
     },
+    "r04-blank-line-row": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "r05-whitespace-line-row": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "r06-final-newline": {
+      "core": "stable after 1st write",
+      "proto": "stable after 1st write"
+    },
+    "r07-blank-line-in-quotes": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
+    "r08-empty-row-in-aggregates": {
+      "core": "stable after 1st write",
+      "proto": "byte-identical"
+    },
     "s01-minimal-az": {
       "core": "NOT idempotent",
       "proto": "byte-identical"

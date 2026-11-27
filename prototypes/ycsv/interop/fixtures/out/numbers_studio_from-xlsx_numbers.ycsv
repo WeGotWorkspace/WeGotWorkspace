@@ -61,18 +61,18 @@ sheets:
     merges:
       - A1:D1
     notes:
-      A19: Sheet-level notitie
+      A20: Sheet-level notitie
     cells:
-      B17:
+      B18:
         type: date
         excel_format: m/d/yy
-      B19:
+      B20:
         type: date
         excel_format: m/d/yy
-      B25:
+      B26:
         type: date
         excel_format: m/d/yy
-      B29:
+      B30:
         type: date
         excel_format: m/d/yy
 ---

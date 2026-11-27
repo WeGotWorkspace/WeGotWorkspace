@@ -2570,85 +2570,13 @@
     "id": "r01-empty-row-numbering",
     "expect": {
       "status": "ok",
-      "dataRows": 2,
+      "dataRows": 3,
       "values": {
-        "b2": "20"
+        "b3": "20"
       },
-      "note": "§7.2: the empty row has no number, so the row after it is row 2."
+      "note": "§7.2 as amended by P30 (accepted): the all-commas row is row 2, so the row after it is row 3."
     },
     "core": {
-      "status": "ok",
-      "warnings": [],
-      "sheets": [
-        {
-          "ref": "sheet1",
-          "name": "sheet1",
-          "refs": [
-            "a",
-            "b"
-          ],
-          "rows": [
-            [
-              "1",
-              ""
-            ],
-            [
-              "",
-              ""
-            ],
-            [
-              "2",
-              "=a2*10"
-            ]
-          ],
-          "values": {
-            "a1": "1",
-            "b1": "",
-            "a2": "",
-            "b2": "",
-            "a3": "2",
-            "b3": "10"
-          }
-        }
-      ]
-    },
-    "proto": {
-      "status": "ok",
-      "warnings": [],
-      "sheets": [
-        {
-          "ref": "sheet1",
-          "name": "sheet1",
-          "refs": [
-            "a",
-            "b"
-          ],
-          "rows": [
-            [
-              "1",
-              ""
-            ],
-            [
-              "",
-              ""
-            ],
-            [
-              "2",
-              "=a2*10"
-            ]
-          ],
-          "values": {
-            "a1": "1",
-            "b1": "",
-            "a2": "",
-            "b2": "",
-            "a3": "2",
-            "b3": "0"
-          }
-        }
-      ]
-    },
-    "coreShifted": {
       "status": "ok",
       "warnings": [],
       "sheets": [
@@ -2684,27 +2612,785 @@
         }
       ]
     },
+    "proto": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "2",
+              "=a3*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "",
+            "b2": "",
+            "a3": "2",
+            "b3": "20"
+          }
+        }
+      ]
+    },
+    "coreShifted": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "2",
+              "=a4*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "",
+            "b2": "",
+            "a3": "2",
+            "b3": "20"
+          }
+        }
+      ]
+    },
     "verdicts": [
       {
         "pass": false,
         "notes": [
-          "3 data rows, expected 2",
-          "b2=\"\" (want \"20\")"
+          "b3=\"0\" (want \"20\")"
+        ]
+      },
+      {
+        "pass": true,
+        "notes": []
+      },
+      {
+        "pass": true,
+        "notes": []
+      }
+    ],
+    "agree": false
+  },
+  {
+    "id": "r04-blank-line-row",
+    "expect": {
+      "status": "ok",
+      "dataRows": 3,
+      "values": {
+        "b3": "20"
+      },
+      "note": "Parsers must not skip blank lines: the blank line is row 2."
+    },
+    "core": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "2",
+              "=a3*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "",
+            "b2": "",
+            "a3": "2",
+            "b3": "0"
+          }
+        }
+      ]
+    },
+    "proto": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "2",
+              "=a3*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "2",
+            "b2": "#REF"
+          }
+        }
+      ]
+    },
+    "coreShifted": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "2",
+              "=a4*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "",
+            "b2": "",
+            "a3": "2",
+            "b3": "20"
+          }
+        }
+      ]
+    },
+    "verdicts": [
+      {
+        "pass": false,
+        "notes": [
+          "b3=\"0\" (want \"20\")"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "3 data rows, expected 2",
-          "b2=\"\" (want \"20\")"
+          "2 data rows, expected 3",
+          "b3=null (want \"20\")"
+        ]
+      },
+      {
+        "pass": true,
+        "notes": []
+      }
+    ],
+    "agree": false
+  },
+  {
+    "id": "r05-whitespace-line-row",
+    "expect": {
+      "status": "ok",
+      "dataRows": 3,
+      "values": {
+        "b3": "20"
+      },
+      "note": "A line of spaces or tabs is a fully empty row (row 2)."
+    },
+    "core": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "   ",
+              ""
+            ],
+            [
+              "2",
+              "=a3*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "",
+            "b2": "",
+            "a3": "2",
+            "b3": "0"
+          }
+        }
+      ]
+    },
+    "proto": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "   ",
+              ""
+            ],
+            [
+              "2",
+              "=a3*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "   ",
+            "b2": "",
+            "a3": "2",
+            "b3": "20"
+          }
+        }
+      ]
+    },
+    "coreShifted": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "   ",
+              ""
+            ],
+            [
+              "2",
+              "=a4*10"
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "",
+            "b2": "",
+            "a3": "2",
+            "b3": "20"
+          }
+        }
+      ]
+    },
+    "verdicts": [
+      {
+        "pass": false,
+        "notes": [
+          "b3=\"0\" (want \"20\")"
+        ]
+      },
+      {
+        "pass": true,
+        "notes": []
+      },
+      {
+        "pass": true,
+        "notes": []
+      }
+    ],
+    "agree": false
+  },
+  {
+    "id": "r06-final-newline",
+    "expect": {
+      "status": "ok",
+      "dataRows": 2,
+      "note": "Trailing empty rows carry no meaning (P26), so there are 2 data rows."
+    },
+    "core": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "2",
+              ""
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "",
+              ""
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "2",
+            "b2": "",
+            "a3": "",
+            "b3": "",
+            "a4": "",
+            "b4": ""
+          }
+        }
+      ]
+    },
+    "proto": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "2",
+              ""
+            ],
+            [
+              "",
+              ""
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "2",
+            "b2": "",
+            "a3": "",
+            "b3": ""
+          }
+        }
+      ]
+    },
+    "coreShifted": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "1",
+              ""
+            ],
+            [
+              "2",
+              ""
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "",
+              ""
+            ]
+          ],
+          "values": {
+            "a1": "1",
+            "b1": "",
+            "a2": "2",
+            "b2": "",
+            "a3": "",
+            "b3": "",
+            "a4": "",
+            "b4": ""
+          }
+        }
+      ]
+    },
+    "verdicts": [
+      {
+        "pass": false,
+        "notes": [
+          "4 data rows, expected 2"
         ]
       },
       {
         "pass": false,
         "notes": [
-          "3 data rows, expected 2",
-          "b2=\"\" (want \"20\")"
+          "3 data rows, expected 2"
         ]
+      },
+      {
+        "pass": false,
+        "notes": [
+          "4 data rows, expected 2"
+        ]
+      }
+    ],
+    "agree": false
+  },
+  {
+    "id": "r07-blank-line-in-quotes",
+    "expect": {
+      "status": "ok",
+      "dataRows": 2,
+      "values": {
+        "b2": "20"
+      },
+      "note": "The blank line belongs to the quoted cell a1; it is not a row."
+    },
+    "core": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "x\n\ny",
+              "1"
+            ],
+            [
+              "2",
+              "=a2*10"
+            ]
+          ],
+          "values": {
+            "a1": "x\n\ny",
+            "b1": "1",
+            "a2": "2",
+            "b2": "#VALUE!"
+          }
+        }
+      ]
+    },
+    "proto": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "x\n\ny",
+              "1"
+            ],
+            [
+              "2",
+              "=a2*10"
+            ]
+          ],
+          "values": {
+            "a1": "x\n\ny",
+            "b1": "1",
+            "a2": "2",
+            "b2": "20"
+          }
+        }
+      ]
+    },
+    "coreShifted": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "x\n\ny",
+              "1"
+            ],
+            [
+              "2",
+              "=a3*10"
+            ]
+          ],
+          "values": {
+            "a1": "x\n\ny",
+            "b1": "1",
+            "a2": "2",
+            "b2": "20"
+          }
+        }
+      ]
+    },
+    "verdicts": [
+      {
+        "pass": false,
+        "notes": [
+          "b2=\"#VALUE!\" (want \"20\")"
+        ]
+      },
+      {
+        "pass": true,
+        "notes": []
+      },
+      {
+        "pass": true,
+        "notes": []
+      }
+    ],
+    "agree": false
+  },
+  {
+    "id": "r08-empty-row-in-aggregates",
+    "expect": {
+      "status": "ok",
+      "dataRows": 4,
+      "values": {
+        "b1": "18",
+        "b3": "6",
+        "b4": "3"
+      },
+      "note": "As in Excel: SUM, AVERAGE and COUNT ignore the blank row 2."
+    },
+    "core": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "4",
+              "=SUM(a1:a4)"
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "8",
+              "=AVERAGE(a1:a4)"
+            ],
+            [
+              "6",
+              "=COUNT(a1:a4)"
+            ]
+          ],
+          "values": {
+            "a1": "4",
+            "b1": "12",
+            "a2": "",
+            "b2": "",
+            "a3": "8",
+            "b3": "6",
+            "a4": "6",
+            "b4": "2"
+          }
+        }
+      ]
+    },
+    "proto": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "4",
+              "=SUM(a1:a4)"
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "8",
+              "=AVERAGE(a1:a4)"
+            ],
+            [
+              "6",
+              "=COUNT(a1:a4)"
+            ]
+          ],
+          "values": {
+            "a1": "4",
+            "b1": "18",
+            "a2": "",
+            "b2": "",
+            "a3": "8",
+            "b3": "6",
+            "a4": "6",
+            "b4": "3"
+          }
+        }
+      ]
+    },
+    "coreShifted": {
+      "status": "ok",
+      "warnings": [],
+      "sheets": [
+        {
+          "ref": "sheet1",
+          "name": "sheet1",
+          "refs": [
+            "a",
+            "b"
+          ],
+          "rows": [
+            [
+              "4",
+              "=SUM(a2:a5)"
+            ],
+            [
+              "",
+              ""
+            ],
+            [
+              "8",
+              "=AVERAGE(a2:a5)"
+            ],
+            [
+              "6",
+              "=COUNT(a2:a5)"
+            ]
+          ],
+          "values": {
+            "a1": "4",
+            "b1": "18",
+            "a2": "",
+            "b2": "",
+            "a3": "8",
+            "b3": "6",
+            "a4": "6",
+            "b4": "3"
+          }
+        }
+      ]
+    },
+    "verdicts": [
+      {
+        "pass": false,
+        "notes": [
+          "b1=\"12\" (want \"18\")",
+          "b4=\"2\" (want \"3\")"
+        ]
+      },
+      {
+        "pass": true,
+        "notes": []
+      },
+      {
+        "pass": true,
+        "notes": []
       }
     ],
     "agree": false

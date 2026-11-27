@@ -118,7 +118,7 @@ function literal(v: string, fmt: Record<string, unknown> | undefined): XLSX.Cell
   return { t: "s", v };
 }
 
-/** YCSV row numbers per sheet (header 0, empty rows none), set by the exporters. */
+/** YCSV row numbers per sheet (header 0, then every row: §7.2 with P30), set by the exporters. */
 let ROWS: (number | null)[][] = [];
 /** Frontmatter address (YCSV rows) of the cell at grid index r, c of sheet si. */
 const yAddr = (si: number, r: number, c: number) => `${colLetters(c)}${ROWS[si]?.[r] ?? "x"}`;

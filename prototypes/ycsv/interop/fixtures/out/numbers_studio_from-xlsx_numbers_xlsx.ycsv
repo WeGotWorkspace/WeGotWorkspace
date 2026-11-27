@@ -118,16 +118,10 @@ sheets:
     merges:
       - A1:D1
     notes:
-      A19: |-
+      A20: |-
         Author:
         Sheet-level notitie
     cells:
-      B3:
-        type: currency
-        currency: EUR
-        minimumFractionDigits: 2
-        maximumFractionDigits: 2
-        excel_format: '"€ "#,##0.00;"-€ "#,##0.00'
       B4:
         type: currency
         currency: EUR
@@ -135,26 +129,26 @@ sheets:
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;"-€ "#,##0.00'
       B5:
-        type: percent
-        minimumFractionDigits: 0
-        maximumFractionDigits: 0
-        excel_format: 0%
-      B6:
-        type: percent
-        minimumFractionDigits: 0
-        maximumFractionDigits: 0
-        excel_format: 0%
-      B8:
-        type: number
-        minimumFractionDigits: 0
-        maximumFractionDigits: 0
-        excel_format: "0"
-      B9:
         type: currency
         currency: EUR
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;"-€ "#,##0.00'
+      B6:
+        type: percent
+        minimumFractionDigits: 0
+        maximumFractionDigits: 0
+        excel_format: 0%
+      B7:
+        type: percent
+        minimumFractionDigits: 0
+        maximumFractionDigits: 0
+        excel_format: 0%
+      B9:
+        type: number
+        minimumFractionDigits: 0
+        maximumFractionDigits: 0
+        excel_format: "0"
       B10:
         type: currency
         currency: EUR
@@ -179,37 +173,43 @@ sheets:
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;"-€ "#,##0.00'
-      B16:
+      B14:
         type: currency
         currency: EUR
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;"-€ "#,##0.00'
       B17:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: '"€ "#,##0.00;"-€ "#,##0.00'
+      B18:
         type: date
         excel_format: dd-mm-yyyy
-      B19:
+      B20:
         type: date
         excel_format: dd-mm-yyyy
-      B25:
+      B26:
         type: date
         excel_format: dd-mm-yyyy
-      B27:
+      B28:
         type: number
         notation: scientific
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: "0.00E+00"
-      B28:
+      B29:
         type: number
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         useGrouping: true
         excel_format: "#,##0.00;(#,##0.00)"
-      B29:
+      B30:
         type: time
         excel_format: hh:mm
-      B32:
+      B33:
         type: number
         minimumFractionDigits: 0
         maximumFractionDigits: 0
@@ -234,7 +234,7 @@ Overzicht Q1 2026,,,
 ,,,
 Kengetal,Waarde,,
 Omzet (SUM over tab),=SUM(producten!totaal1:totaal5),,
-"Omzet incl. BTW, afgerond","=ROUND(B3*(1+instellingen!$B$1),2)",,
+"Omzet incl. BTW, afgerond","=ROUND(B4*(1+instellingen!$B$1),2)",,
 Korting fruit (VLOOKUP),"=VLOOKUP(""fruit"",categorieën!$id$1:$korting$3,3,FALSE)",,
 Korting zuivel (XLOOKUP),"=XLOOKUP(""zuivel"",categorieën!id1:id3,categorieën!korting1:korting3,""?"")",,
 Label via INDEX/MATCH,"=IFERROR(INDEX(categorieën!$label$1:$label$3,MATCH(""zuivel"",categorieën!$id$1:$id$3,0)),""-"")",,
@@ -242,17 +242,17 @@ Aantal fruit (COUNTIF),"=COUNTIF(producten!categorie1:categorie5,""fruit"")",,
 Omzet fruit actief (SUMIFS),"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,""fruit"",producten!actief1:actief5,TRUE)",,
 Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5),,
 SUMPRODUCT prijs x aantal,"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)",,
-Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal0:totaal6)-producten!totaal6,,
+Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal0:totaal9)-producten!totaal6,,
 Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1,,
 Concat &,"=producten!product1&"" (""&producten!categorie1&"")""",,
 TEXTJOIN,"=TEXTJOIN("", "",TRUE,producten!product1:product3)",,
-Percent literal 50%*B4,=50%*B3,,
+Percent literal 50%*B4,=50%*B4,,
 Eerste datum,=MIN(producten!datum1:datum5),,
 Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5),,
 Einde maand (EOMONTH),"=EOMONTH(producten!datum1,0)",,
 Werkdagen (NETWORKDAYS),"=NETWORKDAYS(producten!datum1,producten!datum5)",,
 Datum als tekst (TEXT),,,
-IF/AND,"=IF(AND(B3>10,B8<5),""ok"",""check"")",,
+IF/AND,"=IF(AND(B4>10,B9<5),""ok"",""check"")",,
 Deling door nul,=1/0,,
 IFERROR rond deling,"=IFERROR(1/0,""n.v.t."")",,
 Vandaag (volatile),=TODAY(),,

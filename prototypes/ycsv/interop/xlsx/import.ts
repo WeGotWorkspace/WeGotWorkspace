@@ -202,7 +202,7 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     const ref = unique(slug(name) || `sheet${si + 1}`, takenSheets);
     return { name, ws, width, height, header, refs, ref };
   });
-  // YCSV row numbers per sheet (header 0, empty rows none) from the source cells.
+  // YCSV row numbers per sheet (header 0, then every row, empty or not: §7.2 with P30).
   const rowMaps = meta.map((m) => {
     const used = Array.from({ length: m.height }, () => ["" as string]);
     for (const [k, c] of Object.entries(m.ws)) {
@@ -433,7 +433,7 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     const rekey = <T,>(o: Record<string, T>) =>
       Object.fromEntries(Object.entries(o).flatMap(([k, v]) => {
         const y = toY(k);
-        if (y === null) L("formatting on empty rows", "lost", `${m.name}!${k}: row has no YCSV number (§7.2)`);
+        if (y === null) L("formatting on unnumbered rows", "lost", `${m.name}!${k}: row has no YCSV number`);
         return y === null ? [] : [[y, v]];
       }));
     const merges2 = merges.map(toY).filter((g): g is string => g !== null);
@@ -454,7 +454,7 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     if (Object.keys(cells2).length) entry.cells = cells2;
     frontSheets.push(entry);
 
-    // Trailing empty rows are not significant (P19).
+    // Trailing empty rows are not significant (P26/P19); empty rows inside keep their number (P30).
     while (grid.length && grid[grid.length - 1]!.every((v) => v === "")) grid.pop();
     grids.push(grid);
     bodies.push(grid.map((row) => row.map((v) => (/[",\r\n]/.test(v) || v === "---" ? `"${v.replaceAll('"', '""')}"` : v)).join(",")).join("\n"));

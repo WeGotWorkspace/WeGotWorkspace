@@ -1,6 +1,7 @@
 // YCSV v1 conformance corpus (spike 11).
 //
-// Each case is a file plus what the spec (prototypes/ycsv/upstream/ycsv-spec-v1.md, unamended)
+// Each case is a file plus what the spec (prototypes/ycsv/upstream/ycsv-spec-v1.md, unamended
+// except accepted decisions: P30, empty rows keep their number)
 // says should happen. `expect.status`:
 //   ok        — the spec says this parses; `values`/`refs`/`rows` pin the result
 //   error     — the spec says this is a hard error
@@ -252,10 +253,50 @@ sheets:
   {
     id: "r01-empty-row-numbering",
     area: "rows",
-    spec: "§7.2",
-    title: "An empty separator row gets no row number",
-    text: `${fm(V1)}a,b\n1,\n,\n2,=a2*10\n`,
-    expect: { status: "ok", dataRows: 2, values: { b2: "20" }, note: "§7.2: the empty row has no number, so the row after it is row 2." },
+    spec: "§7.2 (P30)",
+    title: "An empty separator row keeps its row number",
+    text: `${fm(V1)}a,b\n1,\n,\n2,=a3*10\n`,
+    expect: { status: "ok", dataRows: 3, values: { b3: "20" }, note: "§7.2 as amended by P30 (accepted): the all-commas row is row 2, so the row after it is row 3." },
+  },
+  {
+    id: "r04-blank-line-row",
+    area: "rows",
+    spec: "§7.2 (P30)",
+    title: "A blank line in the body is an empty row, not skipped",
+    text: `${fm(V1)}a,b\n1,\n\n2,=a3*10\n`,
+    expect: { status: "ok", dataRows: 3, values: { b3: "20" }, note: "Parsers must not skip blank lines: the blank line is row 2." },
+  },
+  {
+    id: "r05-whitespace-line-row",
+    area: "rows",
+    spec: "§7.2 (P30)",
+    title: "A whitespace-only line is an empty row",
+    text: `${fm(V1)}a,b\n1,\n   \n2,=a3*10\n`,
+    expect: { status: "ok", dataRows: 3, values: { b3: "20" }, note: "A line of spaces or tabs is a fully empty row (row 2)." },
+  },
+  {
+    id: "r06-final-newline",
+    area: "rows",
+    spec: "§7.2 (P30), P26",
+    title: "The final newline is not a row; trailing empty rows are not stored",
+    text: `${fm(V1)}a,b\n1,\n2,\n\n,\n`,
+    expect: { status: "ok", dataRows: 2, note: "Trailing empty rows carry no meaning (P26), so there are 2 data rows." },
+  },
+  {
+    id: "r07-blank-line-in-quotes",
+    area: "rows",
+    spec: "§7.2 (P30)",
+    title: "A blank line inside a quoted field is part of the value",
+    text: `${fm(V1)}a,b\n"x\n\ny",1\n2,=a2*10\n`,
+    expect: { status: "ok", dataRows: 2, values: { b2: "20" }, note: "The blank line belongs to the quoted cell a1; it is not a row." },
+  },
+  {
+    id: "r08-empty-row-in-aggregates",
+    area: "rows",
+    spec: "§7.2 (P30), §8.3",
+    title: "Empty rows are blank cells in aggregates",
+    text: `${fm(V1)}a,b\n4,=SUM(a1:a4)\n,\n8,=AVERAGE(a1:a4)\n6,=COUNT(a1:a4)\n`,
+    expect: { status: "ok", dataRows: 4, values: { b1: "18", b3: "6", b4: "3" }, note: "As in Excel: SUM, AVERAGE and COUNT ignore the blank row 2." },
   },
   {
     id: "r02-row-zero",
