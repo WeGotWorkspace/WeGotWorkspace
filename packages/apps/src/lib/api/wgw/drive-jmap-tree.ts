@@ -119,7 +119,9 @@ export async function fetchFileNodeTreeBatch(
     }
     const ids = query.ids as string[];
     pages.push({ ids, nodes: (get.list as JmapFileNode[] | undefined) ?? [] });
-    if (ids.length < limit) return { state, pages, done: true, failed: false };
+    // A server that caps `limit` says so in the answer; a full capped page is not the end.
+    const pageLimit = typeof query.limit === "number" ? query.limit : limit;
+    if (ids.length < pageLimit) return { state, pages, done: true, failed: false };
   }
   return { state, pages, done: false, failed: false };
 }

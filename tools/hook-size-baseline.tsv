@@ -6,8 +6,8 @@ packages/apps/src/docs-core/src/use-docs-home-actions.tsx#useDocsHomeActions	401
 packages/apps/src/drive-core/src/use-drive-access-controller.ts#useDriveAccessController	232	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-batch-actions.tsx#useDriveBatchActions	293	0	grandfathered
 packages/apps/src/drive-core/src/use-drive-grid-previews.ts#useDriveGridPreviews	316	6	grandfathered
-packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	406	0	grandfathered
-packages/apps/src/drive-core/src/use-drive-shell.tsx#useDriveShell	274	5	grandfathered
+packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	404	0	grandfathered
+packages/apps/src/drive-core/src/use-drive-shell.tsx#useDriveShell	280	5	grandfathered
 packages/apps/src/installer-core/src/use-installer-controller.ts#useInstallerController	216	1	grandfathered
 packages/apps/src/meet-core/src/use-meet-call-session.ts#useMeetCallSession	326	5	grandfathered
 packages/apps/src/meet-core/src/use-meet-chat-call.ts#useMeetChatCall	219	0	grandfathered

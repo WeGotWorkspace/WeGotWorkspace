@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
-import { subscribeDocsCachesChanged } from "@/lib/offline/docs/docs-inbound-sync";
+import { subscribeStarredPathsChanged } from "@/lib/offline/docs/docs-stars-store";
 import { subscribeDriveRemoteChanges } from "@/lib/offline/drive/drive-file-node-push";
 import type { FileTreeEntryFilter, FileTreeView } from "@/lib/files/tree-view/tree-view-predicates";
 import { queryFileTreeView, type FileTreeViewResult } from "@/lib/files/tree-view/tree-view-query";
@@ -15,8 +15,8 @@ const UNSETTLED: FileTreeViewState = { rows: [], status: "first-sync", settled: 
 /**
  * One view of the device's file tree (#2063 C2), shared by Drive and Docs home.
  * Reads `drive_entries` through its indexes and reads again whenever the Drive
- * cache changes in any tab (the cross-tab cache-changed topic) or connectivity
- * flips. No Dexie `liveQuery`.
+ * cache changes in any tab (the cross-tab cache-changed topic), the star set
+ * changes, or connectivity flips. No Dexie `liveQuery`.
  *
  * `status`: `first-sync` while the first pass on this device has not finished
  * (full-pane loading only when `rows` is empty), `not-available` offline before
@@ -39,12 +39,11 @@ export function useFileTreeView(
   useEffect(() => {
     if (!username) return undefined;
     const reread = () => setVersion((value) => value + 1);
-    const stopDrive = subscribeDriveRemoteChanges(username, reread);
-    // Stars live in the Docs cache; a toggle there publishes only on this topic.
-    const stopDocs = subscribeDocsCachesChanged(username, reread);
+    const offDrive = subscribeDriveRemoteChanges(username, reread);
+    const offStars = subscribeStarredPathsChanged(username, reread);
     return () => {
-      stopDrive();
-      stopDocs();
+      offDrive();
+      offStars();
     };
   }, [username]);
 
@@ -56,9 +55,9 @@ export function useFileTreeView(
         if (current) setResult({ key, state: { ...next, settled: true } });
       },
       () => {
-        // An unreadable cache is never empty and never a spinner no sync ends;
-        // a list already settled for this key stays as it is.
         if (!current) return;
+        // A failed re-read keeps the list on screen. With nothing shown yet, an
+        // unreadable cache is not-available: never empty, never a spinner no sync ends.
         setResult((previous) =>
           previous?.key === key
             ? previous

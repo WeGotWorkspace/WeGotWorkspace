@@ -5,13 +5,12 @@
 // spinner and without a server listing. Writes in one tab show in the other
 // without a reload. Offline, every view lists what the device holds; a folder
 // it never synced says so instead of looking empty.
-import type { BrowserContext, Page } from "@playwright/test";
-import { expect, test } from "./helpers/live-test";
+import { type BrowserContext, expect, type Page, test } from "./helpers/live-test";
 import { api, dav, makeFolder, putDoc, TEAMMATE, unshareQuietly } from "./helpers/docs-matrix";
 import { E2E_USERNAME } from "./helpers/notes-live";
 import {
   API,
-  findNode,
+  jmapFileNodes,
   goOfflineKeepingShell,
   goOnlineAgain,
   installOnlineFlag,
@@ -171,8 +170,10 @@ test.describe("Drive views on the file tree (live app)", () => {
     await rowAction(page, STARRED, "Star");
 
     // 5. Reload online: the rows show at once, with no spinner and no server listing.
-    const folderNode = await findNode(page, FOLDER);
-    const listings = watchListingRequests(page, folderNode.id);
+    const found = await jmapFileNodes(page, "FileNode/query", { filter: { name: FOLDER } });
+    const folderId = (found.ids as string[])[0]!;
+    expect(folderId, `${FOLDER} on the server`).toBeTruthy();
+    const listings = watchListingRequests(page, folderId);
     await page.reload();
     await expect(row(page, FILE)).toBeVisible({ timeout: 15_000 });
     // All Files holds the whole drive (windowed); Recent and Starred are short.

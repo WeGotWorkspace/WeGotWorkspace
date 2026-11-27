@@ -211,7 +211,7 @@ export function useDriveShell({
         const message = error instanceof Error ? error.message : String(error);
         showError(message);
       });
-  }, [operations, currentUsername, showError]);
+  }, [operations, showError]);
 
   // Online search stays a server call (content search); offline the tree filters names.
   const serverSearch = Boolean(operations) && !(treeEnabled && !online);
@@ -273,9 +273,15 @@ export function useDriveShell({
     : (listLoading && view.type === "folder") || serverFolder.pending
       ? "first-sync"
       : null;
-  const viewState: DriveViewState = searchText
-    ? treeRows.offlineSearchState
-    : (treeRows.viewState ?? serverFolderState);
+  const ownState: DriveViewState = treeRows.viewState ?? serverFolderState;
+  // An online search shows the view's own state until the server answers: a
+  // pending or failed search never reads as "no hits".
+  const searchState: DriveViewState = serverSearch
+    ? liveSearchResults === null
+      ? (ownState ?? "pending")
+      : null
+    : treeRows.offlineSearchState;
+  const viewState: DriveViewState = searchText ? searchState : ownState;
 
   const breadcrumbs = useMemo(
     () => buildDriveViewBreadcrumbs(view, driveLabels, folderPickerRootLabels),
