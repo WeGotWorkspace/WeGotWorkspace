@@ -13,11 +13,14 @@
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;
+  /** The server's own words for the refusal, for a message shown to the person. */
+  readonly detail: string | undefined;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, detail?: string) {
     super(message);
     this.status = status;
     this.code = code;
+    this.detail = detail;
   }
 }
 

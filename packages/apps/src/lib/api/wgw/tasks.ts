@@ -1,3 +1,4 @@
+import { mapSettingsGroupsToTeamOptions } from "@/lib/sharing/team-owner-options";
 import { WgwAppDisabledError } from "@/lib/api/wgw/app-disabled-error";
 import { ApiError } from "@/lib/api/api-error";
 import type {
@@ -56,13 +57,20 @@ async function requestTasksJson(
   const res = await wgwFetch(path, init);
   if (!res.ok) {
     let code: string | undefined;
+    let detail: string | undefined;
     try {
-      const errorBody = (await res.json()) as { code?: unknown };
+      const errorBody = (await res.json()) as { code?: unknown; error?: unknown };
       if (typeof errorBody.code === "string") code = errorBody.code;
+      if (typeof errorBody.error === "string") detail = errorBody.error;
     } catch {
       // Status alone is enough when the body is not JSON.
     }
-    throw new TasksRequestError(`${method} ${path} failed (${res.status})`, res.status, code);
+    throw new TasksRequestError(
+      `${method} ${path} failed (${res.status})`,
+      res.status,
+      code,
+      detail,
+    );
   }
   if (res.status === 204) return undefined;
   return wgwReadJson(res);
@@ -327,16 +335,9 @@ export async function deleteTaskList(
 }
 
 export function mapTaskProjectGroups(
-  groups: { id: string; displayName: string }[],
+  groups: { id: string; displayName: string; isTeamAdmin?: boolean }[],
 ): TaskProjectGroupOption[] {
-  return groups.map((group) => {
-    const prefix = "principals/groups/";
-    const slug = group.id.startsWith(prefix) ? group.id.slice(prefix.length) : group.id;
-    return {
-      slug,
-      displayName: group.displayName?.trim() || slug,
-    };
-  });
+  return mapSettingsGroupsToTeamOptions(groups);
 }
 
 export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
@@ -348,7 +349,7 @@ export async function fetchTasksLiveBootstrap(): Promise<TasksAppBootstrap> {
   if (settingsRead.ok) {
     const settings = settingsRead.json as {
       apps?: { tasks?: boolean };
-      groups?: { id: string; displayName: string }[];
+      groups?: { id: string; displayName: string; isTeamAdmin?: boolean }[];
     };
     if (settings.apps?.tasks === false) {
       throw new WgwAppDisabledError("TASKS_SETTINGS_MISSING");

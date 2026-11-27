@@ -112,6 +112,30 @@ export const Create: Story = {
   },
 };
 
+const teamsMixedRole = [
+  { slug: "design", displayName: "Design", isTeamAdmin: true },
+  { slug: "sales", displayName: "Sales", isTeamAdmin: false },
+];
+
+/** Team admin of one Team: only that Team is offered as owner (#2368). */
+export const CreateTeamAdminOfOne: Story = {
+  tags: ["vitest-ci"],
+  args: { dialog: { mode: "create" }, groups: teamsMixedRole },
+};
+
+/** In Teams but team admin of none: no Team offered, the field says why (#2368). */
+export const CreateNoTeamAdmin: Story = {
+  tags: ["vitest-ci"],
+  args: {
+    dialog: { mode: "create" },
+    groups: teamsMixedRole.map((team) => ({ ...team, isTeamAdmin: false })),
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(body.findByText(/Only a team admin can add to a Team/)).resolves.toBeTruthy();
+  },
+};
+
 export const Subscribe: Story = {
   tags: ["vitest-ci"],
   args: {

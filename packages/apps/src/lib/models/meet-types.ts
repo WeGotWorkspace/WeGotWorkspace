@@ -1,3 +1,4 @@
+import type { TeamOwnerOption } from "@/lib/sharing/team-owner-options";
 import type { ChatAuthorPresenceMap, ChatMessageSyncState } from "@/lib/models/chat-types";
 import type { HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
@@ -121,10 +122,7 @@ export type ChatMessage = {
 
 export type { ChatMessageSyncState };
 
-export type MeetDirectoryGroup = {
-  slug: string;
-  displayName: string;
-};
+export type MeetDirectoryGroup = TeamOwnerOption;
 
 export type MeetUnfurlMap = Record<string, ChatLinkPreview>;
 

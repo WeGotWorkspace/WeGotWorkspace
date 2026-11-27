@@ -76,4 +76,74 @@ describe("OwnerScopeField", () => {
     fireEvent.click(trigger);
     expect(screen.queryByRole("option")).toBeNull();
   });
+  describe("team admin rule (#2368)", () => {
+    const mixed = [
+      { slug: "design", displayName: "Design", isTeamAdmin: true },
+      { slug: "sales", displayName: "Sales", isTeamAdmin: false },
+    ];
+
+    it("lists only the Teams the viewer is team admin of", () => {
+      render(
+        <OwnerScopeField
+          id="owner-scope"
+          value={PERSONAL_SCOPE_VALUE}
+          onValueChange={vi.fn()}
+          groups={mixed}
+          personalOwnerLabel="Demo User"
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("combobox", { name: defaultOwnerScopeLabels.label }));
+      expect(screen.getByRole("option", { name: "Design (Team)" })).toBeTruthy();
+      expect(screen.queryByRole("option", { name: "Sales (Team)" })).toBeNull();
+      expect(screen.queryByText(defaultOwnerScopeLabels.noTeamAdminHint!)).toBeNull();
+    });
+
+    it("keeps the Team the collection is in, even without the role", () => {
+      render(
+        <OwnerScopeField
+          id="owner-scope"
+          value="sales"
+          onValueChange={vi.fn()}
+          groups={mixed}
+          personalOwnerLabel="Demo User"
+        />,
+      );
+
+      const trigger = screen.getByRole("combobox", { name: defaultOwnerScopeLabels.label });
+      expect(trigger.textContent).toContain("Sales (Team)");
+      fireEvent.click(trigger);
+      expect(screen.getAllByRole("option", { name: "Sales (Team)" }).length).toBeGreaterThan(0);
+    });
+
+    it("explains why no Team is offered when the viewer is in Teams but admin of none", () => {
+      render(
+        <OwnerScopeField
+          id="owner-scope"
+          value={PERSONAL_SCOPE_VALUE}
+          onValueChange={vi.fn()}
+          groups={mixed.map((group) => ({ ...group, isTeamAdmin: false }))}
+          personalOwnerLabel="Demo User"
+        />,
+      );
+
+      expect(screen.getByText(defaultOwnerScopeLabels.noTeamAdminHint!)).toBeTruthy();
+      fireEvent.click(screen.getByRole("combobox", { name: defaultOwnerScopeLabels.label }));
+      expect(screen.getAllByRole("option")).toHaveLength(1);
+    });
+
+    it("says nothing when the viewer is in no Team", () => {
+      render(
+        <OwnerScopeField
+          id="owner-scope"
+          value={PERSONAL_SCOPE_VALUE}
+          onValueChange={vi.fn()}
+          groups={[]}
+          personalOwnerLabel="Demo User"
+        />,
+      );
+
+      expect(screen.queryByText(defaultOwnerScopeLabels.noTeamAdminHint!)).toBeNull();
+    });
+  });
 });

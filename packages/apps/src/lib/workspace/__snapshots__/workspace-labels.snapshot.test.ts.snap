@@ -2553,6 +2553,7 @@ exports[`workspace label snapshot > resolved labels match the snapshot: ownerSco
     "Alpha (Team)",
   ],
   "label": "Owner",
+  "noTeamAdminHint": "Only a team admin can add to a Team, and you are not one. Ask a team admin.",
   "personal": [
     "Only Me",
     "Only Me",

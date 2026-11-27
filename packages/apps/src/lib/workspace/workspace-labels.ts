@@ -46,6 +46,8 @@ export type WorkspaceLabels = {
     owner: string;
     changeOwner: string;
     changeOwnerTitle: string;
+    /** Owner picker: the viewer is in Teams but may add to none of them. */
+    ownerNeedsTeamAdmin: string;
   };
   /** Offline sync state and conflict prompts. */
   sync: {
@@ -94,6 +96,8 @@ export const workspaceLabels = {
     owner: "Owner",
     changeOwner: "Change owner",
     changeOwnerTitle: "Change owner?",
+    ownerNeedsTeamAdmin:
+      "Only a team admin can add to a Team, and you are not one. Ask a team admin.",
   },
   sync: {
     pending: "Pending sync",

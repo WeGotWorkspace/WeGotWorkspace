@@ -1,17 +1,17 @@
+import type { TeamOwnerOption } from "@/lib/sharing/team-owner-options";
 import { workspaceLabels } from "@/lib/workspace/workspace-labels";
 
 export const PERSONAL_SCOPE_VALUE = "__personal__";
 
-export type OwnerScopeGroupOption = {
-  slug: string;
-  displayName: string;
-};
+export type OwnerScopeGroupOption = TeamOwnerOption;
 
 export type OwnerScopeFieldLabels = {
   label: string;
   personal: (ownerLabel: string) => string;
   group: (name: string) => string;
   readOnlyLabel: string;
+  /** Under the caption when the viewer is in Teams but team admin of none (#2368). */
+  noTeamAdminHint?: string;
 };
 
 export const defaultOwnerScopeLabels: OwnerScopeFieldLabels = {
@@ -19,6 +19,7 @@ export const defaultOwnerScopeLabels: OwnerScopeFieldLabels = {
   personal: () => "Only Me",
   group: (name) => `${name} (Team)`,
   readOnlyLabel: workspaceLabels.sharing.owner,
+  noTeamAdminHint: workspaceLabels.sharing.ownerNeedsTeamAdmin,
 };
 
 export function ownerScopeDisplayLabel(

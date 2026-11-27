@@ -11,8 +11,7 @@ import {
   type CollectionSharePrincipal,
 } from "@/lib/sharing/collection-share";
 import type { MeetDirectoryGroup } from "@/lib/models/meet-types";
-
-const GROUP_PRINCIPAL_PREFIX = "principals/groups/";
+import { mapSettingsGroupsToTeamOptions } from "@/lib/sharing/team-owner-options";
 
 export type MeetChatDirectory = {
   directory: CollectionSharePrincipal[];
@@ -21,14 +20,9 @@ export type MeetChatDirectory = {
 };
 
 function meetDirectoryGroupsFromSettings(
-  groups: { id: string; displayName: string }[],
+  groups: { id: string; displayName: string; isTeamAdmin?: boolean }[],
 ): MeetDirectoryGroup[] {
-  return groups.map((group) => {
-    const slug = group.id.startsWith(GROUP_PRINCIPAL_PREFIX)
-      ? group.id.slice(GROUP_PRINCIPAL_PREFIX.length)
-      : group.id;
-    return { slug, displayName: group.displayName?.trim() || slug };
-  });
+  return mapSettingsGroupsToTeamOptions(groups);
 }
 
 async function fetchMeetDirectoryGroups(): Promise<MeetDirectoryGroup[] | undefined> {
@@ -36,7 +30,7 @@ async function fetchMeetDirectoryGroups(): Promise<MeetDirectoryGroup[] | undefi
     const read = await wgwSettingsStateRead.read();
     if (!read.ok) return undefined;
     const settings = read.json as {
-      groups?: { id: string; displayName: string }[];
+      groups?: { id: string; displayName: string; isTeamAdmin?: boolean }[];
     };
     return Array.isArray(settings.groups)
       ? meetDirectoryGroupsFromSettings(settings.groups)

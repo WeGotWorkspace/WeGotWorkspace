@@ -1,3 +1,4 @@
+import type { TeamOwnerOption } from "@/lib/sharing/team-owner-options";
 import type { CalendarAttendee, CalendarInvitee } from "@/lib/models/calendar-attendees";
 import type { SharePrincipalKind } from "@/lib/sharing/collection-share";
 import type {
@@ -37,10 +38,7 @@ export type CalendarSharePrincipal = {
  * (`JmapCalendarEvent` — plain JSON, safe for Dexie and mocks); views convert
  * to the calendar-engine's Temporal model via calendar-event-model.ts.
  */
-export type CalendarDirectoryGroup = {
-  slug: string;
-  displayName: string;
-};
+export type CalendarDirectoryGroup = TeamOwnerOption;
 
 export type CalendarInfo = {
   id: string;

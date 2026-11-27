@@ -1,3 +1,4 @@
+import { withRefusalReason } from "@/lib/api/refusal-reason";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -51,6 +52,7 @@ import { resolvePendingCreateIntent } from "@/calendar-core/src/calendar-pending
 import { alertsFromWire, freeBusyStatusFromWire } from "@/lib/calendar/calendar-alerts";
 import { normalizeEventTimeZone } from "@/calendar-core/src/calendar-timezones";
 import {
+  calendarDialogFailedToast,
   defaultCalendarLabels,
   mergeCalendarLabels,
   type CalendarUILabels,
@@ -990,12 +992,8 @@ export function useCalendarController({
           show(L.toastCalendarUpdated);
           setCalendarDialog(null);
           onMutated?.();
-        } catch {
-          showError(
-            calendarDialog.mode === "subscribe"
-              ? L.toastCalendarSubscribeFailed
-              : L.toastCalendarSaveFailed,
-          );
+        } catch (error) {
+          showError(withRefusalReason(calendarDialogFailedToast(L, calendarDialog.mode), error));
         } finally {
           setCalendarDialogBusy(false);
         }

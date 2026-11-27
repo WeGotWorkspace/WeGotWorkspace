@@ -110,8 +110,8 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         setNotebookDialog(null);
         acceptCreatedNotebook(collection);
         return collection;
-      } catch {
-        showMutationError();
+      } catch (error) {
+        showMutationError(undefined, error);
         return undefined;
       }
     },
@@ -171,8 +171,8 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         }
         show(L.toastNotebookUpdated);
         setNotebookDialog(null);
-      } catch {
-        showMutationError();
+      } catch (error) {
+        showMutationError(undefined, error);
       }
     },
     [

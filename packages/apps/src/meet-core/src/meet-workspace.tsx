@@ -1,3 +1,4 @@
+import { serverRefusalReason, withRefusalReason } from "@/lib/api/refusal-reason";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -146,8 +147,10 @@ export function MeetWorkspace({
   // surface those instead of leaking unhandled rejections.
   const notifyChatError = useCallback(
     (error: unknown) => {
-      const message =
-        error instanceof Error && error.message.trim()
+      const refused = serverRefusalReason(error);
+      const message = refused
+        ? withRefusalReason(meetLabels.chatActionFailed, error)
+        : error instanceof Error && error.message.trim()
           ? error.message
           : meetLabels.chatActionFailed;
       toast.showError(message);

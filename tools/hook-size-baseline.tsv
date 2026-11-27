@@ -1,4 +1,4 @@
-packages/apps/src/calendar-core/src/use-calendar-controller.ts#useCalendarController	1193	3	grandfathered
+packages/apps/src/calendar-core/src/use-calendar-controller.ts#useCalendarController	1189	3	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx#useContactsController	1285	9	grandfathered
 packages/apps/src/docs-core/src/collab/use-docs-suggestions-thread-roots.ts#useDocsSuggestionThreadRoots	112	5	grandfathered
 packages/apps/src/docs-core/src/use-docs-controller.tsx#useDocsController	251	3	grandfathered

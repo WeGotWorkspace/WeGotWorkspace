@@ -1,3 +1,4 @@
+import type { TeamOwnerOption } from "@/lib/sharing/team-owner-options";
 import type {
   Task,
   TaskAlert,
@@ -23,10 +24,7 @@ export type {
   TaskPatch,
 };
 
-export type TaskProjectGroupOption = {
-  slug: string;
-  displayName: string;
-};
+export type TaskProjectGroupOption = TeamOwnerOption;
 
 export type TasksUIData = {
   taskLists: TaskList[];
