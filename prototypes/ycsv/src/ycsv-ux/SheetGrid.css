@@ -319,6 +319,11 @@
   border: 2px solid currentColor;
 }
 
+.sx-o-peer-range {
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
 .sx-o-peer-label {
   position: absolute;
   top: -16px;

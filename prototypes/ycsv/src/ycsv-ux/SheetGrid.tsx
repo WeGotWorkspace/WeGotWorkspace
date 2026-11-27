@@ -1412,6 +1412,11 @@ export function SheetGrid({ doc, theme = "light", height = "100%", awareness, us
       if (b) items.push(<div key={`h${i}`} className="sx-o sx-o-ref" data-ref-color={h.color} style={{ ...b, color: REF_COLORS[h.color] }} />);
     });
     peers.forEach((p) => {
+      p.ranges.forEach((range, i) => {
+        if (range.r1 === range.r2 && range.c1 === range.c2) return;
+        const rb = box(range);
+        if (rb) items.push(<div key={`p${p.clientId}r${i}`} className="sx-o sx-o-peer-range" style={{ ...rb, color: p.user.color }} />);
+      });
       const b = box(rangeOf(p.active, p.active));
       if (b)
         items.push(
