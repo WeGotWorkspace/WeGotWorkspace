@@ -48,6 +48,29 @@ describe("moveDocsCollabPathDatabasesInBatch", () => {
     expect((await readText("/users/ada/one/a.md")).text).toBe("body of a");
   });
 
+  it("a move onto a source that stays is skipped too, down the chain", async () => {
+    // b.md has unsaved offline text, so a→b is skipped and a stays; c→a would
+    // then overwrite a's text, so it is skipped as well and c stays.
+    await writeText("/users/ada/chain/b.md", "offline text of b", true);
+    await writeText("/users/ada/chain/a.md", "text of a", false);
+    await writeText("/users/ada/chain/c.md", "text of c", true);
+
+    await moveDocsCollabPathDatabasesInBatch([
+      { from: "/users/ada/chain/a.md", to: "/users/ada/chain/b.md" },
+      { from: "/users/ada/chain/c.md", to: "/users/ada/chain/a.md" },
+    ]);
+
+    expect(await readText("/users/ada/chain/b.md")).toEqual({
+      text: "offline text of b",
+      pending: true,
+    });
+    expect((await readText("/users/ada/chain/a.md")).text).toBe("text of a");
+    expect(await readText("/users/ada/chain/c.md")).toEqual({
+      text: "text of c",
+      pending: true,
+    });
+  });
+
   it("gives a destination its source's text alone and clears a vacated source", async () => {
     await writeText("/users/ada/two/a.md", "text of a", true);
     await writeText("/users/ada/two/b.md", "text of b", true);

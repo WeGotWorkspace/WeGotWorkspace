@@ -69,7 +69,8 @@ function roomOf(path: string): string | null {
  *
  * A destination that is no source of the batch and holds unsaved text (a Doc
  * created offline on that path) is never cleared or written: that move's
- * source stays where it is too, so neither Doc loses its text.
+ * source stays where it is too, and so does every source whose move would
+ * land on a source that stays, so no Doc loses its text.
  */
 export async function moveDocsCollabPathDatabasesInBatch(
   moves: readonly DocsCollabPathMove[],
@@ -89,15 +90,26 @@ export async function moveDocsCollabPathDatabasesInBatch(
       if (toName) pairs.push({ fromName, toName, toRoom });
     }
   }
-  const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
   const stays = new Set<string>();
-  for (const { fromName, toName, toRoom } of pairs) {
+  for (const { fromName, toName } of pairs) {
     const unsavedOccupant =
       !sources.has(toName) && exists(toName) && (await collabIndexedDbHasPendingServerSave(toName));
-    if (unsavedOccupant) {
-      stays.add(fromName);
-      continue;
+    if (unsavedOccupant) stays.add(fromName);
+  }
+  // A source that stays is no free destination: a move onto it is skipped
+  // too, and its own source stays, down the chain (`c→a` after `a→b` stayed).
+  for (let grew = stays.size > 0; grew;) {
+    grew = false;
+    for (const { fromName, toName } of pairs) {
+      if (stays.has(toName) && !stays.has(fromName)) {
+        stays.add(fromName);
+        grew = true;
+      }
     }
+  }
+  const plan: Array<{ toName: string; toRoom: string; state: Captured | null }> = [];
+  for (const { fromName, toName, toRoom } of pairs) {
+    if (stays.has(fromName)) continue;
     plan.push({ toName, toRoom, state: exists(fromName) ? await capture(fromName) : null });
   }
   const written = new Set<string>();
