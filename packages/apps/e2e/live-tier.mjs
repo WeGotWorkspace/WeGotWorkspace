@@ -190,7 +190,7 @@ export const relayTierSpecPattern = /rtc-relay\.spec\.ts/;
  * service worker precaches every chunk, lazy app chunks included (#1628).
  * `playwright.pwa.config.mjs` runs it. Not part of the Storybook or live tier.
  */
-export const pwaTierSpecPattern = /pwa-offline-reload\.spec\.ts/;
+export const pwaTierSpecPattern = /(drive-offline-tree|pwa-offline-reload)\.spec\.ts/;
 
 /**
  * Traffic budget measurement (#2292): several minutes per scenario against the
