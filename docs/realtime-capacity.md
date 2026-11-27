@@ -4,11 +4,11 @@ Reference profile: PHP-FPM with `pm.max_children = 5`. One child serves one requ
 
 Clients poll their own signaling route only while a peer connects. Otherwise the JMAP push stream is the doorbell (#2294): its `RtcRoom` state changes when a peer joins or leaves a room the user is in, or a message reaches one of their peers, and each of the user's rooms then polls once. A room behind the doorbell does not poll at all: every push read names the browser's own live peers (`X-WGW-Rtc-Peers`) and refreshes their `seen_at`, so a lone peer stays on the roster (#2287; `packages/apps/src/lib/rtc/session/poll-cadence.ts`, `push-heartbeat-peers.ts`, `room-doorbell.ts`). Only peers the browser names are refreshed, so a closed laptop's peers still expire after the peer timeout (Meet 60 s, Docs and presence 90 s). The server refreshes a named peer at most every 20 s, and a Docs or presence peer only after the access check a room poll runs (share grant or Team membership), so a revoked member leaves a quiet room within about 30 s. A room on a channel the push read does not cover heartbeats every 30 s:
 
-| Channel | While connecting | Push connected, nobody connecting | Push down: nobody reachable | Push down: every reachable peer linked |
-| --- | --- | --- | --- | --- |
-| Meet | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 4 s when alone | 4 s |
-| Docs | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 2 s | 5 s |
-| Presence | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 4 s | 20 s |
+| Channel  | While connecting   | Push connected, nobody connecting    | Push down: nobody reachable | Push down: every reachable peer linked |
+| -------- | ------------------ | ------------------------------------ | --------------------------- | -------------------------------------- |
+| Meet     | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 4 s when alone              | 4 s                                    |
+| Docs     | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 2 s                         | 5 s                                    |
+| Presence | 400 ms, then 1.2 s | no poll (push read is the heartbeat) | 4 s                         | 20 s                                   |
 
 The push stream itself reconnects every 3 s while someone works, every 6 s while a tab is visible but nobody touched any tab of the browser for 2 minutes (`lib/activity/user-activity.ts`; the first input wakes it at once), and every 30 s while every tab is hidden. A newcomer is therefore seen within one push round plus one poll: about 3.5 s active, about 7 s idle.
 
@@ -40,18 +40,18 @@ k6 run -e BASE_URL=https://example.test tools/load/rtc-shared-hosting.k6.js
 
 Rates below are the polls that mix produces. They come from the cadence above, not from a stopwatch on a rented server. Five children finish `60000 / poll_ms * 5` polls a minute. Compare the scenario rate to that ceiling.
 
-| Slice | Peers | Cadence | Polls per minute |
-| --- | --- | --- | --- |
-| Presence, steady | 8 | 20 s | 24 |
-| Two Docs rooms, steady | 4 | 5 s | 48 |
-| 6-person call, steady | 6 | 4 s | 90 |
-| **Reference mix, steady** | **18** |  | **162** |
-| Join burst, or the 10th participant while peers are still connecting | 10 | 400 ms | 1500 |
+| Slice                                                                | Peers  | Cadence | Polls per minute |
+| -------------------------------------------------------------------- | ------ | ------- | ---------------- |
+| Presence, steady                                                     | 8      | 20 s    | 24               |
+| Two Docs rooms, steady                                               | 4      | 5 s     | 48               |
+| 6-person call, steady                                                | 6      | 4 s     | 90               |
+| **Reference mix, steady**                                            | **18** |         | **162**          |
+| Join burst, or the 10th participant while peers are still connecting | 10     | 400 ms  | 1500             |
 
-| If one signaling poll takes | Polls per minute with 5 children | Reference mix (162/min) | Connecting burst (1500/min) |
-| --- | --- | --- | --- |
-| 50 ms | 6000 | about 3% of the pool | about 25% of the pool |
-| 200 ms | 1500 | about 11% of the pool | the pool is full for that short window |
+| If one signaling poll takes | Polls per minute with 5 children | Reference mix (162/min) | Connecting burst (1500/min)            |
+| --------------------------- | -------------------------------- | ----------------------- | -------------------------------------- |
+| 50 ms                       | 6000                             | about 3% of the pool    | about 25% of the pool                  |
+| 200 ms                      | 1500                             | about 11% of the pool   | the pool is full for that short window |
 
 The burst is the constraint. It lasts until ICE settles and Meet drops back to a 4-second poll. A poll that stays under 200 ms fits the reference mix on this profile, including the 10th joiner, as long as that connecting window is brief. A poll slower than 200 ms fills all five children for the whole burst.
 
@@ -67,13 +67,22 @@ A shared host's firewall may block an IP above about 60 requests a minute, and i
 - **Everything else** (foreground reads, writes) is never delayed; it takes no token, so a busy download cannot starve the push doorbell.
 - A network error, 429 or 503 brakes background and bulk (2 s doubling to 60 s, or `Retry-After`, at most 5 minutes).
 
-| Profile | background / min | bulk / min | burst | Default for |
-| --- | --- | --- | --- | --- |
-| `shared` | 30 | 20 | 10 | ZIP installs |
-| `standard` | 120 | 120 | 30 | Docker and Kubernetes (`WGW_INSTALL_CHANNEL=docker`) |
-| `off` | 0 | 0 | 0 | — |
+| Profile    | background / min | bulk / min | burst | Default for                                          |
+| ---------- | ---------------- | ---------- | ----- | ---------------------------------------------------- |
+| `shared`   | 30               | 20         | 10    | ZIP installs                                         |
+| `standard` | 120              | 120        | 30    | Docker and Kubernetes (`WGW_INSTALL_CHANNEL=docker`) |
+| `off`      | 0                | 0          | 0     | —                                                    |
 
 `WGW_TRAFFIC_PROFILE` picks the profile; `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE` and `WGW_TRAFFIC_BURST` override one number each (clamped 0–10000; `0` turns pacing off for the two per-minute numbers, a burst of `0` is applied as `1`). Until a browser has read the header it holds the `shared` numbers. Without a service worker (first visit, private window) the client's own pacing (pacer, idle cadence) still holds; the governor is the second line. A browser that is idle or has every tab hidden is slowed by the clients' cadence (6 s and 30 s push), not by this budget.
+
+### Meet call setup lane (#2419)
+
+While a Meet call is joining or negotiating, the page tells the service worker (`wgw-meet-lane` message: `join`, `negotiating`, `call`, `left`) and the governor lets Meet room polls (not presence `p_…` or collab `f_…` rooms) skip the background queue, and the push doorbell read skip it for as long as a call is on. Nothing else is touched: `/changes`, notifications and other rooms stay governed, writes were never delayed, and a 429/503 brake still holds the lane back.
+
+- The poll lane closes 30 s after the last `join` or `negotiating` signal. `maxOpenMs` (45 s) caps one opening, but a page that keeps signalling `negotiating` (every 2 s while a peer is dialled) reopens it, so the buckets below are the real cap, not the window. The lane has its own bucket: 10 polls at once, 20 a minute.
+- Every lane poll, member or guest, is also charged to the background bucket and stops at half a burst of debt (5). The governed total in any minute is therefore the budget plus the burst and the debt: at most 30 + 10 + 5 = 45 on `shared` for a member, plus the join and signaling writes (about 10) and doorbell reads (charged, but never held back), which stay on the clients' own 3 s / 6 s cadence. The idle rate is unchanged: no signal, no lane.
+- An unauthenticated guest (no push stream) gets 10 polls per `join` that are not charged, spent first: at most 55 in the first minute (45 + 10), then the budget (30 a minute) in each later minute. A guest browser sends nothing else.
+- Server side nothing counts the lane: the budget header only tells the client its numbers, and the room routes' own limits (300 a minute per actor and room) are far above this. An office behind one IP still needs the host to allow it, as before.
 
 ## JMAP push (event source)
 
@@ -106,10 +115,10 @@ One account allows 300 push requests a minute, about 15 browsers at a 3-second i
 
 Measured on a developer laptop (Apple Silicon), not on shared hosting: `php -S` with `PHP_CLI_SERVER_WORKERS=5`, SQLite, one account with an almost empty data set, `PUSH_ONLY=1`.
 
-| Run | HTTP requests (push and writes) | Push p95 (avg) | Batch `FileNode/set`, 10 creates, p95 | Single WebDAV PUT, p95 |
-| --- | --- | --- | --- | --- |
-| 5 browsers, 1 min | 138, 0 failed | 50.6 ms (38.6 ms) | 59.2 ms | 203.7 ms |
-| 12 browsers, 2 min | 562, 1 failed | 65.8 ms (39.7 ms) | 63.9 ms | 205.1 ms |
+| Run                | HTTP requests (push and writes) | Push p95 (avg)    | Batch `FileNode/set`, 10 creates, p95 | Single WebDAV PUT, p95 |
+| ------------------ | ------------------------------- | ----------------- | ------------------------------------- | ---------------------- |
+| 5 browsers, 1 min  | 138, 0 failed                   | 50.6 ms (38.6 ms) | 59.2 ms                               | 203.7 ms               |
+| 12 browsers, 2 min | 562, 1 failed                   | 65.8 ms (39.7 ms) | 63.9 ms                               | 205.1 ms               |
 
 State cost per source inside one push request, p95 at 12 browsers: notes 1.9 ms, tasks 1.1 ms, contacts 1.1 ms, files 0.9 ms, chat 0.9 ms, calendars 0.9 ms, inbox 0.2 ms. The rest of the request time is outside the state code (framework boot, authentication, rate limiter).
 
@@ -124,13 +133,13 @@ Caveats:
 A browser reconnects every 5 s instead of 3 s while its presence mesh has held a link ([architecture/jmap-push.md](architecture/jmap-push.md#interval-by-mesh-state)). Measured on 2026-11-05 on a developer laptop (Apple Silicon), with PHP-FPM this time: `pm = static`, `pm.max_children = 5`, OPcache on, SQLite, a near-empty data set, three accounts, `PUSH_ONLY=1`, 2 minutes per row. The Drive writers run in every row (12 single PUTs and 2 batches of 10 a minute), so busy children include them.
 
 | Browsers | Interval | Push requests per minute | Push median / p95 | Busy FPM children, average | Busy children, max |
-|---|---|---|---|---|---|
-| 5 | 3 s | 96 | 44 ms / 85 ms | 0.11 (2% of the pool) | 3 |
-| 5 | 5 s | 57 | 48 ms / 202 ms | 0.12 (2%) | 2 |
-| 16 | 3 s | 302 | 47 ms / 234 ms | 0.51 (10%) | 4 |
-| 16 | 5 s | 180 | 48 ms / 294 ms | 0.32 (6%) | 4 |
-| 32 | 3 s | 605 | 41 ms / 188 ms | 0.73 (15%) | 4 |
-| 32 | 5 s | 363 | 42 ms / 90 ms | 0.32 (6%) | 4 |
+| -------- | -------- | ------------------------ | ----------------- | -------------------------- | ------------------ |
+| 5        | 3 s      | 96                       | 44 ms / 85 ms     | 0.11 (2% of the pool)      | 3                  |
+| 5        | 5 s      | 57                       | 48 ms / 202 ms    | 0.12 (2%)                  | 2                  |
+| 16       | 3 s      | 302                      | 47 ms / 234 ms    | 0.51 (10%)                 | 4                  |
+| 16       | 5 s      | 180                      | 48 ms / 294 ms    | 0.32 (6%)                  | 4                  |
+| 32       | 3 s      | 605                      | 41 ms / 188 ms    | 0.73 (15%)                 | 4                  |
+| 32       | 5 s      | 363                      | 42 ms / 90 ms     | 0.32 (6%)                  | 4                  |
 
 - 5 s cuts push requests by 40% at every size. That is the saving on a host where every browser has a linked mesh; a browser without one keeps 3 s.
 - At 16 and 32 browsers the average busy children drop by 35–55%. At 5 browsers push is a small share next to the Drive writers, and the difference is within noise.
@@ -151,14 +160,14 @@ Set `URGENT_USER` / `URGENT_PASSWORD` (who starts the meetings) and `URGENT_RECI
 
 PHP built-in server with one worker, SQLite, on a MacBook over a home connection to FCM. Ten meeting starts per row (five for the uncapped 40). Encryption and the push round trips are both inside the numbers.
 
-| Subscriptions of the recipient | Cap | Sent after the response | `urgent_worker_busy_ms` median | p95 | max |
-|---|---|---|---|---|---|
-| 0 | 20 | 0 | 16 ms | 37 ms | 45 ms |
-| 5 | 20 | 5 | 138 ms | 230 ms | 245 ms |
-| 10 | 20 | 10 | 144 ms | 215 ms | 230 ms |
-| 20 | 20 | 20 | 181 ms | 236 ms | 249 ms |
-| 40 | 20 | 20 (20 left for the sweep) | 179 ms | 243 ms | 266 ms |
-| 40 | 40 | 40 | 316 ms | 616 ms | 651 ms |
+| Subscriptions of the recipient | Cap | Sent after the response    | `urgent_worker_busy_ms` median | p95    | max    |
+| ------------------------------ | --- | -------------------------- | ------------------------------ | ------ | ------ |
+| 0                              | 20  | 0                          | 16 ms                          | 37 ms  | 45 ms  |
+| 5                              | 20  | 5                          | 138 ms                         | 230 ms | 245 ms |
+| 10                             | 20  | 10                         | 144 ms                         | 215 ms | 230 ms |
+| 20                             | 20  | 20                         | 181 ms                         | 236 ms | 249 ms |
+| 40                             | 20  | 20 (20 left for the sweep) | 179 ms                         | 243 ms | 266 ms |
+| 40                             | 40  | 40                         | 316 ms                         | 616 ms | 651 ms |
 
 Up to 20 the cost is one round trip plus a little encryption per subscription; above 20 the tail grows (one slow handshake holds the whole batch). **The cutoff stays at 20**: a meeting start holds a worker for about 0.2 s, well inside the 1.5 s deadline, and a recipient with more devices gets the rest on the next cron tick. Not measured yet: a shared host with `pm.max_children = 5` and a slower CPU, where encryption weighs more.
 
@@ -168,14 +177,14 @@ A shared host counts requests per IP, and a router puts every tab, PWA window an
 
 ### Budget
 
-| Situation | Budget |
-| --- | --- |
-| Active (someone touches a tab) | at most 30 a minute |
-| Idle (nobody touched any tab for 2 minutes) | at most 10 a minute |
-| Every tab hidden | at most 4 a minute |
-| Any 10 seconds | at most 30 requests |
+| Situation                                                           | Budget                                                   |
+| ------------------------------------------------------------------- | -------------------------------------------------------- |
+| Active (someone touches a tab)                                      | at most 30 a minute                                      |
+| Idle (nobody touched any tab for 2 minutes)                         | at most 10 a minute                                      |
+| Every tab hidden                                                    | at most 4 a minute                                       |
+| Any 10 seconds                                                      | at most 30 requests                                      |
 | Cold start: a fresh browser opens five apps, 2000 contacts, 40 docs | fewer than 120 in minute 1, fewer than 40 a minute after |
-| One push request with every type | at most 25 ms on the reference stack |
+| One push request with every type                                    | at most 25 ms on the reference stack                     |
 
 Browsers add up. Two people with five tabs each can reach 60 a minute on the active budget alone; ten people would need a host limit of 300 or more a minute for their shared IP.
 
@@ -183,16 +192,16 @@ Browsers add up. Two people with five tabs each can reach 60 a minute on the act
 
 Local stack on one Mac (PHP built-in server, SQLite, Vite dev with the service worker on, one run at a time), fresh browser context, 3-minute window per scenario, every `/api` request of the pages and of the service worker counted. One run per row unless stated. "Before" is `main` on 2026-11-19 (`6aa30fc55`, an earlier version of the same scenarios on the small dev data set). "After" is `main` on 2026-11-25 (`4033aa291`) on a book with 2000 contacts and 40 docs in the Team folder, so the first minutes of every "after" row include those offline downloads (paced to 20 a minute). Compare the last minute to judge the steady state, and treat the 3-minute window as too short to show it for the downloads.
 
-| Scenario | Before: per minute (busiest 10 s) | After: per minute (busiest 10 s) |
-| --- | --- | --- |
-| One Docs tab, idle | 80 / 80 / 81 (16) | 37 / 25 / 10 (8) |
-| One Docs tab, clicking every 20 s | not measured | 40 / 32 / 20 (10) |
-| Five tabs, Docs in front, idle | 82 / 69 / 69 (18) | 43 / 34 / 32 (10); in an 8-minute run 43 / 35 / 32 / 24 / 10 / 11 / 11 / 11 |
-| Five tabs, switching every 15 s | 83 / 75 / 75 (34) | 55 / 50 / 48 (16) |
-| Calendar and Contacts, switching every 15 s | 73 / 74 / 74 (28) | 53 / 31 / 28 (14) |
-| Five tabs, connection drops for 60 s, returns | 83 / 88 / 85 (20) | 59 / 98 / 31 (44; 79 attempts failed while blocked) |
-| Cold start, five apps | 397 / 48 / 48 (264; small address book) | 215 / 42 / 32, 204 / 42 / 33, 224 / 41 / 34 (126 to 146) |
-| One push request with every type (16 types), median, p95 | 14 ms for 13 types | 16–17 ms, 19–20 ms (three runs of 200) |
+| Scenario                                                 | Before: per minute (busiest 10 s)       | After: per minute (busiest 10 s)                                            |
+| -------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| One Docs tab, idle                                       | 80 / 80 / 81 (16)                       | 37 / 25 / 10 (8)                                                            |
+| One Docs tab, clicking every 20 s                        | not measured                            | 40 / 32 / 20 (10)                                                           |
+| Five tabs, Docs in front, idle                           | 82 / 69 / 69 (18)                       | 43 / 34 / 32 (10); in an 8-minute run 43 / 35 / 32 / 24 / 10 / 11 / 11 / 11 |
+| Five tabs, switching every 15 s                          | 83 / 75 / 75 (34)                       | 55 / 50 / 48 (16)                                                           |
+| Calendar and Contacts, switching every 15 s              | 73 / 74 / 74 (28)                       | 53 / 31 / 28 (14)                                                           |
+| Five tabs, connection drops for 60 s, returns            | 83 / 88 / 85 (20)                       | 59 / 98 / 31 (44; 79 attempts failed while blocked)                         |
+| Cold start, five apps                                    | 397 / 48 / 48 (264; small address book) | 215 / 42 / 32, 204 / 42 / 33, 224 / 41 / 34 (126 to 146)                    |
+| One push request with every type (16 types), median, p95 | 14 ms for 13 types                      | 16–17 ms, 19–20 ms (three runs of 200)                                      |
 
 What this meets and does not meet:
 
@@ -212,24 +221,21 @@ The harness is `packages/apps/e2e/traffic-budget.spec.ts` with `e2e/helpers/traf
 WGW_TRAFFIC_MINUTES=3 pnpm exec playwright test --config playwright.traffic.config.mjs
 ```
 
-   `-g "cold start"` runs one scenario. `WGW_TRAFFIC_MINUTES` is the window per scenario (default 3). `WGW_TRAFFIC_ENFORCE=1` fails a scenario that breaks the budget above; without it the run prints `OVER BUDGET` lines and passes. `WGW_TRAFFIC_OUT` moves the reports. `WGW_TRAFFIC_CONTACTS` (default 2000) and `WGW_TRAFFIC_DOCS` (default 40) size the cold-start data; the spec tops them up and never removes them.
-3. The scenarios: one Docs tab idle; one Docs tab with a click every 20 s; five tabs idle; five tabs switching every 15 s; Calendar and Contacts switching; a 60 s connection drop; the cold start; and the cost of a push request with every type (plain requests, no browser).
-4. Cross-check with the API's own log. With the PHP built-in server the log has one `Accepted` line per request:
+`-g "cold start"` runs one scenario. `WGW_TRAFFIC_MINUTES` is the window per scenario (default 3). `WGW_TRAFFIC_ENFORCE=1` fails a scenario that breaks the budget above; without it the run prints `OVER BUDGET` lines and passes. `WGW_TRAFFIC_OUT` moves the reports. `WGW_TRAFFIC_CONTACTS` (default 2000) and `WGW_TRAFFIC_DOCS` (default 40) size the cold-start data; the spec tops them up and never removes them. 3. The scenarios: one Docs tab idle; one Docs tab with a click every 20 s; five tabs idle; five tabs switching every 15 s; Calendar and Contacts switching; a 60 s connection drop; the cold start; and the cost of a push request with every type (plain requests, no browser). 4. Cross-check with the API's own log. With the PHP built-in server the log has one `Accepted` line per request:
 
 ```bash
 node e2e/traffic-crosscheck.mjs test-results/traffic/suite-cold-start.json api-server.log
 ```
 
-   It prints the browser's per-minute counts next to the server's. They agree within a few requests (the log has whole seconds). Use a log of an API that nothing else talks to during the run: in one session a second client on the default port added 15 to 28 requests to a minute that the browser never sent. A browser count above the server's means requests that never arrived (blocked or cached); a count below means requests the meter missed.
-5. To compare a build with and without the service-worker governor (#2291), run the same scenarios against each build's app on the same API and book, one after the other.
+It prints the browser's per-minute counts next to the server's. They agree within a few requests (the log has whole seconds). Use a log of an API that nothing else talks to during the run: in one session a second client on the default port added 15 to 28 requests to a minute that the browser never sent. A browser count above the server's means requests that never arrived (blocked or cached); a count below means requests the meter missed. 5. To compare a build with and without the service-worker governor (#2291), run the same scenarios against each build's app on the same API and book, one after the other.
 
 ### Settings per install channel
 
-| Setting | ZIP / SFTP (`packages/api/.env`) | Docker and Kubernetes (`api.env`, `WGW_INSTALL_CHANNEL=docker`) |
-| --- | --- | --- |
-| `WGW_JMAP_PUSH_RETRY_MS` | 3000. Raise to 5000 on a very small host: push requests drop by about 40%, live updates arrive up to 2 s later. | Same default and meaning. |
-| `WGW_TRAFFIC_PROFILE` (governor, #2291) | `shared` by default: 30 background, 20 bulk a minute, burst 10. | `standard` by default: 120 / 120 / 30. Kubernetes uses the image, so it is `standard` too. |
-| `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE`, `WGW_TRAFFIC_BURST` (governor, #2291) | Optional overrides of one number of the profile. | Same. |
+| Setting                                                                                                   | ZIP / SFTP (`packages/api/.env`)                                                                                | Docker and Kubernetes (`api.env`, `WGW_INSTALL_CHANNEL=docker`)                            |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `WGW_JMAP_PUSH_RETRY_MS`                                                                                  | 3000. Raise to 5000 on a very small host: push requests drop by about 40%, live updates arrive up to 2 s later. | Same default and meaning.                                                                  |
+| `WGW_TRAFFIC_PROFILE` (governor, #2291)                                                                   | `shared` by default: 30 background, 20 bulk a minute, burst 10.                                                 | `standard` by default: 120 / 120 / 30. Kubernetes uses the image, so it is `standard` too. |
+| `WGW_TRAFFIC_BACKGROUND_PER_MINUTE`, `WGW_TRAFFIC_BULK_PER_MINUTE`, `WGW_TRAFFIC_BURST` (governor, #2291) | Optional overrides of one number of the profile.                                                                | Same.                                                                                      |
 
 The three `WGW_TRAFFIC_*` settings exist in the release that includes the service-worker governor (#2291). The push route also holds a fixed limit of 60 requests a minute per browser and 300 per account; that is not a setting.
 
