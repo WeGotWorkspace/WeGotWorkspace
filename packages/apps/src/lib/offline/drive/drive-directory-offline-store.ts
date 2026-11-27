@@ -288,7 +288,8 @@ async function areaAfterMove(
   const parts = newParent.split("/");
   const underAccountRoot =
     parts.length === 2 &&
-    ((parts[0] === "users" && parts[1] === username) || parts[0] === "groups");
+    ((parts[0] === "users" && parts[1]?.toLowerCase() === username.trim().toLowerCase()) ||
+      parts[0] === "groups");
   if (underAccountRoot || row.area === "trash") return areaFromCrawledPath(newId);
   return row.area;
 }
