@@ -31,6 +31,7 @@ import {
   DRIVE_DOMAIN,
   driveContentBlobsTable,
   driveEntriesTable,
+  driveTreePrepassTable,
   driveTreeStagingTable,
 } from "@/lib/offline/drive/drive-schema";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
@@ -60,6 +61,7 @@ import {
 } from "@/lib/offline/drive/drive-file-node-changes";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
 import {
+  DRIVE_TREE_FIRST_SYNC_DONE_KEY,
   DRIVE_TREE_LAST_PASS_KEY,
   readDriveTreeFirstSyncDone,
   syncDriveTree,
@@ -100,7 +102,7 @@ class TreeServer {
   readonly nodes = new Map<string, ServerNode>();
   readonly requests: JmapRequest[] = [];
   /** Runs after the n-th request (1-based) is answered. */
-  readonly after = new Map<number, () => void>();
+  readonly after = new Map<number, () => void | Promise<void>>();
   /** Fail the `nth` (0-based) `FileNode/get` of listing request `request` (1-based). */
   failGet: { request: number; nth: number } | null = null;
   cannotCalculate = 0;
@@ -318,7 +320,7 @@ async function connect(server: TreeServer, options?: { keyset?: boolean }): Prom
       const request = JSON.parse(String(init?.body)) as JmapRequest;
       const methodResponses = server.handle(request);
       const answered = server.requests.length;
-      server.after.get(answered)?.();
+      await server.after.get(answered)?.();
       return new Response(JSON.stringify({ methodResponses, sessionState: "1" }));
     },
   });
@@ -381,6 +383,8 @@ beforeEach(async () => {
   pacer.acquire.mockClear();
   await driveEntriesTable(db()).clear();
   await driveTreeStagingTable(db()).clear();
+  await driveTreePrepassTable(db()).clear();
+  await driveContentBlobsTable(db()).clear();
   await db().table("drive_upload_items").clear();
   await db().table("drive_upload_batches").clear();
   await db().outbox.clear();
@@ -394,6 +398,7 @@ describe("syncDriveTree", () => {
     await connect(server);
     await writeDriveSyncToken(username, server.state());
     await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     server.add("a2", "r-home", "new.md");
 
     await syncDriveInboundFromFileNodes(username);
@@ -882,6 +887,23 @@ describe("review fixes (#2063 C1)", () => {
     spy.mockRestore();
   });
 
+  it("a token without a completed first sync runs the full sync once", async () => {
+    const server = standardTree();
+    server.add("a1", "r-home", "a.md");
+    await connect(server, { keyset: false });
+    // A device that synced before the tree walk: a token, no first-sync flag.
+    await writeDriveSyncToken(username, server.state());
+    const spy = await mockCrawl();
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(await readDriveTreeFirstSyncDone(username)).toBe(true);
+
+    await syncDriveInboundFromFileNodes(username);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
   it("a device that only crawled walks the tree once the server offers the keyset", async () => {
     const server = standardTree();
     server.add("a1", "r-home", "a.md");
@@ -1188,6 +1210,62 @@ describe("the walk catch-up relocates in two phases", () => {
     server.after.set(server.requests.length + 1, () => {
       server.move("f-a", { name: "b.md" });
       server.move("f-b", { name: "a.md" });
+    });
+
+    await syncDriveTree(username);
+
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await row("/users/ada/b.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+  });
+
+  it("a full resync over two files swapped since the last pass keeps each file's blob and page setup", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    for (let i = 0; i < 40; i += 1)
+      server.add(`n${String(i).padStart(3, "0")}`, "r-home", `f${i}.md`);
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    writeDocsPageSetupOverride("/users/ada/a.md", { format: "a4", orientation: "portrait" });
+    writeDocsPageSetupOverride("/users/ada/b.md", { format: "a4", orientation: "landscape" });
+    // Swapped before the pass starts: every page lists each file at the other's path.
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+
+    await syncDriveTree(username);
+
+    const blobSize = async (path: string) => (await driveContentBlobsTable(db()).get(path))?.size;
+    expect(await row("/users/ada/a.md")).toMatchObject({ nodeId: "f-b" });
+    expect(await row("/users/ada/b.md")).toMatchObject({ nodeId: "f-a" });
+    expect(await blobSize("users/ada/a.md")).toBe(2);
+    expect(await blobSize("users/ada/b.md")).toBe(1);
+    const overrides = readDocsPageSetupOverrides();
+    expect(overrides["/users/ada/a.md"]?.orientation).toBe("landscape");
+    expect(overrides["/users/ada/b.md"]?.orientation).toBe("portrait");
+    expect(await driveTreePrepassTable(db()).count()).toBe(0);
+  });
+
+  it("a row another writer puts on a path during the walk does not cross the blobs", async () => {
+    const server = standardTree();
+    server.add("f-a", "r-home", "a.md");
+    server.add("f-b", "r-home", "b.md");
+    for (let i = 0; i < 40; i += 1)
+      server.add(`n${String(i).padStart(3, "0")}`, "r-home", `f${i}.md`);
+    await connect(server);
+    await syncDriveTree(username);
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await writeDriveContentBlob(username, "/users/ada/b.md", new Blob(["BB"]));
+    server.move("f-a", { name: "b.md" });
+    server.move("f-b", { name: "a.md" });
+    // A folder listing open in the app writes the swapped rows while the walk runs.
+    server.after.set(server.requests.length + 1, async () => {
+      await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "f-b"));
+      await upsertDriveEntry(username, staleEntry("/users/ada/b.md", "f-a"));
     });
 
     await syncDriveTree(username);

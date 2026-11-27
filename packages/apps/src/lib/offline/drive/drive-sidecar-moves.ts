@@ -74,7 +74,8 @@ export class SidecarMoves {
     this.moves.push({ from: source, to: target });
   }
 
-  async apply(username: string): Promise<void> {
+  /** Runs the moves and returns them (paths without a leading `/`). */
+  async apply(username: string): Promise<Array<{ from: string; to: string }>> {
     const pending = this.moves.filter((move) => move.from !== move.to);
     this.moves.length = 0;
     // Unique per run: two tabs may apply changes at the same time.
@@ -89,5 +90,6 @@ export class SidecarMoves {
     for (const { parking, to } of parked) {
       await migrateNodeSidecars(username, parking, to);
     }
+    return pending;
   }
 }

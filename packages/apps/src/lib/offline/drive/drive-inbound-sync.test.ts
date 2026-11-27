@@ -12,7 +12,9 @@ import {
   JmapMethodError,
   NOTES_CAPABILITY,
 } from "@/lib/jmap-client";
+import { writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { DRIVE_TREE_FIRST_SYNC_DONE_KEY } from "@/lib/offline/drive/drive-tree-sync";
 import {
   readDocsAvailability,
   stampDocsAvailabilityNodeIds,
@@ -243,6 +245,7 @@ describe("syncDriveInboundFromFileNodes", () => {
     await db.meta.clear();
     // A device that synced before: changes only. No token runs the full tree sync.
     await writeDriveSyncToken(username, "0");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
     getFileNodes.mockImplementation(async (_accountId: string, ids: string[]) => ({
       accountId: "ada",
       state: "9",
@@ -642,6 +645,7 @@ describe("syncDriveInboundFromFileNodes paths (#2063 C1)", () => {
     await db.table("drive_content_blobs").clear();
     await db.meta.clear();
     await writeDriveSyncToken(username, "0");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   });
 
   it("an inner folder renamed in one changes batch keeps its child at the inner path", async () => {
@@ -937,6 +941,7 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     await db.meta.clear();
     // A device that synced before: changes only. No token runs the full tree sync.
     await writeDriveSyncToken(username, "0");
+    await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   });
 
   it("applies a FileNode delete, rename and move to every cached Docs view", async () => {
@@ -1011,6 +1016,48 @@ describe("syncDriveInboundFromFileNodes and the Docs caches (#1563)", () => {
     ]);
     expect(byKey.get("users/ada/reports-2024-old/old.md")).toBe(1);
     expect(byKey.get("users/ada/reports-2024/new.md")).toBe(2);
+    // Each doc is gone from its old path.
+    expect(byKey.has("users/ada/reports-2024/old.md")).toBe(false);
+    expect(byKey.has("users/ada/reports/new.md")).toBe(false);
+  });
+
+  it("a move blocked by unsaved work writes nothing from its batch", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/old.md", "fn-moving"));
+    await upsertDriveEntry(username, entry("/users/ada/taken.md", "fn-occupant"));
+    await upsertDriveEntry(username, entry("/users/ada/a.md", "fn-other"));
+    await upsertDriveEntry(username, entry("/users/ada/gone.md", "fn-gone"));
+    await writeDriveContentBlob(username, "/users/ada/a.md", new Blob(["A"]));
+    await seedPendingSave("/users/ada/taken.md", true);
+    const docs = [doc("users/ada/a.md", 1), doc("users/ada/gone.md", 2)];
+    await writeDocsListingToCache(username, all, { results: docs, hasMore: false });
+    installCatalog(
+      new Map([
+        ["fn-home", node("fn-home", null, "ada", "directory")],
+        ["fn-moving", node("fn-moving", "fn-home", "taken.md")],
+        ["fn-other", node("fn-other", "fn-home", "c.md")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(
+      changes({ updated: ["fn-moving", "fn-other"], destroyed: ["fn-gone"], newState: "8" }),
+    );
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.keptUnsavedPaths).toEqual(["users/ada/taken.md"]);
+    expect(await readDriveSyncToken(username)).toBe("0");
+    expect(await readCachedDriveNodeId(username, "/users/ada/a.md")).toBe("fn-other");
+    expect(await readCachedDriveNodeId(username, "/users/ada/c.md")).toBeUndefined();
+    expect(await readCachedDriveNodeId(username, "/users/ada/gone.md")).toBe("fn-gone");
+    const blobs = offlineDbForAccount(offlineAccountKeyFromUsername(username)).table(
+      "drive_content_blobs",
+    );
+    expect((await blobs.get("users/ada/a.md"))?.size).toBe(1);
+    const cached = await readDocsListingFromCache(username, all);
+    expect(cached?.results.map((row) => row.sourceKey).sort()).toEqual([
+      "users/ada/a.md",
+      "users/ada/gone.md",
+    ]);
   });
 
   it("two docs that swap paths keep their own rows in the Docs views", async () => {

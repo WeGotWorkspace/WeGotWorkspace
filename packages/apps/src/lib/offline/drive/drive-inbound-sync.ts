@@ -23,9 +23,13 @@ import {
   readDriveSyncToken,
   writeDriveSyncToken,
 } from "@/lib/offline/drive/drive-file-node-changes";
-import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
+import {
+  listKeptUnsavedDocumentPaths,
+  rememberKeptUnsavedDocuments,
+} from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   deleteDriveEntryByPath,
+  documentHasUnsavedLocalWork,
   retainOrDropLocalDocument,
 } from "@/lib/offline/drive/drive-local-document";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
@@ -81,9 +85,10 @@ const inFlight = new Map<string, Promise<DriveInboundSyncResult>>();
  * `PENDING_SERVER_SAVE_KEY` is set — then all three stay.
  *
  * App open, reconnect and settings change call only this: `FileNode/changes`.
- * No stored token, or `cannotCalculateChanges` (including a device past the
- * 30-day tombstone horizon), runs the full tree sync (`syncDriveTree`), which
- * stores the token itself. It never calls changes from `"0"`.
+ * No stored token, no completed first sync on this device (even with a
+ * token), or `cannotCalculateChanges` (including a device past the 30-day
+ * tombstone horizon), runs the full tree sync (`syncDriveTree`), which stores
+ * the token itself. It never calls changes from `"0"`.
  */
 export function syncDriveInboundFromFileNodes(
   username: string,
@@ -119,7 +124,11 @@ async function runDriveInbound(
     return { changed: false, listedChanges: false, usedFullResync: false, keptUnsavedPaths: [] };
   }
   const since = await readDriveSyncToken(username);
-  if (since === null) return fullResync(username, null, options?.signal);
+  // No token, or a token from before this device's first complete tree sync
+  // (every device that synced before the walk existed): list the tree once.
+  if (since === null || !(await readDriveTreeFirstSyncDone(username))) {
+    return fullResync(username, since, options?.signal);
+  }
   const session = await driveJmapSession();
   // A device that only crawled folders walks the tree once, when the server offers the keyset.
   if (session.treeKeyset && (await readDriveTreeLastPass(username)) !== "tree") {
@@ -261,8 +270,8 @@ async function applyFileNodeChanges(
         !batchIds.has(occupant.nodeId) &&
         !movingAway.has(occupant.id)
       ) {
-        if ((await retainOrDropLocalDocument(username, occupant.id)) === "kept") {
-          upserted.delete(node.id);
+        // Only a read here: on `blocked` the batch writes nothing at all.
+        if (await documentHasUnsavedLocalWork(occupant.id)) {
           keptUnsavedPaths.push(to);
           blocked = true;
           continue;
@@ -272,6 +281,19 @@ async function applyFileNodeChanges(
       const move: PathMove = { from, to };
       moves.push(move);
       placements.push({ node, path, previous: from, move });
+    }
+    // An unsaved document that is not part of this batch holds a final path:
+    // no row, blob, pin, page setup or Docs change is written, and the token
+    // stays, so the next sync retries the whole batch.
+    for (const id of blocked ? [] : occupantDrops) {
+      if ((await retainOrDropLocalDocument(username, id)) === "kept") {
+        keptUnsavedPaths.push(id);
+        blocked = true;
+      }
+    }
+    if (blocked) {
+      await rememberKeptUnsavedDocuments(username, keptUnsavedPaths);
+      return { changed: false, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
     }
     // A node deleted in this batch is not carried along: it goes from its old path below.
     const prefix = planPrefixMoves(under, moves, new Set([...batchIds, ...destroyed]));
