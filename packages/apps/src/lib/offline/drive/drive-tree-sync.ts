@@ -152,7 +152,8 @@ async function crawlFolders(
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   // The crawl lists the person's own drives; the share roots come from the
-  // shared-with-me list, so Shared with me reads the tree there too.
+  // shared-with-me list, so Shared with me reads the tree there too. A failing
+  // list does not hold the first sync back: the person's own drives are done.
   try {
     const shared = await fetchDriveSharedWithMe({ signal });
     await upsertDriveEntriesInBulk(
@@ -160,7 +161,7 @@ async function crawlFolders(
       shared.map((item) => ({ entry: item.entry as WgwDriveDirectoryEntry, area: "share" })),
     );
   } catch {
-    return { completed: false, changed: true, keptUnsavedPaths: [] };
+    if (signal?.aborted) return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   const state = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   await writeDriveSyncToken(username, state.state);

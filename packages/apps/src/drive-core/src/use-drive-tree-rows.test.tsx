@@ -126,6 +126,37 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
 
   afterEach(() => cleanup());
 
+  it("an online search keeps the first-sync state until the server answers", async () => {
+    const ops = operations();
+    let answer!: (entries: WgwDriveDirectoryEntry[]) => void;
+    ops.search = vi.fn(() => new Promise<WgwDriveDirectoryEntry[]>((r) => (answer = r)));
+    const { result } = renderShell({ type: "all" }, ops);
+    await waitFor(() => expect(result.current.viewState).toBe("first-sync"));
+
+    act(() => result.current.setSearchQuery("x"));
+    await waitFor(() => expect(ops.search).toHaveBeenCalled());
+    expect(result.current.viewState).toBe("first-sync");
+
+    act(() => answer([]));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+  });
+
+  it("an online search keeps a missing folder missing until the server answers", async () => {
+    await finishFirstSync();
+    const ops = operations();
+    let answer!: (entries: WgwDriveDirectoryEntry[]) => void;
+    ops.search = vi.fn(() => new Promise<WgwDriveDirectoryEntry[]>((r) => (answer = r)));
+    const { result } = renderShell({ type: "folder", path: "My Drive/Nowhere" }, ops);
+    await waitFor(() => expect(result.current.viewState).toBe("missing"));
+
+    act(() => result.current.setSearchQuery("x"));
+    await waitFor(() => expect(ops.search).toHaveBeenCalled());
+    expect(result.current.viewState).toBe("missing");
+
+    act(() => answer([]));
+    await waitFor(() => expect(result.current.viewState).toBeNull());
+  });
+
   it("opens a synced folder from the tree with no folder listing and no loading state", async () => {
     await put(`users/${user}/Projects`, "home");
     await put(`users/${user}/Projects/plan.md`, "home");

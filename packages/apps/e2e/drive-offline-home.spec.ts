@@ -5,8 +5,7 @@
 // spinner and without a server listing. Writes in one tab show in the other
 // without a reload. Offline, every view lists what the device holds; a folder
 // it never synced says so instead of looking empty.
-import type { BrowserContext, Page } from "@playwright/test";
-import { expect, test } from "./helpers/live-test";
+import { type BrowserContext, expect, type Page, test } from "./helpers/live-test";
 import { api, dav, makeFolder, putDoc, TEAMMATE, unshareQuietly } from "./helpers/docs-matrix";
 import { E2E_USERNAME } from "./helpers/notes-live";
 import {

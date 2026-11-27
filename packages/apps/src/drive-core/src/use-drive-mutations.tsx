@@ -290,7 +290,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     const v = name.trim();
     if (!v) return;
     const targetParent = destinationPath;
-    setFiles((p) => [optimisticDriveFolder(v, targetParent), ...p]);
+    const optimistic = optimisticDriveFolder(v, targetParent);
+    setFiles((p) => [optimistic, ...p]);
     // The new folder opens where it lives (All Files, or another folder picked).
     if (view.type !== "folder" || view.path !== targetParent) {
       commitView({ type: "folder", path: targetParent });
@@ -310,6 +311,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
           commitView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, currentUsername) });
         })
         .catch((error: unknown) => {
+          // A folder that was not created leaves no row behind.
+          setFiles((p) => p.filter((file) => file.id !== optimistic.id));
           const message = error instanceof Error ? error.message : String(error);
           showError(message);
         });

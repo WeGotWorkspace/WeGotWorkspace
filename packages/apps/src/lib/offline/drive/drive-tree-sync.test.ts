@@ -46,9 +46,12 @@ const pacer = vi.hoisted(() => ({
 const current = vi.hoisted(() => ({ session: null as unknown }));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({ getConnectivitySnapshot: () => true }));
-const shares = vi.hoisted(() => ({ list: [] as { entry: unknown }[] }));
+const shares = vi.hoisted(() => ({ list: [] as { entry: unknown }[], fail: false }));
 vi.mock("@/lib/api/wgw/drive-shares", () => ({
-  fetchDriveSharedWithMe: async () => shares.list,
+  fetchDriveSharedWithMe: async () => {
+    if (shares.fail) throw new Error("shared-with-me failed");
+    return shares.list;
+  },
 }));
 vi.mock("@/lib/offline/core/background-sync-pacer", async () => ({
   ...(await vi.importActual<object>("@/lib/offline/core/background-sync-pacer")),
@@ -378,6 +381,7 @@ async function seedPendingSave(apiPath: string): Promise<void> {
 beforeEach(async () => {
   pacer.acquire.mockClear();
   shares.list = [];
+  shares.fail = false;
   await driveEntriesTable(db()).clear();
   await driveTreeStagingTable(db()).clear();
   await db().table("drive_upload_items").clear();
@@ -820,6 +824,24 @@ describe("syncDriveTree", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(server.listingRequests()).toHaveLength(0);
     expect(await readDriveSyncToken(username)).toBe(server.state());
+    spy.mockRestore();
+  });
+
+  it("a failing shared-with-me list does not hold the crawl's first sync back", async () => {
+    const server = standardTree();
+    await connect(server, { keyset: false });
+    const crawl = await import("@/lib/offline/drive/drive-metadata-sync");
+    const spy = vi.spyOn(crawl, "syncDriveMetadataTree").mockImplementation(async () => {
+      await upsertDriveEntry(username, staleEntry("/users/ada/a.md", "n-a"));
+      return { running: false, total: 1, synced: 1, failed: 0, updatedAt: 1 };
+    });
+    shares.fail = true;
+
+    const result = await syncDriveTree(username);
+
+    expect(result.completed).toBe(true);
+    expect(await readDriveTreeFirstSyncDone(username)).toBe(true);
+    expect((await row("/users/ada/a.md"))?.area).toBe("home");
     spy.mockRestore();
   });
 

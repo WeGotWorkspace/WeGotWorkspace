@@ -126,11 +126,11 @@ export function useDriveBatchActions({
     [activeId, setActiveId, setDetailOpen, setSelectedIds, setSelectionMode],
   );
 
-  // After a write: the open folder shows what the server now holds. The tree
-  // views re-read when the write updates the tree.
+  // After a write: the open folder shows what the server now holds. On the
+  // local tree the write already updated the rows and the view re-reads them.
   const refreshOpenFolder = useCallback(
     async (signal?: AbortSignal) => {
-      if (!operations || view.type !== "folder") return;
+      if (!operations || operations.localTree || view.type !== "folder") return;
       await reloadDriveFolderListing(
         operations,
         view.path,

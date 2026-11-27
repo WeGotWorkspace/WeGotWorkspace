@@ -435,6 +435,19 @@ describe("useDriveBatchActions", () => {
     ).toBe(false);
   });
 
+  it("on the local tree a move to Trash sends no folder listing afterwards", async () => {
+    const operations = { ...createOperations(), localTree: true };
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+    await act(async () => {
+      await executeQueued();
+    });
+
+    expect(operations.renameItem).toHaveBeenCalled();
+    expect(operations.changeDir).not.toHaveBeenCalled();
+  });
+
   it("renames into Trash on execute and renames back when undo follows a finished move", async () => {
     const operations = createOperations();
     const { result } = renderActions({ operations });
