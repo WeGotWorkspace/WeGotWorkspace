@@ -40,6 +40,8 @@ export type OfflineDriveEntryRow = {
    * the change applier; rows a first sync has written so far have none yet.
    */
   area?: DriveEntryArea;
+  /** Tags of the item (#2402), copied out of `data` so the tag view can use an index. */
+  tags?: string[];
 };
 
 /**
@@ -138,6 +140,26 @@ registerOfflineDomainTables({
           .modify((row) => {
             row.area = areaFromCrawledPath(row.id);
             if (row.type === "file") row.ext = fileExtension(row.id.split("/").pop() ?? "");
+          }),
+    },
+    {
+      version: DRIVE_OFFLINE_VERSION.entryTags,
+      stores: {
+        drive_entries: "id, parentPath, type, modifiedAt, nodeId, uploadId, ext, area, *tags",
+      },
+      upgrade: (tx) =>
+        tx
+          .table<OfflineDriveEntryRow, string>("drive_entries")
+          .toCollection()
+          .modify((row) => {
+            try {
+              const tags = (JSON.parse(row.data) as { tags?: unknown }).tags;
+              if (Array.isArray(tags) && tags.length > 0) {
+                row.tags = tags.filter((tag): tag is string => typeof tag === "string");
+              }
+            } catch {
+              // A row whose body is not JSON has no tags to index.
+            }
           }),
     },
   ],

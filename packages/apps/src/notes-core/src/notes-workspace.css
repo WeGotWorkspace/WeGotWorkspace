@@ -162,51 +162,6 @@
   --tag-fg: var(--notes-tag-active-fg);
 }
 
-/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows), the same `lg`
- * chips as the detail (look lives in the Tag primitive). Match section heading /
- * MenuItem inset — not `px-4` (double-gutter vs rows). */
-.notes-workspace .notes-sidebar-tags .sidebar-section__list {
-  @apply flex flex-wrap gap-2 space-y-0;
-  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
-}
-
-/* Cap the flex item so a long tag ellipsizes instead of overflowing the sidebar. */
-.notes-workspace .notes-sidebar-tags__row {
-  @apply min-w-0 max-w-full;
-}
-
-.notes-workspace .notes-sidebar-tags__item {
-  @apply inline-flex max-w-full appearance-none border-0 bg-transparent p-0;
-  @apply cursor-pointer outline-none;
-  /* Focus ring follows the capsule chip. */
-  border-radius: var(--control-radius-pill);
-}
-
-.notes-workspace .notes-sidebar-tags__item:focus-visible {
-  @apply ring-2 ring-offset-1 ring-offset-transparent;
-  --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
-}
-
-/* Idle chips are the primitive's neutral chip; only the states swap its tokens. */
-.notes-workspace .notes-sidebar-tags__item .tag {
-  @apply max-w-full;
-}
-
-.notes-workspace .notes-sidebar-tags__item:hover .tag {
-  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 11%, transparent);
-}
-
-.notes-workspace .notes-sidebar-tags__item--selected .tag,
-.notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
-  --tag-bg: var(--notes-tag-active-bg);
-  --tag-fg: var(--notes-tag-active-fg);
-}
-
-.notes-workspace .notes-sidebar-tags__item--drop-target .tag {
-  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
-}
-
 .notes-workspace .collection-sidebar-row--drop-target {
   background-color: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
 }

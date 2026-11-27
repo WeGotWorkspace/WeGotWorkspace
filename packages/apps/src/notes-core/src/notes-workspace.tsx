@@ -18,17 +18,14 @@ import {
 import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
-import { Tag } from "@/tag/src/tag";
+import { TagSidebarSection } from "@/tag/src/tag-sidebar-section";
 import { ChangeNotebookDialog } from "@/project-dialog/src/change-notebook-dialog";
 import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import {
-  dismissSidebarOverlay,
-  sidebarSelectMarker,
-} from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
@@ -495,28 +492,13 @@ export function NotesWorkspace({
               </SidebarSection>
             ) : null}
             {showTagsSection ? (
-              <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
-                {tagSidebarTags.map(
-                  ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag} className="notes-sidebar-tags__row">
-                      <button
-                        type="button"
-                        {...sidebarSelectMarker}
-                        className={cn(
-                          "notes-sidebar-tags__item",
-                          selected && "notes-sidebar-tags__item--selected",
-                          isDropTarget && "notes-sidebar-tags__item--drop-target",
-                        )}
-                        onClick={onSelect}
-                        aria-pressed={selected}
-                        {...dropHandlers}
-                      >
-                        <Tag label={tag} size="lg" />
-                      </button>
-                    </li>
-                  ),
-                )}
-              </SidebarSection>
+              <TagSidebarSection
+                title={L.sectionTags}
+                tags={tagSidebarTags}
+                className="notes-sidebar-tags"
+                rowClassName="notes-sidebar-tags__row"
+                itemClassName="notes-sidebar-tags__item"
+              />
             ) : null}
           </AppSidebar>
         )}

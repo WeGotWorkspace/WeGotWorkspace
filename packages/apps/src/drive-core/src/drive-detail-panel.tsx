@@ -1,5 +1,4 @@
-import { HardDrive } from "lucide-react";
-import { Tag, TagGroup } from "@/tag/src/tag";
+import { TagGroup } from "@/tag/src/tag";
 import { isValidNewTag } from "@/lib/tags/tag-rules";
 import { DriveDetailActionBar } from "@/drive-core/src/drive-detail-action-bar";
 import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
@@ -136,16 +135,11 @@ export function DriveDetailPanel({
               videoControls
             />
           </div>
-          <div className="drive-detail-panel__path">
-            <Tag
-              label={locationLabel ?? file.location ?? file.parent}
-              icon={<HardDrive className="size-3.5 opacity-70" />}
-            />
-          </div>
           <h1 className="drive-detail-panel__title">{file.title}</h1>
           {tagsEditable || file.tags.length > 0 ? (
-            <section className="drive-detail-panel__tags" aria-label={labels.detailTags}>
+            <section className="drive-detail-panel__tags tag-active" aria-label={labels.detailTags}>
               <TagGroup
+                size="lg"
                 tags={file.tags}
                 readonly={!tagsEditable}
                 suggestions={tagSuggestions}
@@ -160,6 +154,10 @@ export function DriveDetailPanel({
             </section>
           ) : null}
           <dl className="drive-detail-panel__meta">
+            <Row
+              label={labels.detailLocation}
+              value={locationLabel ?? file.location ?? file.parent}
+            />
             <Row label={labels.listColumnKind} value={DRIVE_KIND_LABEL[file.kind]} />
             {file.kind === "folder" ? null : (
               <Row label={labels.listColumnSize} value={file.size} />

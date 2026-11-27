@@ -113,7 +113,7 @@ async function undoQueued(): Promise<void> {
 
 function renderActions(options?: {
   operations?: DriveAPIOperations;
-  viewType?: ViewKey["type"];
+  viewType?: Exclude<ViewKey["type"], "tag">;
   starred?: Record<string, boolean>;
   selectedIds?: string[];
   files?: DriveFile[];

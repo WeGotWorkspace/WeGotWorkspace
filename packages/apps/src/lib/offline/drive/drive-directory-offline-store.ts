@@ -68,6 +68,7 @@ export function driveEntryRowFromEntry(
     ...(nodeId ? { nodeId } : {}),
     ...(type === "file" ? { ext: fileExtension(entry.name || (id.split("/").pop() ?? "")) } : {}),
     ...(area ? { area } : {}),
+    ...(entry.tags && entry.tags.length > 0 ? { tags: entry.tags } : {}),
   };
 }
 

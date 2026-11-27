@@ -11,7 +11,7 @@ export function DriveRowTags({ tags }: { tags: readonly string[] }) {
   return (
     <span className="drive-row-tags" data-testid="drive-row-tags">
       {shown.map((tag) => (
-        <Tag key={tag} label={tag} />
+        <Tag key={tag} label={tag} size="lg" />
       ))}
       {more > 0 ? <span className="drive-row-tags__more">{`+${more}`}</span> : null}
     </span>

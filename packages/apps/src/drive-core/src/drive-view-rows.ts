@@ -37,6 +37,8 @@ export function driveTreeViewFor(
       return { kind: "starred" };
     case "shared":
       return { kind: "shared" };
+    case "tag":
+      return { kind: "tag", tag: view.tag };
     case "folder":
       if (view.path === DRIVE_TRASH_UI_PATH) return { kind: "trash" };
       if (view.path === SHARED_WITH_ME_UI_ROOT) return { kind: "shared" };

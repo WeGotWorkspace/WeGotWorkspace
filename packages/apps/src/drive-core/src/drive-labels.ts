@@ -18,6 +18,8 @@ export const driveLabels = {
   sidebarSharedDrives: "Drives",
   /** Section of the Project folders (#818). */
   sidebarProjects: "Project Folders",
+  /** Sidebar section listing the tags in use (#2402). */
+  sidebarTags: "Tags",
   /** Root label for Team drives; the UI path segment stays `Groups`. */
   teamsRoot: filesBrowserSidebarLabels.teamsRoot,
   searchPlaceholder: "Search in Drive...",
@@ -167,6 +169,8 @@ export const driveLabels = {
   detailShare: "Share",
   /** Details panel: the tags on the file or folder (#2402). */
   detailTags: "Tags",
+  /** Details panel metadata row: where the item lives (drive or folder). */
+  detailLocation: "Location",
   tagAdd: "New tag",
   tagAddAria: "Add a tag",
   tagRemoveAria: (label: string) => `Remove tag ${label}`,

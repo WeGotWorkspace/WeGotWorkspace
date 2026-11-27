@@ -53,6 +53,8 @@ export const DRIVE_OFFLINE_VERSION = {
   uploadQueue: 34,
   /** #2063 C1: indexed `ext` and `area`, plus the tree walk staging and pre-pass tables. */
   treeSync: 35,
+  /** #2402: a multi-entry `tags` index on the rows, for the tag view and the sidebar list. */
+  entryTags: 36,
 } as const;
 
 /** Tasks version steps within the tasks block (40–49). */

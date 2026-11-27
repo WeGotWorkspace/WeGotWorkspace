@@ -259,3 +259,17 @@ html:not([data-modality="pointer"]) .tag-group__add-button:focus-visible,
     color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
 }
+
+/* An active tag (selected in the sidebar, set on the open item) is this pair: the ink
+ * dimmed a little into the surface, with a surface label. Apps may override the tokens. */
+.tag-sidebar,
+.tag-active {
+  --tag-active-bg: color-mix(in oklch, var(--workspace-foreground) 78%, var(--workspace-surface));
+  --tag-active-fg: var(--workspace-surface);
+}
+
+/* The open item's tags are active tags too; the Add tag control keeps its neutral wash. */
+.tag-active .tag {
+  --tag-bg: var(--tag-active-bg);
+  --tag-fg: var(--tag-active-fg);
+}
