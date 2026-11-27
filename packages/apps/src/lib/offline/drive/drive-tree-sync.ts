@@ -58,6 +58,12 @@ export const DRIVE_TREE_ROOTS_KEY = "drive:tree-sync:roots";
  * once the server offers the keyset.
  */
 export const DRIVE_TREE_LAST_PASS_KEY = "drive:tree-sync:last-pass";
+/**
+ * Meta key: JSON list of the account root paths the per-folder crawl queued
+ * (home and the team drives `/groups` listed). Not the roots map: a non-null
+ * map tells the applier a keyset pass ran. Removed by a tree pass.
+ */
+export const DRIVE_TREE_CRAWL_ROOTS_KEY = "drive:tree-sync:crawl-roots";
 /** A pass restarted by `cannotCalculateChanges` more often than this waits for the next sync. */
 const MAX_PASSES = 3;
 
@@ -94,6 +100,20 @@ export async function readDriveTreeRoots(username: string): Promise<Map<string, 
         (pair): pair is [string, string] => typeof pair[1] === "string",
       ),
     );
+  } catch {
+    return null;
+  }
+}
+
+/** The account root paths of the last crawl, or null when no crawl stored them. */
+export async function readDriveTreeCrawlRoots(username: string): Promise<string[] | null> {
+  const raw = await readMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((path): path is string => typeof path === "string")
+      : null;
   } catch {
     return null;
   }
@@ -154,13 +174,20 @@ async function crawlFolders(
 ): Promise<DriveTreeSyncResult> {
   const before = await session.fileNodes.getFileNodes(session.accountId, [], { signal });
   const bootstrap = (await readDriveBootstrapFromCache(username)) ?? fallbackBootstrap(username);
-  const progress = await syncDriveMetadataTree(username, bootstrap, { signal });
+  let crawlRoots: readonly string[] = [];
+  const progress = await syncDriveMetadataTree(username, bootstrap, {
+    signal,
+    onRoots: (roots) => {
+      crawlRoots = roots;
+    },
+  });
   if (signal?.aborted || progress.failed > 0) {
     return { completed: false, changed: true, keptUnsavedPaths: [] };
   }
   // The crawl knows no root ids; the applier then reads `area` from the path.
   await accountDb(username).meta.delete(DRIVE_TREE_ROOTS_KEY);
   await stampCrawledAreas(username);
+  await writeMeta(username, DRIVE_TREE_CRAWL_ROOTS_KEY, JSON.stringify(crawlRoots));
   await writeDriveSyncToken(username, before.state);
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "crawl");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
@@ -252,6 +279,7 @@ async function runTreePass(
   await clearCursor(username);
   await writeDriveSyncToken(username, drained.newState);
   await stagingTable(username).clear();
+  await accountDb(username).meta.delete(DRIVE_TREE_CRAWL_ROOTS_KEY);
   await writeMeta(username, DRIVE_TREE_LAST_PASS_KEY, "tree");
   await writeMeta(username, DRIVE_TREE_FIRST_SYNC_DONE_KEY, "1");
   return { completed: true, changed: true, keptUnsavedPaths };
