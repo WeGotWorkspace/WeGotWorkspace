@@ -210,6 +210,8 @@ export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   blobId?: string;
   /** The server is still hashing a file that arrived outside WGW: no *Replace*. */
   contentHashPending?: boolean;
+  /** Tags on the file or folder (#2402); absent when it has none. */
+  tags?: string[];
   upload?: WgwDriveUploadPlaceholder;
 };
 /** Listing rows may carry the UI-only FileNode id. The OpenAPI schema does not. */

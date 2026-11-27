@@ -13,6 +13,10 @@ import {
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
+import {
+  sendQueuedTagsRow,
+  type DriveTagsOutboxPayload,
+} from "@/lib/offline/shared/drive-tag-operations";
 import { writeDocsStarredPaths } from "@/lib/offline/docs/docs-stars-store";
 import {
   legacyDriveOutboxUploadPath,
@@ -28,7 +32,8 @@ import {
 export type DriveOutboxPayload =
   | { op: "rename"; from: string; destination: string; to: string }
   | { op: "trash"; from: string; destination: string; to: string }
-  | { op: "star"; path: string; starred: boolean };
+  | { op: "star"; path: string; starred: boolean }
+  | DriveTagsOutboxPayload;
 
 export type DriveOutboxFlushResult = {
   flushed: number;
@@ -54,7 +59,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
     // An old upload whose folder is not known yet: it stays until it moves to the queue.
     prepare: async (row) => (readLegacyDriveOutboxUpload(row) ? null : row),
     parse: parsePayload,
-    send: async (payload) => {
+    send: async (payload, row, context) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -76,6 +81,9 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         await drive.setStar({ path: payload.path, starred: payload.starred });
         const paths = await drive.listStars();
         await writeDocsStarredPaths(username, paths);
+      } else if (payload.op === "tags") {
+        if (!drive.setTags) throw new Error("Tags are not offered");
+        return sendQueuedTagsRow(username, DRIVE_DOMAIN, row, drive.setTags, context);
       }
     },
     onFailure: (failure) => {
@@ -99,6 +107,7 @@ export function pathsForDriveOutboxPayload(payload: DriveOutboxPayload): string[
         ),
       ];
     case "star":
+    case "tags":
       return [normalizeDriveAvailabilityPath(payload.path)];
     default: {
       const unreachable: never = payload;

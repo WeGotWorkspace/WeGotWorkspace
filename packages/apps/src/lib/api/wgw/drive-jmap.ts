@@ -210,6 +210,7 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
       ? { blobId: node.blobId }
       : {}),
     ...(node.contentHashPending === true ? { contentHashPending: true } : {}),
+    ...tagsOf(node),
     ...shareFlagsOf(node),
     myRights: {
       mayView: rights?.mayRead !== false,
@@ -221,6 +222,14 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
       mayShare: rights?.mayShare === true,
     },
   };
+}
+
+/** `tags` of a `FileNode/get` answer (#2402) as an entry field; none when it has no tags. */
+function tagsOf(node: JmapFileNode): Pick<WgwDriveDirectoryEntry, "tags"> {
+  const { tags } = node;
+  if (!Array.isArray(tags)) return {};
+  const labels = tags.filter((tag): tag is string => typeof tag === "string");
+  return labels.length > 0 ? { tags: labels } : {};
 }
 
 /** `shareFlags` of a `FileNode/get` answer (#2063 S3) as entry fields; none without them. */

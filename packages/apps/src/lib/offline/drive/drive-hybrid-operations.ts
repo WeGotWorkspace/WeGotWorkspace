@@ -53,6 +53,7 @@ import {
 } from "@/lib/offline/drive/drive-folder-fetch-share";
 import { getDocsSyncRunner } from "@/lib/offline/docs/docs-sync-runner";
 import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
+import { createHybridSetTags } from "@/lib/offline/shared/drive-tag-operations";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
@@ -567,6 +568,13 @@ export function createHybridDriveOperations(
       await queueOfflineDriveUploadFiles(username, input);
       return offlineQueuedDriveData(username, cwd);
     },
+    setTags: createHybridSetTags(
+      username,
+      live,
+      DRIVE_DOMAIN,
+      () => notifyDriveRemoteChange(username),
+      () => void runnerFor(username).flushAfterWrite(),
+    ),
     ...driveUploadQueueOperations(username),
     downloadFile: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);

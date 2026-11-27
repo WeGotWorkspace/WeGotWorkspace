@@ -16,6 +16,10 @@ import {
   nextPathAfterRename,
 } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { isDriveOutboxStateMismatch } from "@/lib/offline/shared/drive-outbox-state-mismatch";
+import {
+  sendQueuedTagsRow,
+  type DriveTagsOutboxPayload,
+} from "@/lib/offline/shared/drive-tag-operations";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import {
@@ -28,7 +32,8 @@ export type DocsOutboxPayload =
   | { op: "rename"; from: string; destination: string; to: string }
   | { op: "trash"; from: string; destination: string; to: string }
   | { op: "create"; apiPath: string; content: string }
-  | { op: "star"; path: string; starred: boolean };
+  | { op: "star"; path: string; starred: boolean }
+  | DriveTagsOutboxPayload;
 
 export type OutboxFlushResult = {
   flushed: number;
@@ -87,7 +92,7 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
       return row;
     },
     parse: parsePayload,
-    send: async (payload, row) => {
+    send: async (payload, row, context) => {
       if (payload.op === "rename" || payload.op === "trash") {
         if (payload.op === "trash") {
           await ensureTrashFolder(drive, username, new Set());
@@ -115,6 +120,9 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
         }
       } else if (payload.op === "star") {
         await drive.setStar({ path: payload.path, starred: payload.starred });
+      } else if (payload.op === "tags") {
+        if (!drive.setTags) throw new Error("Tags are not offered");
+        return sendQueuedTagsRow(username, DOCS_DOMAIN, row, drive.setTags, context);
       }
     },
     onFailure: (failure) => {
@@ -179,6 +187,7 @@ export function pathsForDocsOutboxPayload(payload: DocsOutboxPayload): string[] 
     case "create":
       return [normalizeDocsAvailabilityPath(payload.apiPath)];
     case "star":
+    case "tags":
       return [normalizeDocsAvailabilityPath(payload.path)];
     default: {
       const unreachable: never = payload;
