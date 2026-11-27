@@ -6,13 +6,14 @@ const base = {
   hasLocal: false,
   isFolder: false,
   sizeBytes: 1024,
-  syncRunning: true,
+  queued: true,
+  failed: false,
   online: true,
   settings,
 };
 
-describe("driveRowOfflineState while a background sync runs", () => {
-  it("marks a small file that is not on the device yet as syncing", () => {
+describe("driveRowOfflineState for a file the current run will download", () => {
+  it("spins while the file is in the run's queue", () => {
     expect(driveRowOfflineState(base)).toBe("syncing");
   });
 
@@ -20,28 +21,22 @@ describe("driveRowOfflineState while a background sync runs", () => {
     expect(driveRowOfflineState({ ...base, hasLocal: true })).toBe("available");
   });
 
-  it("offers a file above the size limit instead of a spinner", () => {
-    expect(driveRowOfflineState({ ...base, sizeBytes: 20 * 1024 * 1024 })).toBe("too-large");
+  it("never spins while the device is offline", () => {
+    expect(driveRowOfflineState({ ...base, online: false })).toBe("none");
   });
 
   it("does not mark folders", () => {
     expect(driveRowOfflineState({ ...base, isFolder: true, sizeBytes: null })).toBe("none");
   });
-
-  it("does not mark anything when automatic copies are off", () => {
-    expect(
-      driveRowOfflineState({ ...base, settings: { ...settings, contentSyncEnabled: false } }),
-    ).toBe("none");
-  });
 });
 
-describe("driveRowOfflineState with no sync running", () => {
-  it("leaves a small file that is not on the device unmarked", () => {
-    expect(driveRowOfflineState({ ...base, syncRunning: false })).toBe("none");
+describe("driveRowOfflineState for a file the run will not download", () => {
+  it("does not spin for a file outside the queue", () => {
+    expect(driveRowOfflineState({ ...base, queued: false })).toBe("none");
   });
 
-  it("still offers a large file while online", () => {
-    expect(driveRowOfflineState({ ...base, syncRunning: false, sizeBytes: 20 * 1024 * 1024 })).toBe(
+  it("offers a large file while online", () => {
+    expect(driveRowOfflineState({ ...base, queued: false, sizeBytes: 20 * 1024 * 1024 })).toBe(
       "too-large",
     );
   });
@@ -50,10 +45,34 @@ describe("driveRowOfflineState with no sync running", () => {
     expect(
       driveRowOfflineState({
         ...base,
-        syncRunning: false,
+        queued: false,
         online: false,
         sizeBytes: 20 * 1024 * 1024,
       }),
     ).toBe("none");
+  });
+
+  it("does not mark anything when automatic copies are off", () => {
+    expect(
+      driveRowOfflineState({
+        ...base,
+        queued: false,
+        settings: { ...settings, contentSyncEnabled: false },
+      }),
+    ).toBe("none");
+  });
+});
+
+describe("driveRowOfflineState after a failed download", () => {
+  it("shows failed, not a spinner, also while a later run retries it", () => {
+    expect(driveRowOfflineState({ ...base, failed: true })).toBe("failed");
+  });
+
+  it("keeps showing failed offline", () => {
+    expect(driveRowOfflineState({ ...base, failed: true, online: false })).toBe("failed");
+  });
+
+  it("shows available once a copy is stored", () => {
+    expect(driveRowOfflineState({ ...base, failed: true, hasLocal: true })).toBe("available");
   });
 });

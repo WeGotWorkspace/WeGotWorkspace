@@ -10,7 +10,10 @@ use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareGrantResolver;
 use App\Services\Jmap\Guest\GuestJmapAccounts;
+use App\Services\Jmap\JmapRequestContext;
+use App\Storage\StorageKeyClass;
 use App\Storage\StoragePaths;
+use App\Storage\WgwStorage;
 
 /**
  * Per-account context for the FileNode envelope methods: the drive principal
@@ -30,6 +33,8 @@ final class FileNodeAccountSupport
         private readonly DriveShareGrantResolver $grants,
         private readonly StoragePaths $paths,
         private readonly GuestJmapAccounts $guests,
+        private readonly JmapRequestContext $context,
+        private readonly WgwStorage $storage,
     ) {}
 
     /**
@@ -79,42 +84,67 @@ final class FileNodeAccountSupport
     }
 
     /**
-     * {@see rootsFor()} and {@see memberGrantPairs()} from one read of the member grants, for
-     * the JMAP push check (#2243).
+     * {@see rootsFor()} plus {@see accountRootsAndGrantPairs()} from one read of the member Teams
+     * and grants, for the JMAP push check (#2243).
      *
-     * @return array{roots: list<string>, grantPairs: string}
+     * @return array{roots: list<string>, accountRoots: list<string>, grantPairs: string}
      */
     public function rootsAndGrantPairs(string $username): array
     {
+        $scope = $this->scopeOf($username);
+
+        return [
+            'roots' => $scope['grants'] === null ? $scope['accountRoots'] : $this->rootsWith($username, $scope['grants']),
+            'accountRoots' => $scope['accountRoots'],
+            'grantPairs' => $this->grantPairsOf($scope['grants'] ?? []),
+        ];
+    }
+
+    /**
+     * The account roots (own tree + member Teams) and the sorted `grantId:access` lines of the
+     * user's live, visible member grants, from one read of the member Teams. The FileNode state
+     * carries their hash (#2063): a Team join or leave, hiding a grant or changing its access in
+     * place moves neither the global change sequence nor the root markers (#1926).
+     *
+     * @return array{accountRoots: list<string>, grantPairs: string}
+     */
+    public function accountRootsAndGrantPairs(string $username): array
+    {
+        $scope = $this->scopeOf($username);
+
+        return ['accountRoots' => $scope['accountRoots'], 'grantPairs' => $this->grantPairsOf($scope['grants'] ?? [])];
+    }
+
+    /**
+     * A guest has its one share root and no grants (null); a member has its own tree, its
+     * member Teams and its live member grants.
+     *
+     * @return array{accountRoots: list<string>, grants: list<DriveShareGrant>|null}
+     */
+    private function scopeOf(string $username): array
+    {
         $guest = $this->guests->find($username);
         if ($guest !== null) {
-            return ['roots' => [$guest->rootKey], 'grantPairs' => ''];
+            return ['accountRoots' => [$guest->rootKey], 'grants' => null];
         }
-        $grants = $this->liveMemberGrantsOf($username);
+        $slugs = $this->groups->allowedGroupSlugs($username);
 
-        return ['roots' => $this->rootsWith($username, $grants), 'grantPairs' => $this->grantPairsOf($grants)];
+        return [
+            'accountRoots' => FileNodeVisibility::roots($username, $slugs),
+            'grants' => $this->liveMemberGrantsOf($username, $slugs),
+        ];
     }
 
     /**
-     * Sorted `grantId:access` lines of the user's live, visible member grants. The FileNode
-     * state and push basis carry their hash, because hiding a grant or changing its access in
-     * place moves neither the global change sequence nor the root markers (#1926).
-     */
-    public function memberGrantPairs(string $username): string
-    {
-        if ($this->guests->find($username) !== null) {
-            return '';
-        }
-
-        return $this->grantPairsOf($this->liveMemberGrantsOf($username));
-    }
-
-    /**
+     * @param  list<string>|null  $slugs  the member Teams when the caller already has them
      * @return list<DriveShareGrant>
      */
-    private function liveMemberGrantsOf(string $username): array
+    private function liveMemberGrantsOf(string $username, ?array $slugs = null): array
     {
-        return $this->grants->liveMemberGrants($username, $this->groups->allowedGroupSlugs($username));
+        return $this->context->remember(
+            'filenode.grants:'.$username,
+            fn (): array => $this->grants->liveMemberGrants($username, $slugs ?? $this->groups->allowedGroupSlugs($username)),
+        );
     }
 
     /**
@@ -146,9 +176,17 @@ final class FileNodeAccountSupport
     }
 
     /**
+     * Once per JMAP batch: later calls in the batch reuse the roots until a write (#2063).
+     *
      * @return list<string> the same roots as {@see rootsFor}
      */
     public function ensureAccountIndexed(string $username): array
+    {
+        return $this->context->remember('filenode.indexed:'.$username, fn (): array => $this->indexAccountRoots($username));
+    }
+
+    /** @return list<string> */
+    private function indexAccountRoots(string $username): array
     {
         $roots = $this->rootsFor($username);
         $guest = $this->guests->find($username);
@@ -207,17 +245,25 @@ final class FileNodeAccountSupport
     }
 
     /**
-     * Reconcile the whole visible tree (used by get-all and unfiltered
-     * queries): BFS from the roots, reconciling each directory's children.
+     * Reconcile the whole visible tree (used by get-all): BFS from the roots, reconciling each directory's children.
      * Bounded in practice by maxObjectsInGet on the caller side.
      *
      * @param  list<string>  $roots  from {@see ensureAccountIndexed}
      */
     public function reconcileVisibleTree(array $roots): void
     {
+        // One query for the whole tree; a folder costs SQL only when its disk listing differs (#2063).
+        $rows = JmapFileNode::query()->whereNull('deleted_at');
+        FileNodeTreeScope::underRoots($rows, $roots);
+        $byKey = [];
+        $childrenOf = [];
+        foreach ($rows->orderBy('storage_key')->get(['node_id', 'parent_node_id', 'storage_key', 'is_dir']) as $row) {
+            $byKey[(string) $row->storage_key] = $row;
+            $childrenOf[(string) $row->parent_node_id][] = $row;
+        }
         $queue = [];
         foreach ($roots as $root) {
-            $node = $this->index->liveByKey($root);
+            $node = $byKey[$root] ?? null;
             if ($node !== null) {
                 $queue[] = $node;
             }
@@ -226,11 +272,33 @@ final class FileNodeAccountSupport
         while ($queue !== [] && $guard < 2_000) {
             $dir = array_shift($queue);
             $guard++;
-            foreach ($this->index->reconcileDirectory($dir) as $child) {
+            foreach ($this->reconcileDirectoryAgainst($dir, $childrenOf[(string) $dir->node_id] ?? []) as $child) {
                 if ($child->is_dir) {
                     $queue[] = $child;
                 }
             }
         }
+    }
+
+    /**
+     * {@see FileNodeIndexService::reconcileDirectory()} against preloaded live `$children`: no SQL
+     * unless the disk listing differs from them.
+     *
+     * @param  list<JmapFileNode>  $children
+     * @return list<JmapFileNode>
+     */
+    private function reconcileDirectoryAgainst(JmapFileNode $dir, array $children): array
+    {
+        $known = array_fill_keys(array_map(static fn (JmapFileNode $c): string => (string) $c->storage_key, $children), true);
+        $seen = 0;
+        foreach ($this->storage->files()->listContents((string) $dir->storage_key) as $entry) {
+            if (isset($known[$entry->path()])) {
+                $seen++;
+            } elseif (StorageKeyClass::classify($entry->path())->isFileIndexed()) {
+                return $this->index->reconcileDirectory($dir);
+            }
+        }
+
+        return $seen === count($known) ? $children : $this->index->reconcileDirectory($dir);
     }
 }

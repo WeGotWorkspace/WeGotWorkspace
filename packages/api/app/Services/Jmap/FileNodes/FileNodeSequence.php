@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNodeMeta;
+use App\Services\Jmap\JmapRequestContext;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,6 +16,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class FileNodeSequence
 {
+    /** The JMAP batch memory key of the state's sequence ({@see FileNodeSyncState::forGrantPairs()}). */
+    public const REMEMBER_KEY = 'filenode.seq';
+
+    public function __construct(private readonly JmapRequestContext $context) {}
+
     public function current(): int
     {
         return (int) ($this->meta()->seq ?? 0);
@@ -27,6 +33,8 @@ final class FileNodeSequence
 
     public function next(): int
     {
+        $this->context->forget(self::REMEMBER_KEY);
+
         return DB::connection('wgw')->transaction(function (): int {
             $meta = JmapFileNodeMeta::query()->lockForUpdate()->first();
             if ($meta === null) {

@@ -31,7 +31,7 @@ describe("DriveMoveToDialog", () => {
     expect(screen.getByRole("heading", { name: driveLabels.moveDialogTitle })).toBeTruthy();
     expect(screen.getByRole("button", { name: driveLabels.moveDialogConfirm })).toBeTruthy();
     expect(screen.queryByRole("button", { name: driveLabels.fileSelectDialogInsert })).toBeNull();
-    // Folder destinations are picked on the Drive list (not the image grid).
+    // Folder destinations are picked on the Drive list (same list as file select).
     expect(document.querySelector(".drive-list-table tr[data-list-item-id]")).toBeTruthy();
     expect(document.querySelector(".drive-grid")).toBeNull();
     expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeNull();
@@ -50,11 +50,11 @@ describe("DriveMoveToDialog", () => {
     expect((insert as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Upload" })).toBeNull();
     expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeNull();
-    expect(document.querySelector(".drive-grid")).toBeTruthy();
+    expect(document.querySelector(".drive-list-table")).toBeTruthy();
     expect(document.querySelector("[data-drive-listing-theme]")).toBeNull();
     expect(screen.queryByRole("button", { name: driveLabels.moveDialogConfirm })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Cover-Photo-Granite.jpg" }));
+    fireEvent.click(screen.getByText("Cover-Photo-Granite.jpg"));
     expect((insert as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(insert);
     expect(onSelectFile).toHaveBeenCalledWith(

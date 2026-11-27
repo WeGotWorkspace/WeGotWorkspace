@@ -28,7 +28,6 @@ const NOTES_ID = "notes";
 
 const queueMutation = vi.fn();
 const reloadStarredFromServer = vi.fn();
-const reloadAllFiles = vi.fn();
 
 function listedFile(path: string, name = path.split("/").pop() ?? path) {
   return {
@@ -174,7 +173,6 @@ function renderActions(options?: {
         ) ?? null,
       allFiles: {
         patchAllFiles: (update) => setAllRows((prev) => (prev ? update(prev) : prev)),
-        reloadAllFiles,
       },
     });
     return {
@@ -435,6 +433,19 @@ describe("useDriveBatchActions", () => {
           (call) => call[0].from.includes("other") || call[0].to.startsWith("other"),
         ),
     ).toBe(false);
+  });
+
+  it("on the local tree a move to Trash sends no folder listing afterwards", async () => {
+    const operations = { ...createOperations(), localTree: true };
+    const { result } = renderActions({ operations });
+
+    act(() => result.current.moveToTrash([NOTES_ID]));
+    await act(async () => {
+      await executeQueued();
+    });
+
+    expect(operations.renameItem).toHaveBeenCalled();
+    expect(operations.changeDir).not.toHaveBeenCalled();
   });
 
   it("renames into Trash on execute and renames back when undo follows a finished move", async () => {
@@ -909,6 +920,21 @@ describe("useDriveBatchActions", () => {
   });
 
   describe("All Files rows outside the open folder", () => {
+    it("hides a trashed row at once in Starred too", () => {
+      const operations = createOperations();
+      const { result } = renderActions({
+        operations,
+        viewType: "starred",
+        files: [],
+        allRows: [reportRow(), driveFile({ id: "keep", title: "keep.md" })],
+        selectedIds: ["report"],
+      });
+
+      act(() => result.current.moveToTrash(["report"]));
+
+      expect(result.current.allRows?.map((file) => file.id)).toEqual(["keep"]);
+    });
+
     const reportRow = () =>
       driveFile({
         id: "report",
@@ -917,7 +943,7 @@ describe("useDriveBatchActions", () => {
         apiPath: "/users/alice/Projects/report.md",
       });
 
-    it("trashes the row, hides it at once and reloads All Files", async () => {
+    it("trashes the row and hides it at once", async () => {
       const operations = createOperations();
       const { result } = renderActions({
         operations,
@@ -937,7 +963,6 @@ describe("useDriveBatchActions", () => {
         expect.objectContaining({ from: "/users/alice/Projects/report.md" }),
         expect.anything(),
       );
-      expect(reloadAllFiles).toHaveBeenCalled();
     });
 
     it("brings the row back on undo", async () => {
@@ -951,16 +976,14 @@ describe("useDriveBatchActions", () => {
       });
 
       act(() => result.current.moveToTrash(["report"]));
-      reloadAllFiles.mockClear();
       await act(async () => {
         await undoQueued();
       });
 
       expect(result.current.allRows?.map((file) => file.id)).toEqual(["report"]);
-      expect(reloadAllFiles).toHaveBeenCalled();
     });
 
-    it("deletes the row for good and reloads All Files", async () => {
+    it("deletes the row for good", async () => {
       const operations = createOperations();
       const { result } = renderActions({
         operations,
@@ -980,10 +1003,9 @@ describe("useDriveBatchActions", () => {
         ["/users/alice/Projects/report.md"],
         expect.anything(),
       );
-      expect(reloadAllFiles).toHaveBeenCalled();
     });
 
-    it("moves the row to another folder and reloads All Files", async () => {
+    it("moves the row to another folder", async () => {
       const operations = createOperations();
       const { result } = renderActions({
         operations,
@@ -1003,7 +1025,6 @@ describe("useDriveBatchActions", () => {
         expect.objectContaining({ from: "/users/alice/Projects/report.md" }),
         expect.anything(),
       );
-      expect(reloadAllFiles).toHaveBeenCalled();
     });
   });
 

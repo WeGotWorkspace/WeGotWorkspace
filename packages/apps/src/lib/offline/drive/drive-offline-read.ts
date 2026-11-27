@@ -51,3 +51,23 @@ export async function downloadOfflineDriveFile(username: string, apiPath: string
   const filename = normalizeApiVirtualPath(apiPath).split("/").pop() || "download";
   triggerBrowserBlobDownload(blob, filename);
 }
+
+/**
+ * The stored copy of a file for a preview, or `null` when there is none or it
+ * is older than `modifiedMs` (the listing's modified time). Docs files read
+ * their local collab copy, which is the newest version on this device.
+ */
+export async function readStoredDriveFileBlobForPreview(
+  username: string,
+  apiPath: string,
+  modifiedMs?: number | null,
+): Promise<Blob | null> {
+  const normalized = normalizeApiVirtualPath(apiPath);
+  const room = normalized.replace(/^\/+/, "");
+  if (isDocsCollabEditablePath(room)) return readOfflineDocsFileBlob(username, normalized);
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await driveContentBlobsTable(db).get(room);
+  if (!row?.blob) return null;
+  if (modifiedMs != null && row.syncedAt < modifiedMs) return null;
+  return row.blob;
+}

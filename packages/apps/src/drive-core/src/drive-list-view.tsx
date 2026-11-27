@@ -70,6 +70,7 @@ export function DriveListView({
   offlineAvailableIds,
   offlinePinnedIds,
   offlinePendingSyncIds,
+  offlineFailedIds,
   offlineEnabled = false,
   onMakeOfflineAvailable,
   canPinOffline = false,
@@ -105,6 +106,8 @@ export function DriveListView({
   offlineAvailableIds?: ReadonlySet<string>;
   offlinePinnedIds?: ReadonlySet<string>;
   offlinePendingSyncIds?: ReadonlySet<string>;
+  /** Files whose automatic offline copy failed. */
+  offlineFailedIds?: ReadonlySet<string>;
   offlineEnabled?: boolean;
   onMakeOfflineAvailable?: (file: DriveFile) => void;
   canPinOffline?: boolean;
@@ -164,6 +167,7 @@ export function DriveListView({
     const isDisabled = isItemDisabled?.(f) ?? false;
     const isOfflineAvailable = offlineAvailableIds?.has(f.id) ?? false;
     const isOfflinePendingSync = offlinePendingSyncIds?.has(f.id) ?? false;
+    const isOfflineFailed = offlineFailedIds?.has(f.id) ?? false;
     const isPinning = pinLoadingId === f.apiPath;
     const dropZone = isFolder ? folderDropZoneProps(folderPath) : ({} as FolderDropZoneProps);
     const dragHandlers = itemDragHandlers(f.id);
@@ -249,6 +253,7 @@ export function DriveListView({
               offlineEnabled={offlineEnabled}
               isOfflineAvailable={isOfflineAvailable}
               isOfflinePendingSync={isOfflinePendingSync}
+              isOfflineFailed={isOfflineFailed}
               isPinning={isPinning}
               canPinOffline={canPinOffline}
               onMakeOfflineAvailable={onMakeOfflineAvailable}

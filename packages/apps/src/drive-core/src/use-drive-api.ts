@@ -16,7 +16,9 @@ import {
   createHybridDriveOperations,
   flushDriveOutboxForAccount,
 } from "@/lib/offline/drive/drive-hybrid-operations";
-import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
+import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
+import { syncUntilFirstSyncDone } from "@/lib/offline/drive/drive-first-sync-retry";
 import {
   guestUploadQueueOperations,
   resolveGuestUploadAccount,
@@ -56,12 +58,14 @@ function cacheDriveSession(session: DriveAppBootstrap["session"]): void {
   }
 }
 
-async function runDriveOfflineSync(
-  username: string,
-  bootstrap: DriveAppBootstrap,
-  signal?: AbortSignal,
-): Promise<void> {
-  await syncDriveMetadataTree(username, bootstrap, { signal });
+/**
+ * App open, reconnect and an offline-settings change: `FileNode/changes` only
+ * (#2063). The full tree sync runs inside it when there is no token yet or the
+ * server cannot calculate the changes. Then the content and Docs bodies.
+ */
+async function runDriveOfflineSync(username: string, signal?: AbortSignal): Promise<void> {
+  const inbound = await syncDriveInboundFromFileNodes(username, { signal });
+  if (inbound.changed || inbound.listedChanges) notifyDriveRemoteChange(username);
   const filePaths = await listAllCachedDriveEntryPaths(username);
   await syncAllDriveContentFromCache(username, filePaths, { signal });
   await syncDocsBodiesFromHomeListing(username, { signal });
@@ -112,14 +116,21 @@ export function useDriveAPI(source?: DriveApiSource) {
   const offlineUsername = resolveDriveOfflineUsername(data?.session.user.username);
   const syncGenerationRef = useRef(0);
 
-  const triggerOfflineSync = useCallback((username: string, bootstrap: DriveAppBootstrap) => {
+  const triggerOfflineSync = useCallback((username: string) => {
     const generation = syncGenerationRef.current + 1;
     syncGenerationRef.current = generation;
     const controller = new AbortController();
-    void runDriveOfflineSync(username, bootstrap, controller.signal)
-      .then(() => flushDriveOutboxForAccount(username))
-      .catch(() => undefined);
+    const cancelRetry = syncUntilFirstSyncDone(
+      username,
+      () =>
+        runDriveOfflineSync(username, controller.signal).then(() =>
+          flushDriveOutboxForAccount(username),
+        ),
+      // A newer trigger (reconnect, settings change) owns the retries then.
+      { signal: controller.signal, isCurrent: () => syncGenerationRef.current === generation },
+    );
     return () => {
+      cancelRetry();
       if (syncGenerationRef.current === generation) {
         controller.abort();
       }
@@ -129,7 +140,7 @@ export function useDriveAPI(source?: DriveApiSource) {
   useEffect(() => {
     if (wgwIsGuestSession() || phase !== "ready" || !offlineUsername || !data) return;
     bootstrapRef.current = data;
-    return triggerOfflineSync(offlineUsername, data);
+    return triggerOfflineSync(offlineUsername);
   }, [data, offlineUsername, phase, successVersion, triggerOfflineSync]);
 
   useEffect(() => {
@@ -143,14 +154,14 @@ export function useDriveAPI(source?: DriveApiSource) {
   useEffect(() => {
     if (wgwIsGuestSession() || !offlineUsername || phase !== "ready" || !data) return;
     return subscribeOfflineDeviceContentSettings(() => {
-      triggerOfflineSync(offlineUsername, data);
+      triggerOfflineSync(offlineUsername);
     });
   }, [data, offlineUsername, phase, triggerOfflineSync]);
 
   useOnReconnect(
     useCallback(() => {
       if (wgwIsGuestSession() || !offlineUsername || !data) return;
-      triggerOfflineSync(offlineUsername, data);
+      triggerOfflineSync(offlineUsername);
     }, [data, offlineUsername, triggerOfflineSync]),
   );
 

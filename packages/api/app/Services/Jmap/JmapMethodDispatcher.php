@@ -41,6 +41,7 @@ use App\Services\Jmap\Methods\FileNodeGetMethod;
 use App\Services\Jmap\Methods\FileNodeQueryChangesMethod;
 use App\Services\Jmap\Methods\FileNodeQueryMethod;
 use App\Services\Jmap\Methods\FileNodeSetMethod;
+use App\Services\Jmap\Methods\FileNodeTagsMethod;
 use App\Services\Jmap\Methods\JmapMethodInterface;
 use App\Services\Jmap\Methods\MailboxGetMethod;
 use App\Services\Jmap\Methods\NotebookChangesMethod;
@@ -102,6 +103,7 @@ final class JmapMethodDispatcher
         FileNodeCopyMethod::class,
         FileNodeQueryMethod::class,
         FileNodeQueryChangesMethod::class,
+        FileNodeTagsMethod::class,
         // urn:ietf:params:jmap:blob (RFC 9404, #1500)
         BlobUploadMethod::class,
         BlobGetMethod::class,
@@ -193,7 +195,22 @@ final class JmapMethodDispatcher
     {
         $responses = [];
         $this->context->setUsing($using);
+        try {
+            $this->dispatchCalls($username, $using, $methodCalls, $responses);
+        } finally {
+            $this->context->endBatch();
+        }
 
+        return $responses;
+    }
+
+    /**
+     * @param  list<string>  $using
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $methodCalls
+     * @param  list<array{0: string, 1: array<string, mixed>, 2: string}>  $responses
+     */
+    private function dispatchCalls(string $username, array $using, array $methodCalls, array &$responses): void
+    {
         foreach ($methodCalls as [$name, $args, $callId]) {
             try {
                 $args = $this->resolveResultReferences($args, $responses);
@@ -225,6 +242,11 @@ final class JmapMethodDispatcher
                 }
             }
 
+            $writes = ! self::isReadOnly($name);
+            if ($writes) {
+                // A write reads fresh state (ifInState, oldState): never a value a read cached (#2063).
+                $this->context->forget();
+            }
             try {
                 // Timed under the registered name only: never arguments (#2244).
                 $responses[] = [$name, $this->timings->method($name, fn (): array => $method->handle($username, $args)), $callId];
@@ -240,9 +262,22 @@ final class JmapMethodDispatcher
             } catch (\Throwable $e) {
                 $responses[] = ['error', JmapSetErrors::serverFail($e), $callId];
             }
+            if ($writes) {
+                // A write, even a failed one, may move roots, grants or the sequence (#2063).
+                $this->context->forget();
+            }
+        }
+    }
+
+    private static function isReadOnly(string $name): bool
+    {
+        foreach (['/get', '/query', '/changes', '/queryChanges'] as $suffix) {
+            if (str_ends_with($name, $suffix)) {
+                return true;
+            }
         }
 
-        return $responses;
+        return false;
     }
 
     /**

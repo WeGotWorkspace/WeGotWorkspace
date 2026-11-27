@@ -2,13 +2,12 @@ import { useProjects } from "@/lib/projects/projects-store";
 import { useSelectedProjectIds } from "@/lib/projects/use-project-filter";
 import { useDriveProjectScope } from "@/drive-core/src/use-drive-project-scope";
 import { TooltipProvider } from "@/ui/tooltip";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ChevronRight, Download, PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { NoticeBar } from "@/notice-bar/src/notice-bar";
 import { useSyncRetryNotice } from "@/notice-bar/src/use-sync-retry-notice";
-import { useConnectivity } from "@/hooks/use-connectivity";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
@@ -86,9 +85,7 @@ export function DriveWorkspace({
   className,
 }: DriveWorkspaceProps) {
   const { show, showError } = useAppToast();
-  const { online } = useConnectivity();
   const offlineEnabled = Boolean(offlineUsername);
-  const searchEnabled = !offlineEnabled || online;
 
   const controller = useDriveController({
     data,
@@ -139,6 +136,7 @@ export function DriveWorkspace({
   const {
     offlineAvailableIds: rowOfflineAvailableIds,
     offlinePendingSyncIds: rowOfflinePendingSyncIds,
+    offlineFailedIds: rowOfflineFailedIds,
     refresh,
   } = useDriveOfflineAvailability(controller.visibleItems, offlineEnabled, offlineUsername);
 
@@ -155,7 +153,14 @@ export function DriveWorkspace({
   });
 
   const uploadQueue = useDriveUploadQueue(operations);
-  const chooseUploadFolder = useDriveUploadChooseFolder(controller, uploadQueue, show, showError);
+  const chooseUploadFolder = useDriveUploadChooseFolder(
+    controller,
+    uploadQueue,
+    show,
+    showError,
+    undefined,
+    shareOperations,
+  );
   const uploadModel = useDriveUploadQueueModel(
     uploadQueue,
     operations,
@@ -273,14 +278,10 @@ export function DriveWorkspace({
     commitMoveToFolder: controller.commitMoveToFolder,
   });
 
-  const { searchQuery, setSearchQuery } = controller;
-
-  useEffect(() => {
-    if (!searchEnabled && searchQuery) setSearchQuery("");
-  }, [searchEnabled, searchQuery, setSearchQuery]);
-
-  const browserTitleContext =
-    searchEnabled && searchQuery.trim() ? controller.labels.searchViewTitle : controller.viewLabel;
+  // Search stays on offline: it filters names in the local file tree (#2063 C3).
+  const browserTitleContext = controller.searchQuery.trim()
+    ? controller.labels.searchViewTitle
+    : controller.viewLabel;
   useDocumentTitle(browserTitleContext);
 
   const detailLayout = useDocsCommentsLayout();
@@ -419,7 +420,7 @@ export function DriveWorkspace({
                 projectSidebarItems={projectSidebarItems}
               />
             }
-            mainHeader={<DriveMainHeader controller={controller} searchEnabled={searchEnabled} />}
+            mainHeader={<DriveMainHeader controller={controller} />}
             mainNotice={<NoticeBar label={driveLabels.noticeBarLabel} notices={[syncNotice]} />}
             main={
               <DriveMainPane
@@ -429,6 +430,7 @@ export function DriveWorkspace({
                 offlineEnabled={offlineEnabled}
                 offlineAvailableIds={rowOfflineAvailableIds}
                 offlinePendingSyncIds={rowOfflinePendingSyncIds}
+                offlineFailedIds={rowOfflineFailedIds}
                 onMakeOfflineAvailable={handleMakeOfflineAvailable}
                 pinLoadingId={pinLoadingId}
                 extraFileActions={fileExtraActions}
@@ -574,13 +576,7 @@ function DriveSidebar({
   );
 }
 
-function DriveMainHeader({
-  controller,
-  searchEnabled,
-}: {
-  controller: DriveController;
-  searchEnabled: boolean;
-}) {
+function DriveMainHeader({ controller }: { controller: DriveController }) {
   const projectFolders = useProjectFolders();
   const {
     labels,
@@ -600,7 +596,7 @@ function DriveMainHeader({
   } = controller;
 
   // The folder path lives in the header: parent folders lead, the open folder is the title.
-  const searching = searchEnabled && searchQuery.trim() !== "";
+  const searching = searchQuery.trim() !== "";
   const trail = !searching && breadcrumbs.length > 1 ? breadcrumbs.slice(0, -1) : [];
   const title = searching
     ? labels.searchViewTitle
@@ -625,9 +621,9 @@ function DriveMainHeader({
           </span>
         ) : undefined
       }
-      searchPlaceholder={searchEnabled ? labels.searchPlaceholder : undefined}
-      searchValue={searchEnabled ? searchQuery : undefined}
-      onSearchInput={searchEnabled ? setSearchQuery : undefined}
+      searchPlaceholder={labels.searchPlaceholder}
+      searchValue={searchQuery}
+      onSearchInput={setSearchQuery}
       searchInputRef={searchInputRef}
       actions={
         <div className="drive-main-header__actions">

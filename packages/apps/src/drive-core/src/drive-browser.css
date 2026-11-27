@@ -421,6 +421,11 @@
   background-color: var(--drive-offline-badge-pending);
 }
 
+/* The automatic offline copy failed; the button retries it. */
+.drive-workspace .drive-offline-failed-icon {
+  color: var(--color-destructive);
+}
+
 .drive-workspace .drive-shared-indicator {
   @apply inline-flex items-center gap-1 shrink-0;
   color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);

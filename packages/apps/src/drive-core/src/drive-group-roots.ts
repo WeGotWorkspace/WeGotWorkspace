@@ -129,6 +129,22 @@ export async function fetchDriveGroupRoots(
   }
 }
 
+/**
+ * Group roots from the cached team display names (`principals/groups/{slug}`).
+ * Offline there is no `/groups` listing, so this keeps every team drive in the
+ * sidebar, not only the ones that happen to have a file in the current list.
+ */
+export function driveGroupRootsFromTeamNames(
+  teams: readonly { id: string; displayName: string }[],
+): DriveGroupRoot[] {
+  const bySlug = new Map<string, string>();
+  for (const team of teams) {
+    const slug = driveGroupSlugFromPrincipalId(team.id);
+    if (slug && !slug.includes("/")) upsertGroupRoot(bySlug, slug, team.displayName);
+  }
+  return sortedGroupRoots(bySlug);
+}
+
 /** Extract sorted, unique group roots from loaded files' `/groups/{root}/…` api paths. */
 export function collectDriveGroupRoots(files: readonly DriveFile[]): DriveGroupRoot[] {
   const bySlug = new Map<string, string>();

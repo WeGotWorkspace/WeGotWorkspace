@@ -29,6 +29,21 @@ final class FileNodeVisibility
     }
 
     /**
+     * Whether the key is a list path: no segment starts with `.`, except `.Trash` (#2063).
+     * `.notes` and `.attachments` are file-indexed, but clients never list what is inside them.
+     */
+    public static function isListKey(string $key): bool
+    {
+        foreach (explode('/', $key) as $segment) {
+            if ($segment !== '.Trash' && str_starts_with($segment, '.')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @param  list<string>  $roots
      */
     public static function isVisibleKey(string $key, array $roots): bool

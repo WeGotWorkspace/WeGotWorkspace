@@ -20,11 +20,13 @@ import {
   writeDocsStarredPaths,
 } from "@/lib/offline/docs/docs-stars-store";
 import {
+  addCreatedDriveEntry,
   buildOfflineDriveUIData,
   listAllCachedDriveFiles,
+  migrateDriveEntryPath,
   readDirectoryEntriesFromCache,
   readDriveBootstrapFromCache,
-  removeDriveEntry,
+  readDriveChildNames,
   removeDriveEntriesUnderPrefix,
   searchDriveEntriesFromCache,
   writeDriveBootstrapToCache,
@@ -39,6 +41,7 @@ import {
   fetchDriveFolderOncePerBrowser,
   listenForSharedDriveFolderFetches,
 } from "@/lib/offline/drive/drive-folder-fetch-share";
+import { notifyDriveRemoteChange } from "@/lib/offline/drive/drive-file-node-push";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
@@ -133,12 +136,20 @@ async function pendingUploadFolderState(username: string, cwd: string) {
     : null;
 }
 
-async function applyOfflineTrashSideEffects(username: string, from: string): Promise<void> {
+/**
+ * A trashed item's tree rows move under Trash (`area: "trash"`), so the folder
+ * and the Trash view both show the move at once (#2063 C3). Its offline copy,
+ * pending writes and collab room go.
+ */
+async function applyOfflineTrashSideEffects(
+  username: string,
+  from: string,
+  trashedPath: string,
+): Promise<void> {
   const apiPath = normalizeApiVirtualPath(from);
   const room = normalizeDriveAvailabilityPath(apiPath);
   await removeOutboxMutationsForDrivePath(username, apiPath);
-  await removeDriveEntry(username, apiPath);
-  await removeDriveEntriesUnderPrefix(username, room);
+  await migrateDriveEntryPath(username, apiPath, normalizeApiVirtualPath(trashedPath));
   if (isDocsCollabEditablePath(room)) {
     await clearDocsCollabOfflinePersistence(room);
   }
@@ -224,6 +235,7 @@ export function createHybridDriveOperations(
 
   return {
     ...live,
+    localTree: true,
     refreshState: async (opts) => {
       if (readBrowserOnline()) {
         try {
@@ -294,6 +306,20 @@ export function createHybridDriveOperations(
       }
       return searchDriveEntriesFromCache(username, query, opts?.limit);
     },
+    // The live client answers a create with its bootstrap folder's listing; the
+    // tree views read the new row from the tree instead (#2063 C3).
+    createFolder: async (input, opts) => {
+      const data = await live.createFolder(input, { ...opts, refreshState: false });
+      await addCreatedDriveEntry(username, input.cwd, input.name, "dir");
+      notifyDriveRemoteChange(username);
+      return data;
+    },
+    createFile: async (input, opts) => {
+      const data = await live.createFile(input, { ...opts, refreshState: false });
+      await addCreatedDriveEntry(username, input.cwd, input.name, "file");
+      notifyDriveRemoteChange(username);
+      return data;
+    },
     renameItem: async (input, opts) => {
       const destination = normalizeApiVirtualPath(input.destination);
       const isTrash = isDriveTrashApiPath(destination, username);
@@ -309,11 +335,13 @@ export function createHybridDriveOperations(
           }
           const data = await live.renameItem({ ...input, to }, opts);
           if (isTrash) {
-            await applyOfflineTrashSideEffects(username, input.from);
-            moveDocsPageSetupOverride(input.from, nextPathAfterRename(input.from, destination, to));
+            const trashed = nextPathAfterRename(input.from, destination, to);
+            await applyOfflineTrashSideEffects(username, input.from, trashed);
+            moveDocsPageSetupOverride(input.from, trashed);
           } else {
             await applyDriveSidecarPathMigration(username, input.from, input.destination, input.to);
           }
+          notifyDriveRemoteChange(username);
           return data;
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
@@ -322,18 +350,29 @@ export function createHybridDriveOperations(
       const from = normalizeApiVirtualPath(input.from);
       let to = input.to;
       if (isTrash) {
-        const trashNames = await listTrashEntryNames(live, destination, opts?.signal);
-        to = resolveFreeName(input.to, trashNames);
-        await applyOfflineTrashSideEffects(username, from);
-        moveDocsPageSetupOverride(from, nextPathAfterRename(from, destination, to));
+        // Offline the names already in Trash come from the tree (dot names too).
+        to = resolveFreeName(input.to, await readDriveChildNames(username, destination));
+        const trashed = nextPathAfterRename(from, destination, to);
+        await applyOfflineTrashSideEffects(username, from, trashed);
+        moveDocsPageSetupOverride(from, trashed);
       } else {
         await applyOfflineRenameSideEffects(username, from, destination, input.to);
       }
+      notifyDriveRemoteChange(username);
       const payload: DriveOutboxPayload = isTrash
         ? { op: "trash", from, destination, to }
         : { op: "rename", from, destination, to: input.to };
       await queueDriveOutbox(username, payload);
       return offlineQueuedDriveData(username, destination);
+    },
+    // A permanent delete is online only; its rows leave the tree at once.
+    deleteItems: async (paths, opts) => {
+      const data = await live.deleteItems(paths, opts);
+      for (const path of paths) {
+        await removeDriveEntriesUnderPrefix(username, normalizeApiVirtualPath(path));
+      }
+      notifyDriveRemoteChange(username);
+      return data;
     },
     uploadFiles: async (input, opts) => {
       if (readBrowserOnline()) {

@@ -1,16 +1,15 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DriveFile } from "@/lib/files/drive-models";
 
 const mocks = vi.hoisted(() => ({
-  metadataRunning: false,
-  contentRunning: false,
+  online: true,
   stored: new Set<string>(),
+  failures: {} as Record<string, { attempts: number; modifiedAt: number }>,
 }));
 
-vi.mock("@/hooks/use-connectivity", () => ({ useConnectivity: () => ({ online: true }) }));
+vi.mock("@/hooks/use-connectivity", () => ({ useConnectivity: () => ({ online: mocks.online }) }));
 vi.mock("@/lib/offline/core/offline-device-settings", () => ({
-  isEligibleForAutoContentSync: () => true,
   readOfflineDeviceContentSettings: () => ({
     contentSyncEnabled: true,
     maxFileSizeBytes: 10 * 1024 * 1024,
@@ -22,11 +21,11 @@ vi.mock("@/lib/offline/core/outbox-store", () => ({
 }));
 vi.mock("@/lib/offline/drive/drive-outbox-flush", () => ({ driveOutboxApiPath: () => null }));
 vi.mock("@/lib/offline/drive/drive-schema", () => ({ DRIVE_DOMAIN: "drive" }));
-vi.mock("@/lib/offline/drive/drive-content-sync", () => ({
-  readDriveContentSyncProgress: async () => ({ running: mocks.contentRunning }),
-}));
-vi.mock("@/lib/offline/drive/drive-metadata-sync", () => ({
-  readDriveMetadataSyncProgress: async () => ({ running: mocks.metadataRunning }),
+vi.mock("@/lib/offline/core/meta-store", () => ({
+  readMeta: async () => JSON.stringify(mocks.failures),
+  writeMeta: async (_user: string, _key: string, value: string) => {
+    mocks.failures = JSON.parse(value) as typeof mocks.failures;
+  },
 }));
 vi.mock("@/lib/offline/shared/content-availability", () => ({
   hasOfflineFileContent: async (_user: string, path: string) => mocks.stored.has(path),
@@ -36,62 +35,76 @@ vi.mock("@/lib/offline/drive/drive-availability-store", () => ({
 }));
 
 import { useDriveOfflineAvailability } from "@/drive-core/src/use-drive-offline-availability";
+import {
+  beginDriveContentRun,
+  endDriveContentRun,
+  finishDriveContentRunItem,
+  recordDriveContentFailure,
+  resetDriveContentRunStateForTests,
+} from "@/lib/offline/drive/drive-content-run-state";
 
 const files = [
-  { id: "a", kind: "file", name: "a.md", apiPath: "/a.md", size: "1 KB" },
+  { id: "a", kind: "file", name: "a.md", apiPath: "/a.md", size: "1 KB", modifiedMs: 5000 },
+  { id: "b", kind: "file", name: "b.md", apiPath: "/b.md", size: "1 KB", modifiedMs: 5000 },
 ] as unknown as DriveFile[];
 
-describe("useDriveOfflineAvailability while syncing", () => {
+describe("useDriveOfflineAvailability", () => {
   beforeEach(() => {
-    mocks.metadataRunning = false;
-    mocks.contentRunning = false;
+    mocks.online = true;
     mocks.stored = new Set();
+    mocks.failures = {};
+    resetDriveContentRunStateForTests();
   });
 
-  it("ignores a running metadata sync", async () => {
-    mocks.metadataRunning = true;
+  it("spins only for the files in the current run's queue", async () => {
+    beginDriveContentRun("u", ["/a.md"]);
     const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
-    await waitFor(() => expect(result.current.isResolving).toBe(false));
-    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+    await waitFor(() => expect(result.current.offlinePendingSyncIds.has("a")).toBe(true));
+    expect(result.current.offlinePendingSyncIds.has("b")).toBe(false);
   });
 
-  it("marks the row while content syncs and clears it once stored, without a list change", async () => {
-    mocks.contentRunning = true;
+  it("clears the spinner once the file is stored, without a list change", async () => {
+    const run = beginDriveContentRun("u", ["/a.md"]);
     const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
     await waitFor(() => expect(result.current.offlinePendingSyncIds.has("a")).toBe(true));
 
     mocks.stored.add("/a.md");
-    await waitFor(() => expect(result.current.offlineAvailableIds.has("a")).toBe(true), {
-      timeout: 4000,
-    });
+    act(() => finishDriveContentRunItem(run, "/a.md"));
+    await waitFor(() => expect(result.current.offlineAvailableIds.has("a")).toBe(true));
     expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
   });
 
-  it("keeps sampling through the metadata-to-content gap", async () => {
-    mocks.metadataRunning = true;
+  it("stops every spinner when the run ends or is aborted", async () => {
+    const run = beginDriveContentRun("u", ["/a.md", "/b.md"]);
+    const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
+    await waitFor(() => expect(result.current.offlinePendingSyncIds.size).toBe(2));
+    act(() => endDriveContentRun(run));
+    await waitFor(() => expect(result.current.offlinePendingSyncIds.size).toBe(0));
+  });
+
+  it("does not spin while offline, even with files still queued", async () => {
+    mocks.online = false;
+    beginDriveContentRun("u", ["/a.md"]);
     const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
     await waitFor(() => expect(result.current.isResolving).toBe(false));
-    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+    expect(result.current.offlinePendingSyncIds.size).toBe(0);
+  });
 
-    // Gap: both flags false while the cache is scanned.
-    mocks.metadataRunning = false;
-    await new Promise((resolve) => setTimeout(resolve, 1800));
-    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
-
-    mocks.contentRunning = true;
-    await waitFor(() => expect(result.current.offlinePendingSyncIds.has("a")).toBe(true), {
-      timeout: 4000,
+  it("shows a failed download as failed, not as spinning", async () => {
+    const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
+    await waitFor(() => expect(result.current.isResolving).toBe(false));
+    await act(async () => {
+      await recordDriveContentFailure("u", "/a.md", 5);
+      beginDriveContentRun("u", ["/a.md"]);
     });
-
-    mocks.stored.add("/a.md");
-    await waitFor(() => expect(result.current.offlineAvailableIds.has("a")).toBe(true), {
-      timeout: 4000,
-    });
+    await waitFor(() => expect(result.current.offlineFailedIds.has("a")).toBe(true));
     expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+  });
 
-    mocks.contentRunning = false;
-    await new Promise((resolve) => setTimeout(resolve, 3200));
-    expect(result.current.offlineAvailableIds.has("a")).toBe(true);
-    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
-  }, 20000);
+  it("ignores a failure recorded for an older version of the file", async () => {
+    mocks.failures = { "a.md": { attempts: 3, modifiedAt: 1 } };
+    const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
+    await waitFor(() => expect(result.current.isResolving).toBe(false));
+    expect(result.current.offlineFailedIds.has("a")).toBe(false);
+  });
 });

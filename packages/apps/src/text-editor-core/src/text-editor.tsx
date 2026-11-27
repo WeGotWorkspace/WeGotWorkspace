@@ -18,6 +18,11 @@ import {
   textEditorPaginated,
 } from "@/text-editor-core/src/use-text-editor-page-setup";
 
+import { TextEditorSelectionBar } from "@/text-editor-core/src/text-editor-selection-bar";
+import {
+  useCanHover,
+  type TextEditorFloatingBarPosition,
+} from "@/text-editor-core/src/use-selection-bar-position";
 import "@/text-editor-core/src/text-editor.css";
 
 export type TextEditorProps = {
@@ -45,6 +50,8 @@ export type TextEditorProps = {
   className?: string;
   /** Opens the Docs image picker from the format bar / slash menu. */
   onInsertImage?: () => void;
+  /** Opens the Docs image picker to swap the picture at this position. */
+  onReplaceImage?: (pos: number) => void;
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
   /** Called when the TipTap instance is created or destroyed (e.g. document outline). */
   onEditorReady?: (editor: Editor | null) => void;
@@ -68,6 +75,7 @@ export function TextEditor({
   viewSource = false,
   className,
   onInsertImage,
+  onReplaceImage,
   onUpdate,
   onEditorReady,
   pageSetup,
@@ -104,16 +112,21 @@ export function TextEditor({
     return resolveTextEditorFormatBarConfig(config);
   })();
 
-  const formatBarElement = formatBarConfig ? (
-    <TextEditorFormatBar
-      editor={editor}
-      groups={[...formatBarConfig.groups]}
-      showPrint={formatBarConfig.showPrint}
-      size={formatBarConfig.size}
-      className={formatBarConfig.className}
-      onInsertImage={onInsertImage}
-    />
-  ) : null;
+  const canHover = useCanHover();
+  const floatOnSelection = formatBarConfig?.placement === "selection" && canHover;
+  const renderFormatBar = (floating?: TextEditorFloatingBarPosition) =>
+    formatBarConfig ? (
+      <TextEditorFormatBar
+        editor={editor}
+        groups={[...formatBarConfig.groups]}
+        showPrint={formatBarConfig.showPrint}
+        size={floating ? "md" : formatBarConfig.size}
+        className={formatBarConfig.className}
+        onInsertImage={onInsertImage}
+        floating={floating}
+      />
+    ) : null;
+  const formatBarElement = floatOnSelection ? null : renderFormatBar();
 
   const sheetElement = (
     <TextEditorSheet
@@ -122,6 +135,12 @@ export function TextEditor({
       fill={sheetFill}
       slashMenu={format !== "text"}
       onInsertImage={onInsertImage}
+      onReplaceImage={onReplaceImage}
+      selectionBar={
+        floatOnSelection ? (
+          <TextEditorSelectionBar editor={editor} render={renderFormatBar} />
+        ) : undefined
+      }
       pageBreak={pageSetup != null}
       paginated={paginated}
       fitToScreen={pageSetup?.fitToScreen === true}

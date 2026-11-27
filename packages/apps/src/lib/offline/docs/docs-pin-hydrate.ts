@@ -37,6 +37,8 @@ export type DocsPinHydrateInput = {
   beforeRequest?: () => Promise<void>;
   /** Skip the network when the local copy is not empty (it is known to be current). */
   keepLocalCopy?: boolean;
+  /** False once a newer run replaced this one: the late answer is not applied. */
+  shouldWrite?: () => boolean;
 };
 
 /** Seed an empty editable doc into y-indexeddb (offline create before first open). */
@@ -78,6 +80,7 @@ export async function hydrateDocsCollabForOffline({
   authToken,
   beforeRequest,
   keepLocalCopy = false,
+  shouldWrite,
 }: DocsPinHydrateInput): Promise<void> {
   const room = docsCollabRoomKey(apiPath);
   if (!isDocsCollabEditablePath(room)) {
@@ -123,19 +126,19 @@ export async function hydrateDocsCollabForOffline({
       // C7: seed only when the server confirmed there is no sidecar. A failed
       // snapshot load leaves the local state alone rather than duplicating it.
       if (snapshot.kind === "failed") throw snapshot.error;
+      if (shouldWrite && !shouldWrite()) return;
       if (snapshot.kind === "snapshot") {
         Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
         rememberSidecarEtag(room, snapshot.etag);
       } else if (snapshot.kind === "absent") {
-        rememberSidecarEtag(room, null);
-        if (isYDocEmpty(ydoc)) {
-          let markdown = snapshot.markdown;
-          if (markdown === undefined) {
-            await beforeRequest?.();
-            markdown = await loadMarkdown(urls.documentUrl, resolvedAuthToken);
-          }
-          if (markdown) applyContentSeedToYDoc(ydoc, markdown, documentFormat);
+        let markdown = snapshot.markdown;
+        if (markdown === undefined && isYDocEmpty(ydoc)) {
+          await beforeRequest?.();
+          markdown = await loadMarkdown(urls.documentUrl, resolvedAuthToken);
+          if (shouldWrite && !shouldWrite()) return;
         }
+        rememberSidecarEtag(room, null);
+        if (markdown && isYDocEmpty(ydoc)) applyContentSeedToYDoc(ydoc, markdown, documentFormat);
       }
     } else if (isYDocEmpty(ydoc)) {
       throw new Error("Go online once to download this document for offline use.");

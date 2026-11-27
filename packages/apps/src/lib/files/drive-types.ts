@@ -126,6 +126,11 @@ export type DriveAPIOperations = {
    * folder has no cached rows. Lets folder views paint before `changeDir`.
    */
   readCachedDirectory?: (at: string) => Promise<DriveUIData | null>;
+  /**
+   * True when every Drive view reads the device's file tree (`drive_entries`,
+   * #2063): members on the live API. Guests and mocks list from the server.
+   */
+  localTree?: boolean;
   /** List raw directory children, including dot-prefixed names such as `.Trash`. */
   listAllDirectoryEntries?: (
     at: string,

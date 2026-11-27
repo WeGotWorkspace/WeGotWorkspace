@@ -1,3 +1,4 @@
+import { clsx } from "clsx";
 import { useId, useState, type ReactNode } from "react";
 import { Editor } from "@tiptap/react";
 import { useTextEditorFormatBarState } from "@/text-editor-core/src/use-text-editor-format-bar-state";
@@ -33,6 +34,7 @@ import {
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { cn } from "@/lib/utils";
+import type { TextEditorFloatingBarPosition } from "@/text-editor-core/src/use-selection-bar-position";
 import {
   TEXT_EDITOR_FORMAT_BAR_FULL,
   type TextEditorFormatBarConfig,
@@ -42,7 +44,7 @@ import {
 
 type EditorChain = ReturnType<Editor["chain"]>;
 
-function FormatBarIconButton({
+export function FormatBarIconButton({
   label,
   onClick,
   active,
@@ -71,7 +73,7 @@ function FormatBarIconButton({
   );
 }
 
-const FormatBarSeparator = () => <div className="text-editor-format-bar__sep" />;
+export const FormatBarSeparator = () => <div className="text-editor-format-bar__sep" />;
 
 export type TextEditorFormatBarProps = {
   editor: Editor | null;
@@ -93,6 +95,8 @@ export type TextEditorFormatBarProps = {
   /** Control size for every button in the bar. Defaults to `md`. */
   size?: TextEditorFormatBarSize;
   className?: string;
+  /** Float over the selected text instead of sitting on top (see `TextEditorSelectionBar`). */
+  floating?: TextEditorFloatingBarPosition;
 };
 
 export function TextEditorFormatBar({
@@ -105,6 +109,7 @@ export function TextEditorFormatBar({
   onInsertImage,
   size = "md",
   className,
+  floating,
 }: TextEditorFormatBarProps) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
@@ -167,7 +172,30 @@ export function TextEditorFormatBar({
   }
 
   return (
-    <div className={cn("text-editor-format-bar no-print", className)} data-size={size}>
+    <div
+      // `clsx` for the floating modifier: tailwind-merge would drop the base class next to it.
+      className={
+        floating
+          ? clsx(
+              "text-editor-format-bar text-editor-format-bar--floating floating-toolbar no-print",
+              className,
+            )
+          : cn("text-editor-format-bar no-print", className)
+      }
+      data-size={size}
+      data-anchor={floating?.anchor}
+      data-placement={floating?.placement}
+      style={floating ? { left: floating.left, top: floating.top } : undefined}
+      // Keep the selection where it is: the bar acts on the text, not on focus.
+      // Portalled menus and the link dialog bubble through React, not the DOM: leave those alone.
+      onMouseDown={
+        floating
+          ? (event) => {
+              if (event.currentTarget.contains(event.target as Node)) event.preventDefault();
+            }
+          : undefined
+      }
+    >
       <div className="text-editor-format-bar__controls">
         {showHistory ? (
           <>

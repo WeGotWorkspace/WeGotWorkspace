@@ -157,7 +157,7 @@ describe("DriveFolderPicker", () => {
     expect(document.querySelector('[data-drive-listing-theme="docs"]')).toBeTruthy();
   });
 
-  it("uses Drive grid in file-select mode and omits non-images", () => {
+  it("uses the same Drive list as the folder picker in file-select mode and omits non-images", () => {
     const onSelectedFileChange = vi.fn();
     render(
       <TooltipProvider delayDuration={0}>
@@ -175,14 +175,14 @@ describe("DriveFolderPicker", () => {
       </TooltipProvider>,
     );
 
-    expect(document.querySelector(".drive-grid")).toBeTruthy();
-    expect(document.querySelector(".drive-list-table")).toBeNull();
+    expect(document.querySelector(".drive-list-table")).toBeTruthy();
+    expect(document.querySelector(".drive-grid")).toBeNull();
     expect(screen.getByText("Studio Assets")).toBeTruthy();
     expect(screen.getByText("Cover-Photo-Granite.jpg")).toBeTruthy();
     expect(screen.queryByText("Autumn Issue — Final Proofs.pdf")).toBeNull();
     expect(screen.queryByText("interview-ada-pereira.m4a")).toBeNull();
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
-    expect(screen.getByRole("group", { name: "View mode" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "View mode" })).toBeNull();
   });
 
   it("uses drive icons for file-select drive roots and folder icons for nested folders", () => {
@@ -203,22 +203,14 @@ describe("DriveFolderPicker", () => {
       </TooltipProvider>,
     );
 
-    const personal = screen.getByRole("button", { name: "Personal" });
-    expect(
-      personal.closest(".drive-folder-tile")?.querySelector(".lucide-hard-drive"),
-    ).toBeTruthy();
-    expect(personal.closest(".drive-folder-tile")?.querySelector(".lucide-folder")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: driveLabels.listView }));
     const personalRow = screen.getByText("Personal").closest("tr");
     expect(personalRow?.querySelector(".lucide-hard-drive")).toBeTruthy();
     expect(personalRow?.querySelector(".lucide-folder")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: driveLabels.gridView }));
-    fireEvent.click(screen.getByRole("button", { name: "Personal" }));
-    const nested = screen.getByRole("button", { name: "Studio Assets" });
-    expect(nested.closest(".drive-folder-tile")?.querySelector(".lucide-folder")).toBeTruthy();
-    expect(nested.closest(".drive-folder-tile")?.querySelector(".lucide-hard-drive")).toBeNull();
+    fireEvent.doubleClick(screen.getByText("Personal"));
+    const nestedRow = screen.getByText("Studio Assets").closest("tr");
+    expect(nestedRow?.querySelector(".lucide-folder")).toBeTruthy();
+    expect(nestedRow?.querySelector(".lucide-hard-drive")).toBeNull();
   });
 
   it("navigates folders and single-selects an image in file-select mode", () => {
@@ -239,12 +231,12 @@ describe("DriveFolderPicker", () => {
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Studio Assets" }));
+    fireEvent.doubleClick(screen.getByText("Studio Assets"));
     expect(screen.getByText("studio-mark-final.svg")).toBeTruthy();
     expect(screen.queryByText("Brand-Guidelines.pdf")).toBeNull();
     expect(screen.queryByText("Cover-Photo-Granite.jpg")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "studio-mark-final.svg" }));
+    fireEvent.click(screen.getByText("studio-mark-final.svg"));
     expect(onSelectedFileChange).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "f-logo",

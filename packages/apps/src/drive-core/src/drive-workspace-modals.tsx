@@ -97,6 +97,7 @@ export function DriveWorkspaceModals({
         groupPaths={sidebarGroupPaths}
         view={view}
         operations={operations}
+        shareOperations={shareOperations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}
         rootLabels={folderPickerRootLabels}
@@ -170,6 +171,7 @@ export function DriveWorkspaceModals({
         view={view}
         singleItemParent={moveDialog?.ids.length === 1 ? moveDialog.rows[0]?.parent : undefined}
         operations={operations}
+        shareOperations={shareOperations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}
         rootLabels={folderPickerRootLabels}
@@ -189,6 +191,7 @@ export function DriveWorkspaceModals({
         groupPaths={sidebarGroupPaths}
         view={view}
         operations={operations}
+        shareOperations={shareOperations}
         currentUsername={currentUsername}
         groupRootNames={groupRootNames}
         rootLabels={folderPickerRootLabels}

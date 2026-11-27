@@ -1,4 +1,5 @@
-import { CheckCircle2, CircleDot, CircleX, Clock } from "lucide-react";
+import "@/tasks-core/src/tasks-workflow-status.css";
+import { CheckCircle2, CircleDot, CircleX, Clock, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import type { TaskWorkflowStatus } from "@/tasks-core/src/tasks-task-utils";
@@ -16,15 +17,19 @@ export function workflowStatusLabel(status: TaskWorkflowStatus, L: TasksUILabels
   }
 }
 
+const STATUS_ICONS: Record<TaskWorkflowStatus, LucideIcon> = {
+  "needs-action": Clock,
+  "in-process": CircleDot,
+  completed: CheckCircle2,
+  cancelled: CircleX,
+};
+
+/** The status icon on its own colour wash (see `tasks-workflow-status.css`). */
 export function workflowStatusIcon(status: TaskWorkflowStatus): ReactNode {
-  switch (status) {
-    case "needs-action":
-      return <Clock className="size-3.5" aria-hidden />;
-    case "in-process":
-      return <CircleDot className="size-3.5" aria-hidden />;
-    case "completed":
-      return <CheckCircle2 className="size-3.5" aria-hidden />;
-    case "cancelled":
-      return <CircleX className="size-3.5" aria-hidden />;
-  }
+  const Icon = STATUS_ICONS[status];
+  return (
+    <span className={`tasks-status-mark tasks-status-mark--${status}`} aria-hidden>
+      <Icon className="size-3" />
+    </span>
+  );
 }

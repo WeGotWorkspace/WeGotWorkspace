@@ -33,6 +33,7 @@ final class FileNodeMapper
         private readonly FileNodeContentHasher $hasher,
         private readonly JmapRequestContext $context,
         private readonly ProjectFolderRegistry $projectFolders,
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     /**
@@ -43,9 +44,16 @@ final class FileNodeMapper
     public function toFileNodes(array $nodes, array $principal, ?GetProjection $projection = null): array
     {
         $projection ??= GetProjection::all();
+        $tagMap = $projection->wants('tags')
+            ? $this->tags->forNodes(array_map(static fn (JmapFileNode $node): string => (string) $node->node_id, $nodes))
+            : [];
 
         return array_map(
-            fn (JmapFileNode $node): array => $projection->apply($this->toFileNode($node, $principal, $projection->wants('type'))),
+            fn (JmapFileNode $node): array => $projection->apply([
+                ...$this->toFileNode($node, $principal, $projection->wants('type')),
+                // WGW extension (#2402): who sees a node sees its tags.
+                'tags' => $tagMap[(string) $node->node_id] ?? [],
+            ]),
             $nodes,
         );
     }
@@ -98,6 +106,12 @@ final class FileNodeMapper
             // WGW version-check extension: the client does not offer
             // *Replace* for a file whose true hash is still pending.
             $shape['contentHashPending'] = (bool) $node->hash_pending;
+        }
+        if ($this->context->uses(JmapCapabilities::FILENODE_TREE)) {
+            // WGW tree extension (#2063): the virtual path, the inverse of
+            // StoragePaths::virtualToStorageKey. A share root keeps its owner's path,
+            // so two share roots with the same name stay apart.
+            $shape['path'] = '/'.$key;
         }
 
         return $shape;

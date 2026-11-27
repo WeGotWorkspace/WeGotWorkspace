@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DriveAPIOperations } from "@/lib/files/drive-types";
 import type { DriveFile } from "@/lib/files/drive-models";
-import { wgwLiveApiEnabled, wgwSettingsStateRead } from "@/lib/api/wgw/http";
+import { useTeamDisplayNames } from "@/lib/files/team-labels/use-team-display-names";
+import { driveGroupRootsFromTeamNames } from "@/drive-core/src/drive-group-roots";
 import {
   applyDocsHomeGroupDisplayNames,
   buildDocsHomeDrives,
@@ -11,8 +12,6 @@ import {
   type DocsHomeDrive,
   type DocsHomeGroupRoot,
 } from "@/docs-core/src/docs-home-drives";
-
-type DocsHomeGroupDirectory = readonly { id: string; displayName: string }[];
 
 type UseDocsHomeGroupRootsArgs = {
   username: string;
@@ -45,11 +44,21 @@ export function useDocsHomeGroupRoots({
   online,
 }: UseDocsHomeGroupRootsArgs): DocsHomeGroupRoots {
   const [knownGroupRoots, setKnownGroupRoots] = useState<DocsHomeGroupRoot[]>([]);
-  const [groupDirectory, setGroupDirectory] = useState<DocsHomeGroupDirectory>([]);
+  // Cached in the meta store, so team drives keep their name offline (#2063).
+  const groupDirectory = useTeamDisplayNames(username, online);
 
+  // Offline there is no `/groups` listing: the cached teams keep every team drive
+  // listed. Only while offline, so a team left meanwhile drops out on reconnect.
+  const visibleGroupRoots = useMemo(
+    () =>
+      online
+        ? knownGroupRoots
+        : mergeGroupRoots(knownGroupRoots, driveGroupRootsFromTeamNames(groupDirectory)),
+    [groupDirectory, knownGroupRoots, online],
+  );
   const labeledGroupRoots = useMemo(
-    () => applyDocsHomeGroupDisplayNames(knownGroupRoots, groupDirectory),
-    [groupDirectory, knownGroupRoots],
+    () => applyDocsHomeGroupDisplayNames(visibleGroupRoots, groupDirectory),
+    [groupDirectory, visibleGroupRoots],
   );
   const groupRootSlugs = useMemo(
     () => labeledGroupRoots.map((root) => root.slug),
@@ -77,22 +86,6 @@ export function useDocsHomeGroupRoots({
     });
     return () => controller.abort();
   }, [operations, online]);
-
-  useEffect(() => {
-    if (!online || !wgwLiveApiEnabled()) return;
-    const controller = new AbortController();
-    void wgwSettingsStateRead
-      .read()
-      .then((read) => {
-        if (!read.ok || controller.signal.aborted) return;
-        const json = read.json as { groups?: { id: string; displayName: string }[] };
-        if (Array.isArray(json.groups)) setGroupDirectory(json.groups);
-      })
-      .catch(() => {
-        /* best-effort labels only */
-      });
-    return () => controller.abort();
-  }, [online]);
 
   return {
     labeledGroupRoots,

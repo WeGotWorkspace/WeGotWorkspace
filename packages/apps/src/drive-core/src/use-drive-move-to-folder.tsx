@@ -11,7 +11,7 @@ import {
   driveRowsById,
   patchAllFilesRows,
   type DriveAllFilesPatch,
-} from "@/drive-core/src/use-drive-all-files";
+} from "@/drive-core/src/drive-view-rows";
 
 /** A failed folder reload is not a failed batch. The renames already reached the server. */
 export async function refreshOpenFolderAfterBatch(
@@ -34,8 +34,7 @@ type UseDriveMoveToFolderArgs = {
   view: ViewKey;
   fileById: (id: string) => DriveFile | null;
   patchAllFiles?: DriveAllFilesPatch;
-  reloadAllFiles?: () => void;
-  /** Reloads the open folder (or All Files) after the write. */
+  /** Reloads the open folder after the write; the tree views re-read on their own. */
   refreshOpenFolder: (signal?: AbortSignal) => Promise<void>;
   /** Undo after the server moved files: renames them back, then reloads. */
   restoreMoves: (
@@ -54,7 +53,6 @@ export function useDriveMoveToFolder({
   view,
   fileById,
   patchAllFiles,
-  reloadAllFiles,
   refreshOpenFolder,
   restoreMoves,
 }: UseDriveMoveToFolderArgs) {
@@ -68,7 +66,7 @@ export function useDriveMoveToFolder({
         ids,
         updater: (file) => ({ ...file, parent }),
       });
-      const restoreAll = patchAllFilesRows(view, patchAllFiles, reloadAllFiles, (all) =>
+      const restoreAll = patchAllFilesRows(view, patchAllFiles, (all) =>
         all.map((file) => (ids.includes(file.id) ? { ...file, parent } : file)),
       );
       const rollback = () => {
@@ -110,7 +108,6 @@ export function useDriveMoveToFolder({
       patchAllFiles,
       queueMutation,
       refreshOpenFolder,
-      reloadAllFiles,
       restoreMoves,
       view,
     ],

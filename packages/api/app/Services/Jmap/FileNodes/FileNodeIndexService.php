@@ -42,6 +42,7 @@ final class FileNodeIndexService
         private readonly FileNodeRootMarkers $markers,
         private readonly FileNodeSequence $seq,
         private readonly FileNodeDepartures $departures,
+        private readonly FileNodeTags $tags = new FileNodeTags,
     ) {}
 
     // ---------------------------------------------------------------
@@ -151,20 +152,19 @@ final class FileNodeIndexService
      * All live rows under the visible roots, ordered by key.
      *
      * @param  list<string>  $roots
+     * @param  list<string>  $columns  `storage_key` is always loaded
      * @return list<JmapFileNode>
      */
-    public function liveVisible(array $roots): array
+    public function liveVisible(array $roots, array $columns = ['*']): array
     {
+        if ($columns !== ['*'] && ! in_array('storage_key', $columns, true)) {
+            $columns[] = 'storage_key';
+        }
         $query = JmapFileNode::query()->whereNull('deleted_at');
-        $query->where(function ($outer) use ($roots): void {
-            foreach ($roots as $root) {
-                $outer->orWhere('storage_key', $root)
-                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($root).'/%']);
-            }
-        });
+        FileNodeTreeScope::underRoots($query, $roots);
 
         // The archived Project tree keeps its nodes but no client lists it (#819).
-        return array_values($query->orderBy('storage_key')->get()
+        return array_values($query->orderBy('storage_key')->get($columns)
             ->reject(static fn (JmapFileNode $node): bool => ProjectArchivePaths::isUnder((string) $node->storage_key))
             ->all());
     }
@@ -292,6 +292,21 @@ final class FileNodeIndexService
     }
 
     /**
+     * A change that is not content or location (a tag edit): bumps the node's
+     * change_seq so FileNode/changes and live updates report it.
+     */
+    public function recordMetadataChange(JmapFileNode $node): JmapFileNode
+    {
+        return $this->markers->batch(function () use ($node): JmapFileNode {
+            $node->change_seq = $this->seq->next();
+            $node->save();
+            $this->markers->touch((string) $node->storage_key);
+
+            return $node;
+        });
+    }
+
+    /**
      * DAV COPY: the destination has identical bytes, so the destination rows
      * for the whole subtree are inserted in one bulk statement that maps the
      * source storage_key prefix onto the destination and carries size_bytes
@@ -354,6 +369,7 @@ final class FileNodeIndexService
         foreach (array_chunk($rows, 500) as $chunk) {
             JmapFileNode::query()->insert($chunk);
         }
+        $this->tags->copy($idMap);
         foreach ($pending as $destKey) {
             $node = $this->liveByKey($destKey);
             if ($node !== null) {
@@ -471,6 +487,7 @@ final class FileNodeIndexService
             $node->deleted_at = now();
             $node->change_seq = $this->seq->next();
             $node->save();
+            $this->tags->dropFor([(string) $node->node_id]);
         }
         $this->markers->touch($key, withDescendantShares: true);
         $this->syncSearch($key, deleted: true);
@@ -672,11 +689,14 @@ final class FileNodeIndexService
                 $updated[] = $nodeId;
             }
         }
-        // Nodes that moved out of sight are destroyed for this caller (#2036).
-        array_push($destroyed, ...$this->departures->destroyedSince(
+        // Nodes that moved out of sight are destroyed for this caller (#2036); nodes that moved
+        // into sight, with every descendant of a moved folder, are updated (#2063).
+        $moved = $this->departures->movedSince(
             $since,
             fn (string $key): bool => FileNodeVisibility::isVisibleKey($key, $roots),
-        ));
+        );
+        array_push($destroyed, ...$moved['destroyed']);
+        array_push($updated, ...$moved['arrived']);
 
         return [
             'created' => array_values(array_unique($created)),
