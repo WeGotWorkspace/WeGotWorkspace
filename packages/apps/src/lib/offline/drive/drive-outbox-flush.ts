@@ -87,7 +87,11 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
           tagsRemove: payload.tagsRemove,
         });
         // A delta merged in while this was sent stays queued and is sent again.
-        context.resend(await settleSentOutboxMutation(username, row));
+        const settlement = await settleSentOutboxMutation(username, row);
+        // A row that moved to the other app is sent by it: here it would parse as null and be dropped.
+        if (settlement.kind !== "changed" || settlement.row.domain === DRIVE_DOMAIN) {
+          context.resend(settlement);
+        }
         return "handled";
       }
     },

@@ -10,7 +10,7 @@ import {
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { DRIVE_DOMAIN, driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import { driveUploadItemsTable } from "@/lib/offline/drive/upload/drive-upload-schema";
-import { mergeTagDeltas, type TagDelta } from "@/lib/tags/tag-delta";
+import { hasTagDelta, mergeTagDeltas, type TagDelta } from "@/lib/tags/tag-delta";
 import { normalizeTag } from "@/lib/tags/tag-rules";
 
 /** A tag edit waiting in the Drive or Docs outbox (#2402): one row per path, merged. */
@@ -45,8 +45,8 @@ function queuedTagsPath(row: OfflineOutboxRow): string | null {
  * Applies the delta to the cached row and queues it, in one transaction: a flush
  * settling the row (`settleSentOutboxMutation`) sees the merged delta or the old one,
  * never a lost write, and two tabs cannot overwrite each other's merge. One row is
- * kept per path, in whichever of Drive and Docs queued it first, so a later remove
- * is never undone by an older add sitting in the other app's outbox.
+ * kept per path and moves to the app of the latest edit, so a later remove is never
+ * undone by an older add, and the app the user is in sends it.
  */
 async function applyAndQueueTags(
   username: string,
@@ -80,14 +80,21 @@ async function applyAndQueueTags(
         return tags;
       }
       const merged = mergeTagDeltas(JSON.parse(queued.payload) as TagDelta, delta);
+      // The app the user edited in last owns the row: only its flush sends it.
       await db.outbox.put({
         ...queued,
+        domain,
         payload: JSON.stringify({ op: "tags", path, ...merged }),
         retries: 0,
       });
       return tags;
     },
   );
+}
+
+async function hasQueuedTags(username: string, path: string): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return (await db.outbox.toArray()).some((row) => queuedTagsPath(row) === path);
 }
 
 /**
@@ -109,10 +116,11 @@ export function createHybridSetTags(
       ...(input.tagsAdd?.length ? { tagsAdd: input.tagsAdd } : {}),
       ...(input.tagsRemove?.length ? { tagsRemove: input.tagsRemove } : {}),
     };
-    if (!delta.tagsAdd && !delta.tagsRemove) {
+    if (!hasTagDelta(delta)) {
       return (await readDriveEntryFromCache(username, path))?.tags ?? [];
     }
-    if (readBrowserOnline() && live.setTags) {
+    // A queued edit for the path is merged, not raced: the flush would send it after this one.
+    if (readBrowserOnline() && live.setTags && !(await hasQueuedTags(username, path))) {
       try {
         const tags = await live.setTags({ path, ...delta }, opts);
         const entry = await readDriveEntryFromCache(username, path);
