@@ -84,17 +84,27 @@ export function driveFilesFromTreeEntries(
 /** Changes the rows of a flat view (All Files, Recent, Starred, Shared) in place. */
 export type DriveAllFilesPatch = (update: (rows: DriveFile[]) => DriveFile[]) => void;
 
+/** All Files, Recent, Starred and Shared with me: lists of the tree, not one folder. */
+export function isFlatDriveView(view: ViewKey): boolean {
+  return (
+    view.type === "all" ||
+    view.type === "recent" ||
+    view.type === "starred" ||
+    view.type === "shared"
+  );
+}
+
 /**
- * Shows a write on the All Files rows at once (`update`) and returns the undo: the
- * rows as they were, then a reload. Outside All Files both are no-ops.
+ * Shows a write on the rows of a flat view at once (`update`) and returns the
+ * undo: the rows as they were. The write updates the tree, whose next read
+ * replaces the patch. Outside the flat views both are no-ops.
  */
 export function patchAllFilesRows(
   view: ViewKey,
   patch: DriveAllFilesPatch | undefined,
-  reload: (() => void) | undefined,
   update: (rows: DriveFile[]) => DriveFile[],
 ): () => void {
-  if (view.type !== "all" || !patch) return () => undefined;
+  if (!isFlatDriveView(view) || !patch) return () => undefined;
   let before: DriveFile[] | null = null;
   patch((rows) => {
     before ??= rows;
@@ -103,7 +113,6 @@ export function patchAllFilesRows(
   return () => {
     const rows = before;
     if (rows) patch(() => rows);
-    reload?.();
   };
 }
 

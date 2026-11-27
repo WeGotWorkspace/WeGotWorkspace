@@ -173,6 +173,7 @@ export function useDriveController({
     listSort: list.listSort,
     toggleListSort: list.toggleListSort,
     viewState: shell.viewState,
+    retryFolder: shell.retryFolder,
     breadcrumbs: shell.breadcrumbs,
     viewLabel: shell.viewLabel,
     viewResetKey: shell.viewResetKey,

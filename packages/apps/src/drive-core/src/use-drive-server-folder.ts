@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { mergeDriveFolderListing } from "@/drive-core/src/drive-batch-utils";
 import type { DriveFile, ViewKey } from "@/lib/files/drive-models";
 import { apiPathFromUiPath, uiPathFromApiPath } from "@/lib/files/drive-path-utils";
@@ -18,10 +25,18 @@ export type UseDriveServerFolderArgs = {
   bootFolderPath: string | null;
 };
 
+export type DriveServerFolderState = {
+  /** The open folder has not loaded yet. */
+  pending: boolean;
+  /** The open folder's listing failed: never shown as empty. */
+  failed: boolean;
+  retry: () => void;
+};
+
 /**
  * Folder rows for sessions without a local tree (share-link guests): one
  * `changeDir` per opened folder. Members never get here; their folders come
- * from the tree (#2063 C3). True while the folder has not loaded.
+ * from the tree (#2063 C3).
  */
 export function useDriveServerFolder({
   enabled,
@@ -33,8 +48,10 @@ export function useDriveServerFolder({
   commitView,
   showError,
   bootFolderPath,
-}: UseDriveServerFolderArgs): boolean {
+}: UseDriveServerFolderArgs): DriveServerFolderState {
   const [loadedPath, setLoadedPath] = useState<string | null>(null);
+  const [failedPath, setFailedPath] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const bootUsedRef = useRef(false);
   const callbacks = useRef({ commitView, showError });
   callbacks.current = { commitView, showError };
@@ -50,6 +67,7 @@ export function useDriveServerFolder({
       setLoadedPath(folderViewPath);
       return;
     }
+    setFailedPath(null);
     const controller = new AbortController();
     const apiPath = apiPathFromUiPath(folderViewPath, currentUsername, groupRootsRef.current);
     void operations
@@ -63,11 +81,14 @@ export function useDriveServerFolder({
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setLoadedPath(folderViewPath);
+        setFailedPath(folderViewPath);
         callbacks.current.showError(error instanceof Error ? error.message : String(error));
       });
     return () => controller.abort();
-  }, [bootFolderPath, currentUsername, enabled, folderViewPath, operations, setFiles]);
+  }, [attempt, bootFolderPath, currentUsername, enabled, folderViewPath, operations, setFiles]);
 
-  return enabled && !!operations && folderViewPath !== null && loadedPath !== folderViewPath;
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const open = enabled && !!operations && folderViewPath !== null;
+  const failed = open && failedPath === folderViewPath;
+  return { pending: open && !failed && loadedPath !== folderViewPath, failed, retry };
 }

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { driveLabels } from "@/drive-core/src/drive-labels";
@@ -30,6 +30,7 @@ vi.mock("@/drive-core/src/drive-list-view", () => ({
 }));
 
 const FOLDER = "My Drive/Projects";
+const retryFolder = vi.fn();
 
 function renderPane({
   visibleItems = [],
@@ -55,6 +56,7 @@ function renderPane({
     selectedIds: new Set<string>(),
     starred: {},
     viewState,
+    retryFolder,
     uploadEnabled: false,
     selectionBar: null,
   } as unknown as Parameters<typeof DriveMainPane>[0]["controller"];
@@ -91,6 +93,30 @@ describe("DriveMainPane tree view states (#2063)", () => {
 
     expect(screen.getByRole("status").textContent).toBe(driveLabels.notAvailableOffline);
     expect(screen.queryByText(driveLabels.emptyFolder)).toBeNull();
+  });
+
+  it("says the hint how to fix it only before the first sync", () => {
+    renderPane({ viewState: "not-synced" });
+
+    expect(screen.getByRole("status").textContent).toBe(driveLabels.notAvailableOffline);
+    expect(screen.queryByText(driveLabels.notAvailableOfflineHint)).toBeNull();
+  });
+
+  it("says a folder the finished tree does not hold is not here, never loading", () => {
+    renderPane({ viewState: "missing" });
+
+    expect(screen.getByRole("status").textContent).toBe(driveLabels.folderMissing);
+    expect(screen.queryByText(driveLabels.allFilesLoading)).toBeNull();
+    expect(screen.queryByText(driveLabels.emptyFolder)).toBeNull();
+  });
+
+  it("shows a failed folder listing with Try again, never as empty", () => {
+    renderPane({ viewState: "error" });
+
+    expect(screen.getByRole("alert").textContent).toBe(driveLabels.folderListingFailed);
+    expect(screen.queryByText(driveLabels.emptyFolder)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: driveLabels.folderListingRetry }));
+    expect(retryFolder).toHaveBeenCalled();
   });
 
   it("shows neither empty nor loading before the first read answers", () => {
