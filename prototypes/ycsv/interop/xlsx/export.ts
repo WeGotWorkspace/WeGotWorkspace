@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import * as XLSX from "xlsx";
 import YAML from "yaml";
 import { isoToSerial } from "./evaluate";
-import { colLetters, ycsvToA1, type SheetCols } from "./translate";
+import { colLetters, mapAddress, rowNumbers, toA1Row, ycsvToA1, type SheetCols } from "./translate";
 
 type SheetFm = {
   ref: string;
@@ -102,8 +102,7 @@ export function excelCode(f: Record<string, unknown> | undefined): string | unde
 }
 
 function context(p: Parsed): { sheets: SheetCols[]; names: Map<string, string> } {
-  const sheets = p.fm.sheets.map((s, i) => ({ name: s.name ?? s.ref, ref: s.ref, refs: (s.columns ?? []).map((c, ci) => String(c.ref ?? colLetters(ci))) }));
-  void p.bodies;
+  const sheets = p.fm.sheets.map((s, i) => ({ name: s.name ?? s.ref, ref: s.ref, refs: (s.columns ?? []).map((c, ci) => String(c.ref ?? colLetters(ci))), rows: rowNumbers(p.bodies[i] ?? [], !!s.header) }));
   const names = new Map<string, string>();
   for (const k of Object.keys(p.fm.defs ?? {})) names.set(k, k.toUpperCase());
   p.fm.sheets.forEach((s) => Object.keys(s.defs ?? {}).forEach((k) => names.set(k, k.toUpperCase())));
@@ -119,7 +118,14 @@ function literal(v: string, fmt: Record<string, unknown> | undefined): XLSX.Cell
   return { t: "s", v };
 }
 
-/** Per-cell format: `cells.<A1>` wins over the column. */
+/** YCSV row numbers per sheet (header 0, empty rows none), set by the exporters. */
+let ROWS: (number | null)[][] = [];
+/** Frontmatter address (YCSV rows) of the cell at grid index r, c of sheet si. */
+const yAddr = (si: number, r: number, c: number) => `${colLetters(c)}${ROWS[si]?.[r] ?? "x"}`;
+/** Frontmatter range/address → sheet (A1) range. */
+const toA1Range = (si: number, range: string) => mapAddress(range, (y) => toA1Row(ROWS[si], y)) ?? range;
+
+/** Per-cell format: `cells.<A1>` wins over the column. `addr` is the frontmatter address. */
 function formatFor(s: SheetFm, addr: string, c: number): Record<string, unknown> | undefined {
   const cell = s.cells?.[addr];
   if (cell && typeof cell.type === "string") return cell;
@@ -133,6 +139,7 @@ function formatFor(s: SheetFm, addr: string, c: number): Record<string, unknown>
  */
 export function toSheetJS(p: Parsed, values?: unknown[][][]): XLSX.WorkBook {
   const { sheets, names } = context(p);
+  ROWS = sheets.map((s) => s.rows!);
   const wb = XLSX.utils.book_new();
   wb.Workbook = { Names: [], Sheets: [] };
   p.fm.sheets.forEach((s, si) => {
@@ -148,7 +155,7 @@ export function toSheetJS(p: Parsed, values?: unknown[][][]): XLSX.WorkBook {
           ws[addr] = { t: "s", v: String(s.columns?.[c]?.name ?? v) };
           return;
         }
-        const fmt = formatFor(s, addr, c);
+        const fmt = formatFor(s, yAddr(si, r, c), c);
         if (v.startsWith("=")) {
           const a1 = ycsvToA1(v.slice(1), { sheets, self: si, names }).text;
           const z = excelCode(fmt);
@@ -157,12 +164,12 @@ export function toSheetJS(p: Parsed, values?: unknown[][][]): XLSX.WorkBook {
             typeof val === "number" ? { t: "n", v: val } : typeof val === "boolean" ? { t: "b", v: val } : typeof val === "string" && /^#[A-Z/0!?]+$/.test(val) ? { t: "e", v: ({ "#DIV/0!": 7, "#N/A": 42, "#VALUE!": 15, "#REF!": 23, "#NAME?": 29, "#NUM!": 36 } as Record<string, number>)[val] ?? 15 } : typeof val === "string" ? { t: "s", v: val } : { t: "n", v: 0 };
           ws[addr] = { ...cached, f: addXlfn(a1), ...(z ? { z } : {}) } as XLSX.CellObject;
         } else ws[addr] = literal(v, fmt);
-        const note = s.notes?.[addr];
+        const note = s.notes?.[yAddr(si, r, c)];
         if (note) (ws[addr] as XLSX.CellObject).c = [{ a: "", t: note }] as XLSX.Comments;
       });
     });
     ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(0, body.length - 1), c: maxC } });
-    if (s.merges?.length) ws["!merges"] = s.merges.map((m) => XLSX.utils.decode_range(m));
+    if (s.merges?.length) ws["!merges"] = s.merges.map((m) => XLSX.utils.decode_range(toA1Range(si, m)));
     ws["!cols"] = (s.columns ?? []).map((c) => ({ ...(c.width ? { wpx: Number(c.width) } : {}), ...(c.hidden ? { hidden: true } : {}) }));
     XLSX.utils.book_append_sheet(wb, ws, s.name ?? s.ref);
     wb.Workbook!.Sheets!.push({ name: s.name ?? s.ref, Hidden: s.hidden ? 1 : 0 });
@@ -174,6 +181,7 @@ export function toSheetJS(p: Parsed, values?: unknown[][][]): XLSX.WorkBook {
 
 export async function toExcelJS(p: Parsed): Promise<Buffer> {
   const { sheets, names } = context(p);
+  ROWS = sheets.map((s) => s.rows!);
   const wb = new ExcelJS.Workbook();
   p.fm.sheets.forEach((s, si) => {
     const ws = wb.addWorksheet(s.name ?? s.ref, { state: s.hidden ? "hidden" : "visible", ...(s.freeze ? { views: [{ state: "frozen", xSplit: s.freeze.columns, ySplit: s.freeze.rows }] } : {}) });
@@ -190,7 +198,7 @@ export async function toExcelJS(p: Parsed): Promise<Buffer> {
         if (s.header && r === 0) {
           cell.value = String(s.columns?.[c]?.name ?? v);
         } else {
-          const fmt = formatFor(s, addr, c);
+          const fmt = formatFor(s, yAddr(si, r, c), c);
           if (v.startsWith("=")) cell.value = { formula: addXlfn(ycsvToA1(v.slice(1), { sheets, self: si, names }).text) } as ExcelJS.CellFormulaValue;
           else {
             const lit = literal(v, fmt);
@@ -199,13 +207,14 @@ export async function toExcelJS(p: Parsed): Promise<Buffer> {
           const z = excelCode(fmt);
           if (z) cell.numFmt = z;
         }
-        const st = s.cells?.[addr]?.style;
+        const st = s.cells?.[yAddr(si, r, c)]?.style;
         if (st?.bold) cell.font = { bold: true };
         if (st?.fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${st.fill.slice(1).toUpperCase()}` } };
-        if (s.notes?.[addr]) cell.note = s.notes[addr];
+        const note = s.notes?.[yAddr(si, r, c)];
+        if (note) cell.note = note;
       });
     });
-    for (const m of s.merges ?? []) ws.mergeCells(m);
+    for (const m of s.merges ?? []) ws.mergeCells(toA1Range(si, m));
     for (const v of s.validate ?? []) {
       const rule: ExcelJS.DataValidation | null = v.list
         ? { type: "list", allowBlank: true, formulae: [Array.isArray(v.list) ? `"${v.list.join(",")}"` : ycsvToA1(v.list.replace(/^=/, ""), { sheets, self: si, names }).text] }
@@ -213,7 +222,7 @@ export async function toExcelJS(p: Parsed): Promise<Buffer> {
           ? { type: v.range_value.integer ? "whole" : "decimal", operator: "between", allowBlank: true, formulae: [v.range_value.min, v.range_value.max] }
           : null;
       if (!rule) continue;
-      const range = XLSX.utils.decode_range(v.range);
+      const range = XLSX.utils.decode_range(toA1Range(si, v.range));
       for (let r = range.s.r; r <= range.e.r; r++) for (let c = range.s.c; c <= range.e.c; c++) ws.getCell(r + 1, c + 1).dataValidation = rule;
     }
   });

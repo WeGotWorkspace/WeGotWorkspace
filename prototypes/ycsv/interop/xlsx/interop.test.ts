@@ -12,6 +12,7 @@ import { expect, test } from "vitest";
 import { evaluateImportFull } from "./evaluate";
 import { readAmended, toCsv, toExcelJS, toSheetJS } from "./export";
 import { importWorkbook, serialToIso, type LogEntry } from "./import";
+import { rowNumbers } from "./translate";
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const FILES = here("../fixtures/files/");
@@ -130,7 +131,7 @@ test("xlsx / ods import, evaluation and export", async () => {
         row.map((v, c) => {
           if (!v.startsWith("=")) return v.startsWith("'") ? v.slice(1) : v;
           const val = values[si]?.[r]?.[c];
-          const addr = XLSX.utils.encode_cell({ r, c });
+          const addr = `${XLSX.utils.encode_col(c)}${rowNumbers(parsed.bodies[si] ?? [], !!s.header)[r] ?? "x"}`; // frontmatter address (YCSV rows)
           const type = String(s.cells?.[addr]?.type ?? s.columns?.[c]?.type ?? "");
           if (typeof val === "number" && ["date", "time", "datetime"].includes(type)) return serialToIso(val, type);
           if (typeof val === "boolean") return val ? "true" : "false";

@@ -1,13 +1,76 @@
 // Formula translation between Excel A1 syntax and YCSV column-ref syntax (spike 11).
 //
-// Assumes the spike 11 proposals in upstream/ycsv-spec-v1.md:
-//   P1  row numbers are grid rows (a header row, when present, is row 1)
+// Row numbers follow the spec (§7.1, Wouter's decision on P1): the first data row is row 1,
+// a header row is row 0, and (§7.2) fully empty rows get no number. A1 row numbers are
+// mapped per sheet (`SheetCols.rows`): with a header in source row 1, Excel row 2 = YCSV
+// row 1, and every empty row above a ref lowers its number by one more.
+// Also assumes these spike 11 proposals in upstream/ycsv-spec-v1.md:
 //   P4  `$` absolute markers, rectangular ranges, whole-column ranges `x:x`, `sheet!a1:b2`
 //   P12 refs that are not plain identifiers, or that end in a digit, are quoted: 'Q1'2
-// Excel → YCSV only swaps column letters for column refs and sheet names for sheet refs;
-// row numbers never change.
+// Excel → YCSV swaps column letters for column refs, sheet names for sheet refs, and
+// subtracts the header offset from row numbers.
 
-export type SheetCols = { name: string; ref: string; refs: string[] };
+/**
+ * `rows[i]`: YCSV row number of source row i (0-based): 0 for the header, null for a fully
+ * empty row (§7.2), else 1, 2, 3 … Missing → identity (A1 row = YCSV row).
+ */
+export type SheetCols = { name: string; ref: string; refs: string[]; rows?: (number | null)[] };
+
+/** YCSV row numbers for a grid (spec §7.1, §7.2). */
+export function rowNumbers(grid: string[][], header: boolean): (number | null)[] {
+  let n = 0;
+  return grid.map((row, i) => (header && i === 0 ? 0 : row.every((v) => v === "") ? null : ++n));
+}
+
+/**
+ * Source (A1, 1-based) row → YCSV row. On an empty row: `side` "start" takes the next
+ * numbered row, "end" the previous one, "single" returns null. Past the grid: continues.
+ */
+export function toYRow(rows: (number | null)[] | undefined, a1: number, side: "start" | "end" | "single" = "single"): number | null {
+  if (!rows) return a1;
+  const i = a1 - 1;
+  if (i >= rows.length) {
+    let last = rows.length - 1;
+    while (last >= 0 && rows[last] === null) last--;
+    return (last >= 0 ? rows[last]! : 0) + (i - last);
+  }
+  if (rows[i] !== null) return rows[i]!;
+  if (side === "single") return null;
+  if (side === "start") {
+    for (let j = i + 1; j < rows.length; j++) if (rows[j] !== null) return rows[j]!;
+    return toYRow(rows, rows.length + 1);
+  }
+  for (let j = i - 1; j >= 0; j--) if (rows[j] !== null) return rows[j]!;
+  return 0;
+}
+
+/** YCSV row → source (A1, 1-based) row. */
+export function toA1Row(rows: (number | null)[] | undefined, y: number): number {
+  if (!rows) return y;
+  const i = rows.indexOf(y);
+  if (i >= 0) return i + 1;
+  let last = rows.length - 1;
+  while (last >= 0 && rows[last] === null) last--;
+  const lastY = last >= 0 ? rows[last]! : 0;
+  return last + 1 + (y - lastY);
+}
+
+/** Map every row number in an A1 address or range with `fn` (null drops the address). */
+export function mapAddress(addr: string, fn: (row: number, side: "start" | "end" | "single") => number | null): string | null {
+  const parts = addr.split(":");
+  const out: string[] = [];
+  for (const [k, part] of parts.entries()) {
+    const m = /^(\$?[A-Z]{1,3}\$?)(\d+)$/.exec(part);
+    if (!m) return addr;
+    const side = parts.length === 1 ? "single" : k === 0 ? "start" : "end";
+    const row = fn(Number(m[2]), side);
+    if (row === null) return null;
+    out.push(`${m[1]}${row}`);
+  }
+  return out.join(":");
+}
+
+
 
 const IDENT = /^[\p{L}_][\p{L}\p{N}_]*$/u;
 
@@ -98,7 +161,12 @@ export function a1ToYcsv(formula: string, ctx: A1Context): { text: string; issue
       const refs = ctx.sheets[target]!.refs;
       const ci = colIndex(col);
       const ref = refs[ci] ?? colLetters(ci);
-      out += `${ac}${emitRef(ref)}${ar}${row}`;
+      const side = formula[last] === ":" ? "start" : formula[m.index! - 1] === ":" ? "end" : "single";
+      const y = toYRow(ctx.sheets[target]!.rows, Number(row), side);
+      if (y === null) {
+        issues.push({ kind: "lost", what: `reference to empty separator row ${row} (spec §7.2 gives it no number)` });
+        out += "#REF!";
+      } else out += `${ac}${emitRef(ref)}${ar}${y}`;
       lastTarget = target;
       pendingSheet = null;
       inRangeEnd = formula[last] === ":";
@@ -197,7 +265,7 @@ export function ycsvToA1(formula: string, ctx: YContext): { text: string; issues
       if (letters === null) {
         issues.push({ kind: "lost", what: `unknown column ref ${name}` });
         out += "#REF!";
-      } else out += `${ac}${letters}${ar}${row}`;
+      } else out += `${ac}${letters}${ar}${toA1Row(ctx.sheets[target]!.rows, Number(row))}`;
       rangeTarget = target;
       pending = null;
       continue;

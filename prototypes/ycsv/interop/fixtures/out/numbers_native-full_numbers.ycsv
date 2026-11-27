@@ -22,6 +22,8 @@ sheets:
         name: Notitie
         type: string
     cells:
+      C1:
+        type: boolean
       C2:
         type: boolean
       C3:
@@ -29,8 +31,6 @@ sheets:
       C4:
         type: boolean
       C5:
-        type: boolean
-      C6:
         type: boolean
   - ref: budget_1
     name: Budget_1

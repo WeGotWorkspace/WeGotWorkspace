@@ -299,7 +299,7 @@ defs:
 
 ### 3.5 Cell overrides
 
-> **Proposal (spike 11):** cells may carry `type`, format options and `excel_format`; add `italic`, `underline`, `align`, `wrap` (P9, P16).
+> **Proposal (spike 11):** cells may carry `type`, format options and `excel_format`; add `italic`, `underline`, `align`, `wrap` (P9, P16). Addresses use YCSV row numbers, header = row 0 (P29).
 
 `cells` is a YAML mapping of cell references to style objects. Keys may be
 single cells (`A1`), ranges (`A1:H1`), or column refs (`totaalwaarde`).
@@ -448,14 +448,14 @@ The CSV body follows the YAML frontmatter. Standard RFC 4180 rules apply:
 
 ### 7.1 Row numbering
 
-> **Proposal (spike 11):** grid numbering: the header is row 1, the first data row is row 2 (P1).
+> **Decision (spike 11):** P1 (grid numbering) is **rejected**; this section stands. The first data row is row 1, a header row is row 0. A1 addresses in the frontmatter (`cells`, `merges`, `notes`, `validate`) use the same numbering (P29). See Appendix B.
 
 Rows are numbered starting at **1** for the first data row. The header row
 (if present) is row 0 and is not counted as a data row.
 
 ### 7.2 Empty rows
 
-> **Proposal (spike 11):** empty rows keep their row number; trailing empty rows carry no meaning (P1, P26).
+> **Proposal (spike 11):** trailing empty rows carry no meaning (P26). **Open question 1:** should empty rows keep their row number? See Appendix B, P30.
 
 A fully empty row (all cells empty) is valid and has no data meaning. It
 serves as a visual separator between sections. Empty rows are skipped during
@@ -1149,23 +1149,43 @@ for each chart in charts:
 > `prototypes/ycsv/docs/spike-11-conformance-results.md`. The sections they
 > would change carry a short "Proposal (spike 11)" note.
 
-Each proposal has an id (P1…P28). The ids match the spike report.
+Each proposal has an id (P1…P30). The ids match the spike report. P1 was
+rejected (see below).
 
 ### B.1 Rows, header and body
 
-**P1 — Grid row numbering.** Row numbers are the line numbers of the CSV
-body. When a header row is present, it is row 1 and the first data row is
-row 2. Empty rows keep their number. This replaces §7.1 and the "assigned no
-row number" rule in §7.2.
+**P1 — Grid row numbering. Rejected.** Proposed: header = row 1, first data
+row = row 2, as in Excel. Decision (Wouter): rows count from 1 in the spec,
+so §7.1 stands. In the CSV source the header can be line 1, and the grid may
+start its visible numbering at the first data row. Consequences:
 
-- Why: Excel, LibreOffice and Google Sheets all number this way, so an
-  imported `=C2*D2` becomes `=prijs2*aantal2` with the same digits, and an
-  export needs no renumbering. Example 9.3 (`cells: A1:H1` for the header)
-  already assumes it. The upstream engine (`spreadsheet-core`) already counts
-  this way; the `prototypes/ycsv` model does not.
-- Change for existing files: refs shift by one. A one-off rewrite at load is
-  possible only if the file states which numbering it uses, so the
-  alternative is to fold this into `ycsv_version: 2`.
+- The `spreadsheet-core` engine, which counts the header as row 1, has a bug
+  against §7.1. It is not an alternative numbering.
+- Import and export map row numbers: with a header in source row 1, Excel
+  row 2 = YCSV row 1 (and every fully empty row above a ref shifts it one
+  more while §7.2 stands, see P30).
+- **The one constraint:** the row number the grid shows and the row number
+  typed in formulas are the same number. The grid shows no number on the
+  header row (Numbers shows its header rows the same way), shows 1 on the
+  first data row, and follows §7.2 for empty rows.
+
+**P29 — Frontmatter addresses use YCSV rows.** `cells`, `merges`, `notes`
+and `validate` ranges use the same row numbers as formulas: the first data
+row is row 1 and the header row is row 0 (`A0:D0` styles the header). This
+keeps `B3` meaning one cell everywhere. Example 9.3 (`cells: A1:D1` for the
+header) changes to `A0:D0`. Alternative: a `header:` style key instead of
+row 0 addresses.
+
+**P30 — Empty rows keep their number (open question 1).** §7.2 gives fully
+empty rows no number. Under P1's rejection this means:
+- every import from Excel renumbers formulas around blank rows, so in the
+  spike's Q1 sheet, Excel `B4` becomes YCSV `B3`;
+- the grid must skip a number at each empty row;
+- typing in an empty row changes the number of every row below it, and every
+  formula that points there must be rewritten.
+
+Both parsers ignore §7.2 today. Proposal: empty rows are numbered like any
+other row; only trailing empty rows are insignificant (P26).
 
 **P2 / P27 — Explicit `header`.** A sheet may say `header: true` or
 `header: false`. When it is missing, the §4.1 detection applies. Importers

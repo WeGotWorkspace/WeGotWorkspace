@@ -22,8 +22,9 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
    parsers agree on only 16 of the 65. The largest single cause is row
    numbering:
    - **The prototype follows the spec**: the first data row is row 1.
-   - **The core engine counts the header as row 1**, Excel-style. With its
-     row numbers shifted to match, it passes 20.
+   - **The core engine counts the header as row 1.** That is a bug against
+     §7.1 (Wouter's decision, see [Row numbering](#row-numbering-decision)).
+     With that bug simulated as fixed (refs shifted by one), it passes 20.
 
    Both parsers lose:
    - trailing empty rows;
@@ -67,8 +68,19 @@ known CVEs) and exceljs 4.4.0. Everything ran in Node 26 under vitest.
 7. **Lossy import is fine; silent loss is not.** The fidelity table gives a
    fallback per lost feature. The import report logs every loss, including
    every formula whose result differs from the source app's.
-8. **Spec.** 28 proposals, P1–P28, in Appendix B. The ones that matter most:
-   - **P1**: grid row numbering, so the header is row 1.
+8. **Row numbering.** P1 is **rejected**: the spec keeps the first data row
+   as row 1. Import and export now map A1 rows to YCSV rows (Excel row 2 = YCSV
+   row 1 under a header; §7.2 empty rows shift further). All checks still
+   hold: 37/37 formulas round-trip as identical text, 29/37 engine values
+   match, and the exceljs export gives 135/135 in LibreOffice. The constraint
+   that matters: the grid shows the same number as the formulas use, so the
+   header row is unnumbered. Two open questions for Wouter: should empty
+   rows keep their number (P30), and how is the header row labelled in the
+   grid? See [Open questions](#open-questions).
+9. **Spec.** 30 proposals in Appendix B (P1 rejected). The ones that matter
+   most:
+   - **P29**: frontmatter addresses (`cells`, `merges`, `notes`) use the same
+     row numbers as formulas, with the header as row 0.
    - **P6**: percent stored as a fraction.
    - **P4**: Excel formula grammar: `$`, ranges, `&`, postfix `%`, precedence.
    - **P5**: a leading `'` marks literal text.
@@ -83,7 +95,7 @@ The full table is in [spike-11-conformance-results.md](spike-11-conformance-resu
 
 | | core (`spreadsheet-core`) | proto (`prototypes/ycsv`) |
 |---|---|---|
-| Spec-decided cases passed (of 35) | 12 (20 with rows shifted +1) | 15 |
+| Spec-decided cases passed (of 35) | 12 (20 with its header-as-row-1 bug simulated as fixed) | 15 |
 | Agree with each other | 16 of 65 | |
 | Spec example 9.4 (`categorieën`) | fails: ASCII-only refs | fails: single-sheet only |
 | `---` line inside a quoted cell | splits the sheet | splits the sheet |
@@ -485,22 +497,76 @@ formulas round-trip as identical text.
 
 | Excel A1 | YCSV |
 |---|---|
-| `C2` (header in row 1, column C = `prijs`) | `prijs2` |
-| `$C$2`, `$C2`, `C$2` | `$prijs$2`, `$prijs2`, `prijs$2` |
-| `C2:C6` | `prijs2:prijs6` |
-| `A2:C4` | `id2:korting4` (rectangular, P4) |
+| `C2` (header in row 1, column C = `prijs`) | `prijs1` |
+| `$C$2`, `$C2`, `C$2` | `$prijs$1`, `$prijs1`, `prijs$1` |
+| `C2:C6` | `prijs1:prijs5` |
+| `A2:C4` | `id1:korting3` (rectangular, P4) |
 | `E:E` | `totaal:totaal` |
-| `'Q1 overzicht'!B4` | `q1_overzicht!B4` (no header → A-Z refs) |
-| `Producten!E2:E6` | `producten!totaal2:totaal6` |
-| a column whose name ends in a digit or has spaces | `'kw1'2`, `'Zo Doen'2` (P12) |
+| `'Q1 overzicht'!B4` (no header, row 2 empty) | `q1_overzicht!B3` (A-Z refs; §7.2: the empty row has no number) |
+| `Producten!E2:E6` | `producten!totaal1:totaal5` |
+| `C1` (the header cell itself) | `prijs0` |
+| a ref to a fully empty row | `#REF!`, logged (§7.2 gives it no number) |
+| a column whose name ends in a digit or has spaces | `'kw1'1`, `'Zo Doen'1` (P12) |
 | `BTW_TARIEF` (named range) | `btw_tarief` (def, P13) |
 | `_xlfn.XLOOKUP(…)` | `XLOOKUP(…)` (prefix added back on export) |
 | `Table1[Prijs]` (structured ref) | flagged, not translated |
 
-The mapping depends on P1: with grid numbering, the digits never change.
-With the spec as written (first data row = 1), every import and export must
-subtract or add one, and every row number in a formula a user copies from
-Excel is off by one.
+### Row numbering decision
+
+P1 (header = row 1, as in Excel) is **rejected**. Wouter's words: rows count
+from 1 in the spec; in the CSV source the header can be line 1, and the grid
+can start its visible numbering at the data. So:
+
+- **The spec stands.** The first data row is row 1, the header is row 0
+  (§7.1), and fully empty rows get no number (§7.2).
+- **`spreadsheet-core` has a bug.** Its engine counts the header as row 1,
+  against §7.1. It is not an alternative numbering, and it must be fixed
+  before it ships. Its corpus score with that bug simulated as fixed is 20 of
+  35.
+- **Import and export map row numbers per sheet** (`rows` in
+  `interop/xlsx/translate.ts`, `rowNumbers` / `toYRow` / `toA1Row`):
+  - With a header in source row 1, Excel row 2 = YCSV row 1.
+  - Each fully empty row above a ref lowers it by one more (Q1 sheet: Excel
+    `B4` → `B3`).
+  - On an empty row, a range start moves to the next row and a range end to
+    the previous one. A single ref to an empty row becomes `#REF!` and is
+    logged.
+  - Export applies the inverse.
+- **The checks still hold with the mapping:**
+  - 37/37 formulas round-trip A1 → YCSV → A1 as identical text;
+  - the engine matches the cached values in 29/37, as before;
+  - the exceljs export gives 135/135 identical values after LibreOffice
+    recalculates;
+  - re-import is line-identical apart from tab colour;
+  - the Numbers fixtures keep the same scores.
+- **Frontmatter addresses (P29)** follow the same numbering. Header cells are
+  row 0 (`cells: A0: …`). Styles on a fully empty row have no address; they
+  are dropped and logged.
+
+**The one constraint that matters.** The number the grid shows next to a row
+must be the number a formula uses for it. Otherwise `totaal3` points at a
+different row than the one labelled 3.
+
+**Recommendation for the renderer:**
+- Show the header row with **no row number**, like Numbers' header rows (and
+  like the column header band in Excel). Number data rows from 1. The
+  formula bar, the name box (`prijs3`) and error messages use the same
+  number.
+- Empty separator rows, while §7.2 stands, show no number either. The next
+  data row continues the count.
+- Copying cells to Excel or exporting is where the numbers change (Excel
+  adds the header row). That is expected, and the export does the mapping.
+
+**Open question 1 (Wouter): should empty rows keep their number?** §7.2
+costs a lot for little:
+- every Excel import with a blank row renumbers formulas; even the label
+  text "50%*B4" in the studio sheet now sits next to `=50%*B3`;
+- the grid skips numbers;
+- typing a value into an empty row renumbers every row below it, and every
+  formula pointing there must be rewritten.
+
+Both parsers ignore §7.2 today. I recommend numbering empty rows like any
+other row (P30). This is separate from the rejected header part of P1.
 
 ### Edge semantics proposed for v1
 
@@ -564,7 +630,9 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 
 | Id | Proposal | Why (evidence) |
 |---|---|---|
-| P1 | Grid row numbering: header = row 1, empty rows keep their number | Excel/LO/Sheets; example 9.3; core engine already does it; A1 mapping stays digit-for-digit |
+| P1 | ~~Grid row numbering: header = row 1~~ **Rejected** (Wouter): spec §7.1 stands | Import/export map rows instead; `spreadsheet-core` row counting is a bug |
+| P29 | Frontmatter addresses use YCSV rows; header = row 0 (`A0:D0`) | `B3` must mean one cell in `cells` and in formulas; changes example 9.3 |
+| P30 | Empty rows keep their number (**open question 1**) | §7.2 renumbers formulas on every Excel import with blank rows; neither parser follows it |
 | P2 / P27 | Explicit `header: true\|false` | A-Z files misread by proto; detection guesses |
 | P3 / P17 | Sheet refs: Unicode grammar; `hidden`, `tab_color`, array order | Example 9.4 fails in core; fixtures |
 | P4 | Excel grammar: `$`, rectangular ranges, whole columns, `&`, postfix `%`, Excel precedence, case-insensitive compare, same-row refs | 37 fixture formulas; precedence and `%` tests |
@@ -592,10 +660,25 @@ All of them are in `upstream/ycsv-spec-v1.md`, Appendix B, marked
 | — | CSV import with explicit locale | Silent corruption shown above |
 | — | Export: correct cached values or none | LibreOffice shows cached values as they are |
 
-The decision that matters most is P1, because it changes the meaning of
-existing files. Today the prototype model (`src/ycsv-model`) uses the spec's
-numbering and the core engine does not. This needs a decision before either
-one ships.
+Row numbering is decided: P1 is rejected and §7.1 stands. What is still open:
+- **Open question 1:** P30, whether empty rows keep their number;
+- **P29:** confirming that frontmatter addresses use the same numbering,
+  which changes example 9.3 to `A0:D0`;
+- **fixing `spreadsheet-core`**, whose engine counts rows against §7.1.
+
+## Open questions
+
+1. **Should empty rows keep their row number (P30)?** Recommended: yes.
+   Details are under [Row numbering decision](#row-numbering-decision).
+2. **How does the grid label the header row?** Wouter's decision mentions
+   that the visible numbering "can start at 2". That works only if formulas
+   also say 2 for that row, which is P1, now rejected. With §7.1, a grid that
+   shows 2 next to the row that formulas call `prijs1` breaks the one
+   constraint: `totaal3` would point at the row labelled 4.
+
+   Recommendation: no number on the header row, as Numbers does it, and 1 on
+   the first data row. If the header must show a number, it is 0 and not 1.
+   This needs Wouter's confirmation, because it is visible UI.
 
 ## Not verified
 

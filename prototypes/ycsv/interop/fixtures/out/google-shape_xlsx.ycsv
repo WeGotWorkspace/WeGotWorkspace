@@ -16,19 +16,19 @@ sheets:
       - ref: gefilterd
         name: Gefilterd
     notes:
-      A2: Opmerking van een collega
+      A1: Opmerking van een collega
     cells:
-      C2:
+      C1:
         source_formula: =GOOGLEFINANCE("CURRENCY:EURUSD")
-      D2:
+      D1:
         source_formula: =FILTER(A2:B4,B2:B4>15)
-      C3:
+      C2:
         source_formula: ="COMPUTED_VALUE"
-      D4:
+      D3:
         source_formula: =ARRAYFORMULA(B2:B4*2)
 ---
 item,bedrag,koers,gefilterd
 A,10,1.08,B
-B,20,1.08,=bedrag3*2
+B,20,1.08,=bedrag2*2
 C,30,,20
-Som,=SUM(bedrag2:bedrag4),,
+Som,=SUM(bedrag1:bedrag3),,

@@ -3,7 +3,7 @@
 // Output follows the spec as amended by the spike 11 proposals (P1–P20 in ycsv-spec-v1.md).
 import * as XLSX from "xlsx";
 import YAML from "yaml";
-import { a1ToYcsv, colLetters, emitRef, openFormulaToA1, type Issue, type SheetCols } from "./translate";
+import { a1ToYcsv, mapAddress, rowNumbers, toYRow, colLetters, emitRef, openFormulaToA1, type Issue, type SheetCols } from "./translate";
 
 export type Outcome = "survives" | "degrades" | "lost";
 export type LogEntry = { feature: string; outcome: Outcome; detail: string };
@@ -202,7 +202,18 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     const ref = unique(slug(name) || `sheet${si + 1}`, takenSheets);
     return { name, ws, width, height, header, refs, ref };
   });
-  const sheets: SheetCols[] = meta.map((m) => ({ name: m.name, ref: m.ref, refs: m.refs }));
+  // YCSV row numbers per sheet (header 0, empty rows none) from the source cells.
+  const rowMaps = meta.map((m) => {
+    const used = Array.from({ length: m.height }, () => ["" as string]);
+    for (const [k, c] of Object.entries(m.ws)) {
+      if (k.startsWith("!")) continue;
+      const cell = c as XLSX.CellObject;
+      const { r, c: col } = XLSX.utils.decode_cell(k);
+      if (r < m.height && col < m.width && (cell.t !== "z" || cell.f)) used[r] = ["x"];
+    }
+    return rowNumbers(used, m.header);
+  });
+  const sheets: SheetCols[] = meta.map((m, si) => ({ name: m.name, ref: m.ref, refs: m.refs, rows: rowMaps[si] }));
 
   // Defined names → defs (P13). Sheet-scoped names become sheet defs.
   const names = new Map<string, string>();
@@ -416,6 +427,19 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     if (rowsH) L("row heights", "lost", `${m.name}: ${rowsH} rows (fixed row height, product decision 6)`);
     L("conditional formatting", "lost", `${m.name}: not read (cellIs rules could map to column style IF(); not built in the spike)`);
 
+    // Frontmatter addresses use YCSV row numbers too (data row 1 = first row under the header;
+    // the header row itself is row 0), so `B3` means the same cell in `cells` and in a formula.
+    const toY = (a: string) => mapAddress(a, (row, side) => toYRow(rowMaps[si], row, side));
+    const rekey = <T,>(o: Record<string, T>) =>
+      Object.fromEntries(Object.entries(o).flatMap(([k, v]) => {
+        const y = toY(k);
+        if (y === null) L("formatting on empty rows", "lost", `${m.name}!${k}: row has no YCSV number (§7.2)`);
+        return y === null ? [] : [[y, v]];
+      }));
+    const merges2 = merges.map(toY).filter((g): g is string => g !== null);
+    for (const v of validations) v.range = toY(String(v.range)) ?? String(v.range);
+    const notes2 = rekey(notes);
+    const cells2 = rekey(cellsFm);
     const entry: Record<string, unknown> = { ref: m.ref };
     if (m.name !== m.ref) entry.name = m.name;
     entry.header = m.header;
@@ -424,10 +448,10 @@ export function importWorkbook(data: Uint8Array, opts: { source: string }): Impo
     if (raw?.freeze) entry.freeze = raw.freeze;
     entry.columns = cols;
     if (Object.keys(sheetDefs[si]!).length) entry.defs = sheetDefs[si];
-    if (merges.length) entry.merges = merges;
+    if (merges2.length) entry.merges = merges2;
     if (validations.length) entry.validate = validations;
-    if (Object.keys(notes).length) entry.notes = notes;
-    if (Object.keys(cellsFm).length) entry.cells = cellsFm;
+    if (Object.keys(notes2).length) entry.notes = notes2;
+    if (Object.keys(cells2).length) entry.cells = cells2;
     frontSheets.push(entry);
 
     // Trailing empty rows are not significant (P19).

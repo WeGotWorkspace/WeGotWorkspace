@@ -2,8 +2,8 @@
 ycsv_version: 1
 defs:
   btw_tarief: =instellingen!$B$1
-  cats: =categorieën!$id2:$korting$4
-  omzet: =q1_overzicht!$B$4
+  cats: =categorieën!$id1:$korting$3
+  omzet: =q1_overzicht!$B$3
 sheets:
   - ref: producten
     name: Producten
@@ -37,21 +37,21 @@ sheets:
         name: Actief
         type: boolean
     notes:
-      C2: Prijs per stuk, incl. korting
+      C1: Prijs per stuk, incl. korting
     cells:
-      E7:
+      E6:
         type: currency
         currency: EUR
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
-      F7:
+      F6:
         type: currency
         currency: EUR
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
-      H7:
+      H6:
         type: percent
         minimumFractionDigits: 1
         maximumFractionDigits: 1
@@ -85,8 +85,14 @@ sheets:
     merges:
       - A1:D1
     notes:
-      A20: Sheet-level notitie
+      A19: Sheet-level notitie
     cells:
+      B3:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
       B4:
         type: currency
         currency: EUR
@@ -94,26 +100,26 @@ sheets:
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
       B5:
-        type: currency
-        currency: EUR
-        minimumFractionDigits: 2
-        maximumFractionDigits: 2
-        excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
+        type: percent
+        minimumFractionDigits: 0
+        maximumFractionDigits: 0
+        excel_format: 0%
       B6:
         type: percent
         minimumFractionDigits: 0
         maximumFractionDigits: 0
         excel_format: 0%
-      B7:
-        type: percent
-        minimumFractionDigits: 0
-        maximumFractionDigits: 0
-        excel_format: 0%
-      B9:
+      B8:
         type: number
         minimumFractionDigits: 0
         maximumFractionDigits: 0
         excel_format: "0"
+      B9:
+        type: currency
+        currency: EUR
+        minimumFractionDigits: 2
+        maximumFractionDigits: 2
+        excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
       B10:
         type: currency
         currency: EUR
@@ -138,60 +144,54 @@ sheets:
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
-      B14:
+      B16:
         type: currency
         currency: EUR
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
       B17:
-        type: currency
-        currency: EUR
-        minimumFractionDigits: 2
-        maximumFractionDigits: 2
-        excel_format: '"€ "#,##0.00;[Red]"-€ "#,##0.00'
+        type: date
+        excel_format: dd"-"mm"-"yyyy
       B18:
-        type: date
-        excel_format: dd"-"mm"-"yyyy
+        type: number
+        minimumFractionDigits: 0
+        maximumFractionDigits: 0
+        excel_format: "0"
       B19:
-        type: number
-        minimumFractionDigits: 0
-        maximumFractionDigits: 0
-        excel_format: "0"
+        type: date
+        excel_format: dd"-"mm"-"yyyy
       B20:
-        type: date
-        excel_format: dd"-"mm"-"yyyy
-      B21:
         type: number
         minimumFractionDigits: 0
         maximumFractionDigits: 0
         excel_format: "0"
-      B26:
+      B25:
         type: date
         excel_format: dd"-"mm"-"yyyy
-      B28:
+      B27:
         type: number
         notation: scientific
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         excel_format: "0.00E+00"
-      B29:
+      B28:
         type: number
         minimumFractionDigits: 2
         maximumFractionDigits: 2
         useGrouping: true
         excel_format: '#,##0.00;"("#,##0.00")"'
-      B30:
+      B29:
         type: time
         excel_format: hh":"mm
 ---
 product,categorie,prijs,aantal,totaal,btw,datum,marge,actief
-Appels,fruit,0.45,6,=prijs2*aantal2,=totaal2*btw_tarief,2026-01-05,0.18,true
-Brood,bakkerij,2.99,2,=prijs3*aantal3,=totaal3*btw_tarief,2026-01-06,0.32,true
-Melk,zuivel,1.19,3,=prijs4*aantal4,=totaal4*btw_tarief,2026-02-01,0.25,false
-Kaas,zuivel,8.5,1,=prijs5*aantal5,=totaal5*btw_tarief,2026-02-28,0.41,true
-Peren,fruit,0.6,12,=prijs6*aantal6,=totaal6*btw_tarief,2026-03-31,0.2,true
-Totaal,,,,=SUM(totaal2:totaal6),=SUM(btw2:btw6),,=AVERAGE(marge2:marge6),
+Appels,fruit,0.45,6,=prijs1*aantal1,=totaal1*btw_tarief,2026-01-05,0.18,true
+Brood,bakkerij,2.99,2,=prijs2*aantal2,=totaal2*btw_tarief,2026-01-06,0.32,true
+Melk,zuivel,1.19,3,=prijs3*aantal3,=totaal3*btw_tarief,2026-02-01,0.25,false
+Kaas,zuivel,8.5,1,=prijs4*aantal4,=totaal4*btw_tarief,2026-02-28,0.41,true
+Peren,fruit,0.6,12,=prijs5*aantal5,=totaal5*btw_tarief,2026-03-31,0.2,true
+Totaal,,,,=SUM(totaal1:totaal5),=SUM(btw1:btw5),,=AVERAGE(marge1:marge5),
 ---
 id,label,korting
 fruit,Fruit,0.1
@@ -203,26 +203,26 @@ BTW tarief,0.21
 Overzicht Q1 2026,
 ,
 Kengetal,Waarde
-Omzet (SUM over tab),=SUM(producten!totaal2:totaal6)
-"Omzet incl. BTW, afgerond","=ROUND(B4*(1+btw_tarief),2)"
+Omzet (SUM over tab),=SUM(producten!totaal1:totaal5)
+"Omzet incl. BTW, afgerond","=ROUND(B3*(1+btw_tarief),2)"
 Korting fruit (VLOOKUP),"=VLOOKUP(""fruit"",cats,3,FALSE)"
-Korting zuivel (XLOOKUP),"=XLOOKUP(""zuivel"",categorieën!id2:id4,categorieën!korting2:korting4,""?"")"
-Label via INDEX/MATCH,"=IFERROR(INDEX(categorieën!$label2:$label$4,MATCH(""zuivel"",categorieën!$id2:$id$4,0)),""-"")"
-Aantal fruit (COUNTIF),"=COUNTIF(producten!categorie2:categorie6,""fruit"")"
-Omzet fruit actief (SUMIFS),"=SUMIFS(producten!totaal2:totaal6,producten!categorie2:categorie6,""fruit"",producten!actief2:actief6,TRUE)"
-Gemiddelde prijs,=AVERAGE(producten!prijs2:prijs6)
-SUMPRODUCT prijs x aantal,"=SUMPRODUCT(producten!prijs2:prijs6,producten!aantal2:aantal6)"
-Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal7
-Absolute ref $C$2*D2,=producten!$prijs$2*producten!aantal2
-Concat &,"=producten!product2&"" (""&producten!categorie2&"")"""
-TEXTJOIN,"=TEXTJOIN("", "",TRUE,producten!product2:product4)"
-Percent literal 50%*B4,=50%*B4
-Eerste datum,=MIN(producten!datum2:datum6)
-Dagen tussen eerste en laatste,=MAX(producten!datum2:datum6)-MIN(producten!datum2:datum6)
-Einde maand (EOMONTH),"=EOMONTH(producten!datum2,0)"
-Werkdagen (NETWORKDAYS),"=NETWORKDAYS(producten!datum2,producten!datum6)"
-Datum als tekst (TEXT),"=TEXT(producten!datum2,""dd-mm-yyyy"")"
-IF/AND,"=IF(AND(B4>10,B9<5),""ok"",""check"")"
+Korting zuivel (XLOOKUP),"=XLOOKUP(""zuivel"",categorieën!id1:id3,categorieën!korting1:korting3,""?"")"
+Label via INDEX/MATCH,"=IFERROR(INDEX(categorieën!$label1:$label$3,MATCH(""zuivel"",categorieën!$id1:$id$3,0)),""-"")"
+Aantal fruit (COUNTIF),"=COUNTIF(producten!categorie1:categorie5,""fruit"")"
+Omzet fruit actief (SUMIFS),"=SUMIFS(producten!totaal1:totaal5,producten!categorie1:categorie5,""fruit"",producten!actief1:actief5,TRUE)"
+Gemiddelde prijs,=AVERAGE(producten!prijs1:prijs5)
+SUMPRODUCT prijs x aantal,"=SUMPRODUCT(producten!prijs1:prijs5,producten!aantal1:aantal5)"
+Hele kolom SUM(E:E) min totaal,=SUM(producten!totaal:totaal)-producten!totaal6
+Absolute ref $C$2*D2,=producten!$prijs$1*producten!aantal1
+Concat &,"=producten!product1&"" (""&producten!categorie1&"")"""
+TEXTJOIN,"=TEXTJOIN("", "",TRUE,producten!product1:product3)"
+Percent literal 50%*B4,=50%*B3
+Eerste datum,=MIN(producten!datum1:datum5)
+Dagen tussen eerste en laatste,=MAX(producten!datum1:datum5)-MIN(producten!datum1:datum5)
+Einde maand (EOMONTH),"=EOMONTH(producten!datum1,0)"
+Werkdagen (NETWORKDAYS),"=NETWORKDAYS(producten!datum1,producten!datum5)"
+Datum als tekst (TEXT),"=TEXT(producten!datum1,""dd-mm-yyyy"")"
+IF/AND,"=IF(AND(B3>10,B8<5),""ok"",""check"")"
 Deling door nul,=1/0
 IFERROR rond deling,"=IFERROR(1/0,""n.v.t."")"
 Vandaag (volatile),=TODAY()

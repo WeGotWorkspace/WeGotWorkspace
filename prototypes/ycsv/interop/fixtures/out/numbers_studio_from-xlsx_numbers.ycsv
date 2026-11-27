@@ -29,7 +29,7 @@ sheets:
         name: Actief
         type: boolean
     notes:
-      C2: Prijs per stuk, incl. korting
+      C1: Prijs per stuk, incl. korting
   - ref: categorieën
     name: Categorieën
     header: true
@@ -61,18 +61,18 @@ sheets:
     merges:
       - A1:D1
     notes:
-      A20: Sheet-level notitie
+      A19: Sheet-level notitie
     cells:
-      B18:
+      B17:
         type: date
         excel_format: m/d/yy
-      B20:
+      B19:
         type: date
         excel_format: m/d/yy
-      B26:
+      B25:
         type: date
         excel_format: m/d/yy
-      B30:
+      B29:
         type: date
         excel_format: m/d/yy
 ---
