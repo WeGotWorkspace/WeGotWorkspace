@@ -7,6 +7,7 @@ namespace App\Dav\Server;
 use Sabre\CalDAV\Backend\BackendInterface;
 use Sabre\CalDAV\SharedCalendar;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
  * {@see SharedCalendar} without Sabre's read-free-busy grant to every signed-in user.
@@ -64,7 +65,9 @@ class AppSharedCalendar extends SharedCalendar
 
     public function delete(): void
     {
-        if ($this->isSubscription()) {
+        // A sharee dropping their own copy of it removes only that copy, so only the owner's instance is refused.
+        $isOwner = in_array($this->getShareAccess(), [SharingPlugin::ACCESS_NOTSHARED, SharingPlugin::ACCESS_SHAREDOWNER], true);
+        if ($isOwner && $this->isSubscription()) {
             throw new Forbidden('A subscribed calendar cannot be removed from a calendar app. Unsubscribe in the web app.');
         }
         parent::delete();
