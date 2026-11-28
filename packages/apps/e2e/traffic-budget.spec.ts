@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { test, type BrowserContext, type Page } from "./helpers/live-test";
+import { test, type BrowserContext, type Page, type Request } from "./helpers/live-test";
 import { contactsJmap, createContactCards } from "./helpers/contacts-jmap";
 import { docsUrlForFile, E2E_GROUP_ROOT, seedDocAtPath } from "./helpers/docs-live";
 import { apiToken, openUser, OWNER, sleep } from "./helpers/live-matrix";
 import {
   BUDGET,
+  endpointGroup,
   overBudget,
   TrafficMeter,
   writeReport,
@@ -281,6 +282,106 @@ test("cold start: a fresh browser opens five apps, 2000 contacts, Team folder wi
   );
   await context.close();
 });
+
+/** Longest a tree cold start may run before the report is written anyway (minutes). */
+const TREE_MAX_MINUTES = Number(process.env.WGW_TRAFFIC_TREE_MAX_MINUTES ?? "30");
+/** The first sync is over once no listing request was sent for this long. */
+const TREE_QUIET_MS = 90_000;
+
+/**
+ * A request that lists files: a JMAP request with `FileNode/query`, the search
+ * route Docs home listed through before #2063, and the REST listings.
+ */
+function isListingRequest(request: Request): boolean {
+  const { pathname } = new URL(request.url());
+  if (pathname.endsWith("/jmap")) {
+    return request.method() === "POST" && (request.postData() ?? "").includes('"FileNode/query"');
+  }
+  return /^\/api\/v1\/(search\/results|files\/(children|starred|shared-with-me))$/.test(pathname);
+}
+
+/**
+ * What one listing request asks for: the keyset walk (`idAfter` / `asOfState`,
+ * #2063), a folder listing (`parentId`), another `FileNode/query` filter, or a
+ * REST route. Tells the walk apart from the listings a view sends.
+ */
+function listingKind(request: Request): string {
+  const url = new URL(request.url());
+  if (!url.pathname.endsWith("/jmap")) return `GET ${url.pathname.replace(/^\/api\/v1/, "")}`;
+  type Call = [string, Record<string, unknown>, string];
+  let calls: Call[] = [];
+  try {
+    calls = (JSON.parse(request.postData() ?? "{}") as { methodCalls?: Call[] }).methodCalls ?? [];
+  } catch {
+    return "POST /jmap (unreadable)";
+  }
+  const queries = calls.filter(([name]) => name === "FileNode/query").map(([, args]) => args);
+  const walk = queries.some((args) =>
+    ["idAfter", "#idAfter", "asOfState", "#asOfState"].some((key) => key in args),
+  );
+  if (walk) return `walk (${queries.length} pages)`;
+  const filter = (queries[0]?.filter ?? null) as Record<string, unknown> | null;
+  const keys = filter ? Object.keys(filter).sort().join(",") : "none";
+  return `FileNode/query filter ${keys} (${queries.length} per request)`;
+}
+
+/**
+ * #2063: a fresh browser opens one app on a large file tree, alone. Counts the
+ * listing requests until the first sync is over (no listing for 90 s). The
+ * tree is seeded beside the run (docs/realtime-capacity.md, "Cold start on a
+ * large tree"), so the build before and after the change meet the same data.
+ */
+for (const [app, route] of [
+  ["drive", "/drive"],
+  ["docs", "/docs"],
+] as const) {
+  test(`cold start on a large tree: ${app} alone`, async ({ browser }) => {
+    test.setTimeout((TREE_MAX_MINUTES + 5) * 60_000);
+    const context = await openUser(browser, OWNER);
+    const meter = new TrafficMeter(context);
+    meter.start();
+    const tab = await context.newPage();
+    meter.name(tab, app);
+    // Only for the end of the run; the meter does the counting.
+    let lastListing = Date.now();
+    const kinds = new Map<string, number>();
+    const groups = new Map<string, number>();
+    context.on("request", (request) => {
+      if (!isListingRequest(request)) return;
+      lastListing = Date.now();
+      // The page's own requests; a worker that forwards one sends the same body again.
+      if (request.serviceWorker()) return;
+      const group = endpointGroup(request);
+      groups.set(group, (groups.get(group) ?? 0) + 1);
+      const kind = listingKind(request);
+      kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
+    });
+    const startedAt = Date.now();
+    await tab.goto(route);
+    while (
+      Date.now() - lastListing < TREE_QUIET_MS &&
+      Date.now() - startedAt < TREE_MAX_MINUTES * 60_000
+    ) {
+      await sleep(5_000);
+    }
+    const lastListingSeconds = Math.round((lastListing - startedAt) / 1000);
+    const report = meter.report(`tree-cold-start-${app}`, { app, lastListingSeconds });
+    const listingGroups = Object.fromEntries(groups);
+    const listingKinds = Object.fromEntries(kinds);
+    const listingRequests = [...kinds.values()].reduce((sum, count) => sum + count, 0);
+    writeReport(`tree-cold-start-${app}`, {
+      ...report,
+      listingRequests,
+      listingKinds,
+      listingGroups,
+    });
+    console.log(`[traffic] tree-cold-start-${app} listings: ${JSON.stringify(listingKinds)}`);
+    console.log(
+      `[traffic] tree-cold-start-${app}: ${listingRequests} listing requests, the last after ${lastListingSeconds} s`,
+    );
+    await context.close();
+  });
+}
 
 /**
  * The cost of one push request with every type (`GET /jmap/events/*`), the

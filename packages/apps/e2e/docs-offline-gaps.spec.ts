@@ -16,6 +16,7 @@ import {
   expectOfflineIndicator,
   gotoDocsHome,
   seedDocAtPath,
+  waitForDocsBodySynced,
 } from "./helpers/docs-live";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
@@ -442,7 +443,9 @@ test("gap 5: Docs home offline shows no Failed to fetch and throws nothing", asy
   await seedDocAtPath(`${HOME}/${name}`, `# ${name}\n`);
   await gotoDocsHome(page);
   await expect(docsHomeRow(page, name)).toBeVisible({ timeout: 30_000 });
-  await page.waitForTimeout(2000);
+  // A Doc opens offline once its body is on the device (#2063 C4); the
+  // background body sync is paced, so wait for it instead of a fixed time.
+  await waitForDocsBodySynced(page, name, `${HOME}/${name}`);
   await goOffline(context, page);
 
   const failedToFetch = page.getByText("Failed to fetch");
