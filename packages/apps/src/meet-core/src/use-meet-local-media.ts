@@ -20,6 +20,12 @@ import {
 import type { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
 import { useMeetMediaDevices } from "@/meet-core/src/use-meet-media-devices";
 
+/** Screen share is always optimized for detail. There is no user choice. */
+const SCREEN_MODE: ScreenOptimize = "text";
+/** The camera is optimized for motion. */
+const CAMERA_CONTENT_HINT = "motion";
+const SCREEN_CONTENT_HINT = screenContentHint(SCREEN_MODE);
+
 type MeetRtc = ReturnType<typeof useMeetRtc>;
 
 /**
@@ -79,8 +85,7 @@ export function useMeetLocalMedia({
   const [screenPreviewStream, setScreenPreviewStream] = useState<MediaStream | null>(
     () => screenStreamRef.current,
   );
-  const [screenMode, setScreenModeState] = useState<ScreenOptimize>("text");
-  const screenModeRef = useRef<ScreenOptimize>("text");
+  const screenInFlightRef = useRef(false);
   const { audioInputs, audioOutputs, videoInputs, refreshDeviceList } = useMeetMediaDevices();
   const [selectedMicId, setSelectedMicIdState] = useState<string | null>(
     () => mediaHolders?.selectedMicId.current ?? null,
@@ -130,6 +135,7 @@ export function useMeetLocalMedia({
         if (track && stale) track.stop();
         else if (track) {
           current.addTrack(track);
+          track.contentHint = CAMERA_CONTENT_HINT;
           cameraTrackRef.current = track;
           // A live screen share keeps the video slot; `stopScreenShare` restores the camera.
           if (!screenStreamRef.current) {
@@ -151,6 +157,7 @@ export function useMeetLocalMedia({
     );
     localStreamRef.current = stream;
     cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
+    if (cameraTrackRef.current) cameraTrackRef.current.contentHint = CAMERA_CONTENT_HINT;
     syncMeetLocalTrackEnabled(stream, currentMediaWanted());
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     await refreshDeviceList();
@@ -245,22 +252,24 @@ export function useMeetLocalMedia({
   ]);
 
   const publishScreen = useCallback(
-    (mode: ScreenOptimize, trackId: string | null) => {
-      screenModeRef.current = mode;
-      setScreenModeState(mode);
-      meetRtc.setEncodingPrefs({ screenMode: mode, screenTrackId: trackId });
+    (trackId: string | null) => {
+      meetRtc.setEncodingPrefs({ screenMode: SCREEN_MODE, screenTrackId: trackId });
     },
     [meetRtc],
   );
 
-  const stopScreenShare = useCallback(async () => {
+  const stopAllScreenTracks = useCallback(() => {
     screenStreamRef.current?.getTracks().forEach((track) => track.stop());
     screenStreamRef.current = null;
+  }, [screenStreamRef]);
+
+  const stopScreenShare = useCallback(async () => {
+    stopAllScreenTracks();
     setScreenPreviewStream(null);
     const cameraTrack = cameraTrackRef.current;
     if (cameraTrack) await meetRtc.replaceVideoTrack(cameraTrack);
     setScreenOn(false);
-    publishScreen("text", null);
+    publishScreen(null);
     void announceMediaPresence(micOnRef.current, videoOnRef.current, false);
   }, [
     announceMediaPresence,
@@ -268,80 +277,73 @@ export function useMeetLocalMedia({
     micOnRef,
     publishScreen,
     meetRtc,
-    screenStreamRef,
+    stopAllScreenTracks,
     setScreenOn,
     videoOnRef,
   ]);
 
-  const setScreenOptimize = useCallback(
-    async (mode: ScreenOptimize) => {
-      const track = screenStreamRef.current?.getVideoTracks()[0];
-      if (!track) return;
-      await applyScreenOptimize(track, mode, readMeetLowData());
-      publishScreen(mode, track.id);
-    },
-    [publishScreen, screenStreamRef],
-  );
-
-  const startScreenShare = useCallback(
-    async (mode: ScreenOptimize) => {
-      if (screenStreamRef.current) {
-        await setScreenOptimize(mode);
+  const startScreenShare = useCallback(async () => {
+    // One request at a time: a second click while the picker is open, or while
+    // a share is live, must not open another picker.
+    if (screenInFlightRef.current || screenStreamRef.current) return;
+    if (!isDisplayCaptureSupported()) {
+      setError(meetLabels.shareScreenUnsupported);
+      return;
+    }
+    screenInFlightRef.current = true;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: screenCaptureConstraints(SCREEN_MODE, readMeetLowData()),
+      });
+      screenStreamRef.current = stream;
+      setScreenPreviewStream(stream);
+      const track = stream.getVideoTracks()[0];
+      if (!track) {
+        stopAllScreenTracks();
+        setScreenPreviewStream(null);
         return;
       }
-      if (!isDisplayCaptureSupported()) {
+      track.contentHint = SCREEN_CONTENT_HINT;
+      publishScreen(track.id);
+      await meetRtc.replaceVideoTrack(track);
+      track.onended = () => {
+        void stopScreenShare();
+      };
+      setScreenOn(true);
+      void announceMediaPresence(micOnRef.current, videoOnRef.current, true);
+    } catch (e) {
+      if (isDisplayCaptureUserCancel(e)) return;
+      if (isDisplayCaptureUnsupportedError(e)) {
         setError(meetLabels.shareScreenUnsupported);
         return;
       }
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: screenCaptureConstraints(mode, readMeetLowData()),
-        });
-        screenStreamRef.current = stream;
-        setScreenPreviewStream(stream);
-        const track = stream.getVideoTracks()[0];
-        if (!track) return;
-        track.contentHint = screenContentHint(mode);
-        publishScreen(mode, track.id);
-        await meetRtc.replaceVideoTrack(track);
-        track.onended = () => {
-          void stopScreenShare();
-        };
-        setScreenOn(true);
-        void announceMediaPresence(micOnRef.current, videoOnRef.current, true);
-      } catch (e) {
-        if (isDisplayCaptureUserCancel(e)) return;
-        if (isDisplayCaptureUnsupportedError(e)) {
-          setError(meetLabels.shareScreenUnsupported);
-          return;
-        }
-        setError(e instanceof Error ? e.message : meetLabels.shareScreenFailed);
-      }
-    },
-    [
-      announceMediaPresence,
-      micOnRef,
-      publishScreen,
-      meetRtc,
-      screenStreamRef,
-      setError,
-      setScreenOn,
-      setScreenOptimize,
-      stopScreenShare,
-      videoOnRef,
-    ],
-  );
+      setError(e instanceof Error ? e.message : meetLabels.shareScreenFailed);
+    } finally {
+      screenInFlightRef.current = false;
+    }
+  }, [
+    announceMediaPresence,
+    micOnRef,
+    publishScreen,
+    meetRtc,
+    screenStreamRef,
+    setError,
+    setScreenOn,
+    stopAllScreenTracks,
+    stopScreenShare,
+    videoOnRef,
+  ]);
 
   const toggleScreenShare = useCallback(async () => {
     if (screenOn || screenStreamRef.current) await stopScreenShare();
-    else await startScreenShare("text");
+    else await startScreenShare();
   }, [screenOn, screenStreamRef, startScreenShare, stopScreenShare]);
 
   useEffect(() => {
     return subscribeMeetLowData(() => {
       const track = screenStreamRef.current?.getVideoTracks()[0];
       if (!track) return;
-      void applyScreenOptimize(track, screenModeRef.current, readMeetLowData());
+      void applyScreenOptimize(track, SCREEN_MODE, readMeetLowData());
     });
   }, [screenStreamRef]);
 
@@ -386,6 +388,7 @@ export function useMeetLocalMedia({
         const track = updated.getVideoTracks()[0];
         if (!track) return;
         track.enabled = currentMediaWanted().video;
+        track.contentHint = CAMERA_CONTENT_HINT;
         const previous = stream.getVideoTracks()[0];
         if (previous && previous.id !== track.id) {
           stream.removeTrack(previous);
@@ -441,9 +444,7 @@ export function useMeetLocalMedia({
     unmuteMic,
     toggleVideo,
     toggleScreenShare,
-    screenMode,
     startScreenShare,
-    setScreenOptimize,
     stopScreenShare,
     switchMic,
     switchCamera,
