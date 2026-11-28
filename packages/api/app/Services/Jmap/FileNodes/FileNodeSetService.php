@@ -348,7 +348,7 @@ final class FileNodeSetService
         $serverSet = [];
         $note = $this->notes->patch($patch);
         $tagDelta = $this->tags->patch($patch);
-        if ($tagDelta !== null && ! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayRename']) {
+        if ($tagDelta !== null && ! $this->mayChangeTags((string) $node->storage_key, $principal)) {
             throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to change the tags of this node.']);
         }
         if ($tagDelta !== null) {
@@ -749,5 +749,22 @@ final class FileNodeSetService
     private function invalidProperties(string $description, array $properties = []): array
     {
         return ['type' => 'invalidProperties', 'description' => $description, 'properties' => $properties];
+    }
+
+    /**
+     * Tags are metadata: whoever may write the item may tag it, the owner and Team members
+     * (structure rights) and internal people it is shared with at edit level. Guests never
+     * (their projection has no tags and the guest write path refuses the property).
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    private function mayChangeTags(string $storageKey, array $principal): bool
+    {
+        if (strtolower($principal['role']) === 'guest') {
+            return false;
+        }
+        $rights = $this->mapper->rightsFor($storageKey, $principal);
+
+        return $rights['mayRename'] || $rights['mayModifyContent'];
     }
 }

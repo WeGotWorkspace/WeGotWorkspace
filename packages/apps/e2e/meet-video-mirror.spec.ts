@@ -40,7 +40,6 @@ test("only your own camera is mirrored, before, during and after a screen share"
 
     // The owner shares a screen with the camera still on.
     await owner.getByRole("button", { name: "Share screen" }).click();
-    await owner.getByRole("menuitem", { name: "Optimize for text" }).click();
     await expect(owner.getByRole("button", { name: "Stop sharing" })).toBeVisible();
     await expect.poll(() => shareMirrored(owner)).toBe(false);
     await expect
@@ -59,7 +58,6 @@ test("only your own camera is mirrored, before, during and after a screen share"
 
     // Back to the camera: nothing sticks from the share.
     await owner.getByRole("button", { name: "Stop sharing" }).click();
-    await owner.getByRole("menuitem", { name: "Stop sharing" }).click();
     await expect(owner.getByRole("button", { name: "Share screen" })).toBeVisible();
     for (const page of [owner, teammate]) {
       await expect

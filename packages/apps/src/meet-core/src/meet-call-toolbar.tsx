@@ -18,7 +18,6 @@ import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
 import { MeetScreenShareControl } from "@/meet-core/src/meet-screen-share-control";
-import type { ScreenOptimize } from "@/meet-core/src/meet-video-sender";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
 type MeetCallToolbarProps = {
@@ -39,9 +38,7 @@ type MeetCallToolbarProps = {
   /** Instance ceiling is audio-only. The camera control stays off. */
   videoLocked?: boolean;
   onToggleScreenShare: () => void;
-  screenMode?: ScreenOptimize;
-  onStartScreenShare?: (mode: ScreenOptimize) => void;
-  onScreenOptimize?: (mode: ScreenOptimize) => void;
+  onStartScreenShare?: () => void;
   onStopScreenShare?: () => void;
   /**
    * Override getDisplayMedia feature detection. When false, Share screen is
@@ -79,9 +76,7 @@ export function MeetCallToolbar({
   onToggleVideo,
   videoLocked = false,
   onToggleScreenShare,
-  screenMode = "text",
   onStartScreenShare,
-  onScreenOptimize,
   onStopScreenShare,
   canShareScreen,
   onCameraChange,
@@ -117,12 +112,10 @@ export function MeetCallToolbar({
         label={videoLabel}
       />
       {shareAvailable || screenOn ? (
-        onStartScreenShare && onScreenOptimize && onStopScreenShare ? (
+        onStartScreenShare && onStopScreenShare ? (
           <MeetScreenShareControl
             screenOn={screenOn}
-            screenMode={screenMode}
             onStart={onStartScreenShare}
-            onOptimize={onScreenOptimize}
             onStop={onStopScreenShare}
           />
         ) : (

@@ -22,8 +22,10 @@ import {
   classifyRequest,
   DEFAULT_GOVERNOR_OPTIONS,
   isGovernedClass,
+  isMeetLaneSignal,
   RequestGovernor,
   TRAFFIC_CLASS_HEADER,
+  WGW_MEET_LANE_MESSAGE,
 } from "./lib/traffic/request-governor";
 
 declare let self: ServiceWorkerGlobalScope & {
@@ -66,6 +68,13 @@ const governor = new RequestGovernor({
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   fetch: (request) => self.fetch(request),
+});
+// Meet call setup (#2419): the page tells the worker when a call joins,
+// negotiates or ends; the governor opens and closes the signaling lane.
+self.addEventListener("message", (event) => {
+  const data = event.data as { type?: unknown; signal?: unknown } | null;
+  if (data?.type !== WGW_MEET_LANE_MESSAGE || !isMeetLaneSignal(data.signal)) return;
+  governor.signalMeetLane(data.signal);
 });
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);

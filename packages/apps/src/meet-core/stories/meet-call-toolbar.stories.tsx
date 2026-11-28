@@ -34,6 +34,7 @@ function MeetCallToolbarStory({
   callExitTitle,
   callExitDescription,
 }: MeetCallToolbarStoryArgs) {
+  const [shareOn, setShareOn] = useState(screenOn);
   const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
@@ -45,7 +46,7 @@ function MeetCallToolbarStory({
       <MeetCallToolbar
         micOn={micOn}
         videoOn={videoOn}
-        screenOn={screenOn}
+        screenOn={shareOn}
         callExitLabel={callExitLabel}
         callExitTitle={callExitTitle}
         callExitDescription={callExitDescription}
@@ -58,6 +59,8 @@ function MeetCallToolbarStory({
         onToggleMic={STORY_NOOP}
         onToggleVideo={STORY_NOOP}
         onToggleScreenShare={STORY_NOOP}
+        onStartScreenShare={() => setShareOn(true)}
+        onStopScreenShare={() => setShareOn(false)}
         canShareScreen={canShareScreen}
         onCameraChange={setCamera}
         onMicrophoneChange={setMicrophone}
@@ -149,6 +152,24 @@ export const Default: Story = {
 export const ScreenSharing: Story = {
   name: "Screen sharing",
   args: { ...baseArgs, screenOn: true },
+};
+
+export const ScreenShareOneClick: Story = {
+  name: "Screen share in one click",
+  tags: ["vitest-ci"],
+  args: baseArgs,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.shareScreen }));
+    // One click starts the share: no menu, no text or video choice.
+    await expect(canvas.queryByRole("menuitem")).not.toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.stopSharing })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.stopSharing }));
+    await expect(canvas.getByRole("button", { name: meetLabels.shareScreen })).toBeInTheDocument();
+  },
 };
 
 export const ScreenShareUnavailable: Story = {

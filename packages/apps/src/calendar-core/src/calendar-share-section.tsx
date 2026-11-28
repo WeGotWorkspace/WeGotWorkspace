@@ -11,6 +11,8 @@ export type CalendarShareSectionProps = {
   online?: boolean;
   /** The viewer is in no Team (#1924). */
   noTeam?: boolean;
+  /** Name, colour or owner has unsaved edits. */
+  recordPending?: boolean;
   onSearchPrincipals: (query: string) => Promise<CalendarSharePrincipal[]>;
   onPatchShareWith: (calendarId: string, shareWith: CalendarShareWith) => Promise<void>;
 };
@@ -22,6 +24,7 @@ export function CalendarShareSection({
   disabled = false,
   online = true,
   noTeam = false,
+  recordPending = false,
   onSearchPrincipals,
   onPatchShareWith,
 }: CalendarShareSectionProps) {
@@ -33,6 +36,7 @@ export function CalendarShareSection({
       disabled={disabled}
       online={online}
       noTeam={noTeam}
+      recordPending={recordPending}
       dialogClassName="calendar-dialog-surface"
       copy={{
         title: labels.shareCalendarSectionTitle,

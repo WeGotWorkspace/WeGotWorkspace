@@ -1,3 +1,4 @@
+import { signalMeetLane } from "@/lib/traffic/meet-lane-client";
 import { createMediaBinding } from "@/lib/rtc/session/bindings";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import { meetDcPokeFrame } from "@/lib/rtc/session/meet-data-channel";
@@ -232,6 +233,8 @@ export class MeetRtcSession {
   }> {
     if (this.mesh) await this.leave();
     this.mesh = this.createMesh(input.room);
+    // Call setup (#2419): the join and the dialling after it skip the background queue.
+    signalMeetLane("join");
     const joined = await this.mesh.join({ name: input.name, peerId: input.peerId });
     if (joined.superseded) return { peerId: "", peers: [] };
     this.limits = videoLimitsFromJoin(joined.limits);

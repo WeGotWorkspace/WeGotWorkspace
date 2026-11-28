@@ -266,9 +266,7 @@ export function MeetCallExpanded({
               onToggleVideo={room.controller.toggleVideo}
               videoLocked={room.controller.cameraSendingDisabled}
               onToggleScreenShare={() => void room.controller.toggleScreenShare()}
-              screenMode={room.controller.screenMode}
-              onStartScreenShare={(mode) => void room.controller.startScreenShare(mode)}
-              onScreenOptimize={(mode) => void room.controller.setScreenOptimize(mode)}
+              onStartScreenShare={() => void room.controller.startScreenShare()}
               onStopScreenShare={() => void room.controller.stopScreenShare()}
               canShareScreen={room.controller.canShareScreen}
               onCameraChange={(id) => {

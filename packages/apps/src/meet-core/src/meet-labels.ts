@@ -66,8 +66,6 @@ export const meetLabels = {
   stopSharing: "Stop sharing",
   shareScreenUnsupported: "Screen sharing isn't available in this browser.",
   shareScreenFailed: "Could not share your screen.",
-  optimizeForText: "Optimize for text",
-  optimizeForVideo: "Optimize for video",
   devices: "Devices",
   shareLink: "Share link",
   signOut: "Sign out",

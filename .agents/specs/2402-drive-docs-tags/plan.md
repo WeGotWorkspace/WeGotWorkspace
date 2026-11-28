@@ -34,7 +34,7 @@ A before C. B before C, D and E (B can land first, no visible change). D and E a
 ## Open decisions
 - [x] (chunk C) Tags are removed when an item moves between personal and Team space. Decided 2026-11-27.
 - [x] (chunk C) Internal share recipients see the owner's tags; external recipients never do. Decided 2026-11-27.
-- [ ] (chunk C) May an internal share recipient with write rights edit the owner's tags? Built view-only until the product lead answers.
+- [x] (chunk C) An internal share recipient with edit rights may edit the owner's tags; view-only recipients and external callers may not. Decided 2026-11-28.
 
 ## Invariants
 - Notes tags behave as before after B. A wrong move of the model breaks note tag toggles. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/lib/models/note-tag.test.ts src/notes-core`

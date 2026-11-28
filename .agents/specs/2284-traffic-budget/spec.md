@@ -47,3 +47,4 @@ Keep one browser of one user — every tab, installed PWA window and service wor
 - Contacts photo pass: cards render with initials until their photo arrives; Calendar invitee search needs no photos.
 - `Retry-After` larger than the brake cap: capped at 5 minutes.
 - A coalesced read fails: not shared; the next caller retries.
+- Meet call setup (#2419): while a call joins or negotiates, Meet room polls and the doorbell read ride a short priority lane in the governor (see `docs/realtime-capacity.md`, Meet call setup lane); it closes by itself and the idle budget is unchanged.
