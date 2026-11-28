@@ -8,7 +8,7 @@ export const GOALS = Object.freeze({
   "talk to the team": ["chat.post", "chat.reply", "chat.mention", "chat.dm", "chat.leave"],
   "plan and finish work": ["task.create", "task.assign", "task.comment", "task.complete", "task.archive"],
   "keep notes": ["note.create", "note.edit"],
-  "write a doc": ["doc.create", "doc.edit", "doc.comment", "doc.resolve"],
+  "write a doc": ["doc.create", "doc.edit", "doc.comment", "doc.resolve", "doc.suggest"],
   "co-write a doc": ["doc.cowrite"],
   "hand off a file": ["drive.upload", "drive.version", "drive.rename", "drive.move", "drive.delete", "drive.share", "drive.guestDownload"],
   "book a meeting": ["cal.event", "cal.reschedule", "meet.schedule"],

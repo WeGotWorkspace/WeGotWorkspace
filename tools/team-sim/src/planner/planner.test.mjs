@@ -121,6 +121,18 @@ test("gap moments are actions of kind gap with the workaround named", () => {
   for (const g of gaps) assert.ok(g.params.need && g.params.workaround);
 });
 
+test("suggested edits are played in the browser, never as a gap (track changes exists)", () => {
+  const plans = Array.from({ length: 10 }, (_, i) => planNight({ world, date: addDays("2026-11-16", i), snapshot }));
+  const suggests = plans.flatMap((p) => p.actions.filter((a) => a.kind === "doc.suggest").map((a) => ({ a, ui: p.ui })));
+  assert.ok(suggests.length > 0);
+  for (const { a, ui } of suggests) {
+    assert.equal(a.layer, "ui");
+    assert.ok(ui.includes(a.persona));
+  }
+  const gaps = plans.flatMap((p) => p.actions.filter((a) => a.kind === "gap"));
+  assert.ok(!gaps.some((g) => /track changes/i.test(g.params.need)));
+});
+
 test("uploads stop at the Drive cap and closing a project deletes print files", () => {
   const full = { ...snapshot, driveBytes: world.meta.driveCapBytes - 1000 };
   const plan = planNight({ world, date: "2026-12-15", snapshot: full });
