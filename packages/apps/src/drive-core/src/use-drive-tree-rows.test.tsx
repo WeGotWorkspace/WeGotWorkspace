@@ -188,6 +188,60 @@ describe("Drive views on the local file tree (#2063 C3)", () => {
     expect(ops.changeDir).not.toHaveBeenCalled();
   });
 
+  it("a cold open reads the tree with the remembered account while the bootstrap still loads", async () => {
+    await put(`users/${user}/Projects`, "home");
+    await put(`users/${user}/Projects/plan.md`, "home");
+    await finishFirstSync();
+    connectivity.online = false;
+    // What useDriveAPI hands the shell before the bootstrap answers: no username
+    // in `data` or the session, `listLoading`, and the account from localStorage.
+    const placeholder: DriveUIData = {
+      user: { username: "", name: "", role: "user", roots: ["/users"] },
+      cwd: "/",
+      directory: { location: "/", files: [] },
+    };
+    const noSession: WorkspaceSession = {
+      user: { displayName: "", initials: "", username: undefined },
+      viewerInboxLabel: "",
+    };
+    const seen: unknown[] = [];
+    const { result } = renderHook(() => {
+      const shell = useDriveShell({
+        data: placeholder,
+        session: noSession,
+        operations: operations(),
+        listLoading: true,
+        offlineUsername: user,
+        view: { type: "folder", path: "My Drive/Projects" },
+        onViewChange: vi.fn(),
+      });
+      seen.push(shell.viewState);
+      return shell;
+    });
+
+    await waitFor(() => expect(titles(result.current.files)).toEqual(["plan.md"]));
+    expect(result.current.viewState).toBeNull();
+    expect(seen).not.toContain("first-sync");
+  });
+
+  it("keeps the first-sync loading pane while the bootstrap loads on a device with no account yet", async () => {
+    const { result } = renderHook(() =>
+      useDriveShell({
+        data: { ...data(), user: { ...data().user, username: "" } },
+        session: {
+          user: { displayName: "", initials: "", username: undefined },
+          viewerInboxLabel: "",
+        },
+        operations: operations(),
+        listLoading: true,
+        offlineUsername: null,
+        view: { type: "folder", path: "My Drive" },
+        onViewChange: vi.fn(),
+      }),
+    );
+    expect(result.current.viewState).toBe("first-sync");
+  });
+
   it("shows a known-empty folder as empty, not loading", async () => {
     await put(`users/${user}/Empty`, "home");
     await finishFirstSync();

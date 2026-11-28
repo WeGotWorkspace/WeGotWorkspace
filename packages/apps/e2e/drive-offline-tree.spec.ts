@@ -5,7 +5,8 @@
 // spinner or a folder listing, and offline in a new tab, Starred and Shared
 // with me included. A row the person shares carries its badge from the stored
 // copy, offline too. A folder the device never synced says so instead of
-// looking empty. Runs on `vite preview` through `playwright.pwa.config.mjs`:
+// looking empty. No view shows a loading pane on a cold offline open, Docs
+// home included. Runs on `vite preview` through `playwright.pwa.config.mjs`:
 // the dev server has no service worker, so it cannot open a tab offline.
 import { type BrowserContext, expect, type Page, test } from "./helpers/live-test";
 import {
@@ -191,6 +192,9 @@ test.describe("Drive on the file tree, production build", () => {
     expect(
       listings.filter((kind) => ["walk", "search", `parentId:${folderId}`].includes(kind)),
     ).toEqual([]);
+    // Docs home lists the same tree; an online visit lets it remember the account.
+    await warm.goto("/docs");
+    await expect(row(warm, FILE)).toBeVisible({ timeout: 15_000 });
 
     // Cold offline open: every tab closed, the network gone, then a new tab.
     for (const open of context.pages()) await open.close();
@@ -203,17 +207,25 @@ test.describe("Drive on the file tree, production build", () => {
       await expect(row(cold, STARRED)).toBeVisible();
       // The badge comes from the stored entry: no server answers now.
       await expect(rowOf(cold, OUTBOUND).getByRole("img", { name: "Shared" })).toBeVisible();
-      // Offline, the app's start-up read falls back to the stored copy a moment
-      // later than online, and the pane can show its loading state for that
-      // moment (about 15 ms here); it never stays once the rows are in.
-      await expect(cold.locator(".collection-state--loading")).toHaveCount(0);
+      // No loading pane at any moment, not even while the start-up read is
+      // still on its way: the tree reads with the account the device remembers.
+      expect(await sawLoading(cold)).toBe(false);
 
       // Starred and Shared with me, offline.
       await cold.goto("/drive?view=starred");
       await expect(row(cold, STARRED)).toBeVisible({ timeout: 30_000 });
       await expect(cold.getByText(FILE, { exact: true })).toHaveCount(0);
+      expect(await sawLoading(cold)).toBe(false);
       await cold.goto("/drive?view=shared");
       await expect(row(cold, INBOUND)).toBeVisible({ timeout: 30_000 });
+      expect(await sawLoading(cold)).toBe(false);
+
+      // Docs home, cold and offline: its rows, never its loading pane.
+      const docs = await context.newPage();
+      await docs.goto("/docs");
+      await expect(row(docs, FILE)).toBeVisible({ timeout: 30_000 });
+      expect(await sawLoading(docs)).toBe(false);
+      await docs.close();
 
       // A folder this device never synced is not available, never empty.
       await cold.goto(folderUrl(`My Drive/Never synced ${RUN}`));

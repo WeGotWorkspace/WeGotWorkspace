@@ -41,6 +41,12 @@ export type UseDriveShellArgs = {
   operations?: DriveAPIOperations;
   shareOperations?: DriveShareOperations;
   listLoading?: boolean;
+  /**
+   * The device's remembered account (localStorage). While the bootstrap is
+   * still loading, `data` has no username yet; the local tree reads with this
+   * one so a cold open shows the stored rows at once, never a loading pane.
+   */
+  offlineUsername?: string | null;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
 };
@@ -50,16 +56,28 @@ export function driveCurrentUsername(data: DriveUIData, session: WorkspaceSessio
   return data.user.username || session.user.username || "";
 }
 
+/** Falls back to the device's remembered account while a tree-backed bootstrap still loads. */
+function shellUsername(
+  data: DriveUIData,
+  session: WorkspaceSession,
+  treeEnabled: boolean,
+  offlineUsername: string | null,
+): string {
+  return driveCurrentUsername(data, session) || (treeEnabled ? (offlineUsername ?? "") : "");
+}
+
 export function useDriveShell({
   data,
   session,
   operations,
   listLoading = false,
+  offlineUsername = null,
   view: controlledView,
   onViewChange,
 }: UseDriveShellArgs) {
   const { showError } = useAppToast();
-  const currentUsername = driveCurrentUsername(data, session);
+  const treeEnabled = operations?.localTree === true; // members only; guests and mocks have no tree
+  const currentUsername = shellUsername(data, session, treeEnabled, offlineUsername);
   const [files, setFiles] = useState<DriveFile[]>(() => {
     if (!operations) return DRIVE_MOCK_FILES;
     return mapDriveListingEntries(data, currentUsername);
@@ -84,8 +102,6 @@ export function useDriveShell({
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const starredLoadVersionRef = useRef(0);
   const { online } = useConnectivity();
-  /** Members read every view from the device's file tree; guests and mocks have none. */
-  const treeEnabled = operations?.localTree === true;
 
   const folderViewPath = view.type === "folder" ? view.path : null;
 
@@ -270,7 +286,8 @@ export function useDriveShell({
     : (listLoading && view.type === "folder") || serverFolder.pending
       ? "first-sync"
       : null;
-  const ownState: DriveViewState = treeRows.viewState ?? serverFolderState;
+  // A tree view keeps its own state, never the server listing's loading pane.
+  const ownState: DriveViewState = treeRows.treeActive ? treeRows.viewState : serverFolderState;
   // An online search shows the view's own state until the server answers: a
   // pending or failed search never reads as "no hits".
   const searchState: DriveViewState = serverSearch

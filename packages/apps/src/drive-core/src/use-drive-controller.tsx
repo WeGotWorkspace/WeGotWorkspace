@@ -19,6 +19,8 @@ export type UseDriveControllerArgs = {
   operations?: DriveAPIOperations;
   shareOperations?: DriveShareOperations;
   listLoading?: boolean;
+  /** The device's remembered account: the tree's username until the bootstrap answers. */
+  offlineUsername?: string | null;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
   onOpenDocsFile?: (apiPath: string) => void;
@@ -34,6 +36,7 @@ export function useDriveController({
   operations,
   shareOperations,
   listLoading = false,
+  offlineUsername = null,
   view,
   onViewChange,
   onOpenDocsFile,
@@ -44,6 +47,7 @@ export function useDriveController({
     operations,
     shareOperations,
     listLoading,
+    offlineUsername,
     view,
     onViewChange,
   });
